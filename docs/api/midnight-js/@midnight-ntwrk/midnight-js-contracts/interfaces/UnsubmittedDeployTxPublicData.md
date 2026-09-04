@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -24,6 +24,6 @@ The ledger address of the contract that was deployed.
 
 ### initialContractState
 
-> `readonly` **initialContractState**: [`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
+> `readonly` **initialContractState**: [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
 The initial public state of the contract deployed to the blockchain.

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -18,17 +18,17 @@ transaction data ([UnsubmittedTxData](UnsubmittedTxData.md)).
 
 ### C
 
-`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ### PCK
 
-`PCK` *extends* [`ProvableCircuitId`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
+`PCK` *extends* [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 ## Properties
 
 ### input
 
-> `readonly` **input**: [`AlignedValue`](../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)
+> `readonly` **input**: [`AlignedValue`](https://github.com/midnightntwrk/midnight-ledger)
 
 ZK representation of the circuit arguments.
 
@@ -40,7 +40,7 @@ ZK representation of the circuit arguments.
 
 ### newCoins
 
-> `readonly` **newCoins**: [`ShieldedCoinInfo`](../../midnight-js-protocol/ledger/type-aliases/ShieldedCoinInfo.md)[]
+> `readonly` **newCoins**: [`ShieldedCoinInfo`](https://github.com/midnightntwrk/midnight-ledger)[]
 
 New coins created during the construction of the transaction.
 
@@ -52,7 +52,7 @@ New coins created during the construction of the transaction.
 
 ### nextPrivateState
 
-> `readonly` **nextPrivateState**: [`PrivateState`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
+> `readonly` **nextPrivateState**: [`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 The private state resulting from executing the circuit.
 
@@ -64,7 +64,7 @@ The private state resulting from executing the circuit.
 
 ### nextZswapLocalState
 
-> `readonly` **nextZswapLocalState**: [`ZswapLocalState`](../../midnight-js-protocol/compact-runtime/interfaces/ZswapLocalState.md)
+> `readonly` **nextZswapLocalState**: [`ZswapLocalState`](https://github.com/LFDT-Minokawa/compact)
 
 The Zswap local state resulting from executing the circuit.
 
@@ -76,7 +76,7 @@ The Zswap local state resulting from executing the circuit.
 
 ### output
 
-> `readonly` **output**: [`AlignedValue`](../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)
+> `readonly` **output**: [`AlignedValue`](https://github.com/midnightntwrk/midnight-ledger)
 
 ZK representation of the circuit result.
 
@@ -88,7 +88,7 @@ ZK representation of the circuit result.
 
 ### privateTranscriptOutputs
 
-> `readonly` **privateTranscriptOutputs**: [`AlignedValue`](../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)[]
+> `readonly` **privateTranscriptOutputs**: [`AlignedValue`](https://github.com/midnightntwrk/midnight-ledger)[]
 
 ZK representation of the circuit witness call results.
 
@@ -100,7 +100,7 @@ ZK representation of the circuit witness call results.
 
 ### result
 
-> `readonly` **result**: [`CircuitReturnType`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/CircuitReturnType.md)\<`C`, `PCK`\>
+> `readonly` **result**: [`CircuitReturnType`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `PCK`\>
 
 The JS representation of the value returned by the circuit.
 
@@ -112,7 +112,7 @@ The JS representation of the value returned by the circuit.
 
 ### unprovenTx
 
-> `readonly` **unprovenTx**: [`UnprovenTransaction`](../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
+> `readonly` **unprovenTx**: [`UnprovenTransaction`](https://github.com/midnightntwrk/midnight-ledger)
 
 The unproven ledger transaction produced.
 

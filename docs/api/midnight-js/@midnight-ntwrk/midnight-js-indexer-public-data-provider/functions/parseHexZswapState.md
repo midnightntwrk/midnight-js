@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: parseHexZswapState()
 
-> **parseHexZswapState**(`s`): [`ZswapChainState`](../../midnight-js-protocol/ledger/classes/ZswapChainState.md)
+> **parseHexZswapState**(`s`): [`ZswapChainState`](https://github.com/midnightntwrk/midnight-ledger)
 
 ## Parameters
 
@@ -16,4 +16,4 @@
 
 ## Returns
 
-[`ZswapChainState`](../../midnight-js-protocol/ledger/classes/ZswapChainState.md)
+[`ZswapChainState`](https://github.com/midnightntwrk/midnight-ledger)

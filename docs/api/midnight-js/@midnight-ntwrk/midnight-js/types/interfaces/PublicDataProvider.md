@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -62,7 +62,7 @@ Optional stream start.
 
 ### contractStateObservable()
 
-> **contractStateObservable**(`address`, `config`): `Observable`\<[`ContractState`](../../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)\>
+> **contractStateObservable**(`address`, `config`): `Observable`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 Defined in: packages/types/dist/index.d.ts:1201
 
@@ -86,7 +86,7 @@ The configuration for the observable.
 
 #### Returns
 
-`Observable`\<[`ContractState`](../../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)\>
+`Observable`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 ***
 
@@ -161,7 +161,7 @@ Optional pagination window.
 
 ### queryContractState()
 
-> **queryContractState**(`contractAddress`, `config?`): `Promise`\<[`ContractState`](../../../midnight-js-protocol/onchain-runtime/classes/ContractState.md) \| `null`\>
+> **queryContractState**(`contractAddress`, `config?`): `Promise`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger) \| `null`\>
 
 Defined in: packages/types/dist/index.d.ts:1122
 
@@ -186,13 +186,13 @@ The configuration of the query.
 
 #### Returns
 
-`Promise`\<[`ContractState`](../../../midnight-js-protocol/onchain-runtime/classes/ContractState.md) \| `null`\>
+`Promise`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger) \| `null`\>
 
 ***
 
 ### queryDeployContractState()
 
-> **queryDeployContractState**(`contractAddress`): `Promise`\<[`ContractState`](../../../midnight-js-protocol/onchain-runtime/classes/ContractState.md) \| `null`\>
+> **queryDeployContractState**(`contractAddress`): `Promise`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger) \| `null`\>
 
 Defined in: packages/types/dist/index.d.ts:1138
 
@@ -209,7 +209,7 @@ The address of the contract of interest.
 
 #### Returns
 
-`Promise`\<[`ContractState`](../../../midnight-js-protocol/onchain-runtime/classes/ContractState.md) \| `null`\>
+`Promise`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger) \| `null`\>
 
 ***
 
@@ -244,7 +244,7 @@ The configuration of the query.
 
 ### queryZSwapAndContractState()
 
-> **queryZSwapAndContractState**(`contractAddress`, `config?`): `Promise`\<\[[`ZswapChainState`](../../../midnight-js-protocol/ledger/classes/ZswapChainState.md), [`ContractState`](../../../midnight-js-protocol/onchain-runtime/classes/ContractState.md), [`LedgerParameters`](../../../midnight-js-protocol/ledger/classes/LedgerParameters.md)\] \| `null`\>
+> **queryZSwapAndContractState**(`contractAddress`, `config?`): `Promise`\<\[[`ZswapChainState`](https://github.com/midnightntwrk/midnight-ledger), [`ContractState`](https://github.com/midnightntwrk/midnight-ledger), [`LedgerParameters`](https://github.com/midnightntwrk/midnight-ledger)\] \| `null`\>
 
 Defined in: packages/types/dist/index.d.ts:1132
 
@@ -270,7 +270,7 @@ The configuration of the query.
 
 #### Returns
 
-`Promise`\<\[[`ZswapChainState`](../../../midnight-js-protocol/ledger/classes/ZswapChainState.md), [`ContractState`](../../../midnight-js-protocol/onchain-runtime/classes/ContractState.md), [`LedgerParameters`](../../../midnight-js-protocol/ledger/classes/LedgerParameters.md)\] \| `null`\>
+`Promise`\<\[[`ZswapChainState`](https://github.com/midnightntwrk/midnight-ledger), [`ContractState`](https://github.com/midnightntwrk/midnight-ledger), [`LedgerParameters`](https://github.com/midnightntwrk/midnight-ledger)\] \| `null`\>
 
 ***
 
@@ -306,7 +306,7 @@ An observable that emits the unshielded balances for the provided address.
 
 ### watchForContractState()
 
-> **watchForContractState**(`contractAddress`): `Promise`\<[`ContractState`](../../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)\>
+> **watchForContractState**(`contractAddress`): `Promise`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 Defined in: packages/types/dist/index.d.ts:1151
 
@@ -323,7 +323,7 @@ The address of the contract of interest.
 
 #### Returns
 
-`Promise`\<[`ContractState`](../../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)\>
+`Promise`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 ***
 

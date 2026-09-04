@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -53,7 +53,7 @@ Proof Server (/check, /prove)
 > **httpClientProofProvider**\<`K`\>(`options`): [`ProofProvider`](../../midnight-js/types/interfaces/ProofProvider.md)
 
 Creates a high-level [ProofProvider](../../midnight-js/types/interfaces/ProofProvider.md) that implements transaction-level proving
-using the low-level circuit-by-circuit [ProvingProvider](../../midnight-js-protocol/ledger/type-aliases/ProvingProvider.md) as its foundation.
+using the low-level circuit-by-circuit [ProvingProvider](https://github.com/midnightntwrk/midnight-ledger) as its foundation.
 
 This adapter bridges the gap between:
 - High-level ProofProvider interface (works with complete transactions)

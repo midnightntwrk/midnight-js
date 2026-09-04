@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -37,7 +37,7 @@ in the call tree.
 
 ### costModel
 
-[`CostModel`](../../midnight-js-protocol/ledger/classes/CostModel.md)
+[`CostModel`](https://github.com/midnightntwrk/midnight-ledger)
 
 Cost model applied during transaction proving.
 

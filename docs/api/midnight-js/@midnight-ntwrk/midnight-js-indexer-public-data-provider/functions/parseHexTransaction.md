@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: parseHexTransaction()
 
-> **parseHexTransaction**(`s`): [`Transaction`](../../midnight-js/types/classes/Transaction.md)\<[`SignatureEnabled`](../../midnight-js-protocol/ledger/classes/SignatureEnabled.md), [`Proof`](../../midnight-js-protocol/ledger/classes/Proof.md), [`Binding`](../../midnight-js-protocol/ledger/classes/Binding.md)\>
+> **parseHexTransaction**(`s`): [`Transaction`](../../midnight-js/types/classes/Transaction.md)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 ## Parameters
 
@@ -16,4 +16,4 @@
 
 ## Returns
 
-[`Transaction`](../../midnight-js/types/classes/Transaction.md)\<[`SignatureEnabled`](../../midnight-js-protocol/ledger/classes/SignatureEnabled.md), [`Proof`](../../midnight-js-protocol/ledger/classes/Proof.md), [`Binding`](../../midnight-js-protocol/ledger/classes/Binding.md)\>
+[`Transaction`](../../midnight-js/types/classes/Transaction.md)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>

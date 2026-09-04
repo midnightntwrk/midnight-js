@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -16,7 +16,7 @@ Starts a contract state stream at the given transaction identifier.
 
 ### txId
 
-> `readonly` **txId**: [`TransactionId`](../../../midnight-js-protocol/ledger/type-aliases/TransactionId.md)
+> `readonly` **txId**: [`TransactionId`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/types/dist/index.d.ts:880
 

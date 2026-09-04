@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -206,7 +206,7 @@ corruption modes are also surfaced as throws rather than `null`.
 
 ### getSigningKey()
 
-> **getSigningKey**(`address`): `Promise`\<[`SigningKey`](../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md) \| `null`\>
+> **getSigningKey**(`address`): `Promise`\<[`SigningKey`](https://github.com/midnightntwrk/midnight-ledger) \| `null`\>
 
 Retrieve the signing key for a contract.
 
@@ -220,7 +220,7 @@ The address of the contract for which to get the signing key.
 
 #### Returns
 
-`Promise`\<[`SigningKey`](../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md) \| `null`\>
+`Promise`\<[`SigningKey`](https://github.com/midnightntwrk/midnight-ledger) \| `null`\>
 
 The stored signing key, or `null` if either:
   - no signing key is stored for the given address, or
@@ -483,7 +483,7 @@ The address of the contract having the given signing key.
 
 ##### signingKey
 
-[`SigningKey`](../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md)
+[`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The signing key to store.
 

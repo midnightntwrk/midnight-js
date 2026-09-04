@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -132,7 +132,7 @@ The indexer internal db ID.
 
 ### initialContractState
 
-> `readonly` **initialContractState**: [`ContractState`](../../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
+> `readonly` **initialContractState**: [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/contracts/dist/index.d.ts:484
 
@@ -189,7 +189,7 @@ The status of a submitted transaction.
 
 ### tx
 
-> `readonly` **tx**: [`Transaction`](../../types/classes/Transaction.md)\<[`SignatureEnabled`](../../../midnight-js-protocol/ledger/classes/SignatureEnabled.md), [`Proof`](../../../midnight-js-protocol/ledger/classes/Proof.md), [`Binding`](../../../midnight-js-protocol/ledger/classes/Binding.md)\>
+> `readonly` **tx**: [`Transaction`](../../types/classes/Transaction.md)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 Defined in: packages/types/dist/index.d.ts:191
 

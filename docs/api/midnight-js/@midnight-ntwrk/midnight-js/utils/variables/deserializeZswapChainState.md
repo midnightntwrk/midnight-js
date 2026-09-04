@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,11 +6,11 @@
 
 # Variable: deserializeZswapChainState
 
-> `const` **deserializeZswapChainState**: (`bytes`, `ctx`) => [`ZswapChainState`](../../../midnight-js-protocol/ledger/classes/ZswapChainState.md)
+> `const` **deserializeZswapChainState**: (`bytes`, `ctx`) => [`ZswapChainState`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/utils/dist/index.d.ts:150
 
-Deserialize a ledger [ZswapChainState](../../../midnight-js-protocol/ledger/classes/ZswapChainState.md) from raw bytes.
+Deserialize a ledger [ZswapChainState](https://github.com/midnightntwrk/midnight-ledger) from raw bytes.
 
 ## Parameters
 
@@ -24,7 +24,7 @@ Deserialize a ledger [ZswapChainState](../../../midnight-js-protocol/ledger/clas
 
 ## Returns
 
-[`ZswapChainState`](../../../midnight-js-protocol/ledger/classes/ZswapChainState.md)
+[`ZswapChainState`](https://github.com/midnightntwrk/midnight-ledger)
 
 ## Throws
 

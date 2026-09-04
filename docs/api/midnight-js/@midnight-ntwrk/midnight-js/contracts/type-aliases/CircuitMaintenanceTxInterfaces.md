@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: CircuitMaintenanceTxInterfaces\<C\>
 
-> **CircuitMaintenanceTxInterfaces**\<`C`\> = `Record`\<[`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>, [`CircuitMaintenanceTxInterface`](../interfaces/CircuitMaintenanceTxInterface.md)\>
+> **CircuitMaintenanceTxInterfaces**\<`C`\> = `Record`\<[`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>, [`CircuitMaintenanceTxInterface`](../interfaces/CircuitMaintenanceTxInterface.md)\>
 
 Defined in: packages/contracts/dist/index.d.ts:292
 
@@ -17,4 +17,4 @@ a given contract, keyed by the circuit name.
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)

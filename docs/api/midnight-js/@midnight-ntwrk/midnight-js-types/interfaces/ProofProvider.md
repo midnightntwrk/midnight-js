@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -28,7 +28,7 @@ must be balanced using the [WalletProvider](WalletProvider.md) interface.
 
 ##### unprovenTx
 
-[`UnprovenTransaction`](../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
+[`UnprovenTransaction`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### proveTxConfig?
 

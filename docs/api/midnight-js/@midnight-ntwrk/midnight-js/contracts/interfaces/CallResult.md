@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -26,17 +26,17 @@ than spreading or stringifying the whole object.
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ### PCK
 
-`PCK` *extends* [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
+`PCK` *extends* [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 ## Properties
 
 ### calls
 
-> `readonly` **calls**: readonly [`ContractCall`](../../../midnight-js-protocol/compact-js/namespaces/ContractExecutable/namespaces/ContractExecutable/type-aliases/ContractCall.md)[]
+> `readonly` **calls**: readonly [`ContractCall`](https://github.com/midnightntwrk/midnight-sdk)[]
 
 Defined in: packages/contracts/dist/index.d.ts:186
 

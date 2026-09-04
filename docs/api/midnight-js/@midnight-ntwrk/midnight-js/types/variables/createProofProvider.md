@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -10,20 +10,20 @@
 
 Defined in: packages/types/dist/index.d.ts:858
 
-Creates a [ProofProvider](../interfaces/ProofProvider.md) from a [ProvingProvider](../../../midnight-js-protocol/ledger/type-aliases/ProvingProvider.md).
+Creates a [ProofProvider](../interfaces/ProofProvider.md) from a [ProvingProvider](https://github.com/midnightntwrk/midnight-ledger).
 The returned provider proves transactions using the initial cost model.
 
 ## Parameters
 
 ### provingProvider
 
-[`ProvingProvider`](../../../midnight-js-protocol/ledger/type-aliases/ProvingProvider.md)
+[`ProvingProvider`](https://github.com/midnightntwrk/midnight-ledger)
 
 The underlying proving provider used to generate proofs.
 
 ### costModel?
 
-[`CostModel`](../../../midnight-js-protocol/ledger/classes/CostModel.md)
+[`CostModel`](https://github.com/midnightntwrk/midnight-ledger)
 
 Optional cost model to use for proof generation. Defaults to the initial cost model if not provided.
 

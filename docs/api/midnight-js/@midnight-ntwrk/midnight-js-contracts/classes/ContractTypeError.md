@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -30,7 +30,7 @@ Initializes a new ContractTypeError.
 
 ##### contractState
 
-[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
+[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
 The initial deployed contract state.
 
@@ -62,6 +62,6 @@ The circuits that are undefined, or have a verifier key mismatch with the
 
 ### contractState
 
-> `readonly` **contractState**: [`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
+> `readonly` **contractState**: [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
 The initial deployed contract state.

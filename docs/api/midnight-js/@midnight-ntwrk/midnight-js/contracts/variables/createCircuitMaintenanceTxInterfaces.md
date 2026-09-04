@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -16,7 +16,7 @@ Creates a [CircuitMaintenanceTxInterfaces](../type-aliases/CircuitMaintenanceTxI
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ## Parameters
 
@@ -28,13 +28,13 @@ The providers to use to build transactions.
 
 ### compiledContract
 
-[`CompiledContract`](../../../midnight-js-protocol/compact-js/namespaces/CompiledContract/interfaces/CompiledContract.md)\<`C`, `any`\>
+[`CompiledContract.CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
 
 The contract to use to execute circuits.
 
 ### contractAddress
 
-[`ContractAddress`](../../../midnight-js-protocol/ledger/type-aliases/ContractAddress.md)
+[`ContractAddress$1`](https://github.com/midnightntwrk/midnight-ledger)
 
 The ledger address of the contract.
 

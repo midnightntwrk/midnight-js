@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -26,7 +26,7 @@ The current user's ZSwap public key.
 
 ### signingKey?
 
-> `readonly` `optional` **signingKey?**: [`SigningKey`](../../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md)
+> `readonly` `optional` **signingKey?**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/types/dist/index.d.ts:317
 

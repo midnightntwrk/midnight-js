@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -70,7 +70,7 @@ contract for cursor, completion, and at-least-once semantics.
 
 ### contractStateObservable()
 
-> **contractStateObservable**(`contractAddress`, `config?`): `Observable`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)\>
+> **contractStateObservable**(`contractAddress`, `config?`): `Observable`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 Creates a stream of contract states for `contractAddress`.
 
@@ -115,7 +115,7 @@ The configuration of the stream. Defaults to `latest`.
 
 #### Returns
 
-`Observable`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)\>
+`Observable`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 #### Implementation of
 
@@ -199,7 +199,7 @@ empty array always means "no matching events", never a swallowed error.
 
 ### queryContractState()
 
-> **queryContractState**(`address`, `config?`): `Promise`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md) \| `null`\>
+> **queryContractState**(`address`, `config?`): `Promise`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger) \| `null`\>
 
 Retrieves the on-chain state of a contract. If no block hash or block height are provided, the
 contract state at the address in the latest block is returned.
@@ -222,7 +222,7 @@ The configuration of the query.
 
 #### Returns
 
-`Promise`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md) \| `null`\>
+`Promise`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger) \| `null`\>
 
 #### Implementation of
 
@@ -232,7 +232,7 @@ The configuration of the query.
 
 ### queryDeployContractState()
 
-> **queryDeployContractState**(`contractAddress`): `Promise`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md) \| `null`\>
+> **queryDeployContractState**(`contractAddress`): `Promise`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger) \| `null`\>
 
 Retrieves the contract state included in the deployment of the contract at the given contract address.
 Immediately returns null if no matching data is found.
@@ -247,7 +247,7 @@ The address of the contract of interest.
 
 #### Returns
 
-`Promise`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md) \| `null`\>
+`Promise`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger) \| `null`\>
 
 #### Implementation of
 
@@ -288,7 +288,7 @@ The configuration of the query.
 
 ### queryZSwapAndContractState()
 
-> **queryZSwapAndContractState**(`address`, `config?`): `Promise`\<\[[`ZswapChainState`](../../midnight-js-protocol/ledger/classes/ZswapChainState.md), [`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md), [`LedgerParameters`](../../midnight-js-protocol/ledger/classes/LedgerParameters.md)\] \| `null`\>
+> **queryZSwapAndContractState**(`address`, `config?`): `Promise`\<\[[`ZswapChainState`](https://github.com/midnightntwrk/midnight-ledger), [`ContractState`](https://github.com/midnightntwrk/midnight-ledger), [`LedgerParameters`](https://github.com/midnightntwrk/midnight-ledger)\] \| `null`\>
 
 Retrieves the zswap chain state (token balances), the contract state of the contract at the
 given address, and the ledger parameters in effect on the associated block. Both states are
@@ -312,7 +312,7 @@ The configuration of the query.
 
 #### Returns
 
-`Promise`\<\[[`ZswapChainState`](../../midnight-js-protocol/ledger/classes/ZswapChainState.md), [`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md), [`LedgerParameters`](../../midnight-js-protocol/ledger/classes/LedgerParameters.md)\] \| `null`\>
+`Promise`\<\[[`ZswapChainState`](https://github.com/midnightntwrk/midnight-ledger), [`ContractState`](https://github.com/midnightntwrk/midnight-ledger), [`LedgerParameters`](https://github.com/midnightntwrk/midnight-ledger)\] \| `null`\>
 
 #### Implementation of
 
@@ -366,7 +366,7 @@ The configuration of the stream. Defaults to `latest`.
 
 ### watchForContractState()
 
-> **watchForContractState**(`contractAddress`): `Promise`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)\>
+> **watchForContractState**(`contractAddress`): `Promise`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 Retrieves the contract state of the contract with the given address.
 Waits indefinitely for matching data to appear.
@@ -381,7 +381,7 @@ The address of the contract of interest.
 
 #### Returns
 
-`Promise`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)\>
+`Promise`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 #### Implementation of
 
