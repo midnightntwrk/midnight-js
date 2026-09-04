@@ -73,7 +73,6 @@ import type {
   LedgerVersion,
   TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
-import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PublicDataProvider, RawContractState } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -340,7 +339,27 @@ export interface Ledger8CallPipelineRequest<TState> {
   readonly localVerifierKey: Uint8Array;
   readonly networkId: string;
   readonly ttl: Date;
-  readonly encryptionPublicKey: EncPublicKey | EncryptionPublicKeyResolver;
+  /**
+   * A RESOLVER, never a bare key, and the type says so rather than leaving it
+   * to a caller's discretion.
+   *
+   * `zswapStateToSegmentedOffer` accepts either, and coerces a bare key into
+   * the constant resolver `() => key`. A constant resolver can never refuse,
+   * so it answers with the CALLER'S OWN encryption key for every recipient:
+   * an output paying a third party would be committed to that party's coin
+   * public key while its ciphertext was encrypted to the sender's, leaving a
+   * coin the recipient owns and cannot discover. It would also silence
+   * `createZswapOutput`'s refusal branch, which is the only thing standing
+   * between an unresolvable recipient and a successfully submitted
+   * mis-encryption.
+   *
+   * So the bare-key arm is not offered here. Every caller hands a real
+   * resolver built by `createEncryptionPublicKeyResolver`, which answers for
+   * the wallet's own key and the burn address and returns `undefined` for
+   * anyone else — the same per-recipient rule the current era applies at
+   * `unproven-call-tx.ts`.
+   */
+  readonly encryptionPublicKey: EncryptionPublicKeyResolver;
 }
 
 /** What one retained-era call produced. */

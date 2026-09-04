@@ -66,6 +66,7 @@ import {
   type SubmittedOperation
 } from '../errors';
 import type { AnyLedger8CallTxOptions } from '../ledger8-contract';
+import { createEncryptionPublicKeyResolver } from '../utils';
 import {
   assertEraCompatible,
   requireV8,
@@ -343,6 +344,32 @@ export interface Ledger8SubmittedCall {
  * fetched BEFORE the pipeline runs, because the pipeline's key check is the
  * step that has to happen before any proof exists.
  *
+ * ## Shielded outputs are encrypted PER RECIPIENT, exactly as on the current era
+ *
+ * The pipeline is handed a RESOLVER rather than the wallet's encryption key.
+ * The distinction is not stylistic: a bare key is coerced into the constant
+ * resolver `() => key` inside the offer builder, which encrypts every output —
+ * including one paying a third party — to the CALLER'S OWN key. Such a
+ * transaction proves, balances and submits, and the recipient owns a coin
+ * whose ciphertext they cannot decrypt, so they never discover it. Nothing
+ * errors at any stage.
+ *
+ * {@link createEncryptionPublicKeyResolver} is the same era-independent helper
+ * the current era's `unproven-call-tx.ts` resolves through: the wallet's own
+ * coin public key maps to its encryption key, the well-known burn address maps
+ * to `BURN_ENCRYPTION_PUBLIC_KEY`, and anyone else resolves to `undefined` —
+ * which `createZswapOutput` turns into a refusal. A recipient this arm cannot
+ * map is therefore REFUSED rather than silently mis-encrypted.
+ *
+ * No additional recipient mappings are passed, because the retained-era call
+ * options carry none: `Ledger8CallTxOptions` has no
+ * `additionalCoinEncPublicKeyMappings` member. So a third-party recipient is
+ * refused here where the current era would consult the caller's mappings, and
+ * the refusal names what to supply. Widening the retained options to accept
+ * mappings is additive and belongs with the first contract that needs it — a
+ * refusal is the correct answer until then, and is the one answer that cannot
+ * lose a recipient's coin.
+ *
  * @param providers The provider set.
  * @param request The contract, its address, the circuit, its arguments and the
  * private state to run against.
@@ -355,6 +382,12 @@ export const runLedger8Call = async (
   const { resolved, engine } = await acquireLedger8Runtime(providers.publicDataProvider, 'call');
   const localVerifierKey = await providers.zkConfigProvider.getVerifierKey(request.circuitId);
 
+  // Read ONCE and used for both the circuit's coin public key and the
+  // resolver's notion of "the wallet's own key". Two reads of the same wallet
+  // member could disagree, and a resolver built against a different key than
+  // the circuit executed under is exactly the mismatch that mis-encrypts.
+  const coinPublicKey = providers.walletProvider.getCoinPublicKey();
+
   const call = await runLedger8CallPipeline({
     era: resolved.era,
     engine,
@@ -364,12 +397,15 @@ export const runLedger8Call = async (
     contractAddress: request.contractAddress,
     circuitId: request.circuitId,
     args: request.args,
-    coinPublicKey: providers.walletProvider.getCoinPublicKey(),
+    coinPublicKey,
     privateState: request.privateState,
     localVerifierKey,
     networkId: getNetworkId(),
     ttl: ttlOneHour(),
-    encryptionPublicKey: providers.walletProvider.getEncryptionPublicKey()
+    encryptionPublicKey: createEncryptionPublicKeyResolver(
+      coinPublicKey,
+      providers.walletProvider.getEncryptionPublicKey()
+    )
   });
 
   const txId = await submitLedger8Tx(providers, call.txBytes, {
@@ -564,14 +600,42 @@ export type Ledger8PrivateStateSurface = Pick<PrivateStateProvider, 'get' | 'set
  * Reads the private state a retained-era call runs against, or `undefined`
  * when the caller named no private-state id.
  *
- * A contract with no private state is the normal case for the retained-era
- * fixtures, so an absent id is not an error here — it is the caller saying the
- * circuit reads none.
+ * The two cases are DIFFERENT, and only one of them is `undefined`:
+ *
+ * - **No id at all.** Not an error: a contract with no private state is the
+ *   normal case for the retained-era fixtures, and an absent id is the caller
+ *   saying the circuit reads none.
+ * - **An id, with nothing stored under it.** An ERROR, and the same one the
+ *   current era raises at `get-states.ts` — naming an id is the caller saying
+ *   there IS a private state to run against, so an empty provider means the
+ *   state has not been written yet or the id is a typo.
+ *
+ * The second case is failed fast rather than passed through, because passing
+ * `undefined` down is silent and expensive. The retained runtime's witnesses
+ * would receive `currentPrivateState: undefined`, and a defensively written
+ * witness (`state?.counter ?? 0n`) produces a perfectly valid proof against a
+ * DEFAULT state instead of the caller's real one. `submitLedger8CallTx` then
+ * writes the result back under that same id — storing a state derived from a
+ * phantom starting point, or, on a typo, creating a state under an id nobody
+ * reads while the real one goes untouched. Nothing errors at any stage.
+ *
+ * @param privateStateProvider The private-state surface to read through.
+ * @param privateStateId The id the caller named, or `undefined` for a contract
+ * that carries no private state.
+ * @returns The stored private state, or `undefined` when no id was named.
+ * @throws Error if an id was named and the provider holds nothing under it.
  */
 const readLedger8PrivateState = async (
   privateStateProvider: Ledger8PrivateStateSurface,
   privateStateId: string | undefined
-): Promise<unknown> => (privateStateId === undefined ? undefined : privateStateProvider.get(privateStateId));
+): Promise<unknown> => {
+  if (privateStateId === undefined) {
+    return undefined;
+  }
+  const privateState = await privateStateProvider.get(privateStateId);
+  assertDefined(privateState, `No private state found at private state ID '${privateStateId}'`);
+  return privateState;
+};
 
 /** The options a retained-era call entry point received, in the shape this layer reads them. */
 export interface Ledger8CallEntryOptions {

@@ -50,6 +50,7 @@ import { EraInvariantViolationError, HeadStateEraMismatchError, IndexerInconsist
 import { runLedger8CallPipeline } from '../internal/ledger8-pipeline';
 import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx } from '../submit-call-tx';
+import { createEncryptionPublicKeyResolver } from '../utils';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
 import {
   type CoinReceiverRecording,
@@ -201,7 +202,10 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       localVerifierKey: STAND_IN_VERIFIER_KEY,
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
-      encryptionPublicKey: providers.walletProvider.getEncryptionPublicKey()
+      encryptionPublicKey: createEncryptionPublicKeyResolver(
+        recording.coinPublicKey,
+        providers.walletProvider.getEncryptionPublicKey()
+      )
     });
 
     // IDENTICAL to the retained arm's order, which is the claim: the two arms
@@ -243,7 +247,10 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       localVerifierKey: STAND_IN_VERIFIER_KEY,
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
-      encryptionPublicKey: providers.walletProvider.getEncryptionPublicKey()
+      encryptionPublicKey: createEncryptionPublicKeyResolver(
+        recording.coinPublicKey,
+        providers.walletProvider.getEncryptionPublicKey()
+      )
     });
 
     // Unreachable as a two-segment split on this arm as well, and for the same

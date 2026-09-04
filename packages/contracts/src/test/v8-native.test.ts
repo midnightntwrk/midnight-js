@@ -41,7 +41,12 @@ import {
   type LedgerEra,
   loadLedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type Recipient } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import {
+  type ProvingProvider,
+  sampleCoinPublicKey,
+  sampleEncryptionPublicKey
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   createMidnightProvider,
   createProofProvider,
@@ -74,6 +79,11 @@ import type {
   Ledger8FindDeployedContractOptions
 } from '../ledger8-contract';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
+import {
+  createEncryptionPublicKeyResolver,
+  type EncryptionPublicKeyResolver,
+  SHIELDED_BURN_COIN_PUBLIC_KEY
+} from '../utils';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
 import {
   type CoinReceiverRecording,
@@ -151,6 +161,42 @@ const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState =>
   protocolVersion,
   raw
 });
+
+/**
+ * The committed recording with its single shielded output re-pointed at a
+ * USER-owned recipient, paying the given coin public key.
+ *
+ * Needed because the recording's own output is CONTRACT-owned
+ * (`is_left: false`), and that arm of the offer builder never consults the
+ * encryption-key resolver at all — `ZswapOutput.newContractOwned` takes no
+ * encryption key, only an address. So NO test built on the recording exactly
+ * as committed can say anything about which key an output is encrypted to,
+ * which is precisely how an encryption resolver that could never refuse
+ * survived a green suite. Re-pointing the recipient is the smallest change
+ * that puts the resolver on the path, and it changes nothing else: the same
+ * coin, the same pre-state, the same circuit.
+ *
+ * @param recording The committed recording to derive from.
+ * @param coinPublicKey The coin public key the re-pointed output pays.
+ * @returns The recording, paying that key instead of the contract.
+ */
+const recordingPayingUser = (recording: CoinReceiverRecording, coinPublicKey: string): CoinReceiverRecording => {
+  const output = recording.transcript.zswapLocalState.outputs[0];
+  // Derived from the recording rather than invented, so a recording that ever
+  // stops carrying an output fails here rather than testing nothing.
+  expect(output).toBeDefined();
+  const recipient: Recipient = { is_left: true, left: coinPublicKey, right: output!.recipient.right };
+  return {
+    ...recording,
+    transcript: {
+      ...recording.transcript,
+      zswapLocalState: {
+        ...recording.transcript.zswapLocalState,
+        outputs: [{ coinInfo: output!.coinInfo, recipient }]
+      }
+    }
+  };
+};
 
 /**
  * The provider set both retained-era describes start from: a pre-fork head,
@@ -253,7 +299,10 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       localVerifierKey: STAND_IN_VERIFIER_KEY,
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
-      encryptionPublicKey: providers.walletProvider.getEncryptionPublicKey()
+      encryptionPublicKey: createEncryptionPublicKeyResolver(
+        recording.coinPublicKey,
+        providers.walletProvider.getEncryptionPublicKey()
+      )
     });
 
     // THE ORCHESTRATION ORDER, asserted as an order and not merely as an
@@ -298,7 +347,10 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       localVerifierKey: STAND_IN_VERIFIER_KEY,
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
-      encryptionPublicKey: providers.walletProvider.getEncryptionPublicKey()
+      encryptionPublicKey: createEncryptionPublicKeyResolver(
+        recording.coinPublicKey,
+        providers.walletProvider.getEncryptionPublicKey()
+      )
     });
 
     // A raw PREFIX slice, never `parseSerializedTag`: that parser scans only
@@ -335,7 +387,10 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       localVerifierKey: STAND_IN_VERIFIER_KEY,
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
-      encryptionPublicKey: providers.walletProvider.getEncryptionPublicKey()
+      encryptionPublicKey: createEncryptionPublicKeyResolver(
+        recording.coinPublicKey,
+        providers.walletProvider.getEncryptionPublicKey()
+      )
     });
 
     // The recorded circuit really does move a coin -- one contract-owned output
@@ -350,6 +405,54 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     expect(result.fallibleZswapOffer).toBeUndefined();
     expect(composed?.guaranteedZswapOffer).toBe(result.guaranteedZswapOffer);
     expect(composed?.fallibleZswapOffer).toBeUndefined();
+  });
+
+  it("encrypts a user-owned output to the RECIPIENT's key, asking the resolver for that recipient", async () => {
+    const log: OrchestrationLog = [];
+    const providers = createMockProviders();
+    providers.publicDataProvider.queryRawContractState = vi
+      .fn()
+      .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
+
+    const walletEncryptionPublicKey = providers.walletProvider.getEncryptionPublicKey();
+    const thirdPartyCoinPublicKey = sampleCoinPublicKey();
+    const thirdPartyEncryptionPublicKey = sampleEncryptionPublicKey();
+    // A resolver that KNOWS this recipient, so the output composes and the key
+    // it composes with is observable. Spied rather than replaced, so the
+    // answers are the real helper's own.
+    const resolver: EncryptionPublicKeyResolver = vi.fn(
+      createEncryptionPublicKeyResolver(
+        recording.coinPublicKey,
+        walletEncryptionPublicKey,
+        new Map([[thirdPartyCoinPublicKey, thirdPartyEncryptionPublicKey]])
+      )
+    );
+
+    const result = await runLedger8CallPipeline<ReplayState>({
+      era: retainedEra,
+      engine: createReplayEngine(recordingPayingUser(recording, thirdPartyCoinPublicKey), log),
+      publicDataProvider: providers.publicDataProvider,
+      head: 'v8',
+      contract,
+      contractAddress: recording.contractAddress,
+      circuitId: CIRCUIT_ID,
+      args: [recording.receivedCoin],
+      coinPublicKey: recording.coinPublicKey,
+      privateState: {},
+      localVerifierKey: STAND_IN_VERIFIER_KEY,
+      networkId: NETWORK_ID,
+      ttl: new Date(Date.now() + 3_600_000),
+      encryptionPublicKey: resolver
+    });
+
+    // PER RECIPIENT, not per caller: the resolver is asked about the party being
+    // paid, and the key the output is built with is the one it answered for that
+    // party -- NOT the wallet's own encryption key, which is what a bare key
+    // coerced into `() => key` would have supplied for every recipient alike.
+    expect(resolver).toHaveBeenCalledWith(thirdPartyCoinPublicKey);
+    expect(resolver).toHaveReturnedWith(thirdPartyEncryptionPublicKey);
+    expect(resolver).not.toHaveReturnedWith(walletEncryptionPublicKey);
+    expect(result.guaranteedZswapOffer).toBeInstanceOf(Uint8Array);
   });
 
   it('refuses more than one call on the retained arm, naming the option it refused', async () => {
@@ -376,7 +479,10 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       localVerifierKey: STAND_IN_VERIFIER_KEY,
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
-      encryptionPublicKey: providers.walletProvider.getEncryptionPublicKey()
+      encryptionPublicKey: createEncryptionPublicKeyResolver(
+        recording.coinPublicKey,
+        providers.walletProvider.getEncryptionPublicKey()
+      )
     });
 
     const single = composed;
@@ -832,9 +938,17 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
   it('stores the private state the replayed call produced, rather than storing nothing over it', async () => {
     const providers = preForkProviders(v6Envelope);
+    // The provider actually HOLDS a state under the named id. Stubbing this is
+    // not scene-setting: the default mock's `get` answers `undefined`, and a
+    // named id with nothing behind it is now refused outright, so without this
+    // stub the test would never reach the store it exists to assert. It also
+    // makes the read observable, which is what pins that the call ran against
+    // the caller's real state rather than a default one.
+    providers.privateStateProvider.get = vi.fn().mockResolvedValue({ storedBefore: true });
 
     const finalized = await submitCallTx(providers, { ...callOptions(), privateStateId: 'retained-private-state' });
 
+    expect(providers.privateStateProvider.get).toHaveBeenCalledWith('retained-private-state');
     // The recorded `privateStateAfter` is a real value -- this contract
     // declares no private state, so it is an empty object -- and it is what
     // gets written back. Asserting it is not `undefined` is the point: a
@@ -843,6 +957,119 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(finalized.nextPrivateState).toEqual({});
     expect(finalized.nextPrivateState).not.toBeUndefined();
     expect(providers.privateStateProvider.set).toHaveBeenCalledWith('retained-private-state', {});
+  });
+
+  it('refuses a named privateStateId the provider holds nothing under, rather than executing against undefined', async () => {
+    const providers = preForkProviders(v6Envelope);
+    // The default mock's own answer, made explicit: an EMPTY provider asked for
+    // a named id. Naming an id is the caller saying a private state exists, so
+    // an empty answer is a caller error and not a contract without state.
+    providers.privateStateProvider.get = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      submitCallTx(providers, { ...callOptions(), privateStateId: 'retained-private-state' })
+    ).rejects.toThrow("No private state found at private state ID 'retained-private-state'");
+
+    // Refused BEFORE the circuit ran and before anything was proven or stored.
+    // Passing `undefined` down is what makes this expensive rather than merely
+    // wrong: a defensively written witness would produce a valid proof against
+    // a DEFAULT state, and the result would then be stored back under this same
+    // id -- overwriting the caller's real state with one derived from a
+    // starting point that was never theirs.
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  it('runs a contract that declares no private state with no id at all, which is not the same as an empty provider', async () => {
+    const providers = preForkProviders(v6Envelope);
+    providers.privateStateProvider.get = vi.fn().mockResolvedValue(undefined);
+
+    // The POSITIVE half of the distinction above: no id named means the circuit
+    // reads no private state, which stays legal and must not be swept into the
+    // refusal. Without this, tightening the empty-provider case could be
+    // "fixed" by refusing an absent id too, and no test would notice.
+    const finalized = await submitCallTx(providers, callOptions());
+
+    expect(finalized.circuitId).toBe(CIRCUIT_ID);
+    expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  /**
+   * WHICH KEY each shielded output is encrypted to, asserted through the entry
+   * point rather than against a resolver in isolation.
+   *
+   * The resolver helpers have their own unit tests. What those cannot see is
+   * whether this arm BUILDS one: handing the offer builder a bare encryption
+   * key is silently accepted and coerced into `() => key`, a resolver that can
+   * never refuse and answers with the caller's own key for every recipient. The
+   * three cases below are the smallest set that tells a real resolver from that
+   * constant one — a constant resolver passes the first two and cannot fail the
+   * third, so the third is the one that has to be here.
+   */
+  describe('per-recipient output encryption', () => {
+    it("refuses an output paying a THIRD PARTY, rather than encrypting it to the caller's own key", async () => {
+      const providers = preForkProviders(v6Envelope);
+      // Some other wallet's coin public key: not this caller's, and not the
+      // burn address, so nothing this arm knows can map it to an encryption
+      // key. The retained call options carry no additional mappings for the
+      // caller to supply one through either.
+      const thirdPartyCoinPublicKey = sampleCoinPublicKey();
+      engineSlot.engine = createReplayEngine(
+        recordingPayingUser(loadCoinReceiverRecording(), thirdPartyCoinPublicKey),
+        [],
+        v6Envelope
+      );
+
+      // THE FUNDS-LOSS ASSERTION. With a bare key in place of a resolver this
+      // call SUCCEEDS: the output's commitment is to the third party's coin
+      // public key while its ciphertext is encrypted to the sender's, so the
+      // transaction proves, balances and submits, and the recipient owns a coin
+      // they can never discover on chain. Nothing errors. A refusal is the only
+      // answer that cannot lose the recipient's coin.
+      await expect(submitCallTx(providers, callOptions())).rejects.toThrow(
+        /Unable to resolve encryption public key for recipient/
+      );
+
+      // Refused while composing, so nothing was proven, balanced or submitted.
+      expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+      expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+    });
+
+    it("composes an output paying the caller's OWN key", async () => {
+      const providers = preForkProviders(v6Envelope);
+      // The wallet's own coin public key -- the one `retainedProviders` reports
+      // and the one the recording was made against -- which the resolver maps
+      // to the wallet's own encryption key.
+      engineSlot.engine = createReplayEngine(
+        recordingPayingUser(loadCoinReceiverRecording(), recording.coinPublicKey),
+        [],
+        v6Envelope
+      );
+
+      const finalized = await submitCallTx(providers, callOptions());
+
+      expect(finalized.circuitId).toBe(CIRCUIT_ID);
+      expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
+    });
+
+    it('maps the well-known BURN address as the current era does, rather than refusing it', async () => {
+      const providers = preForkProviders(v6Envelope);
+      // A burn output is a deliberate send to an unspendable key, and the
+      // current era maps it to `BURN_ENCRYPTION_PUBLIC_KEY`. The retained arm
+      // must not refuse what the current era accepts: dropping that mapping
+      // would make every pre-fork contract that burns a coin uncallable.
+      engineSlot.engine = createReplayEngine(
+        recordingPayingUser(loadCoinReceiverRecording(), SHIELDED_BURN_COIN_PUBLIC_KEY),
+        [],
+        v6Envelope
+      );
+
+      const finalized = await submitCallTx(providers, callOptions());
+
+      expect(finalized.circuitId).toBe(CIRCUIT_ID);
+      expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('refuses a circuit that spends a shielded coin the contract already held', async () => {
