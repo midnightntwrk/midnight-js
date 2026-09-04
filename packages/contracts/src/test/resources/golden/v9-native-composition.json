@@ -1,0 +1,378 @@
+{
+  "documentation": "Non-regression golden fixture for the v9-native call-tx composition path (packages/contracts/src/unproven-call-tx.ts -> packages/contracts/src/utils/ledger-utils.ts, createUnprovenLedgerCallTx). Captured from a real execution of the deposit circuit against the compiled shielded-map contract in src/test/resources/compiled/shielded-map/, at base commit 025133dbeec3d2aed32e335a55cde2853ee3fc12. Stage 1 (decodedContractState) is toLedgerContractState(shieldedInitialState).serialize(), hex, called directly -- real production code, no reproduction. observedAssembledCall (stages 2 and 3) is captured by calling the real, unmodified createUnprovenLedgerCallTx with our single call bound to a fixed communication commitment (fixedInputs.communicationCommitmentRand), then reading the one ContractCall it assembled back off the returned transaction's tx.intents -- the same seam the accompanying test's stage 4 uses for its structural-only checks. Nothing here reproduces createUnprovenLedgerCallTx's own argument list; every field below is read from what the function actually returned. guaranteedTranscript.effects and .program are byte-pinned (bigints/byte arrays hex-encoded for JSON). guaranteedTranscript.gas is deliberately NOT captured here: it is a cost-model number (picosecond timings, byte counters) that moves on every ledger-v9/onchain-runtime/compact-runtime bump regardless of whether composition behaviour changed, and is architecture-sensitive besides -- the accompanying test asserts only its shape (four keys, each a non-negative bigint), never its values. toStringCompactNormalized is ContractCall.toString(true) -- the Debug repr is the only aggregate, own-fields view this class exposes; it redacts communication_commitment and proof as opaque placeholders, and does not surface the key_location string ContractCallPrototype was built with (confirmed empirically absent from this repr) -- a regression there is a known, accepted blind spot of this unproven-transaction-only suite; see the accompanying test's stage 3 comment. The four gas/cost-model fields nested inside it (read_time, compute_time, bytes_written, bytes_deleted) are ALSO redacted to the fixed placeholder '<redacted-cost>' before this value is captured, for the same reason guaranteedTranscript.gas above is shape-checked rather than byte-pinned -- see the accompanying test's redactGasCostFields comment. This manifest and the two test files that read it -- non-regression-baseline-gate.test.ts and non-regression-golden.test.ts (which reads this fixture) -- are themselves outside the scope of the sibling non-regression-baseline-manifest.json, which documents packages/contracts/src/test/**'s diff-gate classification, not this fixture.",
+  "fixedInputs": {
+    "note": "contractAddress and coinPublicKey are real outputs of sampleContractAddress()/ sampleCoinPublicKey(), captured once and frozen here so every stage below is exactly reproducible. communicationCommitmentRand is a real output of communicationCommitmentRandomness(), likewise frozen and then supplied explicitly (as an Option.some bound commitment) when assembling the call for stages 2 and 3 -- exactly what production code does for an already-bound sub-call -- so that call is deterministic. Stage 4 assembles the same call left unbound (Option.none()), as the real (non-cross-contract) production path always does, and only asserts structure for exactly that reason.",
+    "contractAddress": "3ec0a4c9e803695838be6f8b775e705c7f78392dffba78c755f2cc695565a0af",
+    "coinPublicKey": "2a19311c3b1832c735f23a75669c240ac92eddd68ebb88adc7dc32e751c36dc5",
+    "circuitId": "deposit",
+    "communicationCommitmentRand": "73a84d7276dd92d520ad739fa9cf49be7be882b827a552770f3a388d3a0a423717",
+    "coin": {
+      "nonce": "0101010101010101010101010101010101010101010101010101010101010101",
+      "color": "0202020202020202020202020202020202020202020202020202020202020202",
+      "value": "100"
+    }
+  },
+  "decodedContractState": {
+    "stage": "toLedgerContractState(shieldedInitialState).serialize(), hex-encoded",
+    "encoding": "hex",
+    "hex": "6d69646e696768743a636f6e74726163742d73746174655b76385d3a48000840080400040100308440404040c420012001100804080401040c080104041014030401041008041408040804180403041c0004200801040424d8030464c8010403040108040808010401040108400800011403040104100401080104040104010401308440404040c42001200110080000201c6465706f73697400c12001ad2001000000000101000000000000000001084c000000030e22000000aea4dfdd3d4ff26233cf5aaccd744a2d96f5b11d71ac97e70f0922d79d25db6897747e13d562dcdb8684bb4966a367d39858e5d9c84a547d47493d0deecccc93c91cf7f593e3148047a433858007bf9aba6c1a8329d5127a971209fe481a2b82905b755ccbdc1c4141cb0ee87e2e7940fbeeac09d98ce2b2d30707dfbb8548f05902fca9a5d77d62383b4843974eff0eb3ec9cef643388dfb17efd347196e31355b8988feb739bd299cf1738d826d0bf05312cceab1213f2d3e0cfef4bc94991933ae4f1f8c462126ead131a158ede3317c79ed82cb7420ba313d1bbee7cc432f5e8717e533860ab699d544a2d82c81496973dbdbd42dad0fe421a1e0b64b2017af5a8eea819023aac8ff8488f72880212520c12ca1b518d0203f4d50e46e6e5971611e612f39e6f67d19fe48e945b307ca245aba63aca6407135e7e18610547904d6c4647a5d6c07eefcc61bb79f9338844c697d1c7527690e0a2b632417ae27383e5168f8819e221760d39280966e06e92f0a9e595be5ac3edf073e4139baab3ddbd101c96aee073f75c6a9b8e3dddbffa632111a9674194da53533bc976f93ac0dea799023dea907e973b5fb34f07a896cd35fa65ca260efc79e40e4efb582ac684c981ecdd7a22a1c39d191ecc422eef4d3a0aab874f155e590d319004ec89b00ca84abfcaba777462128e8c31a4b6c51279f1eff52ed87cfc8d5dc2341d8f3d6f5c09faa0c80fdff5ad4ebb26a797d99878d5fcf63f1985fab3864ea3e5e94992c20150a1a3ea000c42ad50940a453f8d398b45e7bd53d30301344c3f4693048e0d878ea44300b67a6ee0f267ae3068544dd12db277a2f6f0d7c3a1589d3260cc908180acf20232d9c91780b12a89e89becf2615ceaa2b199d9175c65292413a7164e4eddd7d57421ac84bfdbf6a733d2b55848d2cf310b26277388750c869657c92afcbdf892692273f1fc48c1861043f942b867c93abc4c98e29a6b2077aa6ee3cefed5f155f5dded2bd22833a2363f7378098e7686f21dec28f8cd55b3990c024581fc360c5d9add75ab5c8b7506de0c7a57596eaabb87463d33e8f7b8413a290c16461b888e953162053149dd2d44a845981c96dfeae716467772479807d8d492673e43cc9451611cf3a290c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008537f69574a9eacd904adde3d8503c6dab4b8b1d071fca54e742c411dc507b4dc7714b1f425f039beaf04ea78464d37880a71bdfe62b043a94215a8270750470e0624de73590256cae7561348c6df0b3e28685dddaef08893868d4c519db03e8b5377bd8dd24f60bfcaca7bb1ce316c1006bd7cbf797f5443353b33416c8035fe27bf1e693da9f90549ef908a9c449adaec8805b7ce0f716307e726ead60ecc2fa943fdb685a9771ceb62cd16c712c1566c8d8d2648e5dfab04d05a81f35baf583faffbc1c4417f0926ae41486f5430251699f9c39598d22d57718e5206a99b14be8339b2d1aac95e18020d470adf9c7b4a4243e86f286f7eb259217607ed94fe0411c81250db7f3966b0da736a3b61ba58b32d0728c33f1265738ebe94bd4baab0314e8ea9e1c81b89aced8496f891e66e1d40cd6115f9ccf8d118bcee4b504607a075a5262b790c1361dbb1e3751e6a709f5188515fc6d0953209c5ade76c2a87e09d9099393ca75de9cb3c4c23eb23eaf9a85de66408892d0c19aa80c31d0afa9adca6d1d307678c1c46843b3ad820f4df3ff01be8d4fc0b15bbb51e62b1cd22139e77bf47c43335c8365fcc0f822b83a0f6f9abf8efa6dcb676c8847a7c481dcd912f09fe17d20bdce2726ff0a6d0ea604bff40b41d0e781e633ec036df8a7b12ca042b4bdea67240d2a85abb7313fcf3b4f6dd150ab8b21c3f0ab4aad7f9b0d5934fa7100a7c54122d4a0090cdc94675afd501ec37eae76fa9580b450018238bc437db7029d01f0266753ade48b8a70fc9469323c57db79f148358bc63b8532a17a5956eadeae7a9a9c4c96f541e3b7efbec3d2e63ef193f213ae5533b157a36e42d2e0dae4abc259ce9681ecb48e8e025f6812d0cb13b0c753e12c8799ba7e1a0313ba1adc886d1dfff0fa7beac354e2167c3e7a48916be37e9d1d262c8a4acc3a0ab4bb2b2ad86c1f38f3dd4455e4c9bb66f3eecaef6b1fb5e2b5547ac26e309d064a69a786016c29b8f153a1876adbf603ad869146d1abedbbbe7d07914b12c9c6284a7dd7b428458bfc32e9df60005523ee6a96fe2e2a9d183a97acafca32bb34bdc3dc3f40571b4f18df892be5194ef7f9604e529e2d462c23528497e193d8ced839f0b170544885deb004b309e888f8332ef91d51bc93bb911388f728d58d3763e3ba3ddc628acd0cf84c9a68e34aee1a402af2ac5b26ab9c954b830030590d229996c24ee7d414d7cbf08f90bdd085b8bc44bf3865a9f1003af14ed681eff19533601c59be5b65061d9091b6580fc6d29dc53965ebb0e4ae21be0ba553f0e3099c075b25c3908ee3e57d251b401827f0d1915b5e5e604a2be9bdab07dc07fab0fb9c4081b6f34c60dba9ca254b7de4e2c0827dbfe08eb7a6085d6fc8fec849085d88d13586c429f2ce40b8ddcc28c3038fbdd71ddc0be650beaa5b87a4829260895ba4d306d92b7579f2498f7600211ef9b3db90893c7505144a80986f7215a9b5e4bc69608acaeb755cc0ed4dd7bd88976da07e9c47756f1c9b90ef494c5cc3031ac6c9b5570fe5c45d8b4d20e163ba211c8fed2563a4942eb08c678da03ef359e7f8ce773afefc7a55a4bc2d841134d1a87f5fa3ab86b147ad9873b1c2cdc9e63dd5cf51543ac168ebd4ff533db268af0af2cc0648fa08a28fc69d2e4a14e56ed82c9eed93124f4f460000082c3000043408010404389003044080008fa8bc64afc238dd7cd42d96cd683525ede8520e49253e5236d65b0e3a08bf000400141840283c401003000400"
+  },
+  "observedAssembledCall": {
+    "stage": "the one ContractCall createUnprovenLedgerCallTx assembled, read back off tx.intents",
+    "guaranteedTranscript": {
+      "effects": {
+        "claimedNullifiers": [],
+        "claimedShieldedReceives": [
+          "e81411531802d94655520d831074617e2b5d59dc1978029bc3262e6bf3a7237a"
+        ],
+        "claimedShieldedSpends": [],
+        "claimedContractCalls": [],
+        "shieldedMints": {},
+        "unshieldedMints": {},
+        "unshieldedInputs": {},
+        "unshieldedOutputs": {},
+        "claimedUnshieldedSpends": {}
+      },
+      "program": [
+        {
+          "dup": {
+            "n": 2
+          }
+        },
+        {
+          "idx": {
+            "cached": true,
+            "pushPath": false,
+            "path": [
+              {
+                "tag": "value",
+                "value": {
+                  "value": [
+                    ""
+                  ],
+                  "alignment": [
+                    {
+                      "tag": "atom",
+                      "value": {
+                        "tag": "bytes",
+                        "length": 1
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "popeq": {
+            "cached": true,
+            "result": {
+              "value": [
+                "3ec0a4c9e803695838be6f8b775e705c7f78392dffba78c755f2cc695565a0af"
+              ],
+              "alignment": [
+                {
+                  "tag": "atom",
+                  "value": {
+                    "tag": "bytes",
+                    "length": 32
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "swap": {
+            "n": 0
+          }
+        },
+        {
+          "idx": {
+            "cached": true,
+            "pushPath": true,
+            "path": [
+              {
+                "tag": "value",
+                "value": {
+                  "value": [
+                    "01"
+                  ],
+                  "alignment": [
+                    {
+                      "tag": "atom",
+                      "value": {
+                        "tag": "bytes",
+                        "length": 1
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "push": {
+            "storage": false,
+            "value": {
+              "tag": "cell",
+              "content": {
+                "value": [
+                  "e81411531802d94655520d831074617e2b5d59dc1978029bc3262e6bf3a7237a"
+                ],
+                "alignment": [
+                  {
+                    "tag": "atom",
+                    "value": {
+                      "tag": "bytes",
+                      "length": 32
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "push": {
+            "storage": false,
+            "value": {
+              "tag": "null"
+            }
+          }
+        },
+        {
+          "ins": {
+            "cached": true,
+            "n": 2
+          }
+        },
+        {
+          "swap": {
+            "n": 0
+          }
+        },
+        {
+          "dup": {
+            "n": 2
+          }
+        },
+        {
+          "idx": {
+            "cached": true,
+            "pushPath": false,
+            "path": [
+              {
+                "tag": "value",
+                "value": {
+                  "value": [
+                    ""
+                  ],
+                  "alignment": [
+                    {
+                      "tag": "atom",
+                      "value": {
+                        "tag": "bytes",
+                        "length": 1
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "popeq": {
+            "cached": true,
+            "result": {
+              "value": [
+                "3ec0a4c9e803695838be6f8b775e705c7f78392dffba78c755f2cc695565a0af"
+              ],
+              "alignment": [
+                {
+                  "tag": "atom",
+                  "value": {
+                    "tag": "bytes",
+                    "length": 32
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "push": {
+            "storage": false,
+            "value": {
+              "tag": "cell",
+              "content": {
+                "value": [
+                  "01"
+                ],
+                "alignment": [
+                  {
+                    "tag": "atom",
+                    "value": {
+                      "tag": "bytes",
+                      "length": 1
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "dup": {
+            "n": 3
+          }
+        },
+        {
+          "push": {
+            "storage": false,
+            "value": {
+              "tag": "cell",
+              "content": {
+                "value": [
+                  "e81411531802d94655520d831074617e2b5d59dc1978029bc3262e6bf3a7237a"
+                ],
+                "alignment": [
+                  {
+                    "tag": "atom",
+                    "value": {
+                      "tag": "bytes",
+                      "length": 32
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "idx": {
+            "cached": true,
+            "pushPath": false,
+            "path": [
+              {
+                "tag": "value",
+                "value": {
+                  "value": [
+                    "01"
+                  ],
+                  "alignment": [
+                    {
+                      "tag": "atom",
+                      "value": {
+                        "tag": "bytes",
+                        "length": 1
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "tag": "stack"
+              }
+            ]
+          }
+        },
+        {
+          "push": {
+            "storage": false,
+            "value": {
+              "tag": "cell",
+              "content": {
+                "value": [
+                  "0101010101010101010101010101010101010101010101010101010101010101",
+                  "0202020202020202020202020202020202020202020202020202020202020202",
+                  "64"
+                ],
+                "alignment": [
+                  {
+                    "tag": "atom",
+                    "value": {
+                      "tag": "bytes",
+                      "length": 32
+                    }
+                  },
+                  {
+                    "tag": "atom",
+                    "value": {
+                      "tag": "bytes",
+                      "length": 32
+                    }
+                  },
+                  {
+                    "tag": "atom",
+                    "value": {
+                      "tag": "bytes",
+                      "length": 16
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "swap": {
+            "n": 0
+          }
+        },
+        {
+          "concat": {
+            "cached": true,
+            "n": 91
+          }
+        },
+        {
+          "ins": {
+            "cached": false,
+            "n": 1
+          }
+        },
+        {
+          "idx": {
+            "cached": false,
+            "pushPath": true,
+            "path": [
+              {
+                "tag": "value",
+                "value": {
+                  "value": [
+                    ""
+                  ],
+                  "alignment": [
+                    {
+                      "tag": "atom",
+                      "value": {
+                        "tag": "bytes",
+                        "length": 1
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "addi": {
+            "immediate": 1
+          }
+        },
+        {
+          "ins": {
+            "cached": true,
+            "n": 1
+          }
+        }
+      ]
+    },
+    "toStringCompactNormalized": "{contract: ContractAddress(3ec0a4c9e803695838be6f8b775e705c7f78392dffba78c755f2cc695565a0af), entry_point: deposit, guaranteed_transcript: Some(Transcript { gas: RunningCost { read_time: <redacted-cost>, compute_time: <redacted-cost>, bytes_written: <redacted-cost>, bytes_deleted: <redacted-cost>}, effects: Effects { claimed_nullifiers: {}, claimed_shielded_receives: {Commitment(e81411531802d94655520d831074617e2b5d59dc1978029bc3262e6bf3a7237a): ()}, claimed_shielded_spends: {}, claimed_contract_calls: {}, shielded_mints: {}, unshielded_mints: {}, unshielded_inputs: {}, unshielded_outputs: {}, claimed_unshielded_spends: {} }, program: [dup 2, idxc [<[-]: b1>], popeqc <[3ec0a4c9e803695838be6f8b775e705c7f78392dffba78c755f2cc695565a0af]: b32>, swap 0, idxpc [<[01]: b1>], push <[e81411531802d94655520d831074617e2b5d59dc1978029bc3262e6bf3a7237a]: b32>, push null, insc 2, swap 0, dup 2, idxc [<[-]: b1>], popeqc <[3ec0a4c9e803695838be6f8b775e705c7f78392dffba78c755f2cc695565a0af]: b32>, push <[01]: b1>, dup 3, push <[e81411531802d94655520d831074617e2b5d59dc1978029bc3262e6bf3a7237a]: b32>, idxc [<[01]: b1>, STK], push <[0101010101010101010101010101010101010101010101010101010101010101, 0202020202020202020202020202020202020202020202020202020202020202, 64]: b32b32b16>, swap 0, concatc 91, ins 1, idxp [<[-]: b1>], addi 1, insc 1], version: None }), fallible_transcript: None, communication_commitment: <commitment>, proof: <proof>}"
+  }
+}
