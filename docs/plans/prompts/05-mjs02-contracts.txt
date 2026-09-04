@@ -19,7 +19,7 @@ anything the still-open children descend from.
 
 Invoke superpowers:subagent-driven-development with the plan:
 /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js/.worktrees/docs-superpowers-specs/docs/plans/2026-08-17-hf-mjs02-contracts-plan.md
-Spec (binding, v5.4):
+Spec (binding, v5.5):
 /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js/.worktrees/docs-superpowers-specs/docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md
 — read §4.1(5) (the era facade) FIRST, then §4.3 (the three real arm
 asymmetries + the partition-context rule), §4.5/OQ21, §6.2, §8 (contracts
@@ -83,8 +83,10 @@ NON-NEGOTIABLE BEHAVIORS from review rounds (already in the plan, easy to
 miss): stale-head predicate compares ERAS not raw ints; the stale-head error
 text itself carries the two-step remediation (verify-no-finalization, then
 re-run) and a deploy-specific branch pointing at the runtime-deploy guide
-chapter; head/state era mismatch first does a cache-bypassing fresh head read
-(`queryLatestProtocolVersion({ fresh: true })`) and raises
+chapter; head/state era mismatch first does a fresh head read — plain
+`queryLatestProtocolVersion()`, no argument and no bypass flag: #1225 removed
+the latch and the `{ fresh: true }` parameter together (ADR 0008), and the
+indexer provider now issues one uncached head request per call — and raises
 indexer-inconsistency (NOT fork-in-progress) if the fresh head still disagrees;
 the era-invariant assert on the 0.18 return path throws the already-registered
 `MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION`; mixed-era scopes throw
@@ -94,7 +96,8 @@ rejection, proof-server HTTP) are sanitized before the logger seam.
 SOURCES YOU MAY CITE IN CODE (they ship with #1218, so they reach `main` with
 the work; the spec and the plan never do): ADR 0004
 (lazy v8 era access), ADR 0006 (version-tagged payloads at provider seams),
-ADR 0007 (cross the era boundary with plain data only), and the nine package
+ADR 0007 (cross the era boundary with plain data only), ADR 0008 (never
+latch the network head version), and the nine package
 documents under `packages/protocol/docs/` — `era-seam`,
 `compose-refusal-order`, `retained-era-execution`, `fail-closed-decoding`,
 `injected-vendor-slices`, `module-graph-and-lazy-loading`,

@@ -1,3 +1,8 @@
+SUPERSEDED (2026-09-04) — DO NOT EXECUTE. MJS-01 is complete: #1155, #1156, #1164, #1168, #1165, #1194 and #1198
+all landed on `origin/feat/1004-protocol-dual-ledger`. Kept for the record only;
+the paths below use the dead `midnight-js.<branch>` worktree shape.
+Live prompts are 05 (MJS-02) and 06 (MJS-03); see 00-INDEX.txt.
+
 TASK: Resume the MJS-01 plan — ledger-8 engine (Tasks 1.5-1.8 = PRs 1004-D/E).
 PREREQUISITES (verify live before starting): fixtures merged (prompt 02);
 PR #1155 and #1156 merged to main; for Tasks 1.7/1.8 additionally the OQ13

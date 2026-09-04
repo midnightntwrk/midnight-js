@@ -16,7 +16,7 @@
 
 ## Global Constraints
 
-- **Worktree rule:** every phase starts on a fresh `wt` worktree branched from clean `origin/main` (never off another feature branch). Branch names: `feat/1004-protocol-dual-ledger`, `feat/1006-types-d14-foundation`, `feat/1005-contracts-unified-entries`, `feat/1006-provider-dual-decode`.
+- **Worktree rule (CHANGED 2026-09-04, owner ruling):** every phase starts on a fresh `wt` worktree branched from clean `origin/feat/1004-protocol-dual-ledger`, and its PR targets that branch; #1218 need not reach `main` first. Sync parent → child by merge, never rebase. Branch names: `feat/1004-protocol-dual-ledger`, `feat/1006-types-d14-foundation`, `feat/1005-contracts-unified-entries`, `feat/1006-provider-dual-decode`.
 - **Fresh worktree:** run `yarn && yarn build` before first push (pre-push lint needs `dist/`).
 - Apache 2.0 license header on every new `.ts` file (copy from any existing `src/` file).
 - Conventional commits, GPG-signed; PR title matches `<type>(<scope>): <subject>`.
@@ -87,10 +87,12 @@ Branch: `feat/1006-types-d14-foundation`. **Order inside the phase is mandatory:
   }
   export interface PublicDataProvider {
     /* ...all 13 existing members unchanged... */
-    /** Head query (FR3). Implementer contract (D16): MAY cache once v9 is corroborated
-     *  (route 1: same-composed-snapshot v9 envelope; route 2: self-decoded v9-era finalized record);
-     *  MUST NOT cache pre-v9; `{ fresh: true }` MUST bypass any cache (QA-3 + mismatch re-read). */
-    queryLatestProtocolVersion(options?: { readonly fresh?: boolean }): Promise<number>;
+    /** Head query (FR3). Implementer contract (D16, ADR 0008): the reading is NEVER latched.
+     *  A cache is permitted only if it EXPIRES BY ITSELF, on a bound short relative to block time;
+     *  a reading held indefinitely is forbidden. Under that bound every answer is at most one bound
+     *  old, which is why there is no freshness option. `IndexerPublicDataProvider` caches nothing.
+     *  A read's era comes from the `protocolVersion` that read carries, never from this reading. */
+    queryLatestProtocolVersion(): Promise<number>;
     /** Raw single-snapshot state (both envelopes) — the execution paths' only state input. */
     queryRawContractState(contractAddress: ContractAddress, config?: BlockHeightConfig | BlockHashConfig): Promise<RawContractState | null>;
   }

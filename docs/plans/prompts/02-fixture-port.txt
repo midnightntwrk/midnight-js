@@ -1,3 +1,7 @@
+SUPERSEDED (2026-09-04) — DO NOT EXECUTE. The fixtures shipped and live in `testkit-js/testkit-js/src/fixtures/hf/`. Kept for the record only;
+the paths below use the dead `midnight-js.<branch>` worktree shape.
+Live prompts are 05 (MJS-02) and 06 (MJS-03); see 00-INDEX.txt.
+
 TASK: Port the HF spike fixtures into testkit (MJS-01 plan Task 0.2 = PR 1004-A).
 Read first:
 - Plan Task 0.2: /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/plans/2026-08-17-hf-mjs01-protocol-plan.md

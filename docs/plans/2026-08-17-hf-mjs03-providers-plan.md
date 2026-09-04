@@ -2,19 +2,19 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Providers become version-agnostic: head query with the corroborated D16 era latch, `queryRawContractState` with the composed snapshot + adversarial tag parse, lazy dual decode, version-tagged tx-flow seams, private-state continuity — then the release-gating integration, docs and fork-crossing e2e.
+**Goal:** Providers become version-agnostic: an uncached head query, `queryRawContractState` with the composed snapshot + adversarial tag parse, lazy dual decode, version-tagged tx-flow seams, private-state continuity — then the release-gating integration, docs and fork-crossing e2e.
 
-**Architecture:** The latch lives inside the indexer provider (`contracts` stays stateless); `{ fresh: true }` bypasses any cache (QA-3 + mismatch re-read); the v8 tx-flow arm is tag-prefixed bytes at every external seam with the OQ15 parse as defence-in-depth.
+**Architecture:** The head version is **never latched** (ADR 0008): `queryLatestProtocolVersion()` takes no arguments, a cache is permitted only if it expires by itself, and `IndexerPublicDataProvider` caches nothing. A read's era comes from the `protocolVersion` that read carries; `contracts` stays stateless. The v8 tx-flow arm is tag-prefixed bytes at every external seam with the OQ15 parse as defence-in-depth.
 
 **Tech Stack:** Apollo Client + GraphQL codegen (`src/gen`), vitest 4, docker integration env, testkit-js mocks, pnpm/PnP + Vite CI fixtures.
 
-**Spec:** `docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (**v5.4**) — §4.4 (read the "As delivered (#1177 → #1207)" block first), §4.5, §6.3, §8 (providers slice), §10 steps 4–6, AC0/AC9.
+**Spec:** `docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (**v5.5**) — §4.4 (read the "As delivered (#1177 → #1207)" block first), §4.5, §6.3, §8 (providers slice), §10 steps 4–6, AC0/AC9.
 
-> **SCOPE REVISION (2026-09-03, spec v5.4) — read this before Task 4.1.** Issue #1006 landed **three PRs** (#1204 → #1177 → #1207) that ship most of Phase 4's first half. They are part of the tree [#1218](https://github.com/midnightntwrk/midnight-js/pull/1218) puts on `main`.
+> **SCOPE REVISION (2026-09-03, refreshed 2026-09-04 at spec v5.5) — read this before Task 4.1.** Issue #1006 landed **three PRs** (#1204 → #1177 → #1207) that ship most of Phase 4's first half, and a fourth ([#1225](https://github.com/midnightntwrk/midnight-js/pull/1225)) that removed the era latch again. All four are on the long-living integration branch `feat/1004-protocol-dual-ledger`, which [#1218](https://github.com/midnightntwrk/midnight-js/pull/1218) tracks. **That branch — not `main` — is the base for everything below** (see the Worktree rule).
 >
 > | Task | Status | Left to do |
 > |---|---|---|
-> | 4.1 head query + D16 latch | **DELIVERED** (#1177, #1207) | docker integration assertion against the real head field |
+> | 4.1 head query, uncached | **DELIVERED** (#1177, #1207, #1225) | nothing — the docker assertion landed too |
 > | 4.2 `queryRawContractState` + composed request + parse | **DELIVERED** (#1177, #1207) | nothing structural; extend coverage as needed |
 > | 4.3 per-record dual decode + union surfacing | **OPEN** | all of it — today a v8 record is *refused*, not decoded |
 > | 4.4 version-tagged tx-flow seams | **PARTLY** (#1204) | the real v8 arm; the seams refuse it today |
@@ -25,11 +25,11 @@
 
 **Ticket:** [#1006 MJS-03](https://github.com/midnightntwrk/midnight-js/issues/1006). Branch: `feat/1006-provider-dual-decode` (fresh worktree per PR).
 
-**Prerequisites:** plan-2 D14-B merged — **DONE as #1204**. Tasks 4.1/4.2 were to ship in a **cross-plan PR** with plan-2 Task 2.3 (interface members) and the testkit mocks (spec §4.4 same-PR rule); that happened as **#1177 (interface members + indexer implementation) → #1207 (era dating)**. Remaining work branches off clean `origin/main` **after #1218 lands**.
+**Prerequisites:** plan-2 D14-B merged — **DONE as #1204**. Tasks 4.1/4.2 were to ship in a **cross-plan PR** with plan-2 Task 2.3 (interface members) and the testkit mocks (spec §4.4 same-PR rule); that happened as **#1177 (interface members + indexer implementation) → #1207 (era dating) → #1225 (latch removed)**. Remaining work branches off **`origin/feat/1004-protocol-dual-ledger`**; #1218 does not have to land on `main` first.
 
 ## Global Constraints
 
-- **Worktree rule:** every phase starts on a fresh `wt` worktree branched from clean `origin/main` (never off another feature branch). Branch names: `feat/1004-protocol-dual-ledger`, `feat/1006-types-d14-foundation`, `feat/1005-contracts-unified-entries`, `feat/1006-provider-dual-decode`.
+- **Worktree rule (CHANGED 2026-09-04, owner ruling):** every phase starts on a fresh `wt` worktree branched from clean **`origin/feat/1004-protocol-dual-ledger`**, and its PR targets that branch. #1218 need not reach `main` first — it is a long-living integration branch, not a pending merge. This is a deliberate exception to the repo's usual "branch from clean `origin/main`" rule, and it holds for the whole hard-fork window; sync parent → child by **merge, never rebase** (a rebase orphans the merge bases the stack depends on), and give each stacked child its own `yarn.lock` commit whenever the root `resolutions` pin moves. Branching off `main` instead would produce a tree with none of what this plan extends: `unwrapV9`, `loadLedger8`, `queryRawContractState`, `requireV9Era`, the `packages/utils` error-code registry, ADRs 0006/0007/0008 and the nine `packages/protocol/docs/` documents are all absent there. Branch names: `feat/1006-provider-dual-decode` and siblings.
 - **Fresh worktree:** run `yarn && yarn build` before first push (pre-push lint needs `dist/`).
 - Apache 2.0 license header on every new `.ts` file (copy from any existing `src/` file).
 - Conventional commits, GPG-signed; PR title matches `<type>(<scope>): <subject>`.
@@ -44,27 +44,26 @@
 
 Branch: `feat/1006-provider-dual-decode`. All in-repo `PublicDataProvider` implementations + testkit mocks update in the same PR as Tasks 4.1/4.2 (interface is breaking).
 
-### Task 4.1: indexer — head query + D16 corroborated latch — **DELIVERED (#1177, #1207)**
+### Task 4.1: indexer — head query, uncached — **DELIVERED (#1177, #1207, #1225)**
 
 **Files:**
 - Modify: `packages/indexer-public-data-provider/src/provider.ts`, `src/query-definitions.ts` (new head query on the OQ3d field)
-- Create: `packages/indexer-public-data-provider/src/test/head-latch.test.ts`
+- Create: `packages/indexer-public-data-provider/src/test/head-freshness.test.ts` (shipped as `head-latch.test.ts` in #1177, renamed by #1225)
 
 **Interfaces:**
-- Consumes: `PublicDataProvider.queryLatestProtocolVersion(options?)` contract from Task 2.3.
-- Produces: the reference latch implementation:
+- Consumes: `PublicDataProvider.queryLatestProtocolVersion(): Promise<number>` from Task 2.3 — **no arguments** (#1225 removed the `options?: { fresh?: boolean }` parameter along with the latch).
+- Produces: the reference implementation, which is now the trivial one:
   ```ts
   // inside IndexerPublicDataProvider
-  private v9HeadLatch: number | undefined;   // set ONLY by corroborate(); never pre-v9
-  private corroborateV9(headProtocolVersion: number, route: 'snapshot-envelope' | 'finalized-record'): void;
-  async queryLatestProtocolVersion(options?: { readonly fresh?: boolean }): Promise<number> {
-    if (options?.fresh !== true && this.v9HeadLatch !== undefined) return this.v9HeadLatch;
-    return await this.fetchHeadProtocolVersion();   // GraphQL, OQ3d field
+  async queryLatestProtocolVersion(): Promise<number> {
+    return await this.fetchHeadProtocolVersion();   // HEAD_PROTOCOL_VERSION_QUERY, fetchPolicy: 'no-cache'
   }
   ```
-- [x] **Steps 1–5 — shipped.** `head-latch.test.ts` covers engagement per route, non-engagement on a pinned read, and non-engagement on an unresolvable head version, all by **observable request counts** rather than private state. The routes are named in code as `'snapshot-envelope'` and `'finalized-record'`; the head field is `HEAD_PROTOCOL_VERSION_QUERY` = `query { block { protocolVersion } }` (OQ3d).
-- [x] **Beyond the plan, worth knowing before extending it:** `corroborateV9` treats an **unresolvable** head version as a *call-site bug*, not a latch input, and `corroborateFromDecodedState` re-checks the head reading — so cache-warming a read the caller only did incidentally cannot fail that read. The latch now actually engages from `queryContractState` / `queryZSwapAndContractState` (#1207 gave it the evidence route 1 needs); before that only `queryRawContractState` could, and nothing calls it yet, so `queryLatestProtocolVersion` always paid for a request.
-- [ ] **Still owed:** the **docker integration** assertion against the real indexer head field. Unit coverage is against a mock Apollo handle.
+- [x] **Steps 1–5 — shipped.** The head field is `HEAD_PROTOCOL_VERSION_QUERY` = `query { block { protocolVersion } }` (OQ3d). `head-freshness.test.ts` asserts one GraphQL request per call and a moved head reported on the next call, by **observable request counts** rather than private state.
+- [x] **The docker integration assertion landed** in `testkit-js/testkit-js-e2e/test/indexer-public-data-provider.singlecontract.it.test.ts`: it issues `query { block { protocolVersion } }` against the live indexer and asserts the provider returns exactly that integer, plus that `versionOfRecord` places it in `LEDGER_VERSIONS`. The sibling test does the same for `queryRawContractState`.
+- [x] **REVERSAL — read this before touching anything head-related.** #1177/#1207 shipped a corroborated monotone latch (`v9HeadLatch`, `corroborateV9`, routes `'snapshot-envelope'` / `'finalized-record'`); **#1225 removed all of it** and `docs/adr/0008-never-latch-the-network-head-version.md` records why: upgrade-only meant nothing would clear it at the *next* fork, so it saved a request mid-era and misreported at the era boundary; its own contract forbade caching pre-fork, making it inert during the transition it was built for; and corroborating from a finalized record cost an extra head request per finalized transaction until it engaged. **Do not reintroduce it.** The interface now carries one bound instead of a protocol: a cache is permitted only if it **expires by itself**, short relative to block time. Two shapes stay open if head reads ever become a measured cost — a self-expiring cache, or coalescing concurrent in-flight reads into one request (promise-memo, released on resolve). Neither is corroboration.
+- [x] **Two separation rules that constrain Tasks 4.3–4.4.** A read's era comes from the `protocolVersion` that read carries, never from a head reading — and not the reverse. And a read must **not** issue a head request as a side effect of the caller's request; that is what keeps a read's per-call cost predictable.
+- [ ] **Still owed:** nothing in this task. The deploy path's head resolution (read fresh → compose → confirm from the finalized record) is named in ADR 0008 as MJS-02/MJS-03 follow-up work and belongs to Task 4.4's era arm, not here.
 
 ### Task 4.2: indexer — `queryRawContractState` + composed request + adversarial parse — **DELIVERED (#1177, #1207)**
 
@@ -126,7 +125,7 @@ Branch: `feat/1006-provider-dual-decode`. All in-repo `PublicDataProvider` imple
 
 ### Task 5.2: migration guide + docs (AC9)
 - [ ] Guide chapters: bump-only window chapter (D14 narrowing stated **up front**), narrowing recipe (`assertNever` + `hasErrorCode` guards), retained-toolchain note (A2), bundler section (`./v8` chunk + dual-instantiation), runtime-deploy chapter (linked from `Ledger8DeployOnV9Error`), operator requirements (OQ12/OQ16), OQ17 finalization-tracking note + stop-retrying signal (OQ8 guide note), minimum wallet version (OQ7), OQ18 scope statement, V2-support statement.
-- [ ] TROUBLESHOOTING entries for every code in `MIDNIGHT_JS_ERROR_CODES`; llms.txt/API-doc updates; **fix the stale layering diagram in CLAUDE.md/AGENTS.md** (`types` depends on `protocol`).
+- [ ] TROUBLESHOOTING entries for every code in `MIDNIGHT_JS_ERROR_CODES`; llms.txt/API-doc updates. ~~Fix the stale layering diagram in CLAUDE.md/AGENTS.md~~ — **DONE on the integration branch**: `CLAUDE.md` already reads `types ← provider interfaces (depends on protocol only)`, and `AGENTS.md` carries no layering diagram at all.
 - [ ] AC5 positive compile test runs against the guide's exact snippet.
 
 ### Task 5.3: fork-crossing e2e + harness-gated negatives (AC0/OQ14)
@@ -145,8 +144,8 @@ Branch: `feat/1006-provider-dual-decode`. All in-repo `PublicDataProvider` imple
 
 | PR | Tasks | Contents | Depends on |
 |----|-------|----------|-----------|
-| ~~**cross-plan**~~ | plan-2 Task 2.3 + 4.1, 4.2 + mocks | **DONE** — landed as #1177 (interface members + indexer latch/raw state + mocks) then #1207 (era dating, `parseHexContractState` upper bound, contract-event `protocolVersion`) | plan-2 D14-B = #1204 |
-| 1006-A | 4.3 | per-record dual decode + lazy `loadLedger8()` + union surfacing | #1218 on `main` |
+| ~~**cross-plan**~~ | plan-2 Task 2.3 + 4.1, 4.2 + mocks | **DONE** — landed as #1177 (interface members + indexer head/raw state + mocks), #1207 (era dating, `parseHexContractState` upper bound, contract-event `protocolVersion`) and #1225 (latch removed, ADR 0008) | plan-2 D14-B = #1204 |
+| 1006-A | 4.3 | per-record dual decode + lazy `loadLedger8()` + union surfacing | `origin/feat/1004-protocol-dual-ledger` tip |
 | 1006-B | 4.4 | version-tagged proof/wallet/midnight seams + OQ15 asserts + CostModel re-audit | 1006-A |
 | 1006-C | 4.5 | private-state cross-window round-trip + mock version-invariant | 1006-A, plan-1 1004-E (keep-state) |
 | 1006-D | 4.6 | barrel re-exports + isolated-linker smoke + Vite laziness CI jobs | 1006-B |

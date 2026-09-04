@@ -1,48 +1,136 @@
 TASK: Execute Plan 4 — MJS-03 providers + integration & hardening (issue #1006).
-PREREQUISITES (verify live): Plan-2 D14-B merged. Tasks 4.1/4.2 ship in the
-CROSS-PLAN PR together with Plan-2 Task 2.3 (interface members) and testkit
-mocks — if prompt 04's session already did that PR, skip 4.1/4.2 and start at
-4.3. Task 4.5 additionally needs the fixtures (prompt 02) and keep-state
-engine (prompt 03).
+
+BASE (owner ruling 2026-09-04 — this REPLACES the old "wait for #1218 to reach main"
+precondition): all work branches off `origin/feat/1004-protocol-dual-ledger` and every
+PR targets that branch. PR #1218 tracks it but does NOT have to land on `main` first —
+it is a long-living integration branch, not a pending merge. This is a deliberate
+exception to the repo's usual "branch from clean origin/main" rule and it holds for the
+whole hard-fork window. Sync parent -> child by MERGE, never rebase (a rebase orphans
+the merge bases the stack depends on), and give each stacked child its own yarn.lock
+commit whenever the root `resolutions` pin moves.
+
+Branching off `main` would hand you a tree containing none of what this plan extends.
+Verified 2026-09-04: `main` carries ADRs 0001-0005 only, has no `packages/protocol/docs/`
+directory at all, and zero occurrences of `unwrapV9`, `loadLedger8`,
+`queryRawContractState` or `requireV9Era`.
 
 Invoke superpowers:subagent-driven-development with the plan:
-/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/plans/2026-08-17-hf-mjs03-providers-plan.md
-Spec (binding): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md (§4.4, §4.5, §6.3, §8 providers slice, §10 steps 4-6)
+/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js/.worktrees/docs-superpowers-specs/docs/plans/2026-08-17-hf-mjs03-providers-plan.md
+Spec (binding, v5.5):
+/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js/.worktrees/docs-superpowers-specs/docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md
+— read the SCOPE REVISION block at the top of the plan FIRST, then §4.4 (start at the
+"As delivered (#1177 -> #1207)" block), §4.5, §6.2, §6.3, §8 (providers slice),
+§10 steps 4-6, AC0/AC9.
 
-Key implementation facts:
-- OQ3d ANSWERED: head field = Block.protocolVersion via Query.block(offset:
-  null) (schema already has it; BLOCK_QUERY today selects only height+hash).
-- D16 latch lives INSIDE IndexerPublicDataProvider: cache only after
-  CORROBORATED v9 (route 1: same composed snapshot carries a v9-era state
-  envelope; route 2: provider itself decoded a v9-era finalized record);
-  never latch on a bare int; { fresh: true } always bypasses; one engagement
-  test per route + poisoned-latch + bypass + lagging-replica negatives.
-- queryRawContractState: composed single request with the head field
-  (mitigation, not guarantee); OQ15 tag parse on the raw hex BEFORE any
-  decode; adversarial fixtures in the indexer's real wire encoding (hex —
-  ASCII ':' is 3a): missing second colon, unknown tag, tag/content mismatch,
-  oversized prefix.
-- Dual decode: v9 through today's static path byte-unchanged; v8 via
-  loadV8() awaited inside the already-async query method, memoised; lazy
-  gates (v9-only session never loads v8 WASM; decode-only never loads 0.16).
-- Tx-flow seams: v8 arm = { version: 'v8', txBytes } request AND response at
-  proof/wallet/midnight providers; OQ15 tag assert at both proving seams and
-  submit; CostModel.initialCostModel() re-audit for the v8 arm (record the
-  finding); sanitize wrapped HTTP causes.
-- 4.5: private-state cross-window round-trip (0.16 keep-state write → 0.18
-  read post-graduation via both-keys fixture + PS-schema-identical twin;
-  VALUE equality, not byte); mock version-invariant throws
-  MIDNIGHT_JS_PR_MOCK_VERSION_INVARIANT.
-- 4.6: barrel re-exports (NO protocol/v8 runtime re-export); isolated-linker
-  (pnpm/PnP) install smoke + Vite laziness fixture as CI jobs.
-- Phase 5 (5.1 split-topology integration, 5.2 migration guide + docs +
-  CLAUDE.md layering fix, 5.3 static v8-era env + AC0 e2e + harness-gated
-  security negatives) — read the plan; 5.2/5.3 need user input on OQ9/OQ14
-  rulings; treat as separate PRs and confirm scope with the user first.
+WHERE THE WORK ACTUALLY STARTS: Tasks 4.1 and 4.2 are DONE — including the docker
+integration assertion that older drafts still listed as owed. Start at Task 4.3.
 
-Workflow: NEW wt worktree per PR from clean origin/main (prefix feat/1006-*);
-yarn install && yarn build before first push; TDD; SDD loop. Hard rules:
-never cite spec sections in code; codes MIDNIGHT_JS_PR_* from the utils
-registry, negative-tested; no `any`/`as unknown`; Apache headers;
-conventional commits; docker integration tests must assert strictly against
-the OQ3d source field; subagents never push/post; PRs only with user approval.
+ALREADY ON THE INTEGRATION BRANCH — EXTEND, DO NOT RE-CREATE:
+`queryLatestProtocolVersion()` and `queryRawContractState` on `PublicDataProvider`;
+`HEAD_PROTOCOL_VERSION_QUERY` / `RAW_CONTRACT_STATE_QUERY` and the era-dating of every
+document that decodes era-sensitive bytes; `parseSerializedTag` in
+`packages/utils/src/serialized-tag.ts` with `MIDNIGHT_JS_U_TAG_PARSE_FAILED`;
+`parseHexContractState(hex, protocolVersion, { upperBound })` plus `EnvelopeUpperBound`;
+`packages/indexer-public-data-provider/src/era.ts` (`requireV9Era`),
+`EraUnsupportedError`, `EraUnresolvableError`, and the `IndexerDataError` kinds
+`'undated-state'`, `'era-disagreement'`, `'unsupported-decode-era'`; the repo-level
+registry in `packages/utils/src/error-codes.ts`, whose `PROVIDER_ERROR_CODES` has four
+members today. New provider codes go into `PROVIDER_ERROR_CODES` next to them; the
+aggregate picks them up. Registry hazard: the registry test's expectation list is
+hand-spelled and has already gone stale once (protocol grew 6 -> 12 codes) — derive it,
+do not spell it.
+
+Suites to extend rather than re-invent: `protocol-version-coverage.test.ts` (the
+bidirectional era-sensitivity table over ALL indexer documents — an unclassified new
+document fails the build, and so does a document that starts paying for a field it has
+no use for), `era-cross-check.test.ts`, `raw-contract-state.test.ts`,
+`head-freshness.test.ts`, `era-wiring.test.ts` / `era.test.ts`.
+
+FACTS THAT CHANGE WHAT YOU WRITE:
+- THE HEAD VERSION IS NEVER LATCHED (ADR 0008, PR #1225). Earlier drafts of this prompt
+  described a corroborated D16 latch with a `{ fresh: true }` bypass; #1225 deleted all
+  of it. `queryLatestProtocolVersion(): Promise<number>` takes NO arguments;
+  `IndexerPublicDataProvider` issues one `HEAD_PROTOCOL_VERSION_QUERY` with
+  `fetchPolicy: 'no-cache'` per call; the interface permits a cache only if it EXPIRES
+  BY ITSELF, on a bound short relative to block time. Do not reintroduce corroboration.
+  Two separation rules ride with it: (a) a read's era comes from the `protocolVersion`
+  that read carries, never from a head reading — and not the reverse; (b) a read must
+  not issue a head request as a side effect of the caller's request.
+- THE RULE #1207 shipped, which Task 4.3 must not re-litigate: THE ENVELOPE DECIDES,
+  THE BLOCK BOUNDS. The envelope comes off the bytes and decides decodability; the
+  reported `protocolVersion` dates the READ and is an UPPER BOUND only, because the
+  indexer serves the latest contract action at or before the requested block — so an
+  older envelope under a newer block is the ordinary case, and only the reverse is
+  reported (`era-disagreement`). `parseHexContractState` takes
+  `{ upperBound: 'enforced' | 'withheld' }`, defaulting to `'enforced'` so no call site
+  loses the check by omission; `'withheld'` rides the unpinned sibling reads.
+- Task 4.3 is where a v8 record stops being REFUSED and starts being DECODED. Today
+  `requireV9Era` raises `EraUnsupportedError` (`MIDNIGHT_JS_PR_ERA_UNSUPPORTED`), and
+  `toFinalizedDeployTxData` resolves the era BEFORE `parseHexTransaction` deliberately —
+  that deserializer is v9-only, so a v8 record has to surface as a named era failure
+  rather than a codec failure. That resolution point is the seam you replace.
+- The accessor is `loadLedger8()`. The v5.2 name `loadV8()` does not exist. There are
+  THREE public protocol seams, not one: `loadLedger8()` (raw v8 module, `./v8`),
+  `loadLedger8Engine()` (`./engine`) and `loadLedgerEra(version)` (barrel only).
+- ESLint gate: a runtime import of `@midnight-ntwrk/midnight-js-protocol/v8` OR
+  `/engine` is banned outside `packages/protocol/src` — in package sources, package
+  tests and testkit alike (type-only imports are allowed). That is what Task 4.6's "no
+  protocol/v8 runtime re-export" means in practice, and it constrains how 4.3 reaches
+  the v8 decoder: through the barrel accessor, never the subpath.
+- The seam union is ASYMMETRIC. `VersionedTx<T>` carries `{ version: 'v8', txBytes }`
+  and is narrowed with `unwrapV9(payload, seam)`. The READ surface's
+  `VersionedFinalizedTxData` carries `tx` on its v8 arm, NOT `txBytes`, and is narrowed
+  with a plain `switch (record.version)`. Task 4.3's "union surfacing" is the second
+  one; do not reach for `unwrapV9` there.
+- Every v8 tx-flow arm is REFUSED today: `unwrapV9` throws
+  `MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED` and `contracts` mirrors it with `requireV9`.
+  Task 4.4's real content is lifting that refusal, in step with MJS-02 Task 3.5 — a
+  half-lifted seam fails in the middle of a submit.
+- `unwrapV9` is a RUNTIME helper living in `packages/types/src/unwrap-v9.ts`, and the
+  repo treats `types` as declarations-only. If it moves, `utils` is its home and Task
+  4.4 is the task that moves it. Decide it, do not let it drift.
+- Implementing or mocking a wallet/midnight provider: use `createWalletProvider` /
+  `createMidnightProvider` from `types` rather than tagging by hand (ADR 0006).
+- Task 4.5's inputs already exist: the HF fixtures are in
+  `testkit-js/testkit-js/src/fixtures/hf/` with a `fixtures.json` manifest, and the
+  keep-state operation is `wrapKeepStateCall` on `Ledger8Engine`. What is missing is
+  `MIDNIGHT_JS_PR_MOCK_VERSION_INVARIANT` — not in the registry yet; add it in the same
+  change that first throws it.
+- Task 5.2 no longer includes the CLAUDE.md layering fix: `CLAUDE.md` already reads
+  `types <- provider interfaces (depends on protocol only)`, and `AGENTS.md` carries no
+  layering diagram at all.
+- Task 5.3 blocker recorded on #1207 and still live: `nightly-e2e.yml` is the ONLY
+  coverage for eras other than v9 — it rotates `TESTKIT_DOCKER_ENV` across all five
+  image sets — and it has been `startup_failure` with zero jobs launched for
+  consecutive nights. Until it runs, every e2e signal on this stack is devnet, i.e.
+  node 2.x / ledger v9 only, and the static v8-era environment has no CI home.
+
+STILL OPEN, carried from #1207: `RawContractState.version` is derived from the
+read-viewpoint block while its docs tell callers to narrow on it and hand the bytes to
+that era's deserializer — the wrong runtime for a contract dormant across a fork. The
+type hedges; the primary instruction needs rewording.
+
+Phase 5 (5.1 split-topology integration, 5.2 migration guide + docs, 5.3 static v8-era
+env + AC0 e2e + harness-gated security negatives) — read the plan; 5.2/5.3 need user
+input on the OQ9/OQ14 rulings; treat them as separate PRs and confirm scope with the
+user first.
+
+SOURCES YOU MAY CITE IN CODE: ADR 0004 (lazy v8 era access), ADR 0006 (version-tagged
+payloads at provider seams), ADR 0007 (cross the era boundary with plain data only),
+ADR 0008 (never latch the network head version), and the nine package documents under
+`packages/protocol/docs/` — `era-seam`, `compose-refusal-order`,
+`retained-era-execution`, `fail-closed-decoding`, `injected-vendor-slices`,
+`module-graph-and-lazy-loading`, `shared-table-discipline`, `verifier-keys`,
+`dual-instantiation-guard`. They are citable because they travel in the SAME TREE as
+the code citing them: they are on the integration branch, NOT on `main`, so the
+citation resolves exactly as long as your branch is cut from that branch. The design
+spec stays NOT citable — it lives on `docs/superpowers-specs` and nothing on the code
+branch tracks it.
+
+Workflow: NEW wt worktree per PR from clean origin/feat/1004-protocol-dual-ledger
+(prefix feat/1006-*); yarn install && yarn build before first push; TDD; SDD loop.
+Hard rules: never cite the spec (OQ*, §*, D*, file name) in code, comments or error
+messages — cite the ADRs and package documents above instead; codes MIDNIGHT_JS_PR_*
+from the utils registry, every new code negative-tested; no `any`/`as unknown`; Apache
+headers; conventional commits; docker integration tests assert strictly against the
+OQ3d head field; subagents never push/post; PRs only with user approval.

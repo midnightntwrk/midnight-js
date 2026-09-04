@@ -1,43 +1,57 @@
 PRE-MERGE CHECKLIST — USER ACTIONS (not a Claude prompt)
-State as of 2026-08-17; re-verify live before acting.
+Written 2026-08-17; refreshed 2026-09-04. Re-verify live before acting.
 
-BEFORE MERGING PR #1155 + #1156:
-[ ] OQ2 credentialed scope check (MUST-FIX-BEFORE-MERGE per final review):
-    with npm registry credentials, confirm (a) no competing package
-    `@midnight-ntwrk/ledger-v8` exists in the hyphenated scope, and (b) npm
-    org ownership of `@midnightntwrk` is the expected organisation. The dep
-    added in #1156 is `@midnightntwrk/ledger-v8@8.1.1` (exact pin, lockfile
-    checksum verified) — chosen by elimination because the hyphenated scope
-    was uncheckable from the dev environment (expired PAT). Record the result
-    in the OQ2 checklist in the spec, incl. the 8.1.0→8.1.1 pin drift.
-[ ] Rebase #1156 (feat/1004-v8-subpath-loadv8) onto #1155 head ba0b0c1a —
-    the branch lives in worktree midnight-js.feat-1004-v8-subpath-loadv8
-    (parallel session added f00027f7, 4c48a992 there). Expect a conflict in
-    packages/protocol/src/errors.ts (both sides touched it: #1155 fix wave
-    added reason-branching + freeze; #1156 added Ledger8RuntimeMissingError).
-    Merge order: #1155 first, then retarget/merge #1156.
-[ ] Merge order note: #1156's PR base is the #1155 branch — after #1155
-    merges, retarget #1156 to main (GitHub does this automatically on branch
-    delete, but verify).
+THERE IS NO PRE-MERGE MOMENT RIGHT NOW.
+The original heading assumed PR #1218 would land on `main` next. The owner ruled
+on 2026-09-04 that it need not: `feat/1004-protocol-dual-ledger` is a long-living
+integration branch that MJS-02 (#1005) and MJS-03 (#1006) also build on, so there
+is no merge to gate until the whole fork window is feature-complete. Two items the
+owner still holds:
 
-HOUSEKEEPING (any time):
-[ ] Paste the OQ3d answer into spec §11 OQ3(d) + a comment on issue #1006
-    (draft: worktree midnight-js.feat-1004-protocol-dual-ledger,
-    .superpowers/sdd/2026-08-17-hf-mjs01-protocol-plan/oq3d-discovery-note.md).
-[ ] OQ13 discovery outputs (prompt 01) → post the A4/A5 questions to the
-    tkerber thread on #1005; record rulings in the spec.
-[ ] Owner assignments the spec requires before freezes: OQ8 (security,
-    + formal interim risk acceptance name+date before first release), OQ12,
-    OQ13, OQ14; OQ18 scope ruling (connector-proving dApps) is a PO decision.
-[ ] Pre-existing spec citations in code (violate the no-spec-refs rule but
+[ ] #1218's description no longer matches what the branch is. It still reads as an
+    MJS-01 merge PR: a "Before merging" section prescribing the merge mechanics, an
+    OQ2 checkbox that is already closed, and "Closes #1004 / Closes #1006" with no
+    mention of #1005, which will land on the same branch. Decide whether to rewrite
+    it now or when the window closes.
+[ ] Whenever the window does close: merge with a merge commit, never a squash.
+    Squashing would orphan the ancestors the stacked branches depend on.
+
+SPENT — nothing to do:
+[x] OQ2 credentialed scope check — CLOSED by the owner on 2026-09-03. Same
+    maintainer account on both npm scopes, dual publishing intended, exact pins and
+    lockfile checksums verified. The one item deliberately not treated as a
+    blocker: no CI gate on audited scopes/versions exists, and it only becomes
+    meaningful at the cutover to `@midnightntwrk`. Plan the gate with the cutover.
+[x] Rebase #1156 onto #1155 — spent. GitHub's merge-stack collapsed all seven
+    MJS-01 PRs (#1155, #1156, #1164, #1168, #1165, #1194, #1198) into one merge
+    commit on the integration branch.
+[x] Merge-order note for #1156 — spent with the same stack merge.
+[x] Paste the OQ3d answer into the spec and issue #1006 — OQ3d is answered AND
+    shipped: `HEAD_PROTOCOL_VERSION_QUERY` = `query { block { protocolVersion } }`,
+    with a docker integration test asserting the provider against that exact field.
+
+STILL OPEN:
+[ ] OQ13 discovery outputs (prompt 01) → post the A4/A5 questions to the tkerber
+    thread on #1005; record the rulings in the spec.
+[ ] Owner assignments the spec requires before freezes: OQ8 (security, plus a
+    formal interim risk acceptance with name and date before the first release),
+    OQ12, OQ13, OQ14; the OQ18 scope ruling (connector-proving dApps) is a PO
+    decision. OQ2 is off this list — closed 2026-09-03.
+[ ] Pre-existing spec citations in code (they violate the no-spec-refs rule but
     predate it): indexer-public-data-provider/src/{get-all-contract-events,
-    events-filter}.ts, utils/src/deserialization/{patterns,classify}.ts —
-    schedule a small cleanup PR (inline the content or cite tracked docs).
-[ ] Deferred minors from reviews (ledger in worktree
-    midnight-js.feat-1004-protocol-dual-ledger): packages/utils missing own
-    rollup/ts devDependencies (pre-existing; chore PR); prettier drift in
-    eslint.config.mjs/version.ts (cosmetic); protocol ESLint override sets
-    rules fully 'off' (re-declare intended exceptions for durability).
-[ ] After the plan's remaining PRs land, delete stale worktrees (wt remove)
-    and the SDD workspace ledgers they contain — but ONLY once the resume
-    value is gone (prompts 03-06 read those ledgers).
+    events-filter}.ts, utils/src/deserialization/{patterns,classify}.ts — schedule
+    a small cleanup PR (inline the content, or cite ADRs / packages/protocol/docs,
+    which are tracked with the code).
+[ ] Deferred minors from reviews: packages/utils missing its own rollup/ts
+    devDependencies (pre-existing; chore PR); prettier drift in
+    eslint.config.mjs/version.ts (cosmetic); the protocol ESLint override sets
+    rules fully 'off' (re-declare the intended exceptions for durability).
+[ ] `nightly-e2e.yml` has been `startup_failure` with ZERO jobs launched for
+    consecutive nights. It is the only CI coverage for eras other than v9 — it
+    rotates TESTKIT_DOCKER_ENV across all five image sets. Until it runs, every
+    e2e signal on this stack is devnet, i.e. node 2.x / ledger v9 only. Recorded
+    on #1207; it blocks MJS-03 Task 5.3.
+[ ] After the remaining PRs land, delete stale worktrees (`wt remove`) and the SDD
+    workspace ledgers they contain — but ONLY once the resume value is gone
+    (prompts 05 and 06 read those ledgers). Worktrees now live under
+    <repo>/.worktrees/<branch-with-dashes>.

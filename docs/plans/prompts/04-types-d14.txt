@@ -1,21 +1,32 @@
 TASK: Execute Plan 2 — `types` + `utils` D14 foundation (tracked on issue #1006).
-PREREQUISITE (verify live): PRs #1155 and #1156 merged to main (LedgerVersion
-and protocol ./v8 must exist on main). If not merged, stop and report.
 
-Invoke superpowers:subagent-driven-development with the plan:
-/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/plans/2026-08-17-hf-types-d14-foundation-plan.md
-Spec (binding): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md (§4.4 types bullet, §4.5, AC7)
+SUPERSEDED (2026-09-04) — DO NOT EXECUTE THIS PROMPT. Plan 2 is DELIVERED. It
+landed as #1204 (D14 union surface + the restored `packages/utils` error-code
+registry), #1177 (the two `PublicDataProvider` members + indexer implementation
++ testkit mocks) and #1207 (era-dated indexer reads), all on the integration
+branch `origin/feat/1004-protocol-dual-ledger`. This file is kept for the
+record; the facts below are corrected so nothing re-derives them wrongly, but
+there is no work here. Go to prompt 05 (MJS-02) or prompt 06 (MJS-03).
+
+The one deliverable Plan 2 named that did NOT ship is the AC7 API-report gate
+(Task 2.1: api-extractor over the rollup-dts output, baseline + CI diff job).
+No such tooling exists in the repo. It is still owed and is tracked in spec
+§10 step 2, not here.
+
+Plan (for the record):
+/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js/.worktrees/docs-superpowers-specs/docs/plans/2026-08-17-hf-types-d14-foundation-plan.md
+Spec (binding, v5.5): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js/.worktrees/docs-superpowers-specs/docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md (§4.4 types bullet, §4.5, AC7)
 
 ORDER IS MANDATORY: Task 2.1 (API-report gate: @microsoft/api-extractor over
 the rollup-dts output, baseline committed from CURRENT main BEFORE any D14
 edit, CI diff job + allowed-breaking.md allowlist) merges before Tasks
 2.2/2.4. Task 2.3 (PublicDataProvider members) is a CROSS-PLAN PR: it ships
 in ONE PR together with MJS-03 plan Tasks 4.1/4.2 (indexer implementation:
-head query + corroborated D16 latch; queryRawContractState) and the testkit
-mock updates — coordinate with prompt 06 or execute those two tasks from the
-MJS-03 plan inside that PR yourself.
+head query; queryRawContractState) and the testkit mock updates. That happened
+as #1177 then #1207; nothing here is left to coordinate.
 
-Workflow: NEW wt worktree per PR from clean origin/main (branch prefix
+Workflow (had this been live): NEW wt worktree per PR from clean
+origin/feat/1004-protocol-dual-ledger, NOT origin/main (branch prefix
 feat/1006-types-d14-*); yarn install && yarn build before first push; TDD;
 SDD review loop per task; compile-level tests use vitest typecheck/expectTypeOf.
 
@@ -24,14 +35,17 @@ return type stays plain v9 (unions ONLY on provider read surfaces + the 0.16
 overload's return); version-truth invariant (arm version ===
 protocolVersionToLedger(protocolVersion, 'read'), single construction point);
 v8 tx-flow arm = { version: 'v8', txBytes } tag-prefixed bytes both
-directions; queryLatestProtocolVersion(options?: { fresh?: boolean }) — fresh
-bypasses any cache (QA-3 + head/state-mismatch re-read contract); D16 latch
-corroboration = provider-internal observations only (same-snapshot v9
-envelope, or self-decoded v9-era finalized record).
+directions. CORRECTED 2026-09-04: queryLatestProtocolVersion() takes NO
+arguments and the head reading is NEVER latched — #1225 removed the
+corroborated D16 latch and the { fresh: true } parameter together, and
+ADR 0008 replaced them with one bound (a cache is permitted only if it expires
+by itself). Do not reintroduce corroboration.
 
-OQ3d is ANSWERED (use it in 4.1): the head field is Block.protocolVersion via
-Query.block(offset: null) — extend BLOCK_QUERY or add a thin query; no
-indexer schema gap.
+OQ3d is ANSWERED and SHIPPED: the head field is Block.protocolVersion via the
+argument-less root query, and it ships as its own document,
+HEAD_PROTOCOL_VERSION_QUERY = `query { block { protocolVersion } }`. BLOCK_QUERY
+was deliberately left untouched (it returns no serialized bytes) and
+protocol-version-coverage.test.ts now fails the build if that changes.
 
 Hard rules: never cite spec sections (OQ/§/D) in code/comments/errors; error
 codes MIDNIGHT_JS_PR_* from utils registry (import protocol codes only from
