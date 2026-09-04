@@ -330,6 +330,91 @@ export class Ledger8SeamFailedError extends Error {
   }
 }
 
+/**
+ * Whether the operation a {@link StaleHeadError} refuses was deploying a
+ * contract or calling one already deployed.
+ *
+ * The same discriminant the era pairing table takes, kept as its own type here
+ * because it decides which of two genuinely different remediations the error
+ * carries.
+ */
+export type StaleHeadOperationKind = 'call' | 'deploy';
+
+// The remediation, written once per operation kind. A call and a deploy do NOT
+// share one text, and the reason is not tone: after the head has crossed, a
+// retained-era CALL can simply be run again -- it lands on the keep-state
+// pipeline with no change to the caller's code -- while a retained-era DEPLOY
+// cannot be run again at all, because the retained era has no post-fork
+// deployment. Telling a deployer to re-run would send them at a refusal.
+//
+// Both texts open with the same first step, and its position is load-bearing:
+// a submission rejected while the head was moving may still have been recorded,
+// so anything that repeats the operation has to come second.
+const STALE_HEAD_MESSAGES: Readonly<
+  Record<StaleHeadOperationKind, (startEra: LedgerVersion, freshEra: LedgerVersion) => string>
+> = Object.freeze({
+  call: (startEra, freshEra) =>
+    `This call was built against a '${startEra}'-era network head and the node rejected its transaction; a ` +
+    `fresh read of the head now reports '${freshEra}', so the network crossed the ledger fork while the call ` +
+    `was being built. Take two steps, in this order. First, verify the transaction did not finalize: a ` +
+    `submission rejected while the head was moving can still have been recorded, so read the contract's ` +
+    `state and check for this call before doing anything that would repeat it. Then re-run the call ` +
+    `unchanged - it resolves the network head again and executes against the era the network now reports.`,
+  deploy: (startEra, freshEra) =>
+    `This deployment was built against a '${startEra}'-era network head and the node rejected its ` +
+    `transaction; a fresh read of the head now reports '${freshEra}', so the network crossed the ledger fork ` +
+    `while the deployment was being built. Take two steps, in this order. First, verify the deployment did ` +
+    `not finalize: a submission rejected while the head was moving can still have been recorded, and ` +
+    `deploying again would put a second copy of the contract on chain at a different address. Then ` +
+    `recompile the contract with the current Compact toolchain and deploy that artifact instead - a ` +
+    `contract produced by the retained toolchain cannot be deployed to a post-fork head at all. See the ` +
+    `runtime-deploy chapter of the migration guide.`
+});
+
+/**
+ * An error indicating that the network crossed the ledger fork between an
+ * operation resolving the head era and its transaction being submitted, and
+ * that a fresh head read confirms the move.
+ *
+ * ## Why a submit rejection is diagnosed rather than propagated
+ *
+ * A node rejects a transaction for many reasons, and during the fork window one
+ * of them is that the transaction belongs to the era the network has just left.
+ * Nothing in the node's own rejection distinguishes that case, and the era the
+ * operation started from cannot report itself as stale
+ * (`docs/adr/0008-never-latch-the-network-head-version.md`) — so the head is
+ * read again, once, and the two ERAS are compared. Two readings of the same era
+ * one node minor release apart are not a fork and are not reported as one.
+ *
+ * The provider's own rejection travels on `cause`, already sanitized of
+ * anything that could carry transaction or witness material — see
+ * {@link Ledger8SeamFailedError}, which is the form it arrives in.
+ *
+ * @see docs/adr/0008-never-latch-the-network-head-version.md
+ */
+export class StaleHeadError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.STALE_HEAD;
+
+  /**
+   * @param startEra The era the operation resolved when it started.
+   * @param freshEra The era a fresh head read reports now. Retained on the
+   *                 error because it is what a caller re-runs against.
+   * @param kind Whether the refused operation was a call or a deploy — the
+   *             discriminant a caller branches on, and which remediation the
+   *             message carries.
+   * @param cause The submit rejection, already sanitized.
+   */
+  constructor(
+    readonly startEra: LedgerVersion,
+    readonly freshEra: LedgerVersion,
+    readonly kind: StaleHeadOperationKind,
+    cause: unknown
+  ) {
+    super(STALE_HEAD_MESSAGES[kind](startEra, freshEra), { cause });
+    this.name = 'StaleHeadError';
+  }
+}
+
 interface EffectContractError {
   readonly _tag: string;
   readonly cause: { readonly name: string; readonly message: string; readonly isCompactError?: boolean };

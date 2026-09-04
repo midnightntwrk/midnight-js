@@ -50,6 +50,10 @@ export {
 // `Ledger8SeamFailedError` carries a provider's own rejection with its message redacted, and
 // `Ledger8ShieldedSpendUnsupportedError` refuses a retained-era call that would spend a coin the
 // contract already holds; both are reachable through the same entry points and exercised there.
+// `StaleHeadError` is the fork-crossing refusal: a submission rejected after the network head moved
+// under the operation, carrying the two-step remediation for that operation kind. It is thrown from
+// the submit seam of both retained-era arms and exercised through the entry points in
+// `src/test/stale-head.test.ts`.
 export {
   BlankVerifierKeySlotError,
   CallTxFailedError,
@@ -66,6 +70,8 @@ export {
   Ledger8DeployOnV9Error,
   Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
+  StaleHeadError,
+  type StaleHeadOperationKind,
   TxFailedError,
   VerifierKeyMismatchError} from './errors';
 export {
