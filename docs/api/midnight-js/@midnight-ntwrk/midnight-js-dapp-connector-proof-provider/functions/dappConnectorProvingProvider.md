@@ -6,9 +6,9 @@
 
 # Function: dappConnectorProvingProvider()
 
-> **dappConnectorProvingProvider**\<`K`\>(`api`, `zkConfigProvider`): `Promise`\<[`ProvingProvider`](../../midnight-js-protocol/ledger/type-aliases/ProvingProvider.md)\>
+> **dappConnectorProvingProvider**\<`K`\>(`api`, `zkConfigProvider`): `Promise`\<[`ProvingProvider`](https://github.com/midnightntwrk/midnight-ledger)\>
 
-Obtains a [ProvingProvider](../../midnight-js-protocol/ledger/type-aliases/ProvingProvider.md) from the DApp Connector wallet.
+Obtains a [ProvingProvider](https://github.com/midnightntwrk/midnight-ledger) from the DApp Connector wallet.
 
 ## Type Parameters
 
@@ -34,9 +34,9 @@ Provider that supplies ZK configuration artifacts and key material.
 
 ## Returns
 
-`Promise`\<[`ProvingProvider`](../../midnight-js-protocol/ledger/type-aliases/ProvingProvider.md)\>
+`Promise`\<[`ProvingProvider`](https://github.com/midnightntwrk/midnight-ledger)\>
 
-A [ProvingProvider](../../midnight-js-protocol/ledger/type-aliases/ProvingProvider.md) backed by the wallet.
+A [ProvingProvider](https://github.com/midnightntwrk/midnight-ledger) backed by the wallet.
 
 ## Remarks
 

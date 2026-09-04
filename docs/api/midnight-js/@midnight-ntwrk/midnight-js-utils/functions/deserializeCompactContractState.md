@@ -6,9 +6,9 @@
 
 # Function: deserializeCompactContractState()
 
-> **deserializeCompactContractState**(`bytes`, `ctx`): [`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
+> **deserializeCompactContractState**(`bytes`, `ctx`): [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
-Deserialize a compact-runtime [CompactContractState](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md) from raw bytes.
+Deserialize a compact-runtime [CompactContractState](https://github.com/midnightntwrk/midnight-ledger) from raw bytes.
 
 ## Parameters
 
@@ -22,7 +22,7 @@ Deserialize a compact-runtime [CompactContractState](../../midnight-js-protocol/
 
 ## Returns
 
-[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
+[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
 ## Throws
 

@@ -37,7 +37,7 @@ in the call tree.
 
 ### costModel
 
-[`CostModel`](../../midnight-js-protocol/ledger/classes/CostModel.md)
+[`CostModel`](https://github.com/midnightntwrk/midnight-ledger)
 
 Cost model applied during transaction proving.
 

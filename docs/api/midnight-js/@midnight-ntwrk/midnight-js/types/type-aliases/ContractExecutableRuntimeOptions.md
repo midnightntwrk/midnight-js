@@ -26,7 +26,7 @@ The current user's ZSwap public key.
 
 ### signingKey?
 
-> `readonly` `optional` **signingKey?**: [`SigningKey`](../../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md)
+> `readonly` `optional` **signingKey?**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/types/dist/index.d.ts:317
 

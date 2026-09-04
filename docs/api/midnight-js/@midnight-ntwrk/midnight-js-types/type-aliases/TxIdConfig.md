@@ -14,7 +14,7 @@ Starts a contract state stream at the given transaction identifier.
 
 ### txId
 
-> `readonly` **txId**: [`TransactionId`](../../midnight-js-protocol/ledger/type-aliases/TransactionId.md)
+> `readonly` **txId**: [`TransactionId`](https://github.com/midnightntwrk/midnight-ledger)
 
 The transaction identifier indicating where to begin the state stream.
 

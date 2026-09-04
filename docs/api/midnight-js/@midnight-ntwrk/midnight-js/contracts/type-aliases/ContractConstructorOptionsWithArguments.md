@@ -6,7 +6,7 @@
 
 # Type Alias: ContractConstructorOptionsWithArguments\<C\>
 
-> **ContractConstructorOptionsWithArguments**\<`C`\> = [`InitializeParameters`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/InitializeParameters.md)\<`C`\> *extends* \[\] ? [`ContractConstructorOptionsBase`](../interfaces/ContractConstructorOptionsBase.md)\<`C`\> : [`ContractConstructorOptionsBase`](../interfaces/ContractConstructorOptionsBase.md)\<`C`\> & `object`
+> **ContractConstructorOptionsWithArguments**\<`C`\> = [`Contract$1.InitializeParameters`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\> *extends* \[\] ? [`ContractConstructorOptionsBase`](../interfaces/ContractConstructorOptionsBase.md)\<`C`\> : [`ContractConstructorOptionsBase`](../interfaces/ContractConstructorOptionsBase.md)\<`C`\> & `object`
 
 Defined in: packages/contracts/dist/index.d.ts:202
 
@@ -17,4 +17,4 @@ to the constructor options.
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk)
