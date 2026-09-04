@@ -8,29 +8,18 @@ title: EraSeam
 the two ledger eras it supports. On one side a caller holds a `LedgerEra`
 object, or — for the operations only the retained pre-fork era can perform — a
 `Ledger8Engine`. On the other side sit two WASM toolchains that must never be
-mixed. This document records why that boundary is shaped the way it is: what
-kind of value is allowed to cross it, how the surface is split between the two
-objects, and how each side is acquired.
+mixed. This document records why that boundary is shaped the way it is: how the
+surface is split between the two objects, and how each side is acquired.
 
-## Only bytes and plain objects cross the seam
+## What may cross the seam
 
-Every value crossing the era boundary is plain data: `Uint8Array`s and plain
-objects, never a live WASM handle. That is what lets a caller hold a result
-without also holding the module that produced it, keeps the two eras' results
-comparable, and makes a result safe to send through a `structuredClone` or a
-worker boundary.
-
-The same discipline is applied in the inward direction, not only on the way
-out. In `composeEraV8DeployTx` the contract state crosses into the v8-native
-deploy leg by BYTES, which is what that leg takes: it deserializes into its own
-era rather than accepting a handle, so no object is passed between two WASM
-copies.
-
-That is a transport guarantee, not an immutability one. `readonly` on a result's
-members freezes each reference, not the bytes behind it, so a result that
-survives a `structuredClone` is not thereby protected from a caller writing
-through the arrays it carries. Where this package does need immutability it
-freezes the object itself — see [SharedTableDiscipline](./shared-table-discipline.md).
+What is allowed across the era boundary — plain data only, encoded at the
+crossing point, with handles free to circulate inside a single era — is decided
+in `docs/adr/0007-cross-the-era-boundary-with-plain-data-only.md`. That ADR also
+records why the rule is a transport guarantee and not an immutability one; where
+this package does need immutability it freezes the object itself, see
+[SharedTableDiscipline](./shared-table-discipline.md). This document does not
+restate the rule; it records how the surface is split and acquired given it.
 
 ## One surface, the same on both eras
 

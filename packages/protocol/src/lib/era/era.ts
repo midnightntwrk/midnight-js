@@ -29,10 +29,8 @@ import type { LedgerVersion } from '../shared/ledger-version';
  * `loadLedgerEra` once and then writes era-agnostic code.
  *
  * Every value crossing this boundary is plain data: `Uint8Array`s and plain
- * objects, never a live WASM handle. That is what lets a caller hold a result
- * without also holding the module that produced it, keeps the two eras'
- * results comparable, and makes a result safe to send through a
- * `structuredClone` or a worker boundary.
+ * objects, never a live WASM handle, so a result outlives the module that
+ * produced it and survives a `structuredClone` or a worker boundary.
  *
  * The methods are synchronous. Asking for an era is the point at which its
  * runtime is acquired, so by the time a caller holds one of these there is
