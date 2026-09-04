@@ -32,19 +32,17 @@ import type { ProtocolV8 } from './load';
  * will not do: it declares its entry points with blank keys.
  *
  * The call's own inputs are carried as plain data rather than as a whole
- * execution transcript: this leg is reached from the era facade, across which
- * only bytes and plain objects travel, so it can no longer be handed a
- * transcript holding a live pre-fork `ChargedState`.
+ * execution transcript — never a live pre-fork handle.
  *
- * The two Zswap offers are v8-native offer HANDLES, not bytes: this leg runs
- * inside the retained era with the module already in hand, so the era arm that
- * reads a caller's offer bytes (`../era/adapt-v8.ts`) hands the decoded offer
- * straight over — exactly as it already does for `contractState`. Absent
- * offers are the normal shape of a call that moved no shielded coins.
+ * The two Zswap offers are v8-native offer HANDLES, not bytes. Absent offers
+ * are the normal shape of a call that moved no shielded coins.
  *
  * `networkId` and `ttl` carry the caller's policy decisions (which network,
- * how long the transaction lives), but their well-formedness is checked here
- * — see `assertComposeEnvelope` (`../shared/compose-options.ts`).
+ * how long the transaction lives); their well-formedness is checked here — see
+ * `assertComposeEnvelope` (`../shared/compose-options.ts`).
+ *
+ * @see {@link EraSeam}
+ * @see {@link ComposeRefusalOrder}
  */
 export interface ComposeV8CallOptions {
   readonly circuitId: string;
@@ -64,27 +62,23 @@ export interface ComposeV8CallOptions {
 /**
  * Composes a v8-native call transaction from one call's inputs and immediately
  * serializes it. The call prototype comes from {@link assembleCallPrototype}
- * against the injected v8 module. This is the "same-era" leg: both the
- * circuit's execution and the call it produces are bound entirely on the
- * ledger-v8 axis, as opposed to `wrapKeepStateCall` (`../v9/wrap.ts`),
- * which binds a retained-execution transcript natively onto the current
- * ledger-v9 axis instead.
+ * against the injected v8 module.
  *
  * Never proves the transaction: the returned bytes are an UNPROVEN,
  * tag-prefixed serialization, exactly what `Transaction.serialize()` produces
- * before `.prove()` is ever called. Proving needs a proving provider and a
- * running proof server, neither of which this seam has.
+ * before `.prove()` is ever called.
  *
- * Uses `Transaction.fromPartsRandomized`, so the intent lands at a random
- * segment id and stays mergeable with other calls — matching the v9 call path
- * in `packages/contracts/src/utils/ledger-utils.ts`. Only deploys use a fixed
- * segment; see `composeV8DeployTx` (`./deploy.ts`).
- *
- * Throws `ComposeFailedError` (`../../errors.ts`) when `contractState`
- * has no registered operation for `circuitId` (stage
- * `'call-operation'`), or when the operation it does have carries no verifier
- * key (stage `'call-verifier-key'`), rather than composing a call no ledger
- * could verify.
+ * @param options The call's inputs, offers and envelope options.
+ * @param v8 The v8 ledger module, as handed over by `loadLedger8`
+ *   (`./load.ts`).
+ * @returns The UNPROVEN, serialized call transaction.
+ * @throws ComposeOptionError If `networkId` is empty or `ttl` is not a valid
+ *   instant.
+ * @throws ComposeFailedError If `contractState` has no registered operation for
+ *   `circuitId` (stage `'call-operation'`), or the operation it does have
+ *   carries no verifier key (stage `'call-verifier-key'`), plus every stage
+ *   {@link assembleCallPrototype} and {@link aggregateUnshieldedOffers} raise.
+ * @see {@link ComposeRefusalOrder}
  */
 export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): Uint8Array => {
   const { contractAddress, contractState, networkId, ttl, guaranteedZswapOffer, fallibleZswapOffer } = options;
@@ -105,13 +99,8 @@ export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): 
 
   const intent = v8.Intent.new(ttl).addCall(prototype);
 
-  // Read the partitioned pair back off the intent rather than re-deriving it:
-  // these are the exact transcripts the transaction now carries, so the offers
-  // cannot describe a different partition than the call does. This mirrors the
-  // v9 arm (`../v9/compose.ts`) — a user-addressed payout has to be
-  // attached on BOTH eras, or a call that pays one out composes into an
-  // unbalanced transaction the node rejects on submission, with nothing having
-  // reported a problem here.
+  // Read the partitioned pair back off the intent rather than re-deriving it,
+  // and attach the payout on this era too -- see ComposeRefusalOrder.
   const unshielded = aggregateUnshieldedOffers(
     intent.actions
       .filter((action) => action instanceof v8.ContractCall)

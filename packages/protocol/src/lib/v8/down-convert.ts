@@ -16,9 +16,8 @@
 import type * as OnchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
 import type { AlignedValue, EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
-// The three pre-fork instance types this module names, read off the one
-// type-only namespace import above rather than a second named import of the
-// same module. Aliases, not mirrors: they ARE the vendor's types.
+// Aliases read off the type-only namespace import above, not mirrors -- see
+// ModuleGraphAndLazyLoading.
 type ChargedState = OnchainRuntimeV3.ChargedState;
 type StateBoundedMerkleTree = OnchainRuntimeV3.StateBoundedMerkleTree;
 type StateValue = OnchainRuntimeV3.StateValue;
@@ -30,14 +29,7 @@ import type { Ledger8ContractState } from '../era/envelope';
  * The subset of the pre-fork onchain-runtime-v3 `StateValue` statics
  * {@link downConvertForExecution} needs.
  *
- * DERIVED from the vendor's own class rather than restated: a `decode` whose
- * signature moves fails this build instead of leaving a hand-written mirror
- * describing a static the runtime no longer has. The `import type * as` this
- * reads through is erased and links nothing — injection is about not importing
- * a VALUE — so the lazy acquisition path the caller owns is untouched. Narrowed to `decode` because
- * that is the only static this seam calls, and because the narrowing is what
- * lets `v8-down-convert.test.ts` drive the decode safety net with a one-member
- * double instead of a whole WASM class.
+ * @see {@link InjectedVendorSlices}
  */
 export interface Ledger8CompactRuntimeStateValue {
   readonly decode: (typeof OnchainRuntimeV3.StateValue)['decode'];
@@ -46,24 +38,10 @@ export interface Ledger8CompactRuntimeStateValue {
 /**
  * The pre-fork runtime surface {@link downConvertForExecution} bridges into.
  *
- * `ContractState` is here to pin the *era*, not because this module calls it.
- * `StateValue.decode` and `new ChargedState(...)` are structurally identical
- * across the fork — that identity is what makes the bridge possible, and it is
- * asserted directly by the wire-shape drift detectors in
- * `v8-down-convert.test.ts`. So neither member can tell a pre-fork runtime
- * from a post-fork one, and without a third member this interface is satisfied
- * by onchain-runtime-v4 and by `compact-runtime` (which re-exports it) — both
- * public barrel exports of this very package. A caller reaching for the wrong
- * one gets no error: decode and re-encode then use the same post-fork codec, so
- * the structural comparison passes, the Merkle walk passes, and a v4
- * `ChargedState` is returned typed as a v3 one, to surface later as an opaque
- * wasm-bindgen rejection deep inside execution.
+ * `ContractState` is here to pin the *era*, not because this module calls it:
+ * do not drop it as an unused member.
  *
- * `ContractState` closes that, because its `query()` returns a `GatherResult`
- * whose `log` variant gained fields after the fork. That divergence is
- * incidental to this bridge, so it is pinned by a compile-time negative
- * assertion (`_PostForkOnchainRuntimeIsRejected`) rather than trusted: a vendor
- * bump that realigned the two shapes would otherwise silently reopen the hole.
+ * @see {@link RetainedEraExecution}
  */
 export interface Ledger8CompactRuntime {
   readonly ContractState: Ledger8ContractState;
@@ -75,11 +53,11 @@ export interface Ledger8CompactRuntime {
  * The result of a down-convert: only the primary state data a pre-fork
  * circuit reads during execution.
  *
- * Deliberately not a full pre-fork `ContractState`: this bridge produces only
- * the `ChargedState`, so it does not fabricate blank defaults for
- * `.operations`, `.maintenanceAuthority`, or `.balance`. Those remain the
- * caller's to carry — execution receives balances via `CallContext.balance`,
- * not via this state.
+ * Deliberately not a full pre-fork `ContractState`: it carries no
+ * `.operations`, `.maintenanceAuthority` or `.balance`, which remain the
+ * caller's to carry.
+ *
+ * @see {@link RetainedEraExecution}
  */
 export interface DownConvertedState {
   readonly data: ChargedState;
@@ -89,17 +67,13 @@ export interface DownConvertedState {
  * Structural equality over the `EncodedStateValue` algebra — plain objects,
  * arrays, `Map`s, `Uint8Array`s and primitives.
  *
- * Hand-rolled rather than `node:util`'s `isDeepStrictEqual`, which does not
- * resolve in a browser bundle. `Map`s are compared pairwise in iteration
- * order, deliberately: both runtimes emit map entries in a deterministic,
- * insertion-order-independent order that the two of them agree on, so a value
- * and its re-encoding iterate identically whatever order the entries were
- * inserted in. Note that order is not ascending by key — it is a canonical
- * hash order, so do not reason about it as sorted. That agreement is a
- * cross-runtime property, not a single-codec one — the source encoding comes
- * from ledger-v9 and the re-encoding from onchain-runtime-v3 — so it is pinned
- * by tests that build the two sides with the two different codecs, not only by
- * the same-codec round trip.
+ * `Map`s are compared pairwise in iteration order, deliberately, and that order
+ * is not ascending by key — do not reason about it as sorted.
+ *
+ * @param a One value in the algebra.
+ * @param b The value to compare it against.
+ * @returns `true` when the two are structurally equal.
+ * @see {@link RetainedEraExecution}
  */
 export const structurallyEqual = (a: unknown, b: unknown): boolean => {
   if (a === b) {
@@ -133,21 +107,8 @@ export const structurallyEqual = (a: unknown, b: unknown): boolean => {
   const aRecord: Record<string, unknown> = { ...a };
   const bRecord: Record<string, unknown> = { ...b };
   const aKeys = Object.keys(aRecord);
-  // `key in bRecord`, not just a matching key count: without it two objects
-  // that share no key at all compare equal whenever the diverging key's value
-  // in `a` is `undefined`, because both lookups then read `undefined` and
-  // short-circuit. No *record* in today's algebra holds an undefined-valued
-  // field — the one `undefined` it contains is the second slot of a
-  // boundedMerkleTree leaf tuple (`[Uint8Array, undefined]`), which arrives
-  // through the array branch above and never reaches this comparison. So this
-  // guards against a record gaining one rather than fixing a live defect.
-  //
-  // It is a partial guard, not a total one: `bRecord` is a plain object, so
-  // `in` also succeeds for every `Object.prototype` member. Keys in the pinned
-  // algebra are only `tag`/`content`/`value`/`alignment`/`length`, none of them
-  // inherited, so the hole is unreachable today — but `Object.hasOwn` would
-  // close it outright and is the right move the moment this helper is used on
-  // anything wider.
+  // `key in bRecord`, not just a matching key count, and a partial guard only --
+  // see RetainedEraExecution and SharedTableDiscipline.
   return (
     aKeys.length === Object.keys(bRecord).length &&
     aKeys.every((key) => key in bRecord && structurallyEqual(aRecord[key], bRecord[key]))
@@ -158,13 +119,14 @@ export const structurallyEqual = (a: unknown, b: unknown): boolean => {
  * Reads a bounded Merkle tree's root, failing with
  * {@link MerkleNotRehashedError} when the tree has not been rehashed.
  *
- * Three shapes of "no root" are treated alike, because all three mean the same
- * thing to a caller and only one is in the vendor's type: `undefined` (what
- * the typings document), `null` (what a `None` can serialize to), and a throw
- * — the wasm-bindgen shim for `root()` rethrows a Rust `Err` rather than
- * always resolving to a value. Letting that throw escape would demote it to a
- * generic down-convert failure and tell the caller to check its envelope bytes
- * when the actual remediation is to rehash the tree.
+ * Three shapes of "no root" are treated alike: `undefined`, `null`, and a
+ * throw out of the wasm-bindgen shim for `root()`.
+ *
+ * @param tree The bounded Merkle tree to read.
+ * @returns The tree's root.
+ * @throws MerkleNotRehashedError If the tree has no readable root, in any of
+ *   those three shapes.
+ * @see {@link RetainedEraExecution}
  */
 export const checkRoot = (tree: StateBoundedMerkleTree): AlignedValue => {
   let root: AlignedValue | undefined;
@@ -184,31 +146,17 @@ export const checkRoot = (tree: StateBoundedMerkleTree): AlignedValue => {
  * Asserts that every bounded Merkle tree in a `StateValue` tree already has
  * its node hashes computed, recursing through the only two container variants
  * in the algebra (`array` and `map`) and ignoring the leaf variants (`cell`,
- * `null`, and `boundedMerkleTree`'s own contents). Throws
- * {@link MerkleNotRehashedError} (via {@link checkRoot}) on the first tree
- * without a readable root.
+ * `null`, and `boundedMerkleTree`'s own contents).
  *
- * Fail-fast by design: an `encode()`/`decode()` round trip materializes a
- * tree's hashes on the pinned onchain-runtime-v3/ledger-v9 versions, and
- * every state reaching {@link downConvertForExecution} has crossed one — so a
- * rootless tree here can only mean an upstream programming error, which this
- * surfaces loudly instead of silently repairing. That round-trip behaviour is
- * a vendor property rather than a guarantee, so it is pinned by a test
- * (`materializes the hashes of a tree that was never rehashed`) that fails if
- * a vendor bump changes it.
+ * Does not mutate or rebuild the state: a rootless tree is refused, never
+ * repaired.
  *
- * Does not mutate or rebuild the state. It is not allocation-free: each
- * `asArray()`/`asMap()` step marshals fresh wrapper objects out of WASM.
- *
- * The non-null assertions below are guarded by the preceding `type()` call:
- * the `as*` accessors return `undefined` only on a variant mismatch, which
- * the switch has already excluded. `map.get(key)` is likewise asserted
- * because a key marshalled out by `keys()` resolves back through `get()`.
- * Both are observed behaviour of onchain-runtime-v3 rather than
- * vendor-documented invariants — the vendor's own types are not authoritative
- * about definedness here (`asCell()` is declared non-optional yet returns
- * `undefined` for a `null` state value) — so they are pinned by tests over a
- * multi-entry map rather than by prose alone.
+ * @param sv The `StateValue` tree to walk.
+ * @throws MerkleNotRehashedError On the first tree without a readable root,
+ *   via {@link checkRoot}.
+ * @throws DownConvertFailedError If the walk meets a `StateValue` variant the
+ *   pinned typings do not declare.
+ * @see {@link RetainedEraExecution}
  */
 export const assertMerkleTreesRehashed = (sv: StateValue): void => {
   const variant = sv.type();
@@ -228,18 +176,8 @@ export const assertMerkleTreesRehashed = (sv: StateValue): void => {
     case 'null':
       return;
     default: {
-      // Compile-time exhaustiveness, in the style of version.ts's
-      // `_allLedgerVersionsAreMapped`: a vendor bump that adds a variant stops
-      // this assignment type-checking, so the omission is a build failure
-      // rather than a review miss.
-      //
-      // The runtime throw is not redundant with it. The `StateValue` reaching
-      // this walk comes from a caller-injected runtime, whose WASM can emit a
-      // tag the pinned `.d.ts` does not declare — and these declarations are
-      // known to be unfaithful (see the `asCell()` note below). Returning
-      // `void` on an unrecognised variant would skip every Merkle tree nested
-      // inside it without a word, which is the exact silent-wrong-data
-      // outcome this module exists to prevent.
+      // Compile-time exhaustiveness plus a runtime throw; neither is redundant
+      // with the other -- see SharedTableDiscipline.
       const unhandled: never = variant;
       throw new DownConvertFailedError(
         'state down-convert',
@@ -256,36 +194,27 @@ export const assertMerkleTreesRehashed = (sv: StateValue): void => {
  * {@link assertMerkleTreesRehashed}) that every bounded Merkle tree it
  * contains already has its hashes computed.
  *
- * Never returns a silently empty or partial state. Every failure leaves as a
- * {@link DownConvertFailedError} carrying `{ cause }`, or a
- * {@link MerkleNotRehashedError} — including failures from the Merkle walk
- * and from `ChargedState` construction, so no uncoded error escapes a seam
- * whose whole contract is code-based discrimination.
+ * Never returns a silently empty or partial state: every failure leaves as a
+ * coded error. Structural integrity is checked by re-encoding the decoded value
+ * and comparing it to the input, which costs one extra encode plus a deep
+ * comparison per call.
  *
- * Structural integrity is checked by re-encoding the decoded value and
- * comparing it to the input, which catches loss at every depth (a shortened
- * array, a dropped map entry, a changed cell, a substituted subtree) rather
- * than only a wholesale collapse to `null`. This costs one extra encode plus a
- * deep comparison per call, and it is deliberate: the alternative is a bridge
- * that can hand a circuit silently wrong data.
+ * `ledger8Runtime` is checked before anything is decoded. Only the two members
+ * this function actually calls are checked; `ContractState` is on
+ * {@link Ledger8CompactRuntime} to pin the era, and is never dereferenced here.
  *
- * `ledger8Runtime` is checked before anything is decoded, for the same reason
- * `extractEncodedStateValue` checks the runtime it is handed: a runtime missing
- * a binding this function dereferences would otherwise raise a bare `TypeError`
- * that the catch below relabels {@link DownConvertFailedError}, an error whose
- * message sends the caller to audit input bytes that are not the problem. Only
- * the two members this function actually calls are checked; `ContractState` is
- * on {@link Ledger8CompactRuntime} to pin the era, and is never dereferenced
- * here.
- *
- * What it does not cover: anything the pre-fork encoder re-derives rather than
- * carries. A bounded Merkle tree encodes as its height and leaves, never its
- * node hashes, so a tree whose internal hashes were re-materialized
- * differently across the fork boundary still re-encodes byte-identically here.
- * {@link assertMerkleTreesRehashed} establishes only that each tree has a
- * readable root, not that the root matches the source's. Comparing roots
- * across the boundary needs the source-side tree, which this function never
- * sees — it belongs at the envelope seam.
+ * @param state The already-extracted post-fork encoded state value.
+ * @param ledger8Runtime The injected pre-fork runtime slice.
+ * @returns The pre-fork state a v8-era circuit executes against.
+ * @throws Ledger8RuntimeInvalidError If `ledger8Runtime` is missing
+ *   `StateValue.decode` or `ChargedState`.
+ * @throws DownConvertFailedError If the state cannot be decoded, does not
+ *   re-encode to its source, or the Merkle walk meets an undeclared variant —
+ *   carrying the underlying failure on `cause`.
+ * @throws MerkleNotRehashedError If any bounded Merkle tree in the state has no
+ *   readable root.
+ * @see {@link RetainedEraExecution}
+ * @see {@link FailClosedDecoding}
  */
 export const downConvertForExecution = (
   state: EncodedStateValue,

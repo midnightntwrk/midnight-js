@@ -16,10 +16,8 @@
 import { Ledger8InstanceMismatchError, Ledger8RuntimeMissingError } from '../../errors';
 import type * as Engine from './engine.js';
 
-// Type-only, so the root barrel can name every option and result type a
-// caller needs without linking the engine chunk. Without these a consumer
-// holding a Ledger8Engine cannot annotate a variable or write a helper
-// without a second, subpath-gated import.
+// Type-only: a value re-export here would link the engine chunk into the root
+// barrel -- see ModuleGraphAndLazyLoading.
 export type {
   DownConvertedState,
   EncodedStateValue,
@@ -34,22 +32,27 @@ let enginePromise: Promise<Engine.Ledger8Engine> | undefined;
 /**
  * The only sanctioned runtime path to the engine's public surface.
  *
- * Like {@link loadLedger8}, the relative specifier names the `./engine` build
- * entry, which rollup emits as its own chunk and links only through this
- * dynamic import, so the retained `compact-runtime@0.16` glue and
- * `@midnight-ntwrk/onchain-runtime-v3` WASM load only on the first call —
- * never as a side effect of importing the package root. Enforced by
- * dist-laziness.test.ts (the index bundle must never link the `./engine`
- * subpath, `@midnight-ntwrk/onchain-runtime-v3`, or the
- * `compact-runtime-ledger8` glue alias statically).
+ * The retained `compact-runtime@0.16` glue and
+ * `@midnight-ntwrk/onchain-runtime-v3` WASM load only on the first call — never
+ * as a side effect of importing the package root.
  *
- * A failed load is not memoised: the next call retries the import. A
- * rejection that already carries a protocol error code —
- * {@link Ledger8RuntimeMissingError} from the retained-runtime acquisition, or
- * {@link Ledger8InstanceMismatchError} from the construction-time instance
- * guard — propagates unchanged, keeping its class, code and discriminants
- * intact for callers; any other failure (e.g. a raw module-resolution error
- * on the engine chunk itself) is wrapped in {@link Ledger8RuntimeMissingError}.
+ * A failed load is not memoised: the next call retries the import. Exactly two
+ * rejections propagate unchanged — {@link Ledger8RuntimeMissingError} from the
+ * retained-runtime acquisition, and {@link Ledger8InstanceMismatchError} from
+ * the construction-time instance guard — keeping their class, code and
+ * discriminants intact for callers. Every other failure is wrapped in
+ * {@link Ledger8RuntimeMissingError}, including the coded
+ * `Ledger8RuntimeInvalidError` that same guard raises for an incomplete
+ * runtime, and a raw module-resolution error on the engine chunk itself.
+ *
+ * @returns The engine's public surface, memoised after the first successful
+ *   load.
+ * @throws Ledger8RuntimeMissingError If the retained runtime, or the `./engine`
+ *   chunk itself, cannot be acquired.
+ * @throws Ledger8InstanceMismatchError If the construction-time instance guard
+ *   found `onchain-runtime-v3` resolved to two physically distinct copies.
+ * @see {@link ModuleGraphAndLazyLoading}
+ * @see {@link EraSeam}
  */
 export const loadLedger8Engine = (): Promise<Engine.Ledger8Engine> =>
   (enginePromise ??= import('../../engine.js')

@@ -24,15 +24,13 @@ export interface ComposeEnvelopeOptions {
 
 /**
  * Rejects the two envelope options the ledger accepts but should not: an
- * empty `networkId`, and a `ttl` that is not a valid instant. Both are
- * silently absorbed by the WASM — an empty network id is baked into the
- * transaction, and an Invalid Date is recorded as the Unix epoch, yielding a
- * transaction that has already expired the moment it is composed. Neither
- * surfaces until submission, so both are refused here.
+ * empty `networkId`, and a `ttl` that is not a valid instant.
  *
- * This validates well-formedness only, never policy: which network a
- * deployment targets and how long a transaction should live remain the
- * caller's decisions.
+ * @param options The transaction-envelope options to check.
+ * @param version The era every failure raised here names.
+ * @throws ComposeOptionError naming option `'networkId'` for an empty network
+ * id, or `'ttl'` for a `ttl` that is not a valid instant.
+ * @see {@link ComposeRefusalOrder}
  */
 export const assertComposeEnvelope = (options: ComposeEnvelopeOptions, version: LedgerVersion): void => {
   if (options.networkId.length === 0) {

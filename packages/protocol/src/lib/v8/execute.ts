@@ -31,11 +31,6 @@ import type { DownConvertedState } from './down-convert';
  * partition the call's public transcript against the context it really ran on
  * (see {@link PartitionContext}).
  *
- * `comIndices` is read off the POST-call context, `block` and `effects` off the
- * pre-call one — the split {@link PartitionContext} explains. All four are
- * declared here because the runtime exposes them on the same object; which one
- * each is read from is {@link executeCircuit}'s choice, not this type's.
- *
  * A `Pick` of the vendor's own class, not a restatement of it: the member names
  * and their types come from onchain-runtime-v3, so a rename there fails this
  * build instead of leaving a mirror that describes a property the runtime no
@@ -43,6 +38,8 @@ import type { DownConvertedState } from './down-convert';
  * `QueryContext` is a WASM class with dozens of members, and this seam reads
  * four — the narrowing is what lets the execution tests hand `executeCircuit` a
  * plain object double instead of standing up real WASM.
+ *
+ * @see {@link RetainedEraExecution}
  */
 export type Ledger8QueryContext = Pick<
   OnchainRuntimeV3.QueryContext,
@@ -54,17 +51,14 @@ export type Ledger8QueryContext = Pick<
  * (`compact-runtime@0.16`) `createCircuitContext` call and a circuit's
  * updated context after it runs.
  *
- * `currentZswapLocalState` is the runtime's own BYTE-encoded shape — what the
- * 0.16 glue really puts on a `CircuitContext` — and is declared as the vendor
- * type rather than an opaque one, because {@link executeCircuit} hands it on to
- * a caller instead of only testing it for emptiness.
- *
  * Not the glue's `CircuitContext` itself: that one carries a real
  * `QueryContext`, a WASM class no test double can satisfy, and this seam reads
  * a handful of properties off it. The narrowing is the difference between
  * execution tests that check plumbing with a literal and tests that must stand
  * up WASM to do it — see {@link Ledger8QueryContext}, which derives those
  * properties from the vendor's class so the narrowing cannot drift from it.
+ *
+ * @see {@link RetainedEraExecution}
  */
 export interface Ledger8CircuitContext {
   readonly currentQueryContext: Ledger8QueryContext;
@@ -79,6 +73,8 @@ export interface Ledger8CircuitContext {
  * plain data with no WASM handle in it, so there was nothing for a mirror to
  * narrow — only a shape to drift out of sync. `Readonly` is this package's own
  * addition, and the only one.
+ *
+ * @see {@link EraSeam}
  */
 export type Ledger8ProofData = Readonly<ProofData>;
 
@@ -87,8 +83,9 @@ export type Ledger8ProofData = Readonly<ProofData>;
  *
  * Tracks the glue's `CircuitResults` but is not derived from it: `context` is
  * the narrowed {@link Ledger8CircuitContext} for the reason given there, and
- * `gasCost` is absent because nothing here reads it. `proofData` IS the
- * vendor's own type — see {@link Ledger8ProofData}.
+ * `proofData` IS the vendor's own type — see {@link Ledger8ProofData}.
+ *
+ * @see {@link RetainedEraExecution}
  */
 export interface Ledger8CircuitResult {
   readonly result: unknown;
@@ -102,10 +99,9 @@ export type Ledger8ImpureCircuit = (ctx: Ledger8CircuitContext, ...args: readonl
 /**
  * The subset of a compiled pre-fork (`compact-runtime@0.16`) contract module
  * {@link executeCircuit} needs: only `impureCircuits`, the map every
- * generated contract exposes its callable entry points under. The other own
- * properties a real compiled contract carries (`witnesses`, `circuits`,
- * `provableCircuits`, `initialState`) are never read here — execution only
- * ever dispatches through `impureCircuits`.
+ * generated contract exposes its callable entry points under.
+ *
+ * @see {@link RetainedEraExecution}
  */
 export interface Ledger8ContractLike {
   readonly impureCircuits: Readonly<Record<string, Ledger8ImpureCircuit>>;
@@ -113,26 +109,18 @@ export interface Ledger8ContractLike {
 
 /**
  * The subset of the pre-fork `compact-runtime@0.16` glue {@link executeCircuit}
- * needs to build a circuit context. Injected — like {@link Ledger8CompactRuntime}
- * in `./down-convert.ts` — so callers target a specific WASM-backed
- * instance and tests can substitute a controlled fake.
+ * needs to build a circuit context, injected rather than imported.
+ *
+ * @see {@link RetainedEraExecution}
  */
 export interface Ledger8ExecutionRuntime {
-  /**
-   * The glue's own encoded -> decoded conversion for a Zswap local state.
-   * Injected for the same reason the rest of this interface is, and needed here
-   * so a caller never has to acquire the retained 0.16 glue itself just to read
-   * which coins a call moved.
-   */
+  /** The glue's own encoded -> decoded conversion for a Zswap local state. */
   readonly decodeZswapLocalState: (state: EncodedZswapLocalState) => ZswapLocalState;
   /**
-   * Narrowed rather than derived, unlike its sibling below. The glue's own
-   * `createCircuitContext` is generic in the private state and returns a
-   * `CircuitContext` carrying a real `QueryContext` — a WASM class no test
-   * double can satisfy — so deriving it would make every execution test stand
-   * up real WASM to check plumbing. The narrowing returns
-   * {@link Ledger8CircuitContext} instead, and `v8-load-engine.test.ts` pins
-   * that the real glue still satisfies it.
+   * Narrowed rather than derived, and so returns
+   * {@link Ledger8CircuitContext} rather than the glue's own `CircuitContext`.
+   *
+   * @see {@link RetainedEraExecution} for what the narrowing buys
    */
   readonly createCircuitContext: (
     contractAddress: string,
@@ -142,10 +130,7 @@ export interface Ledger8ExecutionRuntime {
     gasLimit: undefined,
     costModel: CostModel
   ) => Ledger8CircuitContext;
-  /**
-   * A `Pick` of the vendor's class: `initialCostModel` is the only static this
-   * seam calls, and the narrowing is what lets a test inject a stub cost model.
-   */
+  /** A `Pick` of the vendor's class: `initialCostModel` is the only static this seam calls. */
   readonly CostModel: Pick<typeof OnchainRuntimeV3.CostModel, 'initialCostModel'>;
 }
 
@@ -155,27 +140,20 @@ export interface Ledger8ExecutionRuntime {
  * artifact {@link wrapKeepStateCall} (`../v9/wrap.ts`) needs to assemble a
  * v9-native `ContractCallPrototype`.
  *
- * `preContractState`/`postContractState` are {@link DownConvertedState}s —
- * the same execution-only state shape `downConvertForExecution` already
- * produces — not full pre-fork `ContractState`s: they carry only `.data`, so a
- * consumer cannot reach `.operations`, `.maintenanceAuthority` or `.balance`
- * through them.
+ * `preContractState`/`postContractState` are {@link DownConvertedState}s, not
+ * full pre-fork `ContractState`s: they carry only `.data`.
  *
  * `partitionContext` is the query-context state the call ran with, which the
- * carried state bytes do not hold — see {@link PartitionContext}. Composing a
- * call without it partitions the transcript against a context the circuit
- * never ran on; a call that received a coin in-contract cannot be partitioned
- * at all.
+ * carried state bytes do not hold — see {@link PartitionContext}. A composition
+ * leg needs it to partition the call's transcript.
  *
  * `zswapLocalState` is the post-call Zswap local state, DECODED into the
  * runtime's public shape: the coins the circuit spent and produced. A caller
  * turns it into the transaction's segmented Zswap offer
  * (`zswapStateToSegmentedOffer`, `packages/contracts/src/utils/zswap-utils.ts`)
- * and hands that offer to whichever composition leg it targets. Carrying it is
- * what makes a coin-moving circuit composable on the retained era at all —
- * omitting it would leave the caller composing a transaction that is missing
- * the coin movements the circuit recorded, and the node rejects that as
- * unbalanced on submission.
+ * and hands that offer to whichever composition leg it targets.
+ *
+ * @see {@link RetainedEraExecution}
  */
 export interface TranscriptPojo {
   readonly circuitId: string;
@@ -204,24 +182,21 @@ export interface ExecuteCircuitOptions {
 
 /**
  * Runs one impure circuit on a pre-fork (`compact-runtime@0.16`) contract
- * instance, following the exact `createCircuitContext` /
- * `impureCircuits[id](ctx, ...args)` sequence the retained toolchain expects
- * (the spike's `runCircuit`), and packages every artifact
- * {@link wrapKeepStateCall} needs into a {@link TranscriptPojo}.
- *
- * Throws a plain `Error` — not a {@link PROTOCOL_ERROR_CODES}-carrying class —
- * when `circuitId` names no entry point on `contract.impureCircuits`. This is
- * a caller-programming-error case (an unknown circuit name passed by the
- * caller), not one of the decode/runtime-instance failure modes this engine
- * wraps elsewhere; it mirrors the plain `Error` the spike itself throws for
- * the analogous "operation missing on contract state" case. The lookup is an
- * own-property one: `impureCircuits` is a plain object literal on every
- * compiled contract, so a bare index would resolve `toString` or `constructor`
- * off the prototype chain and dispatch into it.
+ * instance and packages every artifact {@link wrapKeepStateCall} needs into a
+ * {@link TranscriptPojo}.
  *
  * A circuit that moved coins runs like any other: its post-call Zswap local
  * state leaves on {@link TranscriptPojo}, decoded through the injected runtime,
  * for the caller to turn into the transaction's Zswap offer.
+ *
+ * @param options The contract module, circuit id, arguments, down-converted
+ *   state, contract address, coin public key and private state.
+ * @param ledger8Runtime The injected pre-fork glue slice.
+ * @returns Every artifact a v9-native call prototype needs.
+ * @throws Error A plain `Error` — not a {@link PROTOCOL_ERROR_CODES}-carrying
+ *   class — when `circuitId` names no entry point on
+ *   `contract.impureCircuits`.
+ * @see {@link RetainedEraExecution}
  */
 export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: Ledger8ExecutionRuntime): TranscriptPojo => {
   const { contract, circuitId, args, state, address, coinPk, privateState } = options;

@@ -30,9 +30,8 @@ export interface DecodableContractOperation {
  * Both eras' class satisfies it structurally, which is what lets one decoder
  * serve both axes without either era's types being named here.
  *
- * `maintenanceAuthority` and `balance` are deliberately absent: nothing in this
- * framework reads them off a decoded state, and a field carried "in case"
- * becomes a field a caller depends on.
+ * @see {@link FailClosedDecoding} for why `maintenanceAuthority` and `balance`
+ * are deliberately absent.
  */
 export interface DecodableContractState {
   readonly data: { readonly state: { readonly encode: () => EncodedStateValue } };
@@ -44,16 +43,10 @@ export interface DecodableContractState {
  * The era module slice {@link decodeContractStateWith} needs: just the
  * `ContractState` class and its static reader.
  *
- * Declared structurally rather than derived from one era's class, because this
- * decoder genuinely serves BOTH axes — the v9 arm passes ledger-v9, the v8 leg
- * passes the module `loadLedger8` handed it — and naming either era's type here
- * would pick a side. `Ledger8ContractState` (`../era/envelope.ts`) is the
- * single-era counterpart and IS derived from the vendor for that reason.
- *
- * Injection is a separate matter, and still required: a value import of either
- * era's module would statically link its WASM into whatever bundle reaches this
- * one, so a consumer of the other era would pay for a runtime it never calls.
- * Naming a type does not — type-only imports are erased.
+ * @see {@link InjectedVendorSlices} for why this slice is declared
+ * structurally rather than derived from one era's class.
+ * @see {@link ModuleGraphAndLazyLoading} for why the module is injected rather
+ * than imported.
  */
 export interface ContractStateDecoder {
   readonly ContractState: { readonly deserialize: (raw: Uint8Array) => DecodableContractState };
@@ -64,10 +57,10 @@ export interface ContractStateDecoder {
  * against it if there is one.
  *
  * `verifierKey` and `verifierKeyHash` are both absent for a blank slot — the
- * shape a constructor-built state has before a deploy fills it in. They are
- * absent rather than zero-length or a hash of nothing on purpose: hashing an
- * empty key yields a real-looking digest that a caller comparing hashes would
- * match against a contract that was never deployed.
+ * shape a constructor-built state has before a deploy fills it in.
+ *
+ * @see {@link FailClosedDecoding} for why they are absent rather than
+ * zero-length or a hash of nothing.
  */
 export interface ContractEntryPointPojo {
   readonly circuitId: string;
@@ -79,11 +72,11 @@ export interface ContractEntryPointPojo {
  * A contract state as plain data: the primary state in its encoded form, and
  * the entry points the state declares.
  *
- * `entryPoints` is an ARRAY, not a map keyed by circuit id. A contract state
- * can declare two distinct byte entry points that decode to the same name
- * (bytes that are not valid UTF-8 both resolve to the replacement character),
- * and a name-keyed result would silently drop one of them. An array leaves both
- * visible to a caller that has to reconcile them.
+ * `entryPoints` is an ARRAY, not a map keyed by circuit id: two distinct byte
+ * entry points can decode to the same name, and a caller has to reconcile
+ * them.
+ *
+ * @see {@link FailClosedDecoding}
  */
 export interface ContractStatePojo {
   readonly state: EncodedStateValue;
@@ -94,13 +87,14 @@ export interface ContractStatePojo {
  * Reads the primary state out of a raw envelope with the given era's extractor,
  * reporting every failure as {@link StateDecodeFailedError} naming `version`.
  *
- * Exists so the facade's two read methods fail the SAME way. Underneath, the
- * extractors raise `DownConvertFailedError` naming an extraction stage — a
- * class with no `version` field, and a diagnosis phrased around down-converting
- * a state for execution, which is not what a caller asking to read a state was
- * doing. A caller handed one era's bytes on the other era's object should learn
- * that from `extractState` and `decodeContractState` alike, not have to know
- * which of the two it called. The extractor's own diagnosis stays on `cause`.
+ * @param raw The serialized contract-state envelope.
+ * @param version The era whose extractor is used, and which every failure
+ * raised here names.
+ * @param extract The era's own envelope extractor.
+ * @returns The primary state read out of the envelope.
+ * @throws StateDecodeFailedError for every failure, carrying the extractor's
+ * own diagnosis on `cause`.
+ * @see {@link FailClosedDecoding}
  */
 export const extractStateWith = (
   raw: Uint8Array,
@@ -120,14 +114,18 @@ export const extractStateWith = (
  *
  * Nothing that crosses back is a live WASM handle: the primary state leaves as
  * an `EncodedStateValue` (plain objects, arrays, `Map`s, `Uint8Array`s and
- * primitives) and each entry point as a plain record. A caller therefore cannot
- * hold an object whose owning module it cannot see, and the result survives a
- * `structuredClone`.
+ * primitives) and each entry point as a plain record.
  *
- * Every failure leaves as {@link StateDecodeFailedError} naming `version` — the
- * era whose decoder was used — with the decoder's own diagnosis on `cause`. The
- * whole read is covered, not just the deserialization, so no raw runtime error
- * escapes this seam uncoded.
+ * @param raw The serialized contract-state envelope.
+ * @param version The era whose decoder is used, and which every failure raised
+ * here names.
+ * @param ledger The era module slice carrying its own `ContractState`.
+ * @returns The state and the entry points it declares, as plain data.
+ * @throws StateDecodeFailedError for every failure — the whole read is
+ * covered, not just the deserialization — with the decoder's own diagnosis on
+ * `cause`.
+ * @see {@link FailClosedDecoding}
+ * @see {@link EraSeam}
  */
 export const decodeContractStateWith = (
   raw: Uint8Array,
@@ -137,14 +135,8 @@ export const decodeContractStateWith = (
   try {
     const decoded = ledger.ContractState.deserialize(raw);
     const entryPoints = decoded.operations().map((entryPoint): ContractEntryPointPojo => {
-      // Not `?.`: `entryPoint` came from `operations()` on this same object, so
-      // a state that cannot resolve it is internally inconsistent, not a state
-      // with a blank slot. Optional chaining collapsed the two into the same
-      // answer, and `verifierKey: undefined` has a specific documented meaning
-      // — never deployed. A whole contract reading as never-deployed would send
-      // a caller comparing key hashes hunting a deployment bug that does not
-      // exist, so this leaves as StateDecodeFailedError like every other read
-      // failure here.
+      // Deliberately not optional-chained: an unresolvable entry point is an
+      // inconsistent state, not a blank slot -- see FailClosedDecoding.
       const operation = decoded.operation(entryPoint);
       if (operation === undefined) {
         throw new Error(

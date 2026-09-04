@@ -14,12 +14,9 @@
  */
 
 /**
- * Build entry for the `./engine` subpath.
+ * Build entry for the `./engine` subpath, re-exporting the engine
+ * implementation that lives under `lib/`.
  *
- * The engine implementation lives under `lib/` so it is not an entry of its
- * own; this module is what rollup emits as `dist/engine.js`, the chunk that
- * {@link loadLedger8Engine} reaches by dynamic import. Keeping it a separate
- * entry is what holds the retained `compact-runtime@0.16` glue and the
- * `@midnight-ntwrk/onchain-runtime-v3` WASM out of the package root.
+ * @see {@link ModuleGraphAndLazyLoading}
  */
 export * from './lib/v8/engine';

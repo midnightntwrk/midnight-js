@@ -15,7 +15,13 @@
 
 import type { LedgerVersion } from './lib/shared/ledger-version';
 
-/** Stable error-code strings for this package. Frozen so a downstream package cannot mutate the shared registry object at runtime. */
+/**
+ * Stable error-code strings for this package. Every error class in this module
+ * carries one of these on its `code` field, which is the field a consumer
+ * switches on to tell one failure from another.
+ *
+ * @see {@link SharedTableDiscipline}
+ */
 export const PROTOCOL_ERROR_CODES = Object.freeze({
   UNKNOWN_PROTOCOL_VERSION_READ: 'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_READ',
   UNKNOWN_PROTOCOL_VERSION_CONSTRUCT: 'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_CONSTRUCT',
@@ -30,8 +36,15 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
   UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS'
 } as const);
+/** The union of every value in {@link PROTOCOL_ERROR_CODES}; the type of every error class's `code` field. */
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[keyof typeof PROTOCOL_ERROR_CODES];
 
+/**
+ * Which call path asked for a ledger version:
+ * - `'read'` — the version was taken off an existing record.
+ * - `'construct'` — the version was chosen to build something new against the
+ *   network's current head.
+ */
 export type VersionResolutionPath = 'read' | 'construct';
 
 /**
@@ -50,12 +63,17 @@ export type ProtocolVersionUnknownReason = 'unknown' | 'malformed';
  * module -- the dependency stays one-way, so they are named here rather than
  * linked.
  *
- * `reason` distinguishes a malformed input (wrong shape/type, not a
- * protocol-version problem at all) from a well-formed but genuinely unknown
- * version (a real protocol version this framework build does not support
- * yet). `code` further splits each case by which call path produced it —
- * `read` for a version taken off an existing record, `construct` for a version
- * chosen to build something new against the network's current head.
+ * `code` is the field to switch on to tell all four cases apart: it splits
+ * `reason` by the `path` that produced it.
+ *
+ * @param protocolVersion The raw `protocolVersion` value that could not be
+ *   resolved. Carried for programmatic use, and rendered in the message.
+ * @param path Which call path asked for the version — see
+ *   {@link VersionResolutionPath}.
+ * @param reason A malformed input (wrong shape or type, not a
+ *   protocol-version problem at all) or a well-formed but genuinely unknown
+ *   version (a real protocol version this framework build does not support
+ *   yet) — see {@link ProtocolVersionUnknownReason}.
  */
 export class UnknownProtocolVersionError extends Error {
   readonly code:
@@ -90,9 +108,27 @@ export class UnknownProtocolVersionError extends Error {
  * Which lazily-loaded subpath export {@link Ledger8RuntimeMissingError} failed
  * to acquire. Each chunk pulls a different set of retained-era dependencies, so
  * naming the wrong one sends an operator to an entry point that loaded fine.
+ *
+ * @see {@link ModuleGraphAndLazyLoading}
  */
 export type RetainedEraSubpath = '/v8' | '/engine';
 
+/**
+ * Thrown when a lazily-loaded subpath export carrying the retained pre-fork
+ * runtime could not be acquired at all. Raised by `loadLedger8`
+ * (`lib/v8/load.ts`) and `loadLedger8Engine` (`lib/v8/load-engine.ts`), and
+ * surfaced through `createLedger8Engine` and `loadLedgerEra('v8')`.
+ *
+ * A failed acquisition is not memoised: the next call retries the import.
+ * Distinct from {@link Ledger8RuntimeInvalidError}, which reports a runtime
+ * that WAS acquired and then handed over incomplete.
+ *
+ * @param subpath Which chunk failed to load — see {@link RetainedEraSubpath}.
+ * @param cause The underlying module-resolution or initialisation failure,
+ *   preserved unchanged. Read it for which module actually failed.
+ * @see {@link ModuleGraphAndLazyLoading}
+ * @see {@link EraSeam}
+ */
 export class Ledger8RuntimeMissingError extends Error {
   readonly code = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING;
 
@@ -114,12 +150,9 @@ export class Ledger8RuntimeMissingError extends Error {
  * Which physical-copy axis `assertSharedLedger8Instance`
  * (`lib/v8/instance-guard.ts`) detected two distinct instances on.
  *
- * `'onchain-runtime-v3'` is the only member because it is the only retained
- * pre-fork package this one both depends on directly and can receive from a
- * consumer's own resolution — a `compact-runtime` build that re-exports it, a
- * bundler that failed to dedupe it, or the same version installed under both
- * npm scopes while the scope migration runs. A new axis joins only when it
- * gains a comparable second acquisition path.
+ * `'onchain-runtime-v3'` is the only member this framework version checks.
+ *
+ * @see {@link DualInstantiationGuard}
  */
 export type Ledger8InstanceAxis = 'onchain-runtime-v3';
 
@@ -127,22 +160,14 @@ export type Ledger8InstanceAxis = 'onchain-runtime-v3';
  * The npm scopes this package and its retained pre-fork runtimes are published
  * under, while the scope migration runs.
  *
- * Held apart from the `/` on purpose, and joined only at
- * {@link axisPackageNames}. The dual-publish
- * (`.github/scripts/publish-public-npm.mjs`) rewrites the old scope to the new
- * one inside built `.js`/`.d.ts` files as well as in `package.json`, matching
- * on the scope *with* its trailing slash. A scoped package name written as one
- * literal would therefore ship rewritten, collapsing the two names below into
- * one and turning a hint that names both scopes into one that names a single
- * scope twice. Splitting the scope from the slash leaves the rewrite nothing
- * to match; `errors.test.ts` holds that line.
+ * Do not join a scope to the `/` in one literal -- the dual-publish rewrite
+ * would collapse both names into one. See DualInstantiationGuard.
  */
 const PUBLISHED_SCOPES = Object.freeze(['@midnight-ntwrk', '@midnightntwrk'] as const);
 
 /**
- * The unscoped npm name of each axis. Both published copies of an axis carry
- * this same name under a different scope, so naming only one scope would point
- * every consumer installed from the other at a package not in their tree.
+ * The unscoped npm name of each axis; `axisPackageNames` joins every published
+ * scope onto it. See DualInstantiationGuard.
  */
 const AXIS_BARE_PACKAGE_NAMES: Readonly<Record<Ledger8InstanceAxis, string>> = Object.freeze(
   Object.assign(Object.create(null) as Record<Ledger8InstanceAxis, string>, {
@@ -158,21 +183,13 @@ const axisPackageNames = (axis: Ledger8InstanceAxis): readonly string[] =>
  * when the same-named WASM package resolved to two physically distinct copies
  * in this process (a dual-instantiation).
  *
- * Mixing copies does not corrupt results silently: wasm-bindgen emits an
- * `_assertClass` check on every object handed across a class boundary, so a
- * cross-copy handoff throws `expected instance of <Class>`. That failure is
- * loud but opaque — it names neither the package nor the duplicate install.
- * This error exists to replace it with one that does, at the point the two
- * copies are first observed rather than deep inside a down-convert.
+ * Carries no `cause`: this is a direct reference-equality assertion failure,
+ * not a wrapped lower-level exception.
  *
- * `axis` names the package the check ran on. This is a direct assertion
- * failure (a reference-equality mismatch), not a wrapped lower-level
- * exception, so unlike {@link DownConvertFailedError} there is no `cause` to
- * carry.
- *
- * The remediation names every mainstream package manager rather than the one
- * this repo happens to use, because this package is consumed by dApps
- * installed with all of them.
+ * @param axis Which physical-copy axis the check ran on — see
+ *   {@link Ledger8InstanceAxis}. It also selects the package names the
+ *   message tells the reader to trace.
+ * @see {@link DualInstantiationGuard}
  */
 export class Ledger8InstanceMismatchError extends Error {
   readonly code = PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH;
@@ -193,15 +210,10 @@ export class Ledger8InstanceMismatchError extends Error {
 
 /**
  * Which step of the down-convert pipeline a {@link DownConvertFailedError}
- * came from. A closed union rather than a free-form string for two reasons:
- * a consumer can `switch` on `stage` exhaustively, and no call site can
- * interpolate input-derived text into the error message, which is what keeps
- * the "never renders state contents" guarantee a property of this class
- * rather than of every caller's discipline.
+ * came from. A closed union, so a consumer can `switch` on `stage`
+ * exhaustively.
  *
- * Down-convert is version-agnostic — it consumes an already-extracted
- * `EncodedStateValue` whichever era it came from — so its stage carries no
- * version, unlike the two extraction stages.
+ * @see {@link FailClosedDecoding}
  */
 export type DownConvertStage = 'v8 envelope extraction' | 'v9 envelope extraction' | 'state down-convert';
 
@@ -209,13 +221,16 @@ export type DownConvertStage = 'v8 envelope extraction' | 'v9 envelope extractio
  * Thrown by the down-convert engine (`lib/era/envelope.ts`,
  * `lib/v8/down-convert.ts`) when it cannot turn a raw contract-state
  * envelope, or an already-extracted `EncodedStateValue`, into an executable
- * pre-fork state.
+ * pre-fork state. Raised by `extractV9EncodedStateValue` (`lib/era/envelope.ts`)
+ * and `downConvertForExecution` (`lib/v8/down-convert.ts`).
  *
- * `stage` names which step failed, so the message stays useful without ever
- * including the input bytes themselves — this class never renders raw hex or
- * decoded state contents, only the stage name and the wrapped `cause`. The
- * underlying runtime distinguishes tag-mismatch, truncated, trailing-bytes
- * and empty input in its own message; that detail is preserved on `cause`.
+ * Renders no raw hex and no decoded state contents — only the stage name and
+ * the wrapped `cause`.
+ *
+ * @param stage Which step failed — see {@link DownConvertStage}.
+ * @param cause The runtime's own failure, preserved unchanged. It is what
+ *   distinguishes a tag mismatch from truncated, trailing, or empty input.
+ * @see {@link FailClosedDecoding}
  */
 export class DownConvertFailedError extends Error {
   readonly code = PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED;
@@ -236,13 +251,17 @@ export class DownConvertFailedError extends Error {
 
 /**
  * Thrown by `checkRoot` (`lib/v8/down-convert.ts`) when a bounded Merkle
- * tree's root is read before the tree has been rehashed.
+ * tree's root is read before the tree has been rehashed. Reaches a caller
+ * through `assertMerkleTreesRehashed` and `downConvertForExecution`, which
+ * assert it on every tree they decode.
  *
- * A bounded Merkle tree only has a readable root once every node hash has
- * been computed; the vendor documents `root()` as returning `undefined` until
- * then, and `rehash()` as necessary "because the onchain runtime does not
- * automatically rehash trees". `downConvertForExecution` asserts this on
- * every tree it decodes, failing fast instead of silently repairing.
+ * The remediation is always the caller's: call `rehash()` on the tree before
+ * executing against it. Nothing here repairs the tree.
+ *
+ * @param cause The runtime's own failure, when reading the root threw. Absent
+ *   when `root()` returned nothing instead of throwing.
+ * @see {@link FailClosedDecoding}
+ * @see {@link RetainedEraExecution}
  */
 export class MerkleNotRehashedError extends Error {
   readonly code = PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED;
@@ -266,6 +285,8 @@ export class MerkleNotRehashedError extends Error {
  * reading `circuitId` off a caught error can compare against it instead of
  * matching a string this package could change, and so it can never be mistaken
  * for a real entry point a caller might try to resolve.
+ *
+ * @see {@link ComposeRefusalOrder}
  */
 export const NO_CIRCUIT = '(none)';
 
@@ -323,11 +344,10 @@ export const NO_CIRCUIT = '(none)';
  *
  * Which ledger era the failure happened on is carried separately, on the
  * error's `version` field. Every stage but `'wrap-call'` is reachable on both
- * eras, so folding the era into the stage would nearly double this union
- * without adding a distinction any caller wants to `switch` on. `'wrap-call'`
- * is the exception because the operation it names is itself fork-crossing: it
- * binds a pre-fork transcript onto a v9 state, so it is only ever raised for
- * `'v9'`.
+ * eras; `'wrap-call'` is only ever raised for `'v9'`.
+ *
+ * @see {@link ComposeRefusalOrder}
+ * @see {@link VerifierKeys}
  */
 export type ComposeStage =
   | 'wrap-call'
@@ -355,17 +375,26 @@ export type ComposeStage =
  *
  * Most stages are direct assertion failures (a missing lookup, not a wrapped
  * lower-level exception) and carry no `cause`, like
- * {@link Ledger8InstanceMismatchError}. The exceptions are
- * `'call-contract-state'` and `'deploy-verifier-key-blob'`, where the ledger
- * itself rejected caller-supplied bytes: that failure is preserved on `cause`,
- * the same way {@link DownConvertFailedError} preserves its runtime's own
- * message.
+ * {@link Ledger8InstanceMismatchError}. The exceptions are the stages where
+ * the ledger itself rejected caller-supplied bytes — enumerated under `cause`
+ * below: that failure is preserved on `cause`, the same way
+ * {@link DownConvertFailedError} preserves its runtime's own message.
  *
  * `circuitId` names the entry point, never its raw contents: this class
- * renders no hex and no byte-array dump, and callers pass entry-point names
- * that have already been decoded (see `entryPointName` in
- * `lib/shared/verifier-keys.ts`). `'call-empty'` is the one stage with no circuit
- * to name, and its message names none.
+ * renders no hex and no byte-array dump. `'call-empty'` is the one stage with
+ * no circuit to name, and its message names none.
+ *
+ * @param version The ledger era the composition was running against.
+ * @param stage Which composition step failed — see {@link ComposeStage}. A
+ *   closed union, so a consumer can `switch` on it exhaustively.
+ * @param circuitId The entry-point name, already decoded. {@link NO_CIRCUIT}
+ *   for `'call-empty'`, the one stage raised before any circuit is looked up.
+ * @param cause The runtime's own failure, present only for the stages where
+ *   the ledger itself rejected caller-supplied bytes: `'call-contract-state'`,
+ *   `'call-partition-context'`, `'call-partition'`, `'call-prototype'` and
+ *   `'deploy-verifier-key-blob'`.
+ * @see {@link ComposeRefusalOrder}
+ * @see {@link VerifierKeys}
  */
 export class ComposeFailedError extends Error {
   readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.COMPOSE_FAILED;
@@ -380,15 +409,8 @@ export class ComposeFailedError extends Error {
     this.name = 'ComposeFailedError';
   }
 
-  // A total Record rather than an if-chain, for the same reason
-  // ENVELOPE_DECODERS in lib/era/envelope.ts is one: adding a stage without
-  // its message fails to compile here, instead of silently shipping whichever
-  // message the fallthrough happened to reach.
-  //
-  // Every entry takes the era rather than naming one, so the same table serves
-  // both axes. An entry that hardcoded an era would report a v9 failure as a
-  // v8 one, which is worse than saying nothing: the two eras' remediations
-  // differ.
+  // A total Record, and every entry takes the era rather than naming one --
+  // see SharedTableDiscipline. Keep both properties when adding a stage.
   private static readonly MESSAGES: Readonly<
     Record<ComposeStage, (version: LedgerVersion, circuitId: string) => string>
   > = {
@@ -507,6 +529,9 @@ export class ComposeFailedError extends Error {
  * - `'zswapOffer'` — the supplied offer bytes were rejected by the target era's
  *   decoder. Raised on BOTH eras, for the same reason and with the same
  *   remediation: pass the bytes that era's own offer serialization produced.
+ *
+ * @see {@link ComposeRefusalOrder}
+ * @see {@link VerifierKeys}
  */
 export type ComposeOption = 'calls' | 'contractState' | 'networkId' | 'ttl' | 'verifierKeys' | 'zswapOffer';
 
@@ -515,16 +540,18 @@ export type ComposeOption = 'calls' | 'contractState' | 'networkId' | 'ttl' | 'v
  * all, as opposed to {@link ComposeFailedError}, which reports a circuit whose
  * operation is missing or under-registered.
  *
- * These are the well-formedness checks the ledger itself does not make. Which
- * network a deployment targets and what TTL policy it uses are the caller's
- * decisions, but an empty network id and an Invalid Date are not decisions —
- * they are defects that the WASM accepts silently, so they are rejected here
- * instead of surfacing as an unexplained rejection at submission time.
+ * These are the well-formedness checks the ledger itself does not make.
  *
- * `option` names the offending field and `version` the ledger era the option
- * was being used against. Like {@link DownConvertFailedError}, this class
- * renders no input contents of its own: a wrapped decoder failure is preserved
- * on `cause`.
+ * Like {@link DownConvertFailedError}, this class renders no input contents of
+ * its own.
+ *
+ * @param version The ledger era the option was being used against.
+ * @param option Which option was unusable — see {@link ComposeOption}. A
+ *   closed union, so a consumer can `switch` on it exhaustively.
+ * @param cause The decoder's own failure, present only for `'contractState'`
+ *   and `'zswapOffer'`, where caller-supplied bytes were rejected.
+ * @see {@link ComposeRefusalOrder}
+ * @see {@link VerifierKeys}
  */
 export class ComposeOptionError extends Error {
   readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID;
@@ -538,12 +565,8 @@ export class ComposeOptionError extends Error {
     this.name = 'ComposeOptionError';
   }
 
-  // A total Record rather than an if-chain, for exactly the reason
-  // `ComposeFailedError.MESSAGES` above is one: adding an option without its
-  // message fails to compile here. As an if-chain this fell through to the
-  // `'ttl'` text, so a seventh option would have told a caller their
-  // time-to-live was invalid while `option` named something else — an error
-  // contradicting its own field.
+  // A total Record, for exactly the reason `ComposeFailedError.MESSAGES` above
+  // is one -- see SharedTableDiscipline. Never make this an if-chain.
   private static readonly MESSAGES: Readonly<Record<ComposeOption, (version: LedgerVersion) => string>> = {
     contractState: (version) =>
       `Failed to compose a ${version} transaction: the given contract state could not be bridged into the ` +
@@ -579,19 +602,16 @@ export class ComposeOptionError extends Error {
 
 /**
  * Thrown when a raw, serialized contract-state envelope could not be read by
- * the ledger era it was requested for.
+ * the ledger era it was requested for. Raised by both of the facade's read
+ * paths, `extractState` and `decodeContractState`
+ * (`lib/shared/contract-state.ts`), so a caller writes one handler for both.
  *
- * Distinct from {@link DownConvertFailedError}, which reports a failure to
- * bridge an already-extracted state into the pre-fork execution algebra: this
- * one reports the envelope never having been readable at all. `version` names
- * the era whose decoder rejected it, which is the first thing a reader needs —
- * the same bytes are a valid state on one axis and refuse to decode on the
- * other, so an era-less message would send a caller to audit bytes that are
- * fine.
+ * Renders no hex and no byte dump of its own.
  *
- * Renders no hex and no byte dump of its own. The decoder's own diagnosis —
- * which distinguishes a tag mismatch from truncated, trailing or empty input —
- * is preserved on `cause`.
+ * @param version The era whose decoder rejected the envelope.
+ * @param cause The decoder's own diagnosis, preserved unchanged. It is what
+ *   distinguishes a tag mismatch from truncated, trailing or empty input.
+ * @see {@link FailClosedDecoding}
  */
 export class StateDecodeFailedError extends Error {
   readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED;
@@ -614,21 +634,21 @@ export class StateDecodeFailedError extends Error {
 /**
  * Thrown by `extractEncodedStateValue` (`lib/era/envelope.ts`) when the
  * injected pre-fork runtime cannot be used — it was not passed at all, or the
- * binding the decoder needs is absent from it.
+ * binding the decoder needs is absent from it. Also raised by
+ * `downConvertForExecution` (`lib/v8/down-convert.ts`) and
+ * `assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`), the latter for a
+ * nullish instance probe.
  *
- * Separate from {@link DownConvertFailedError} because the remediation is
- * unrelated: nothing is wrong with the caller's input. Folding this into a
- * down-convert failure would name an extraction stage and tell the caller to
- * read a cause describing tag mismatches and truncation, sending them to audit
- * data that is perfectly good. It is also distinct from
- * {@link Ledger8RuntimeMissingError}, which reports a *failed acquisition* of
- * the v8 chunk; this one reports a runtime that was acquired, or assembled by
- * hand, and then handed over incomplete.
+ * Nothing is wrong with the caller's input here. Distinct from
+ * {@link Ledger8RuntimeMissingError}, which reports the v8 chunk failing to
+ * load at all, and from {@link DownConvertFailedError}, which reports an
+ * envelope or state that could not be turned into an executable pre-fork
+ * state.
  *
- * Like {@link UnknownLedgerVersionError}, a TypeScript caller cannot produce
- * this — it exists for the untyped JavaScript consumers this package also
- * serves. `missingMember` names the absent binding; it is one of this module's
- * own literals rather than caller-supplied text, so exposing it leaks nothing.
+ * @param missingMember Which binding was absent. One of this module's own
+ *   literals, never caller-supplied text, so it is safe to log.
+ * @see {@link FailClosedDecoding}
+ * @see {@link DualInstantiationGuard}
  */
 export class Ledger8RuntimeInvalidError extends Error {
   readonly code = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID;
@@ -649,17 +669,13 @@ export class Ledger8RuntimeInvalidError extends Error {
  * Thrown by `assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`)
  * when the `axis` it was handed is not a member of {@link Ledger8InstanceAxis}.
  *
- * The counterpart of {@link UnknownLedgerVersionError} on the other closed
- * union this package validates at a boundary, and it exists for the same
- * untyped JavaScript consumers. The axis is not only a label: it selects the
- * package names {@link Ledger8InstanceMismatchError} tells the reader to trace,
- * so an unvalidated string would put an `Object.prototype` member where a
- * package name belongs, and would land in an `axis` field consumers are told
- * they can `switch` on.
+ * A TypeScript caller cannot produce this — `axis` is typed as
+ * {@link Ledger8InstanceAxis}. It exists for the untyped JavaScript consumers
+ * this package also serves.
  *
- * `requestedAxis` carries the offending value; like `requestedVersion` it is
- * kept out of the message, because caller-supplied text is the one thing these
- * errors never render.
+ * @param requestedAxis The offending value that was passed. Carried for
+ *   programmatic use only; it is deliberately kept out of the message.
+ * @see {@link DualInstantiationGuard}
  */
 export class UnknownLedger8AxisError extends Error {
   readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS;
@@ -678,19 +694,17 @@ export class UnknownLedger8AxisError extends Error {
  * `LEDGER_VERSIONS`. Raised by `loadLedgerEra` (`lib/era/load-era.ts`) and by
  * `extractEncodedStateValue` (`lib/era/envelope.ts`).
  *
- * TypeScript callers cannot produce this: `version` is typed as
+ * A TypeScript caller cannot produce this: `version` is typed as
  * `LedgerVersion`. It exists for the untyped JavaScript consumers this package
- * also serves, where an unvalidated era string threaded from an indexer
- * response would otherwise reach an era-keyed decision — and, where that
- * decision is a lookup table rather than a `switch`, could resolve an inherited
- * `Object.prototype` member and yield a plausible-looking non-era.
+ * also serves.
  *
- * `requestedVersion` carries the offending value for programmatic use. It is
- * deliberately kept out of the message: this is the one input on the seam that
- * comes straight from an untrusted caller, and the down-convert errors'
- * "never renders caller-supplied text" property is only worth having if it
- * holds here too. For the same reason this class names no `version` field —
- * there is no valid era to name.
+ * Carries no `version` field, unlike every other era-aware error here — there
+ * is no valid era to name.
+ *
+ * @param requestedVersion The offending value that was passed. Carried for
+ *   programmatic use only; it is deliberately kept out of the message.
+ * @see {@link SharedTableDiscipline}
+ * @see {@link FailClosedDecoding}
  */
 export class UnknownLedgerVersionError extends Error {
   readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION;

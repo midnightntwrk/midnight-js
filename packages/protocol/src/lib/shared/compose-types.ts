@@ -27,24 +27,15 @@ import type {
  * The query-context state a call recorded while it ran, which its pre-call
  * state bytes do not carry.
  *
- * Partitioning an unpartitioned transcript replays its program against a query
- * context, and that context has to be the one the circuit actually ran on. A
- * context rebuilt from `preState` alone is not: constructing one restores the
- * state and nothing else. compact-js's own v9 leg carries exactly these three
- * pieces across the same boundary (`ContractExecutable.js`,
- * `asLedgerQueryContext` and `partitionAllTranscripts`).
+ * `block` and `effects` are the PRE-call values; `comIndices` is the POST-call
+ * map. Plain data on every member.
  *
- * `block` and `effects` are the PRE-call values, because the partitioner
- * recomputes both from the program it replays — post-call values would be
- * counted twice. `comIndices` is the POST-call map: the runtime registers a
- * received coin's commitment as the circuit produces it
- * (`createZswapOutput` in the retained 0.16 glue), and a call that received a
- * coin in-contract cannot be partitioned without it.
- *
- * Plain data on every member, so the whole record crosses an era boundary and
- * survives a `structuredClone`. `CallContext` and `Effects` are declared once
- * against ledger-v9 and are structurally identical on all three axes
- * (compile-time drift gate in engine-down-convert.test.ts).
+ * @see {@link ComposeRefusalOrder} for why partitioning needs the context the
+ * circuit actually ran on, and why `CallContext` and `Effects` are declared
+ * once against ledger-v9.
+ * @see {@link RetainedEraExecution} for why each member is read off the
+ * context it is.
+ * @see {@link EraSeam}
  */
 export interface PartitionContext {
   readonly block: CallContext;
@@ -57,18 +48,20 @@ export interface PartitionContext {
  * Where a call's public transcript comes from. Two shapes, because neither
  * production leg subsumes the other:
  *
- * - `'unpartitioned'` — the retained pre-fork execution leg hands over the raw
- *   op sequence a circuit emitted, together with the state it ran against.
- *   Splitting it into a guaranteed and a fallible half is the ledger's job, and
- *   needs both halves — plus the {@link PartitionContext} the leg recorded,
- *   which the state bytes alone do not carry.
- * - `'partitioned'` — the current production path receives transcripts already
- *   split by compact-js. Re-deriving the split would mean rebuilding a query
- *   context the caller no longer has, to redo work already done.
+ * - `'unpartitioned'` — the raw op sequence a circuit emitted on the retained
+ *   pre-fork execution leg, the state it ran against, and the
+ *   {@link PartitionContext} that leg recorded.
+ * - `'partitioned'` — a guaranteed/fallible pair already split by compact-js,
+ *   which is the current production path.
  *
  * Every member is plain data in the ledger's own declared algebra — no live
- * WASM handle — so a source can be built, stored and moved across a boundary
- * without the module that produced it.
+ * WASM handle.
+ *
+ * @see {@link RetainedEraExecution} for the leg that submits the unpartitioned
+ * shape.
+ * @see {@link ComposeRefusalOrder} for why an already-partitioned pair is
+ * passed through rather than re-derived.
+ * @see {@link EraSeam}
  */
 export type CallTranscriptSource =
   | {
@@ -87,14 +80,16 @@ export type CallTranscriptSource =
  * One contract call in a call transaction.
  *
  * `contractState` is the raw, serialized state the call is dispatched against,
- * as read from chain — BYTES, not a live handle, so the same entry is usable on
- * either era. It supplies the registered operation for `circuitId`, including
- * its verifier key, which the call's key location hashes; a constructor-built
- * state will not do, because it declares its entry points with blank keys.
+ * as read from chain. It supplies the registered operation for `circuitId`,
+ * including its verifier key, which the call's key location hashes; a
+ * constructor-built state will not do, because it declares its entry points
+ * with blank keys.
  *
  * `communicationCommitmentRandomness` is the randomness the runtime bound a
  * cross-contract callee to its caller with. The root call — being no one's
  * callee — omits it and gets fresh randomness.
+ *
+ * @see {@link EraSeam}
  */
 export interface ComposeCallEntry {
   readonly contractAddress: string;
@@ -113,10 +108,12 @@ export interface ComposeCallEntry {
  * `calls` is in execution-trace order: cross-contract callees first, the root
  * call last. A circuit with no cross-contract calls has a single entry.
  *
- * The two Zswap offers are serialized offer BYTES, not handles, for the same
- * reason `ComposeCallEntry.contractState` is. `networkId` and `ttl` carry the
- * caller's policy decisions — which network, how long the transaction lives —
- * but their well-formedness is checked before composition starts.
+ * The two Zswap offers are serialized offer bytes. `networkId` and `ttl` carry
+ * the caller's policy decisions — which network, how long the transaction
+ * lives.
+ *
+ * @see {@link ComposeRefusalOrder} for when the envelope options are checked.
+ * @see {@link EraSeam}
  */
 export interface ComposeCallOptions {
   readonly calls: readonly ComposeCallEntry[];
@@ -130,16 +127,15 @@ export interface ComposeCallOptions {
  * Everything a deploy transaction needs.
  *
  * `contractState` is the raw, serialized initial state the contract's
- * constructor produced — BYTES, not a live handle, so the same options are
- * usable on either era.
+ * constructor produced.
  *
  * `verifierKeys` maps entry-point name -> raw, tagged verifier key bytes
- * (`keys/<id>.verifier`). A compiled contract's constructor declares an
- * operation slot per circuit but leaves its verifier key blank, so a deploy
- * has to carry real keys or a ledger refuses it. When supplied, the map must
- * name exactly the entry points the state declares — no more, no fewer. Omit
- * it only for a state that ALREADY carries its keys; omitting it for a
- * constructor-built state deploys a contract with unregistered entry points.
+ * (`keys/<id>.verifier`). When supplied, the map must name exactly the entry
+ * points the state declares — no more, no fewer. Omit it only for a state that
+ * ALREADY carries its keys.
+ *
+ * @see {@link VerifierKeys}
+ * @see {@link EraSeam}
  */
 export interface ComposeDeployOptions {
   readonly contractState: Uint8Array;
@@ -152,15 +148,14 @@ export interface ComposeDeployOptions {
 /**
  * What a composed deploy hands back.
  *
- * Not a bare `Uint8Array`, because the transaction alone is not enough to use
- * the deployment: `contractAddress` is derived from the initial state AFTER
- * the verifier keys are registered AND a fresh nonce is minted, so a caller
- * cannot recompute it at all — repeating the registration would not reproduce
- * it — and `initialState` is the state that address was derived from — what a caller stores and later hands to a call.
+ * `contractAddress` cannot be recomputed from the state a caller passed in, so
+ * it is handed back here rather than derived. `initialState` is the state that
+ * address was derived from — what a caller stores and later hands to a call.
  *
- * All three are plain data, so the whole result survives a `structuredClone`.
- * That is a transport guarantee, not an immutability one: `readonly` freezes
- * each reference, not the bytes behind it.
+ * All three are plain data.
+ *
+ * @see {@link VerifierKeys} for why the address cannot be recomputed.
+ * @see {@link EraSeam}
  */
 export interface DeployResultPojo {
   readonly transaction: Uint8Array;
