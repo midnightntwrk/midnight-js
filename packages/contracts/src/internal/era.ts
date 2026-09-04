@@ -14,13 +14,31 @@
  */
 
 import {
+  type LedgerEra,
+  type LedgerVersion,
+  loadLedgerEra,
+  networkHeadVersion,
+  protocolVersionToLedger,
+  UnknownLedgerVersionError
+} from '@midnight-ntwrk/midnight-js-protocol';
+import {
   type FinalizedTxData,
+  type PublicDataProvider,
+  type RawContractState,
   UntaggedPayloadError,
   type VersionedFinalizedTxData,
   type VersionedTx
 } from '@midnight-ntwrk/midnight-js-types';
+import { parseSerializedTag, TagParseError } from '@midnight-ntwrk/midnight-js-utils';
 
-import { EraInvariantViolationError, type EraSeam } from '../errors';
+import {
+  EraArtifactMismatchError,
+  EraInvariantViolationError,
+  type EraSeam,
+  HeadStateEraMismatchError,
+  IndexerInconsistencyError,
+  Ledger8DeployOnV9Error
+} from '../errors';
 
 /**
  * Unwraps the v9 arm of a versioned payload a provider returned. The flows in
@@ -95,3 +113,311 @@ export function requireV9Record(
     }
   }
 }
+
+/**
+ * Which execution pipeline an operation takes.
+ *
+ * `'ledger8'` is the retained pipeline, for a contract produced by the previous Compact
+ * toolchain; `'v9native'` is the current one. Named by the LEDGER ERA the pipeline executes
+ * against rather than by a toolchain version, because the toolchain moves independently of the
+ * ledger and a name pinned to it would go stale on the next compiler bump.
+ *
+ * Not a statement about the network — see {@link assertEraCompatible} for the pairing with the
+ * head era, which is what decides whether the operation can run at all.
+ */
+export type PipelineEra = 'ledger8' | 'v9native';
+
+/**
+ * The era facts one operation resolves ONCE, at its asynchronous start, and then threads down as
+ * a plain value.
+ *
+ * A named type rather than an anonymous return shape because it is threaded through the operation
+ * rather than consumed at the call site, and everything downstream has to name what it received.
+ *
+ * @see docs/adr/0008-never-latch-the-network-head-version.md for why this is per-operation and
+ * never cached across operations.
+ */
+export interface ResolvedOperationEra {
+  /** The ledger era the network head is on, as resolved at this operation's start. */
+  readonly head: LedgerVersion;
+  /**
+   * The raw head `protocolVersion` integer {@link head} was resolved from.
+   *
+   * Retained alongside the era because the integer distinguishes node minor versions that the era
+   * deliberately collapses, and an operation that has to report or log what it saw needs the value
+   * it actually read rather than a second reading of it.
+   */
+  readonly headProtocolVersion: number;
+  /** The era facade bound to {@link head}, acquired once so nothing downstream awaits an era. */
+  readonly era: LedgerEra;
+}
+
+/**
+ * The one read {@link resolveOperationEra} and {@link assertHeadStateEraAgreement} make on the
+ * public data provider.
+ *
+ * Declared as a `Pick` of the real provider rather than as the whole interface: a full
+ * `PublicDataProvider` satisfies it, so nothing at a call site changes, while a test — and a
+ * reader — sees exactly which member is consulted. It also keeps the head read from being
+ * confused with the many other reads the provider offers.
+ */
+export type HeadVersionSource = Pick<PublicDataProvider, 'queryLatestProtocolVersion'>;
+
+// The `constructor.name` a function declared `async` reports. The discriminator between a
+// retained-era contract instance and a current-era one, and it is a property of the real
+// generated artifacts rather than a convention: `src/test/era-dispatch-ledger8.test.ts` and
+// `src/test/era-dispatch.test.ts` each assert it against a real compiled contract before relying
+// on it.
+const ASYNC_FUNCTION = 'AsyncFunction';
+
+// Type guards rather than casts: `in` narrows the operand, so each of these reads a property off
+// a value it has just proved carries it, with no `as` forcing a shape onto an `unknown`.
+const hasImpureCircuits = (value: object): value is { readonly impureCircuits: unknown } =>
+  'impureCircuits' in value;
+
+const hasStringTag = (value: object): value is { readonly tag: string } =>
+  'tag' in value && typeof value.tag === 'string';
+
+const hasCallableInitialState = (value: object): value is { readonly initialState: (...args: never[]) => unknown } =>
+  'initialState' in value && typeof value.initialState === 'function';
+
+/**
+ * Decides which pipeline a caller's contract belongs to, from the object itself.
+ *
+ * ## Why this is structural, and why it must not be "improved" to use the brand
+ *
+ * `@midnight-ntwrk/compact-js` brands its `CompiledContract` with the registered symbol
+ * `Symbol.for('compact-js/CompiledContract')`, which looks like the obvious discriminator and is
+ * not usable as one. `CompiledContract.make` installs the brand on a PROTOTYPE
+ * (`Object.create(CompiledContractProto)`), and every combinator that makes a container usable —
+ * `withWitnesses`, `withVacantWitnesses`, `withCompiledFileAssets` — returns `{ ...self, ... }`,
+ * an own-enumerable-only spread that drops the prototype. A container only becomes usable once
+ * witnesses are attached, so by the time any real container reaches an entry point the brand is
+ * gone, and a brand test would report `false` for EVERY current-era caller. (`pipe` is lost to the
+ * same spread.) `src/test/era-dispatch.test.ts` pins that fact so this reasoning stays checkable.
+ *
+ * The internal `TypeId` symbol that DOES survive is a bare `Symbol()`, whose value differs between
+ * two copies of the package, so it is not duplicate-install safe and is not used either.
+ *
+ * What is left is own properties, which a spread preserves:
+ *
+ * | shape | `impureCircuits` | `initialState` | verdict |
+ * | ----- | ---------------- | -------------- | ------- |
+ * | current-era container | absent | absent | `'v9native'` |
+ * | retained-era instance | present | plain function | `'ledger8'` |
+ * | raw current-era instance | present | `AsyncFunction` | refused |
+ *
+ * The third row is the mistake a JavaScript caller actually makes — passing the generated contract
+ * where its container belongs — and it is why `impureCircuits` alone cannot decide the era. It is
+ * refused by name, never silently routed into the retained pipeline.
+ *
+ * @param compiledContract The value a caller passed as its contract. `unknown`, because a
+ * JavaScript caller can pass anything and the point of this function is to say what it passed.
+ * @returns The pipeline that contract belongs to.
+ * @throws EraArtifactMismatchError with reason `'unwrapped-current-era-contract'` for a raw
+ * current-era contract instance, and `'unrecognised-contract-shape'` for an object matching
+ * neither era.
+ */
+export const pipelineEraOf = (compiledContract: unknown): PipelineEra => {
+  if (typeof compiledContract !== 'object' || compiledContract === null) {
+    throw new EraArtifactMismatchError('unrecognised-contract-shape');
+  }
+
+  if (!hasImpureCircuits(compiledContract)) {
+    // The container carries a `tag` and none of the circuit collections. Requiring the `tag` as
+    // well as the absence of `impureCircuits` is what stops an arbitrary object — `{}` included —
+    // from being routed into the current-era pipeline by default.
+    if (hasStringTag(compiledContract)) {
+      return 'v9native';
+    }
+    throw new EraArtifactMismatchError('unrecognised-contract-shape');
+  }
+
+  if (!hasCallableInitialState(compiledContract)) {
+    throw new EraArtifactMismatchError('unrecognised-contract-shape');
+  }
+
+  if (compiledContract.initialState.constructor.name === ASYNC_FUNCTION) {
+    throw new EraArtifactMismatchError('unwrapped-current-era-contract');
+  }
+
+  return 'ledger8';
+};
+
+/**
+ * Resolves the era facts one operation runs against, with EXACTLY ONE head read.
+ *
+ * The single read is the whole point. Asking `networkHeadVersion` for the era and then asking the
+ * provider again for the raw integer is two network round trips, and during the fork window the
+ * second one can answer differently from the first — leaving one operation built half against each
+ * era. Both fields here come from the same reading.
+ *
+ * Nothing is cached across calls: two operations read the head twice, deliberately, because an era
+ * reading that has fallen behind cannot be recognised as stale from the integer itself
+ * (`docs/adr/0008-never-latch-the-network-head-version.md`).
+ *
+ * @param pdp The read surface to ask for the network head.
+ * @returns The head era, the integer it was resolved from, and the era facade bound to it.
+ * @throws UnknownProtocolVersionError tagged with the `construct` path when the head integer
+ * cannot be placed on the era timeline. A rejection from the provider propagates unchanged.
+ */
+export const resolveOperationEra = async (pdp: HeadVersionSource): Promise<ResolvedOperationEra> => {
+  const headProtocolVersion = await pdp.queryLatestProtocolVersion();
+  const head = protocolVersionToLedger(headProtocolVersion, 'construct');
+  // Acquired here, at the operation's asynchronous start, so every era operation downstream is
+  // synchronous and nothing deeper in the pipeline has to await a runtime -- see the era-seam
+  // document under `packages/protocol/docs/`.
+  const era = await loadLedgerEra(head);
+
+  return { head, headProtocolVersion, era };
+};
+
+/**
+ * Refuses an operation whose artifact era and network head era cannot be run together.
+ *
+ * The whole dispatch table, and every cell is ruled rather than left to fall through:
+ *
+ * | artifact | head | `'call'` | `'deploy'` |
+ * | -------- | ---- | -------- | ---------- |
+ * | current-era | `v9` | v9-native | v9-native |
+ * | retained-era | `v9` | keep-state | refused |
+ * | retained-era | `v8` | v8-native | v8-native |
+ * | current-era | `v8` | refused | refused |
+ *
+ * A retained-era DEPLOY on a post-fork head is the one cell where the two kinds differ: calls
+ * against contracts already on chain are what the retained era exists to keep working, and a new
+ * deployment has no such history to preserve.
+ *
+ * Returns nothing. Which pipeline runs is the `(pipeline, head)` pair the caller already holds;
+ * this decides only whether that pair may run, so it does not restate the pair as a third value
+ * that could disagree with it.
+ *
+ * @param pipeline The pipeline the artifact belongs to, from {@link pipelineEraOf}.
+ * @param head The era the network head is on, from {@link resolveOperationEra}.
+ * @param kind Whether this operation deploys a contract or calls one already deployed.
+ * @throws EraArtifactMismatchError with reason `'current-era-artifact-on-pre-fork-head'` for a
+ * current-era artifact on a pre-fork head.
+ * @throws Ledger8DeployOnV9Error for a retained-era deploy on a post-fork head.
+ * @throws UnknownLedgerVersionError if a ledger era is added without a cell here.
+ */
+export const assertEraCompatible = (pipeline: PipelineEra, head: LedgerVersion, kind: 'call' | 'deploy'): void => {
+  switch (pipeline) {
+    case 'v9native':
+      switch (head) {
+        case 'v9':
+          return;
+        case 'v8':
+          throw new EraArtifactMismatchError('current-era-artifact-on-pre-fork-head');
+        default: {
+          // A compile-time exhaustiveness gate, and the runtime throw is not redundant with it: a
+          // new era reaches here from a real head integer before this switch is updated.
+          const unhandled: never = head;
+          throw new UnknownLedgerVersionError(String(unhandled));
+        }
+      }
+    case 'ledger8':
+      switch (head) {
+        case 'v9':
+          if (kind === 'deploy') {
+            throw new Ledger8DeployOnV9Error();
+          }
+          return;
+        case 'v8':
+          return;
+        default: {
+          const unhandled: never = head;
+          throw new UnknownLedgerVersionError(String(unhandled));
+        }
+      }
+    default: {
+      const unhandled: never = pipeline;
+      throw new UnknownLedgerVersionError(String(unhandled));
+    }
+  }
+};
+
+// A serialized contract state carries a `midnight:contract-state[vN]:` envelope tag, where the
+// bracketed number is the STATE FORMAT version and not the ledger era: the v8 ledger writes `[v6]`
+// and the v9 ledger writes `[v8]`. Never infer an era from a `[vN]` by arithmetic -- the two
+// numbers are unrelated, and the same payload family carries a third, different `[vN]` for
+// transactions.
+//
+// The mapping itself is documented, with the same two entries, at
+// `packages/protocol/src/lib/era/envelope.ts` (see `ENVELOPE_DECODERS`), which is the authority
+// cited here rather than restated. `packages/indexer-public-data-provider/src/codec.ts` carries the
+// same table for the provider's own decode path, pinned there by a test that serializes a state
+// with each runtime; a shared home for it would be better than either copy, and needs a layer both
+// `contracts` and that provider can reach.
+const CONTRACT_STATE_ENVELOPE_ERAS: Readonly<Partial<Record<string, LedgerVersion>>> = Object.freeze({
+  'midnight:contract-state[v6]': 'v8',
+  'midnight:contract-state[v8]': 'v9'
+});
+
+/**
+ * Reads which ledger era wrote a serialized contract state, from the envelope tag in front of the
+ * body and WITHOUT decoding the body.
+ *
+ * @throws TagParseError when there is no well-formed tag prefix, or the tag is not one of the
+ * supported contract-state envelopes.
+ */
+const envelopeEraOf = (raw: Uint8Array): LedgerVersion => {
+  const { tag } = parseSerializedTag(raw);
+  const era = CONTRACT_STATE_ENVELOPE_ERAS[tag];
+  if (era === undefined) {
+    // Deliberately does not echo the observed tag: it is attacker-controlled and validated only
+    // against a character set, so embedding it verbatim would put arbitrary text in this message.
+    throw new TagParseError(
+      'The serialized contract state does not carry a contract-state envelope from a supported ledger ' +
+        'runtime. Verify the bytes came from a raw contract-state query and not from another serialized type.'
+    );
+  }
+  return era;
+};
+
+/**
+ * Refuses an operation whose network head and fetched contract state belong to different ledger
+ * eras.
+ *
+ * `RawContractState.version` cannot answer this: it is derived from the record's `protocolVersion`
+ * alone and is explicitly not a verified statement about the envelope the bytes carry (see its own
+ * documentation in `packages/types/src/raw-contract-state.ts`). This closes that gap by reading the
+ * envelope.
+ *
+ * The order is load-bearing:
+ *
+ * 1. The envelope tag is read BEFORE any decode, on both pipelines, so a state that cannot be
+ *    decoded at all is still dated and a decoder is never handed bytes from the wrong era.
+ * 2. ERAS are compared, never raw `protocolVersion` integers — a same-era node minor bump
+ *    (2_000_000 -> 2_001_000) is not a disagreement and must not be reported as one.
+ * 3. On a disagreement the head is re-read, FRESH. The provider issues an uncached request per
+ *    call, so a re-read really is a second reading of the network
+ *    (`docs/adr/0008-never-latch-the-network-head-version.md`).
+ * 4. If the fresh head now agrees with the state, the first reading was merely stale: the caller
+ *    can fix it by re-running, so {@link HeadStateEraMismatchError} says how.
+ * 5. If the fresh head still disagrees, the head was not stale and the two served answers cannot
+ *    both describe one chain: {@link IndexerInconsistencyError}, with retry-later text and never
+ *    a claim that a fork is under way.
+ *
+ * @param head The era the operation resolved from the network head.
+ * @param state The raw contract state the operation fetched, envelope included.
+ * @param pdp The read surface, for the fresh head read step 3 needs.
+ * @throws TagParseError if `state.raw` carries no supported contract-state envelope.
+ * @throws HeadStateEraMismatchError if a fresh head read agrees with the state's era.
+ * @throws IndexerInconsistencyError if a fresh head read still disagrees with it.
+ */
+export const assertHeadStateEraAgreement = async (
+  head: LedgerVersion,
+  state: RawContractState,
+  pdp: HeadVersionSource
+): Promise<void> => {
+  const stateEra = envelopeEraOf(state.raw);
+  if (stateEra === head) {
+    return;
+  }
+
+  const freshHead = await networkHeadVersion(pdp);
+  if (freshHead !== stateEra) {
+    throw new IndexerInconsistencyError(freshHead, stateEra);
+  }
+  throw new HeadStateEraMismatchError(head, stateEra);
+};
