@@ -22,6 +22,6 @@ The current user's ZSwap public key.
 
 ### signingKey?
 
-> `readonly` `optional` **signingKey?**: [`SigningKey`](../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md)
+> `readonly` `optional` **signingKey?**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The signing key to add as the to-be-deployed contract's maintenance authority.

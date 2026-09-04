@@ -8,7 +8,7 @@
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2409
 
-A Midnight transaction, consisting a section of ContractActions, and a guaranteed and fallible [ZswapOffer](../../../midnight-js-protocol/ledger/classes/ZswapOffer.md).
+A Midnight transaction, consisting a section of ContractActions, and a guaranteed and fallible [ZswapOffer](https://github.com/midnightntwrk/midnight-ledger).
 
 The guaranteed section are run first, and fee payment is taken during this
 part. If it succeeds, the fallible section is also run, and atomically
@@ -18,15 +18,15 @@ rolled back if it fails.
 
 ### S
 
-`S` *extends* [`Signaturish`](../../../midnight-js-protocol/ledger/type-aliases/Signaturish.md)
+`S` *extends* [`Signaturish`](https://github.com/midnightntwrk/midnight-ledger)
 
 ### P
 
-`P` *extends* [`Proofish`](../../../midnight-js-protocol/ledger/type-aliases/Proofish.md)
+`P` *extends* [`Proofish`](https://github.com/midnightntwrk/midnight-ledger)
 
 ### B
 
-`B` *extends* [`Bindingish`](../../../midnight-js-protocol/ledger/type-aliases/Bindingish.md)
+`B` *extends* [`Bindingish`](https://github.com/midnightntwrk/midnight-ledger)
 
 ## Properties
 
@@ -42,7 +42,7 @@ The binding randomness associated with this transaction
 
 ### fallibleOffer
 
-> **fallibleOffer**: `Map`\<`number`, [`ZswapOffer`](../../../midnight-js-protocol/ledger/classes/ZswapOffer.md)\<`P`\>\> \| `undefined`
+> **fallibleOffer**: `Map`\<`number`, [`ZswapOffer`](https://github.com/midnightntwrk/midnight-ledger)\<`P`\>\> \| `undefined`
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2600
 
@@ -55,14 +55,14 @@ the line.
 
 #### Throws
 
-On writing if `B` is [Binding](../../../midnight-js-protocol/ledger/classes/Binding.md) or this is not a standard
+On writing if `B` is [Binding](https://github.com/midnightntwrk/midnight-ledger) or this is not a standard
 transaction
 
 ***
 
 ### guaranteedOffer
 
-> **guaranteedOffer**: [`ZswapOffer`](../../../midnight-js-protocol/ledger/classes/ZswapOffer.md)\<`P`\> \| `undefined`
+> **guaranteedOffer**: [`ZswapOffer`](https://github.com/midnightntwrk/midnight-ledger)\<`P`\> \| `undefined`
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2612
 
@@ -75,14 +75,14 @@ the line.
 
 #### Throws
 
-On writing if `B` is [Binding](../../../midnight-js-protocol/ledger/classes/Binding.md) or this is not a standard
+On writing if `B` is [Binding](https://github.com/midnightntwrk/midnight-ledger) or this is not a standard
 transaction
 
 ***
 
 ### intents
 
-> **intents**: `Map`\<`number`, [`Intent`](../../../midnight-js-protocol/ledger/classes/Intent.md)\<`S`, `P`, `B`\>\> \| `undefined`
+> **intents**: `Map`\<`number`, [`Intent`](https://github.com/midnightntwrk/midnight-ledger)\<`S`, `P`, `B`\>\> \| `undefined`
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2588
 
@@ -95,14 +95,14 @@ but modifying existing intents will succeed.
 
 #### Throws
 
-On writing if `B` is [Binding](../../../midnight-js-protocol/ledger/classes/Binding.md) or this is not a standard
+On writing if `B` is [Binding](https://github.com/midnightntwrk/midnight-ledger) or this is not a standard
 transaction
 
 ***
 
 ### rewards
 
-> `readonly` **rewards**: [`ClaimRewardsTransaction`](../../../midnight-js-protocol/ledger/classes/ClaimRewardsTransaction.md)\<`S`\> \| `undefined`
+> `readonly` **rewards**: [`ClaimRewardsTransaction`](https://github.com/midnightntwrk/midnight-ledger)\<`S`\> \| `undefined`
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2576
 
@@ -118,8 +118,8 @@ Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2458
 
 Adds a set of new calls to the transaction.
 
-In contrast to [Intent.addCall](../../../midnight-js-protocol/ledger/classes/Intent.md#addcall), this takes calls *before*
-transcript partitioning ([partitionTranscripts](../../../midnight-js-protocol/ledger/functions/partitionTranscripts.md)), will create the
+In contrast to [Intent.addCall](https://github.com/midnightntwrk/midnight-ledger), this takes calls *before*
+transcript partitioning ([partitionTranscripts](https://github.com/midnightntwrk/midnight-ledger)), will create the
 target intent where needed, and will ensure that relevant Zswap parts are
 placed in the same section as contract interactions with them.
 
@@ -127,15 +127,15 @@ placed in the same section as contract interactions with them.
 
 ##### segment
 
-[`SegmentSpecifier`](../../../midnight-js-protocol/ledger/type-aliases/SegmentSpecifier.md)
+[`SegmentSpecifier`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### calls
 
-[`PrePartitionContractCall`](../../../midnight-js-protocol/ledger/classes/PrePartitionContractCall.md)[]
+[`PrePartitionContractCall`](https://github.com/midnightntwrk/midnight-ledger)[]
 
 ##### params
 
-[`LedgerParameters`](../../../midnight-js-protocol/ledger/classes/LedgerParameters.md)
+[`LedgerParameters`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### ttl
 
@@ -143,15 +143,15 @@ placed in the same section as contract interactions with them.
 
 ##### zswapInputs?
 
-[`ZswapInput`](../../../midnight-js-protocol/ledger/classes/ZswapInput.md)\<[`PreProof`](../../../midnight-js-protocol/ledger/classes/PreProof.md)\>[]
+[`ZswapInput`](https://github.com/midnightntwrk/midnight-ledger)\<[`PreProof`](https://github.com/midnightntwrk/midnight-ledger)\>[]
 
 ##### zswapOutputs?
 
-[`ZswapOutput`](../../../midnight-js-protocol/ledger/classes/ZswapOutput.md)\<[`PreProof`](../../../midnight-js-protocol/ledger/classes/PreProof.md)\>[]
+[`ZswapOutput`](https://github.com/midnightntwrk/midnight-ledger)\<[`PreProof`](https://github.com/midnightntwrk/midnight-ledger)\>[]
 
 ##### zswapTransient?
 
-[`ZswapTransient`](../../../midnight-js-protocol/ledger/classes/ZswapTransient.md)\<[`PreProof`](../../../midnight-js-protocol/ledger/classes/PreProof.md)\>[]
+[`ZswapTransient`](https://github.com/midnightntwrk/midnight-ledger)\<[`PreProof`](https://github.com/midnightntwrk/midnight-ledger)\>[]
 
 #### Returns
 
@@ -175,11 +175,11 @@ Adds provided intent to the segment specified.
 
 ##### segment
 
-[`SegmentSpecifier`](../../../midnight-js-protocol/ledger/type-aliases/SegmentSpecifier.md)
+[`SegmentSpecifier`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### intent
 
-[`Intent`](../../../midnight-js-protocol/ledger/classes/Intent.md)\<`S`, `P`, `B`\> \| `undefined`
+[`Intent`](https://github.com/midnightntwrk/midnight-ledger)\<`S`, `P`, `B`\> \| `undefined`
 
 #### Returns
 
@@ -203,11 +203,11 @@ Adds Zswap offer to the segment specified.
 
 ##### segment
 
-[`SegmentSpecifier`](../../../midnight-js-protocol/ledger/type-aliases/SegmentSpecifier.md)
+[`SegmentSpecifier`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### offer
 
-[`UnprovenOffer`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenOffer.md) \| `undefined`
+[`UnprovenOffer`](https://github.com/midnightntwrk/midnight-ledger) \| `undefined`
 
 #### Returns
 
@@ -221,7 +221,7 @@ If called on bound transactions.
 
 ### bind()
 
-> **bind**(): `Transaction`\<`S`, `P`, [`Binding`](../../../midnight-js-protocol/ledger/classes/Binding.md)\>
+> **bind**(): `Transaction`\<`S`, `P`, [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2501
 
@@ -229,13 +229,13 @@ Enforces binding for this transaction. This is irreversible.
 
 #### Returns
 
-`Transaction`\<`S`, `P`, [`Binding`](../../../midnight-js-protocol/ledger/classes/Binding.md)\>
+`Transaction`\<`S`, `P`, [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 ***
 
 ### cost()
 
-> **cost**(`params`, `enforceTimeToDismiss?`): [`SyntheticCost`](../../../midnight-js-protocol/ledger/type-aliases/SyntheticCost.md)
+> **cost**(`params`, `enforceTimeToDismiss?`): [`SyntheticCost`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2552
 
@@ -245,7 +245,7 @@ The underlying resource cost of this transaction.
 
 ##### params
 
-[`LedgerParameters`](../../../midnight-js-protocol/ledger/classes/LedgerParameters.md)
+[`LedgerParameters`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### enforceTimeToDismiss?
 
@@ -253,13 +253,13 @@ The underlying resource cost of this transaction.
 
 #### Returns
 
-[`SyntheticCost`](../../../midnight-js-protocol/ledger/type-aliases/SyntheticCost.md)
+[`SyntheticCost`](https://github.com/midnightntwrk/midnight-ledger)
 
 ***
 
 ### eraseProofs()
 
-> **eraseProofs**(): `Transaction`\<`S`, [`NoProof`](../../../midnight-js-protocol/ledger/classes/NoProof.md), [`NoBinding`](../../../midnight-js-protocol/ledger/classes/NoBinding.md)\>
+> **eraseProofs**(): `Transaction`\<`S`, [`NoProof`](https://github.com/midnightntwrk/midnight-ledger), [`NoBinding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2491
 
@@ -267,13 +267,13 @@ Erases the proofs contained in this transaction
 
 #### Returns
 
-`Transaction`\<`S`, [`NoProof`](../../../midnight-js-protocol/ledger/classes/NoProof.md), [`NoBinding`](../../../midnight-js-protocol/ledger/classes/NoBinding.md)\>
+`Transaction`\<`S`, [`NoProof`](https://github.com/midnightntwrk/midnight-ledger), [`NoBinding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 ***
 
 ### eraseSignatures()
 
-> **eraseSignatures**(): `Transaction`\<[`SignatureErased`](../../../midnight-js-protocol/ledger/classes/SignatureErased.md), `P`, `B`\>
+> **eraseSignatures**(): `Transaction`\<[`SignatureErased`](https://github.com/midnightntwrk/midnight-ledger), `P`, `B`\>
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2496
 
@@ -281,7 +281,7 @@ Removes signatures from this transaction.
 
 #### Returns
 
-`Transaction`\<[`SignatureErased`](../../../midnight-js-protocol/ledger/classes/SignatureErased.md), `P`, `B`\>
+`Transaction`\<[`SignatureErased`](https://github.com/midnightntwrk/midnight-ledger), `P`, `B`\>
 
 ***
 
@@ -299,7 +299,7 @@ Note that this is *only* accurate when called with proven transactions.
 
 ##### params
 
-[`LedgerParameters`](../../../midnight-js-protocol/ledger/classes/LedgerParameters.md)
+[`LedgerParameters`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### enforceTimeToDismiss?
 
@@ -328,7 +328,7 @@ very easy to get a completely unreasonable margin here!
 
 ##### params
 
-[`LedgerParameters`](../../../midnight-js-protocol/ledger/classes/LedgerParameters.md)
+[`LedgerParameters`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### margin
 
@@ -357,7 +357,7 @@ these *may* be used to watch for a specific transaction.
 
 ### imbalances()
 
-> **imbalances**(`segment`, `fees?`): `Map`\<[`TokenType`](../../../midnight-js-protocol/ledger/type-aliases/TokenType.md), `bigint`\>
+> **imbalances**(`segment`, `fees?`): `Map`\<[`TokenType`](https://github.com/midnightntwrk/midnight-ledger), `bigint`\>
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2547
 
@@ -376,7 +376,7 @@ surplus or deficit of this transaction in any token type is.
 
 #### Returns
 
-`Map`\<[`TokenType`](../../../midnight-js-protocol/ledger/type-aliases/TokenType.md), `bigint`\>
+`Map`\<[`TokenType`](https://github.com/midnightntwrk/midnight-ledger), `bigint`\>
 
 #### Throws
 
@@ -411,7 +411,7 @@ same coins
 
 ### mockProve()
 
-> **mockProve**(): `Transaction`\<`S`, [`Proof`](../../../midnight-js-protocol/ledger/classes/Proof.md), [`Binding`](../../../midnight-js-protocol/ledger/classes/Binding.md)\>
+> **mockProve**(): `Transaction`\<`S`, [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2439
 
@@ -423,7 +423,7 @@ that do not contain unproven contract calls.
 
 #### Returns
 
-`Transaction`\<`S`, [`Proof`](../../../midnight-js-protocol/ledger/classes/Proof.md), [`Binding`](../../../midnight-js-protocol/ledger/classes/Binding.md)\>
+`Transaction`\<`S`, [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 #### Throws
 
@@ -434,7 +434,7 @@ transaction contains unproven contract calls.
 
 ### prove()
 
-> **prove**(`provider`, `cost_model`): `Promise`\<`Transaction`\<`S`, [`Proof`](../../../midnight-js-protocol/ledger/classes/Proof.md), `B`\>\>
+> **prove**(`provider`, `cost_model`): `Promise`\<`Transaction`\<`S`, [`Proof`](https://github.com/midnightntwrk/midnight-ledger), `B`\>\>
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2446
 
@@ -445,15 +445,15 @@ This may *only* be called for `P = PreProof`.
 
 ##### provider
 
-[`ProvingProvider`](../../../midnight-js-protocol/ledger/type-aliases/ProvingProvider.md)
+[`ProvingProvider`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### cost\_model
 
-[`CostModel`](../../../midnight-js-protocol/ledger/classes/CostModel.md)
+[`CostModel`](https://github.com/midnightntwrk/midnight-ledger)
 
 #### Returns
 
-`Promise`\<`Transaction`\<`S`, [`Proof`](../../../midnight-js-protocol/ledger/classes/Proof.md), `B`\>\>
+`Promise`\<`Transaction`\<`S`, [`Proof`](https://github.com/midnightntwrk/midnight-ledger), `B`\>\>
 
 #### Throws
 
@@ -509,7 +509,7 @@ transaction.
 
 ### wellFormed()
 
-> **wellFormed**(`ref_state`, `strictness`, `tblock`): [`VerifiedTransaction`](../../../midnight-js-protocol/ledger/classes/VerifiedTransaction.md)
+> **wellFormed**(`ref_state`, `strictness`, `tblock`): [`VerifiedTransaction`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2508
 
@@ -519,11 +519,11 @@ Tests well-formedness criteria, optionally including transaction balancing
 
 ##### ref\_state
 
-[`LedgerState`](../../../midnight-js-protocol/ledger/classes/LedgerState.md)
+[`LedgerState`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### strictness
 
-[`WellFormedStrictness`](../../../midnight-js-protocol/ledger/classes/WellFormedStrictness.md)
+[`WellFormedStrictness`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### tblock
 
@@ -531,7 +531,7 @@ Tests well-formedness criteria, optionally including transaction balancing
 
 #### Returns
 
-[`VerifiedTransaction`](../../../midnight-js-protocol/ledger/classes/VerifiedTransaction.md)
+[`VerifiedTransaction`](https://github.com/midnightntwrk/midnight-ledger)
 
 #### Throws
 
@@ -549,15 +549,15 @@ Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2533
 
 ##### S
 
-`S` *extends* [`Signaturish`](../../../midnight-js-protocol/ledger/type-aliases/Signaturish.md)
+`S` *extends* [`Signaturish`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### P
 
-`P` *extends* [`Proofish`](../../../midnight-js-protocol/ledger/type-aliases/Proofish.md)
+`P` *extends* [`Proofish`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### B
 
-`B` *extends* [`Bindingish`](../../../midnight-js-protocol/ledger/type-aliases/Bindingish.md)
+`B` *extends* [`Bindingish`](https://github.com/midnightntwrk/midnight-ledger)
 
 #### Parameters
 
@@ -585,7 +585,7 @@ Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2533
 
 ### fromParts()
 
-> `static` **fromParts**(`network_id`, `guaranteed?`, `fallible?`, `intent?`): [`UnprovenTransaction`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
+> `static` **fromParts**(`network_id`, `guaranteed?`, `fallible?`, `intent?`): [`UnprovenTransaction`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2415
 
@@ -599,25 +599,25 @@ Creates a transaction from its parts.
 
 ##### guaranteed?
 
-[`UnprovenOffer`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenOffer.md)
+[`UnprovenOffer`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### fallible?
 
-[`UnprovenOffer`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenOffer.md)
+[`UnprovenOffer`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### intent?
 
-[`UnprovenIntent`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenIntent.md)
+[`UnprovenIntent`](https://github.com/midnightntwrk/midnight-ledger)
 
 #### Returns
 
-[`UnprovenTransaction`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
+[`UnprovenTransaction`](https://github.com/midnightntwrk/midnight-ledger)
 
 ***
 
 ### fromPartsRandomized()
 
-> `static` **fromPartsRandomized**(`network_id`, `guaranteed?`, `fallible?`, `intent?`): [`UnprovenTransaction`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
+> `static` **fromPartsRandomized**(`network_id`, `guaranteed?`, `fallible?`, `intent?`): [`UnprovenTransaction`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2421
 
@@ -632,25 +632,25 @@ allow merging.
 
 ##### guaranteed?
 
-[`UnprovenOffer`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenOffer.md)
+[`UnprovenOffer`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### fallible?
 
-[`UnprovenOffer`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenOffer.md)
+[`UnprovenOffer`](https://github.com/midnightntwrk/midnight-ledger)
 
 ##### intent?
 
-[`UnprovenIntent`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenIntent.md)
+[`UnprovenIntent`](https://github.com/midnightntwrk/midnight-ledger)
 
 #### Returns
 
-[`UnprovenTransaction`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
+[`UnprovenTransaction`](https://github.com/midnightntwrk/midnight-ledger)
 
 ***
 
 ### fromRewards()
 
-> `static` **fromRewards**\<`S`\>(`rewards`): `Transaction`\<`S`, [`PreProof`](../../../midnight-js-protocol/ledger/classes/PreProof.md), [`Binding`](../../../midnight-js-protocol/ledger/classes/Binding.md)\>
+> `static` **fromRewards**\<`S`\>(`rewards`): `Transaction`\<`S`, [`PreProof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2427
 
@@ -661,14 +661,14 @@ legitimately rewarded previously.
 
 ##### S
 
-`S` *extends* [`Signaturish`](../../../midnight-js-protocol/ledger/type-aliases/Signaturish.md)
+`S` *extends* [`Signaturish`](https://github.com/midnightntwrk/midnight-ledger)
 
 #### Parameters
 
 ##### rewards
 
-[`ClaimRewardsTransaction`](../../../midnight-js-protocol/ledger/classes/ClaimRewardsTransaction.md)\<`S`\>
+[`ClaimRewardsTransaction`](https://github.com/midnightntwrk/midnight-ledger)\<`S`\>
 
 #### Returns
 
-`Transaction`\<`S`, [`PreProof`](../../../midnight-js-protocol/ledger/classes/PreProof.md), [`Binding`](../../../midnight-js-protocol/ledger/classes/Binding.md)\>
+`Transaction`\<`S`, [`PreProof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>

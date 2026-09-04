@@ -6,6 +6,6 @@
 
 # Type Alias: AnyProvableCircuitId
 
-> **AnyProvableCircuitId** = [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<[`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)\>
+> **AnyProvableCircuitId** = [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<[`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)\>
 
 Defined in: packages/types/dist/index.d.ts:13

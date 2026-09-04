@@ -6,7 +6,7 @@
 
 # Type Alias: CircuitMaintenanceTxInterfaces\<C\>
 
-> **CircuitMaintenanceTxInterfaces**\<`C`\> = `Record`\<[`ProvableCircuitId`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>, [`CircuitMaintenanceTxInterface`](../interfaces/CircuitMaintenanceTxInterface.md)\>
+> **CircuitMaintenanceTxInterfaces**\<`C`\> = `Record`\<[`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>, [`CircuitMaintenanceTxInterface`](../interfaces/CircuitMaintenanceTxInterface.md)\>
 
 A set of maintenance transaction creation interfaces, one for each circuit defined in
 a given contract, keyed by the circuit name.
@@ -15,4 +15,4 @@ a given contract, keyed by the circuit name.
 
 ### C
 
-`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)

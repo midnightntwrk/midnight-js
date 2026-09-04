@@ -23,7 +23,7 @@ The provider to use to fetch the public states (Zswap and ledger)
 
 ### contractAddress
 
-[`ContractAddress`](../../../midnight-js-protocol/ledger/type-aliases/ContractAddress.md)
+[`ContractAddress$1`](https://github.com/midnightntwrk/midnight-ledger)
 
 The ledger address of the contract.
 
