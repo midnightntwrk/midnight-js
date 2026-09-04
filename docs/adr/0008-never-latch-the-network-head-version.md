@@ -43,12 +43,13 @@ Two further facts shape the decision:
   on-chain artifact with an address already handed out, not a transaction that
   can be rebuilt and resubmitted.
 
-An earlier iteration of the fork work cached the head reading behind a
-"corroboration" protocol: `IndexerPublicDataProvider` stored the head version
-once it had seen either a state read whose envelope and head version both
-reported the newer era, or a finalized record it had decoded itself. The stored
-value only ever moved forward, and the interface required the same protocol of
-every implementation.
+A spike during the fork work explored caching the head reading behind a
+"corroboration" protocol: the provider would store the head version once it had
+seen either a state read whose envelope and head version both reported the
+newer era, or a finalized record it had decoded itself; the stored value would
+only ever move forward, and the interface would have required the same protocol
+of every implementation. That shape never reached `main`; this ADR records why
+we did not take it.
 
 ## Decision
 
@@ -106,13 +107,13 @@ MJS-02/MJS-03, and this ADR is what it will be built against.
 - **Positive:** the answer to "which era is the network on" cannot be latched,
   so the next fork (v9 to v10) is observed rather than reported away; a read
   costs exactly the requests the caller asked for, with no corroborating
-  request bolted on; the interface loses a five-paragraph protocol prescribing
-  *how* to corroborate, which every future `PublicDataProvider` implementation
-  would have had to reproduce, and gains one bound instead — an implementation
-  is free to cache or not, and either choice is correct; the read path's era
-  answer is per-record, which is the granularity a fork-spanning history read
-  needs; `queryLatestProtocolVersion` means what its name says, to within one
-  bound.
+  request bolted on; the interface carries one bound instead of a five-paragraph
+  protocol prescribing *how* to corroborate, which every future
+  `PublicDataProvider` implementation would have had to reproduce — an
+  implementation is free to cache or not, and either choice is correct; the read
+  path's era answer is per-record, which is the granularity a fork-spanning
+  history read needs; `queryLatestProtocolVersion` means what its name says, to
+  within one bound.
 - **Negative:** the deploy path will pay one extra small request per deploy
   once step 1 is wired; as long as no implementation takes up the bounded
   cache, a consumer that polls the head version in a loop pays per iteration;
@@ -132,17 +133,18 @@ MJS-02/MJS-03, and this ADR is what it will be built against.
 
 ## Alternatives considered
 
-- **Cache the head reading behind a corroboration protocol** (the
-  implementation this ADR removes) — rejected on three grounds. First, an
-  inverted risk profile: `corroborateV9` only ever raised the stored value and
+- **Cache the head reading behind a corroboration protocol** (explored as a
+  spike, not adopted) — rejected on three grounds. First, an inverted risk
+  profile: the corroboration step would only ever raise the stored value, and
   only from a newer-era reading, so on a move to v10 nothing would clear it and
-  the provider would report v9 for the life of the process. It saved a request
-  mid-era, where the answer is stable and uninteresting, and misreported at the
-  era boundary, which is the only place the answer matters. Second, it was
-  inert in the window it was built for: its own contract forbade caching while
-  the network was still on the older era, so it did nothing during the v8-to-v9
-  transition and engaged only afterwards. Third, its net cost was negative:
-  corroborating from a finalized record issued an extra head request on every
+  the provider would report v9 for the life of the process. It would save a
+  request mid-era, where the answer is stable and uninteresting, and misreport
+  at the era boundary, which is the only place the answer matters. Second, it
+  would have been inert in the window it was built for: its own contract forbade
+  caching while the network was still on the older era, so it would have done
+  nothing during the v8-to-v9 transition, engaging only afterwards. Third, its
+  net cost would have been negative: corroborating from a finalized record would
+  have issued an extra head request on every
   `watchForTxData`/`watchForDeployTxData` until it engaged, repeating on every
   finalized transaction whenever the head read failed or the head was still
   pre-fork.
