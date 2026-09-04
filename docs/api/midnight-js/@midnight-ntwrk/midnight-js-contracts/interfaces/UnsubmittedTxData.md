@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -31,7 +31,7 @@ not an intended use.
 
 ### newCoins
 
-> `readonly` **newCoins**: [`ShieldedCoinInfo`](../../midnight-js-protocol/ledger/type-aliases/ShieldedCoinInfo.md)[]
+> `readonly` **newCoins**: [`ShieldedCoinInfo`](https://github.com/midnightntwrk/midnight-ledger)[]
 
 New coins created during the construction of the transaction.
 
@@ -39,6 +39,6 @@ New coins created during the construction of the transaction.
 
 ### unprovenTx
 
-> `readonly` **unprovenTx**: [`UnprovenTransaction`](../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
+> `readonly` **unprovenTx**: [`UnprovenTransaction`](https://github.com/midnightntwrk/midnight-ledger)
 
 The unproven ledger transaction produced.

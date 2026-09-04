@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -34,7 +34,7 @@ Initializes a new ContractTypeError.
 
 ##### contractState
 
-[`ContractState`](../../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
+[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
 The initial deployed contract state.
 
@@ -77,7 +77,7 @@ Defined in: packages/contracts/dist/index.d.ts:1041
 
 ### contractState
 
-> `readonly` **contractState**: [`ContractState`](../../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
+> `readonly` **contractState**: [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/contracts/dist/index.d.ts:1040
 

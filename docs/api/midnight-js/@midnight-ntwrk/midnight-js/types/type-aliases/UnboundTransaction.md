@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,6 +6,6 @@
 
 # Type Alias: UnboundTransaction
 
-> **UnboundTransaction** = [`Transaction`](../classes/Transaction.md)\<[`SignatureEnabled`](../../../midnight-js-protocol/ledger/classes/SignatureEnabled.md), [`Proof`](../../../midnight-js-protocol/ledger/classes/Proof.md), [`PreBinding`](../../../midnight-js-protocol/ledger/classes/PreBinding.md)\>
+> **UnboundTransaction** = [`Transaction`](../classes/Transaction.md)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`PreBinding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 Defined in: packages/types/dist/index.d.ts:822

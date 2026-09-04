@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -15,7 +15,7 @@ transaction balancing and finalization, and provides access to cryptographic sec
 
 ### balanceTx()
 
-> **balanceTx**(`tx`, `ttl?`): `Promise`\<[`FinalizedTransaction`](../../../midnight-js-protocol/ledger/type-aliases/FinalizedTransaction.md)\>
+> **balanceTx**(`tx`, `ttl?`): `Promise`\<[`FinalizedTransaction`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 Defined in: packages/types/dist/index.d.ts:1272
 
@@ -35,7 +35,7 @@ The transaction to balance.
 
 #### Returns
 
-`Promise`\<[`FinalizedTransaction`](../../../midnight-js-protocol/ledger/type-aliases/FinalizedTransaction.md)\>
+`Promise`\<[`FinalizedTransaction`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 ***
 

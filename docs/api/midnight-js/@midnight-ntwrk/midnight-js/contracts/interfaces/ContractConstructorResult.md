@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -14,13 +14,13 @@ The updated states resulting from executing a contract constructor.
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ## Properties
 
 ### nextContractState
 
-> `readonly` **nextContractState**: [`ContractState`](../../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
+> `readonly` **nextContractState**: [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/contracts/dist/index.d.ts:243
 
@@ -30,7 +30,7 @@ The public state resulting from executing the contract constructor.
 
 ### nextPrivateState
 
-> `readonly` **nextPrivateState**: [`PrivateState`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
+> `readonly` **nextPrivateState**: [`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 Defined in: packages/contracts/dist/index.d.ts:247
 
@@ -40,7 +40,7 @@ The private state resulting from executing the contract constructor.
 
 ### nextZswapLocalState
 
-> `readonly` **nextZswapLocalState**: [`ZswapLocalState`](../../../midnight-js-protocol/compact-runtime/interfaces/ZswapLocalState.md)
+> `readonly` **nextZswapLocalState**: [`ZswapLocalState`](https://github.com/LFDT-Minokawa/compact)
 
 Defined in: packages/contracts/dist/index.d.ts:251
 

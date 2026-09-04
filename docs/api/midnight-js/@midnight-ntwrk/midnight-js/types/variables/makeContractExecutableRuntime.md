@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Variable: makeContractExecutableRuntime
 
-> `const` **makeContractExecutableRuntime**: (`zkConfigProvider`, `options`) => [`ManagedRuntime`](#)\<[`Context`](../../../midnight-js-protocol/compact-js/namespaces/ContractExecutable/namespaces/ContractExecutable/type-aliases/Context.md), `ConfigError.ConfigError`\>
+> `const` **makeContractExecutableRuntime**: (`zkConfigProvider`, `options`) => [`ManagedRuntime`](#)\<[`ContractExecutable.ContractExecutable.Context`](https://github.com/midnightntwrk/midnight-sdk), `ConfigError.ConfigError`\>
 
 Defined in: packages/types/dist/index.d.ts:326
 
@@ -28,6 +28,6 @@ Values that will be mapped into and made available within the constructed runtim
 
 ## Returns
 
-[`ManagedRuntime`](#)\<[`Context`](../../../midnight-js-protocol/compact-js/namespaces/ContractExecutable/namespaces/ContractExecutable/type-aliases/Context.md), `ConfigError.ConfigError`\>
+[`ManagedRuntime`](#)\<[`ContractExecutable.ContractExecutable.Context`](https://github.com/midnightntwrk/midnight-sdk), `ConfigError.ConfigError`\>
 
-An Effect [ManagedRuntime](#) that can be used to execute [ContractExecutable](../../../midnight-js-protocol/compact-js/namespaces/ContractExecutable/README.md) instances.
+An Effect [ManagedRuntime](#) that can be used to execute [ContractExecutable](https://github.com/midnightntwrk/midnight-sdk) instances.

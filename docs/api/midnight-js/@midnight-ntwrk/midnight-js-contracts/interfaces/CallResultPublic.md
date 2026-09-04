@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -33,7 +33,7 @@ Empty when the circuit emits no logs.
 
 ### nextContractState
 
-> `readonly` **nextContractState**: [`StateValue`](../../midnight-js-protocol/onchain-runtime/classes/StateValue.md)
+> `readonly` **nextContractState**: [`StateValue`](https://github.com/midnightntwrk/midnight-ledger)
 
 The public state resulting from executing the circuit.
 
@@ -41,7 +41,7 @@ The public state resulting from executing the circuit.
 
 ### partitionedTranscript
 
-> `readonly` **partitionedTranscript**: [`PartitionedTranscript`](../../midnight-js-protocol/ledger/type-aliases/PartitionedTranscript.md)
+> `readonly` **partitionedTranscript**: [`PartitionedTranscript`](https://github.com/midnightntwrk/midnight-ledger)
 
 A [publicTranscript](#publictranscript) partitioned into guaranteed and fallible sections.
 The guaranteed section of a public transcript must succeed for the corresponding
@@ -52,6 +52,6 @@ can fail without invalidating the transaction, as long as the guaranteed section
 
 ### publicTranscript
 
-> `readonly` **publicTranscript**: [`Op`](../../midnight-js-protocol/onchain-runtime/type-aliases/Op.md)\<[`AlignedValue`](../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)\>[]
+> `readonly` **publicTranscript**: [`Op`](https://github.com/midnightntwrk/midnight-ledger)\<[`AlignedValue`](https://github.com/midnightntwrk/midnight-ledger)\>[]
 
 The public transcript resulting from executing the circuit.

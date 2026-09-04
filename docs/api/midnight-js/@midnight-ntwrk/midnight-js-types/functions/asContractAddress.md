@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: asContractAddress()
 
-> **asContractAddress**(`address`): [`ContractAddress`](../../midnight-js-protocol/platform-js/effect/ContractAddress/type-aliases/ContractAddress.md)
+> **asContractAddress**(`address`): [`ContractAddress`](https://github.com/midnightntwrk/midnight-sdk)
 
 Constructs a branded contract address from a given string value.
 
@@ -20,6 +20,6 @@ A string value representing a contract address.
 
 ## Returns
 
-[`ContractAddress`](../../midnight-js-protocol/platform-js/effect/ContractAddress/type-aliases/ContractAddress.md)
+[`ContractAddress`](https://github.com/midnightntwrk/midnight-sdk)
 
-A [ContractAddress](../../midnight-js-protocol/platform-js/effect/ContractAddress/variables/ContractAddress.md) constructed from `address`.
+A [ContractAddress](https://github.com/midnightntwrk/midnight-sdk) constructed from `address`.

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -22,7 +22,7 @@ The provider to use to fetch the unshielded balances from the blockchain.
 
 ### contractAddress
 
-[`ContractAddress`](../../../midnight-js-protocol/ledger/type-aliases/ContractAddress.md)
+[`ContractAddress$1`](https://github.com/midnightntwrk/midnight-ledger)
 
 The ledger address of the contract.
 

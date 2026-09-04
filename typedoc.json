@@ -19,16 +19,19 @@
       "ZKConfigProvider.getZKIR": "#"
     },
     "@midnightntwrk/ledger-v9": {
-      "ProvingProvider": "#"
+      "*": "https://github.com/midnightntwrk/midnight-ledger"
     },
     "@midnight-ntwrk/compact-js": {
-      "": "#"
+      "*": "https://github.com/midnightntwrk/midnight-sdk"
+    },
+    "@midnight-ntwrk/compact-runtime": {
+      "*": "https://github.com/LFDT-Minokawa/compact"
     },
     "@midnight-ntwrk/platform-js": {
-      "ContractAddress": "#"
+      "*": "https://github.com/midnightntwrk/midnight-sdk"
     },
     "@midnightntwrk/onchain-runtime-v4": {
-      "ContractAddress": "#"
+      "*": "https://github.com/midnightntwrk/midnight-ledger"
     },
     "@apollo/client": {
       "ApolloClient": "#"

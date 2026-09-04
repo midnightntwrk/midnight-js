@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -29,4 +29,4 @@ The source string.
 ## Throws
 
 `TypeError`
-`contractAddress` is not a correctly formatted [ContractAddress](../../../midnight-js-protocol/onchain-runtime/type-aliases/ContractAddress.md).
+`contractAddress` is not a correctly formatted [ContractAddress](https://github.com/midnightntwrk/midnight-ledger).
