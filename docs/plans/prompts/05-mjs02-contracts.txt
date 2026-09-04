@@ -1,13 +1,21 @@
 TASK: Execute Plan 3 — MJS-02 `contracts` unified entries & dispatch (issue #1005).
 
-PRECONDITION (verify live, it is now a single one): PR #1218 is merged to
-`main`. It carries the whole MJS-01 stack (#1155 → #1156 → #1164 → #1168 →
-#1165 → #1194 → #1198) and the #1006 half (#1204 → #1177 → #1207) in one merge
-commit. Everything the earlier version of this prompt listed separately —
-#1155/#1156, the Plan-2 D14-B PR, the cross-plan provider-members PR, the
-engine core from prompt 03, and the OQ13 era-tag/overload-typing inputs from
-prompt 01 — is inside it. Do not start before it lands: every branch here comes
-off clean `origin/main`.
+BASE (this replaces the old five-item prerequisite list): branch off
+`origin/feat/1004-protocol-dual-ledger` — the #1218 integration branch — and
+open every MJS-02 PR back onto it, continuing the existing stack. **#1218 does
+not have to reach `main` first.** That branch already carries the whole MJS-01
+stack (#1155 → #1156 → #1164 → #1168 → #1165 → #1194 → #1198) and the #1006
+half (#1204 → #1177 → #1207), so everything the earlier version of this prompt
+listed separately — #1155/#1156, the Plan-2 D14-B PR, the cross-plan
+provider-members PR, the engine core from prompt 03, and the OQ13
+era-tag/overload-typing inputs from prompt 01 — is already in the tree you
+branch from. Verify the tip live before starting; it still moves.
+
+STACK DISCIPLINE (learned on the MJS-01 stack, do not rediscover it): sync
+parent → child by **merge**, never rebase — rebasing orphans the merge bases
+the open PRs rest on. If the root `resolutions` pin moves, every stacked child
+needs its own `yarn.lock` commit or CI fails with YN0028. Merge, do not squash,
+anything the still-open children descend from.
 
 Invoke superpowers:subagent-driven-development with the plan:
 /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js/.worktrees/docs-superpowers-specs/docs/plans/2026-08-17-hf-mjs02-contracts-plan.md
@@ -83,7 +91,8 @@ the era-invariant assert on the 0.18 return path throws the already-registered
 `MIDNIGHT_JS_C_MIXED_ERA_SCOPE`; wrapped external causes (node submit
 rejection, proof-server HTTP) are sanitized before the logger seam.
 
-SOURCES YOU MAY CITE IN CODE (they are on `main`, unlike the spec): ADR 0004
+SOURCES YOU MAY CITE IN CODE (they ship with #1218, so they reach `main` with
+the work; the spec and the plan never do): ADR 0004
 (lazy v8 era access), ADR 0006 (version-tagged payloads at provider seams),
 ADR 0007 (cross the era boundary with plain data only), and the nine package
 documents under `packages/protocol/docs/` — `era-seam`,
@@ -94,8 +103,9 @@ documents under `packages/protocol/docs/` — `era-seam`,
 14-member `ComposeStage` union off `packages/protocol/src/errors.ts` rather
 than guessing it.
 
-Workflow: NEW wt worktree per PR from clean origin/main (prefix
-feat/1005-*); yarn install && yarn build before first push; TDD; SDD loop.
+Workflow: NEW wt worktree per PR, branched from the current tip of
+`origin/feat/1004-protocol-dual-ledger` (prefix feat/1005-*); yarn install &&
+yarn build before first push; TDD; SDD loop.
 Hard rules: never cite the spec (OQ*, §*, D*, file name) in code, comments or
 error messages — cite the ADRs and package documents above instead; codes
 MIDNIGHT_JS_C_* from the utils registry, every new code negative-tested
