@@ -16,6 +16,6 @@
 - [@midnight-ntwrk/midnight-js-logger-provider - v5.0.0-beta.7](@midnight-ntwrk/midnight-js-logger-provider/README.md)
 - [@midnight-ntwrk/midnight-js-network-id - v5.0.0-beta.7](@midnight-ntwrk/midnight-js-network-id/README.md)
 - [@midnight-ntwrk/midnight-js-node-zk-config-provider - v5.0.0-beta.7](@midnight-ntwrk/midnight-js-node-zk-config-provider/README.md)
-- [@midnight-ntwrk/midnight-js-protocol](@midnight-ntwrk/midnight-js-protocol/README.md)
+- [@midnight-ntwrk/midnight-js-protocol - v5.0.0-beta.7](@midnight-ntwrk/midnight-js-protocol/README.md)
 - [@midnight-ntwrk/midnight-js-types - v5.0.0-beta.7](@midnight-ntwrk/midnight-js-types/README.md)
 - [@midnight-ntwrk/midnight-js-utils - v5.0.0-beta.7](@midnight-ntwrk/midnight-js-utils/README.md)

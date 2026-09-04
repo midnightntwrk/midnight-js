@@ -18,7 +18,7 @@ Object containing the publicly visible states of a contract.
 
 ### contractState
 
-> `readonly` **contractState**: [`ContractState`](../../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
+> `readonly` **contractState**: [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/contracts/dist/index.d.ts:335
 
@@ -28,7 +28,7 @@ The (public) ledger state of a contract.
 
 ### ledgerParameters
 
-> `readonly` **ledgerParameters**: [`LedgerParameters`](../../../midnight-js-protocol/ledger/classes/LedgerParameters.md)
+> `readonly` **ledgerParameters**: [`LedgerParameters`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/contracts/dist/index.d.ts:339
 
@@ -38,7 +38,7 @@ The ledger parameters in effect on the block associated with the contract state.
 
 ### zswapChainState
 
-> `readonly` **zswapChainState**: [`ZswapChainState`](../../../midnight-js-protocol/ledger/classes/ZswapChainState.md)
+> `readonly` **zswapChainState**: [`ZswapChainState`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/contracts/dist/index.d.ts:331
 

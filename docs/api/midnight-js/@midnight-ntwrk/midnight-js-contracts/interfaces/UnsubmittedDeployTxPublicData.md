@@ -24,6 +24,6 @@ The ledger address of the contract that was deployed.
 
 ### initialContractState
 
-> `readonly` **initialContractState**: [`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
+> `readonly` **initialContractState**: [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
 The initial public state of the contract deployed to the blockchain.

@@ -6,9 +6,9 @@
 
 # Function: deserializeContractState()
 
-> **deserializeContractState**(`bytes`, `ctx`): [`ContractState`](../../midnight-js-protocol/ledger/classes/ContractState.md)
+> **deserializeContractState**(`bytes`, `ctx`): [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
-Deserialize a ledger [LedgerContractState](../../midnight-js-protocol/ledger/classes/ContractState.md) from raw bytes.
+Deserialize a ledger [LedgerContractState](https://github.com/midnightntwrk/midnight-ledger) from raw bytes.
 
 ## Parameters
 
@@ -22,7 +22,7 @@ Deserialize a ledger [LedgerContractState](../../midnight-js-protocol/ledger/cla
 
 ## Returns
 
-[`ContractState`](../../midnight-js-protocol/ledger/classes/ContractState.md)
+[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
 ## Throws
 

@@ -18,7 +18,7 @@ Options for use when creating scoped transactions.
 
 Defined in: packages/contracts/dist/index.d.ts:752
 
-An optional mapping of [CoinPublicKey](../../../midnight-js-protocol/onchain-runtime/type-aliases/CoinPublicKey.md) to [EncPublicKey](../../../midnight-js-protocol/ledger/type-aliases/EncPublicKey.md) that can be used to resolve encryption
+An optional mapping of [CoinPublicKey](https://github.com/midnightntwrk/midnight-ledger) to [EncPublicKey](https://github.com/midnightntwrk/midnight-ledger) that can be used to resolve encryption
 keys for coins created during circuit execution.
 
 ***

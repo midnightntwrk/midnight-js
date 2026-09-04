@@ -20,7 +20,7 @@ The verifier keys the client has for the deployed contract we're checking.
 
 ### contractState
 
-[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
+[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
 The (typically already deployed) contract state containing verifier keys.
 

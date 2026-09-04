@@ -27,7 +27,7 @@ Represents the current number of funds available or held in an account.
 
 ### tokenType
 
-> `readonly` **tokenType**: [`RawTokenType`](../../../midnight-js-protocol/ledger/type-aliases/RawTokenType.md)
+> `readonly` **tokenType**: [`RawTokenType`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/types/dist/index.d.ts:259
 
