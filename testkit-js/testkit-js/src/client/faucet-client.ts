@@ -43,7 +43,7 @@ export class FaucetClient {
    */
   async health() {
     const url = buildUrlWithPath(this.faucetUrl, '/api/health');
-    const response = await axios.get(url, { timeout: 1000 });
+    const response = await axios.get(url, { timeout: 15000 });
     this.logger.info(`Connected to faucet ${url}: ${JSON.stringify(response.data)}`);
     return response;
   }
