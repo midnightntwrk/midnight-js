@@ -46,24 +46,6 @@ import { describe, expect, it } from 'vitest';
 const TEST_DIR = fileURLToPath(new URL('./', import.meta.url));
 
 /**
- * How the named file spells its assertion. The default is the strict form; the
- * table form is an explicit, reviewable opt-in.
- */
-type NegativeForm =
-  /**
-   * `expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.X)).toBe(true)` -- both
-   * idioms on ONE line, so the assertion provably concerns this code.
-   */
-  | 'direct'
-  /**
-   * A parameterised table: the code is a ROW FIELD named `code`, and one
-   * `it.each` body asserts `hasErrorCode(error, code)` over every row. The two
-   * idioms cannot share a line in this form, so it is checked as two lines
-   * TIED THROUGH THE FIELD NAME instead of as two free-floating substrings.
-   */
-  | 'table';
-
-/**
  * One registered code, and the test file that refuses with it.
  *
  * `code` is typed as {@link ContractsErrorCode} rather than as `string`. What
@@ -80,13 +62,12 @@ interface NegativeTestLocation {
   readonly file: string;
   /** What the negative actually provokes, for a reader arriving at a failure. */
   readonly refusal: string;
-  /** Defaults to `'direct'`; only a parameterised table needs `'table'`. */
-  readonly form?: NegativeForm;
 }
 
 // HAND-MAINTAINED. Every entry names a test that provokes the refusal and
-// asserts `hasErrorCode(error, CONTRACTS_ERROR_CODES.X)` on it -- the idiom the
-// checks below measure coverage by.
+// asserts `hasErrorCode(error, CONTRACTS_ERROR_CODES.X)` ON ONE LINE -- the one
+// idiom the check below measures coverage by. There is no second accepted form
+// and no exemption: see `assertsNegativeFor`.
 const NEGATIVE_TEST_LOCATIONS: readonly NegativeTestLocation[] = [
   {
     code: CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION,
@@ -101,10 +82,7 @@ const NEGATIVE_TEST_LOCATIONS: readonly NegativeTestLocation[] = [
   {
     code: CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9,
     file: 'era-dispatch.test.ts',
-    refusal: 'a retained-era deploy against a post-fork head',
-    // The dispatch table's refused cells are asserted by one `it.each` body,
-    // so this code appears as a row field rather than on the assertion line.
-    form: 'table'
+    refusal: 'a retained-era deploy against a post-fork head'
   },
   {
     code: CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH,
@@ -178,49 +156,37 @@ const readTestSource = (file: string): readonly string[] =>
   readFileSync(resolve(TEST_DIR, file), 'utf8').split('\n');
 
 /**
- * The field name a parameterised refusal table carries its code under.
- *
- * ONE name, checked on both sides of the {@link NegativeForm} `'table'` branch,
- * which is what TIES the row to the assertion that consumes it. A table using
- * a different field name is not recognised, deliberately: the alternative is
- * matching `hasErrorCode(` against any identifier at all, which is the
- * free-floating check this replaced.
- */
-const TABLE_CODE_FIELD = 'code';
-
-/**
  * Whether `source` really asserts a negative for `name`.
  *
- * The predicate this file's whole value rests on, so it is written to be hard
- * to satisfy by accident. The earlier version asserted two INDEPENDENT
- * substrings anywhere in the file -- `hasErrorCode(` and
- * `CONTRACTS_ERROR_CODES.<NAME>` -- and never checked they were related. That
- * went GREEN with zero coverage for a code whose only mention in the named
- * file was a `// TODO:` comment, because `hasErrorCode(` was already satisfied
- * by eleven unrelated assertions there. A gate that can pass with no coverage
- * is the one thing this file exists to prevent.
+ * ONE form, and no way to opt out of it: a line carrying BOTH
+ * `hasErrorCode(` and `CONTRACTS_ERROR_CODES.<NAME>`, which is the shape of
+ * `expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.X)).toBe(true)`.
+ *
+ * ## Two weaker versions of this check, and why neither survived
+ *
+ * The first asserted two INDEPENDENT substrings anywhere in the file --
+ * `hasErrorCode(` and `CONTRACTS_ERROR_CODES.<NAME>` -- and never checked they
+ * were related. It went GREEN with zero coverage for a code whose only mention
+ * in the named file was a `// TODO:` comment, because `hasErrorCode(` was
+ * already satisfied by eleven unrelated assertions there.
+ *
+ * The second added a `'table'` opt-in for a parameterised refusal table, whose
+ * two idioms cannot share a line. That worked, but an opt-in is a documented
+ * way to talk the gate around, and the whole value of this gate is that it
+ * cannot be talked around -- so the opt-in is gone and the one code that
+ * needed it, `LEDGER8_DEPLOY_ON_V9`, has a direct negative of its own in
+ * `era-dispatch.test.ts`. Its parameterised table still asserts the code as
+ * well; that assertion is simply no longer what this gate measures.
+ *
+ * A future code whose negative is awkward to spell directly gets a direct
+ * negative too. It does not get an exemption.
  */
-const assertsNegativeFor = (source: readonly string[], name: string, form: NegativeForm): boolean => {
+const assertsNegativeFor = (source: readonly string[], name: string): boolean => {
   const codeExpression = `CONTRACTS_ERROR_CODES.${name}`;
 
-  if (form === 'direct') {
-    // Both idioms on ONE line. A comment mentioning the code cannot satisfy
-    // this without also spelling the call on the same line.
-    return source.some((line) => line.includes('hasErrorCode(') && line.includes(codeExpression));
-  }
-
-  // The table form, as two lines tied through TABLE_CODE_FIELD:
-  //   1. a row assigns this code to that field, and
-  //   2. a body asserts `hasErrorCode(error, <that field>)`.
-  // Matched on the TRIMMED line for (1), so a `// TODO: code: CONTRACTS_...`
-  // comment does not qualify -- a comment line does not start with the field.
-  const rowAssignsCode = source.some((line) => {
-    const trimmed = line.trim();
-    return trimmed === `${TABLE_CODE_FIELD}: ${codeExpression}` || trimmed === `${TABLE_CODE_FIELD}: ${codeExpression},`;
-  });
-  const bodyAssertsField = source.some((line) => line.includes(`hasErrorCode(error, ${TABLE_CODE_FIELD})`));
-
-  return rowAssignsCode && bodyAssertsField;
+  // Both idioms on ONE line. A comment mentioning the code cannot satisfy this
+  // without also spelling the call on the same line.
+  return source.some((line) => line.includes('hasErrorCode(') && line.includes(codeExpression));
 };
 
 describe('every code in CONTRACTS_ERROR_CODES has a negative test', () => {
@@ -237,7 +203,7 @@ describe('every code in CONTRACTS_ERROR_CODES has a negative test', () => {
 
   it.each(NEGATIVE_TEST_LOCATIONS)(
     'covers $code in $file, refusing $refusal',
-    ({ code, file, form }) => {
+    ({ code, file }) => {
       // The claim is measured against the named file's own text rather than
       // taken on trust: an entry naming a file that had been renamed, or that
       // never asserted the code, would otherwise keep this gate green while
@@ -250,7 +216,7 @@ describe('every code in CONTRACTS_ERROR_CODES has a negative test', () => {
       // `code` took the wrong path.
       const source = readTestSource(file);
 
-      expect(assertsNegativeFor(source, registryName(code), form ?? 'direct')).toBe(true);
+      expect(assertsNegativeFor(source, registryName(code))).toBe(true);
     }
   );
 
@@ -263,28 +229,31 @@ describe('every code in CONTRACTS_ERROR_CODES has a negative test', () => {
       "expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.SOMETHING_ELSE)).toBe(true);"
     ];
 
-    expect(assertsNegativeFor(commentOnly, 'MIXED_ERA_SCOPE', 'direct')).toBe(false);
-    // And the same source cannot sneak through the table branch either.
-    expect(assertsNegativeFor(commentOnly, 'MIXED_ERA_SCOPE', 'table')).toBe(false);
+    expect(assertsNegativeFor(commentOnly, 'MIXED_ERA_SCOPE')).toBe(false);
   });
 
-  it('recognises the direct form only when both idioms share a line', () => {
+  it('recognises a negative only when both idioms share a line', () => {
     const split = [
       'const expected = CONTRACTS_ERROR_CODES.STALE_HEAD;',
       'expect(hasErrorCode(error, expected)).toBe(true);'
     ];
     const together = ['expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.STALE_HEAD)).toBe(true);'];
 
-    expect(assertsNegativeFor(split, 'STALE_HEAD', 'direct')).toBe(false);
-    expect(assertsNegativeFor(together, 'STALE_HEAD', 'direct')).toBe(true);
+    expect(assertsNegativeFor(split, 'STALE_HEAD')).toBe(false);
+    expect(assertsNegativeFor(together, 'STALE_HEAD')).toBe(true);
   });
 
-  it('recognises the table form only when a row field and an assertion on that field both exist', () => {
-    const rowOnly = [`    ${TABLE_CODE_FIELD}: CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9`];
-    const assertionOnly = [`expect(hasErrorCode(error, ${TABLE_CODE_FIELD})).toBe(true);`];
+  it('recognises NO negative from a parameterised table, so there is no exemption to opt into', () => {
+    // The escape hatch, asserted CLOSED. A refusal table spreads the two
+    // idioms over two lines, which an earlier version of this file accepted
+    // through a `form: 'table'` opt-in. The opt-in is gone: an opt-in is a
+    // documented way to talk the gate around, and every code -- including the
+    // one that used to need the branch -- now carries a direct negative.
+    const parameterisedTable = [
+      '    code: CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9',
+      '      expect(hasErrorCode(error, code)).toBe(true);'
+    ];
 
-    expect(assertsNegativeFor(rowOnly, 'LEDGER8_DEPLOY_ON_V9', 'table')).toBe(false);
-    expect(assertsNegativeFor(assertionOnly, 'LEDGER8_DEPLOY_ON_V9', 'table')).toBe(false);
-    expect(assertsNegativeFor([...rowOnly, ...assertionOnly], 'LEDGER8_DEPLOY_ON_V9', 'table')).toBe(true);
+    expect(assertsNegativeFor(parameterisedTable, 'LEDGER8_DEPLOY_ON_V9')).toBe(false);
   });
 });
