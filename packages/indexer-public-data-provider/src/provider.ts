@@ -149,10 +149,14 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * Reads the protocol-version integer of the network's head block.
    *
    * The indexer's `block` root field with no offset resolves to the latest
-   * indexed block, so this is the head version. Every call issues a request:
-   * see `PublicDataProvider.queryLatestProtocolVersion` for why this answer is
-   * deliberately never cached, and {@link queryRawContractState} for the era of
-   * a record already read, which costs no request at all.
+   * indexed block, so this is the head version.
+   *
+   * This implementation does not cache: every call issues a request. The
+   * interface permits a cache bounded short of block time — see
+   * `PublicDataProvider.queryLatestProtocolVersion` — but there is no measured
+   * cost here to spend that budget on, and an expiring cache is not free to
+   * get right. For the era of a record already read, use
+   * {@link queryRawContractState}, which costs no request at all.
    *
    * @throws {IndexerDataError} When the indexer has not indexed a block yet
    *   and therefore reports no head block.

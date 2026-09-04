@@ -483,13 +483,20 @@ export interface PublicDataProvider {
    * Retrieves the protocol-version integer reported by the network's current
    * head block.
    *
-   * Every call reads the network. Implementations MUST NOT cache the answer.
-   * The reason to ask is to learn which ledger era a transaction being built
-   * now will land in, and that is exactly the question a stale answer gets
-   * wrong at the one moment it matters — the fork boundary. An era only ever
-   * moves forward, so a cached reading that has fallen behind cannot be
-   * corrected by a later reading of the same kind: it would have to be
-   * recognised as wrong first (see ADR 0008).
+   * Implementations MAY serve this from a cache, on one condition: the cached
+   * answer must expire by itself, on a bound short relative to block time.
+   * What is forbidden is a reading held indefinitely.
+   *
+   * The reason for the condition: the point of asking is to learn which ledger
+   * era a transaction being built now will land in, and that is exactly the
+   * question a stale answer gets wrong at the one moment it matters — the fork
+   * boundary. An era only ever moves forward, so a reading that has fallen
+   * behind cannot be corrected by a later reading of the same kind; it would
+   * have to be recognised as wrong first, and nothing in a head integer
+   * announces that. A cache that expires needs no such recognition. It is also
+   * why this member takes no "give me a fresh one" option: under the bound,
+   * every answer is at most one bound old, so there is nothing for a caller to
+   * opt out of (see ADR 0008).
    *
    * This is the construct-path counterpart to the `protocolVersion` that every
    * read on this interface already carries. Prefer that field wherever the era
