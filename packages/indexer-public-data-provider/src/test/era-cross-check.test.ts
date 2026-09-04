@@ -244,10 +244,9 @@ describe('queryContractState dates the state it decodes', () => {
     expect((rejection as IndexerDataError).context).toEqual({ kind: 'unsupported-decode-era', version: 'v8' });
   });
 
-  test('corroborates the head era, so the next head read costs no request', async () => {
-    // The reason the field is worth selecting: an unpinned state read now
-    // carries the same evidence the raw path does - a head reading plus an
-    // envelope that agrees with it - so it engages the head cache.
+  test('an unpinned state read leaves a head read costing a request of its own', async () => {
+    // The per-read `protocolVersion` answers the era of these bytes. It is not
+    // a reading of where the network is now, and must not stand in for one.
     const query = dispatchingQuery(
       new Map<DocumentNode, unknown>([
         [CONTRACT_STATE_QUERY, stateResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION)],
@@ -258,48 +257,22 @@ describe('queryContractState dates the state it decodes', () => {
 
     await provider.queryContractState(ADDRESS);
     const before = headRequestCount(query);
-    const cached = await provider.queryLatestProtocolVersion();
+    const head = await provider.queryLatestProtocolVersion();
 
-    expect(cached).toBe(V9_ERA_PROTOCOL_VERSION);
-    expect(headRequestCount(query)).toBe(before);
-  });
-
-  test('decodes but does not corroborate when the dating block reports an unresolvable version', async () => {
-    // The decode is safe on the envelope alone, but the latch must not be fed
-    // a version this client cannot place on the era timeline: `corroborateV9`
-    // rejects exactly that, so reaching it would turn a good read into an
-    // invariant failure.
-    const query = dispatchingQuery(
-      new Map<DocumentNode, unknown>([
-        [CONTRACT_STATE_QUERY, stateResponse(mintV9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION)],
-        [HEAD_PROTOCOL_VERSION_QUERY, { data: { block: { protocolVersion: V9_ERA_PROTOCOL_VERSION } } }]
-      ])
-    );
-    const provider = buildProvider(query);
-
-    await expect(provider.queryContractState(ADDRESS)).resolves.not.toBeNull();
-    const before = headRequestCount(query);
-    await provider.queryLatestProtocolVersion();
-
+    expect(head).toBe(V9_ERA_PROTOCOL_VERSION);
     expect(headRequestCount(query)).toBe(before + 1);
   });
 
-  test('does not corroborate from a state read pinned to a specific block', async () => {
-    // A pinned read's block field is not the head, so it proves nothing about
-    // where the network is now.
+  test('decodes an unpinned read whose dating block reports an unresolvable version', async () => {
+    // The decode is safe on the envelope alone: a version this client cannot
+    // place on the era timeline must not fail a read whose bytes are readable.
     const query = dispatchingQuery(
       new Map<DocumentNode, unknown>([
-        [CONTRACT_STATE_QUERY, stateResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION)],
-        [HEAD_PROTOCOL_VERSION_QUERY, { data: { block: { protocolVersion: V9_ERA_PROTOCOL_VERSION } } }]
+        [CONTRACT_STATE_QUERY, stateResponse(mintV9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION)]
       ])
     );
-    const provider = buildProvider(query);
 
-    await provider.queryContractState(ADDRESS, { type: 'blockHeight', blockHeight: 7 });
-    const before = headRequestCount(query);
-    await provider.queryLatestProtocolVersion();
-
-    expect(headRequestCount(query)).toBe(before + 1);
+    await expect(buildProvider(query).queryContractState(ADDRESS)).resolves.not.toBeNull();
   });
 
   test('decodes an unpinned read whose state is newer than the block dating it', async () => {

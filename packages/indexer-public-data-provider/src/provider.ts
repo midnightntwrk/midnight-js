@@ -39,12 +39,10 @@ import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 
 import {
-  contractStateEnvelopeVersion,
   parseHexContractState,
   parseHexLedgerParameters,
   parseHexTransaction,
   parseHexZswapState,
-  reportedEra,
   toRawContractState,
   toSegmentStatusMap,
   toTxStatus,
@@ -110,143 +108,13 @@ import type { ApolloHandle } from './transport';
 const toBlockOffset = (config?: BlockHeightConfig | BlockHashConfig): InputMaybe<BlockOffset> =>
   config ? (config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }) : null;
 
-/**
- * How the provider came to know the network head is on the v9 ledger era.
- * Named so a wrong call site is identifiable from the thrown message.
- */
-type CorroborationRoute = 'snapshot-envelope' | 'finalized-record';
-
-/**
- * Whether `protocolVersion` belongs to the v9 ledger era, answering `false`
- * for an integer this client cannot resolve at all.
- *
- * Every caller here is warming a cache as a side effect of some other request
- * the user actually asked for, so "I do not recognize this integer" has to
- * mean "cannot tell which era" rather than failing that request — which is
- * exactly what {@link reportedEra} yields `undefined` for.
- */
-const isV9Era = (protocolVersion: number): boolean => reportedEra(protocolVersion) === 'v9';
-
 export class IndexerPublicDataProvider implements PublicDataProvider {
   private readonly handle: ApolloHandle;
   private readonly pollInterval: number;
 
-  /**
-   * The head protocol version, cached — but only once the provider has
-   * corroborated evidence that the network really is on the v9 ledger era.
-   * `undefined` means "no such evidence yet", and every head read then goes to
-   * the network. Only {@link corroborateV9} ever writes this field.
-   */
-  private v9HeadProtocolVersion: number | undefined;
-
   constructor(handle: ApolloHandle, pollInterval: number) {
     this.handle = handle;
     this.pollInterval = pollInterval;
-  }
-
-  /**
-   * Records corroborated evidence that the network head is on the v9 ledger
-   * era, so later head reads can be served without a request.
-   *
-   * The bar is deliberately high, because caching the wrong answer is worse
-   * than paying for a request: a head integer on its own proves nothing (an
-   * indexer can report a v9 head while still serving v8-era state), so only
-   * the two routes in {@link CorroborationRoute} may call this. The cached
-   * answer also only ever moves forward — a later v8-era reading never clears
-   * or lowers what was already established, because the ledger era does not go
-   * backwards once the network has forked.
-   *
-   * @throws {IndexerInvariantError} When the caller passes a protocol version
-   *   that is not on the v9 ledger era — the era check belongs to the caller,
-   *   so getting here with a v8-era version means a call site is wrong.
-   */
-  private corroborateV9(headProtocolVersion: number, route: CorroborationRoute): void {
-    if (!isV9Era(headProtocolVersion)) {
-      throw new IndexerInvariantError(
-        `corroborateV9: the ${route} route supplied protocol version ${headProtocolVersion}, which is not on the ` +
-          'v9 ledger era; call sites must check the era before corroborating'
-      );
-    }
-    if (this.v9HeadProtocolVersion === undefined || headProtocolVersion > this.v9HeadProtocolVersion) {
-      this.v9HeadProtocolVersion = headProtocolVersion;
-    }
-  }
-
-  /**
-   * Route 1: a state read whose head version and whose state envelope both say
-   * v9. The envelope is the part a head integer cannot stand in for — it comes
-   * off the bytes the indexer actually served for that contract.
-   */
-  private corroborateFromStateSnapshot(record: RawContractState): void {
-    if (record.version !== 'v9') {
-      return;
-    }
-    if (contractStateEnvelopeVersion(record.raw) !== 'v9') {
-      return;
-    }
-    this.corroborateV9(record.protocolVersion, 'snapshot-envelope');
-  }
-
-  /**
-   * Route 1 again, reached from a read that decoded its state rather than
-   * serving it raw. `parseHexContractState` only decodes a v9 envelope, so
-   * reaching here means the served bytes really were written by the v9 runtime
-   * — the same evidence {@link corroborateFromStateSnapshot} requires from the
-   * envelope.
-   *
-   * The head reading has to be checked separately all the same. The envelope
-   * being v9 does not make the reported integer resolvable, and
-   * {@link corroborateV9} treats an unresolvable one as a call-site bug; a good
-   * read must not be turned into an invariant failure by the cache it was only
-   * incidentally warming.
-   *
-   * Only an unpinned read qualifies: with an offset, the block field is the
-   * block the caller asked for, not the network's head.
-   */
-  private corroborateFromDecodedState(isHeadRead: boolean, headProtocolVersion: number): void {
-    if (isHeadRead && isV9Era(headProtocolVersion)) {
-      this.corroborateV9(headProtocolVersion, 'snapshot-envelope');
-    }
-  }
-
-  /**
-   * Route 2: a finalized transaction record this provider decoded itself,
-   * whose own protocol version is on the v9 era. Such a record cannot exist
-   * before the network has forked, so it is proof of the era.
-   *
-   * It is proof of the era and nothing more. The record's own integer is the
-   * version of the block that contained it, which may sit well behind the
-   * head, so it is never the value that gets cached: the era proof buys one
-   * head read, and only that head reading is cached — and only if it, too, is
-   * on the v9 era. A replica still answering from before the fork therefore
-   * caches nothing, and is asked again next time.
-   *
-   * Best effort throughout: this runs as a side effect of a finalization read
-   * the caller asked for, and never makes that read fail.
-   */
-  private async corroborateFromFinalizedRecord(protocolVersion: number): Promise<void> {
-    if (this.v9HeadProtocolVersion !== undefined || !isV9Era(protocolVersion)) {
-      return;
-    }
-    let headProtocolVersion: number;
-    try {
-      headProtocolVersion = await this.fetchHeadProtocolVersion();
-    } catch {
-      // The corroborating read is an extra, optional request bolted onto the
-      // caller's real one. It is a network call, so it can fail for reasons
-      // that say nothing about the record just delivered; when it does, the
-      // honest reading is "cannot corroborate right now", not "this
-      // finalization read failed". Nothing is recorded, so the provider simply
-      // stays in its pre-cache state and keeps asking for the head version on
-      // every call, exactly as it did before — the next operation retries this
-      // naturally. The error is deliberately not re-raised: doing so would
-      // turn an optional signal into a failure of the caller's request.
-      return;
-    }
-    if (!isV9Era(headProtocolVersion)) {
-      return;
-    }
-    this.corroborateV9(headProtocolVersion, 'finalized-record');
   }
 
   /**
@@ -281,23 +149,15 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * Reads the protocol-version integer of the network's head block.
    *
    * The indexer's `block` root field with no offset resolves to the latest
-   * indexed block, so this is the head version. The answer is served from the
-   * cache only once {@link corroborateV9} has engaged it; until then, and
-   * whenever `options.fresh` is `true`, every call issues a request.
-   *
-   * @param options Pass `{ fresh: true }` to bypass the cache.
+   * indexed block, so this is the head version. Every call issues a request:
+   * see `PublicDataProvider.queryLatestProtocolVersion` for why this answer is
+   * deliberately never cached, and {@link queryRawContractState} for the era of
+   * a record already read, which costs no request at all.
    *
    * @throws {IndexerDataError} When the indexer has not indexed a block yet
    *   and therefore reports no head block.
    */
-  async queryLatestProtocolVersion(options?: { readonly fresh?: boolean }): Promise<number> {
-    if (options?.fresh !== true && this.v9HeadProtocolVersion !== undefined) {
-      return this.v9HeadProtocolVersion;
-    }
-    return this.fetchHeadProtocolVersion();
-  }
-
-  private async fetchHeadProtocolVersion(): Promise<number> {
+  async queryLatestProtocolVersion(): Promise<number> {
     const block = await this.client
       .query({
         query: HEAD_PROTOCOL_VERSION_QUERY,
@@ -320,11 +180,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * single document. That saves a round trip; it does **not** make the two
    * fields a consistent snapshot — the indexer resolves Query-root siblings
    * concurrently, from independent reads, so they can still come from
-   * different blocks. Requiring the two to agree is exactly what makes a head
-   * read usable as corroboration below.
-   *
-   * Only a read with no offset can corroborate, because only then is the block
-   * field the network's head block.
+   * different blocks. The era on the returned record therefore describes the
+   * block that dated these bytes, and is not a reading of where the network is
+   * now: for that, ask {@link queryLatestProtocolVersion}, which reads it.
    *
    * @throws {TagParseError} When the served state does not carry a
    *   contract-state envelope from a supported ledger runtime.
@@ -359,11 +217,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       // caller a wrong answer that reads exactly like a correct one.
       throw IndexerDataError.undatedState();
     }
-    const record = toRawContractState(state, block.protocolVersion);
-    if (offset === null) {
-      this.corroborateFromStateSnapshot(record);
-    }
-    return record;
+    return toRawContractState(state, block.protocolVersion);
   }
 
   queryContractState(
@@ -404,7 +258,6 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         const contractState = parseHexContractState(state, block.protocolVersion, {
           upperBound: offset === null ? 'withheld' : 'enforced'
         });
-        this.corroborateFromDecodedState(offset === null, block.protocolVersion);
         return contractState;
       });
   }
@@ -452,7 +305,6 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         const parsedContractState = parseHexContractState(contractState, block.protocolVersion, {
           upperBound: offset === null ? 'withheld' : 'enforced'
         });
-        this.corroborateFromDecodedState(offset === null, block.protocolVersion);
         return [
           parseHexZswapState(contractZswapState),
           parsedContractState,
@@ -552,9 +404,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     );
   }
 
-  async watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
+  watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
     assertIsContractAddress(contractAddress);
-    const finalized = await Rx.firstValueFrom(
+    return Rx.firstValueFrom(
       pollUntilPresent(
         this.client,
         DEPLOY_TX_QUERY,
@@ -572,12 +424,10 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         this.pollInterval
       )
     );
-    await this.corroborateFromFinalizedRecord(finalized.protocolVersion);
-    return finalized;
   }
 
-  async watchForTxData(txId: TransactionId): Promise<FinalizedTxData> {
-    const finalized = await Rx.firstValueFrom(
+  watchForTxData(txId: TransactionId): Promise<FinalizedTxData> {
+    return Rx.firstValueFrom(
       pollUntilPresent(
         this.client,
         TX_ID_QUERY,
@@ -621,8 +471,6 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         this.pollInterval
       )
     );
-    await this.corroborateFromFinalizedRecord(finalized.protocolVersion);
-    return finalized;
   }
 
   /**
