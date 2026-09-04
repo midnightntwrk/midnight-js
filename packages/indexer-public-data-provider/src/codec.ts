@@ -159,8 +159,8 @@ const isNewerEra = (left: LedgerVersion, right: LedgerVersion): boolean =>
  * when this client cannot place that integer on the era timeline at all.
  *
  * Unresolvable is a distinct answer from wrong, and the two must not be
- * conflated: the reported version is corroborating metadata here, never the
- * authority on the bytes, so "I cannot place this integer" has to leave the
+ * conflated: the reported version is a cross-check on the envelope here, never
+ * the authority on the bytes, so "I cannot place this integer" has to leave the
  * decode to the envelope rather than fail the caller's read. Only
  * {@link UnknownProtocolVersionError} is treated that way — anything else is a
  * real failure and propagates.

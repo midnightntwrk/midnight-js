@@ -114,6 +114,13 @@ export const versionOfRecord = (record: VersionedRecord): LedgerVersion =>
  * Queries `source` for the network's current head protocol version and
  * resolves it to a {@link LedgerVersion}.
  *
+ * The source is expected to read the network on every call. This is the
+ * construct path: the era being resolved is the one a transaction built now
+ * will land in, and a stale reading is wrong exactly at the fork boundary,
+ * where that question matters. `PublicDataProvider.queryLatestProtocolVersion`
+ * states the same prohibition as a requirement on its implementations; this
+ * parameter is a structural type, so nothing here can enforce it. See ADR 0008.
+ *
  * @param source The indexer or node client to ask for the head version.
  * @returns A promise for the {@link LedgerVersion} at the network head.
  * @throws {@link UnknownProtocolVersionError} tagged with the `construct`
