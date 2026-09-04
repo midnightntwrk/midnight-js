@@ -53,6 +53,11 @@
  * artifact sets BOTH `impureCircuits` and `provableCircuits`, so its presence
  * says nothing about which toolchain produced the contract.
  *
+ * The RUNTIME counterpart of this type-level discrimination is `pipelineEraOf` in
+ * `./internal/era`, which is the single era predicate; there is deliberately no second one here.
+ * It does not use the vendor's registered `CompiledContract` brand — that symbol lives on a
+ * prototype the container's own combinators drop — see its own documentation for the measurement.
+ *
  * ## No `any`
  *
  * The vendor family reaches for `any` to get a "top" contract type that every
@@ -379,51 +384,23 @@ export type AnyLedger8FindDeployedContractOptions = Ledger8FindDeployedContractO
 export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
 
 /**
- * Tells the two eras apart at runtime, so each entry point's implementation can refuse a
- * retained-era request before touching the current-era pipeline.
+ * The migration-guide message for a contract belonging to neither era. This is the SINGLE place its
+ * text is written.
  *
- * A PROVISIONAL structural check, and deliberately not the era predicate this framework will
- * ship: it tests for the member the retained-era artifact installs and the current era's
- * container does not, which is enough to fork a body whose retained-era branch only throws. The
- * shipped predicate tests the container's registered brand
- * (`Symbol.for('compact-js/CompiledContract')`) instead, which is what a duplicate-install-safe
- * answer needs; it arrives with the pipeline that needs it.
- *
- * KNOWN BLIND SPOT, and why it is tolerable here: a raw CURRENT-era contract instance also carries
- * `impureCircuits`, so this returns `true` for one. It cannot be reached through these entry
- * points, because the current-era arms take the `CompiledContract` CONTAINER and a raw instance is
- * not one, so nothing that type-checks gets here holding a bare current-era contract. The brand
- * test in the shipped predicate closes it properly.
- *
- * The type parameter is named explicitly at each call site rather than inferred, so the narrowing
- * removes exactly the retained-era arm of that entry point's parameter union and leaves the
- * current-era arm the rest of the body is written against.
- */
-export const isLedger8Options = <L extends { readonly compiledContract: Ledger8Contract }>(
-  options: { readonly compiledContract: unknown } | L
-): options is L =>
-  typeof options.compiledContract === 'object' &&
-  options.compiledContract !== null &&
-  'impureCircuits' in options.compiledContract;
-
-/**
- * The migration-guide message the compiler renders for a contract belonging to neither era. This is
- * the SINGLE place its text is written.
- *
- * DO NOT DELETE AS UNUSED. Nothing consumes this text yet, and that is expected: its destination
- * is the typed, thrown error that era resolution raises when it is handed an object belonging to
- * neither era. A thrown error can carry full remediation text; a compiler diagnostic cannot, which
- * is why this is not wired into an overload arm (see the module documentation above). It is written
- * down now so that the wording is settled and reviewed once, rather than invented at the point of
- * use.
+ * DO NOT DELETE AS UNUSED, and do not inline it either. It is consumed by
+ * `EraArtifactMismatchError` in `./errors`, which is what `pipelineEraOf` in `./internal/era`
+ * raises when it is handed an object belonging to neither era. A thrown error can carry full
+ * remediation text; a compiler diagnostic cannot, which is why this is not wired into an overload
+ * arm (see the module documentation above).
  *
  * A runtime `const` rather than a bare literal inside {@link NeitherContractShape} so that the text
- * is written ONCE and can be read by a runtime consumer — a thrown error, and any test asserting on
- * one — while `typeof` still gives the type a string LITERAL member.
+ * is written ONCE and can be read by a runtime consumer — the error above, and any test asserting
+ * on one — while `typeof` still gives the type a string LITERAL member.
  * `src/test/typecheck/overloads.test-d.ts` pins the wording verbatim.
  *
- * Not re-exported from the package index: it is not a runtime API today, and publishing it would
- * commit us to it before the error that carries it exists.
+ * Not re-exported from the package index: the error that carries it is the consumer surface, and
+ * that error is not exported yet either — the entry points still refuse a retained-era request
+ * before any pipeline runs, so nothing a consumer can reach throws it.
  */
 export const NEITHER_ERA_CONTRACT_MESSAGE =
   'Object is neither a 0.16- nor a 0.18-generated contract. See migration guide §window.';
@@ -435,8 +412,9 @@ export const NEITHER_ERA_CONTRACT_MESSAGE =
  *
  * The `__error` member exists only to carry {@link NEITHER_ERA_CONTRACT_MESSAGE}; nothing
  * constructs a value of this type. Retained here alongside the message for the same reason the
- * message is retained: era resolution will refuse a neither-era object by throwing, and this is the
- * shape that names what it refused. `src/test/typecheck/overloads.test-d.ts` pins the wording.
+ * message is retained: `pipelineEraOf` in `./internal/era` refuses a neither-era object by
+ * throwing, and this is the shape that names what it refused.
+ * `src/test/typecheck/overloads.test-d.ts` pins the wording.
  */
 export type NeitherContractShape = { readonly __error: typeof NEITHER_ERA_CONTRACT_MESSAGE }
 
@@ -446,10 +424,10 @@ export type NeitherContractShape = { readonly __error: typeof NEITHER_ERA_CONTRA
  *
  * No overload arm takes this type: an arm that is not last never renders a diagnostic, and putting
  * one last made every mistyped CURRENT-era call claim the caller's contract belonged to neither era
- * (see the module documentation above). It is retained as the shape era resolution will report
- * against when it throws, and `src/test/typecheck/overloads.test-d.ts` pins that a neither-era
- * object really is refused by it — which is the assignability fact the overloads rely on, whether or
- * not any arm spells it out.
+ * (see the module documentation above). It is retained as the shape era resolution reports against
+ * when it throws, and `src/test/typecheck/overloads.test-d.ts` pins that a neither-era object
+ * really is refused by it — which is the assignability fact the overloads rely on, whether or not
+ * any arm spells it out.
  */
 export interface NeitherEraContractOptions {
   readonly compiledContract: NeitherContractShape;

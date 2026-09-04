@@ -18,6 +18,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { type ContractStatePojo, loadLedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { BlankVerifierKeySlotError, VerifierKeyMismatchError } from '../errors';
@@ -83,6 +84,10 @@ describe('assertVerifierKeyMatches: the pre-proving verifier-key check', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(VerifierKeyMismatchError);
       expect((error as VerifierKeyMismatchError).circuitId).toBe('increment');
+      // The registered code, not just the class: swapping the two code assignments below between
+      // these classes type-checks, and an instanceof-only suite would stay green while a consumer
+      // branching on `code` took the wrong path.
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH)).toBe(true);
     }
   });
 
@@ -90,8 +95,12 @@ describe('assertVerifierKeyMatches: the pre-proving verifier-key check', () => {
     // Without this, a refusal caused by the fixture being unreadable rather than by the key being
     // foreign would pass the test above just as well.
     const slot = foreignState.entryPoints[0]?.verifierKey;
+    // Guarded rather than asserted non-null: if the fixture ever stopped carrying a key here, a
+    // `!` would turn that into a confusing failure inside the function under test.
+    expect(slot).toBeInstanceOf(Uint8Array);
+    if (slot === undefined) return;
 
-    expect(() => assertVerifierKeyMatches(slot!, slot, 'increment')).not.toThrow();
+    expect(() => assertVerifierKeyMatches(slot, slot, 'increment')).not.toThrow();
   });
 
   it('refuses a key of the SAME length whose bytes differ, so this is a byte match and not a length check', () => {
@@ -113,6 +122,7 @@ describe('assertVerifierKeyMatches: the pre-proving verifier-key check', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(BlankVerifierKeySlotError);
       expect((error as BlankVerifierKeySlotError).circuitId).toBe('increment');
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT)).toBe(true);
     }
   });
 

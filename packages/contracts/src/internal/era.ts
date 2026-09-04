@@ -39,6 +39,7 @@ import {
   IndexerInconsistencyError,
   Ledger8DeployOnV9Error
 } from '../errors';
+import type { Ledger8Contract } from '../ledger8-contract';
 
 /**
  * Unwraps the v9 arm of a versioned payload a provider returned. The flows in
@@ -163,23 +164,30 @@ export interface ResolvedOperationEra {
  */
 export type HeadVersionSource = Pick<PublicDataProvider, 'queryLatestProtocolVersion'>;
 
-// The `constructor.name` a function declared `async` reports. The discriminator between a
-// retained-era contract instance and a current-era one, and it is a property of the real
-// generated artifacts rather than a convention: `src/test/era-dispatch-ledger8.test.ts` and
-// `src/test/era-dispatch.test.ts` each assert it against a real compiled contract before relying
-// on it.
+// The `constructor.name` values that separate the two eras' generated code. Both are properties of
+// the real generated artifacts rather than conventions: `src/test/era-dispatch-ledger8.test.ts` and
+// `src/test/era-dispatch.test.ts` each assert them against a real compiled contract before relying
+// on them.
+//
+// `PLAIN_FUNCTION` is matched POSITIVELY, and that direction is load-bearing: the retained era is
+// the era whose codegen is synchronous, so it must be recognised by what it IS. Treating it as
+// "anything that is not async" would route a generator, an async generator, or any future codegen
+// shape into the retained pipeline by default -- a fail-open in the one function whose whole job is
+// to fail closed.
+const PLAIN_FUNCTION = 'Function';
 const ASYNC_FUNCTION = 'AsyncFunction';
 
-// Type guards rather than casts: `in` narrows the operand, so each of these reads a property off
-// a value it has just proved carries it, with no `as` forcing a shape onto an `unknown`.
-const hasImpureCircuits = (value: object): value is { readonly impureCircuits: unknown } =>
-  'impureCircuits' in value;
-
-const hasStringTag = (value: object): value is { readonly tag: string } =>
-  'tag' in value && typeof value.tag === 'string';
-
-const hasCallableInitialState = (value: object): value is { readonly initialState: (...args: never[]) => unknown } =>
-  'initialState' in value && typeof value.initialState === 'function';
+/**
+ * Whether `value` carries `key` as its OWN property, narrowing `value` so the property can then be
+ * read without a cast.
+ *
+ * `Object.hasOwn` rather than `in`, because own-versus-prototype is exactly the distinction the
+ * brand-loss hazard turns on: a value rebuilt by an object spread keeps its own properties and
+ * loses everything it only inherited, so a discriminator that must survive a spread has to be an
+ * own property. See {@link pipelineEraOf} for which checks can be own and which one cannot.
+ */
+const hasOwnProperty = <K extends string>(value: object, key: K): value is object & Record<K, unknown> =>
+  Object.hasOwn(value, key);
 
 /**
  * Decides which pipeline a caller's contract belongs to, from the object itself.
@@ -199,17 +207,36 @@ const hasCallableInitialState = (value: object): value is { readonly initialStat
  * The internal `TypeId` symbol that DOES survive is a bare `Symbol()`, whose value differs between
  * two copies of the package, so it is not duplicate-install safe and is not used either.
  *
- * What is left is own properties, which a spread preserves:
+ * What is left is the properties a spread preserves, plus one it cannot:
  *
- * | shape | `impureCircuits` | `initialState` | verdict |
- * | ----- | ---------------- | -------------- | ------- |
- * | current-era container | absent | absent | `'v9native'` |
- * | retained-era instance | present | plain function | `'ledger8'` |
- * | raw current-era instance | present | `AsyncFunction` | refused |
+ * | shape | own `tag` | own `impureCircuits` | `initialState` | verdict |
+ * | ----- | --------- | -------------------- | -------------- | ------- |
+ * | current-era container | string | absent | absent | `'v9native'` |
+ * | retained-era instance | absent | present | `Function` | `'ledger8'` |
+ * | raw current-era instance | absent | present | `AsyncFunction` | refused, by name |
+ * | anything else | — | — | — | refused as neither era |
  *
  * The third row is the mistake a JavaScript caller actually makes — passing the generated contract
  * where its container belongs — and it is why `impureCircuits` alone cannot decide the era. It is
  * refused by name, never silently routed into the retained pipeline.
+ *
+ * ## Which checks are own-property checks, and the one that deliberately is not
+ *
+ * `tag` and `impureCircuits` are checked with `Object.hasOwn`, because both are assigned as own
+ * properties — `tag` by the container's constructor, `impureCircuits` by the generated contract's —
+ * and an own check is what makes them immune to the spread hazard above.
+ *
+ * `initialState` is NOT an own property and must not be checked as one: it is a class method, so it
+ * lives on the generated contract's PROTOTYPE (measured: `Object.hasOwn(contract, 'initialState')`
+ * is `false` on both eras' real artifacts, while `'initialState' in contract` is `true`). Requiring
+ * it to be own would refuse every real contract. That is not the same hazard as the brand: a class
+ * instance's prototype is fixed at construction and nothing here rebuilds it, whereas the brand was
+ * lost because a combinator rebuilt a container with a spread. So the era is decided by an own
+ * property (`impureCircuits`) and only then refined by a prototype lookup.
+ *
+ * The one shape this cannot separate is a `class` used as `initialState`: a class's own constructor
+ * is `Function`, so it reads as the retained era. Generator and async-generator functions report
+ * their own names and are refused.
  *
  * @param compiledContract The value a caller passed as its contract. `unknown`, because a
  * JavaScript caller can pass anything and the point of this function is to say what it passed.
@@ -223,26 +250,60 @@ export const pipelineEraOf = (compiledContract: unknown): PipelineEra => {
     throw new EraArtifactMismatchError('unrecognised-contract-shape');
   }
 
-  if (!hasImpureCircuits(compiledContract)) {
+  if (!hasOwnProperty(compiledContract, 'impureCircuits')) {
     // The container carries a `tag` and none of the circuit collections. Requiring the `tag` as
     // well as the absence of `impureCircuits` is what stops an arbitrary object — `{}` included —
     // from being routed into the current-era pipeline by default.
-    if (hasStringTag(compiledContract)) {
+    if (hasOwnProperty(compiledContract, 'tag') && typeof compiledContract.tag === 'string') {
       return 'v9native';
     }
     throw new EraArtifactMismatchError('unrecognised-contract-shape');
   }
 
-  if (!hasCallableInitialState(compiledContract)) {
+  // Read through the prototype chain on purpose: `initialState` is a class method. Bound to a local
+  // so the `typeof` narrowing below is on a value rather than on a property path.
+  const initialState: unknown = 'initialState' in compiledContract ? compiledContract.initialState : undefined;
+  if (typeof initialState !== 'function') {
     throw new EraArtifactMismatchError('unrecognised-contract-shape');
   }
 
-  if (compiledContract.initialState.constructor.name === ASYNC_FUNCTION) {
-    throw new EraArtifactMismatchError('unwrapped-current-era-contract');
+  switch (initialState.constructor.name) {
+    case PLAIN_FUNCTION:
+      return 'ledger8';
+    case ASYNC_FUNCTION:
+      throw new EraArtifactMismatchError('unwrapped-current-era-contract');
+    default:
+      // A codegen shape neither era produces. Refused rather than routed anywhere by default.
+      throw new EraArtifactMismatchError('unrecognised-contract-shape');
   }
-
-  return 'ledger8';
 };
+
+/**
+ * {@link pipelineEraOf}, in the narrowing form each era-dispatching entry point needs.
+ *
+ * Not a second predicate: the decision is made in exactly one place, and this only gives it a type
+ * predicate so an entry point's body can drop the retained-era arm from its parameter union without
+ * a cast. It replaces a provisional structural check that tested for `impureCircuits` alone and so
+ * answered `true` for a raw CURRENT-era contract instance, which carries that member too — the
+ * blind spot that check documented and could not close.
+ *
+ * Note the changed failure mode, which is deliberate: where the provisional check returned `false`
+ * for an object belonging to neither era and let it fall into the current-era pipeline to fail
+ * somewhere unrelated, this raises {@link EraArtifactMismatchError} with remediation text at the
+ * entry point.
+ *
+ * The type parameter is named explicitly at each call site rather than inferred, so the narrowing
+ * removes exactly the retained-era arm of that entry point's parameter union and leaves the
+ * current-era arm the rest of the body is written against.
+ *
+ * @param options The options object an entry point received.
+ * @returns Whether this is a retained-era request.
+ * @throws EraArtifactMismatchError if the contract belongs to neither era, or is a raw current-era
+ * contract passed instead of its container.
+ */
+export const isLedger8Request = <L extends { readonly compiledContract: Ledger8Contract }>(
+  options: { readonly compiledContract: unknown } | L
+): options is L => pipelineEraOf(options.compiledContract) === 'ledger8';
 
 /**
  * Resolves the era facts one operation runs against, with EXACTLY ONE head read.
@@ -368,6 +429,8 @@ export const assertEraCompatible = (pipeline: PipelineEra, head: LedgerVersion, 
  * @param state The raw contract state the operation fetched, envelope included.
  * @param pdp The read surface, for the fresh head read step 3 needs.
  * @throws TagParseError if `state.raw` carries no supported contract-state envelope.
+ * @throws Error, carrying the transport failure on `cause`, if the fresh head read rejects — so the
+ * disagreement that was under investigation is not lost behind a bare transport error.
  * @throws HeadStateEraMismatchError if a fresh head read agrees with the state's era.
  * @throws IndexerInconsistencyError if a fresh head read still disagrees with it.
  */
@@ -381,7 +444,21 @@ export const assertHeadStateEraAgreement = async (
     return;
   }
 
-  const freshHead = await networkHeadVersion(pdp);
+  let freshHead: LedgerVersion;
+  try {
+    freshHead = await networkHeadVersion(pdp);
+  } catch (cause) {
+    // Nothing is swallowed -- the transport failure propagates on `cause` -- but on its own it
+    // arrives with no trace that an era disagreement was under investigation, which is the most
+    // diagnostic fact available in the fork window.
+    throw new Error(
+      `Could not re-read the network head while checking a '${head}'-era head reading against a ` +
+        `'${stateEra}'-era contract state envelope. Whether those two disagree is still unresolved, so ` +
+        `this operation is refused rather than run against a guess. Retry once the read surface is reachable.`,
+      { cause }
+    );
+  }
+
   if (freshHead !== stateEra) {
     throw new IndexerInconsistencyError(freshHead, stateEra);
   }

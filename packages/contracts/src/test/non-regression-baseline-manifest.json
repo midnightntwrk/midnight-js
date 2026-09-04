@@ -34,9 +34,9 @@
     "packages/contracts/src/test/ledger8-fixture-types.ts",
     "packages/contracts/src/test/non-regression-baseline-gate.test.ts",
     "packages/contracts/src/test/non-regression-golden.test.ts",
-    "packages/contracts/src/test/verifier-key.test.ts",
     "packages/contracts/src/test/resources/diagnostics/mistyped-current-era-calls.ts",
-    "packages/contracts/src/test/typecheck/overloads.test-d.ts"
+    "packages/contracts/src/test/typecheck/overloads.test-d.ts",
+    "packages/contracts/src/test/verifier-key.test.ts"
   ],
   "untouchedFiles": {
     "packages/contracts/src/test/contract-log-reexport.test.ts": "ba92676413d467d0d071258bd197bda7b92ce5aa09835f93ae13a6e8b5438161",

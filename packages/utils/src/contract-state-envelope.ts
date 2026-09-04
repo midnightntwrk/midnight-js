@@ -54,6 +54,13 @@ const CONTRACT_STATE_TAG_TO_LEDGER_VERSION: Readonly<Partial<Record<string, Ledg
  * anything that is not a contract state from a supported runtime, before those bytes reach a
  * decoder — and, for a caller that holds two runtimes, the answer to which one to hand them to.
  *
+ * Supported public API, deliberately, and not an artefact of being shared between two internal
+ * consumers: a caller reading raw contract state from an indexer needs to know which era's decoder
+ * to hand the bytes to before it hands them over, which is the whole point of version-tagged
+ * payloads at the provider seams (`docs/adr/0006-version-tagged-payloads-at-provider-seams.md`). It
+ * is a pure function over bytes, built from two things that are already public — `parseSerializedTag`
+ * and `LedgerVersion` — so it commits us to nothing that was not already committed.
+ *
  * @param raw The serialized contract-state envelope, as the network returned it.
  * @returns The ledger era whose runtime wrote `raw`.
  * @throws TagParseError when there is no well-formed `namespace:version:` tag prefix in the first

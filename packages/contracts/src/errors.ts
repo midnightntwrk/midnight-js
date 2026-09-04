@@ -176,6 +176,12 @@ export class Ledger8DeployOnV9Error extends Error {
  * announces that it has fallen behind, which is why the era is never latched
  * (`docs/adr/0008-never-latch-the-network-head-version.md`) and why this is checked rather than
  * assumed.
+ *
+ * The message deliberately does NOT claim which of the two readings moved. The routing establishes
+ * only that they disagree and that a fresh read agrees with the state; it does not establish a
+ * direction, and the realistic fork-window case (a stale pre-fork head against a migrated post-fork
+ * state) and its mirror both arrive here. Naming a direction the check has not measured would send
+ * a caller looking for the wrong thing.
  */
 export class HeadStateEraMismatchError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH;
@@ -190,9 +196,10 @@ export class HeadStateEraMismatchError extends Error {
   ) {
     super(
       `This operation resolved a '${head}'-era network head, but the contract state it fetched carries a ` +
-        `'${stateEra}'-era envelope, and re-reading the head returned '${stateEra}' as well. The head reading ` +
-        `this operation started from was behind the network, which is what happens while the network crosses ` +
-        `the ledger fork. Re-read the network head, then re-run the operation against the era it now reports.`
+        `'${stateEra}'-era envelope, and re-reading the head returned '${stateEra}' as well. The era this ` +
+        `operation started from is not the era the network now reports, which is what happens while the ` +
+        `network crosses the ledger fork. Re-read the network head, then re-run the operation against the ` +
+        `era it now reports.`
     );
     this.name = 'HeadStateEraMismatchError';
   }
@@ -229,7 +236,6 @@ export class IndexerInconsistencyError extends Error {
     this.name = 'IndexerInconsistencyError';
   }
 }
-
 
 interface EffectContractError {
   readonly _tag: string;
