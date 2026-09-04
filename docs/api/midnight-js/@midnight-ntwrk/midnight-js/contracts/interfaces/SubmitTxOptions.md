@@ -36,7 +36,7 @@ context), this may be an array of circuit IDs.
 
 ### unprovenTx
 
-> `readonly` **unprovenTx**: [`UnprovenTransaction`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
+> `readonly` **unprovenTx**: [`UnprovenTransaction`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/contracts/dist/index.d.ts:378
 

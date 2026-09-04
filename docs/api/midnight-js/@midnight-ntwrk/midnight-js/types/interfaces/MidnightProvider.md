@@ -25,7 +25,7 @@ Submit a transaction to the network to be consensed upon.
 
 ##### tx
 
-[`FinalizedTransaction`](../../../midnight-js-protocol/ledger/type-aliases/FinalizedTransaction.md)
+[`FinalizedTransaction`](https://github.com/midnightntwrk/midnight-ledger)
 
 The finalized transaction to submit.
 

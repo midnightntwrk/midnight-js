@@ -38,7 +38,7 @@ Midnight transactions execute in two phases:
 
 ### C
 
-`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ## Parameters
 
@@ -50,7 +50,7 @@ The providers to use to manage the transaction lifecycle.
 
 ### compiledContract
 
-[`CompiledContract`](../../midnight-js-protocol/compact-js/namespaces/CompiledContract/interfaces/CompiledContract.md)\<`C`, `any`\>
+[`CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
 
 The compiled contract for which the maintenance authority
                         should be updated.
@@ -75,7 +75,7 @@ TODO: There are at least three options we should support in the future:
 
 #### newAuthority
 
-[`SigningKey`](../../midnight-js-protocol/ledger/type-aliases/SigningKey.md)
+[`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The signing key of the new contract maintenance authority.
 

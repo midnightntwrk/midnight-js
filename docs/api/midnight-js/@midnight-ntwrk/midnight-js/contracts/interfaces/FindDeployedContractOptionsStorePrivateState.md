@@ -21,13 +21,13 @@ private state ID.
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ## Properties
 
 ### compiledContract
 
-> `readonly` **compiledContract**: [`CompiledContract`](../../../midnight-js-protocol/compact-js/namespaces/CompiledContract/interfaces/CompiledContract.md)\<`C`, `any`\>
+> `readonly` **compiledContract**: [`CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
 
 Defined in: packages/contracts/dist/index.d.ts:870
 
@@ -55,7 +55,7 @@ The address of a previously deployed contract.
 
 ### initialPrivateState
 
-> `readonly` **initialPrivateState**: [`PrivateState`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
+> `readonly` **initialPrivateState**: [`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 Defined in: packages/contracts/dist/index.d.ts:910
 
@@ -81,7 +81,7 @@ An identifier for the private state of the contract being found.
 
 ### signingKey?
 
-> `readonly` `optional` **signingKey?**: [`SigningKey`](../../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md)
+> `readonly` `optional` **signingKey?**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/contracts/dist/index.d.ts:884
 

@@ -6,7 +6,7 @@
 
 # Variable: deserializeContractState
 
-> `const` **deserializeContractState**: (`bytes`, `ctx`) => [`ContractState`](../../../midnight-js-protocol/ledger/classes/ContractState.md)
+> `const` **deserializeContractState**: (`bytes`, `ctx`) => [`ContractState$1`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/utils/dist/index.d.ts:136
 
@@ -24,7 +24,7 @@ Deserialize a ledger LedgerContractState from raw bytes.
 
 ## Returns
 
-[`ContractState`](../../../midnight-js-protocol/ledger/classes/ContractState.md)
+[`ContractState$1`](https://github.com/midnightntwrk/midnight-ledger)
 
 ## Throws
 
