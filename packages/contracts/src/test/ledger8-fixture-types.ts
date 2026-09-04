@@ -85,3 +85,72 @@ export interface Counter016Module {
   readonly ledger: (stateOrChargedState: never) => unknown;
   readonly pureCircuits: Readonly<Record<string, unknown>>;
 }
+
+// The SECOND retained-era fixture, and it exists for one reason: its circuit takes an ARGUMENT.
+//
+// `counter-016`'s `increment` takes only the framework-built context, so every assertion written
+// against it exercises `Ledger8CircuitParameters` at the empty tuple and says nothing about what
+// happens when a circuit has real arguments. That gap hid a defect that made the retained-era
+// overload unselectable for any such contract: widening `Ledger8Circuit`'s argument tail to
+// `unknown[]` broke contravariance, so `(context, coin: ShieldedCoinInfo)` failed the
+// `Ledger8Contract` constraint and the call fell through to the current-era arms. Nothing caught it,
+// because nothing tested it.
+//
+// `coin-receiver-016` is a real `compact-runtime@0.16` artifact whose own arity guard is
+// `args_1.length !== 2` -- the context plus one argument -- against `counter-016`'s `!== 1`.
+
+/** The witnesses the coin receiver is constructed with: it declares none. */
+export type CoinReceiver016Witnesses = Record<string, never>;
+
+/** The private state the coin receiver's circuits carry: it declares none. */
+export type CoinReceiver016PrivateState = Record<string, never>;
+
+/**
+ * The `ShieldedCoinInfo` the fixture's circuit takes, read off the artifact's own argument check:
+ * a 32-byte nonce, a 32-byte colour, and an unsigned value.
+ */
+export type CoinReceiver016Coin = {
+  readonly nonce: Uint8Array;
+  readonly color: Uint8Array;
+  readonly value: bigint;
+};
+
+/**
+ * The coin receiver's single circuit, which takes ONE real argument after the context.
+ *
+ * A type alias rather than an interface, for the implicit index signature — see
+ * {@link Counter016Circuits}.
+ */
+export type CoinReceiver016Circuits = {
+  readonly receive_coin: (
+    context: Ledger8CircuitContext<CoinReceiver016PrivateState>,
+    coin: CoinReceiver016Coin
+  ) => Ledger8CircuitResult;
+};
+
+/** What the coin receiver's `initialState` returns — a plain object, not a `Promise`. */
+export interface CoinReceiver016ConstructorResult {
+  readonly currentContractState: unknown;
+  readonly currentPrivateState: CoinReceiver016PrivateState;
+  readonly currentZswapLocalState: unknown;
+}
+
+/**
+ * The argument-taking retained-era fixture contract, described in terms of the same hand-written
+ * family. `ledger8-contract.test.ts` asserts the structural facts against the real artifact, the
+ * same way it does for the counter.
+ */
+export interface CoinReceiver016Contract extends Ledger8Contract<CoinReceiver016PrivateState> {
+  readonly witnesses: CoinReceiver016Witnesses;
+  readonly circuits: CoinReceiver016Circuits;
+  readonly impureCircuits: CoinReceiver016Circuits;
+  readonly provableCircuits: CoinReceiver016Circuits;
+  initialState(context: Ledger8ConstructorContextLike): CoinReceiver016ConstructorResult;
+}
+
+/** The shape of the coin receiver's module. */
+export interface CoinReceiver016Module {
+  readonly Contract: new (witnesses: CoinReceiver016Witnesses) => CoinReceiver016Contract;
+  readonly ledger: (stateOrChargedState: never) => unknown;
+  readonly pureCircuits: Readonly<Record<string, unknown>>;
+}

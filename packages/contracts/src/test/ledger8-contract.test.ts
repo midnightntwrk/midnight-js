@@ -24,7 +24,12 @@ import { deployContract } from '../deploy-contract';
 import { findDeployedContract } from '../find-deployed-contract';
 import { isLedger8Options, LEDGER8_PIPELINE_NOT_WIRED, type Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
-import type { Counter016Contract, Counter016Module } from './ledger8-fixture-types';
+import type {
+  CoinReceiver016Contract,
+  CoinReceiver016Module,
+  Counter016Contract,
+  Counter016Module
+} from './ledger8-fixture-types';
 import { createMockProviders } from './test-mocks';
 
 // The other half of `../ledger8-contract.ts`. That file hand-writes the retained-era
@@ -48,6 +53,8 @@ import { createMockProviders } from './test-mocks';
 const FIXTURES_DIR = resolve(fileURLToPath(new URL('../../../../', import.meta.url)), 'testkit-js/testkit-js/src/fixtures/hf');
 const COUNTER_016_DIR = resolve(FIXTURES_DIR, 'counter-016/compiled/contract');
 const COUNTER_016_MODULE = resolve(COUNTER_016_DIR, 'index.js');
+const COIN_RECEIVER_016_DIR = resolve(FIXTURES_DIR, 'coin-receiver-016/compiled/contract');
+const COIN_RECEIVER_016_MODULE = resolve(COIN_RECEIVER_016_DIR, 'index.js');
 const TWIN_018_MODULE_TYPES = resolve(FIXTURES_DIR, 'twin-contract/compiled/contract/index.d.ts');
 
 // The registered symbol the current era's `CompiledContract` container is branded with. Spelled
@@ -97,6 +104,8 @@ vi.mock('@midnight-ntwrk/compact-runtime', () => {
 });
 
 const loadCounter016 = async (): Promise<Counter016Module> => import(/* @vite-ignore */ COUNTER_016_MODULE);
+const loadCoinReceiver016 = async (): Promise<CoinReceiver016Module> =>
+  import(/* @vite-ignore */ COIN_RECEIVER_016_MODULE);
 
 describe('the retained-era contract family matches the real compact-runtime@0.16 artifact', () => {
   let contract: Counter016Contract;
@@ -153,6 +162,58 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
 
   it('exports no expectedVk, unlike the current era whose modules always do', () => {
     expect('expectedVk' in contractModule).toBe(false);
+  });
+
+  describe('the same facts hold for the ARGUMENT-TAKING artifact, not just the zero-argument one', () => {
+    // The second half of the pairing, and the reason it exists: every structural fact above was
+    // asserted against a circuit that takes no arguments of its own, so nothing tied the family's
+    // handling of real circuit ARGUMENTS to a real artifact. `coin-receiver-016`'s `receive_coin`
+    // takes one (its own arity guard is `args_1.length !== 2`, against the counter's `!== 1`), and
+    // `typecheck/overloads.test-d.ts` asserts the retained-era overload RESOLVES for it. These
+    // assertions are what keep the hand-written `CoinReceiver016Contract` tied to the generated
+    // code that type describes.
+    let coinReceiver: CoinReceiver016Contract;
+    let coinReceiverModule: CoinReceiver016Module;
+
+    beforeAll(async () => {
+      coinReceiverModule = await loadCoinReceiver016();
+      coinReceiver = new coinReceiverModule.Contract({});
+    });
+
+    it('installs exactly the four members the family declares, and no others', () => {
+      expect(Object.keys(coinReceiver).sort()).toEqual(
+        ['circuits', 'impureCircuits', 'provableCircuits', 'witnesses'].sort()
+      );
+    });
+
+    it('exposes initialState and every impure circuit as SYNCHRONOUS functions', () => {
+      expect(typeof coinReceiver.initialState).toBe('function');
+      expect(coinReceiver.initialState.constructor.name).toBe('Function');
+
+      expect(Object.keys(coinReceiver.impureCircuits).sort()).toEqual(['receive_coin']);
+      const asyncCircuitIds = Object.entries(coinReceiver.impureCircuits)
+        .filter(([, circuit]) => circuit.constructor.name !== 'Function')
+        .map(([circuitId]) => circuitId);
+      expect(asyncCircuitIds).toEqual([]);
+    });
+
+    it('really does take one argument beyond the context, which is what the counter cannot show', () => {
+      // Read off the generated arity guard rather than the compact source: the guard is what the
+      // artifact enforces, and `2` is the context plus one real argument. The counter's is `1`.
+      const source = readFileSync(COIN_RECEIVER_016_MODULE, 'utf8');
+      expect(source).toContain('receive_coin: expected 2 arguments');
+      expect(readFileSync(COUNTER_016_MODULE, 'utf8')).toContain('increment: expected 1 argument');
+    });
+
+    it('carries no current-era CompiledContract brand either', () => {
+      expect(COMPILED_CONTRACT_BRAND in coinReceiver).toBe(false);
+      expect('tag' in coinReceiver).toBe(false);
+    });
+
+    it('ships no declaration file and exports no expectedVk, like the other retained artifact', () => {
+      expect(() => readFileSync(resolve(COIN_RECEIVER_016_DIR, 'index.d.ts'))).toThrow();
+      expect('expectedVk' in coinReceiverModule).toBe(false);
+    });
   });
 
   describe('the era dispatch fork routes the real artifact away from the current-era pipeline', () => {

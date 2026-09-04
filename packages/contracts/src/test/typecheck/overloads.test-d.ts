@@ -61,7 +61,12 @@ import type { SubmitTxProviders } from '../../submit-tx';
 import type { TransactionContext } from '../../transaction';
 import type { FinalizedCallTxData, SubmittedCallTx } from '../../tx-model';
 import type { CallTxOptions, CallTxOptionsBase, CallTxOptionsWithPrivateStateId } from '../../unproven-call-tx';
-import type { Counter016Contract, Counter016PrivateState } from '../ledger8-fixture-types';
+import type {
+  CoinReceiver016Coin,
+  CoinReceiver016Contract,
+  Counter016Contract,
+  Counter016PrivateState
+} from '../ledger8-fixture-types';
 
 // These are compile-level tests: the property under test is that this file type-checks (or, for
 // the `@ts-expect-error` cases, that it does NOT type-check without the suppressed error). They
@@ -87,6 +92,11 @@ declare const options016: Ledger8CallTxOptionsBase<Counter016Contract, 'incremen
 declare const options016WithPrivateStateId: Ledger8CallTxOptionsWithPrivateStateId<Counter016Contract, 'increment'>;
 declare const contract016: Counter016Contract;
 
+// The ARGUMENT-TAKING retained-era fixture, which is what makes the family's contravariance
+// testable at all.
+declare const providersCoin: Ledger8ContractProviders<CoinReceiver016Contract, 'receive_coin'>;
+declare const optionsCoin: Ledger8CallTxOptionsBase<CoinReceiver016Contract, 'receive_coin'>;
+
 // Current-era ("0.18") call-site material, typed off the real generated declaration file.
 declare const providers018: ContractProviders<Twin018, 'increment'>;
 declare const options018: CallTxOptionsWithPrivateStateId<Twin018, 'increment'>;
@@ -111,15 +121,22 @@ describe('the retained-era contract type family pins the real 0.16 artifact shap
     expectTypeOf<Ledger8CircuitParameters<Counter016Contract, 'increment'>>().toEqualTypeOf<[]>();
   });
 
-  it('keeps the era top type INHABITABLE, so its args are readable and not never', () => {
+  it('keeps the era top type INHABITABLE, so its args are a real tuple and not never', () => {
     // The regression test for a whole class of mistake. `Ledger8CircuitParameters` destructures
-    // `Parameters<T>` as `[Ledger8CircuitContext, ...infer A]`, and a bare `never[]` rest parameter
-    // is not tuple-shaped, so that pattern matched nothing and `A` never bound: every `args` on the
-    // era TOP type silently became `never`, making `AnyLedger8CallTxOptions` impossible to satisfy
-    // or to read inside the widened implementation signatures. Concrete contracts were unaffected,
-    // which is exactly why it needed asserting here rather than being noticed at a call site.
-    expectTypeOf<Ledger8CircuitParameters<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>>().toEqualTypeOf<unknown[]>();
-    expectTypeOf<AnyLedger8CallTxOptions['args']>().toEqualTypeOf<unknown[]>();
+    // `Parameters<T>` as `[Ledger8CircuitContext, ...infer A]`, and a bare `(...args: never[])`
+    // circuit is not tuple-shaped, so that pattern matched nothing and `A` never bound: every
+    // `args` on the era TOP type silently became `never`, making `AnyLedger8CallTxOptions`
+    // impossible to satisfy or to read inside the widened implementation signatures. Concrete
+    // contracts were unaffected, which is exactly why it needed asserting here.
+    //
+    // The tuple shape comes from `Ledger8Circuit` declaring its leading CONTEXT explicitly, NOT
+    // from the width of its argument tail. The tail is `never[]` and must stay `never[]`: the
+    // circuit collections are function-typed records, so widening it to `unknown[]` breaks
+    // contravariance and locks every argument-taking contract out of the retained-era overload
+    // entirely (see the argument-taking fixture's own describe block below). `never[]` reads less
+    // obviously than `unknown[]`, and is inhabited all the same — `[]` satisfies it.
+    expectTypeOf<Ledger8CircuitParameters<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>>().toEqualTypeOf<never[]>();
+    expectTypeOf<AnyLedger8CallTxOptions['args']>().toEqualTypeOf<never[]>();
     expectTypeOf<AnyLedger8CallTxOptions['args']>().not.toBeNever();
   });
 
@@ -147,6 +164,43 @@ describe('the retained-era contract type family pins the real 0.16 artifact shap
     // @ts-expect-error - a 0.16 contract's circuits are synchronous
     const notCurrentEra: Contract.Any = contract016;
     expectTypeOf(notCurrentEra).toMatchTypeOf<Contract.Any>();
+  });
+});
+
+describe('an argument-taking retained-era contract works, not just a zero-argument one', () => {
+  // `counter-016`'s circuit takes only the framework-built context, so every assertion above
+  // exercises `Ledger8CircuitParameters` at the empty tuple. `coin-receiver-016` is a real
+  // retained-era artifact whose `receive_coin` takes one argument after the context (its own arity
+  // guard is `args_1.length !== 2`), and these four assertions are what a zero-argument fixture
+  // could never have caught: with `Ledger8Circuit`'s tail widened to `unknown[]`, contravariance
+  // put this contract OUTSIDE `Ledger8Contract` altogether, so `submitCallTx` silently fell through
+  // to the current-era arms and the retained-era overload did not apply to it at all.
+  it('satisfies the retained-era family through the family own machinery', () => {
+    expectTypeOf<Ledger8CircuitId<CoinReceiver016Contract>>().toEqualTypeOf<'receive_coin'>();
+  });
+
+  it('reports a NON-EMPTY caller argument tuple, with the framework-built context stripped', () => {
+    expectTypeOf<Ledger8CircuitParameters<CoinReceiver016Contract, 'receive_coin'>>().toEqualTypeOf<[coin: CoinReceiver016Coin]>();
+  });
+
+  it('carries args on its options, unlike the zero-argument fixture', () => {
+    expectTypeOf<Ledger8CallTxOptionsBase<CoinReceiver016Contract, 'receive_coin'>>().toHaveProperty('args');
+    expectTypeOf<Ledger8CallTxOptionsBase<CoinReceiver016Contract, 'receive_coin'>['args']>().toEqualTypeOf<
+      [coin: CoinReceiver016Coin]
+    >();
+  });
+
+  it('RESOLVES to the retained-era arm, which is the assertion the unknown[] tail failed', () => {
+    // The load-bearing one. Compiling is not the property under test: an argument-taking contract
+    // that fell out of `Ledger8Contract` would still have compiled here by matching a current-era
+    // arm, or failed for a reason that says nothing about eras. Only the resolved return type shows
+    // that the retained-era arm was selected.
+    expectTypeOf(submitCallTx(providersCoin, optionsCoin)).toEqualTypeOf<
+      Promise<Ledger8FinalizedCallTxData<CoinReceiver016Contract, 'receive_coin'>>
+    >();
+    expectTypeOf(submitCallTxAsync(providersCoin, optionsCoin)).toEqualTypeOf<
+      Promise<Ledger8SubmittedCallTx<CoinReceiver016Contract, 'receive_coin'>>
+    >();
   });
 });
 

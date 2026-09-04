@@ -64,11 +64,11 @@
  * genuine top type for the era that still excludes the current era's shape,
  * because a `Promise` has none of the members the retained results declare.
  *
- * One exception, and it is deliberate: {@link Ledger8Circuit}'s argument TAIL is `unknown[]`, not
- * `never[]`. A bare `never[]` rest parameter is not tuple-shaped, so `Parameters<T>` on it matches
- * no `[Head, ...infer Tail]` pattern and {@link Ledger8CircuitParameters} silently produced `never`
- * for the era top type. The leading context is declared explicitly and only the tail is a rest, so
- * the tuple shape survives.
+ * There is no exception to that: {@link Ledger8Circuit} and {@link Ledger8Witness} both widen their
+ * arguments to `never`. What {@link Ledger8Circuit} does differently is declare its leading context
+ * EXPLICITLY instead of folding it into the rest parameter, which is what keeps `Parameters<T>`
+ * tuple-shaped so {@link Ledger8CircuitParameters} can destructure it. Widening the tail would
+ * break contravariance for every argument-taking circuit; see that type for the full reasoning.
  *
  * ## Overload order is load-bearing, and the LAST arm is left alone
  *
@@ -143,19 +143,31 @@ export interface Ledger8CircuitResult {
 /**
  * A retained-era circuit member.
  *
- * The leading context is declared EXPLICITLY, and only the tail is a rest parameter, because
- * `Parameters<T>` has to stay tuple-shaped for {@link Ledger8CircuitParameters} to destructure it.
- * A bare `(...args: never[])` makes `Parameters<T>` just `never[]`, which matches no
- * `[Head, ...infer Tail]` pattern, so the era top type's `args` silently collapsed to `never` and
- * `AnyLedger8CallTxOptions` became uninhabitable. `src/test/typecheck/overloads.test-d.ts` pins
- * that it does not.
+ * Two decisions here, and BOTH are load-bearing. Read this before touching the signature.
  *
- * The context is `Ledger8CircuitContext<never>` rather than the `unknown` default: parameters are
- * checked contravariantly, and `never` is assignable to every private state, so a concrete circuit
- * declared over a real private state satisfies this. The `unknown[]` tail is what keeps the tuple
- * shape; a concrete circuit that takes no further arguments simply ignores it.
+ * 1. The leading context is declared EXPLICITLY rather than folded into the rest parameter. That is
+ *    what keeps `Parameters<T>` tuple-shaped, which is what lets
+ *    {@link Ledger8CircuitParameters} destructure it as `[Head, ...infer Tail]`. A bare
+ *    `(...args: never[])` makes `Parameters<T>` just `never[]`, which matches no such pattern, so
+ *    the era top type's `args` collapsed to `never` and `AnyLedger8CallTxOptions` became
+ *    uninhabitable.
+ * 2. The argument TAIL is `never[]`, not `unknown[]`. The circuit collections are function-typed
+ *    `Record`s, so under `strictFunctionTypes` their parameters are checked CONTRAVARIANTLY: an
+ *    `unknown[]` tail would require `unknown` to be assignable to the concrete argument type, so a
+ *    real circuit such as `(context, coin: ShieldedCoinInfo)` would fail the
+ *    {@link Ledger8Contract} constraint outright and its contract could not select the retained-era
+ *    overload at all. `never` is assignable to every type, so every real circuit satisfies it.
+ *
+ * The two are independent: the tuple shape comes from (1), NOT from widening the tail. Do not
+ * widen the tail to `unknown[]` for readability — it costs the feature its argument-taking
+ * contracts. `src/test/typecheck/overloads.test-d.ts` pins both directions against a real
+ * zero-argument fixture and a real argument-taking one.
+ *
+ * The context is `Ledger8CircuitContext<never>` for the same contravariance reason: `never` is
+ * assignable to every private state, so a concrete circuit declared over a real one satisfies this,
+ * and the context gives the family a second, independent reason to reject a current-era contract.
  */
-export type Ledger8Circuit = (context: Ledger8CircuitContext<never>, ...args: unknown[]) => Ledger8CircuitResult;
+export type Ledger8Circuit = (context: Ledger8CircuitContext<never>, ...args: never[]) => Ledger8CircuitResult;
 
 /**
  * A retained-era witness implementation, which returns the next private state
