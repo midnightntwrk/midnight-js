@@ -378,3 +378,57 @@ export class ScopedTransactionIdentityMismatchError extends Error {
       '. Scoped transactions must target the same contract and private state identity.';
   }
 }
+
+/**
+ * An error indicating that a contract's on-chain entry point declares no verifier key at all.
+ *
+ * An absent key means that entry point was never deployed — the shape a constructor-built state
+ * has before a deploy fills it in — rather than a key that happens to be empty
+ * (`packages/protocol/docs/fail-closed-decoding.md`). There is nothing for a proof to be verified
+ * against, so the call is refused before any proving happens.
+ */
+export class BlankVerifierKeySlotError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT;
+
+  /**
+   * @param circuitId The entry point whose slot is blank.
+   */
+  constructor(readonly circuitId: string) {
+    super(
+      `The deployed contract declares entry point '${circuitId}' but registers no verifier key against ` +
+        `it, so a call to '${circuitId}' has nothing to be verified against. A blank slot means that entry ` +
+        `point was never deployed: deploy the contract's verifier keys, or check that the address this ` +
+        `operation targets is the contract you compiled.`
+    );
+    this.name = 'BlankVerifierKeySlotError';
+  }
+}
+
+/**
+ * An error indicating that the verifier key compiled locally for a circuit does not byte-match the
+ * key registered on chain for that entry point.
+ *
+ * Raised BEFORE proving, which is the whole value of the check: a proof generated against a key the
+ * chain does not hold is rejected on submission, after the cost of generating it has been paid.
+ *
+ * This is also what catches a mis-dispatched operation — the wrong pipeline, or the wrong contract
+ * address — because either one shows up here as a key that does not match the slot.
+ *
+ * @see packages/protocol/docs/verifier-keys.md
+ */
+export class VerifierKeyMismatchError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH;
+
+  /**
+   * @param circuitId The entry point whose key did not match.
+   */
+  constructor(readonly circuitId: string) {
+    super(
+      `The verifier key compiled for '${circuitId}' does not match the key the deployed contract registers ` +
+        `for that entry point, so a proof generated from this artifact would be rejected on submission. The ` +
+        `deployed contract is a different build from this local one: point the operation at the address this ` +
+        `artifact was compiled for, or rebuild against the deployed contract's source.`
+    );
+    this.name = 'VerifierKeyMismatchError';
+  }
+}

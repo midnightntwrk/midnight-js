@@ -30,6 +30,7 @@
     "packages/contracts/src/test/current-era-diagnostic.test.ts",
     "packages/contracts/src/test/era-dispatch-ledger8.test.ts",
     "packages/contracts/src/test/era-dispatch.test.ts",
+    "packages/contracts/src/test/key-set.test.ts",
     "packages/contracts/src/test/ledger8-contract.test.ts",
     "packages/contracts/src/test/ledger8-fixture-types.ts",
     "packages/contracts/src/test/non-regression-baseline-gate.test.ts",
