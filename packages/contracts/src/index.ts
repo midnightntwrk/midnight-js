@@ -40,6 +40,13 @@ export {
   DeployContractOptionsWithPrivateState,
   DeployedContract
 } from './deploy-contract';
+// The one member of `./internal/breadcrumbs` that is a CONSUMER-FACING value.
+// Its own documentation justifies a fixed message so a log aggregator can group
+// the three dispatch decisions -- which is only true if the aggregator can
+// import the string rather than retype it. The breadcrumb TYPES stay internal:
+// a log consumer reads the emitted JSON, and publishing the shapes would pin
+// them as API before a second consumer has asked for them.
+export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // The eight era errors below become reachable with this release: the retained-era entry points now
 // run real pipelines, so a consumer can catch each of them. Every one is thrown on a path a
 // consumer can reach -- `BlankVerifierKeySlotError` and `VerifierKeyMismatchError` from the

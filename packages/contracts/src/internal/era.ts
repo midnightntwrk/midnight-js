@@ -552,6 +552,12 @@ export const assertHeadStateEraAgreement = async (
   pdp: HeadVersionSource,
   logger?: BreadcrumbSink
 ): Promise<void> => {
+  // NOT breadcrumbed when this THROWS. `contractStateEnvelopeVersion` refuses
+  // an envelope it cannot parse, and the encoding breadcrumb's only field is
+  // the era the tag declared -- so on that path there is no era to report and
+  // no placeholder worth inventing for one. The `TagParseError` it raises
+  // already names what the bytes carried instead, which is the more precise
+  // signal, and the operation-start head reading is already in the log.
   const stateEra = contractStateEnvelopeVersion(state.raw);
   // Reported for the AGREEING case too, not only for a disagreement: which era
   // decoded a state is the fact an operator needs when the state decodes but

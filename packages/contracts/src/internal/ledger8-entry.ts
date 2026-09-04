@@ -291,7 +291,7 @@ const atSeam = async <T>(seam: EraSeam, circuitId: string, call: () => Promise<T
 export const submitLedger8Tx = async (
   providers: Pick<
     Ledger8EntryProviders,
-    'publicDataProvider' | 'proofProvider' | 'walletProvider' | 'midnightProvider'
+    'publicDataProvider' | 'proofProvider' | 'walletProvider' | 'midnightProvider' | 'loggerProvider'
   >,
   txBytes: Uint8Array,
   operation: SubmittedOperation
@@ -304,7 +304,7 @@ export const submitLedger8Tx = async (
     try {
       return await atSeam('submitTx', circuitId, call);
     } catch (rejection) {
-      return handleSubmitRejection(providers.publicDataProvider, operation, rejection);
+      return handleSubmitRejection(providers.publicDataProvider, operation, rejection, providers.loggerProvider);
     }
   };
 
@@ -421,14 +421,29 @@ export interface Ledger8SubmittedDeploy {
 /**
  * Runs one retained-era deploy end to end.
  *
- * NO ENTRY POINT CALLS THIS YET, and that is a deliberate consequence of one
- * measured gap rather than an omission: {@link LEDGER8_DEPLOY_UNMAINTAINABLE}
- * records that a retained-era deployment lands with an unsatisfiable
- * maintenance authority, so `deployContract`'s retained arm refuses rather
- * than offering a contract nobody could ever maintain. The transaction path
- * below composes and submits correctly and is exercised directly by
- * `src/test/v8-native.test.ts`, so wiring the entry point is a one-line change
- * the moment the era seam carries an authority.
+ * ## DELIBERATELY DORMANT — dormant by measurement, not dead by accident
+ *
+ * No entry point calls this, and its only callers are tests. That is a
+ * recorded decision rather than an oversight, and the three parts of it are:
+ *
+ * - WHY IT IS UNREACHABLE: {@link LEDGER8_DEPLOY_UNMAINTAINABLE} records that
+ *   a retained-era deployment lands with an unsatisfiable maintenance
+ *   authority — an empty committee with a threshold of one — so
+ *   `deployContract`'s retained arm refuses rather than offering a contract
+ *   nobody could ever maintain.
+ * - WHERE THAT MEASUREMENT IS PINNED: `packages/protocol/src/test/v8-deploy.test.ts`
+ *   asserts the authority the retained constructor actually leaves behind. It
+ *   is the test that will fail, and say so, if a future retained runtime or
+ *   era seam gains an authority.
+ * - WHAT WOULD MAKE IT REACHABLE: the era seam carrying a maintenance
+ *   authority. On that day `deployContract`'s retained arm stops refusing and
+ *   calls this instead — a one-line change. Deleting this in the meantime
+ *   would mean re-deriving the whole composition later.
+ *
+ * The transaction path below composes and submits correctly and is exercised
+ * directly by `src/test/v8-native.test.ts`, which is what keeps it honest
+ * while it waits. Its pipeline-selection breadcrumb is likewise only reachable
+ * from tests today, for the same reason and no other.
  *
  * Reachable only on a pre-fork head: a retained-era deploy against a post-fork
  * head is refused by {@link acquireLedger8Runtime} before the constructor is

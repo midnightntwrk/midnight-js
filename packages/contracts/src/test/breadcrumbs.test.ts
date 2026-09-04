@@ -46,11 +46,20 @@ import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import type { RawContractState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
-import { HeadStateEraMismatchError, IndexerInconsistencyError, Ledger8DeployOnV9Error } from '../errors';
-import type { DispatchBreadcrumb } from '../internal/breadcrumbs';
+import {
+  HeadStateEraMismatchError,
+  IndexerInconsistencyError,
+  Ledger8DeployOnV9Error,
+  Ledger8SeamFailedError,
+  StaleHeadError,
+  SubmitRejectionUndiagnosedError,
+  type SubmittedOperation
+} from '../errors';
+import type { DispatchBreadcrumb, HeadReadingProvenance } from '../internal/breadcrumbs';
 import { DISPATCH_BREADCRUMB_MESSAGE, emitEncoding, emitHeadResolution, emitPipelineSelection } from '../internal/breadcrumbs';
 import { assertHeadStateEraAgreement, type PipelineEra, resolveOperationEra } from '../internal/era';
 import { acquireLedger8Runtime, findLedger8Contract } from '../internal/ledger8-entry';
+import { handleSubmitRejection } from '../internal/stale-head';
 import { resolveScopeEra } from '../internal/transaction';
 import { createMockContractAddress, createMockProviders } from './test-mocks';
 
@@ -114,14 +123,23 @@ const rawState = (raw: Uint8Array, protocolVersion: number, version: LedgerVersi
   raw
 });
 
-// The field surface each decision is allowed to carry. Asserted as a set as
-// well as by strict equality on values: strict equality catches a field whose
-// VALUE changed, this catches a field that was ADDED, which is the direction a
-// privacy regression arrives from.
-const ALLOWED_FIELDS: Readonly<Record<DispatchBreadcrumb['decision'], readonly string[]>> = {
+// The field surface each decision carries, split into what MUST be present and
+// what MAY be. Two lists rather than one allow-list, because the two failures
+// arrive from opposite directions and one list cannot see both: an ADDED field
+// is how a privacy regression arrives, and a MISSING field is how the
+// observability layer quietly stops answering the question it exists for.
+const REQUIRED_FIELDS: Readonly<Record<DispatchBreadcrumb['decision'], readonly string[]>> = {
   'head-resolution': ['decision', 'version', 'protocolVersion', 'source', 'readingProvenance'],
-  'pipeline-selection': ['decision', 'version', 'protocolVersion', 'source', 'readingProvenance', 'path', 'contractAddress'],
+  'pipeline-selection': ['decision', 'version', 'protocolVersion', 'source', 'readingProvenance', 'path'],
   encoding: ['decision', 'version', 'source']
+};
+
+// Present only when the operation has a value for them. `contractAddress` is
+// the only one: a deploy names no contract.
+const OPTIONAL_FIELDS: Readonly<Record<DispatchBreadcrumb['decision'], readonly string[]>> = {
+  'head-resolution': [],
+  'pipeline-selection': ['contractAddress'],
+  encoding: []
 };
 
 /**
@@ -144,11 +162,17 @@ const expectCarriesNoSecrets = (breadcrumb: DispatchBreadcrumb, secrets: readonl
   for (const value of Object.values(breadcrumb)) {
     expect(typeof value === 'string' || typeof value === 'number').toBe(true);
   }
-  expect(Object.keys(breadcrumb).sort()).toEqual(
-    ALLOWED_FIELDS[breadcrumb.decision].filter((field) => field in breadcrumb).sort()
-  );
-  // And no field outside the allowed surface.
-  expect(Object.keys(breadcrumb).every((field) => ALLOWED_FIELDS[breadcrumb.decision].includes(field))).toBe(true);
+
+  const present = Object.keys(breadcrumb);
+  const required = REQUIRED_FIELDS[breadcrumb.decision];
+  const permitted = [...required, ...OPTIONAL_FIELDS[breadcrumb.decision]];
+
+  // ABSENCE: every mandated field is here. Comparing against a list filtered
+  // by what the breadcrumb already has cannot state this -- a missing field
+  // would be filtered out of its own expectation and pass.
+  expect(required.filter((field) => present.includes(field)).sort()).toEqual([...required].sort());
+  // ADDITION: nothing outside the permitted surface.
+  expect(present.filter((field) => !permitted.includes(field))).toEqual([]);
 };
 
 describe('the breadcrumb emitters', () => {
@@ -211,7 +235,9 @@ describe('the breadcrumb emitters', () => {
 
     emitPipelineSelection(sink, { head: 'v8', headProtocolVersion: V8_HEAD }, 'ledger8');
 
-    expect(emitted(sink)).toStrictEqual([
+    const [breadcrumb] = emitted(sink);
+    expect(breadcrumb).toBeDefined();
+    expect([breadcrumb]).toStrictEqual([
       {
         decision: 'pipeline-selection',
         version: 'v8',
@@ -221,7 +247,7 @@ describe('the breadcrumb emitters', () => {
         path: 'ledger8'
       }
     ]);
-    expect('contractAddress' in (emitted(sink)[0] ?? {})).toBe(false);
+    expect('contractAddress' in breadcrumb).toBe(false);
   });
 
   it('reports the encoding era the envelope tag declared', () => {
@@ -455,15 +481,17 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
 
     await assertHeadStateEraAgreement('v8', rawState(v8Envelope, V8_HEAD, 'v8'), headSource(), sink);
 
-    const breadcrumbs = emitted(sink);
-    expect(breadcrumbs).toStrictEqual([
+    const [breadcrumb] = emitted(sink);
+    expect(breadcrumb).toBeDefined();
+    expect([breadcrumb]).toStrictEqual([
       { decision: 'encoding', version: 'v8', source: 'contract-state-envelope-tag' }
     ]);
     // The privacy gate, over the real envelope the breadcrumb was derived
-    // from: the era name came out, the bytes did not.
-    expectCarriesNoSecrets(breadcrumbs[0] ?? { decision: 'encoding', version: 'v8', source: 'contract-state-envelope-tag' }, [
-      v8Envelope
-    ]);
+    // from: the era name came out, the bytes did not. Read directly rather
+    // than through a `??` fallback -- a fallback here would compare the
+    // breadcrumb against a hand-built copy of the expectation if none had been
+    // emitted, which is the shape of an assertion that cannot fail.
+    expectCarriesNoSecrets(breadcrumb, [v8Envelope]);
   });
 
   it('dates the envelope by its TAG, not by the era the record claims', async () => {
@@ -567,11 +595,18 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
     }
   });
 
-  it('carries only names, era labels, integers and the contract address', () => {
-    // The allow-list, asserted positively as well: an added field that
-    // happened not to match a secret in THIS scenario would still fail here.
+  it('carries every mandated field and nothing outside the permitted surface', () => {
+    // Stated once more on its own, separately from the secret search: an added
+    // field that happened not to match a secret in THIS scenario, or a
+    // mandated field that silently stopped being emitted, both fail here.
     for (const breadcrumb of breadcrumbs) {
-      expect(Object.keys(breadcrumb).every((field) => ALLOWED_FIELDS[breadcrumb.decision].includes(field))).toBe(true);
+      const present = Object.keys(breadcrumb);
+      const required = REQUIRED_FIELDS[breadcrumb.decision];
+
+      expect(required.filter((field) => present.includes(field)).sort()).toEqual([...required].sort());
+      expect(
+        present.filter((field) => ![...required, ...OPTIONAL_FIELDS[breadcrumb.decision]].includes(field))
+      ).toEqual([]);
     }
   });
 
@@ -587,5 +622,186 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
     }
 
     expect(emitted(sink).map((breadcrumb) => ('path' in breadcrumb ? breadcrumb.path : undefined))).toEqual(pipelines);
+  });
+});
+
+describe('the post-rejection head read leaves a breadcrumb too', () => {
+  // The rejection in the shape the submit seam actually produces: already
+  // sanitized, with the provider's failure on `cause`.
+  const wrappedRejection = (): Ledger8SeamFailedError =>
+    new Ledger8SeamFailedError('submitTx', 'receive_coin', new Error('node refused the transaction'));
+
+  const callOperation = (head: LedgerVersion): SubmittedOperation => ({
+    head,
+    kind: 'call',
+    circuitId: 'receive_coin',
+    contractAddress: CONTRACT_ADDRESS
+  });
+
+  it('reports the fresh reading behind a fork-crossing refusal, with its own provenance', async () => {
+    // The single most diagnostic head reading in the stack: bytes were already
+    // on the wire, and this reading is what turns a bare rejection into a
+    // two-step re-run remediation. An operator acting on that remediation
+    // needs the integer it returned.
+    const sink = createSink();
+
+    await expect(
+      handleSubmitRejection(headSource(V9_HEAD), callOperation('v8'), wrappedRejection(), sink)
+    ).rejects.toThrow(StaleHeadError);
+
+    expect(emitted(sink)).toStrictEqual([
+      {
+        decision: 'head-resolution',
+        version: 'v9',
+        protocolVersion: V9_HEAD,
+        source: 'public-data-provider',
+        readingProvenance: 'post-rejection-re-read'
+      }
+    ]);
+  });
+
+  it('distinguishes the post-rejection reading from the operation-start one', async () => {
+    // Both readings on one sink, which is what a real operation produces. If
+    // they carried the same provenance a log could not tell which reading the
+    // fork verdict rested on -- the whole point of carrying it.
+    const sink = createSink();
+
+    await resolveOperationEra(headSource(V8_HEAD), sink);
+    await expect(
+      handleSubmitRejection(headSource(V9_HEAD), callOperation('v8'), wrappedRejection(), sink)
+    ).rejects.toThrow(StaleHeadError);
+
+    expect(emitted(sink).map((breadcrumb) => 'readingProvenance' in breadcrumb ? breadcrumb.readingProvenance : undefined))
+      .toEqual<(HeadReadingProvenance | undefined)[]>(['operation-start', 'post-rejection-re-read']);
+  });
+
+  it('reports the reading even when the head did NOT move, so the re-thrown rejection is accounted for', async () => {
+    // The same-era arm re-throws the rejection unchanged, so without the
+    // breadcrumb there is no record that the network was asked at all.
+    const sink = createSink();
+    const rejection = wrappedRejection();
+
+    await expect(
+      handleSubmitRejection(headSource(V8_HEAD), callOperation('v8'), rejection, sink)
+    ).rejects.toBe(rejection);
+
+    expect(emitted(sink)).toStrictEqual([
+      {
+        decision: 'head-resolution',
+        version: 'v8',
+        protocolVersion: V8_HEAD,
+        source: 'public-data-provider',
+        readingProvenance: 'post-rejection-re-read'
+      }
+    ]);
+  });
+
+  it('emits NOTHING when the head read itself failed, because there is no reading to report', async () => {
+    const sink = createSink();
+    const pdp = { queryLatestProtocolVersion: vi.fn<() => Promise<number>>().mockRejectedValue(new Error('offline')) };
+
+    await expect(
+      handleSubmitRejection(pdp, callOperation('v8'), wrappedRejection(), sink)
+    ).rejects.toThrow(SubmitRejectionUndiagnosedError);
+
+    expect(emitted(sink)).toStrictEqual([]);
+  });
+
+  it('never asks the network about one of this framework\'s own coded refusals, so emits nothing', async () => {
+    const sink = createSink();
+    const pdp = headSource(V9_HEAD);
+    const ownRefusal = new StaleHeadError(callOperation('v8'), 'v9', new Error('inner'));
+
+    await expect(handleSubmitRejection(pdp, callOperation('v8'), ownRefusal, sink)).rejects.toBe(ownRefusal);
+
+    expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
+    expect(emitted(sink)).toStrictEqual([]);
+  });
+
+  it('names every provenance the type admits, so a new head read cannot go unreported', () => {
+    // A cheap exhaustiveness gate. There are four head reads in this package
+    // and three provenances -- the two operation-start reads share one -- so a
+    // fifth read has to add a member here, which is the reminder that it also
+    // has to emit.
+    const provenances: readonly HeadReadingProvenance[] = [
+      'operation-start',
+      'disagreement-re-read',
+      'post-rejection-re-read'
+    ];
+    const sink = createSink();
+
+    for (const readingProvenance of provenances) {
+      emitHeadResolution(sink, { head: 'v9', headProtocolVersion: V9_HEAD }, readingProvenance);
+    }
+
+    expect(
+      emitted(sink).map((breadcrumb) => ('readingProvenance' in breadcrumb ? breadcrumb.readingProvenance : undefined))
+    ).toEqual(provenances);
+  });
+});
+
+describe('a faulty logger cannot fail an operation that otherwise succeeds', () => {
+  // `loggerProvider` is a PUBLIC interface a consumer implements, with every
+  // level optional, so `debug` is arbitrary third-party code sitting on the
+  // success path of every retained-era operation. A breadcrumb has no bearing
+  // on the outcome, so a fault in it must not change the outcome.
+  const throwingSink = (): { readonly debug: DebugSpy } => ({
+    debug: vi.fn<(breadcrumb: DispatchBreadcrumb, message: string) => void>().mockImplementation(() => {
+      throw new Error('the configured logger is broken');
+    })
+  });
+
+  it('resolves the era despite the logger throwing, instead of rejecting', async () => {
+    const sink = throwingSink();
+
+    await expect(resolveOperationEra(headSource(V9_HEAD), sink)).resolves.toBeDefined();
+
+    // The logger really was called and really did throw -- otherwise this test
+    // would pass against a build that had stopped emitting altogether.
+    expect(sink.debug).toHaveBeenCalledTimes(1);
+    expect(sink.debug.mock.results.map((result) => result.type)).toEqual(['throw']);
+  });
+
+  it('returns the SAME result as a run with no logger at all', async () => {
+    // The second direction, and the one that matters: not failing is not
+    // enough if the guard changed what the operation produced.
+    const withoutLogger = await resolveOperationEra(headSource(V9_HEAD_MINOR_BUMP));
+    const withBrokenLogger = await resolveOperationEra(headSource(V9_HEAD_MINOR_BUMP), throwingSink());
+
+    expect(withBrokenLogger.head).toBe(withoutLogger.head);
+    expect(withBrokenLogger.headProtocolVersion).toBe(withoutLogger.headProtocolVersion);
+    expect(withBrokenLogger.era.version).toBe(withoutLogger.era.version);
+  });
+
+  it('does not turn a REFUSAL into a different failure', async () => {
+    // The guard must not swallow anything but the emission, so a genuine
+    // refusal still arrives as itself rather than as the logger's error.
+    const sink = throwingSink();
+
+    await expect(
+      acquireLedger8Runtime(headSource(V9_HEAD), 'deploy', { logger: sink })
+    ).rejects.toThrow(Ledger8DeployOnV9Error);
+  });
+
+  it('still completes the pipeline selection that follows a failed emission', async () => {
+    // A fault in the FIRST breadcrumb must not skip the second one, which is
+    // what a guard placed around the whole block instead of around the
+    // emission would do.
+    const sink = throwingSink();
+
+    await expect(
+      acquireLedger8Runtime(headSource(V8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS })
+    ).resolves.toBeDefined();
+
+    expect(sink.debug).toHaveBeenCalledTimes(2);
+  });
+
+  it('lets the era disagreement refusal through unchanged when the logger throws', async () => {
+    const sink = throwingSink();
+    const v8Envelope = readHexFixture('state-v8.hex');
+
+    await expect(
+      assertHeadStateEraAgreement('v9', rawState(v8Envelope, V8_HEAD, 'v8'), headSource(V8_HEAD), sink)
+    ).rejects.toThrow(HeadStateEraMismatchError);
   });
 });

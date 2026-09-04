@@ -47,6 +47,15 @@
  * no latch: an era reading is taken per operation and threaded down as a
  * value (`docs/adr/0008-never-latch-the-network-head-version.md`).
  *
+ * ## Every head read in this package is breadcrumbed
+ *
+ * There are four, and {@link HeadReadingProvenance} names which is which: the
+ * one an operation takes at its start, the one a scope takes at its start
+ * (also `'operation-start'`), the re-read that adjudicates a head/state era
+ * disagreement, and the re-read taken after a submitted transaction was
+ * rejected. A head read that reported nothing would be the one an operator
+ * could not account for, so a new one has to add a provenance member here.
+ *
  * ## Privacy
  *
  * A breadcrumb may carry version integers, era names, decision names and a
@@ -75,7 +84,18 @@ export type HeadReadingProvenance =
   /** The single reading taken at the operation's asynchronous start. */
   | 'operation-start'
   /** The fresh re-read taken to adjudicate a head/state era disagreement. */
-  | 'disagreement-re-read';
+  | 'disagreement-re-read'
+  /**
+   * The fresh re-read taken after the network REJECTED a submitted
+   * transaction, to decide whether the head moved across the fork underneath
+   * the operation.
+   *
+   * The most diagnostic head reading in the stack: it is the one that decides
+   * between reporting a fork crossing with a re-run remediation and reporting
+   * a rejection nothing could diagnose, and it is the only reading taken after
+   * bytes were already on the wire.
+   */
+  | 'post-rejection-re-read';
 
 /** The head integer was read, and placed on the era timeline. */
 export interface HeadResolutionBreadcrumb {
@@ -178,9 +198,34 @@ export interface BreadcrumbSink {
 export const DISPATCH_BREADCRUMB_MESSAGE = 'contract era dispatch decision';
 
 const emit = (sink: BreadcrumbSink | undefined, breadcrumb: DispatchBreadcrumb): void => {
-  // `call` rather than a bare invocation: a `LoggerProvider` may be a pino
-  // instance, whose log functions read the logger as `this`.
-  sink?.debug?.call(sink, breadcrumb, DISPATCH_BREADCRUMB_MESSAGE);
+  try {
+    // `call` rather than a bare invocation: a `LoggerProvider` may be a pino
+    // instance, whose log functions read the logger as `this`.
+    sink?.debug?.call(sink, breadcrumb, DISPATCH_BREADCRUMB_MESSAGE);
+  } catch {
+    // WHAT IS SWALLOWED: a fault thrown by the CONFIGURED LOGGER, and nothing
+    // else. `loggerProvider` is a public interface a consumer implements, with
+    // every level optional, so `debug` is arbitrary third-party code -- and
+    // without this guard it sits on the success path of every retained-era
+    // call, deploy, attach and scoped transaction, able to fail an operation
+    // that otherwise succeeded.
+    //
+    // WHY: a breadcrumb is a side effect with no bearing on the outcome, so a
+    // fault in it must not change the outcome. Observability must never be
+    // able to break execution. This is not the never-swallow rule's subject:
+    // that rule stops US from hiding OUR OWN failures, and a logger's fault is
+    // not the operation's fault.
+    //
+    // DO NOT WIDEN. The guard wraps the emission and nothing else. Nothing
+    // that computes a value, reads the network or decides an era may be moved
+    // inside it -- a swallowed fault there would hide a real failure, which is
+    // exactly what the never-swallow rule exists to prevent.
+    //
+    // Re-reporting the fault is not an option either: the only channel for it
+    // is the logger that just failed. `src/test/breadcrumbs.test.ts` states
+    // the intended behaviour in both directions -- the operation does not
+    // fail, and its result is unchanged.
+  }
 };
 
 /**
