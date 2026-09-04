@@ -22,31 +22,29 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { NEITHER_ERA_CONTRACT_MESSAGE } from '../ledger8-contract';
 
-// Snapshots the DIAGNOSTIC TEXT the compiler prints for a contract belonging to neither era.
+// Pins what the COMPILER PRINTS when an ordinary current-era call has an ordinary mistake in it.
 //
-// This is the one property of the era overloads that a compile-level assertion cannot reach:
-// vitest's typecheck pass exposes `@ts-expect-error` and `expectTypeOf`, never the compiler's
-// output. So this test runs `tsc` itself, over a fixture whose only errors are the four calls
-// under test, and asserts on what comes back.
+// This is the cost of adding the retained-era arms, measured rather than assumed. TypeScript
+// details only the last few arity-compatible overloads when none matches, and `ReturnType`,
+// `Parameters` and that diagnostic all resolve from the LAST signature. So the era arms are
+// declared FIRST and the arm that was already last is left where it was — which means a dApp author
+// who typos a circuit id, or hands over a private state of the wrong type, is still told exactly
+// that. Append an arm to the end of any of those overload lists and this test fails.
 //
-// What it protects, concretely. `NeitherEraContractOptions.compiledContract` is
-// `NeitherContractShape` intersected with a structurally identical ANONYMOUS restatement of it,
-// because TypeScript renders a named type by NAME and an anonymous one by EXPANSION, and a
-// developer who hits this error needs both halves: the name to look the type up, and the expansion
-// to read the migration-guide pointer without looking anything up. That intersection reads as
-// redundant, and the comment on the declaration is not enough on its own to stop someone
-// "simplifying" it. This test is: drop either half, or move a catch-all arm off the end of its
-// overload list, and it fails naming exactly what broke.
+// It is also the reason there is no catch-all arm carrying {@link NEITHER_ERA_CONTRACT_MESSAGE}: an
+// arm placed last renders on EVERY failed call, so a mistyped current-era call would have been told
+// its perfectly ordinary contract "is neither a 0.16- nor a 0.18-generated contract" and pointed at
+// a migration guide. The last assertion here is the guard against that returning: the message must
+// appear nowhere in what the compiler prints for these four calls.
 //
-// `NEITHER_ERA_CONTRACT_MESSAGE` is imported rather than restated, so the text cannot drift
-// between the type that carries it and the assertion that checks for it.
-// `typecheck/overloads.test-d.ts` is the other half of the pair: it pins the message text verbatim
-// at the type level, where a reword fails to compile.
+// The property is unreachable from a compile-level assertion — vitest's typecheck pass exposes
+// `@ts-expect-error` and `expectTypeOf`, never compiler output — so this runs `tsc` itself over a
+// fixture whose only errors are the four calls under test.
 
 const packageRelative = (path: string): string => fileURLToPath(new URL(path, import.meta.url));
 
 const PACKAGE_ROOT = packageRelative('../../');
-const FIXTURE = packageRelative('./resources/diagnostics/neither-era-calls.ts');
+const FIXTURE = packageRelative('./resources/diagnostics/mistyped-current-era-calls.ts');
 const FIXTURE_TSCONFIG = packageRelative('./resources/diagnostics/tsconfig.json');
 
 // Resolved rather than spelled as a path, so this fails loudly if the compiler is not installed
@@ -59,8 +57,16 @@ const TSC = createRequire(import.meta.url).resolve('typescript/bin/tsc');
 // killed) means the fixture stopped exercising what this test thinks it exercises.
 const TSC_REPORTED_DIAGNOSTICS = 2;
 
-/** The four era-dispatching entry points the fixture trips, one call per line. */
-const ERA_ENTRY_POINTS = ['submitCallTx', 'submitCallTxAsync', 'deployContract', 'findDeployedContract'];
+/**
+ * The four era-dispatching entry points, each paired with the REAL cause of its fixture call's
+ * mistake — the text a developer needs in order to fix it.
+ */
+const MISTYPED_CALLS = [
+  { entryPoint: 'submitCallTx', cause: `Type '"incremnt"' is not assignable to type '"increment"'.` },
+  { entryPoint: 'submitCallTxAsync', cause: `Type '"incremnt"' is not assignable to type '"increment"'.` },
+  { entryPoint: 'deployContract', cause: `Type 'string' is not assignable to type 'Twin018PrivateState'.` },
+  { entryPoint: 'findDeployedContract', cause: `Type 'string' is not assignable to type 'Twin018PrivateState'.` }
+];
 
 /** `<path>(<line>,<column>): error TS<code>: ` — the first line of one `tsc --pretty false` diagnostic. */
 const DIAGNOSTIC_HEAD = /^(.*?)\((\d+),\d+\): error (TS\d+): /;
@@ -114,7 +120,7 @@ const parseDiagnostics = (output: string): Diagnostic[] => {
     const head = DIAGNOSTIC_HEAD.exec(raw);
     if (head) {
       const [, file = '', line = '', code = ''] = head;
-      if (!file.endsWith('neither-era-calls.ts')) {
+      if (!file.endsWith('mistyped-current-era-calls.ts')) {
         throw new Error(`tsc reported a diagnostic outside the fixture: ${raw}`);
       }
       diagnostics.push({ line: Number(line), code, text: raw });
@@ -130,7 +136,7 @@ const parseDiagnostics = (output: string): Diagnostic[] => {
   return diagnostics;
 };
 
-describe('the diagnostic tsc prints for a contract belonging to neither era', () => {
+describe('the diagnostic tsc prints for a mistyped current-era call', () => {
   let output = '';
   let diagnostics: Diagnostic[] = [];
 
@@ -150,33 +156,27 @@ describe('the diagnostic tsc prints for a contract belonging to neither era', ()
   });
 
   it('reports exactly one overload-resolution error per era-dispatching entry point, and nothing else', () => {
-    // The count is asserted, not just the presence of the message: without it this suite would pass
-    // on any run that happened to print the text somewhere among a pile of unrelated errors.
-    expect(diagnostics.map((diagnostic) => diagnostic.code)).toEqual(ERA_ENTRY_POINTS.map(() => 'TS2769'));
+    // The count is asserted, not just the presence of each cause: without it this suite would pass
+    // on any run that happened to print the right text among a pile of unrelated errors.
+    expect(diagnostics.map((diagnostic) => diagnostic.code)).toEqual(MISTYPED_CALLS.map(() => 'TS2769'));
 
     const byLine = (a: number, b: number): number => a - b;
     expect(diagnostics.map((diagnostic) => diagnostic.line).sort(byLine)).toEqual(
-      ERA_ENTRY_POINTS.map(fixtureLineOf).sort(byLine)
+      MISTYPED_CALLS.map(({ entryPoint }) => fixtureLineOf(entryPoint)).sort(byLine)
     );
   });
 
-  it.each(ERA_ENTRY_POINTS)('renders the migration-guide message verbatim for %s', (entryPoint) => {
-    const line = fixtureLineOf(entryPoint);
-    const reported = diagnostics.filter((diagnostic) => diagnostic.line === line);
+  it.each(MISTYPED_CALLS)('names the real cause for a mistyped $entryPoint call', ({ entryPoint, cause }) => {
+    const reported = diagnostics.filter((diagnostic) => diagnostic.line === fixtureLineOf(entryPoint));
 
     expect(reported).toHaveLength(1);
-    expect(reported[0]?.text).toContain(NEITHER_ERA_CONTRACT_MESSAGE);
+    expect(reported[0]?.text).toContain(cause);
   });
 
-  it('names the error type alongside its message, so the reader gets both halves of the intersection', () => {
-    const named = diagnostics.filter((diagnostic) => diagnostic.text.includes('NeitherContractShape'));
-
-    expect(named).toHaveLength(ERA_ENTRY_POINTS.length);
-  });
-
-  it('prints the message once per entry point, so one shared mention cannot stand in for four', () => {
-    const occurrences = output.split(NEITHER_ERA_CONTRACT_MESSAGE).length - 1;
-
-    expect(occurrences).toBe(ERA_ENTRY_POINTS.length);
+  it('never claims a current-era contract belongs to neither era', () => {
+    // The regression guard on the arm order. A catch-all arm carrying this message, placed last,
+    // made every one of the four calls above report it instead of its real cause.
+    expect(output).not.toContain(NEITHER_ERA_CONTRACT_MESSAGE);
+    expect(output).not.toContain('NeitherContractShape');
   });
 });

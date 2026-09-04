@@ -1,10 +1,10 @@
 {
-  "//": "Compiles ONLY the deliberately-broken neither-era-calls.ts fixture, so src/test/neither-era-diagnostic.test.ts can assert on the diagnostics tsc prints for it. Extends the package config so the fixture is checked under exactly the options the package uses; `exclude` is reset because the package config excludes this directory from its own program, and that exclusion would otherwise be inherited here and leave this project empty.",
+  "//": "Compiles ONLY the deliberately-broken mistyped-current-era-calls.ts fixture, so src/test/current-era-diagnostic.test.ts can assert on the diagnostics tsc prints for it. Extends the package config so the fixture is checked under exactly the options the package uses; `exclude` is reset because the package config excludes this directory from its own program, and that exclusion would otherwise be inherited here and leave this project empty.",
   "extends": "../../../../tsconfig.json",
   "compilerOptions": {
     "composite": false,
     "noEmit": true
   },
-  "include": ["./neither-era-calls.ts"],
+  "include": ["./mistyped-current-era-calls.ts"],
   "exclude": []
 }

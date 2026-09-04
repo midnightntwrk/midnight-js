@@ -34,9 +34,7 @@ import {
   type Ledger8Contract,
   type Ledger8ContractProviders,
   type Ledger8DeployContractOptions,
-  type Ledger8DeployedContract,
-  type NeitherContractShape,
-  type NeitherEraContractOptions
+  type Ledger8DeployedContract
 } from './ledger8-contract';
 import { type DeployTxOptions, submitDeployTx } from './submit-deploy-tx';
 import { createCircuitCallTxInterface } from './tx-interfaces';
@@ -123,9 +121,11 @@ const createDeployTxOptions = <C extends Contract.Any>(
  * the raw contract instance rather than inside a `CompiledContract` container. It accepts the
  * shape but cannot execute it yet — see {@link LEDGER8_PIPELINE_NOT_WIRED}.
  *
- * Declared BEFORE the current-era arms, and pinned there by
- * `src/test/typecheck/overloads.test-d.ts`; see the module documentation in
- * `./ledger8-contract.ts` for why the order is load-bearing.
+ * ARM ORDER IS LOAD-BEARING, in two ways, and both are pinned by
+ * `src/test/typecheck/overloads.test-d.ts`. This arm is declared FIRST so no current-era arm can
+ * shadow it, and the LAST arm is left exactly as it was before this arm existed, because
+ * `ReturnType<typeof f>` and `Parameters<typeof f>` both resolve from it and so does the error
+ * TypeScript prints when no arm matches. See the module documentation in `./ledger8-contract.ts`.
  */
 export async function deployContract<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
@@ -141,33 +141,6 @@ export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: DeployContractOptionsWithPrivateState<C>
 ): Promise<DeployedContract<C>>;
-
-/**
- * The catch-all arm, and deliberately the LAST overload of `deployContract`.
- *
- * When no arm matches a call, TypeScript details only the LAST overload, so this is the only
- * position from which an object belonging to NEITHER era is reported against
- * {@link NeitherContractShape} — a type whose own definition carries the migration-guide
- * pointer — rather than against whichever current-era arm happened to sit last.
- *
- * The arm is UNREACHABLE. Nothing can satisfy {@link NeitherContractShape}, so no call that
- * type-checks ever selects it; it exists purely so the compiler has a named shape to render.
- * Both type parameters exist so the arm erases to a signature compatible with the implementation
- * below it.
- *
- * Its declared return type RESTATES the private-state arm above it, instantiated at that
- * arm's own constraints. Do NOT "tidy" it to `never`, however honest that would look:
- * `ReturnType<typeof f>` on an overloaded function ALSO resolves from the last overload, so
- * a `never` here silently retypes `ReturnType<typeof deployContract>` for every existing
- * consumer — and this package already reads `Awaited<ReturnType<typeof submitCallTx>>`.
- * The four `ReturnType` assertions in `src/test/typecheck/overloads.test-d.ts` are the
- * load-bearing guard on exactly that: they fail the moment this restatement drifts from the
- * arm above.
- */
-export async function deployContract<P, T extends NeitherEraContractOptions>(
-  providers: P,
-  options: T
-): Promise<DeployedContract<Contract.Any>>;
 
 /**
  * Creates and submits a contract deployment transaction. This function is the entry point for the transaction

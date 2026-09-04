@@ -74,33 +74,6 @@ export {
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from './governance';
-// The retained-era ("0.16") contract type family, which names the additive overloads the entry
-// points above accept alongside the current era's. `AnyLedger8*`, `isLedger8Options` and
-// `LEDGER8_PIPELINE_NOT_WIRED` are deliberately NOT re-exported: they exist to make the
-// implementation signatures compatible with their overloads and are not a consumer surface.
-export {
-  Ledger8CallTxOptions,
-  Ledger8CallTxOptionsBase,
-  Ledger8CallTxOptionsWithPrivateStateId,
-  Ledger8Circuit,
-  Ledger8CircuitContext,
-  Ledger8CircuitId,
-  Ledger8CircuitParameters,
-  Ledger8CircuitResult,
-  Ledger8ConstructorResult,
-  Ledger8Contract,
-  Ledger8ContractProviders,
-  Ledger8DeployContractOptions,
-  Ledger8DeployedContract,
-  Ledger8FinalizedCallTxData,
-  Ledger8FindDeployedContractOptions,
-  Ledger8FoundContract,
-  Ledger8PrivateState,
-  Ledger8SubmittedCallTx,
-  Ledger8Witness,
-  NeitherContractShape,
-  NeitherEraContractOptions
-} from './ledger8-contract';
 export { submitCallTx, submitCallTxAsync } from './submit-call-tx';
 export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
 export { submitTx, submitTxAsync, SubmitTxOptions, SubmitTxProviders } from './submit-tx';

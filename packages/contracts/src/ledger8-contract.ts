@@ -57,42 +57,48 @@
  *
  * The vendor family reaches for `any` to get a "top" contract type that every
  * concrete contract satisfies. That is not available here, so the openness is
- * expressed by variance instead: every parameter position widens to `never`
+ * expressed by variance instead: parameter positions widen to `never`
  * (assignable to anything, so contravariance always holds) and every result
  * position the private state does not flow through widens to `unknown`
  * (everything is assignable to it, so covariance always holds). The result is a
  * genuine top type for the era that still excludes the current era's shape,
  * because a `Promise` has none of the members the retained results declare.
  *
- * ## Overload order, and why the catch-all arm's return type lies
+ * One exception, and it is deliberate: {@link Ledger8Circuit}'s argument TAIL is `unknown[]`, not
+ * `never[]`. A bare `never[]` rest parameter is not tuple-shaped, so `Parameters<T>` on it matches
+ * no `[Head, ...infer Tail]` pattern and {@link Ledger8CircuitParameters} silently produced `never`
+ * for the era top type. The leading context is declared explicitly and only the tail is a rest, so
+ * the tuple shape survives.
  *
- * Two facts about TypeScript pull in opposite directions here, and every entry point's arm order
- * is the resolution of that tension. Both were measured against this code, not assumed:
+ * ## Overload order is load-bearing, and the LAST arm is left alone
  *
- * 1. When NO overload matches a call, the compiler details only the **LAST** overload. So the arm
- *    that renders the diagnostic a developer actually reads is whichever one sits last.
- * 2. `ReturnType<typeof f>` on an overloaded function ALSO resolves from the last overload. So an
- *    arm appended at the end silently retypes `ReturnType` for every existing consumer — and this
- *    package already reads `Awaited<ReturnType<typeof submitCallTx>>`.
+ * Three separate things resolve from an overloaded function's LAST signature, and all three were
+ * measured against this code rather than assumed:
  *
- * The order that satisfies both: the **retained-era arm goes FIRST** (before the current-era arms
- * that were already there, so it cannot be shadowed by one of them), and the **catch-all arm goes
- * LAST** (so an object belonging to neither era is reported against
- * {@link NeitherContractShape}). Fact 2 is then paid for by declaring the catch-all arm's return
- * type as a RESTATEMENT of the arm above it instead of the honest `never`. The arm is unreachable
- * — nothing can satisfy {@link NeitherContractShape} — so that declared type is never observed by a
- * real call, and each arm carries a comment saying so, because a reader who "tidies" it to `never`
- * would silently move the public surface.
+ * 1. `ReturnType<typeof f>`;
+ * 2. `Parameters<typeof f>`;
+ * 3. the error TypeScript prints when NO arm matches a call.
  *
- * `src/test/typecheck/overloads.test-d.ts` is the guard on all of it, and under this arrangement
- * its `ReturnType` assertions are load-bearing rather than belt-and-braces. It pins:
+ * So every entry point here declares its retained-era arm FIRST — where it cannot be shadowed by a
+ * current-era arm — and leaves the arm that was already last exactly where it was. Nothing is
+ * appended. `ReturnType` and `Parameters` therefore report what they reported before this file
+ * existed, and a call that matches nothing is still reported against a real current-era arm, which
+ * names a real cause: a typo'd circuit id, a private state of the wrong type. That last point is
+ * the one worth protecting, because a mistyped CURRENT-era call is the common case and a
+ * retained-era call is the rare one.
  *
- * - that each retained-era arm is REACHABLE (a retained-era call resolves to the retained-era
- *   result type, not merely compiles), which fails if a current-era arm shadows it;
- * - that `ReturnType` on all four entry points still reports exactly what it reported before any
- *   era arm existed, which fails the moment a catch-all restatement drifts from the arm above it,
- *   or a catch-all is "corrected" to `never`;
- * - the migration-guide message verbatim.
+ * There is deliberately no catch-all arm carrying {@link NEITHER_ERA_CONTRACT_MESSAGE}. Adding one
+ * last would have made every mistyped current-era call report that the caller's perfectly ordinary
+ * contract "is neither a 0.16- nor a 0.18-generated contract" — a false statement on the common
+ * path — and an arm that is NOT last never renders at all, so it would only distort `ReturnType`
+ * and `Parameters`. The guidance belongs in a thrown, typed error instead, which can carry full
+ * remediation text where a compiler diagnostic cannot.
+ *
+ * `src/test/typecheck/overloads.test-d.ts` pins all of it: that each retained-era arm is REACHABLE
+ * (a retained-era call resolves to the retained-era result type, not merely compiles), and that
+ * `ReturnType` AND `Parameters` on all four entry points still report exactly what they reported at
+ * the base commit. `src/test/current-era-diagnostic.test.ts` runs the compiler itself and pins the
+ * third one: that a mistyped current-era call still names its real cause.
  *
  * @see docs/adr/0006-version-tagged-payloads-at-provider-seams.md for why a
  *      retained-era result is version-tagged rather than single-era.
@@ -137,12 +143,19 @@ export interface Ledger8CircuitResult {
 /**
  * A retained-era circuit member.
  *
- * The parameter list is `never[]` rather than `unknown[]`: parameters are
- * checked contravariantly, and `never` is assignable to every type, so a
- * concrete circuit with real argument types satisfies this while `unknown[]`
- * would reject it.
+ * The leading context is declared EXPLICITLY, and only the tail is a rest parameter, because
+ * `Parameters<T>` has to stay tuple-shaped for {@link Ledger8CircuitParameters} to destructure it.
+ * A bare `(...args: never[])` makes `Parameters<T>` just `never[]`, which matches no
+ * `[Head, ...infer Tail]` pattern, so the era top type's `args` silently collapsed to `never` and
+ * `AnyLedger8CallTxOptions` became uninhabitable. `src/test/typecheck/overloads.test-d.ts` pins
+ * that it does not.
+ *
+ * The context is `Ledger8CircuitContext<never>` rather than the `unknown` default: parameters are
+ * checked contravariantly, and `never` is assignable to every private state, so a concrete circuit
+ * declared over a real private state satisfies this. The `unknown[]` tail is what keeps the tuple
+ * shape; a concrete circuit that takes no further arguments simply ignores it.
  */
-export type Ledger8Circuit = (...args: never[]) => Ledger8CircuitResult;
+export type Ledger8Circuit = (context: Ledger8CircuitContext<never>, ...args: unknown[]) => Ledger8CircuitResult;
 
 /**
  * A retained-era witness implementation, which returns the next private state
@@ -214,9 +227,9 @@ export type Ledger8ContractProviders<C extends Ledger8Contract, K extends Ledger
 >;
 
 /**
- * Base configuration for a retained-era call transaction.
+ * The target of a retained-era circuit invocation, without its arguments.
  */
-export interface Ledger8CallTxOptionsBase<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> {
+export interface Ledger8CallTxTarget<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> {
   /**
    * The retained-era contract instance, passed raw — there is no
    * `CompiledContract` container for this era.
@@ -230,23 +243,38 @@ export interface Ledger8CallTxOptionsBase<C extends Ledger8Contract, K extends L
    * The identifier of the circuit to call.
    */
   readonly circuitId: K;
-  /**
-   * Arguments to pass to the circuit being called.
-   */
-  readonly args: Ledger8CircuitParameters<C, K>;
 }
+
+/**
+ * Base configuration for a retained-era call transaction.
+ *
+ * `args` is CONDITIONAL, mirroring the current era's `CallOptionsWithArguments`: a circuit that
+ * takes no arguments of its own has no `args` member at all, rather than one the caller has to
+ * satisfy with an empty array. The two eras would otherwise disagree about the same
+ * zero-argument circuit — one caller writing `args: []` and the other writing nothing — which is a
+ * difference in the API surface, not in the contract.
+ */
+export type Ledger8CallTxOptionsBase<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
+  Ledger8CircuitParameters<C, K> extends []
+    ? Ledger8CallTxTarget<C, K>
+    : Ledger8CallTxTarget<C, K> & {
+        /**
+         * Arguments to pass to the circuit being called.
+         */
+        readonly args: Ledger8CircuitParameters<C, K>;
+      };
 
 /**
  * A retained-era call transaction configuration that also names where to store
  * the private state the call produces.
  */
-export interface Ledger8CallTxOptionsWithPrivateStateId<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>
-  extends Ledger8CallTxOptionsBase<C, K> {
-  /**
-   * The identifier for the private state of the contract.
-   */
-  readonly privateStateId: PrivateStateId;
-}
+export type Ledger8CallTxOptionsWithPrivateStateId<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
+  Ledger8CallTxOptionsBase<C, K> & {
+    /**
+     * The identifier for the private state of the contract.
+     */
+    readonly privateStateId: PrivateStateId;
+  };
 
 /**
  * Retained-era call transaction configuration.
@@ -345,8 +373,15 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  * A PROVISIONAL structural check, and deliberately not the era predicate this framework will
  * ship: it tests for the member the retained-era artifact installs and the current era's
  * container does not, which is enough to fork a body whose retained-era branch only throws. The
- * shipped predicate tests the container's registered brand instead, which is what a
- * duplicate-install-safe answer needs; it arrives with the pipeline that needs it.
+ * shipped predicate tests the container's registered brand
+ * (`Symbol.for('compact-js/CompiledContract')`) instead, which is what a duplicate-install-safe
+ * answer needs; it arrives with the pipeline that needs it.
+ *
+ * KNOWN BLIND SPOT, and why it is tolerable here: a raw CURRENT-era contract instance also carries
+ * `impureCircuits`, so this returns `true` for one. It cannot be reached through these entry
+ * points, because the current-era arms take the `CompiledContract` CONTAINER and a raw instance is
+ * not one, so nothing that type-checks gets here holding a bare current-era contract. The brand
+ * test in the shipped predicate closes it properly.
  *
  * The type parameter is named explicitly at each call site rather than inferred, so the narrowing
  * removes exactly the retained-era arm of that entry point's parameter union and leaves the
@@ -363,16 +398,20 @@ export const isLedger8Options = <L extends { readonly compiledContract: Ledger8C
  * The migration-guide message the compiler renders for a contract belonging to neither era. This is
  * the SINGLE place its text is written.
  *
- * A runtime `const` rather than a bare literal inside {@link NeitherContractShape}, for one
- * reason: `src/test/neither-era-diagnostic.test.ts` runs `tsc` over a fixture that trips all four
- * entry points and asserts this exact text appears in what the compiler PRINTS. A type-level
- * literal cannot be read from a runtime test, so the text would otherwise have had to be written
- * twice, in the type and in the test, where it could drift. `typeof` below preserves the string
- * LITERAL type, and the compiler still expands it inside a diagnostic — verified, and now pinned by
- * that test.
+ * DO NOT DELETE AS UNUSED. Nothing consumes this text yet, and that is expected: its destination
+ * is the typed, thrown error that era resolution raises when it is handed an object belonging to
+ * neither era. A thrown error can carry full remediation text; a compiler diagnostic cannot, which
+ * is why this is not wired into an overload arm (see the module documentation above). It is written
+ * down now so that the wording is settled and reviewed once, rather than invented at the point of
+ * use.
  *
- * Not re-exported from the package index: it is the payload of a compile-time diagnostic, not a
- * runtime API.
+ * A runtime `const` rather than a bare literal inside {@link NeitherContractShape} so that the text
+ * is written ONCE and can be read by a runtime consumer — a thrown error, and any test asserting on
+ * one — while `typeof` still gives the type a string LITERAL member.
+ * `src/test/typecheck/overloads.test-d.ts` pins the wording verbatim.
+ *
+ * Not re-exported from the package index: it is not a runtime API today, and publishing it would
+ * commit us to it before the error that carries it exists.
  */
 export const NEITHER_ERA_CONTRACT_MESSAGE =
   'Object is neither a 0.16- nor a 0.18-generated contract. See migration guide §window.';
@@ -382,38 +421,26 @@ export const NEITHER_ERA_CONTRACT_MESSAGE =
  * matching NEITHER era's shape is refused against a name whose own definition says what went
  * wrong.
  *
- * The `__error` member exists only to carry {@link NEITHER_ERA_CONTRACT_MESSAGE} into the
- * compiler's diagnostic; nothing constructs a value of this type.
- * `src/test/typecheck/overloads.test-d.ts` pins the message verbatim at the type level, and
- * `src/test/neither-era-diagnostic.test.ts` pins that the compiler really renders it.
+ * The `__error` member exists only to carry {@link NEITHER_ERA_CONTRACT_MESSAGE}; nothing
+ * constructs a value of this type. Retained here alongside the message for the same reason the
+ * message is retained: era resolution will refuse a neither-era object by throwing, and this is the
+ * shape that names what it refused. `src/test/typecheck/overloads.test-d.ts` pins the wording.
  */
 export type NeitherContractShape = { readonly __error: typeof NEITHER_ERA_CONTRACT_MESSAGE }
 
 /**
- * The catch-all arm's options type: an object whose contract belongs to neither era.
+ * An options object whose contract belongs to neither era, kept as the named counterpart to
+ * {@link NeitherContractShape}.
  *
- * `compiledContract` is {@link NeitherContractShape} INTERSECTED with a structurally identical
- * anonymous restatement of it, and both halves are load-bearing. TypeScript renders a named type
- * by NAME and an anonymous object type by EXPANSION, and a developer who hits this error wants
- * both: the name to look the type up, and the expansion to read the migration-guide pointer
- * without having to. Written this way, the diagnostic carries both:
- *
- * ```text
- * Type '{ readonly nonsense: true; }' is not assignable to type 'NeitherContractShape & {
- *   readonly __error: "Object is neither a 0.16- nor a 0.18-generated contract. See migration
- *   guide §window."; }'.
- * ```
- *
- * Do NOT simplify the intersection away. Dropping the anonymous half leaves the name with no
- * message; dropping the named half leaves the message with no name. Either way
- * `src/test/neither-era-diagnostic.test.ts` fails, because it asserts on what `tsc` actually
- * prints for all four entry points — that test is the executable guard on this declaration, and
- * this comment is only the explanation of it. The text itself is written ONCE, at
- * {@link NEITHER_ERA_CONTRACT_MESSAGE}, so the two halves cannot drift, and
- * `src/test/typecheck/overloads.test-d.ts` additionally asserts they are the same type.
+ * No overload arm takes this type: an arm that is not last never renders a diagnostic, and putting
+ * one last made every mistyped CURRENT-era call claim the caller's contract belonged to neither era
+ * (see the module documentation above). It is retained as the shape era resolution will report
+ * against when it throws, and `src/test/typecheck/overloads.test-d.ts` pins that a neither-era
+ * object really is refused by it — which is the assignability fact the overloads rely on, whether or
+ * not any arm spells it out.
  */
 export interface NeitherEraContractOptions {
-  readonly compiledContract: NeitherContractShape & { readonly __error: NeitherContractShape['__error'] };
+  readonly compiledContract: NeitherContractShape;
 }
 
 /**

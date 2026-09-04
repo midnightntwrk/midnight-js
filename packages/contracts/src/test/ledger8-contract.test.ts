@@ -182,15 +182,18 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       expect(isLedger8Options({ compiledContract: undefined })).toBe(false);
     });
 
+    // No `args` on these options: the fixture circuit takes no arguments of its own, and
+    // `Ledger8CallTxOptionsBase` omits `args` entirely in that case, exactly as the current era's
+    // `CallOptionsWithArguments` does.
     it('refuses a retained-era submitCallTx', async () => {
       await expect(
-        submitCallTx(providers, { compiledContract: contract, contractAddress: CONTRACT_ADDRESS_FIXTURE, circuitId: 'increment', args: [] })
+        submitCallTx(providers, { compiledContract: contract, contractAddress: CONTRACT_ADDRESS_FIXTURE, circuitId: 'increment' })
       ).rejects.toThrow(LEDGER8_PIPELINE_NOT_WIRED);
     });
 
     it('refuses a retained-era submitCallTxAsync', async () => {
       await expect(
-        submitCallTxAsync(providers, { compiledContract: contract, contractAddress: CONTRACT_ADDRESS_FIXTURE, circuitId: 'increment', args: [] })
+        submitCallTxAsync(providers, { compiledContract: contract, contractAddress: CONTRACT_ADDRESS_FIXTURE, circuitId: 'increment' })
       ).rejects.toThrow(LEDGER8_PIPELINE_NOT_WIRED);
     });
 
