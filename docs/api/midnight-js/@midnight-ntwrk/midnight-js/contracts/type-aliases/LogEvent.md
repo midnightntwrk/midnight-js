@@ -6,7 +6,7 @@
 
 # Type Alias: LogEvent
 
-> **LogEvent** = `Extract`\<[`GatherResult`](../../../midnight-js-protocol/onchain-runtime/type-aliases/GatherResult.md), \{ `tag`: `"log"`; \}\>\[`"content"`\] & `object`
+> **LogEvent** = `Extract`\<[`ocrt.GatherResult`](https://github.com/midnightntwrk/midnight-ledger), \{ `tag`: `"log"`; \}\>\[`"content"`\] & `object`
 
 Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:94
 
@@ -17,4 +17,4 @@ that emitted it; `content` is the encoded `VersionedLogItem` array.
 
 ### address
 
-> **address**: [`ContractAddress`](../../../midnight-js-protocol/onchain-runtime/type-aliases/ContractAddress.md)
+> **address**: [`ocrt.ContractAddress`](https://github.com/midnightntwrk/midnight-ledger)

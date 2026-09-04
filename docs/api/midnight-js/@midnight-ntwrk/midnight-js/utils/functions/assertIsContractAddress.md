@@ -29,4 +29,4 @@ The source string.
 ## Throws
 
 `TypeError`
-`contractAddress` is not a correctly formatted [ContractAddress](../../../midnight-js-protocol/onchain-runtime/type-aliases/ContractAddress.md).
+`contractAddress` is not a correctly formatted [ContractAddress](https://github.com/midnightntwrk/midnight-ledger).

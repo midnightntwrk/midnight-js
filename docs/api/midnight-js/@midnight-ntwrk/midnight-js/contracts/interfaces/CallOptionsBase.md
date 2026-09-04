@@ -14,11 +14,11 @@ Describes the target of a circuit invocation.
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ### PCK
 
-`PCK` *extends* [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
+`PCK` *extends* [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 ## Properties
 
@@ -28,7 +28,7 @@ Describes the target of a circuit invocation.
 
 Defined in: packages/contracts/dist/index.d.ts:17
 
-An optional mapping of [CoinPublicKey](../../../midnight-js-protocol/onchain-runtime/type-aliases/CoinPublicKey.md) to [EncPublicKey](../../../midnight-js-protocol/ledger/type-aliases/EncPublicKey.md) that can be used to resolve encryption
+An optional mapping of [CoinPublicKey](https://github.com/midnightntwrk/midnight-ledger) to [EncPublicKey](https://github.com/midnightntwrk/midnight-ledger) that can be used to resolve encryption
 keys for coins created during circuit execution.
 
 ***
@@ -45,7 +45,7 @@ The identifier of the circuit to call.
 
 ### compiledContract
 
-> `readonly` **compiledContract**: [`CompiledContract`](../../../midnight-js-protocol/compact-js/namespaces/CompiledContract/interfaces/CompiledContract.md)\<`C`, `any`\>
+> `readonly` **compiledContract**: [`CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
 
 Defined in: packages/contracts/dist/index.d.ts:21
 

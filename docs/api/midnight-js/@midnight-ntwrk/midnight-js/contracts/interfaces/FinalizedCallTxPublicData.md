@@ -141,7 +141,7 @@ Empty when the circuit emits no logs.
 
 ### nextContractState
 
-> `readonly` **nextContractState**: [`StateValue`](../../../midnight-js-protocol/onchain-runtime/classes/StateValue.md)
+> `readonly` **nextContractState**: [`StateValue`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/contracts/dist/index.d.ts:127
 
@@ -155,7 +155,7 @@ The public state resulting from executing the circuit.
 
 ### partitionedTranscript
 
-> `readonly` **partitionedTranscript**: [`PartitionedTranscript`](../../../midnight-js-protocol/ledger/type-aliases/PartitionedTranscript.md)
+> `readonly` **partitionedTranscript**: [`PartitionedTranscript`](https://github.com/midnightntwrk/midnight-ledger)
 
 Defined in: packages/contracts/dist/index.d.ts:138
 
@@ -186,7 +186,7 @@ The protocol version of the transaction.
 
 ### publicTranscript
 
-> `readonly` **publicTranscript**: [`Op`](../../../midnight-js-protocol/onchain-runtime/type-aliases/Op.md)\<[`AlignedValue`](../../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)\>[]
+> `readonly` **publicTranscript**: [`Op`](https://github.com/midnightntwrk/midnight-ledger)\<[`AlignedValue`](https://github.com/midnightntwrk/midnight-ledger)\>[]
 
 Defined in: packages/contracts/dist/index.d.ts:131
 
@@ -229,7 +229,7 @@ The status of a submitted transaction.
 
 ### tx
 
-> `readonly` **tx**: [`Transaction`](../../types/classes/Transaction.md)\<[`SignatureEnabled`](../../../midnight-js-protocol/ledger/classes/SignatureEnabled.md), [`Proof`](../../../midnight-js-protocol/ledger/classes/Proof.md), [`Binding`](../../../midnight-js-protocol/ledger/classes/Binding.md)\>
+> `readonly` **tx**: [`Transaction`](../../types/classes/Transaction.md)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 Defined in: packages/types/dist/index.d.ts:191
 
