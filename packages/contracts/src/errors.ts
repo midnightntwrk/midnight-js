@@ -519,6 +519,82 @@ export class ContractTypeError extends TypeError {
 }
 
 /**
+ * An error indicating that a contract-scoped transaction was created while the
+ * network head is on a ledger era that has no way to express one.
+ *
+ * ## Why this is a refusal rather than a narrower scope
+ *
+ * A scope exists to batch several circuit calls into ONE transaction. The
+ * pre-fork era composes exactly one call per transaction and refuses a longer
+ * list outright — a call tree is a post-fork ledger feature, so that era has no
+ * structure to express a second call in — which leaves a pre-fork scope nothing
+ * to batch into. A contract compiled by the retained toolchain is also
+ * single-call by construction, so a pre-fork scope has little to be atomic
+ * about in the first place.
+ *
+ * The refusal is raised when the scope is CREATED, before the scope body runs,
+ * so no circuit is executed and no private state is touched on a batch that
+ * could never be submitted.
+ *
+ * Both ways forward are named in the message, because the caller's batching
+ * intent cannot be honoured either way and it needs to choose: give up the
+ * batching and submit each call on its own, or keep the batching and run the
+ * scope once the network head has crossed the fork.
+ *
+ * @see docs/adr/0008-never-latch-the-network-head-version.md for why the head
+ * era is read per scope rather than cached across scopes.
+ */
+export class ScopedTxEraUnsupportedError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED;
+
+  /**
+   * @param head The era the network head is on, as the scope resolved it.
+   */
+  constructor(readonly head: LedgerVersion) {
+    super(
+      `A contract-scoped transaction cannot be created while the network head is on the '${head}' ledger ` +
+        `era. A scope batches several circuit calls into one transaction, and this era composes exactly ` +
+        `one call per transaction and refuses a longer list, so there is nothing for a scope to batch ` +
+        `into. Either submit each call as its own transaction with submitCallTx, or run the scope once ` +
+        `the network head has crossed the fork.`
+    );
+    this.name = 'ScopedTxEraUnsupportedError';
+  }
+}
+
+/**
+ * An error indicating that a call against a contract produced by the RETAINED
+ * Compact toolchain was handed a contract-scoped transaction to join.
+ *
+ * A scope merges its calls by merging live CURRENT-era transactions, and a
+ * retained-era call is composed on its own, against whichever era the head is
+ * on, and crosses the provider seams as its own transaction. So the two cannot
+ * be batched: the scope would have to hold an era object this package is not
+ * allowed to hold (`docs/adr/0007-cross-the-era-boundary-with-plain-data-only.md`).
+ *
+ * Raised rather than ignored, and that is the change it makes: the retained-era
+ * arm previously accepted a scope context and ran outside it, which submitted a
+ * transaction the caller believed had been batched.
+ */
+export class MixedEraScopeError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE;
+
+  /**
+   * @param circuitId The circuit whose call was refused.
+   */
+  constructor(readonly circuitId: string) {
+    super(
+      `Circuit '${circuitId}' belongs to a contract produced by the retained Compact toolchain and cannot ` +
+        `join a contract-scoped transaction: a scope merges its calls into one current-era transaction, ` +
+        `while a retained-era call is composed and submitted on its own. Submit this call as its own ` +
+        `transaction with submitCallTx, outside the scope, and keep the scope for calls against contracts ` +
+        `produced by the current toolchain.`
+    );
+    this.name = 'MixedEraScopeError';
+  }
+}
+
+/**
  * An error indicating that a private state ID was specified for a call transaction while a private
  * state provider was not. We want to let the user know so that they aren't under the impression the
  * private state of a contract was updated when it wasn't.
