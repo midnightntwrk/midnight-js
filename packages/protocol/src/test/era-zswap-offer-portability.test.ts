@@ -84,7 +84,7 @@ const serializeOffer = (era: OfferLedger): Uint8Array => {
   );
   // The output type is the module's own nominal WASM class, and this slice is
   // structural, so the one place the two cannot be unified is here.
-  return era.ZswapOffer.fromOutput(output as never, RAW_TOKEN_TYPE, VALUE).serialize();  
+  return era.ZswapOffer.fromOutput(output as never, RAW_TOKEN_TYPE, VALUE).serialize();
 };
 
 describe('Zswap offer portability across the ledger eras', () => {

@@ -57,9 +57,13 @@ import {
   type WalletProvider,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined, assertIsContractAddress, hasErrorCode, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 
-import { IncompleteCallTxPrivateStateConfig } from '../errors';
+import {
+  type EraSeam,
+  IncompleteCallTxPrivateStateConfig,
+  Ledger8SeamFailedError
+} from '../errors';
 import type { AnyLedger8CallTxOptions } from '../ledger8-contract';
 import {
   assertEraCompatible,
@@ -146,6 +150,68 @@ export const acquireLedger8Runtime = async (
 };
 
 /**
+ * The two shapes transaction and witness material takes inside an error
+ * message: a long run of hex, or a long run of base64.
+ *
+ * Thirty-two characters is the shortest run worth redacting — a 16-byte hex
+ * value — and is short enough that no ordinary English word or identifier
+ * reaches it, so the redaction does not eat diagnostic text. Matching by SHAPE
+ * rather than by a particular provider's message format is deliberate: the set
+ * of providers is open, so there is no format to enumerate.
+ */
+const PAYLOAD_SHAPED = /[0-9a-fA-F]{32,}|[A-Za-z0-9+/]{32,}={0,2}/g;
+const REDACTED = '[redacted]';
+
+/**
+ * Rebuilds an external failure as a plain {@link Error} carrying only its class
+ * name and a redacted message.
+ *
+ * Everything else is dropped, and each omission is deliberate: a provider's own
+ * ENUMERABLE PROPERTIES are where HTTP clients keep the response body (and
+ * therefore the echoed request), and its own `cause` chain is where the
+ * unredacted original would otherwise survive. Neither is carried.
+ *
+ * @param cause Whatever the provider rejected with — `unknown`, because a
+ * rejection is not obliged to be an `Error`.
+ * @returns A plain error safe to hand to a logger.
+ */
+const sanitizeSeamCause = (cause: unknown): Error => {
+  const kind = cause instanceof Error ? cause.name : typeof cause;
+  // `String(cause)` rather than `cause.message`, so a rejection that is not an
+  // Error still contributes something, and is redacted just the same.
+  const rendered = cause instanceof Error ? cause.message : String(cause);
+  return new Error(`${kind}: ${rendered.replace(PAYLOAD_SHAPED, REDACTED)}`);
+};
+
+/**
+ * Runs one provider seam call, converting a rejection from the provider into
+ * {@link Ledger8SeamFailedError} with the failure sanitized onto `cause`.
+ *
+ * This framework's OWN coded errors pass through UNCHANGED. They carry no
+ * external payload, and a caller narrowing on `V8PayloadUnsupportedError` — the
+ * refusal a current-era-only provider raises on the way in — or on
+ * {@link EraInvariantViolationError} has to keep seeing them. `hasErrorCode`
+ * is the registry-backed test for that, so a foreign coded error (a Node
+ * `ECONNREFUSED`, say) is still treated as external and sanitized.
+ *
+ * @param seam The provider method being called.
+ * @param circuitId The circuit this flow is running.
+ * @param call The seam call to run.
+ * @returns Whatever the seam returned.
+ * @throws Ledger8SeamFailedError for any external rejection.
+ */
+const atSeam = async <T>(seam: EraSeam, circuitId: string, call: () => Promise<T>): Promise<T> => {
+  try {
+    return await call();
+  } catch (cause) {
+    if (hasErrorCode(cause)) {
+      throw cause;
+    }
+    throw new Ledger8SeamFailedError(seam, circuitId, sanitizeSeamCause(cause));
+  }
+};
+
+/**
  * Proves, balances and submits a retained-era-executed transaction, and
  * returns the transaction id.
  *
@@ -185,6 +251,8 @@ export const acquireLedger8Runtime = async (
  * @returns The transaction id the network assigned.
  * @throws V8PayloadUnsupportedError if a provider does not serve the pre-fork arm.
  * @throws EraInvariantViolationError if a provider answers in the other era.
+ * @throws Ledger8SeamFailedError if a provider rejects, with its own failure
+ * sanitized onto `cause` — see {@link atSeam}.
  */
 export const submitLedger8Tx = async (
   providers: Pick<Ledger8EntryProviders, 'proofProvider' | 'walletProvider' | 'midnightProvider'>,
@@ -195,29 +263,31 @@ export const submitLedger8Tx = async (
   if (head === 'v9') {
     const unproven = readCurrentEraTransaction(txBytes);
     const proven = requireV9(
-      await providers.proofProvider.proveTx({ version: 'v9', tx: unproven }),
+      await atSeam('proveTx', circuitId, () => providers.proofProvider.proveTx({ version: 'v9', tx: unproven })),
       'proveTx',
       circuitId
     );
     const balanced = requireV9(
-      await providers.walletProvider.balanceTx({ version: 'v9', tx: proven }),
+      await atSeam('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v9', tx: proven })),
       'balanceTx',
       circuitId
     );
-    return providers.midnightProvider.submitTx({ version: 'v9', tx: balanced });
+    return atSeam('submitTx', circuitId, () => providers.midnightProvider.submitTx({ version: 'v9', tx: balanced }));
   }
 
   const proven = requireV8(
-    await providers.proofProvider.proveTx({ version: 'v8', txBytes }),
+    await atSeam('proveTx', circuitId, () => providers.proofProvider.proveTx({ version: 'v8', txBytes })),
     'proveTx',
     circuitId
   );
   const balanced = requireV8(
-    await providers.walletProvider.balanceTx({ version: 'v8', txBytes: proven }),
+    await atSeam('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v8', txBytes: proven })),
     'balanceTx',
     circuitId
   );
-  return providers.midnightProvider.submitTx({ version: 'v8', txBytes: balanced });
+  return atSeam('submitTx', circuitId, () =>
+    providers.midnightProvider.submitTx({ version: 'v8', txBytes: balanced })
+  );
 };
 
 /** What a retained-era call arrived with. */
@@ -374,6 +444,8 @@ export interface Ledger8FoundState {
  * @param providers The provider set.
  * @param request The contract, its address and the entry points to check.
  * @returns The deploy record as the read surface reported it.
+ * @throws Error if the artifact declares no callable circuits, or if the
+ * address is malformed.
  * @throws BlankVerifierKeySlotError, VerifierKeyMismatchError if the chain's
  * slot is empty or holds different bytes.
  */
@@ -381,10 +453,23 @@ export const findLedger8Contract = async (
   providers: Pick<Ledger8EntryProviders, 'publicDataProvider' | 'zkConfigProvider'>,
   request: Ledger8FindRequest
 ): Promise<Ledger8FoundState> => {
+  assertIsContractAddress(request.contractAddress);
+
   const resolved = await resolveOperationEra(providers.publicDataProvider);
   assertEraCompatible('ledger8', resolved.head, 'call');
 
-  const deployTxData = await providers.publicDataProvider.watchForDeployTxData(request.contractAddress);
+  // EVERY cheap refusal happens before the deploy record is watched for, and
+  // that order is the whole value of checking here: `watchForDeployTxData` is
+  // an UNBOUNDED watch, so a mis-dispatch checked after it would not be
+  // reported until the record arrived -- which for a wrong address may be
+  // never. An empty circuit list is refused first of all: it would otherwise
+  // make the loop below a no-op and attach to any state at all without
+  // checking a single key.
+  assertDefined(
+    request.circuitIds.length > 0 ? request.circuitIds : undefined,
+    `Contract at '${request.contractAddress}' cannot be attached to: the artifact declares no callable ` +
+      'circuits, so there is no verifier key to check it against and nothing to call on it.'
+  );
 
   // ONE snapshot for every key checked, never one read per circuit: two reads
   // could answer differently and leave half the keys checked against one state
@@ -399,7 +484,7 @@ export const findLedger8Contract = async (
     assertSnapshotVerifierKey(snapshot, circuitId, await providers.zkConfigProvider.getVerifierKey(circuitId));
   }
 
-  return { deployTxData };
+  return { deployTxData: await providers.publicDataProvider.watchForDeployTxData(request.contractAddress) };
 };
 
 /**
@@ -503,6 +588,17 @@ export const submitLedger8CallTxAsync = async (
   providers: Ledger8CallEntryProviders,
   options: Ledger8CallEntryOptions
 ): Promise<{ readonly txId: string; readonly circuitId: string; readonly nextPrivateState: unknown }> => {
+  // The same two local refusals the current-era arm makes before any provider
+  // is touched. A malformed address would otherwise cost a network round trip
+  // to discover, and an unknown circuit id would surface as a blank
+  // verifier-key slot -- a diagnosis pointing at the chain when the fault is a
+  // typo in the caller's own call.
+  assertIsContractAddress(options.contractAddress);
+  assertDefined(
+    Object.hasOwn(options.compiledContract.impureCircuits, options.circuitId) ? options.circuitId : undefined,
+    `Circuit '${options.circuitId}' is undefined`
+  );
+
   if (options.privateStateId !== undefined && providers.privateStateProvider === undefined) {
     throw new IncompleteCallTxPrivateStateConfig();
   }

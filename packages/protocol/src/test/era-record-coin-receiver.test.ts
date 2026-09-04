@@ -183,8 +183,55 @@ const runReceiveCoin = async (): Promise<RealExecution> => {
   };
 };
 
-/** The recording's own shape. Every member is the real execution's output. */
-const buildRecording = (execution: RealExecution): unknown => {
+/**
+ * The transcript members the recording carries, as an explicit shape rather
+ * than an inferred one.
+ *
+ * The keys are spelled out so that this file, not just its consumer, fails when
+ * the recorded set drifts: {@link buildRecording} declares this as its return
+ * type, so omitting one of these members is a compile error here.
+ */
+interface RecordedTranscript {
+  readonly circuitId: string;
+  readonly result: unknown;
+  readonly input: unknown;
+  readonly output: unknown;
+  readonly publicTranscript: unknown;
+  readonly privateTranscriptOutputs: unknown;
+  readonly partitionContext: unknown;
+  readonly privateStateAfter: unknown;
+  readonly zswapLocalState: unknown;
+}
+
+/** The recording file's own shape. Every member is the real execution's output. */
+interface RecordingFile {
+  readonly documentation: string;
+  readonly circuitId: string;
+  readonly coinPublicKey: string;
+  readonly contractAddress: string;
+  readonly receivedCoin: unknown;
+  readonly preState: unknown;
+  readonly transcript: RecordedTranscript;
+}
+
+// The recorded member set is tied to the runtime's own transcript type at
+// COMPILE time: `RecordedTranscript` must name a member for every member of
+// `TranscriptPojo` except the three that carry live retained-runtime handles,
+// which cannot be serialized at all. A member added to `TranscriptPojo` fails
+// this, which is what stops the recording drifting behind the runtime.
+type Assert<T extends true> = T;
+type SerializableTranscriptMember = Exclude<
+  keyof TranscriptPojo,
+  'preContractState' | 'postContractState'
+>;
+type _EveryMemberRecorded = Assert<
+  [Exclude<SerializableTranscriptMember, keyof RecordedTranscript>] extends [never] ? true : false
+>;
+type _NoMemberInvented = Assert<
+  [Exclude<keyof RecordedTranscript, SerializableTranscriptMember>] extends [never] ? true : false
+>;
+
+const buildRecording = (execution: RealExecution): RecordingFile => {
   const { transcript, preState } = execution;
   return {
     documentation:
@@ -208,6 +255,13 @@ const buildRecording = (execution: RealExecution): unknown => {
       publicTranscript: encodeRecorded(transcript.publicTranscript),
       privateTranscriptOutputs: encodeRecorded(transcript.privateTranscriptOutputs),
       partitionContext: encodeRecorded(freezeClock(transcript.partitionContext)),
+      // Recorded, not omitted: a consumer replaying this transcript hands
+      // `privateStateAfter` straight back to its caller as the call's next
+      // private state, so a recording without it would replay every call as
+      // producing no private state at all. This contract declares none, so the
+      // real value is an empty object -- which is still a value, and still
+      // exercises the write-back.
+      privateStateAfter: encodeRecorded(transcript.privateStateAfter),
       zswapLocalState: encodeRecorded(transcript.zswapLocalState)
     }
   };

@@ -176,9 +176,11 @@ const decodeRecorded = (value: unknown): unknown => {
 /**
  * The committed recording, decoded.
  *
- * Typed against the pipeline's own {@link Ledger8Transcript} so the recording
- * cannot drift from the shape the pipeline reads: a member added there and
- * missing from the fixture fails this file's own type check.
+ * `transcript` is typed as the pipeline's own {@link Ledger8Transcript}, which
+ * is what makes a replay of it type-check where the real engine's result
+ * would. That is a claim about the TYPE, not about the file — see
+ * {@link loadCoinReceiverRecording} for what is actually checked at load, and
+ * what is trusted instead.
  */
 export interface CoinReceiverRecording {
   readonly circuitId: string;
@@ -191,7 +193,57 @@ export interface CoinReceiverRecording {
   readonly transcript: Ledger8Transcript;
 }
 
-/** Reads and decodes the committed `coin-receiver-016` transcript recording. */
+/**
+ * Every transcript member the pipeline reads, as a runtime list.
+ *
+ * The list is tied to {@link Ledger8Transcript} by the two assertions below,
+ * so a member added to that `Pick` fails THIS file's compilation until it is
+ * named here — and then fails the load below until the fixture carries it.
+ * Which is what makes the drift claim above checkable rather than asserted.
+ */
+const TRANSCRIPT_MEMBERS = [
+  'circuitId',
+  'input',
+  'output',
+  'publicTranscript',
+  'privateTranscriptOutputs',
+  'partitionContext',
+  'privateStateAfter',
+  'zswapLocalState'
+] as const;
+
+type Assert<T extends true> = T;
+type _EveryMemberListed = Assert<
+  [Exclude<keyof Ledger8Transcript, (typeof TRANSCRIPT_MEMBERS)[number]>] extends [never] ? true : false
+>;
+type _NoMemberInvented = Assert<
+  [Exclude<(typeof TRANSCRIPT_MEMBERS)[number], keyof Ledger8Transcript>] extends [never] ? true : false
+>;
+
+/**
+ * Reads and decodes the committed `coin-receiver-016` transcript recording.
+ *
+ * ## What is checked, and what is trusted
+ *
+ * CHECKED at load: that the file decodes to an object, that it carries the four
+ * envelope members, and that its `transcript` carries EVERY member of
+ * {@link TRANSCRIPT_MEMBERS} — so a fixture that has fallen behind the
+ * pipeline's `Pick` fails loudly here rather than replaying a call that
+ * silently produces `undefined` where the runtime produced a value.
+ * `privateStateAfter` is the member that made this necessary: it is handed
+ * straight back as a call's next private state, so a recording missing it would
+ * have every call store nothing over a real private state, with a green suite.
+ *
+ * TRUSTED: the member VALUES. They are not re-validated shape by shape, because
+ * this fixture is not caller input — it is minted from a real retained-era
+ * execution and re-verified against a live one on every run of
+ * `packages/protocol/src/test/era-record-coin-receiver.test.ts`, which is a
+ * stronger guarantee than any structural check here could give.
+ *
+ * @returns The decoded recording.
+ * @throws Error if the file does not decode to an object, or omits any member
+ * the pipeline reads.
+ */
 export const loadCoinReceiverRecording = (): CoinReceiverRecording => {
   const raw: unknown = JSON.parse(
     readFileSync(hfFixturePath('coin-receiver-016', 'receive-coin-transcript.recording.json'), 'utf8')
@@ -200,7 +252,28 @@ export const loadCoinReceiverRecording = (): CoinReceiverRecording => {
   if (typeof decoded !== 'object' || decoded === null) {
     throw new Error('the retained-era recording did not decode to an object');
   }
-  return decoded as CoinReceiverRecording;  
+
+  const envelope: Record<string, unknown> = { ...decoded };
+  for (const member of ['circuitId', 'coinPublicKey', 'contractAddress', 'receivedCoin', 'preState', 'transcript']) {
+    if (!(member in envelope)) {
+      throw new Error(`the retained-era recording omits '${member}'`);
+    }
+  }
+  const transcript = envelope.transcript;
+  if (typeof transcript !== 'object' || transcript === null) {
+    throw new Error("the retained-era recording's 'transcript' did not decode to an object");
+  }
+  const transcriptMembers: Record<string, unknown> = { ...transcript };
+  for (const member of TRANSCRIPT_MEMBERS) {
+    if (!(member in transcriptMembers)) {
+      throw new Error(
+        `the retained-era recording's transcript omits '${member}', which the pipeline reads. Re-mint it ` +
+          'with MINT_HF_FIXTURES=1 against packages/protocol/src/test/era-record-coin-receiver.test.ts.'
+      );
+    }
+  }
+
+  return decoded as CoinReceiverRecording;
 };
 
 /**

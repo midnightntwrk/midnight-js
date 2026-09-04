@@ -30,6 +30,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { inspect } from 'node:util';
 
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
@@ -40,9 +41,13 @@ import {
   type LedgerEra,
   loadLedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
+import type { ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   createMidnightProvider,
+  createProofProvider,
+  createWalletProvider,
   type RawContractState,
+  UntaggedPayloadError,
   V8PayloadUnsupportedError,
   type VersionedFinalizedTransaction,
   type VersionedTx,
@@ -50,13 +55,23 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { BlankVerifierKeySlotError, Ledger8DeployOnV9Error, VerifierKeyMismatchError } from '../errors';
 import {
-  runLedger8Deploy,
-  submitLedger8Tx
-} from '../internal/ledger8-entry';
+  BlankVerifierKeySlotError,
+  EraInvariantViolationError,
+  IndexerInconsistencyError,
+  Ledger8DeployOnV9Error,
+  Ledger8SeamFailedError,
+  Ledger8ShieldedSpendUnsupportedError,
+  VerifierKeyMismatchError
+} from '../errors';
+import { findDeployedContract } from '../find-deployed-contract';
+import { findLedger8Contract, runLedger8Deploy } from '../internal/ledger8-entry';
 import { runLedger8CallPipeline } from '../internal/ledger8-pipeline';
-import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
+import type {
+  Ledger8CallTxOptions,
+  Ledger8ContractProviders,
+  Ledger8FindDeployedContractOptions
+} from '../ledger8-contract';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
 import {
@@ -135,6 +150,61 @@ const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState =>
   protocolVersion,
   raw
 });
+
+/**
+ * The provider set both retained-era describes start from: a pre-fork head,
+ * the committed envelope, and a recorder on each of the three seams.
+ *
+ * Module scope rather than a closure inside one `describe`, because the attach
+ * suite below needs the same set and a second copy would drift from this one.
+ */
+const retainedProviders = (recording: CoinReceiverRecording, envelope: Uint8Array): RetainedProviders => {
+  // The retained overload's own provider type, keyed by the fixture's own
+  // circuit id. `createMockProviders`'s `zkConfigProvider` is keyed by `string`
+  // and its `getVerifierKeys` return type is covariant in that key, so the
+  // narrower provider is built explicitly rather than widened.
+const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
+    getVerifierKeys: vi.fn(),
+    getZKIR: vi.fn(),
+    getProverKey: vi.fn(),
+    getVerifierKey: vi.fn().mockResolvedValue(STAND_IN_VERIFIER_KEY),
+    get: vi.fn(),
+    asKeyMaterialProvider: vi.fn()
+  };
+  const providers: Ledger8ContractProviders<CoinReceiver016Contract, typeof CIRCUIT_ID> = {
+    ...createMockProviders(),
+    zkConfigProvider
+  };
+  const seen: SeenPayloads = {};
+
+  providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(PRE_FORK_PROTOCOL_VERSION);
+  providers.publicDataProvider.queryRawContractState = vi
+    .fn()
+    .mockResolvedValue(rawState(envelope, PRE_FORK_PROTOCOL_VERSION));
+  providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
+  providers.zkConfigProvider.getVerifierKey = vi.fn().mockResolvedValue(STAND_IN_VERIFIER_KEY);
+  // The recording was made against this coin public key, and the replay
+  // engine refuses to replay for any other one.
+  providers.walletProvider.getCoinPublicKey = (): string => recording.coinPublicKey;
+  // The three seams, implemented against the version-tagged interfaces
+  // directly rather than through `createWalletProvider`/`createMidnightProvider`:
+  // those adapters lift a CURRENT-ERA-ONLY implementation and refuse the
+  // retained arm by design, which is asserted as its own negative below.
+  providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
+    seen.proveTx = tx;
+    return Promise.resolve(tx);
+  });
+  providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
+    seen.balanceTx = tx;
+    return Promise.resolve(tx);
+  });
+  providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: VersionedFinalizedTransaction) => {
+    seen.submitTx = tx;
+    return Promise.resolve('retained-era-tx-id');
+  });
+
+  return { ...providers, seen };
+};
 
 describe('the retained-native pipeline (previous-toolchain contract, pre-fork head)', () => {
   let recording: CoinReceiverRecording;
@@ -356,53 +426,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
   });
 
   /** The provider set every test below starts from: a pre-fork head, the committed envelope. */
-  const preForkProviders = (envelope: Uint8Array): RetainedProviders => {
-    // The retained overload's own provider type, keyed by the fixture's own
-    // circuit id. `createMockProviders`'s `zkConfigProvider` is keyed by `string`
-    // and its `getVerifierKeys` return type is covariant in that key, so the
-    // narrower provider is built explicitly rather than widened.
-    const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
-      getVerifierKeys: vi.fn(),
-      getZKIR: vi.fn(),
-      getProverKey: vi.fn(),
-      getVerifierKey: vi.fn().mockResolvedValue(STAND_IN_VERIFIER_KEY),
-      get: vi.fn(),
-      asKeyMaterialProvider: vi.fn()
-    };
-    const providers: Ledger8ContractProviders<CoinReceiver016Contract, typeof CIRCUIT_ID> = {
-      ...createMockProviders(),
-      zkConfigProvider
-    };
-    const seen: SeenPayloads = {};
-
-    providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(PRE_FORK_PROTOCOL_VERSION);
-    providers.publicDataProvider.queryRawContractState = vi
-      .fn()
-      .mockResolvedValue(rawState(envelope, PRE_FORK_PROTOCOL_VERSION));
-    providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
-    providers.zkConfigProvider.getVerifierKey = vi.fn().mockResolvedValue(STAND_IN_VERIFIER_KEY);
-    // The recording was made against this coin public key, and the replay
-    // engine refuses to replay for any other one.
-    providers.walletProvider.getCoinPublicKey = (): string => recording.coinPublicKey;
-    // The three seams, implemented against the version-tagged interfaces
-    // directly rather than through `createWalletProvider`/`createMidnightProvider`:
-    // those adapters lift a CURRENT-ERA-ONLY implementation and refuse the
-    // retained arm by design, which is asserted as its own negative below.
-    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
-      seen.proveTx = tx;
-      return Promise.resolve(tx);
-    });
-    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
-      seen.balanceTx = tx;
-      return Promise.resolve(tx);
-    });
-    providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: VersionedFinalizedTransaction) => {
-      seen.submitTx = tx;
-      return Promise.resolve('retained-era-tx-id');
-    });
-
-    return { ...providers, seen };
-  };
+  const preForkProviders = (envelope: Uint8Array): RetainedProviders => retainedProviders(recording, envelope);
 
   const callOptions = (): Ledger8CallTxOptions<CoinReceiver016Contract, typeof CIRCUIT_ID> => ({
     compiledContract: contract,
@@ -544,18 +568,76 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });
 
-  it('refuses at the FIRST seam when a provider serves the current era only', async () => {
-    // `createMidnightProvider` lifts a current-era-only implementation, which
-    // is exactly the provider a dApp has until it is widened. It rejects the
-    // retained arm on the way IN -- one coherent typed refusal at the seam,
-    // rather than a submit dying half-way through with a transaction already
-    // composed and abandoned.
+  it('refuses at the FIRST seam, proveTx, when a proof provider serves the current era only', async () => {
+    // `createProofProvider` lifts a current-era-only proving implementation,
+    // which is what a dApp has until its providers are widened. `proveTx` is
+    // the FIRST of the three seams, so the refusal lands before anything has
+    // been proven, balanced or submitted -- which is the point of leaving the
+    // inbound guard in `types` rather than lifting it here. The proving
+    // implementation below is never reached, and that is asserted rather than
+    // assumed.
+    let provingReached = false;
+    const provingProvider: ProvingProvider = {
+      check: () => Promise.resolve([]),
+      prove: () => {
+        provingReached = true;
+        return Promise.resolve(Uint8Array.from([]));
+      },
+      lookupKey: () => Promise.resolve(undefined)
+    };
     const providers: RetainedProviders = {
       ...preForkProviders(v6Envelope),
-      midnightProvider: createMidnightProvider(() => Promise.resolve('never-reached'))
+      proofProvider: createProofProvider(provingProvider)
     };
 
     await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(V8PayloadUnsupportedError);
+    expect(provingReached).toBe(false);
+    expect(providers.walletProvider.balanceTx).not.toHaveBeenCalled();
+    expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+  });
+
+  it('refuses at the balanceTx seam when only the wallet serves the current era', async () => {
+    // Covered separately from the first seam, because reaching it proves
+    // something different: the refusal is PER SEAM, so a partly widened
+    // provider set is refused at whichever seam has not been widened rather
+    // than slipping through the ones that have.
+    const base = preForkProviders(v6Envelope);
+    const providers: RetainedProviders = {
+      ...base,
+      walletProvider: createWalletProvider({
+        balanceTx: () => Promise.reject(new Error('never reached')),
+        getCoinPublicKey: () => recording.coinPublicKey,
+        getEncryptionPublicKey: () => base.walletProvider.getEncryptionPublicKey()
+      })
+    };
+
+    let caught: unknown;
+    try {
+      await submitCallTx(providers, callOptions());
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(V8PayloadUnsupportedError);
+    expect((caught as V8PayloadUnsupportedError).seam).toBe('balanceTx');
+    expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+  });
+
+  it('refuses at the submitTx seam when only the submission provider serves the current era', async () => {
+    const providers: RetainedProviders = {
+      ...preForkProviders(v6Envelope),
+      midnightProvider: createMidnightProvider(() => Promise.reject(new Error('never reached')))
+    };
+
+    let caught: unknown;
+    try {
+      await submitCallTx(providers, callOptions());
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(V8PayloadUnsupportedError);
+    expect((caught as V8PayloadUnsupportedError).seam).toBe('submitTx');
   });
 
   it('returns the finalized record as the read surface reported it, retained arm included', async () => {
@@ -576,21 +658,305 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(finalized.txData).toBe(retainedRecord);
   });
 
-  it('propagates a submit rejection with its cause, and does not re-read the head', async () => {
+  it('SANITIZES a provider rejection: no transaction or witness material survives onto the error', async () => {
     const providers = preForkProviders(v6Envelope);
-    const rejection = new Error('node refused the transaction');
-    providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(rejection);
+    // A proof-server failure of the shape that actually leaks: its message
+    // quotes the serialized state it was handed, and it keeps the response
+    // body on an own property, the way an HTTP client does. Both are built
+    // from REAL fixture material, so the assertion below is about the bytes
+    // this very call carried rather than about a placeholder.
+    const leakedNonceHex = Buffer.from(recording.receivedCoin.nonce).toString('hex');
+    const leakedStateHex = Buffer.from(v6Envelope).toString('hex');
+    const rejection = new Error(
+      `proof server returned 500 for payload ${leakedStateHex} with witness nonce ${leakedNonceHex}`
+    );
+    // The own property an HTTP client would carry the echoed request on.
+    Object.assign(rejection, { response: { data: { tx: leakedStateHex, nonce: leakedNonceHex } } });
+    providers.proofProvider.proveTx = vi.fn().mockRejectedValue(rejection);
 
     let caught: unknown;
     try {
-      await submitLedger8Tx(providers, Uint8Array.from([1, 2, 3]), CIRCUIT_ID, 'v8');
+      await submitCallTx(providers, callOptions());
     } catch (error) {
       caught = error;
     }
 
-    // Propagated, not re-interpreted: deciding whether a rejection means the
-    // head moved is the next task's, and it needs its own tests honestly red.
-    expect(caught).toBe(rejection);
+    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    expect((caught as Ledger8SeamFailedError).seam).toBe('proveTx');
+    expect((caught as Ledger8SeamFailedError).circuitId).toBe(CIRCUIT_ID);
+
+    // SERIALIZED the way a logger would serialize it -- own properties, cause
+    // chain and all -- and then checked for the fixture bytes. This assertion
+    // is what keeps the sanitization true: it fails the moment the raw
+    // rejection is propagated again, by whatever route.
+    const serialized = inspect(caught, { depth: null, showHidden: true });
+    expect(serialized).not.toContain(leakedStateHex);
+    expect(serialized).not.toContain(leakedNonceHex);
+    // And the check is not vacuous: those bytes really are in the raw rejection.
+    expect(inspect(rejection, { depth: null })).toContain(leakedStateHex);
+
+    // Still diagnostic: the seam survives, and the redaction marker says where
+    // the material was removed rather than leaving a silently truncated message.
+    expect(serialized).toContain('proveTx');
+    const cause = (caught as { readonly cause?: unknown }).cause;
+    expect(cause).toBeInstanceOf(Error);
+    expect((cause as Error).message).toContain('[redacted]');
+  });
+
+  it('refuses a provider that answers this PRE-FORK flow in the current era, naming the era it expected', async () => {
+    const providers = preForkProviders(v6Envelope);
+    // The mirror of the keep-state case: nothing in the seam types ties a
+    // provider's output era to its input era, so a provider that accepted
+    // retained-era bytes and answered with a current-era handle is checked
+    // rather than assumed. `expected` is what says WHICH direction was
+    // violated, and it is the whole reason the error carries the field.
+    providers.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: undefined });
+
+    let caught: unknown;
+    try {
+      await submitCallTx(providers, callOptions());
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(EraInvariantViolationError);
+    expect((caught as EraInvariantViolationError).seam).toBe('proveTx');
+    expect((caught as EraInvariantViolationError).circuitId).toBe(CIRCUIT_ID);
+    expect((caught as EraInvariantViolationError).expected).toBe('v8');
+    // The message has to name the era too, or a caller reading a log rather
+    // than catching the class learns nothing about the direction.
+    expect((caught as Error).message).toContain("'v8'");
+  });
+
+  it('refuses an UNTAGGED payload from a provider on the pre-fork flow', async () => {
+    const providers = preForkProviders(v6Envelope);
+    // A JavaScript caller's provider, or one built before the seams were
+    // version-tagged: it answers with no `version` at all. Reported as an
+    // untagged payload rather than assumed to be either era.
+    providers.proofProvider.proveTx = vi.fn().mockResolvedValue(undefined);
+
+    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(UntaggedPayloadError);
+  });
+
+  it("keeps this framework's own coded refusals unwrapped, so a caller can still narrow on them", async () => {
+    const providers = preForkProviders(v6Envelope);
+    // The sanitizing wrapper must not swallow the refusal a current-era-only
+    // provider raises: a caller narrowing on it would otherwise see a generic
+    // seam failure and lose the one diagnosis that says "widen your provider".
+    providers.proofProvider.proveTx = vi.fn().mockRejectedValue(new V8PayloadUnsupportedError('proveTx', 42));
+
+    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(V8PayloadUnsupportedError);
+  });
+
+  it('does not re-read the head when a provider rejects', async () => {
+    const providers = preForkProviders(v6Envelope);
+    providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
+
+    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(Ledger8SeamFailedError);
+
+    // Deciding whether a rejection means the head moved is the next task's
+    // work, and it needs its own tests honestly red: the head is read once,
+    // for routing, and never again on a rejection.
+    expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
+  });
+
+  it('stores the private state the replayed call produced, rather than storing nothing over it', async () => {
+    const providers = preForkProviders(v6Envelope);
+
+    const finalized = await submitCallTx(providers, { ...callOptions(), privateStateId: 'retained-private-state' });
+
+    // The recorded `privateStateAfter` is a real value -- this contract
+    // declares no private state, so it is an empty object -- and it is what
+    // gets written back. Asserting it is not `undefined` is the point: a
+    // recording missing that member would have every call store nothing over a
+    // caller's real private state, with a green suite.
+    expect(finalized.nextPrivateState).toEqual({});
+    expect(finalized.nextPrivateState).not.toBeUndefined();
+    expect(providers.privateStateProvider.set).toHaveBeenCalledWith('retained-private-state', {});
+  });
+
+  it('refuses a circuit that spends a shielded coin the contract already held', async () => {
+    const providers = preForkProviders(v6Envelope);
+    // DERIVED from the recording rather than invented: the recorded output's
+    // own coin, presented as an INPUT with a Merkle index and with no matching
+    // output -- exactly the shape of a coin spent from chain rather than one
+    // produced by this call. Nothing reaches a ledger here, because the refusal
+    // fires before the offer is built, so the derived shape is all the check
+    // reads.
+    const recordedCoin = recording.transcript.zswapLocalState.outputs[0]?.coinInfo;
+    expect(recordedCoin).toBeDefined();
+    const spending = loadCoinReceiverRecording();
+    engineSlot.engine = createReplayEngine(
+      {
+        ...spending,
+        transcript: {
+          ...spending.transcript,
+          zswapLocalState: {
+            ...spending.transcript.zswapLocalState,
+            outputs: [],
+            inputs: [{ ...recordedCoin!, mt_index: 0n }]
+          }
+        }
+      },
+      [],
+      v6Envelope
+    );
+
+    let caught: unknown;
+    try {
+      await submitCallTx(providers, callOptions());
+    } catch (error) {
+      caught = error;
+    }
+
+    // A TYPED refusal naming the era limitation and the circuit, rather than
+    // the bare assertion the offer builder would otherwise raise from inside
+    // itself, naming neither.
+    expect(caught).toBeInstanceOf(Ledger8ShieldedSpendUnsupportedError);
+    expect((caught as Ledger8ShieldedSpendUnsupportedError).circuitId).toBe(CIRCUIT_ID);
+    expect((caught as Error).message).toContain('Zswap chain state');
+    // Refused before anything was composed or sent anywhere.
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Attaching to an already-deployed retained-era contract — a READ path, so it
+ * composes nothing and submits nothing.
+ *
+ * It gets the same treatment as the two write arms because it makes the same
+ * two safety claims they do, and neither is free: that a mis-dispatched
+ * artifact is caught at ATTACH time rather than at the first call, and that the
+ * whole attach runs against ONE chain snapshot.
+ */
+describe('attaching to a retained-era contract already on chain', () => {
+  let recording: CoinReceiverRecording;
+  let contract: CoinReceiver016Contract;
+  let v6Envelope: Uint8Array;
+
+  beforeAll(async () => {
+    recording = loadCoinReceiverRecording();
+    v6Envelope = readHfHexFixture('coin-receiver-016', 'state-v6-envelope.hex');
+    const module: CoinReceiver016Module = await import(
+      /* @vite-ignore */ hfFixturePath('coin-receiver-016', 'compiled', 'contract', 'index.js')
+    );
+    contract = new module.Contract({});
+  });
+
+  beforeEach(() => {
+    setNetworkId(NETWORK_ID);
+    // Attaching touches no engine at all — no down-convert, no execution, no
+    // composition — so leaving the slot empty is itself part of the claim: any
+    // engine acquisition on this path would reject.
+    engineSlot.engine = undefined;
+  });
+
+  const attachProviders = (envelope: Uint8Array, protocolVersion = PRE_FORK_PROTOCOL_VERSION): RetainedProviders => {
+    const providers = retainedProviders(recording, envelope);
+    providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(protocolVersion);
+    providers.publicDataProvider.queryRawContractState = vi
+      .fn()
+      .mockResolvedValue(rawState(envelope, protocolVersion));
+    providers.publicDataProvider.watchForDeployTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
+    return providers;
+  };
+
+  const attachOptions = (): Ledger8FindDeployedContractOptions<CoinReceiver016Contract> => ({
+    compiledContract: contract,
+    contractAddress: recording.contractAddress
+  });
+
+  it('attaches, checking the key for every circuit the artifact declares, on ONE snapshot and ONE head read', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    const found = await findDeployedContract(providers, attachOptions());
+
+    expect(found.compiledContract).toBe(contract);
+    expect(found.contractAddress).toBe(recording.contractAddress);
+    // The deploy record is passed through VERSION-TAGGED rather than narrowed:
+    // a retained-era contract was deployed in whichever era was current then,
+    // and refusing the pre-fork arm would refuse the contracts this arm exists
+    // to keep callable.
+    expect(found.deployTxData.version).toBe('v9');
+    expect(found.deployTxData.txId).toBe(createMockFinalizedTxData().txId);
+
+    // Every declared circuit is checked, and this artifact declares exactly one.
+    expect(providers.zkConfigProvider.getVerifierKey).toHaveBeenCalledTimes(1);
+    expect(providers.zkConfigProvider.getVerifierKey).toHaveBeenCalledWith(CIRCUIT_ID);
+    // The same two per-operation invariants the write arms hold to.
+    expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
+    expect(providers.publicDataProvider.queryRawContractState).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses a mis-dispatched artifact BEFORE waiting on the deploy record', async () => {
+    const providers = attachProviders(v6Envelope);
+    providers.zkConfigProvider.getVerifierKey = vi
+      .fn()
+      .mockResolvedValue(Uint8Array.from(STAND_IN_VERIFIER_KEY).fill(0x00));
+
+    await expect(findDeployedContract(providers, attachOptions())).rejects.toBeInstanceOf(VerifierKeyMismatchError);
+    // ORDER, not just outcome: `watchForDeployTxData` is an UNBOUNDED watch, so
+    // a mis-dispatch checked after it would not be reported until the record
+    // arrived -- which for a wrong address may be never. The docblock's promise
+    // that a mis-dispatch is caught at attach time is only true in this order.
+    expect(providers.publicDataProvider.watchForDeployTxData).not.toHaveBeenCalled();
+  });
+
+  it('refuses when the chain holds no key for a circuit the artifact declares', async () => {
+    // A real retained-era envelope for a DIFFERENT contract: it declares its
+    // own entry point and never `receive_coin`, so the slot this artifact needs
+    // was never deployed.
+    const providers = attachProviders(readHfHexFixture('state-v8-v6-envelope.hex'));
+
+    await expect(findDeployedContract(providers, attachOptions())).rejects.toBeInstanceOf(BlankVerifierKeySlotError);
+    expect(providers.publicDataProvider.watchForDeployTxData).not.toHaveBeenCalled();
+  });
+
+  it('refuses an artifact that declares NO circuits, rather than attaching with nothing checked', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    // The failure the empty list would otherwise cause, driven at the function
+    // that receives it: the entry point derives the list from the artifact's
+    // circuit collection, so a future artifact shape that moved that collection
+    // would hand this an empty list -- and the per-circuit loop would then be a
+    // no-op, attaching to ANY state with not a single key compared. This is
+    // that scenario, refused.
+    await expect(
+      findLedger8Contract(providers, {
+        contract,
+        contractAddress: recording.contractAddress,
+        circuitIds: []
+      })
+    ).rejects.toThrow('declares no callable circuits');
+    expect(providers.zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
+    expect(providers.publicDataProvider.queryRawContractState).not.toHaveBeenCalled();
+  });
+
+  it('refuses a malformed contract address locally, without a single provider call', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    await expect(
+      findDeployedContract(providers, { ...attachOptions(), contractAddress: 'not-a-contract-address' })
+    ).rejects.toThrow();
+    // The same local refusal the current-era arm makes. A malformed address
+    // would otherwise cost a network round trip to discover.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+    expect(providers.publicDataProvider.queryRawContractState).not.toHaveBeenCalled();
+  });
+
+  it('dates the fetched envelope against the head, not against the record\'s own era label', async () => {
+    const providers = attachProviders(v6Envelope);
+    // The record labels itself current-era and the head agrees with the label,
+    // while the bytes carry a pre-fork envelope. The label is derived from
+    // `protocolVersion` alone and is not a verified statement about the bytes.
+    providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(POST_FORK_PROTOCOL_VERSION);
+    providers.publicDataProvider.queryRawContractState = vi.fn().mockResolvedValue({
+      version: 'v9',
+      protocolVersion: POST_FORK_PROTOCOL_VERSION,
+      raw: v6Envelope
+    });
+
+    await expect(findDeployedContract(providers, attachOptions())).rejects.toBeInstanceOf(IndexerInconsistencyError);
+    expect(providers.publicDataProvider.watchForDeployTxData).not.toHaveBeenCalled();
   });
 });

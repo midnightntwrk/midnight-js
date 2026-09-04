@@ -339,6 +339,21 @@ export interface Ledger8DeployContractOptions<C extends Ledger8Contract> {
 export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
   readonly compiledContract: C;
   readonly contractAddress: ContractAddress;
+  /**
+   * NOT HONOURED on this arm: a key supplied here is DISCARDED.
+   *
+   * The current era's `findDeployedContract` stores this key against the
+   * contract address in the private-state provider, so a caller that deployed
+   * the contract elsewhere can still issue maintenance transactions for it.
+   * The retained arm stores nothing, so passing a key here has no effect —
+   * which is recorded at the field rather than left for a caller to discover,
+   * because a silently discarded key reads as a stored one.
+   *
+   * The field is retained rather than removed so this arm's options stay the
+   * shape the current era's are, and so it can start being honoured without a
+   * change to the type. Store the key yourself, through the private-state
+   * provider, if you need it for a retained-era contract.
+   */
   readonly signingKey?: SigningKey;
 }
 

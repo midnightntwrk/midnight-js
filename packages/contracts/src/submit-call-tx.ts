@@ -55,7 +55,18 @@ export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.P
  *
  * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
  * the retained-era-native pipeline, a post-fork head the keep-state one. Both compose through the
- * era facade and both cross the provider seams as `{ version: 'v8', txBytes }`
+ * era facade, but they do NOT cross the provider seams on the same arm, because the `version` tag
+ * names the ledger runtime that produced the payload rather than the toolchain that produced the
+ * contract:
+ *
+ * | network head | composed by | crosses the seams as |
+ * | ------------ | ----------- | -------------------- |
+ * | pre-fork | the retained ledger | `{ version: 'v8', txBytes }` |
+ * | post-fork | the current ledger | `{ version: 'v9', tx }` |
+ *
+ * So a post-fork keep-state call is an ORDINARY current-era transaction that happens to carry a
+ * retained-era call, and a provider needs no pre-fork support to serve it. A provider must handle
+ * the `'v8'` arm only to serve calls made while the network head is still pre-fork
  * (`docs/adr/0006-version-tagged-payloads-at-provider-seams.md`).
  *
  * ARM ORDER IS LOAD-BEARING, in two ways, and both are pinned by
@@ -183,7 +194,18 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
  *
  * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
  * the retained-era-native pipeline, a post-fork head the keep-state one. Both compose through the
- * era facade and both cross the provider seams as `{ version: 'v8', txBytes }`
+ * era facade, but they do NOT cross the provider seams on the same arm, because the `version` tag
+ * names the ledger runtime that produced the payload rather than the toolchain that produced the
+ * contract:
+ *
+ * | network head | composed by | crosses the seams as |
+ * | ------------ | ----------- | -------------------- |
+ * | pre-fork | the retained ledger | `{ version: 'v8', txBytes }` |
+ * | post-fork | the current ledger | `{ version: 'v9', tx }` |
+ *
+ * So a post-fork keep-state call is an ORDINARY current-era transaction that happens to carry a
+ * retained-era call, and a provider needs no pre-fork support to serve it. A provider must handle
+ * the `'v8'` arm only to serve calls made while the network head is still pre-fork
  * (`docs/adr/0006-version-tagged-payloads-at-provider-seams.md`).
  *
  * ARM ORDER IS LOAD-BEARING, in two ways, and both are pinned by

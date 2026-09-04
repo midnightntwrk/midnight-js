@@ -77,7 +77,13 @@ import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PublicDataProvider, RawContractState } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type EncryptionPublicKeyResolver, zswapStateToSegmentedOffer } from '../utils/zswap-utils';
+import { Ledger8ShieldedSpendUnsupportedError } from '../errors';
+import {
+  type EncryptionPublicKeyResolver,
+  serializeCoinInfo,
+  serializeQualifiedShieldedCoinInfo,
+  zswapStateToSegmentedOffer
+} from '../utils/zswap-utils';
 import { assertHeadStateEraAgreement } from './era';
 import { assertVerifierKeyMatches } from './verifier-key';
 
@@ -288,6 +294,30 @@ export const assertSnapshotVerifierKey = (
   assertVerifierKeyMatches(localVerifierKey, entryPoint?.verifierKey, circuitId);
 };
 
+/**
+ * Whether a call spends a shielded coin the contract already HELD, as opposed
+ * to one the same call produced.
+ *
+ * The distinction decides whether the offer can be built at all. An input
+ * paired with an output of the same call is a transient, and the offer builder
+ * assembles it from the pair alone; an input with no such pairing has to be
+ * located in the chain's Merkle tree of commitments, which needs the
+ * contract's Zswap CHAIN state — and the retained-era pipeline reads none.
+ *
+ * The pairing test is the offer builder's OWN one, reusing its serializers
+ * rather than restating it, so the two cannot answer differently about the same
+ * state.
+ *
+ * @param zswapLocalState The call's post-execution Zswap local state.
+ * @returns `true` if any input needs a chain state to be spent.
+ */
+const spendsHeldCoin = (zswapLocalState: Ledger8Transcript['zswapLocalState']): boolean => {
+  const producedByThisCall = new Set(zswapLocalState.outputs.map((output) => serializeCoinInfo(output.coinInfo)));
+  return zswapLocalState.inputs.some(
+    (input) => !producedByThisCall.has(serializeQualifiedShieldedCoinInfo(input))
+  );
+};
+
 /** Everything one retained-era call needs. */
 export interface Ledger8CallPipelineRequest<TState> {
   readonly era: LedgerEra;
@@ -336,6 +366,8 @@ export interface Ledger8CallPipelineResult {
  * @throws Error if no contract is deployed at the address.
  * @throws HeadStateEraMismatchError, IndexerInconsistencyError, BlankVerifierKeySlotError,
  * VerifierKeyMismatchError from {@link readLedger8Snapshot}.
+ * @throws Ledger8ShieldedSpendUnsupportedError if the circuit spends a shielded
+ * coin the contract already held — see {@link spendsHeldCoin}.
  * @throws ComposeOptionError, ComposeFailedError if the era refuses the composed call.
  */
 export const runLedger8CallPipeline = async <TState>(
@@ -359,6 +391,17 @@ export const runLedger8CallPipeline = async <TState>(
     coinPk: request.coinPublicKey,
     privateState: request.privateState
   });
+
+  // Refused BEFORE the offer is built, and before anything is composed: this
+  // pipeline reads no Zswap chain state, so a coin the contract already held
+  // cannot be located in the chain's commitment tree. Without this the
+  // condition surfaced as a bare assertion inside the offer builder, naming
+  // neither the era nor the circuit. Supplying the retained arm with a chain
+  // state is the real fix and is tracked separately; until then this refuses in
+  // the caller's own test run rather than in production.
+  if (spendsHeldCoin(transcript.zswapLocalState)) {
+    throw new Ledger8ShieldedSpendUnsupportedError(circuitId);
+  }
 
   // Built with NO partition information, and that is the only thing available
   // here: the retained execution leg emits one unpartitioned op sequence, and
