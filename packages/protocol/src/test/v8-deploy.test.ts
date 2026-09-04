@@ -162,6 +162,61 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     expect(ledgerCS.operations()).toEqual(['increment']);
     expect(ledgerCS.operation('increment')?.verifierKey).toBeUndefined();
   });
+
+  // MEASURED, and load-bearing well outside this package: a caller of the
+  // retained-era deploy has to be told that the contract it would put on chain
+  // can never be maintained by anyone.
+  //
+  // Neither half of the retained deploy path accepts a maintenance authority --
+  // `createConstructorContext(initialPrivateState, coinPublicKey)` takes no key,
+  // and `ComposeDeployOptions` carries none -- so the authority is whatever the
+  // retained constructor leaves behind. What it leaves behind is an EMPTY
+  // committee with a threshold of ONE: a rule change needs one signature from a
+  // set of zero keys, which nothing can ever satisfy. So no verifier key could
+  // ever be inserted, removed or replaced on such a contract, and the authority
+  // itself could never be updated either, because updating it is a rule change.
+  //
+  // Contrast the current era, whose constructor registers the signing key it is
+  // given, which is what makes its `DeployedContract.signingKey` a true
+  // statement about who can maintain the deployment.
+  //
+  // This is why the retained-era arm of `deployContract`
+  // (`packages/contracts/src/deploy-contract.ts`) refuses rather than offering
+  // a deploy whose result is permanently unmaintainable. If a future retained
+  // runtime or era seam gains an authority, THIS is the test that will say so,
+  // and the refusal can be lifted the moment it does.
+  it('leaves an UNSATISFIABLE maintenance authority: an empty committee with a threshold of one', async () => {
+    const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
+    const ledger8Runtime = await import('compact-runtime-ledger8');
+    const contract = new Contract({});
+    const runtime: Ledger8ConstructorRuntime = { createConstructorContext: ledger8Runtime.createConstructorContext };
+
+    const result = executeConstructor({ contract, args: [], privateState: {}, coinPk: SAMPLE_COIN_PUBLIC_KEY }, runtime);
+    const constructedBytes = result.contractState.serialize();
+
+    // The authority the constructor itself left.
+    const constructed = LedgerV8.ContractState.deserialize(constructedBytes).maintenanceAuthority;
+    expect(constructed.committee).toEqual([]);
+    expect(constructed.threshold).toBe(1);
+    expect(constructed.counter).toBe(0n);
+
+    // And the authority the DEPLOY hands back on the state it derived the
+    // address from -- the state a caller would go on to call against. The
+    // deploy leg does not repair it, and must not invent one.
+    const deployed = composeV8DeployTx(
+      {
+        contractState: constructedBytes,
+        verifierKeys: new Map([['increment', REGISTERED_VERIFIER_KEY]]),
+        networkId: NETWORK_ID,
+        ttl: TTL
+      },
+      LedgerV8
+    );
+    const initial = LedgerV8.ContractState.deserialize(deployed.initialState).maintenanceAuthority;
+    expect(initial.committee).toEqual([]);
+    expect(initial.threshold).toBe(1);
+    expect(initial.counter).toBe(0n);
+  });
 });
 
 describe('composeV8DeployTx (real ledger-v8 WASM)', () => {

@@ -23,7 +23,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { deployContract } from '../deploy-contract';
 import { EraArtifactMismatchError } from '../errors';
 import { isLedger8Request } from '../internal/era';
-import { LEDGER8_DEPLOY_AUTHORITY_UNREADABLE } from '../internal/ledger8-entry';
+import { LEDGER8_DEPLOY_UNMAINTAINABLE } from '../internal/ledger8-entry';
 import type { Ledger8ContractProviders } from '../ledger8-contract';
 import type {
   CoinReceiver016Contract,
@@ -251,14 +251,15 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
 
     // The four era-dispatching entry points no longer refuse a retained-era request outright --
     // `src/test/keep-state.test.ts` and `src/test/v8-native.test.ts` drive the pipelines behind
-    // them. The one arm that still refuses is the deploy, and it refuses for a reason that is
-    // nothing to do with the pipeline: the era seam carries no maintenance authority in either
-    // direction, so the signing key this entry point has to return could only name an authority the
-    // deployment never registered. The deploy TRANSACTION itself composes and submits, and
-    // `v8-native.test.ts` exercises that path directly.
-    it('refuses a retained-era deployContract, naming the unreadable maintenance authority', async () => {
+    // them. The one arm that still refuses is the deploy, and it refuses for a MEASURED reason that
+    // is nothing to do with the pipeline: the retained constructor leaves an empty maintenance
+    // committee with a threshold of one, which nothing can ever satisfy, so the deployed contract
+    // could never have a verifier key inserted, removed or replaced by anyone. That measurement is
+    // pinned in `packages/protocol/src/test/v8-deploy.test.ts`. The deploy TRANSACTION itself
+    // composes and submits, and `v8-native.test.ts` exercises that path directly.
+    it('refuses a retained-era deployContract, because the deployment would be unmaintainable', async () => {
       await expect(deployContract(providers, { compiledContract: contract })).rejects.toThrow(
-        LEDGER8_DEPLOY_AUTHORITY_UNREADABLE
+        LEDGER8_DEPLOY_UNMAINTAINABLE
       );
     });
   });

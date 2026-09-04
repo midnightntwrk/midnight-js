@@ -26,7 +26,7 @@ import {
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
 import { isLedger8Request } from './internal/era';
-import { LEDGER8_DEPLOY_AUTHORITY_UNREADABLE } from './internal/ledger8-entry';
+import { LEDGER8_DEPLOY_UNMAINTAINABLE } from './internal/ledger8-entry';
 import {
   type AnyLedger8DeployContractOptions,
   type AnyLedger8DeployedContract,
@@ -120,12 +120,14 @@ const createDeployTxOptions = <C extends Contract.Any>(
  * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
- * REFUSED, and for a reason that is about the maintenance authority rather than about the era
- * pairing: see {@link LEDGER8_DEPLOY_AUTHORITY_UNREADABLE}. The retained-era deploy TRANSACTION
- * composes and submits — `runLedger8Deploy` in `./internal/ledger8-entry` is that path, and it is
- * exercised directly — but this entry point additionally has to report the signing key registered
- * as the deployed contract's maintenance authority, and the era seam carries no authority in
- * either direction.
+ * REFUSED, and for a MEASURED reason that is about the maintenance authority rather than about the
+ * era pairing: the retained constructor leaves an empty committee with a threshold of one, so the
+ * deployed contract could never be maintained by anyone. See
+ * {@link LEDGER8_DEPLOY_UNMAINTAINABLE} for the measurement and
+ * `packages/protocol/src/test/v8-deploy.test.ts` for the test that pins it. The retained-era deploy
+ * TRANSACTION composes and submits perfectly well — `runLedger8Deploy` in
+ * `./internal/ledger8-entry` is that path, and it is exercised directly — so this refusal is about
+ * the result being unmaintainable, not about the pipeline being unfinished.
  *
  * Separately, a retained-era deploy against a POST-FORK head is refused with
  * `Ledger8DeployOnV9Error`: the retained era stays supported for calls against contracts already
@@ -167,7 +169,7 @@ export async function deployContract<C extends Contract.Any>(
   options: DeployContractOptions<C> | AnyLedger8DeployContractOptions
 ): Promise<DeployedContract<C> | AnyLedger8DeployedContract> {
   if (isLedger8Request<AnyLedger8DeployContractOptions>(options)) {
-    throw new Error(LEDGER8_DEPLOY_AUTHORITY_UNREADABLE);
+    throw new Error(LEDGER8_DEPLOY_UNMAINTAINABLE);
   }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
   return {

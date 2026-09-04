@@ -355,6 +355,24 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
  * A retained-era contract deployed by the caller, which additionally holds the
  * signing key registered as the contract's maintenance authority — something
  * only the deployer has.
+ *
+ * ## No value of this type is produced today, and the reason is measured
+ *
+ * `deployContract`'s retained-era arm refuses, so nothing constructs this. The
+ * refusal is not about an unfinished pipeline: the retained-era deploy
+ * transaction composes and submits, but the contract it would create carries an
+ * EMPTY maintenance committee with a threshold of ONE, which nothing can ever
+ * satisfy, so it could never have a verifier key inserted, removed or replaced
+ * by anyone. `packages/protocol/src/test/v8-deploy.test.ts` pins that
+ * measurement; the full reasoning is on the refusal itself, in
+ * `./internal/ledger8-entry`.
+ *
+ * {@link Ledger8DeployedContract.signingKey} is therefore retained as the shape
+ * this type WILL have once the era seam carries an authority — at which point
+ * the field becomes fillable and the refusal is lifted together with it. Do not
+ * read the field's presence as evidence that the deploy arm works, and do not
+ * fill it with a sampled key: on the retained era that key would be registered
+ * nowhere, so it would name an authority the deployment never had.
  */
 export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledger8FoundContract<C> {
   readonly signingKey: SigningKey;

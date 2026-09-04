@@ -297,12 +297,13 @@ export interface Ledger8SubmittedDeploy {
  * Runs one retained-era deploy end to end.
  *
  * NO ENTRY POINT CALLS THIS YET, and that is a deliberate consequence of one
- * gap rather than an omission: {@link LEDGER8_DEPLOY_AUTHORITY_UNREADABLE}
- * explains why `deployContract` cannot report a truthful signing key for a
- * retained-era deployment, so its retained arm refuses. The transaction path
+ * measured gap rather than an omission: {@link LEDGER8_DEPLOY_UNMAINTAINABLE}
+ * records that a retained-era deployment lands with an unsatisfiable
+ * maintenance authority, so `deployContract`'s retained arm refuses rather
+ * than offering a contract nobody could ever maintain. The transaction path
  * below composes and submits correctly and is exercised directly by
  * `src/test/v8-native.test.ts`, so wiring the entry point is a one-line change
- * once the era seam carries a maintenance authority.
+ * the moment the era seam carries an authority.
  *
  * Reachable only on a pre-fork head: a retained-era deploy against a post-fork
  * head is refused by {@link acquireLedger8Runtime} before the constructor is
@@ -560,34 +561,49 @@ export const submitLedger8CallTx = async (
  * Why {@link deployContract}'s retained-era arm refuses, in the SINGLE place
  * the text is written.
  *
- * MEASURED, not assumed: neither half of the retained deploy path takes a
- * maintenance authority. The retained constructor context is built by
- * `createConstructorContext(initialPrivateState, coinPublicKey)` — two
- * parameters, no key — and the era facade's `composeDeployTx` takes
- * `{ contractState, verifierKeys, networkId, ttl }`, also no key. The current
- * era registers the authority inside its constructor, which is why its
- * `DeployedContract.signingKey` names the key the deployment really
- * registered.
+ * ## The measured reason: the contract would be permanently unmaintainable
  *
- * So a retained-era deployment registers whatever authority a freshly built
- * retained `ContractState` carries, and there is no way to read it back: the
- * state crosses the seam as bytes, and the decoded plain-data form carries the
- * primary state and the entry points only, never the authority. Returning
- * either the caller's key or a freshly sampled one would name an authority the
- * deployment did not register — a claim about who can maintain the contract,
- * which is the last thing to guess at. The transaction itself composes and
- * submits perfectly well; it is only the returned `signingKey` that cannot be
- * told the truth about, so the whole arm is refused rather than answered
- * half-truthfully.
+ * Neither half of the retained deploy path accepts a maintenance authority.
+ * The retained constructor context is built by
+ * `createConstructorContext(initialPrivateState, coinPublicKey)` — two
+ * parameters, no key — and the era facade's deploy composition takes
+ * `{ contractState, verifierKeys, networkId, ttl }`, also no key. So the
+ * authority a retained-era deployment carries is whatever the retained
+ * constructor left behind.
+ *
+ * What it leaves behind was MEASURED, not assumed: an EMPTY committee with a
+ * threshold of ONE (`committee: []`, `threshold: 1`, `counter: 0n`), on both
+ * the constructor's own state and the state the deploy derives its address
+ * from. A rule change on such a contract needs one signature from a set of
+ * zero keys, which nothing can ever satisfy — so no verifier key could ever be
+ * inserted, removed or replaced on it, and the authority itself could never be
+ * updated either, because updating it is a rule change. The contract would be
+ * permanently unmaintainable by anyone, including its deployer.
+ * `packages/protocol/src/test/v8-deploy.test.ts` pins that measurement, and is
+ * the test that will say so if a future retained runtime or era seam gains an
+ * authority — at which point this refusal can be lifted.
+ *
+ * The current era does not have this problem because its constructor registers
+ * the signing key it is given, which is what makes its
+ * `DeployedContract.signingKey` a true statement about who can maintain the
+ * deployment. On the retained era the same key would be registered nowhere, so
+ * reporting one is not an option either.
+ *
+ * A deploy whose result cannot be maintained is not offered. The retained
+ * era's purpose is to keep contracts deployed BEFORE the fork callable, and
+ * those already carry the authority their own deployment registered; a new
+ * retained-era deployment has no such history, which is the same reason a
+ * retained-era deploy is refused outright on a post-fork head.
  *
  * A bare `Error` deliberately: a registered error code is a published consumer
  * surface, and this condition is removed as soon as the era seam carries an
  * authority.
  */
-export const LEDGER8_DEPLOY_AUTHORITY_UNREADABLE =
-  'A retained-era contract cannot be deployed through deployContract. The transaction composes, but ' +
-  'neither the retained constructor context nor the era deploy composition accepts a maintenance ' +
-  'authority, and the authority a retained deployment does register cannot be read back through the ' +
-  'era seam - so the signing key this call would have to return could only name an authority the ' +
-  'deployment never registered. Deploy with a contract produced by the current toolchain, and keep ' +
-  'using the retained artifact for calls against contracts already on chain.';
+export const LEDGER8_DEPLOY_UNMAINTAINABLE =
+  'A retained-era contract cannot be deployed. The transaction composes, but neither the retained ' +
+  'constructor nor the era deploy composition accepts a maintenance authority, and the authority a ' +
+  'retained constructor leaves behind is an empty committee with a threshold of one - which nothing ' +
+  'can ever satisfy. The deployed contract could never have a verifier key inserted, removed or ' +
+  'replaced, by anyone, including you. Deploy a contract produced by the current toolchain instead, ' +
+  'and keep using the retained artifact for calls against contracts that were deployed before the ' +
+  'fork - see the runtime-deploy chapter of the migration guide.';
