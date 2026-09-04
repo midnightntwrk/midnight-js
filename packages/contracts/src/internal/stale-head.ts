@@ -52,11 +52,22 @@
  * could redact differently.
  */
 
-import { type LedgerVersion, networkHeadVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import { LEDGER_VERSIONS, type LedgerVersion, networkHeadVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 
-import { StaleHeadError, type StaleHeadOperationKind } from '../errors';
+import { StaleHeadError, SubmitRejectionUndiagnosedError,type SubmittedOperation } from '../errors';
 import type { HeadVersionSource } from './era';
+
+/**
+ * Where an era sits on the timeline, for comparing two readings by DIRECTION
+ * rather than merely by inequality.
+ *
+ * Read off `LEDGER_VERSIONS`, which is declared oldest-first, rather than
+ * restated here — a second ordering could disagree with it. The order that
+ * matters is pinned by `src/test/scoped-era.test.ts`, so an era inserted out of
+ * order fails a test instead of silently inverting the direction test below.
+ */
+const eraPosition = (era: LedgerVersion): number => LEDGER_VERSIONS.indexOf(era);
 
 /**
  * Diagnoses a rejected submission and throws — always.
@@ -70,9 +81,17 @@ import type { HeadVersionSource } from './era';
  *
  * | what a fresh head read reports | thrown |
  * | ------------------------------ | ------ |
- * | a DIFFERENT era from `startEra` | {@link StaleHeadError}, with the two-step remediation |
+ * | a LATER era than the operation started against | {@link StaleHeadError}, with the two-step remediation |
  * | the SAME era | `rejection`, unchanged |
- * | nothing — the read itself rejects | `AggregateError` carrying both failures |
+ * | an EARLIER era | {@link SubmitRejectionUndiagnosedError}, reason `'head-moved-backwards'` |
+ * | nothing — the read itself rejects | {@link SubmitRejectionUndiagnosedError}, reason `'head-read-failed'` |
+ *
+ * The fork verdict is FORWARD-ONLY. An era only ever moves forward on a real
+ * chain, so a reading that has gone backwards — an indexer rolled back to an
+ * earlier snapshot, a provider repointed at a different network — is not a fork
+ * crossing, and a message saying the network crossed the fork would be simply
+ * false. Inequality alone cannot tell those two apart, so the positions are
+ * compared rather than the values.
  *
  * One rejection never reaches the head read: this framework's OWN coded
  * refusals. A provider that does not serve the pre-fork arm refuses on the way
@@ -86,24 +105,23 @@ import type { HeadVersionSource } from './era';
  * head-read slice rather than the whole provider, so a reader — and a test —
  * sees exactly which member is consulted; a full `PublicDataProvider`
  * satisfies it.
- * @param startEra The era the operation resolved when it started.
- * @param kind Whether this operation deploys a contract or calls one already
- * deployed. A call and a deploy get different remediations.
+ * @param operation Which operation was rejected: the era it started against,
+ * whether it is a call or a deploy, and the identifiers its remediation has to
+ * name so a caller with several operations in flight can act on it.
  * @param rejection Whatever the submit seam rejected with — `unknown`, because
  * a rejection is not obliged to be an `Error`.
  * @returns Never; the returned promise always rejects.
- * @throws StaleHeadError if a fresh head read reports a different era.
+ * @throws StaleHeadError if a fresh head read reports a LATER era.
+ * @throws SubmitRejectionUndiagnosedError if the fresh read reports an earlier
+ * era, or if the read itself rejects — so neither failure is lost while the
+ * question is unresolved, and both arrive carrying a registered code.
  * @throws UnknownProtocolVersionError if the fresh head integer cannot be
  * placed on the era timeline.
- * @throws AggregateError carrying `[rejection, cause]` on `errors`, and the
- * failed head read on `cause`, if the fresh head read itself rejects — so
- * neither failure is lost while the question is unresolved.
  * @throws the rejection unchanged in every other case.
  */
 export const handleSubmitRejection = async (
   pdp: HeadVersionSource,
-  startEra: LedgerVersion,
-  kind: StaleHeadOperationKind,
+  operation: SubmittedOperation,
   rejection: unknown
 ): Promise<never> => {
   if (hasErrorCode(rejection) && !hasErrorCode(rejection, CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED)) {
@@ -113,30 +131,28 @@ export const handleSubmitRejection = async (
   let freshEra: LedgerVersion;
   try {
     freshEra = await networkHeadVersion(pdp);
-  } catch (cause) {
-    // Both failures are carried, and neither is the diagnosis: the submission
-    // was rejected, and whether the network moved under it is now unresolved.
-    // Reporting only the transport failure would hide what actually happened
-    // to the transaction; reporting only the rejection would claim a diagnosis
-    // that was never made.
-    // `errors` carries both, in the order they happened; `cause` names the
-    // proximate one -- the failed head read -- so a consumer that only follows
-    // `cause` chains still lands on why the diagnosis could not be made.
-    throw new AggregateError(
-      [rejection, cause],
-      `A ${kind === 'deploy' ? 'deployment' : 'call'} built against a '${startEra}'-era network head was ` +
-        `rejected on submission, and the network head could not be re-read to tell a fork crossing from an ` +
-        `ordinary rejection. Both failures are on 'errors': the submission rejection first, the failed head ` +
-        `read second. Check whether the transaction finalized, then retry once the read surface is reachable.`,
-      { cause }
-    );
+  } catch (headReadFailure) {
+    // Nothing is dropped: the submission was rejected, and whether the network
+    // moved under it is now unresolved. Reporting only the transport failure
+    // would hide what happened to the transaction; reporting only the rejection
+    // would claim a diagnosis that was never made.
+    throw new SubmitRejectionUndiagnosedError(operation, rejection, {
+      reason: 'head-read-failed',
+      headReadFailure
+    });
   }
 
-  if (freshEra === startEra) {
+  const movement = eraPosition(freshEra) - eraPosition(operation.head);
+  if (movement === 0) {
     // Not a fork. The rejection is re-thrown exactly as the seam wrapper built
     // it -- already carrying the provider's own failure, redacted, on `cause`.
     throw rejection;
   }
+  if (movement < 0) {
+    // The head went BACKWARDS, which no chain does. Reported as undiagnosable
+    // rather than as a fork crossing, because a fork claim here would be false.
+    throw new SubmitRejectionUndiagnosedError(operation, rejection, { reason: 'head-moved-backwards', freshEra });
+  }
 
-  throw new StaleHeadError(startEra, freshEra, kind, rejection);
+  throw new StaleHeadError(operation, freshEra, rejection);
 };

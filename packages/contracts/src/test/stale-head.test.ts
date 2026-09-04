@@ -40,6 +40,7 @@ import { inspect } from 'node:util';
 
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import {
   type RawContractState,
   V8PayloadUnsupportedError,
@@ -50,7 +51,11 @@ import {
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Ledger8SeamFailedError, StaleHeadError } from '../errors';
+import {
+  Ledger8SeamFailedError,
+  StaleHeadError,
+  SubmitRejectionUndiagnosedError,
+  type SubmittedOperation} from '../errors';
 import { runLedger8Deploy } from '../internal/ledger8-entry';
 import { handleSubmitRejection } from '../internal/stale-head';
 import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
@@ -141,6 +146,26 @@ const recordThenReject = (seen: SeenPayloads, rejection: unknown) =>
     return Promise.reject(rejection);
   });
 
+// The contract address the direct exercises name, as a plain identifier.
+// Identifiers are what a remediation may carry; decoded state and key bytes are
+// not.
+const OPERATION_CONTRACT_ADDRESS = '0200aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899';
+
+const callOperation = (head: LedgerVersion = 'v8'): SubmittedOperation => ({
+  head,
+  kind: 'call',
+  circuitId: CIRCUIT_ID,
+  contractAddress: OPERATION_CONTRACT_ADDRESS
+});
+
+const deployOperation = (head: LedgerVersion = 'v8'): SubmittedOperation => ({
+  head,
+  kind: 'deploy',
+  // A deploy has no circuit of its own and reports the constructor's own name.
+  circuitId: 'initialState',
+  contractAddress: OPERATION_CONTRACT_ADDRESS
+});
+
 describe('handleSubmitRejection (the fork-crossing decision, exercised directly)', () => {
   // A rejection in the shape the submit seam actually produces: the sanitizing
   // wrapper has already rebuilt the provider's failure onto `cause`, which is
@@ -155,7 +180,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
 
     let caught: unknown;
     try {
-      await handleSubmitRejection(pdp, 'v8', 'call', rejection);
+      await handleSubmitRejection(pdp, callOperation(), rejection);
     } catch (error) {
       caught = error;
     }
@@ -181,6 +206,71 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     expect((caught as { readonly cause?: unknown }).cause).toBe(rejection);
   });
 
+  it('NAMES the contract and the circuit, so the first remediation step can actually be followed', async () => {
+    // "Verify the transaction did not finalize" is not an instruction a dApp
+    // with several calls in flight and one error handler can act on unless the
+    // error says which contract and which entry point. Both are identifiers,
+    // which the privacy rule allows in a message.
+    const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
+
+    let caught: unknown;
+    try {
+      await handleSubmitRejection(pdp, callOperation(), wrappedRejection());
+    } catch (error) {
+      caught = error;
+    }
+
+    expect((caught as StaleHeadError).contractAddress).toBe(OPERATION_CONTRACT_ADDRESS);
+    expect((caught as StaleHeadError).circuitId).toBe(CIRCUIT_ID);
+    // On the error AND in the text: a caller reading a log rather than catching
+    // the class has to be able to follow the same instruction.
+    expect((caught as Error).message).toContain(OPERATION_CONTRACT_ADDRESS);
+    expect((caught as Error).message).toContain(CIRCUIT_ID);
+  });
+
+  it('names the composed address on a DEPLOY, which is the address a second attempt would not reuse', async () => {
+    const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
+
+    let caught: unknown;
+    try {
+      await handleSubmitRejection(pdp, deployOperation(), wrappedRejection());
+    } catch (error) {
+      caught = error;
+    }
+
+    expect((caught as StaleHeadError).contractAddress).toBe(OPERATION_CONTRACT_ADDRESS);
+    expect((caught as Error).message).toContain(OPERATION_CONTRACT_ADDRESS);
+    // A deploy mints a fresh nonce, so "just deploy again" is how a caller ends
+    // up with two contracts on chain. The text has to say so.
+    expect((caught as Error).message).toMatch(/fresh nonce|different address/);
+  });
+
+  it('does NOT claim a fork when the head moved BACKWARDS, and says what to check instead', async () => {
+    // An indexer rolled back to an earlier snapshot, or a provider repointed at
+    // another network. An era only ever moves forward on a real chain, so a
+    // backwards reading is not a fork crossing and a message saying the network
+    // crossed the fork would be false. Inequality alone cannot tell the two
+    // apart, which is why the guard compares direction.
+    const pdp = headSource(PRE_FORK_PROTOCOL_VERSION);
+    const rejection = wrappedRejection();
+
+    let caught: unknown;
+    try {
+      await handleSubmitRejection(pdp, callOperation('v9'), rejection);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).not.toBeInstanceOf(StaleHeadError);
+    expect(caught).toBeInstanceOf(SubmitRejectionUndiagnosedError);
+    expect((caught as SubmitRejectionUndiagnosedError).reason).toBe('head-moved-backwards');
+    expect((caught as Error).message).not.toMatch(/crossed the ledger fork/);
+    // Same restraint as the indexer-inconsistency refusal: never assert a fork
+    // nothing observed establishes, and point at the read surface instead.
+    expect((caught as Error).message).toContain('indexer');
+    expect((caught as SubmitRejectionUndiagnosedError).errors).toEqual([rejection]);
+  });
+
   it('gives a DEPLOY its own message, pointing at the runtime-deploy chapter rather than at a re-run', async () => {
     const callPdp = headSource(POST_FORK_PROTOCOL_VERSION);
     const deployPdp = headSource(POST_FORK_PROTOCOL_VERSION);
@@ -188,12 +278,12 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     let caughtCall: unknown;
     let caughtDeploy: unknown;
     try {
-      await handleSubmitRejection(callPdp, 'v8', 'call', wrappedRejection());
+      await handleSubmitRejection(callPdp, callOperation(), wrappedRejection());
     } catch (error) {
       caughtCall = error;
     }
     try {
-      await handleSubmitRejection(deployPdp, 'v8', 'deploy', wrappedRejection());
+      await handleSubmitRejection(deployPdp, deployOperation(), wrappedRejection());
     } catch (error) {
       caughtDeploy = error;
     }
@@ -214,7 +304,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
     const rejection = wrappedRejection();
 
-    await expect(handleSubmitRejection(pdp, 'v9', 'call', rejection)).rejects.toBe(rejection);
+    await expect(handleSubmitRejection(pdp, callOperation('v9'), rejection)).rejects.toBe(rejection);
     expect(pdp.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
     // The original failure travels on `cause`, already sanitized by the seam
     // wrapper -- the handler adds no second wrapping layer of its own.
@@ -228,7 +318,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     const pdp = headSource(POST_FORK_NODE_MINOR_BUMP);
     const rejection = wrappedRejection();
 
-    await expect(handleSubmitRejection(pdp, 'v9', 'call', rejection)).rejects.toBe(rejection);
+    await expect(handleSubmitRejection(pdp, callOperation('v9'), rejection)).rejects.toBe(rejection);
     expect(pdp.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
   });
 
@@ -239,7 +329,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
     const refusal = new V8PayloadUnsupportedError('submitTx', PRE_FORK_PROTOCOL_VERSION);
 
-    await expect(handleSubmitRejection(pdp, 'v8', 'call', refusal)).rejects.toBe(refusal);
+    await expect(handleSubmitRejection(pdp, callOperation(), refusal)).rejects.toBe(refusal);
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
   });
 
@@ -250,7 +340,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
 
     let caught: unknown;
     try {
-      await handleSubmitRejection(pdp, 'v8', 'call', rejection);
+      await handleSubmitRejection(pdp, callOperation(), rejection);
     } catch (error) {
       caught = error;
     }
@@ -259,11 +349,48 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     // dropped: the submit rejection is what happened, and the failed head read
     // is why it cannot be diagnosed.
     expect(caught).toBeInstanceOf(AggregateError);
-    expect((caught as AggregateError).errors).toEqual([rejection, transportFailure]);
+    expect(caught).toBeInstanceOf(SubmitRejectionUndiagnosedError);
+    expect((caught as SubmitRejectionUndiagnosedError).errors).toEqual([rejection, transportFailure]);
     // And the proximate failure is on `cause` too, so a consumer that only
     // walks cause chains still learns why no diagnosis was made.
     expect((caught as { readonly cause?: unknown }).cause).toBe(transportFailure);
     expect((caught as Error).message).toContain('could not be re-read');
+    expect((caught as SubmitRejectionUndiagnosedError).reason).toBe('head-read-failed');
+  });
+
+  it('CARRIES A REGISTERED CODE when it cannot diagnose, so a retry handler does not intermittently escalate', async () => {
+    // A node rejection and an unreachable indexer are the same network, so they
+    // correlate. Without a code of its own, one and the same node rejection
+    // would reach a handler branching on `hasErrorCode` as a coded seam failure
+    // when the indexer answered, and as an uncoded AggregateError when it did
+    // not -- retrying in one case and escalating in the other.
+    const rejection = wrappedRejection();
+    const readFailed = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(new Error('indexer unreachable')) };
+    const movedBack = headSource(PRE_FORK_PROTOCOL_VERSION);
+
+    const caught: unknown[] = [];
+    for (const [pdp, operation] of [
+      [readFailed, callOperation()],
+      [movedBack, callOperation('v9')]
+    ] as const) {
+      try {
+        await handleSubmitRejection(pdp, operation, rejection);
+      } catch (error) {
+        caught.push(error);
+      }
+    }
+
+    expect(caught).toHaveLength(2);
+    for (const error of caught) {
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED)).toBe(true);
+      // The code is its OWN, never copied off `errors[0]` -- copying would make
+      // one error report two different codes depending on which failure came
+      // first.
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED)).toBe(false);
+      // And it is in the registry, so `hasErrorCode(e)` with no argument
+      // recognises it as one of this framework's own.
+      expect(hasErrorCode(error)).toBe(true);
+    }
   });
 });
 
@@ -357,6 +484,11 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     expect(caught).toBeInstanceOf(StaleHeadError);
     expect((caught as StaleHeadError).startEra).toBe('v8');
     expect((caught as StaleHeadError).freshEra).toBe('v9');
+    // The identifiers come from the operation the ENTRY POINT actually ran,
+    // which is what proves they are threaded rather than defaulted.
+    expect((caught as StaleHeadError).circuitId).toBe(CIRCUIT_ID);
+    expect((caught as StaleHeadError).contractAddress).toBe(recording.contractAddress);
+    expect((caught as Error).message).toContain(recording.contractAddress);
     expect((caught as Error).message).toMatch(/did not.*finalize|not finalize/);
     expect((caught as Error).message).toMatch(/re-run/);
     // Two head reads and no more: one for the routing, one on the rejection.
@@ -428,6 +560,10 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     expect((caught as StaleHeadError).kind).toBe('deploy');
     expect((caught as Error).message).toContain('runtime-deploy chapter');
     expect((caught as Error).message).not.toMatch(/re-run/);
+    // The address the composition MINTED, read off the deploy record rather
+    // than off anything the caller supplied -- a deploy supplies none.
+    expect((caught as StaleHeadError).contractAddress.length).toBeGreaterThan(0);
+    expect((caught as Error).message).toContain((caught as StaleHeadError).contractAddress);
   });
 
   it('re-running after the flip lands on the KEEP-STATE pipeline, with no change to the call', async () => {

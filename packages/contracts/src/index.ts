@@ -58,6 +58,11 @@ export {
 // scope is refused outright on a head era that composes only one call per transaction, and a
 // retained-toolchain call cannot join a scope at all. Both are exercised in
 // `src/test/scoped-era.test.ts`.
+// `SubmitRejectionUndiagnosedError` is the other half of the fork-crossing diagnosis: a submission
+// rejected where the head could not be re-read, or reported an EARLIER era than the operation
+// started against. Reported as undiagnosable rather than as a fork, because neither case
+// establishes one, and carrying a registered code of its own so a retry handler branching on
+// `hasErrorCode` behaves the same whichever failure came first.
 export {
   BlankVerifierKeySlotError,
   CallTxFailedError,
@@ -78,6 +83,9 @@ export {
   ScopedTxEraUnsupportedError,
   StaleHeadError,
   type StaleHeadOperationKind,
+  type SubmitRejectionUndiagnosedCause,
+  SubmitRejectionUndiagnosedError,
+  type SubmittedOperation,
   TxFailedError,
   VerifierKeyMismatchError} from './errors';
 export {

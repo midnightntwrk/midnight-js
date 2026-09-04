@@ -31,6 +31,8 @@
  * to be atomic about.
  */
 
+import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
+import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type { AnyProvableCircuitId } from '@midnight-ntwrk/midnight-js-types';
@@ -39,7 +41,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MixedEraScopeError, ScopedTxEraUnsupportedError } from '../errors';
 import { pipelineEraOf } from '../internal/era';
-import { assertScopeAdmitsRetainedEraCall, TransactionContextImpl } from '../internal/transaction';
+import { assertScopeAdmitsRetainedEraCall, scopedTransaction, TransactionContextImpl } from '../internal/transaction';
 import { submitCallTx } from '../submit-call-tx';
 import { submitTx } from '../submit-tx';
 import { withContractScopedTransaction } from '../transaction';
@@ -55,6 +57,37 @@ import {
 vi.mock('../unproven-call-tx');
 vi.mock('../submit-tx');
 
+/**
+ * Every era acquisition this file's flows attempt, and an optional era to make
+ * FAIL.
+ *
+ * Acquiring an era is a lazy runtime load -- for the pre-fork era it reaches
+ * the `/v8` subpath and instantiates that ledger's WASM -- so a scope refusal
+ * that runs after the acquisition both pays for it and depends on it
+ * succeeding. `ledger-v8` is a hard dependency of `packages/protocol`, so the
+ * load always succeeds here unless it is made to fail, which is exactly why
+ * this slot exists: without it no test in this repository can tell the two
+ * orders apart.
+ */
+const eraLoadSlot = vi.hoisted((): { readonly acquired: string[]; rejectFor?: string } => ({ acquired: [] }));
+
+vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+  const actual = await importOriginal<typeof Protocol>();
+  return {
+    ...actual,
+    loadLedgerEra: (version: LedgerVersion): Promise<Protocol.LedgerEra> => {
+      eraLoadSlot.acquired.push(version);
+      if (version === eraLoadSlot.rejectFor) {
+        // The shape the real acquisition fails with when the lazy subpath
+        // cannot be loaded -- a bundler that pruned it, or a runtime that
+        // cannot instantiate its WASM.
+        return Promise.reject(new Error(`/${version} could not be acquired`));
+      }
+      return actual.loadLedgerEra(version);
+    }
+  };
+});
+
 // The era timeline's own scheme, `node-major * 1_000_000 + node-minor * 1_000`.
 const PRE_FORK_PROTOCOL_VERSION = 1_000_000;
 const POST_FORK_PROTOCOL_VERSION = 2_000_000;
@@ -68,6 +101,8 @@ describe('per-scope era resolution', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    eraLoadSlot.acquired.length = 0;
+    eraLoadSlot.rejectFor = undefined;
     providers = createMockProviders();
     compiledContract = createMockCompiledContract();
     contractAddress = createMockContractAddress();
@@ -125,6 +160,43 @@ describe('per-scope era resolution', () => {
     expect(submitTx).not.toHaveBeenCalled();
   });
 
+  it('refuses a PRE-FORK head WITHOUT acquiring that era, and still refuses when the acquisition would fail', async () => {
+    // The refusal has to be decided from the HEAD READING alone. Acquiring the
+    // era first would make a current-era-only dApp -- the caller the lazy
+    // pre-fork subpath exists for -- pay to instantiate a ledger it will never
+    // use, and would replace this refusal with an acquisition failure whenever
+    // that subpath cannot be loaded. Then the caller is told to acquire the
+    // retained runtime, which is the wrong instruction for it, and never sees
+    // the two-way remediation at all.
+    providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(PRE_FORK_PROTOCOL_VERSION);
+    eraLoadSlot.rejectFor = 'v8';
+
+    let caught: unknown;
+    try {
+      await withContractScopedTransaction(providers, async () => undefined);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ScopedTxEraUnsupportedError);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED)).toBe(true);
+    // NOTHING was acquired: not the era it refuses, and not any other.
+    expect(eraLoadSlot.acquired).toEqual([]);
+  });
+
+  it('acquires the head era exactly once on a post-fork head, after admitting the scope', async () => {
+    // The mirror of the test above, so "refuse before acquiring" does not
+    // become "never acquire": the era a scope RUNS on is still acquired, once,
+    // and the previous task's threading still gets a real facade.
+    onPostForkHead();
+
+    await withContractScopedTransaction(providers, async (txCtx) => {
+      await submitCallTx(providers, callOptions(), txCtx);
+    });
+
+    expect(eraLoadSlot.acquired).toEqual(['v9']);
+  });
+
   it('names BOTH ways forward in the refusal, rather than only saying no', async () => {
     providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(PRE_FORK_PROTOCOL_VERSION);
 
@@ -168,6 +240,33 @@ describe('per-scope era resolution', () => {
     expect(finalized.public.status).toBe('SucceedEntirely');
   });
 
+  it('NESTS into a transaction context passed as its third argument, rather than opening a fresh scope', async () => {
+    // A JavaScript caller can pass a context here -- the parameter is declared
+    // as options, and the entry point accepted a context before these era rules
+    // by nesting into it. Reading it as an options bag would open a FRESH scope
+    // and submit, on its own, the transaction the caller believed was nested:
+    // the same "silently ran outside the scope it was handed" failure the
+    // mixed-era refusal exists to stop, one arm over.
+    onPostForkHead();
+
+    // Exercised through the internal entry the public one forwards to, whose
+    // third parameter names both shapes -- so this is the same code path a
+    // JavaScript caller reaches, without a cast to fake the argument.
+    const outer = new TransactionContextImpl<Contract.Any, AnyProvableCircuitId>(providers, undefined);
+    await scopedTransaction(providers, async (txCtx) => {
+      // The very context that was handed in, not a fresh one.
+      expect(txCtx).toBe(outer);
+      await submitCallTx(providers, callOptions(), txCtx);
+    }, outer);
+
+    // NOTHING was submitted: the outer scope owns the submission, exactly as
+    // before. A fresh scope would have submitted here.
+    expect(submitTx).not.toHaveBeenCalled();
+    // And no head read either -- a nested call inherits the outer scope's one
+    // reading rather than taking a second.
+    expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+  });
+
   it('carries the era it resolved on the scope, so nothing downstream re-reads the head', async () => {
     onPostForkHead();
 
@@ -181,6 +280,16 @@ describe('per-scope era resolution', () => {
     const resolvedEra = (seen as TransactionContextImpl<Contract.Any, AnyProvableCircuitId>).resolvedEra;
     expect(resolvedEra?.head).toBe('v9');
     expect(resolvedEra?.headProtocolVersion).toBe(POST_FORK_PROTOCOL_VERSION);
+  });
+});
+
+describe('the era ordering the forward-only fork guard relies on', () => {
+  it('lists the ledger eras in chronological order, oldest first', () => {
+    // `LEDGER_VERSIONS` is declared oldest-first, and the fork-crossing guard
+    // reads a MOVE DIRECTION off that index. Pinned here rather than assumed:
+    // an era inserted out of order would silently invert the direction test and
+    // make a backwards head move read as a forward fork crossing.
+    expect([...LEDGER_VERSIONS]).toEqual<readonly LedgerVersion[]>(['v8', 'v9']);
   });
 });
 
@@ -219,6 +328,28 @@ describe('a retained-era call handed a scope', () => {
 
   it('runs normally when it was handed no scope at all', () => {
     expect(() => assertScopeAdmitsRetainedEraCall('retainedCircuit', undefined)).not.toThrow();
+  });
+
+  it.each([
+    ['null', null],
+    ['a string', 'not-a-context'],
+    ['a plain object', { scopeName: 'looks-like-options' }]
+  ])('reports %s passed as the third argument as a BAD ARGUMENT, not as a mixed-era scope', (_label, bad) => {
+    // A JavaScript caller's stray third argument is a mistake to fix, not a
+    // batching conflict. Telling it that this circuit "cannot join a
+    // contract-scoped transaction" would name a scope it never had.
+    let caught: unknown;
+    try {
+      assertScopeAdmitsRetainedEraCall('retainedCircuit', bad);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(TypeError);
+    expect(caught).not.toBeInstanceOf(MixedEraScopeError);
+    expect((caught as Error).message).toContain('is not a transaction context');
+    // And it says where a real one comes from, so the mistake is fixable.
+    expect((caught as Error).message).toContain('withContractScopedTransaction');
   });
 });
 
