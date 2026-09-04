@@ -6,5 +6,9 @@
   },
   "include": [
     "./src/**/*.ts"
-  ]
+  ],
+  "exclude": [
+    "./src/test/resources/diagnostics/**"
+  ],
+  "//": "src/test/resources/diagnostics holds a fixture that deliberately DOES NOT COMPILE. It is excluded here so it never joins this package's program (a build, a `tsc --noEmit` run and vitest's typecheck pass would all fail on it). It has its own tsconfig.json, and src/test/neither-era-diagnostic.test.ts is the only thing that compiles it, on purpose."
 }

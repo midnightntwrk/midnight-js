@@ -29,8 +29,10 @@
   "postBaselineFiles": [
     "packages/contracts/src/test/ledger8-contract.test.ts",
     "packages/contracts/src/test/ledger8-fixture-types.ts",
+    "packages/contracts/src/test/neither-era-diagnostic.test.ts",
     "packages/contracts/src/test/non-regression-baseline-gate.test.ts",
     "packages/contracts/src/test/non-regression-golden.test.ts",
+    "packages/contracts/src/test/resources/diagnostics/neither-era-calls.ts",
     "packages/contracts/src/test/typecheck/overloads.test-d.ts"
   ],
   "untouchedFiles": {

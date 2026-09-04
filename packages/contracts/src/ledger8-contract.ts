@@ -360,16 +360,34 @@ export const isLedger8Options = <L extends { readonly compiledContract: Ledger8C
   'impureCircuits' in options.compiledContract;
 
 /**
+ * The migration-guide message the compiler renders for a contract belonging to neither era. This is
+ * the SINGLE place its text is written.
+ *
+ * A runtime `const` rather than a bare literal inside {@link NeitherContractShape}, for one
+ * reason: `src/test/neither-era-diagnostic.test.ts` runs `tsc` over a fixture that trips all four
+ * entry points and asserts this exact text appears in what the compiler PRINTS. A type-level
+ * literal cannot be read from a runtime test, so the text would otherwise have had to be written
+ * twice, in the type and in the test, where it could drift. `typeof` below preserves the string
+ * LITERAL type, and the compiler still expands it inside a diagnostic — verified, and now pinned by
+ * that test.
+ *
+ * Not re-exported from the package index: it is the payload of a compile-time diagnostic, not a
+ * runtime API.
+ */
+export const NEITHER_ERA_CONTRACT_MESSAGE =
+  'Object is neither a 0.16- nor a 0.18-generated contract. See migration guide §window.';
+
+/**
  * The type the catch-all arm of every era-dispatching entry point expects, so that an object
  * matching NEITHER era's shape is refused against a name whose own definition says what went
  * wrong.
  *
- * The `__error` member exists only to carry that message into the compiler's diagnostic; nothing
- * constructs a value of this type. This declaration is the SINGLE source of the message text —
- * {@link NeitherEraContractOptions} reaches it by indexed access — and
- * `src/test/typecheck/overloads.test-d.ts` pins it verbatim.
+ * The `__error` member exists only to carry {@link NEITHER_ERA_CONTRACT_MESSAGE} into the
+ * compiler's diagnostic; nothing constructs a value of this type.
+ * `src/test/typecheck/overloads.test-d.ts` pins the message verbatim at the type level, and
+ * `src/test/neither-era-diagnostic.test.ts` pins that the compiler really renders it.
  */
-export type NeitherContractShape = { readonly __error: 'Object is neither a 0.16- nor a 0.18-generated contract. See migration guide §window.' }
+export type NeitherContractShape = { readonly __error: typeof NEITHER_ERA_CONTRACT_MESSAGE }
 
 /**
  * The catch-all arm's options type: an object whose contract belongs to neither era.
@@ -378,8 +396,7 @@ export type NeitherContractShape = { readonly __error: 'Object is neither a 0.16
  * anonymous restatement of it, and both halves are load-bearing. TypeScript renders a named type
  * by NAME and an anonymous object type by EXPANSION, and a developer who hits this error wants
  * both: the name to look the type up, and the expansion to read the migration-guide pointer
- * without having to. Written this way, the diagnostic carries both — verified against the real
- * fixtures, and recorded in the module documentation above:
+ * without having to. Written this way, the diagnostic carries both:
  *
  * ```text
  * Type '{ readonly nonsense: true; }' is not assignable to type 'NeitherContractShape & {
@@ -388,9 +405,12 @@ export type NeitherContractShape = { readonly __error: 'Object is neither a 0.16
  * ```
  *
  * Do NOT simplify the intersection away. Dropping the anonymous half leaves the name with no
- * message; dropping the named half leaves the message with no name. The text itself is written
- * ONCE, at {@link NeitherContractShape}, and reached here by indexed access, so the two halves
- * cannot drift — and `src/test/typecheck/overloads.test-d.ts` asserts they are the same type.
+ * message; dropping the named half leaves the message with no name. Either way
+ * `src/test/neither-era-diagnostic.test.ts` fails, because it asserts on what `tsc` actually
+ * prints for all four entry points — that test is the executable guard on this declaration, and
+ * this comment is only the explanation of it. The text itself is written ONCE, at
+ * {@link NEITHER_ERA_CONTRACT_MESSAGE}, so the two halves cannot drift, and
+ * `src/test/typecheck/overloads.test-d.ts` additionally asserts they are the same type.
  */
 export interface NeitherEraContractOptions {
   readonly compiledContract: NeitherContractShape & { readonly __error: NeitherContractShape['__error'] };
