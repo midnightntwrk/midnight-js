@@ -51,15 +51,19 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
 };
 
 /**
- * An error indicating that a v8-era payload came back from a provider on a
- * flow that only ever hands out v9 transactions, or that a v8-era record came
- * back from the read surface into that same flow.
+ * An error indicating that a provider, or the read surface, answered in a
+ * different ledger era from the one the flow submitted.
  *
- * The provider seams and the read surface both carry two eras, but this flow
- * tags every outgoing payload as v9 and cannot submit or report anything else.
- * A v8 response therefore means the provider re-tagged or down-converted the
- * payload it was handed, or that the flow is pointed at a network whose records
- * belong to the v8 era.
+ * The provider seams and the read surface both carry two eras, but any ONE
+ * flow through this package tags every outgoing payload with a single era and
+ * cannot submit or report anything else. An answer in the other era therefore
+ * means the provider re-tagged or converted the payload it was handed, or that
+ * the flow is pointed at a network whose records belong to the other era.
+ *
+ * {@link EraInvariantViolationError.expected} names the era the flow submitted,
+ * and so which direction the violation went. It defaults to `'v9'` — the era
+ * every flow that predates the retained-era pipelines submits — so existing
+ * call sites read exactly as they did before it existed.
  */
 export class EraInvariantViolationError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION;
@@ -69,14 +73,17 @@ export class EraInvariantViolationError extends Error {
    * @param circuitId The circuit, or circuits, whose flow this happened on,
    *                  when known. A dApp firing many circuits needs this to
    *                  tell which call broke.
+   * @param expected The era this flow submits, and therefore the only era it
+   *                 can accept back. Defaults to `'v9'`.
    */
   constructor(
     readonly seam: EraSeam,
-    readonly circuitId?: string | readonly string[]
+    readonly circuitId?: string | readonly string[],
+    readonly expected: LedgerVersion = 'v9'
   ) {
     super(
-      `${seam} returned a v8-era payload on a flow that only submits v9 transactions` +
-        `${formatCircuitClause(circuitId) ?? ''}. ` +
+      `${seam} returned a payload from a ledger era other than '${expected}', on a flow that only submits ` +
+        `'${expected}' transactions${formatCircuitClause(circuitId) ?? ''}. ` +
         `Check that the configured provider matches the network this application targets, and that no custom ` +
         `provider implementation re-tags the payload it was handed.`
     );

@@ -21,12 +21,12 @@ import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
 import { isLedger8Request } from './internal/era';
+import { submitLedger8CallTx, submitLedger8CallTxAsync, toLedger8CallEntryOptions } from './internal/ledger8-entry';
 import * as Transaction from './internal/transaction';
 import {
   type AnyLedger8CallTxOptions,
   type AnyLedger8FinalizedCallTxData,
   type AnyLedger8SubmittedCallTx,
-  LEDGER8_PIPELINE_NOT_WIRED,
   type Ledger8CallTxOptions,
   type Ledger8CircuitId,
   type Ledger8Contract,
@@ -51,8 +51,12 @@ export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.P
 
 /**
  * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
- * the raw contract instance rather than inside a `CompiledContract` container. It accepts the
- * shape but cannot execute it yet — see {@link LEDGER8_PIPELINE_NOT_WIRED}.
+ * the raw contract instance rather than inside a `CompiledContract` container.
+ *
+ * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
+ * the retained-era-native pipeline, a post-fork head the keep-state one. Both compose through the
+ * era facade and both cross the provider seams as `{ version: 'v8', txBytes }`
+ * (`docs/adr/0006-version-tagged-payloads-at-provider-seams.md`).
  *
  * ARM ORDER IS LOAD-BEARING, in two ways, and both are pinned by
  * `src/test/typecheck/overloads.test-d.ts`. This arm is declared FIRST so no current-era arm can
@@ -133,7 +137,12 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
   transactionContext?: TransactionContext<C, PCK>
 ): Promise<FinalizedCallTxData<C, PCK> | CallResult<C, PCK> | AnyLedger8FinalizedCallTxData> {
   if (isLedger8Request<AnyLedger8CallTxOptions>(options)) {
-    throw new Error(LEDGER8_PIPELINE_NOT_WIRED);
+    // The retained-era pipeline runs OUTSIDE the scoped-transaction machinery:
+    // that machinery merges several current-era calls into one transaction, and
+    // the retained era composes exactly one call, so there is nothing for it to
+    // merge with. A `transactionContext` is therefore not honoured on this arm
+    // -- the retained-era overload declares no parameter for one.
+    return submitLedger8CallTx(providers, toLedger8CallEntryOptions(options));
   }
   assertIsContractAddress(options.contractAddress);
   assertDefined(
@@ -170,8 +179,12 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
 
 /**
  * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
- * the raw contract instance rather than inside a `CompiledContract` container. It accepts the
- * shape but cannot execute it yet — see {@link LEDGER8_PIPELINE_NOT_WIRED}.
+ * the raw contract instance rather than inside a `CompiledContract` container.
+ *
+ * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
+ * the retained-era-native pipeline, a post-fork head the keep-state one. Both compose through the
+ * era facade and both cross the provider seams as `{ version: 'v8', txBytes }`
+ * (`docs/adr/0006-version-tagged-payloads-at-provider-seams.md`).
  *
  * ARM ORDER IS LOAD-BEARING, in two ways, and both are pinned by
  * `src/test/typecheck/overloads.test-d.ts`. This arm is declared FIRST so no current-era arm can
@@ -268,7 +281,7 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
   options: CallTxOptions<C, PCK> | AnyLedger8CallTxOptions
 ): Promise<SubmittedCallTx<C, PCK> | AnyLedger8SubmittedCallTx> {
   if (isLedger8Request<AnyLedger8CallTxOptions>(options)) {
-    throw new Error(LEDGER8_PIPELINE_NOT_WIRED);
+    return submitLedger8CallTxAsync(providers, toLedger8CallEntryOptions(options));
   }
   assertIsContractAddress(options.contractAddress);
   assertDefined(

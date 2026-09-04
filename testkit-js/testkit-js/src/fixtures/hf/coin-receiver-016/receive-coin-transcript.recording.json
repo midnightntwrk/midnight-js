@@ -1,0 +1,594 @@
+{
+  "documentation": "Recording of the transcript the real retained-era (compact-runtime@0.16) runtime produces for coin-receiver-016's receive_coin circuit, minted by real execution from packages/protocol/src/test/era-record-coin-receiver.test.ts. Values are tagged: {\"__bigint\"}, {\"__bytes\"} (lower-case hex) and {\"__map\"}. partitionContext.block.secondsSinceEpoch and .lastBlockTime are the only substituted members -- the runtime stamps a wall clock there and executeCircuit takes no clock, so they are frozen to make the recording reproducible. Everything else is the runtime's own output. Regenerate with MINT_HF_FIXTURES=1.",
+  "circuitId": "receive_coin",
+  "coinPublicKey": "cacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacaca",
+  "contractAddress": "0000000000000000000000000000000000000000000000000000000000000000",
+  "receivedCoin": {
+    "nonce": {
+      "__bytes": "0707070707070707070707070707070707070707070707070707070707070707"
+    },
+    "color": {
+      "__bytes": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "value": {
+      "__bigint": "42"
+    }
+  },
+  "preState": {
+    "tag": "array",
+    "content": [
+      {
+        "tag": "cell",
+        "content": {
+          "value": [
+            {
+              "__bytes": ""
+            },
+            {
+              "__bytes": ""
+            },
+            {
+              "__bytes": ""
+            },
+            {
+              "__bytes": ""
+            }
+          ],
+          "alignment": [
+            {
+              "tag": "atom",
+              "value": {
+                "tag": "bytes",
+                "length": 32
+              }
+            },
+            {
+              "tag": "atom",
+              "value": {
+                "tag": "bytes",
+                "length": 32
+              }
+            },
+            {
+              "tag": "atom",
+              "value": {
+                "tag": "bytes",
+                "length": 16
+              }
+            },
+            {
+              "tag": "atom",
+              "value": {
+                "tag": "bytes",
+                "length": 8
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tag": "cell",
+        "content": {
+          "value": [
+            {
+              "__bytes": ""
+            }
+          ],
+          "alignment": [
+            {
+              "tag": "atom",
+              "value": {
+                "tag": "bytes",
+                "length": 1
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "transcript": {
+    "circuitId": "receive_coin",
+    "result": [],
+    "input": {
+      "value": [
+        {
+          "__bytes": "0707070707070707070707070707070707070707070707070707070707070707"
+        },
+        {
+          "__bytes": ""
+        },
+        {
+          "__bytes": "2a"
+        }
+      ],
+      "alignment": [
+        {
+          "tag": "atom",
+          "value": {
+            "tag": "bytes",
+            "length": 32
+          }
+        },
+        {
+          "tag": "atom",
+          "value": {
+            "tag": "bytes",
+            "length": 32
+          }
+        },
+        {
+          "tag": "atom",
+          "value": {
+            "tag": "bytes",
+            "length": 16
+          }
+        }
+      ]
+    },
+    "output": {
+      "value": [],
+      "alignment": []
+    },
+    "publicTranscript": [
+      {
+        "dup": {
+          "n": 2
+        }
+      },
+      {
+        "idx": {
+          "cached": true,
+          "pushPath": false,
+          "path": [
+            {
+              "tag": "value",
+              "value": {
+                "value": [
+                  {
+                    "__bytes": ""
+                  }
+                ],
+                "alignment": [
+                  {
+                    "tag": "atom",
+                    "value": {
+                      "tag": "bytes",
+                      "length": 1
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "popeq": {
+          "cached": true,
+          "result": {
+            "value": [
+              {
+                "__bytes": ""
+              }
+            ],
+            "alignment": [
+              {
+                "tag": "atom",
+                "value": {
+                  "tag": "bytes",
+                  "length": 32
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "swap": {
+          "n": 0
+        }
+      },
+      {
+        "idx": {
+          "cached": true,
+          "pushPath": true,
+          "path": [
+            {
+              "tag": "value",
+              "value": {
+                "value": [
+                  {
+                    "__bytes": "01"
+                  }
+                ],
+                "alignment": [
+                  {
+                    "tag": "atom",
+                    "value": {
+                      "tag": "bytes",
+                      "length": 1
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "push": {
+          "storage": false,
+          "value": {
+            "tag": "cell",
+            "content": {
+              "value": [
+                {
+                  "__bytes": "77d3ed2909ae167e193abe4d67e76c3646e63bb52b85520cd617b171e99012bc"
+                }
+              ],
+              "alignment": [
+                {
+                  "tag": "atom",
+                  "value": {
+                    "tag": "bytes",
+                    "length": 32
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "push": {
+          "storage": false,
+          "value": {
+            "tag": "null"
+          }
+        }
+      },
+      {
+        "ins": {
+          "cached": true,
+          "n": 2
+        }
+      },
+      {
+        "swap": {
+          "n": 0
+        }
+      },
+      {
+        "dup": {
+          "n": 2
+        }
+      },
+      {
+        "idx": {
+          "cached": true,
+          "pushPath": false,
+          "path": [
+            {
+              "tag": "value",
+              "value": {
+                "value": [
+                  {
+                    "__bytes": ""
+                  }
+                ],
+                "alignment": [
+                  {
+                    "tag": "atom",
+                    "value": {
+                      "tag": "bytes",
+                      "length": 1
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "popeq": {
+          "cached": true,
+          "result": {
+            "value": [
+              {
+                "__bytes": ""
+              }
+            ],
+            "alignment": [
+              {
+                "tag": "atom",
+                "value": {
+                  "tag": "bytes",
+                  "length": 32
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "push": {
+          "storage": false,
+          "value": {
+            "tag": "cell",
+            "content": {
+              "value": [
+                {
+                  "__bytes": ""
+                }
+              ],
+              "alignment": [
+                {
+                  "tag": "atom",
+                  "value": {
+                    "tag": "bytes",
+                    "length": 1
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "dup": {
+          "n": 3
+        }
+      },
+      {
+        "push": {
+          "storage": false,
+          "value": {
+            "tag": "cell",
+            "content": {
+              "value": [
+                {
+                  "__bytes": "77d3ed2909ae167e193abe4d67e76c3646e63bb52b85520cd617b171e99012bc"
+                }
+              ],
+              "alignment": [
+                {
+                  "tag": "atom",
+                  "value": {
+                    "tag": "bytes",
+                    "length": 32
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "idx": {
+          "cached": true,
+          "pushPath": false,
+          "path": [
+            {
+              "tag": "value",
+              "value": {
+                "value": [
+                  {
+                    "__bytes": "01"
+                  }
+                ],
+                "alignment": [
+                  {
+                    "tag": "atom",
+                    "value": {
+                      "tag": "bytes",
+                      "length": 1
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "tag": "stack"
+            }
+          ]
+        }
+      },
+      {
+        "push": {
+          "storage": false,
+          "value": {
+            "tag": "cell",
+            "content": {
+              "value": [
+                {
+                  "__bytes": "0707070707070707070707070707070707070707070707070707070707070707"
+                },
+                {
+                  "__bytes": ""
+                },
+                {
+                  "__bytes": "2a"
+                }
+              ],
+              "alignment": [
+                {
+                  "tag": "atom",
+                  "value": {
+                    "tag": "bytes",
+                    "length": 32
+                  }
+                },
+                {
+                  "tag": "atom",
+                  "value": {
+                    "tag": "bytes",
+                    "length": 32
+                  }
+                },
+                {
+                  "tag": "atom",
+                  "value": {
+                    "tag": "bytes",
+                    "length": 16
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "swap": {
+          "n": 0
+        }
+      },
+      {
+        "concat": {
+          "cached": true,
+          "n": 91
+        }
+      },
+      {
+        "ins": {
+          "cached": false,
+          "n": 1
+        }
+      },
+      {
+        "push": {
+          "storage": false,
+          "value": {
+            "tag": "cell",
+            "content": {
+              "value": [
+                {
+                  "__bytes": "01"
+                }
+              ],
+              "alignment": [
+                {
+                  "tag": "atom",
+                  "value": {
+                    "tag": "bytes",
+                    "length": 1
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "push": {
+          "storage": true,
+          "value": {
+            "tag": "cell",
+            "content": {
+              "value": [
+                {
+                  "__bytes": "01"
+                }
+              ],
+              "alignment": [
+                {
+                  "tag": "atom",
+                  "value": {
+                    "tag": "bytes",
+                    "length": 1
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ins": {
+          "cached": false,
+          "n": 1
+        }
+      }
+    ],
+    "privateTranscriptOutputs": [
+      {
+        "value": [],
+        "alignment": []
+      }
+    ],
+    "partitionContext": {
+      "block": {
+        "ownAddress": "0000000000000000000000000000000000000000000000000000000000000000",
+        "secondsSinceEpoch": {
+          "__bigint": "1700000000"
+        },
+        "secondsSinceEpochErr": 0,
+        "parentBlockHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "balance": {
+          "__map": []
+        },
+        "comIndices": {
+          "__map": []
+        },
+        "lastBlockTime": {
+          "__bigint": "0"
+        }
+      },
+      "effects": {
+        "claimedNullifiers": [],
+        "claimedShieldedReceives": [],
+        "claimedShieldedSpends": [],
+        "claimedContractCalls": [],
+        "shieldedMints": {
+          "__map": []
+        },
+        "unshieldedMints": {
+          "__map": []
+        },
+        "unshieldedInputs": {
+          "__map": []
+        },
+        "unshieldedOutputs": {
+          "__map": []
+        },
+        "claimedUnshieldedSpends": {
+          "__map": []
+        }
+      },
+      "comIndices": {
+        "__map": [
+          [
+            "77d3ed2909ae167e193abe4d67e76c3646e63bb52b85520cd617b171e99012bc",
+            {
+              "__bigint": "0"
+            }
+          ]
+        ]
+      }
+    },
+    "zswapLocalState": {
+      "coinPublicKey": "cacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacaca",
+      "currentIndex": {
+        "__bigint": "1"
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "coinInfo": {
+            "type": "0000000000000000000000000000000000000000000000000000000000000000",
+            "nonce": "0707070707070707070707070707070707070707070707070707070707070707",
+            "value": {
+              "__bigint": "42"
+            }
+          },
+          "recipient": {
+            "is_left": false,
+            "left": "0000000000000000000000000000000000000000000000000000000000000000",
+            "right": "0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -30,12 +30,16 @@
     "packages/contracts/src/test/current-era-diagnostic.test.ts",
     "packages/contracts/src/test/era-dispatch-ledger8.test.ts",
     "packages/contracts/src/test/era-dispatch.test.ts",
+    "packages/contracts/src/test/keep-state.test.ts",
     "packages/contracts/src/test/ledger8-contract.test.ts",
     "packages/contracts/src/test/ledger8-fixture-types.ts",
+    "packages/contracts/src/test/ledger8-replay.ts",
+    "packages/contracts/src/test/ledger8-runtime-stub.ts",
     "packages/contracts/src/test/non-regression-baseline-gate.test.ts",
     "packages/contracts/src/test/non-regression-golden.test.ts",
     "packages/contracts/src/test/resources/diagnostics/mistyped-current-era-calls.ts",
     "packages/contracts/src/test/typecheck/overloads.test-d.ts",
+    "packages/contracts/src/test/v8-native.test.ts",
     "packages/contracts/src/test/verifier-key.test.ts"
   ],
   "untouchedFiles": {

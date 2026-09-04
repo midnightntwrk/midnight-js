@@ -22,10 +22,9 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { deployContract } from '../deploy-contract';
 import { EraArtifactMismatchError } from '../errors';
-import { findDeployedContract } from '../find-deployed-contract';
 import { isLedger8Request } from '../internal/era';
-import { LEDGER8_PIPELINE_NOT_WIRED, type Ledger8ContractProviders } from '../ledger8-contract';
-import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
+import { LEDGER8_DEPLOY_AUTHORITY_UNREADABLE } from '../internal/ledger8-entry';
+import type { Ledger8ContractProviders } from '../ledger8-contract';
 import type {
   CoinReceiver016Contract,
   CoinReceiver016Module,
@@ -63,10 +62,6 @@ const TWIN_018_MODULE_TYPES = resolve(FIXTURES_DIR, 'twin-contract/compiled/cont
 // out rather than imported so this test asserts the brand's ABSENCE against the literal key, and
 // keeps asserting it if the vendor moves where the constant is exported from.
 const COMPILED_CONTRACT_BRAND = Symbol.for('compact-js/CompiledContract');
-
-// Any well-formed contract address: the era fork is the first thing each entry point does, so no
-// call below reaches the address validation that follows it.
-const CONTRACT_ADDRESS_FIXTURE = '00'.repeat(35);
 
 // The fixture's generated code opens with `checkRuntimeVersion('0.16.0')`, which the installed
 // (current) `@midnight-ntwrk/compact-runtime` rejects outright, and then builds type descriptors
@@ -254,28 +249,16 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       expect(() => isLedger8Request({ compiledContract: undefined })).toThrow(EraArtifactMismatchError);
     });
 
-    // No `args` on these options: the fixture circuit takes no arguments of its own, and
-    // `Ledger8CallTxOptionsBase` omits `args` entirely in that case, exactly as the current era's
-    // `CallOptionsWithArguments` does.
-    it('refuses a retained-era submitCallTx', async () => {
-      await expect(
-        submitCallTx(providers, { compiledContract: contract, contractAddress: CONTRACT_ADDRESS_FIXTURE, circuitId: 'increment' })
-      ).rejects.toThrow(LEDGER8_PIPELINE_NOT_WIRED);
-    });
-
-    it('refuses a retained-era submitCallTxAsync', async () => {
-      await expect(
-        submitCallTxAsync(providers, { compiledContract: contract, contractAddress: CONTRACT_ADDRESS_FIXTURE, circuitId: 'increment' })
-      ).rejects.toThrow(LEDGER8_PIPELINE_NOT_WIRED);
-    });
-
-    it('refuses a retained-era deployContract', async () => {
-      await expect(deployContract(providers, { compiledContract: contract })).rejects.toThrow(LEDGER8_PIPELINE_NOT_WIRED);
-    });
-
-    it('refuses a retained-era findDeployedContract', async () => {
-      await expect(findDeployedContract(providers, { compiledContract: contract, contractAddress: CONTRACT_ADDRESS_FIXTURE })).rejects.toThrow(
-        LEDGER8_PIPELINE_NOT_WIRED
+    // The four era-dispatching entry points no longer refuse a retained-era request outright --
+    // `src/test/keep-state.test.ts` and `src/test/v8-native.test.ts` drive the pipelines behind
+    // them. The one arm that still refuses is the deploy, and it refuses for a reason that is
+    // nothing to do with the pipeline: the era seam carries no maintenance authority in either
+    // direction, so the signing key this entry point has to return could only name an authority the
+    // deployment never registered. The deploy TRANSACTION itself composes and submits, and
+    // `v8-native.test.ts` exercises that path directly.
+    it('refuses a retained-era deployContract, naming the unreadable maintenance authority', async () => {
+      await expect(deployContract(providers, { compiledContract: contract })).rejects.toThrow(
+        LEDGER8_DEPLOY_AUTHORITY_UNREADABLE
       );
     });
   });

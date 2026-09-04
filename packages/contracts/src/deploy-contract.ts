@@ -26,10 +26,10 @@ import {
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
 import { isLedger8Request } from './internal/era';
+import { LEDGER8_DEPLOY_AUTHORITY_UNREADABLE } from './internal/ledger8-entry';
 import {
   type AnyLedger8DeployContractOptions,
   type AnyLedger8DeployedContract,
-  LEDGER8_PIPELINE_NOT_WIRED,
   type Ledger8CircuitId,
   type Ledger8Contract,
   type Ledger8ContractProviders,
@@ -118,8 +118,18 @@ const createDeployTxOptions = <C extends Contract.Any>(
 
 /**
  * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
- * the raw contract instance rather than inside a `CompiledContract` container. It accepts the
- * shape but cannot execute it yet — see {@link LEDGER8_PIPELINE_NOT_WIRED}.
+ * the raw contract instance rather than inside a `CompiledContract` container.
+ *
+ * REFUSED, and for a reason that is about the maintenance authority rather than about the era
+ * pairing: see {@link LEDGER8_DEPLOY_AUTHORITY_UNREADABLE}. The retained-era deploy TRANSACTION
+ * composes and submits — `runLedger8Deploy` in `./internal/ledger8-entry` is that path, and it is
+ * exercised directly — but this entry point additionally has to report the signing key registered
+ * as the deployed contract's maintenance authority, and the era seam carries no authority in
+ * either direction.
+ *
+ * Separately, a retained-era deploy against a POST-FORK head is refused with
+ * `Ledger8DeployOnV9Error`: the retained era stays supported for calls against contracts already
+ * on chain, and a new deployment has no such history to preserve.
  *
  * ARM ORDER IS LOAD-BEARING, in two ways, and both are pinned by
  * `src/test/typecheck/overloads.test-d.ts`. This arm is declared FIRST so no current-era arm can
@@ -157,7 +167,7 @@ export async function deployContract<C extends Contract.Any>(
   options: DeployContractOptions<C> | AnyLedger8DeployContractOptions
 ): Promise<DeployedContract<C> | AnyLedger8DeployedContract> {
   if (isLedger8Request<AnyLedger8DeployContractOptions>(options)) {
-    throw new Error(LEDGER8_PIPELINE_NOT_WIRED);
+    throw new Error(LEDGER8_DEPLOY_AUTHORITY_UNREADABLE);
   }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
   return {

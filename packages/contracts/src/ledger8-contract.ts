@@ -432,14 +432,3 @@ export type NeitherContractShape = { readonly __error: typeof NEITHER_ERA_CONTRA
 export interface NeitherEraContractOptions {
   readonly compiledContract: NeitherContractShape;
 }
-
-/**
- * The message every retained-era overload body throws with at this stage.
- *
- * The overloads accept and type-check the retained-era shape, but no execution
- * path exists behind them yet. A bare `Error` on purpose: a registered error
- * code is a published consumer surface, and this condition is removed as soon
- * as the pipeline lands.
- */
-export const LEDGER8_PIPELINE_NOT_WIRED =
-  'The retained-era contract pipeline is not wired yet; this overload accepts the shape but cannot execute it.';

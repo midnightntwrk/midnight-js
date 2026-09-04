@@ -40,15 +40,29 @@ export {
   DeployContractOptionsWithPrivateState,
   DeployedContract
 } from './deploy-contract';
+// The six era errors below become reachable with this release: the retained-era entry points now
+// run real pipelines, so a consumer can catch each of them. Every one is thrown on a path a
+// consumer can reach -- `BlankVerifierKeySlotError` and `VerifierKeyMismatchError` from the
+// pre-proving key check, `HeadStateEraMismatchError` and `IndexerInconsistencyError` from the
+// head-versus-state era check, `EraArtifactMismatchError` from era resolution at every entry
+// point, and `Ledger8DeployOnV9Error` from the era pairing table -- and each is exercised through
+// an entry point in `src/test/keep-state.test.ts` or `src/test/v8-native.test.ts`.
 export {
+  BlankVerifierKeySlotError,
   CallTxFailedError,
   ContractTypeError,
   DeployTxFailedError,
+  EraArtifactMismatchError,
+  type EraArtifactMismatchReason,
   EraInvariantViolationError,
   type EraSeam,
+  HeadStateEraMismatchError,
   IncompleteCallTxPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
-  TxFailedError} from './errors';
+  IndexerInconsistencyError,
+  Ledger8DeployOnV9Error,
+  TxFailedError,
+  VerifierKeyMismatchError} from './errors';
 export {
   findDeployedContract,
   FindDeployedContractOptions,
