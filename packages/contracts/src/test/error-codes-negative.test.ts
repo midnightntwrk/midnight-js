@@ -180,13 +180,43 @@ const readTestSource = (file: string): readonly string[] =>
  *
  * A future code whose negative is awkward to spell directly gets a direct
  * negative too. It does not get an exemption.
+ *
+ * ## What this check is, and what it therefore cannot see
+ *
+ * It is a SUBSTRING SEARCH over source text, not an execution measurement. It
+ * proves the idiom is SPELLED in the named file; it cannot prove the assertion
+ * RUNS. Specifically, it does not see:
+ *
+ * - a line inside a block-comment span (only a whole line starting with `//` is rejected);
+ * - an assertion inside a skipped test (`it.skip`, `describe.skip`) or one
+ *   behind a `return` that makes it unreachable;
+ * - an assertion in a test whose surrounding arrangement never actually
+ *   provokes the refusal, so the `catch` it sits in is never entered;
+ * - whether the code asserted is the code the operation really threw.
+ *
+ * Those are the negative test's OWN job, and the reason this file names a
+ * refusal in prose beside every entry: a reader who follows the pointer sees
+ * the test. What this check buys is that the pointer cannot be to a file which
+ * does not mention the code at all -- the failure mode that actually happened
+ * here twice.
  */
 const assertsNegativeFor = (source: readonly string[], name: string): boolean => {
   const codeExpression = `CONTRACTS_ERROR_CODES.${name}`;
 
-  // Both idioms on ONE line. A comment mentioning the code cannot satisfy this
-  // without also spelling the call on the same line.
-  return source.some((line) => line.includes('hasErrorCode(') && line.includes(codeExpression));
+  return source.some((line) => {
+    const trimmed = line.trim();
+    // A COMMENTED-OUT assertion is not an assertion. Narrower than the holes
+    // above it -- it catches only a whole line disabled with `//` -- but a
+    // disabled assertion carries both idioms on one line and would otherwise
+    // read as coverage, which is how a temporarily commented-out test becomes
+    // permanent silence.
+    if (trimmed.startsWith('//')) {
+      return false;
+    }
+    // Both idioms on ONE line. A comment mentioning the code cannot satisfy
+    // this without also spelling the call on the same line.
+    return trimmed.includes('hasErrorCode(') && trimmed.includes(codeExpression);
+  });
 };
 
 describe('every code in CONTRACTS_ERROR_CODES has a negative test', () => {
@@ -241,6 +271,19 @@ describe('every code in CONTRACTS_ERROR_CODES has a negative test', () => {
 
     expect(assertsNegativeFor(split, 'STALE_HEAD')).toBe(false);
     expect(assertsNegativeFor(together, 'STALE_HEAD')).toBe(true);
+  });
+
+  it('recognises NO negative from a COMMENTED-OUT assertion', () => {
+    // A disabled assertion carries both idioms on one line, so the one-line
+    // rule alone does not reject it. A test commented out "for now" would
+    // otherwise keep this gate green indefinitely.
+    const disabled = ['    // expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.STALE_HEAD)).toBe(true);'];
+    const live = ['    expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.STALE_HEAD)).toBe(true);'];
+
+    expect(assertsNegativeFor(disabled, 'STALE_HEAD')).toBe(false);
+    // The same line, uncommented, still counts -- so this rejects the comment
+    // marker and not the assertion's shape.
+    expect(assertsNegativeFor(live, 'STALE_HEAD')).toBe(true);
   });
 
   it('recognises NO negative from a parameterised table, so there is no exemption to opt into', () => {

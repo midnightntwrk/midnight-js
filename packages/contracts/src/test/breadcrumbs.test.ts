@@ -96,6 +96,34 @@ const V9_HEAD_MINOR_BUMP = 2_001_000;
 // never reach the breadcrumb this file is about.
 const CONTRACT_ADDRESS: string = createMockContractAddress();
 
+/**
+ * EXHAUSTIVE maps over the two closed vocabularies a breadcrumb reports.
+ *
+ * `Record<Union, Union>` and not `readonly Union[]`, and the difference is the
+ * whole point. An array annotated `readonly HeadReadingProvenance[]` only
+ * asserts that each ELEMENT IS a member; adding a fourth member to the union
+ * leaves such an array compiling and every test passing. A `Record` keyed by
+ * the union fails to compile with `TS2741: Property ... is missing` until the
+ * new member is listed here -- which is what turns "a new head read must add a
+ * provenance and emit it" from prose in a docblock into a build failure.
+ *
+ * The VALUES repeat the keys rather than being `true`, so `Object.values` hands
+ * back a properly typed list to drive the emissions with -- `Object.keys` is
+ * `string[]`, and narrowing it would need a cast. The key-equals-value
+ * invariant is asserted below rather than assumed, so a copy-paste slip in
+ * either map is caught too.
+ */
+const ALL_PROVENANCES: Record<HeadReadingProvenance, HeadReadingProvenance> = {
+  'operation-start': 'operation-start',
+  'disagreement-re-read': 'disagreement-re-read',
+  'post-rejection-re-read': 'post-rejection-re-read'
+};
+
+const ALL_PIPELINES: Record<PipelineEra, PipelineEra> = {
+  ledger8: 'ledger8',
+  v9native: 'v9native'
+};
+
 type DebugSpy = Mock<(breadcrumb: DispatchBreadcrumb, message: string) => void>;
 
 const createSink = (): { readonly debug: DebugSpy } => ({
@@ -610,11 +638,23 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
     }
   });
 
+  it('keeps both exhaustive maps self-consistent, so neither drives the wrong values', () => {
+    // The maps are compile-time gates whose VALUES are what the two tests
+    // below actually emit. A copy-paste slip -- a key mapped to a sibling's
+    // value -- would compile and would quietly test one member twice while
+    // never testing another.
+    expect(Object.keys(ALL_PROVENANCES)).toEqual(Object.values(ALL_PROVENANCES));
+    expect(Object.keys(ALL_PIPELINES)).toEqual(Object.values(ALL_PIPELINES));
+  });
+
   it('places every pipeline the type admits on the allow-listed field, so a new one cannot leak', () => {
-    // A cheap exhaustiveness gate on `path`: the breadcrumb's pipeline field
-    // is the pipeline vocabulary itself, so a third pipeline would have to be
-    // added here too.
-    const pipelines: readonly PipelineEra[] = ['ledger8', 'v9native'];
+    // A REAL exhaustiveness gate, via ALL_PIPELINES above. The earlier form
+    // here was `const pipelines: readonly PipelineEra[] = [...]`, which only
+    // asserted that each element IS a member and never that all members are
+    // listed -- so a third pipeline compiled and tested clean. This test was
+    // also the model the provenance gate below was copied from, so the
+    // weakness propagated once already.
+    const pipelines = Object.values(ALL_PIPELINES);
     const sink = createSink();
 
     for (const pipeline of pipelines) {
@@ -719,15 +759,12 @@ describe('the post-rejection head read leaves a breadcrumb too', () => {
   });
 
   it('names every provenance the type admits, so a new head read cannot go unreported', () => {
-    // A cheap exhaustiveness gate. There are four head reads in this package
-    // and three provenances -- the two operation-start reads share one -- so a
-    // fifth read has to add a member here, which is the reminder that it also
-    // has to emit.
-    const provenances: readonly HeadReadingProvenance[] = [
-      'operation-start',
-      'disagreement-re-read',
-      'post-rejection-re-read'
-    ];
+    // The test whose NAME makes the claim, so the claim has to be enforced.
+    // ALL_PROVENANCES above is what enforces it: there are four head reads in
+    // this package and three provenances -- the two operation-start reads
+    // share one -- and a fifth read that adds a member breaks the build there
+    // until it is listed and emitted.
+    const provenances = Object.values(ALL_PROVENANCES);
     const sink = createSink();
 
     for (const readingProvenance of provenances) {
