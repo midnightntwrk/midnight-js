@@ -13,19 +13,19 @@
  * limitations under the License.
  */
 
+import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type ProverKey,
   type ProveTxConfig,
   type UnboundTransaction,
-  V8PayloadUnsupportedError,
   type VerifierKey,
   type VersionedUnprovenTransaction,
   ZKConfigProvider,
   type ZKIR
 } from '@midnight-ntwrk/midnight-js-types';
 import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { ProvingProviderConfig } from '../http-client-proving-provider';
 
@@ -131,8 +131,38 @@ describe('httpClientProofProvider', () => {
     expect(constructionConfigs).toHaveLength(1);
   });
 
+  // The retained era crosses this seam as bytes in and bytes out. These cases
+  // drive the real retained runtime rather than a stub, because the two things
+  // that can go wrong here -- proving with the wrong era's cost model, and
+  // answering in the wrong arm -- are both invisible to a mocked ledger.
   describe('v8 payload', () => {
-    test('rejects with the registered unsupported-payload code and never calls the proof server', async () => {
+    let retainedEraTxBytes: Uint8Array;
+
+    beforeAll(async () => {
+      const v8 = await loadLedger8();
+      retainedEraTxBytes = v8.Transaction.fromParts('undeployed').serialize();
+    });
+
+    test('answers the v8 arm with the PROVEN serialization of the transaction', async () => {
+      wireMocks();
+      const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
+
+      const result = await provider.proveTx({ version: 'v8', txBytes: retainedEraTxBytes });
+
+      // `requireV8` in `midnight-js-contracts` reads `txBytes` off this record
+      // and rejects the v9 arm, so answering in the wrong arm fails a submit
+      // half way through. Assert the arm before the payload.
+      expect(result.version).toBe('v8');
+      expect(result.version === 'v8' && result.txBytes).toBeInstanceOf(Uint8Array);
+
+      // Proven, not merely round-tripped: the stage marker in the tag moves
+      // from `proof-preimage` to `proof` only when the transaction was proved.
+      const provenTag = 'midnight:transaction[v9](signature[v1],proof,embedded-fr[v1]):';
+      const returned = result.version === 'v8' ? result.txBytes : new Uint8Array();
+      expect(Buffer.from(returned.subarray(0, provenTag.length)).toString('latin1')).toBe(provenTag);
+    });
+
+    test('refuses a payload that is not a serialized transaction, with the registered code', async () => {
       const { proveTimeouts } = wireMocks();
       const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
 
@@ -141,10 +171,25 @@ describe('httpClientProofProvider', () => {
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION)).toBe(true);
       expect(proveTimeouts).toEqual([]);
     });
+  });
+
+  test('reports a payload with no version tag as UntaggedPayloadError, not a TypeError', async () => {
+    wireMocks();
+    const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
+
+    // Unrepresentable in TypeScript, and reachable anyway: from JavaScript, and
+    // from a consumer built against a pre-5.0.0 `midnight-js-types`. Dispatching
+    // on `.version` must not read through a null payload before the guard that
+    // turns this into a coded error a caller can act on.
+    const rejection = await provider.proveTx(null as unknown as VersionedUnprovenTransaction).then(
+      () => undefined,
+      (error: unknown) => error
+    );
+
+    expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
   });
 
   // This package does not delegate to `createProofProvider` — it has its own

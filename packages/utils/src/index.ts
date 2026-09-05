@@ -20,6 +20,7 @@ export * from './deserialization';
 export * from './error-codes';
 export * from './hex-utils';
 export * from './password-validation';
+export * from './prove-v8';
 export * from './security-utils';
 export * from './serialized-tag';
 export * from './signing-key-utils';

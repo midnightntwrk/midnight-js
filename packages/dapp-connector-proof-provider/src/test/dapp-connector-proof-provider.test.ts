@@ -13,16 +13,17 @@
  * limitations under the License.
  */
 
+import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
 import type { CostModel, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type KeyMaterialProvider,
   type UnboundTransaction,
-  V8PayloadUnsupportedError,
+  type VersionedUnprovenTransaction,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import type { ProvingProvider } from '@midnightntwrk/dapp-connector-api';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { dappConnectorProofProvider } from '../dapp-connector-proof-provider';
 import type { DAppConnectorProvingAPI } from '../dapp-connector-proving-provider';
@@ -89,22 +90,59 @@ describe('dappConnectorProofProvider', () => {
     expect(result.version === 'v9' && result.tx).toBe(mockUnboundTx);
   });
 
-  // Behaviour is inherited from createProofProvider, but this is the seam
-  // consumers of this package actually call: without a test here, a future
-  // refactor that gives this package its own proveTx body would silently lose
-  // the rejection.
-  it('rejects a v8 payload with the registered unsupported-payload code, naming this seam', async () => {
+  // This package delegates the current era to `createProofProvider` but owns
+  // the retained arm itself, so these cases cover a body the types package's
+  // tests do not reach.
+  describe('v8 payload', () => {
+    let retainedEraTxBytes: Uint8Array;
+
+    beforeAll(async () => {
+      const v8 = await loadLedger8();
+      retainedEraTxBytes = v8.Transaction.fromParts('undeployed').serialize();
+    });
+
+    it('answers the v8 arm with the PROVEN serialization, ignoring the caller-supplied cost model', async () => {
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      const result = await proofProvider.proveTx({ version: 'v8', txBytes: retainedEraTxBytes });
+
+      // `mockCostModel` is a plain object, not a ledger `CostModel` at all. The
+      // retained runtime type-checks that argument across the WASM boundary and
+      // throws `expected instance of CostModel` for anything else -- so this
+      // call SUCCEEDING is the proof that the caller's cost model was not
+      // forwarded. Forward it and this test fails.
+      expect(result.version).toBe('v8');
+      const provenTag = 'midnight:transaction[v9](signature[v1],proof,embedded-fr[v1]):';
+      const returned = result.version === 'v8' ? result.txBytes : new Uint8Array();
+      expect(Buffer.from(returned.subarray(0, provenTag.length)).toString('latin1')).toBe(provenTag);
+    });
+
+    it('refuses a payload that is not a serialized transaction, with the registered code', async () => {
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      const rejection = await proofProvider.proveTx({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION)).toBe(true);
+      expect(mockUnprovenTx.prove).not.toHaveBeenCalled();
+    });
+  });
+
+  it('reports a payload with no version tag as UntaggedPayloadError, not a TypeError', async () => {
     const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
 
-    const rejection = await proofProvider.proveTx({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) }).then(
+    // Unrepresentable in TypeScript, and reachable anyway: from JavaScript, and
+    // from a consumer built against a pre-5.0.0 `midnight-js-types`. Dispatching
+    // on `.version` must not read through a null payload before the guard that
+    // turns this into a coded error a caller can act on.
+    const rejection = await proofProvider.proveTx(null as unknown as VersionedUnprovenTransaction).then(
       () => undefined,
       (error: unknown) => error
     );
 
-    expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-    expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
-    expect((rejection as V8PayloadUnsupportedError).seam).toBe('proveTx');
-    expect(mockUnprovenTx.prove).not.toHaveBeenCalled();
+    expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
   });
 
   it('should obtain the ProvingProvider once at setup, not per proveTx call', async () => {
