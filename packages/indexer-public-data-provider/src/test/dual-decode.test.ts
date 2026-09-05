@@ -21,13 +21,13 @@ import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
 import type { ProtocolV8 } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type LedgerVersion, protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import type { ReadSeam, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import { DeserializationError, hasErrorCode, PROVIDER_ERROR_CODES, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { decodeVersionedTransaction } from '../codec';
-import { DecodeVersionMismatchError, EraUnresolvableError, EraUnsupportedError } from '../errors';
+import { DecodeVersionMismatchError, EraUnresolvableError, EraUnsupportedError, IndexerError } from '../errors';
 import type { RegularTransaction } from '../gen/schema-types';
 import { toFinalizedDeployTxData, toFinalizedTxData } from '../mapping';
 import { IndexerPublicDataProvider } from '../provider';
@@ -238,21 +238,38 @@ describe('the module graph keeps both retained-era chunks off the eager path', (
     expect([...referenced].sort()).toEqual(['loadLedger8']);
   });
 
-  it('never names a retained-era package or subpath as a runtime import', () => {
-    // `[\s\S]*?` rather than `[^;]*`: import lists in this package routinely
-    // span several lines, and a single-line pattern would silently skip every
-    // one of them — reporting no offenders because it looked at almost nothing.
-    const RUNTIME_IMPORT = /^import\s+(?!type\b)[\s\S]*?from\s+'(?<specifier>[^']+)'/gm;
+  // Every way a module specifier can be LINKED at runtime. `[^;]*?` spans the
+  // newlines a multi-line import list contains but cannot cross the statement
+  // terminator, so a clause is never attributed to the next statement's
+  // specifier — and a single-line pattern would have skipped almost every
+  // import in this package while still reporting no offenders.
+  const RUNTIME_SPECIFIER_PATTERNS = [
+    // `import … from '…'`. `import type` is erased and so is excluded.
+    /^import\s+(?!type\b)[^;]*?from\s+'(?<specifier>[^']+)'/gm,
+    // `import '…'` — a side-effect import has no clause that could be
+    // type-erased, so it always links the module.
+    /^import\s+'(?<specifier>[^']+)'/gm,
+    // `export … from '…'` — a runtime re-export links the module exactly as an
+    // import does. `export type … from` does not.
+    /^export\s+(?!type\b)[^;]*?from\s+'(?<specifier>[^']+)'/gm
+  ];
+
+  const runtimeSpecifiers = (): readonly { readonly path: string; readonly specifier: string }[] =>
+    sources().flatMap(({ path, text }) =>
+      RUNTIME_SPECIFIER_PATTERNS.flatMap((pattern) =>
+        [...text.matchAll(pattern)].map((match) => ({ path, specifier: match.groups?.specifier ?? '' }))
+      )
+    );
+
+  it('never links a retained-era package or subpath at runtime, by import or by re-export', () => {
     const FORBIDDEN = [
       '@midnightntwrk/ledger-v8',
       '@midnight-ntwrk/midnight-js-protocol/v8',
       '@midnight-ntwrk/midnight-js-protocol/engine'
     ];
 
-    const runtimeImports = sources().flatMap(({ path, text }) =>
-      [...text.matchAll(RUNTIME_IMPORT)].map((match) => ({ path, specifier: match.groups?.specifier ?? '' }))
-    );
-    const offenders = runtimeImports
+    const linked = runtimeSpecifiers();
+    const offenders = linked
       .filter(({ specifier }) =>
         FORBIDDEN.some((forbidden) => specifier === forbidden || specifier.startsWith(`${forbidden}/`))
       )
@@ -260,7 +277,7 @@ describe('the module graph keeps both retained-era chunks off the eager path', (
 
     // The scan is worth nothing unless it really sees this package's imports:
     // the multi-line barrel import in `codec.ts` is the one it must find.
-    expect(runtimeImports.map(({ specifier }) => specifier)).toContain('@midnight-ntwrk/midnight-js-protocol');
+    expect(linked.map(({ specifier }) => specifier)).toContain('@midnight-ntwrk/midnight-js-protocol');
     expect(offenders).toEqual([]);
   });
 });
@@ -288,6 +305,29 @@ describe('a decode against the wrong runtime is refused, not mislabelled', () =>
     expect(mismatch.recordRef).toContain(TX_ID);
   });
 
+  it('names the contract address on the deploy seam, not just the transaction id', async () => {
+    // Restores, against the error that now carries it, the assertion the era
+    // wiring suite used to make: whichever read failed, the record it failed on
+    // is identifiable.
+    const error = await rejectionOf(
+      toFinalizedDeployTxData(CONTRACT_ADDRESS, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
+    );
+
+    const mismatch = error as DecodeVersionMismatchError;
+    expect(mismatch.seam).toBe('watchForDeployTxData');
+    expect(mismatch.recordRef).toContain(CONTRACT_ADDRESS);
+    expect(mismatch.message).toContain(CONTRACT_ADDRESS);
+  });
+
+  it('blames the indexer rather than the consumer dependency versions', async () => {
+    const error = await rejectionOf(
+      toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
+    );
+
+    expect((error as Error).message).toContain('inconsistent indexer');
+    expect(error).toBeInstanceOf(IndexerError);
+  });
+
   it('preserves the runtime own diagnosis on cause rather than discarding it', async () => {
     const error = await rejectionOf(
       toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
@@ -312,6 +352,11 @@ describe('a decode against the wrong runtime is refused, not mislabelled', () =>
     expect(rendered).toContain(String(V8_ERA_PROTOCOL_VERSION));
     expect(rendered).not.toContain(v9TransactionHex);
     expect(rendered).not.toContain(v8TransactionHex);
+    // A truncated byte dump would slip past the two refusals above, which only
+    // catch a complete payload. Sixteen bytes is already more than enough to
+    // identify a transaction.
+    expect(rendered).not.toContain(v9TransactionHex.slice(0, 32));
+    expect(rendered).not.toContain(v8TransactionHex.slice(0, 32));
   });
 
   it('leaves a malformed payload as a deserialization failure instead of blaming the era', async () => {
@@ -341,23 +386,63 @@ describe('an era that resolves to no decoder at all', () => {
     expect(loadLedger8Spy).not.toHaveBeenCalled();
   });
 
-  // Reachable only from an untyped JavaScript consumer, which this package
-  // also serves: `era` is typed, so a TypeScript caller cannot get here. The
-  // cast stands in for that consumer. Without the guard the era-keyed lookup
-  // would answer an inherited `Object.prototype` member instead of throwing.
+  // `EraUnsupportedError` is reachable only from an untyped JavaScript
+  // consumer, which this package also serves: `era` is typed, so a TypeScript
+  // caller cannot get here. The cast stands in for that consumer. Without the
+  // guard the era-keyed lookup would answer an inherited `Object.prototype`
+  // member instead of throwing. The class stays a public export with a
+  // registered code, so its fields and its remediation text are asserted here
+  // rather than left to whoever next reads the decoder table.
+  const decodeWithEra = (era: string, seam: ReadSeam = 'watchForTxData', recordRef = `txId ${TX_ID}`): Promise<unknown> =>
+    decodeVersionedTransaction(v9TransactionHex, era as LedgerVersion, {
+      seam,
+      protocolVersion: V9_ERA_PROTOCOL_VERSION,
+      recordRef
+    });
+
   it.each([['toString'], ['constructor'], ['v7']])(
     'refuses %s as an era rather than resolving it through the prototype chain',
     async (era) => {
-      const error = await rejectionOf(
-        decodeVersionedTransaction(v9TransactionHex, era as LedgerVersion, {
-          seam: 'watchForTxData',
-          protocolVersion: V9_ERA_PROTOCOL_VERSION,
-          recordRef: `txId ${TX_ID}`
-        })
-      );
+      const error = await rejectionOf(decodeWithEra(era));
 
       expect(error).toBeInstanceOf(EraUnsupportedError);
       expect(hasErrorCode(error, PROVIDER_ERROR_CODES.ERA_UNSUPPORTED)).toBe(true);
     }
   );
+
+  it('carries the era, the raw protocolVersion, the seam and the record', async () => {
+    const error = await rejectionOf(decodeWithEra('v7', 'watchForDeployTxData', `contractAddress ${CONTRACT_ADDRESS}`));
+
+    const unsupported = error as EraUnsupportedError;
+    expect(unsupported.era).toBe('v7');
+    expect(unsupported.protocolVersion).toBe(V9_ERA_PROTOCOL_VERSION);
+    expect(unsupported.seam).toBe('watchForDeployTxData');
+    expect(unsupported.recordRef).toContain(CONTRACT_ADDRESS);
+  });
+
+  it('names the record in its message, so one of several concurrent watches can be identified', async () => {
+    const error = await rejectionOf(decodeWithEra('v7'));
+
+    expect((error as Error).message).toContain(TX_ID);
+    expect((error as Error).message).toContain(String(V9_ERA_PROTOCOL_VERSION));
+  });
+
+  it('tells the reader this client has no decoder for the era, not that the era cannot be decoded at all', async () => {
+    // The remediation changed with dual decode: the era is no longer one this
+    // provider refuses on principle, it is one this build ships no runtime for.
+    const error = await rejectionOf(decodeWithEra('v7'));
+
+    expect((error as Error).message).toContain('has no decoder for');
+    expect((error as Error).message).toContain('upgrade to a release that knows this era');
+  });
+
+  it('reaches consumers through the IndexerError hierarchy, like every other failure here', async () => {
+    const unsupported = await rejectionOf(decodeWithEra('v7'));
+    const unresolvable = await rejectionOf(
+      toFinalizedTxData(TX_ID, transactionAt(UNRESOLVABLE_PROTOCOL_VERSION, v8TransactionHex))
+    );
+
+    expect(unsupported).toBeInstanceOf(IndexerError);
+    expect(unresolvable).toBeInstanceOf(IndexerError);
+  });
 });

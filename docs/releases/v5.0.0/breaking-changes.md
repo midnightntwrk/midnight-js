@@ -253,22 +253,39 @@ still resolves `FinalizedTxData`, and `findDeployedContract` still resolves a
 is reported as `EraInvariantViolationError`, which carries the `seam` and, where
 the flow knows it, the `circuitId`.
 
-No provider produces the v8 arm yet — the read path deserializes with the
-v9-only runtime, so a v8-era record surfaces as `EraUnsupportedError` rather
-than as a value. Narrowing is required now so that dual decode does not force a
-second breaking change.
+`indexerPublicDataProvider` produces both arms. It decodes each record with the
+ledger runtime of the era that record's own `protocolVersion` reports, so a
+v8-era record arrives as a **value** on the `'v8'` arm, not as a thrown error.
+The pre-fork runtime is acquired lazily on first use, so a session that never
+meets a v8-era record never instantiates that WASM. Narrowing on `version` is
+therefore not a formality: the two arms carry transaction objects built by
+different runtimes, and neither runtime's object can be handed to the other.
 
 ### 8d. `version` is derived, not asserted
 
 `indexerPublicDataProvider` resolves `version` from each record's own
-`protocolVersion` via the resolver in `@midnight-ntwrk/midnight-js-protocol`.
-Consequence: pointing the provider at a network outside the node 2.x range now
-throws at the read boundary — `EraUnsupportedError` for a v8-era network,
-`EraUnresolvableError` for a node 0.x or otherwise unmapped one — where before
-it returned a record that failed later inside the codec, with nothing in the
-message naming the era. Both are `IndexerError` subclasses, so a single
-`instanceof IndexerError` still catches them, and both carry the raw
-`protocolVersion` plus the transaction id or contract address being read.
+`protocolVersion` via the resolver in `@midnight-ntwrk/midnight-js-protocol`,
+and that same answer decides which ledger runtime decodes the record — so the
+discriminant, the decoder that ran and the `protocolVersion` beside it are one
+fact and cannot disagree.
+
+Consequence: a v8-era network is now **served**, on the `'v8'` arm. What throws
+at the read boundary is a network this client cannot place on the era timeline
+at all — `EraUnresolvableError`, for a node 0.x or otherwise unmapped
+`protocolVersion` — where before it returned a record that failed later inside
+the codec, with nothing in the message naming the era.
+
+One further read-boundary failure is new: `DecodeVersionMismatchError`, raised
+when a record's era resolves but its bytes will not decode on that era's
+runtime. The record contradicts itself, so this reports an inconsistent indexer
+rather than a version mismatch in your own dependencies; the runtime's own
+diagnosis is preserved on `cause`. Bytes that are merely malformed or truncated
+still surface as `DeserializationError`, so corruption is never reported as an
+era disagreement.
+
+All of these are `IndexerError` subclasses, so a single `instanceof
+IndexerError` still catches them, and each carries the raw `protocolVersion`
+plus the transaction id or contract address being read.
 
 ### 8e. Implementing `WalletProvider` or `MidnightProvider`
 
@@ -313,9 +330,14 @@ discriminant never appears in your code.
 carries `seam` and optional `circuitId`), `EraSeam`.
 
 **`@midnight-ntwrk/midnight-js-indexer-public-data-provider`** — added:
-`EraUnsupportedError` (`MIDNIGHT_JS_PR_ERA_UNSUPPORTED`) and
-`EraUnresolvableError` (`MIDNIGHT_JS_PR_ERA_UNRESOLVABLE`), both
-`IndexerError` subclasses.
+`EraUnresolvableError` (`MIDNIGHT_JS_PR_ERA_UNRESOLVABLE`),
+`DecodeVersionMismatchError` (`MIDNIGHT_JS_PR_DECODE_VERSION_MISMATCH`) and
+`EraUnsupportedError` (`MIDNIGHT_JS_PR_ERA_UNSUPPORTED`), all `IndexerError`
+subclasses. `EraUnsupportedError` is a guard rather than an era policy: the
+per-record decoder table is total over the eras this client ships runtimes for,
+so a TypeScript caller cannot raise it, and it exists to stop an era string
+threaded in from untyped JavaScript resolving an inherited `Object.prototype`
+member instead of failing.
 
 Catch any of these by code with `hasErrorCode(error, CODE)` from
 `midnight-js-utils` rather than by `instanceof` across a package boundary.

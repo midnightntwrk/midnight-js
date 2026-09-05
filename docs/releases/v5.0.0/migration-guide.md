@@ -261,9 +261,13 @@ If you *implement* `WalletProvider` or `MidnightProvider`, wrap a v9-only
 implementation with `createWalletProvider` / `createMidnightProvider` rather
 than tagging by hand — see [breaking-changes.md 8e](./breaking-changes.md).
 
-Pointing the indexer provider at a network outside the node 2.x range now
-throws at the read boundary (`EraUnsupportedError` / `EraUnresolvableError`)
-instead of returning a record that fails later inside the codec.
+A v8-era network is served rather than refused: the indexer provider decodes
+each record with the runtime of the era that record reports, so the `'v8'` arm
+of the switch above is a case you will actually reach. What throws at the read
+boundary is a `protocolVersion` this client cannot place on the era timeline at
+all (`EraUnresolvableError`), or a record whose bytes will not decode on the era
+it claims (`DecodeVersionMismatchError`) — where before either would have
+returned a record that failed later inside the codec.
 
 ---
 
