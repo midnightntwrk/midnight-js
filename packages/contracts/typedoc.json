@@ -2,6 +2,7 @@
   "extends": ["../../typedoc.base.json"],
   "readme": "none",
   "entryPoints": ["src/index.ts"],
+  "projectDocuments": ["docs/*.md"],
   "intentionallyNotExported": [
     "TypeId",
     "SubmitCallTxProviders",

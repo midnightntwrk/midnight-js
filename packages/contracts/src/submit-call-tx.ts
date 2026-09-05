@@ -69,11 +69,10 @@ export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.P
  * the `'v8'` arm only to serve calls made while the network head is still pre-fork
  * (`docs/adr/0006-version-tagged-payloads-at-provider-seams.md`).
  *
- * ARM ORDER IS LOAD-BEARING, in two ways, and both are pinned by
- * `src/test/typecheck/overloads.test-d.ts`. This arm is declared FIRST so no current-era arm can
- * shadow it, and the LAST arm is left exactly as it was before this arm existed, because
- * `ReturnType<typeof f>` and `Parameters<typeof f>` both resolve from it and so does the error
- * TypeScript prints when no arm matches. See the module documentation in `./ledger8-contract.ts`.
+ * ARM ORDER IS LOAD-BEARING: this arm is declared FIRST, and the arm that was already LAST stays
+ * last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ *
+ * @see {@link OverloadTyping} for what resolves from the last arm.
  */
 export async function submitCallTx<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
   providers: Ledger8ContractProviders<C, K>,
@@ -208,11 +207,10 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
  * the `'v8'` arm only to serve calls made while the network head is still pre-fork
  * (`docs/adr/0006-version-tagged-payloads-at-provider-seams.md`).
  *
- * ARM ORDER IS LOAD-BEARING, in two ways, and both are pinned by
- * `src/test/typecheck/overloads.test-d.ts`. This arm is declared FIRST so no current-era arm can
- * shadow it, and the LAST arm is left exactly as it was before this arm existed, because
- * `ReturnType<typeof f>` and `Parameters<typeof f>` both resolve from it and so does the error
- * TypeScript prints when no arm matches. See the module documentation in `./ledger8-contract.ts`.
+ * ARM ORDER IS LOAD-BEARING: this arm is declared FIRST, and the arm that was already LAST stays
+ * last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ *
+ * @see {@link OverloadTyping} for what resolves from the last arm.
  */
 export async function submitCallTxAsync<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
   providers: Ledger8ContractProviders<C, K>,

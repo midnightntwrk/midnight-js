@@ -17,36 +17,13 @@
  * The verification-path checks an operation makes against a contract's on-chain verifier keys,
  * before any proof is generated.
  *
- * ## What this module does NOT do, and why
+ * Deliberately holds NO key-generation vocabulary: neither ledger era exposes a contract
+ * operation's per-generation key set, so routing on generation is not merely unimplemented but
+ * unavailable. What is checked instead measures directly what a generation label would only have
+ * been a proxy for.
  *
- * It does not classify a contract's key set by KEY GENERATION, and it deliberately holds no
- * generation vocabulary. A ledger contract operation does hold several verifier keys, one per
- * version of the proving system, but neither ledger era exposes that set: `ContractOperation`
- * carries a single `verifierKey` and states in its own documentation that "only the latest
- * available version is exposed to this API", `ContractState` offers no per-version accessor, and
- * the generation vocabulary (`ContractOperationVersion`, `IrInsert`) exists only on the WRITE side,
- * as maintenance-update instructions. **Upstream gap: routing on key generation needs a ledger read
- * API that reports the generation set, which neither era provides today.**
- *
- * The key's own serialization tag is not a substitute: it reads `midnight:verifier-key[v6]` on both
- * eras and under both toolchains, measured across every state fixture, so it carries no generation
- * signal at all. A `[vN]` is an object's wire-schema version and never a ledger era.
- *
- * What is left is the check that carries the security value, and it measures directly what a
- * generation label would only have been a proxy for: a mis-dispatched operation — the wrong
- * pipeline, or the wrong contract address — shows up precisely as a local verifier key that fails
- * to byte-match the on-chain slot, and that is caught here, before proving.
- *
- * ## On a name you will meet in the fixtures
- *
- * The `co-v2` wording in the fixture file name `state-co-v2-only-foreign.hex` is retained: it is
- * checked in and byte-referenced from the fixture manifest. It names nothing in either ledger's
- * API, and nothing in this package's code, so the mismatch between that file name and the
- * vocabulary here is expected rather than a defect.
- *
- * @see packages/protocol/docs/verifier-keys.md
- * @see packages/protocol/docs/fail-closed-decoding.md for why a blank slot is reported as absent
- *      rather than as an empty key.
+ * @see {@link VerificationPath} for the upstream gap, why the serialization tag is not a
+ *      substitute, and the fixture name that does not match this vocabulary.
  */
 
 import { BlankVerifierKeySlotError, VerifierKeyMismatchError } from '../errors';
@@ -56,11 +33,8 @@ import { verifierKeysEqual } from '../find-deployed-contract';
  * Refuses an operation whose local verifier key does not match the one the deployed contract holds
  * for that entry point.
  *
- * Called BEFORE proving. A proof generated against a key the chain does not hold is rejected on
- * submission, so checking first turns a paid-for, late failure into a free, immediate one.
- *
- * Synchronous, and it consults no provider: there is no await between this check and the proving
- * step that follows it, so a proof cannot already be in flight when this refuses.
+ * Called BEFORE proving. Synchronous, and it consults no provider: keep it that way, because there
+ * must be no await between this check and the proving step that follows it.
  *
  * @param localKey The verifier key compiled alongside the local artifact.
  * @param onChainSlot The key the fetched contract state registers for this entry point, or
@@ -76,15 +50,13 @@ export const assertVerifierKeyMatches = (
   onChainSlot: Uint8Array | undefined,
   circuitId: string
 ): void => {
-  // Checked before the comparison, and reported as its own condition: a never-deployed slot and a
-  // wrong key are different faults with different fixes, and collapsing them would send a caller
-  // looking for a build mismatch that is not there.
+  // Its own condition, not folded into the mismatch below: a never-deployed slot and a wrong key
+  // are different faults with different fixes.
   if (onChainSlot === undefined) {
     throw new BlankVerifierKeySlotError(circuitId);
   }
 
-  // The comparator already exported from this package, reused rather than reimplemented so there
-  // is one definition of what makes two verifier keys equal.
+  // Reused rather than reimplemented, so there is one definition of verifier-key equality.
   if (!verifierKeysEqual(localKey, onChainSlot)) {
     throw new VerifierKeyMismatchError(circuitId);
   }
