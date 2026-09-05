@@ -51,12 +51,26 @@ const errorChainText = (error: unknown): string => {
   return parts.join(' | ');
 };
 
+/**
+ * The retained era's own UNPROVEN transaction tag, measured against the real
+ * runtime. The single pinned tag literal across the provider suites: the two
+ * provider packages derive their expectations from the payload in hand rather
+ * than restating this, so a vendor schema bump moves this line and nothing
+ * else. Its length is also what bounds the runtime's header-mismatch echo.
+ */
+const RETAINED_ERA_TX_TAG = 'midnight:transaction[v9](signature[v1],proof-preimage,embedded-fr[v1]):';
+
+/** The prefix the seam asserts on, restated so the echo test can build past it. */
+const TRANSACTION_TAG_PREFIX = 'midnight:transaction[';
+
 describe('proveV8Transaction', () => {
   let retainedEraTxBytes: Uint8Array;
   let circuitDrivingTxBytes: Uint8Array;
+  let v8Module: Awaited<ReturnType<typeof loadLedger8>>;
 
   beforeAll(async () => {
     const v8 = await loadLedger8();
+    v8Module = v8;
     retainedEraTxBytes = v8.Transaction.fromParts(NETWORK_ID).serialize();
 
     // A transaction carrying one Zswap output. Unlike the empty one above it
@@ -99,9 +113,8 @@ describe('proveV8Transaction', () => {
     // and output: an unproven transaction serializes as `proof-preimage`, a
     // proven one as `proof`. Asserting the flip is what distinguishes "the
     // transaction was proved" from "some bytes came back".
-    const unprovenTag = 'midnight:transaction[v9](signature[v1],proof-preimage,embedded-fr[v1]):';
-    const provenTag = 'midnight:transaction[v9](signature[v1],proof,embedded-fr[v1]):';
-    expect(asLatin1(retainedEraTxBytes, unprovenTag.length)).toBe(unprovenTag);
+    const provenTag = RETAINED_ERA_TX_TAG.replace('proof-preimage', 'proof');
+    expect(asLatin1(retainedEraTxBytes, RETAINED_ERA_TX_TAG.length)).toBe(RETAINED_ERA_TX_TAG);
     expect(asLatin1(provenBytes, provenTag.length)).toBe(provenTag);
 
     expect(() => v8.Transaction.deserialize('signature', 'proof', 'pre-binding', provenBytes)).not.toThrow();
@@ -128,7 +141,20 @@ describe('proveV8Transaction', () => {
       // A null-prototype object has no `constructor` to name. This repo builds
       // them deliberately (see the protocol package's shared-table discipline),
       // so it is a shape that can genuinely arrive here.
-      { label: 'a null-prototype object', payload: Object.create(null), described: 'object' }
+      { label: 'a null-prototype object', payload: Object.create(null), described: 'object' },
+      // A constructor name is CALLER DATA on a plain object. These two pin the
+      // alphabet and the bound that stop it becoming a log-injection channel:
+      // punctuation disqualifies a name outright, and a long one is cut to 32.
+      {
+        label: 'an object whose constructor name carries punctuation',
+        payload: { constructor: { name: 'SECRET-\n[fake log line]' } },
+        described: 'object'
+      },
+      {
+        label: 'an object whose constructor name is over-long',
+        payload: { constructor: { name: 'A'.repeat(200) } },
+        described: 'A'.repeat(32)
+      }
     ])('refuses $label with the registered code, not a TypeError', async ({ payload, described }) => {
       // Reachable exactly as an untagged payload is: from JavaScript, from a
       // consumer built against a pre-5.0.0 `midnight-js-types`, or across an
@@ -141,10 +167,16 @@ describe('proveV8Transaction', () => {
 
       expect(rejection).toBeInstanceOf(PayloadNotATransactionError);
       expect(rejection).toHaveProperty('code', PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION);
-      expect((rejection as Error).message).toContain(described);
+      const { message } = rejection as Error;
+      expect(message).toContain(described);
       // The garbled 'undefined-byte payload' message is what reading
       // `.byteLength` off a non-array produced before this guard existed.
-      expect((rejection as Error).message).not.toContain('undefined-byte');
+      expect(message).not.toContain('undefined-byte');
+      // Nothing caller-supplied may arrive unbounded or unfiltered: no newline
+      // to forge a log line, and no run past the 32-character cap.
+      expect(message).not.toContain('\n');
+      expect(message).not.toContain('fake log line');
+      expect(message).not.toContain('A'.repeat(33));
     });
 
     it('refuses a payload shorter than the tag prefix', async () => {
@@ -188,11 +220,45 @@ describe('proveV8Transaction', () => {
       expect(rejection).toBeInstanceOf(Error);
       expect(rejection).not.toBeInstanceOf(PayloadNotATransactionError);
 
-      // This is the one refusal raised by the vendor runtime rather than by us,
-      // so it is the one that could carry payload content out in a message or a
-      // cause chain. Held to the same standard as our own refusals above.
-      const bodySlice = Buffer.from(currentEraTxBytes.subarray(80, 96)).toString('hex');
-      expect(errorChainText(rejection)).not.toContain(bodySlice);
+      // The runtime names the tag it expected, which is what makes this refusal
+      // diagnostic rather than merely negative. What it echoes OF THE PAYLOAD
+      // while doing so is a separate question, measured in the next case.
+      expect(errorChainText(rejection)).toContain('expected header tag');
+    });
+
+    it('bounds the vendor refusal echo to the opening tag region, never the body', () => {
+      // MEASURED, and recorded because it is the opposite of what one would
+      // assume: the retained runtime's header-tag mismatch DOES echo the
+      // payload back in its message — verbatim, as latin1 text, from offset 0.
+      // An earlier version of this suite asserted the absence of an echo at a
+      // hex offset the echo never reaches, so it could not have failed. This
+      // pins what actually happens instead.
+      //
+      // What bounds the echo is the length of the tag the runtime EXPECTED — 71
+      // bytes on this era — so it covers the tag region and stops. A real
+      // transaction's body lies past that and never reaches the message, which
+      // is the property worth holding.
+      const tagRegion = 'A'.repeat(60);
+      const bodyMarker = 'BODY-MARKER-MUST-NOT-BE-ECHOED';
+      const payload = new Uint8Array(Buffer.from(`${TRANSACTION_TAG_PREFIX}${tagRegion}${bodyMarker}`, 'latin1'));
+      expect(TRANSACTION_TAG_PREFIX.length + tagRegion.length).toBeGreaterThan(RETAINED_ERA_TX_TAG.length);
+
+      // The runtime's own refusal, read directly: routing it through
+      // `proveV8Transaction` would only add indirection to the same throw.
+      let text = '';
+      try {
+        v8Module.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', payload);
+        expect.fail('expected the retained runtime to refuse a payload with a bad header tag');
+      } catch (error) {
+        text = errorChainText(error);
+      }
+
+      // The echo is real, and reaches into the caller's own bytes past the prefix.
+      expect(text).toContain(tagRegion.slice(0, 40));
+      // And it stops before the body: `bodyMarker` starts at offset 81, past the
+      // 71-byte bound, so its absence is the bound holding rather than a
+      // coincidence of encoding or offset.
+      expect(text).not.toContain(bodyMarker);
     });
   });
 

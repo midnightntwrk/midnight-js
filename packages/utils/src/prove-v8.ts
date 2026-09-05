@@ -51,10 +51,32 @@ const TRANSACTION_TAG_PREFIX_BYTES = Uint8Array.from(TRANSACTION_TAG_PREFIX, (ch
 );
 
 /**
- * Names the kind of a value without reproducing any of it.
+ * The longest constructor name reported by {@link describeType}, and the only
+ * characters it may contain.
  *
- * The value reaching this is attacker-controlled, so the description is built
- * only from its type and its constructor's name — never from its contents.
+ * Both bounds exist because a constructor name is CALLER DATA for a plain
+ * object — `{ constructor: { name: ... } }` sets it to anything at all. Left
+ * unbounded it would carry arbitrary text, newlines included, into an error
+ * message and from there into whatever the logger provider receives. Bounding
+ * the length and the alphabet leaves it useful as a diagnostic while making it
+ * useless as an injection channel.
+ */
+const MAX_TYPE_NAME_LENGTH = 32;
+const TYPE_NAME_PATTERN = /^[A-Za-z0-9_$]+$/;
+
+/**
+ * Names the kind of a value without reproducing any of it verbatim.
+ *
+ * The value reaching this is attacker-controlled. `typeof` and `null` are a
+ * closed vocabulary and safe to report as they are; a constructor name is not,
+ * so it is truncated first and then reported only if what remains is a plain
+ * identifier. Anything else falls back to `'object'` — the description is
+ * always either a fixed word or at most {@link MAX_TYPE_NAME_LENGTH} identifier
+ * characters.
+ *
+ * Validated AFTER truncation on purpose: what is checked has to be exactly what
+ * is emitted, or a name whose disallowed characters sit past the cut would pass
+ * a check on the full string and still be printed.
  */
 const describeType = (value: unknown): string => {
   if (value === null) {
@@ -64,7 +86,11 @@ const describeType = (value: unknown): string => {
     return typeof value;
   }
   const constructorName: unknown = value.constructor?.name;
-  return typeof constructorName === 'string' ? constructorName : 'object';
+  if (typeof constructorName !== 'string') {
+    return 'object';
+  }
+  const bounded = constructorName.slice(0, MAX_TYPE_NAME_LENGTH);
+  return TYPE_NAME_PATTERN.test(bounded) ? bounded : 'object';
 };
 
 /**

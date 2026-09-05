@@ -35,7 +35,14 @@ import type { DAppConnectorProvingAPI } from '../dapp-connector-proving-provider
  */
 const txTag = (bytes: Uint8Array): string => {
   const head = Buffer.from(bytes.subarray(0, 96)).toString('latin1');
-  return head.slice(0, head.indexOf('):') + 2);
+  const end = head.indexOf('):');
+  // Without this, a vendor bump that pushed the terminator past 96 bytes would
+  // make `indexOf` return -1, collapse every tag to 'm', and let the assertions
+  // that use this pass while comparing nothing.
+  if (end === -1) {
+    throw new Error(`No transaction tag terminator within the first 96 bytes of a ${bytes.byteLength}-byte payload.`);
+  }
+  return head.slice(0, end + 2);
 };
 
 describe('dappConnectorProofProvider', () => {

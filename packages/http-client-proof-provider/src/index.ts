@@ -33,7 +33,10 @@
  * // Transaction payloads cross a provider seam version-tagged: tag on the way
  * // in, narrow on `version` on the way out. There is no untagged form.
  * // `unwrapV9` throws V8PayloadUnsupportedError or UntaggedPayloadError, both
- * // carrying a stable `code` you can match with `hasErrorCode`.
+ * // carrying a stable `code` you can match with `hasErrorCode`. That applies to
+ * // the seam's own refusals — the ones raised before proving starts. A failure
+ * // from inside proof generation is whatever the ledger runtime raises, on
+ * // either era, and carries no midnight-js code.
  * const provenTx = unwrapV9(
  *   await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
  *   'proveTx'
@@ -46,8 +49,10 @@
  * same arm it was sent in:
  *
  * ```typescript
- * const { txBytes } = await proofProvider.proveTx({ version: 'v8', txBytes: unprovenTxBytes })
- *   .then((payload) => payload.version === 'v8' ? payload : Promise.reject(new Error('expected v8')));
+ * const proven = await proofProvider.proveTx({ version: 'v8', txBytes: unprovenTxBytes });
+ * if (proven.version === 'v8') {
+ *   // `proven.txBytes` is the serialized, proven transaction.
+ * }
  * ```
  *
  * The era is carried by the `version` tag, never inferred from the payload. Note that
