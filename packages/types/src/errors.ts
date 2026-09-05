@@ -96,9 +96,12 @@ export class V8PayloadUnsupportedError extends Error {
     super(
       `${seam} received a v8-era transaction payload (serialized bytes${
         byteLength === undefined ? ', size unknown: txBytes was missing or not a Uint8Array' : `, ${byteLength} bytes`
-      }), which is not yet supported by this provider. ` +
-        `Send the v9 arm of the payload ({ version: 'v9', tx }) on this seam, or route v8-era traffic to a provider ` +
-        `that handles v8 payloads.`
+      }), which this provider does not serve. ` +
+        `The createProofProvider, createWalletProvider and createMidnightProvider adapters never serve the v8 arm: ` +
+        `each lifts a v9-only implementation, so this is by design rather than a gap. ` +
+        `Send the v9 arm of the payload ({ version: 'v9', tx }) on this seam, or use an implementation that serves ` +
+        `v8 — httpClientProofProvider and dappConnectorProofProvider do so for proveTx, while balanceTx and submitTx ` +
+        `need a WalletProvider or MidnightProvider written against the version-tagged interface directly.`
     );
     this.name = 'V8PayloadUnsupportedError';
   }

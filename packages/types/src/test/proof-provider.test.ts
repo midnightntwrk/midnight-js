@@ -93,6 +93,26 @@ describe('createProofProvider', () => {
       expect((rejection as V8PayloadUnsupportedError).seam).toBe('proveTx');
     });
 
+    it('says the refusal is by design and names what does serve the v8 arm', async () => {
+      const provider = createProofProvider(stubProvingProvider, stubCostModel);
+
+      const rejection = await provider.proveTx({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      // This message is what a developer reads at the point of failure, so it
+      // has to distinguish "this adapter will never serve v8" from "the
+      // framework cannot do it yet". The adapters' refusal is permanent: each
+      // lifts a v9-only implementation. Asserting the remediation too, because
+      // a message that only says no leaves the reader with nowhere to go.
+      const { message } = rejection as Error;
+      expect(message).toContain('by design');
+      expect(message).not.toContain('not yet supported');
+      expect(message).toContain('httpClientProofProvider');
+      expect(message).toContain("{ version: 'v9', tx }");
+    });
+
     it('records the payload size so a report of the rejection says what arrived', async () => {
       const provider = createProofProvider(stubProvingProvider, stubCostModel);
 

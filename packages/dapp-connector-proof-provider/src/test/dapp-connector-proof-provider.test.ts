@@ -66,6 +66,13 @@ describe('dappConnectorProofProvider', () => {
   let mockUnprovenTx: UnprovenTransaction;
 
   beforeEach(() => {
+    // `mockProvingProvider` is a file-level const that individual tests replace
+    // members on, so its methods are restored here rather than only reset. The
+    // vitest config sets no `restoreMocks`, and without this the file would be
+    // order-dependent for anything added after a test that stubs one.
+    mockProvingProvider.check = vi.fn();
+    mockProvingProvider.prove = vi.fn();
+
     mockApi = {
       getProvingProvider: vi.fn().mockResolvedValue(mockProvingProvider)
     };

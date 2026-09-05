@@ -234,10 +234,11 @@ Two things to know before wiring a retained-era flow:
   `@midnight-ntwrk/midnight-js-types` all refuse the retained arm with `V8PayloadUnsupportedError`.
   That is permanent and by design: each lifts a v9-only implementation into the version-tagged
   interface, so refusing is the adapter reporting what it wraps.
-- Consequently a retained-era transaction wired through those adapters **proves successfully and is
-  then refused at `balanceTx`** — after a full proving cycle, not at the first seam. To run one end
-  to end, implement `WalletProvider` and `MidnightProvider` against the version-tagged interfaces
-  directly.
+- Consequently a retained-era transaction wired through the **wallet and midnight adapters** (but a
+  proof provider that does serve the arm) **proves successfully and is then refused at `balanceTx`**
+  — after a full proving cycle, not at the first seam. Wired through `createProofProvider` instead,
+  it is refused at `proveTx` and never proves at all. To run one end to end, implement
+  `WalletProvider` and `MidnightProvider` against the version-tagged interfaces directly.
 
 A payload sent on the `v8` arm that is not a serialized transaction is refused with
 `PayloadNotATransactionError` (from `@midnight-ntwrk/midnight-js-utils`, code
