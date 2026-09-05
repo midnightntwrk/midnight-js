@@ -173,7 +173,7 @@ httpClientProofProvider('ws://localhost:6300', zkConfigProvider);
 
 ### Server Errors
 
-HTTP errors throw with details about the failed request:
+HTTP errors throw a `ProofServerResponseError` (imported from `@midnight-ntwrk/midnight-js-types`) with details about the failed request:
 
 ```
 Failed Proof Server response: url="http://localhost:6300/prove", code="500", status="Internal Server Error"
