@@ -276,16 +276,33 @@ at all — `EraUnresolvableError`, for a node 0.x or otherwise unmapped
 the codec, with nothing in the message naming the era.
 
 One further read-boundary failure is new: `DecodeVersionMismatchError`, raised
-when a record's era resolves but its bytes will not decode on that era's
-runtime. The record contradicts itself, so this reports an inconsistent indexer
-rather than a version mismatch in your own dependencies; the runtime's own
-diagnosis is preserved on `cause`. Bytes that are merely malformed or truncated
-still surface as `DeserializationError`, so corruption is never reported as an
-era disagreement.
+when a record's era resolves but its bytes identify themselves as **another
+ledger vintage**. The record contradicts itself, so this reports an inconsistent
+indexer rather than a version mismatch in your own dependencies; the runtime's
+own diagnosis is preserved on `cause`.
 
-All of these are `IndexerError` subclasses, so a single `instanceof
-IndexerError` still catches them, and each carries the raw `protocolVersion`
-plus the transaction id or contract address being read.
+"Identify themselves" is the load-bearing part, and the bar is deliberately
+higher than the deserialization layer's `version-mismatch` classification. That
+classification is reached by empty, truncated and garbage payloads too, because
+the tag-header pattern behind it is permissive about the incoming tag. This
+error is raised only where the diagnosis also concluded the data is older or
+newer than the code. Everything else — malformed bytes, a truncated body under
+an intact tag, a payload that is not a serialized anything — surfaces as the
+`DeserializationError` it is, and a `raw` field that is not whole hex is
+refused as `IndexerDataError` before any decoder sees it. Corruption is
+therefore never reported as an era disagreement.
+
+`EraUnresolvableError`, `DecodeVersionMismatchError` and `EraUnsupportedError`
+are all `IndexerError` subclasses, and each carries the raw `protocolVersion`
+plus the transaction id or contract address being read. Two failures a read can
+raise are deliberately **not** `IndexerError`s, so "catch any indexer error with
+one `instanceof IndexerError` check" needs one qualification: `DeserializationError`
+(`midnight-js-utils`), which already escaped it before this release, and
+`Ledger8RuntimeMissingError` (`midnight-js-protocol`), raised when the pre-fork
+runtime cannot be acquired for a v8-era record. Both report something that is
+not an indexer fault — bad bytes and a broken local install respectively — and
+wrapping either would send you looking at the wrong thing. Catch broadly and
+branch, or match on `code` with `hasErrorCode`.
 
 ### 8e. Implementing `WalletProvider` or `MidnightProvider`
 

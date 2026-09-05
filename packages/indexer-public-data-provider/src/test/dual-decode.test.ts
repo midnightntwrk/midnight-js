@@ -27,7 +27,13 @@ import * as Rx from 'rxjs';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { decodeVersionedTransaction } from '../codec';
-import { DecodeVersionMismatchError, EraUnresolvableError, EraUnsupportedError, IndexerError } from '../errors';
+import {
+  DecodeVersionMismatchError,
+  EraUnresolvableError,
+  EraUnsupportedError,
+  IndexerDataError,
+  IndexerError
+} from '../errors';
 import type { RegularTransaction } from '../gen/schema-types';
 import { toFinalizedDeployTxData, toFinalizedTxData } from '../mapping';
 import { IndexerPublicDataProvider } from '../provider';
@@ -109,6 +115,13 @@ const providerReturning = (transaction: RegularTransaction): IndexerPublicDataPr
     .mockRejectedValue(new Error('test setup: this read must issue no query of its own'));
   const watchQuery: WatchQueryStub = () => emissionOf(transaction);
   return new IndexerPublicDataProvider(stubApolloHandle({ query, watchQuery }), 1000);
+};
+
+/** The same payload with one byte inverted, as lower-case hex. */
+const flipByte = (hex: string, byteIndex: number): string => {
+  const bytes = Buffer.from(hex, 'hex');
+  bytes[byteIndex] ^= 0xff;
+  return bytes.toString('hex');
 };
 
 const rejectionOf = async (work: Promise<unknown>): Promise<unknown> =>
@@ -338,41 +351,96 @@ describe('a decode against the wrong runtime is refused, not mislabelled', () =>
     expect((cause as DeserializationError).context.classification).toBe('version-mismatch');
   });
 
-  it('renders neither the payload nor any decoded contents anywhere in the chain', async () => {
+  it('renders no payload of its own: not the hex, not a prefix of it, not a byte count', async () => {
+    // Scoped to the error THIS package raises. The claim is about what this
+    // class renders, and it is the only part of the chain this package
+    // controls.
     const error = await rejectionOf(
       toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
     );
 
-    const rendered = [error, (error as Error).cause, ((error as Error).cause as Error).cause]
-      .map((link) => (link instanceof Error ? `${link.message}\n${JSON.stringify(link)}` : String(link)))
-      .join('\n');
-    // The era and the raw protocolVersion are the diagnosis and are expected
-    // in the text; asserting them is also what shows the two refusals below
-    // are reading a populated chain rather than an empty string.
-    expect(rendered).toContain(String(V8_ERA_PROTOCOL_VERSION));
-    expect(rendered).not.toContain(v9TransactionHex);
-    expect(rendered).not.toContain(v8TransactionHex);
-    // A truncated byte dump would slip past the two refusals above, which only
-    // catch a complete payload. Sixteen bytes is already more than enough to
-    // identify a transaction.
-    expect(rendered).not.toContain(v9TransactionHex.slice(0, 32));
-    expect(rendered).not.toContain(v8TransactionHex.slice(0, 32));
+    const own = `${(error as Error).message}\n${JSON.stringify(error, ['message', 'seam', 'era', 'protocolVersion', 'recordRef', 'code', 'name'])}`;
+    // The era and the raw protocolVersion ARE the diagnosis and belong in the
+    // text; asserting them is also what shows the refusals below are reading
+    // populated text rather than an empty string.
+    expect(own).toContain(String(V8_ERA_PROTOCOL_VERSION));
+    expect(own).toContain('v8');
+    for (const payload of [v9TransactionHex, v8TransactionHex]) {
+      expect(own).not.toContain(payload);
+      // A truncated dump would slip past a whole-payload check. Sixteen bytes
+      // is already more than enough to identify a transaction.
+      expect(own).not.toContain(payload.slice(0, 32));
+    }
   });
 
-  it('leaves a malformed payload as a deserialization failure instead of blaming the era', async () => {
-    // One payload byte flipped after the header tag: the tag still matches the
-    // runtime it is handed to, so this is corruption, not an era disagreement,
-    // and calling it one would send a reader to align package versions that
-    // are already right.
-    const corrupted = Buffer.from(v9TransactionHex, 'hex');
-    corrupted[corrupted.length - 1] ^= 0xff;
-
+  it('carries no hex encoding of the payload anywhere in the cause chain either', async () => {
+    // Deliberately narrower than "renders nothing derived from the payload".
+    // When a header tag fails to parse, the ledger WASM's own message embeds up
+    // to ~64 bytes of the payload as LOSSY TEXT (`got '<replacement chars>…'`),
+    // which no hex-encoded comparison can catch. That is produced upstream, it
+    // pre-dates this change and occurs identically on the v9-only path, and the
+    // bytes concerned are public indexer data rather than key material — so it
+    // is recorded here rather than chased. What is asserted is the property
+    // that does hold: nothing in the chain reproduces the payload in the
+    // encoding it arrived in, which is the form that would be copied into a bug
+    // report or a log aggregator verbatim.
     const error = await rejectionOf(
-      toFinalizedTxData(TX_ID, transactionAt(V9_ERA_PROTOCOL_VERSION, corrupted.toString('hex')))
+      toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
     );
+
+    const chain = [error, (error as Error).cause, ((error as Error).cause as Error).cause]
+      .map((link) => (link instanceof Error ? `${link.message}\n${JSON.stringify(link)}` : String(link)))
+      .join('\n');
+    expect(chain).toContain(String(V8_ERA_PROTOCOL_VERSION));
+    for (const payload of [v9TransactionHex, v8TransactionHex]) {
+      expect(chain).not.toContain(payload);
+      expect(chain).not.toContain(payload.slice(0, 32));
+    }
+  });
+
+  // The invariant the error's own message asserts — "the record contradicts
+  // itself, so this is an inconsistent indexer rather than a version mismatch
+  // in your dApp's dependencies" — only holds if corruption stays out of this
+  // class. It very nearly did not: the deserialization layer's tag-header
+  // pattern is permissive on the incoming tag, so EVERY payload below arrives
+  // classified `version-mismatch`, and a guard that trusted the classification
+  // alone reported all of them as an era disagreement. Only the two genuine
+  // cross-era payloads above carry a `direction`.
+  //
+  // A single corrupt case would leave that looking proven when it was not, so
+  // the whole shape space is enumerated: nothing before the tag, a tag cut
+  // short, a tag mangled in place, an intact tag over a truncated body, and a
+  // byte flipped past the tag.
+  it.each([
+    ['a payload truncated inside its header tag', (): string => v9TransactionHex.slice(0, 6)],
+    ['a payload truncated mid-body, its header tag intact', (): string => v9TransactionHex.slice(0, 90)],
+    ['bytes that are not a serialized anything', (): string => 'ab'.repeat(64)],
+    ['a payload whose first byte is flipped', (): string => flipByte(v9TransactionHex, 0)],
+    ['a payload with a byte flipped inside its header tag', (): string => flipByte(v9TransactionHex, 5)],
+    [
+      'a payload with a byte flipped after its header tag',
+      (): string => flipByte(v9TransactionHex, Buffer.from(v9TransactionHex, 'hex').length - 1)
+    ]
+  ])('leaves %s as a deserialization failure instead of blaming the era', async (_label, raw) => {
+    const error = await rejectionOf(toFinalizedTxData(TX_ID, transactionAt(V9_ERA_PROTOCOL_VERSION, raw())));
 
     expect(error).toBeInstanceOf(DeserializationError);
     expect(error).not.toBeInstanceOf(DecodeVersionMismatchError);
+  });
+
+  it.each([
+    ['an empty payload', ''],
+    ['a payload that is not hex at all', 'zzzz'],
+    ['a payload that is hex only up to a point', `${'ab'.repeat(8)}nothex`]
+  ])('refuses %s as a bad encoding, before any decoder sees a truncated buffer', async (_label, raw) => {
+    // `Buffer.from(s, 'hex')` stops at the first character it cannot read and
+    // returns a SHORTER buffer without complaining, so without the hex guard
+    // each of these reached a decoder as a silently truncated payload and was
+    // diagnosed as a bad transaction rather than a bad encoding.
+    const error = await rejectionOf(toFinalizedTxData(TX_ID, transactionAt(V9_ERA_PROTOCOL_VERSION, raw)));
+
+    expect(error).toBeInstanceOf(IndexerDataError);
+    expect((error as IndexerDataError).context.kind).toBe('malformed-transaction-encoding');
   });
 });
 
@@ -427,13 +495,26 @@ describe('an era that resolves to no decoder at all', () => {
     expect((error as Error).message).toContain(String(V9_ERA_PROTOCOL_VERSION));
   });
 
-  it('tells the reader this client has no decoder for the era, not that the era cannot be decoded at all', async () => {
+  it('tells the reader this build has no decoder for the era, not that the era cannot be decoded at all', async () => {
     // The remediation changed with dual decode: the era is no longer one this
     // provider refuses on principle, it is one this build ships no runtime for.
     const error = await rejectionOf(decodeWithEra('v7'));
 
-    expect((error as Error).message).toContain('has no decoder for');
-    expect((error as Error).message).toContain('upgrade to a release that knows this era');
+    expect((error as Error).message).toContain("ledger era 'v7', which this build has no decoder for");
+    expect((error as Error).message).toContain('upgrade to a release that knows this one');
+  });
+
+  it('does not claim the record was read from that era, which its protocolVersion contradicts', async () => {
+    // The only way here is a caller supplying an off-vocabulary era, so the era
+    // and the indexer-reported protocolVersion do not describe each other. The
+    // message reports them as the separate facts they are; asserting they are
+    // both present is what stops a future edit dropping one to fix the other.
+    const error = await rejectionOf(decodeWithEra('v7'));
+
+    const message = (error as Error).message;
+    expect(message).not.toContain('read a record from the v7 ledger era');
+    expect(message).toContain('was asked to decode with');
+    expect(message).toContain(`indexer-reported protocolVersion ${V9_ERA_PROTOCOL_VERSION}`);
   });
 
   it('reaches consumers through the IndexerError hierarchy, like every other failure here', async () => {

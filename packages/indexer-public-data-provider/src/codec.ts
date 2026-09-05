@@ -51,6 +51,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import {
   contractStateEnvelopeVersion,
+  type DeserializationError,
   deserializeCompactContractState,
   deserializeLedgerParameters,
   deserializeLedgerTransaction,
@@ -156,6 +157,35 @@ export interface TransactionDecodeContext {
 }
 
 /**
+ * Whether a decode failure's own diagnosis identifies the payload as ANOTHER
+ * ledger vintage — the only thing that makes {@link DecodeVersionMismatchError}
+ * a true statement rather than a guess.
+ *
+ * The `version-mismatch` classification alone is not that evidence. The
+ * classifier's tag-header pattern
+ * (`@midnight-ntwrk/midnight-js-utils`, `deserialization/patterns.ts`) is
+ * deliberately permissive on the incoming tag so that a mangled one still
+ * classifies rather than falling through to `unknown` — with the result that
+ * empty, truncated and outright garbage payloads all arrive here classified
+ * `version-mismatch`. Reporting those as an era disagreement would tell a
+ * reader their indexer is serving records from two eras when it is really
+ * serving corrupt bytes.
+ *
+ * `direction` is the discriminator, not `extracted.receivedVersion`. It is set
+ * only where the diagnosis concluded the data is OLDER or NEWER than the code,
+ * which is exactly the claim being made downstream. `receivedVersion` is a raw
+ * extraction artifact and is populated by any payload whose header tag happens
+ * to parse — including one truncated mid-body, whose intact tag reports the
+ * very version that was expected. `direction` also covers the classifier's
+ * discriminant-level patterns, which identify a vintage while extracting no
+ * version at all.
+ */
+const namesAnotherVersion = (error: unknown): error is DeserializationError =>
+  isDeserializationError(error) &&
+  error.context.classification === 'version-mismatch' &&
+  error.context.direction !== undefined;
+
+/**
  * Decodes one finalized transaction with the runtime of the era it was written
  * under, and tags the result with that era.
  *
@@ -165,21 +195,29 @@ export interface TransactionDecodeContext {
  * returned record are the same fact, which is what keeps the discriminant from
  * disagreeing with the `protocolVersion` beside it.
  *
+ * Hex is validated before anything else, for the reason
+ * {@link parseHexContractState} validates it: `Buffer.from(s, 'hex')` stops at
+ * the first character it cannot read and returns a SHORTER buffer without
+ * complaining, so an only-partly-hex payload would otherwise reach a decoder as
+ * a silently truncated byte string and be diagnosed as a bad transaction rather
+ * than a bad encoding.
+ *
  * A payload that will not decode on the era selected for it is reported as
- * {@link DecodeVersionMismatchError} — but only when the deserialization layer
- * classified the failure as a version mismatch. Malformed or truncated bytes
- * leave as the `DeserializationError` they are: calling corruption an era
- * disagreement would send a reader to align package versions that are already
- * right.
+ * {@link DecodeVersionMismatchError} — but only when the failure's diagnosis
+ * actually identifies another vintage: see {@link namesAnotherVersion}.
+ * Everything else leaves as the `DeserializationError` it is, because calling
+ * corruption an era disagreement would send a reader to align package versions
+ * that are already right.
  *
  * @param hexTransaction The hex-encoded serialized transaction, as the indexer
  *                       serves it.
  * @param era The era whose runtime reads the payload. Validated at runtime, not
  *            merely type-checked.
  * @param context The record and seam a failure should name.
+ * @throws IndexerDataError if `hexTransaction` is not a whole hex byte string.
  * @throws EraUnsupportedError if `era` is not a member of `LEDGER_VERSIONS`.
- * @throws DecodeVersionMismatchError if the payload's own header tag belongs to
- *   a different runtime, carrying that runtime's diagnosis on `cause`.
+ * @throws DecodeVersionMismatchError if the payload identifies itself as
+ *   another ledger vintage, carrying the runtime's own diagnosis on `cause`.
  * @throws DeserializationError for every other decode failure.
  */
 export const decodeVersionedTransaction = async (
@@ -187,6 +225,9 @@ export const decodeVersionedTransaction = async (
   era: LedgerVersion,
   context: TransactionDecodeContext
 ): Promise<DecodedVersionedTransaction> => {
+  if (!isHex(hexTransaction)) {
+    throw IndexerDataError.malformedTransactionEncoding();
+  }
   const decode = TRANSACTION_DECODERS[era];
   if (typeof decode !== 'function') {
     throw new EraUnsupportedError(context.seam, era, context.protocolVersion, context.recordRef);
@@ -194,7 +235,7 @@ export const decodeVersionedTransaction = async (
   try {
     return await decode(hexTransaction);
   } catch (error) {
-    if (isDeserializationError(error) && error.context.classification === 'version-mismatch') {
+    if (namesAnotherVersion(error)) {
       throw new DecodeVersionMismatchError(context.seam, era, context.protocolVersion, context.recordRef, {
         cause: error
       });

@@ -292,10 +292,21 @@ refusals can arise from that resolution, both `IndexerError` subclasses naming
 the raw `protocolVersion` and the record being read:
 
 - `EraUnresolvableError` — the `protocolVersion` maps to no known ledger era.
-- `DecodeVersionMismatchError` — the era resolved, but the bytes did not
-  decode on that era's runtime. The record contradicts itself, so this reports
-  an inconsistent indexer rather than a dependency-version problem in your
-  dApp; the runtime's own diagnosis is preserved on `cause`.
+- `DecodeVersionMismatchError` — the era resolved, but the bytes identify
+  themselves as another ledger vintage. The record contradicts itself, so this
+  reports an inconsistent indexer rather than a dependency-version problem in
+  your dApp; the runtime's own diagnosis is preserved on `cause`, and the error
+  renders no payload of its own. Raised only where the decode failure actually
+  identified another vintage — malformed, truncated or garbage bytes surface as
+  `DeserializationError` instead, and a `raw` that is not whole hex is refused
+  as `IndexerDataError` before any decoder runs.
+
+Two failures a read can raise are deliberately outside the `IndexerError`
+hierarchy, because neither is an indexer fault: `DeserializationError`
+(`midnight-js-utils`), which already was, and `Ledger8RuntimeMissingError`
+(`midnight-js-protocol`), raised when the pre-fork runtime cannot be acquired
+for a v8-era record — an installation or bundling problem in your own
+dependency tree.
 
 The v9 record includes:
 
