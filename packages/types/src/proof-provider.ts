@@ -76,6 +76,10 @@ export interface ProofProvider {
    *         bytes. {@link createProofProvider} does NOT — it adapts a v9-only `ProvingProvider`,
    *         so it refuses the v8 arm on the way in, which is the honest answer for what it wraps.
    * @throws PayloadNotATransactionError if the v8 arm's `txBytes` is not a serialized transaction.
+   *         Raised by the providers that serve that arm and defined in
+   *         `@midnight-ntwrk/midnight-js-utils` (which sits below this package, so it is named
+   *         here rather than imported); match it with `hasErrorCode` against
+   *         `PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`.
    * @throws UntaggedPayloadError if `version` is missing or unrecognised.
    */
   proveTx(

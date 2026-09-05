@@ -112,10 +112,26 @@ describe('dappConnectorProofProvider', () => {
   // tests do not reach.
   describe('v8 payload', () => {
     let retainedEraTxBytes: Uint8Array;
+    let circuitDrivingTxBytes: Uint8Array;
 
     beforeAll(async () => {
       const v8 = await loadLedger8();
       retainedEraTxBytes = v8.Transaction.fromParts('undeployed').serialize();
+
+      // Carries one Zswap output, so proving it drives a real circuit. The
+      // empty transaction above has nothing to prove, so it cannot show which
+      // proving provider -- if any -- the seam handed to the runtime.
+      const rawTokenType = v8.sampleRawTokenType();
+      const output = v8.ZswapOutput.new(
+        v8.createShieldedCoinInfo(rawTokenType, 100n),
+        1,
+        v8.sampleCoinPublicKey(),
+        v8.sampleEncryptionPublicKey()
+      );
+      circuitDrivingTxBytes = v8.Transaction.fromParts(
+        'undeployed',
+        v8.ZswapOffer.fromOutput(output, rawTokenType, 100n)
+      ).serialize();
     });
 
     it('answers the v8 arm with the PROVEN serialization, ignoring the caller-supplied cost model', async () => {
@@ -150,6 +166,23 @@ describe('dappConnectorProofProvider', () => {
       expect(rejection).toHaveProperty('code', PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION);
       expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION)).toBe(true);
       expect(mockUnprovenTx.prove).not.toHaveBeenCalled();
+    });
+
+    it("drives the retained runtime through the WALLET's proving provider", async () => {
+      const keyLocations: string[] = [];
+      mockProvingProvider.prove = vi.fn((_preimage: Uint8Array, keyLocation: string) => {
+        keyLocations.push(keyLocation);
+        return Promise.reject(new Error('wallet declined'));
+      });
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      // The wallet declines, so the call rejects. That is beside the point:
+      // what this measures is that the provider obtained from the wallet is the
+      // one the retained runtime consults. Drop it on the floor in this
+      // package's `proveTx` and `keyLocations` stays empty.
+      await proofProvider.proveTx({ version: 'v8', txBytes: circuitDrivingTxBytes }).catch(() => undefined);
+
+      expect(keyLocations).toEqual(['midnight/zswap/output']);
     });
   });
 

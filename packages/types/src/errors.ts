@@ -57,9 +57,21 @@ const UNTAGGED_PAYLOAD = 'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD';
  * handed the v8 arm of a versioned transaction payload — serialized,
  * tag-prefixed bytes instead of a live v9 transaction object.
  *
- * This is transitional: the provider seams already carry both arms so that
- * callers can be written once, but handling of the v8 arm is not implemented
- * in these providers yet.
+ * Which providers raise this, and why, differs — the distinction matters at the
+ * point of failure:
+ *
+ * - `createProofProvider`, `createWalletProvider` and `createMidnightProvider`
+ *   raise it PERMANENTLY. Each lifts a v9-only implementation into the
+ *   version-tagged interface, so refusing the v8 arm is the adapter reporting
+ *   what it actually wraps. Supply a `WalletProvider` or `MidnightProvider`
+ *   implementing the interface directly to serve the v8 arm.
+ * - Concrete providers may or may not implement it.
+ *   `httpClientProofProvider` and `dappConnectorProofProvider` both DO, taking
+ *   and returning serialized bytes; other implementations that have not been
+ *   widened still raise this.
+ *
+ * So catching this does not mean "the framework cannot do it yet" — it means
+ * the specific implementation on that seam does not serve the v8 arm.
  *
  * Lives in this package (rather than in each provider package) because the
  * payload union it rejects is defined here, on the provider interfaces every

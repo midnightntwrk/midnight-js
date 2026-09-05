@@ -44,7 +44,7 @@ MidnightProviders
 | `@midnight-ntwrk/midnight-js-node-zk-config-provider` | Node.js filesystem ZK artifact provider |
 | `@midnight-ntwrk/midnight-js-network-id` | Network identifier management |
 | `@midnight-ntwrk/midnight-js-logger-provider` | Pino logger wrapper |
-| `@midnight-ntwrk/midnight-js-utils` | Shared utilities (hex, bech32m, assertions) |
+| `@midnight-ntwrk/midnight-js-utils` | Shared utilities (hex, bech32m, assertions, error-code registry, retained-era proving seam) |
 | `@midnight-ntwrk/midnight-js-compact` | Compact compiler manager |
 
 ### Testing (testkit-js/*)
@@ -213,6 +213,35 @@ const provenTx = unwrapV9(
   'proveTx'
 );
 ```
+
+### Proving a Retained-Era (v8) Transaction
+
+`httpClientProofProvider` and `dappConnectorProofProvider` serve BOTH ledger eras. A retained-era
+transaction crosses the seam as serialized bytes in each direction and comes back in the arm it was
+sent in, so narrow on `version` rather than calling `unwrapV9` (which exists to reject anything that
+is not the current era):
+
+```typescript
+const proven = await proofProvider.proveTx({ version: 'v8', txBytes: unprovenTxBytes });
+if (proven.version === 'v8') {
+  // proven.txBytes — the serialized, proven transaction
+}
+```
+
+Two things to know before wiring a retained-era flow:
+
+- `createProofProvider`, `createWalletProvider` and `createMidnightProvider` in
+  `@midnight-ntwrk/midnight-js-types` all refuse the retained arm with `V8PayloadUnsupportedError`.
+  That is permanent and by design: each lifts a v9-only implementation into the version-tagged
+  interface, so refusing is the adapter reporting what it wraps.
+- Consequently a retained-era transaction wired through those adapters **proves successfully and is
+  then refused at `balanceTx`** — after a full proving cycle, not at the first seam. To run one end
+  to end, implement `WalletProvider` and `MidnightProvider` against the version-tagged interfaces
+  directly.
+
+A payload sent on the `v8` arm that is not a serialized transaction is refused with
+`PayloadNotATransactionError` (from `@midnight-ntwrk/midnight-js-utils`, code
+`PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`) before any proving is attempted.
 
 ### DApp Connector Proof Generation
 

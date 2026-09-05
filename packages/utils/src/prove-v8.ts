@@ -22,11 +22,22 @@
  * and `dapp-connector-proof-provider` do not depend on one another, and the
  * retained runtime must not be reached from more than one place.
  *
+ * ## Why the protocol barrel is reached dynamically
+ *
+ * `loadLedger8` is only exported from the protocol package's ROOT, which also
+ * re-exports the `onchainRuntime`, `compactJs` and `platform` namespaces. A
+ * static import here would put all of that in the eager module closure of
+ * `utils` — a package people import on its own for hex helpers and assertions,
+ * and which linked none of it before. The import is therefore deferred to the
+ * one function that needs it, so the cost falls only on a caller that actually
+ * proves a retained-era transaction. This still reaches the retained runtime
+ * through `loadLedger8()`, which remains its only sanctioned entry point, and
+ * the deferred module is the barrel rather than the gated `/v8` subpath.
+ *
  * @see docs/adr/0006-version-tagged-payloads-at-provider-seams.md
  * @see docs/adr/0007-cross-the-era-boundary-with-plain-data-only.md
  */
 
-import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 
 import { PROVIDER_ERROR_CODES } from './error-codes';
@@ -65,25 +76,6 @@ const MAX_TYPE_NAME_LENGTH = 32;
 const TYPE_NAME_PATTERN = /^[A-Za-z0-9_$]+$/;
 
 /**
- * Names the kind of a value without reproducing any of it verbatim.
- *
- * The value reaching this is attacker-controlled. `typeof` and `null` are a
- * closed vocabulary and safe to report as they are; a constructor name is not,
- * so it is truncated first and then reported only if what remains is a plain
- * identifier. Anything else falls back to `'object'` — the description is
- * always either a fixed word or at most {@link MAX_TYPE_NAME_LENGTH} identifier
- * characters.
- *
- * Validated AFTER truncation on purpose: what is checked has to be exactly what
- * is emitted, or a name whose disallowed characters sit past the cut would pass
- * a check on the full string and still be printed.
- *
- * Total by construction: every branch returns a string, and the one property
- * read that could fail is contained in {@link readConstructorName}. A caller
- * that sends a malformed payload always gets {@link PayloadNotATransactionError},
- * never a throw from the code describing it.
- */
-/**
  * Reads a value's constructor name, or `undefined` where it cannot be read.
  *
  * The read is itself a property access on caller data, so it can fail: an
@@ -102,6 +94,27 @@ const readConstructorName = (value: object): unknown => {
   }
 };
 
+/**
+ * Names the kind of a value without reproducing any of it verbatim.
+ *
+ * The value reaching this is attacker-controlled. `typeof` and `null` are a
+ * closed vocabulary and safe to report as they are; a constructor name is not,
+ * so it is truncated first and then reported only if what remains is a plain
+ * identifier. Anything else falls back to `'object'` — the description is
+ * always either a fixed word or at most {@link MAX_TYPE_NAME_LENGTH} identifier
+ * characters.
+ *
+ * Validated AFTER truncation, and that order is the point: what is checked has
+ * to be exactly what is emitted. Checking the full string would be STRICTER
+ * rather than looser — {@link TYPE_NAME_PATTERN} is anchored, so a name with
+ * disallowed characters anywhere in it fails outright — but it would throw away
+ * a long, well-formed prefix that is perfectly safe to report once cut.
+ *
+ * Always returns a string: every branch does, and the one property read that
+ * could fail is contained in {@link readConstructorName}. So a caller sending a
+ * malformed payload always gets {@link PayloadNotATransactionError}, never a
+ * throw from the code describing it.
+ */
 const describeType = (value: unknown): string => {
   if (value === null) {
     return 'null';
@@ -126,6 +139,10 @@ const describeType = (value: unknown): string => {
  * caller sent the wrong KIND of payload rather than a damaged one. It covers
  * both ways that can happen — a `txBytes` field that is not a byte string, and
  * a byte string that is not a transaction.
+ *
+ * @remarks Raised by {@link proveV8Transaction}, so it reaches application code
+ * as a `proveTx` rejection. Match it with `hasErrorCode` against
+ * `PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION` rather than constructing it.
  */
 export class PayloadNotATransactionError extends Error {
   readonly code = PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION;
@@ -225,12 +242,21 @@ const assertSerializedTransaction = (txBytes: Uint8Array): void => {
  * @throws PayloadNotATransactionError If `txBytes` is not a serialized
  *   transaction.
  * @throws Ledger8RuntimeMissingError If the retained runtime cannot be loaded.
+ *
+ * @remarks Intended for `ProofProvider` implementations — `httpClientProofProvider`
+ * and `dappConnectorProofProvider` are its callers. Application code should call
+ * `proveTx` on a provider rather than this directly: the provider is what pairs
+ * it with a configured proving provider and answers in the version-tagged shape
+ * the rest of the flow expects.
  */
 export const proveV8Transaction = async (
   txBytes: Uint8Array,
   provingProvider: ProvingProvider
 ): Promise<Uint8Array> => {
   assertSerializedTransaction(txBytes);
+  // Deferred, not static — see this module's header for what a static import
+  // would drag into every `utils` consumer's startup.
+  const { loadLedger8 } = await import('@midnight-ntwrk/midnight-js-protocol');
   const v8 = await loadLedger8();
   const unproven = v8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', txBytes);
   const proven = await unproven.prove(provingProvider, v8.CostModel.initialCostModel());
