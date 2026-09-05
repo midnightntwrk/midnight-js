@@ -100,18 +100,15 @@ export type EraArtifactMismatchReason =
   | 'current-era-artifact-on-pre-fork-head';
 
 const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason, string>> = Object.freeze({
-  // Named as the mistake it is, because it is the one a JavaScript caller actually makes: the raw
-  // instance and the container both carry `impureCircuits`, so nothing about the value it passed
-  // looks wrong to it.
+  // Named as the mistake it is: the raw instance and the container both carry `impureCircuits`, so
+  // nothing about the value the caller passed looks wrong to it.
   'unwrapped-current-era-contract':
     'A raw contract instance was passed where a CompiledContract container is expected. ' +
     'The current Compact toolchain wraps its generated contract in a CompiledContract, which is what ' +
     'carries the witnesses and the compiled-asset paths an execution needs; the bare instance carries ' +
     'neither. Wrap it — CompiledContract.make(tag, Contract), then attach its witnesses — and pass the ' +
     'container instead of the instance.',
-  // The single settled wording, read from where it is written rather than restated. A thrown error
-  // is where this guidance belongs: it can carry a remediation step, which a compiler diagnostic
-  // cannot -- see the module documentation in `./ledger8-contract`.
+  // The single settled wording, read from where it is written rather than restated.
   'unrecognised-contract-shape':
     `${NEITHER_ERA_CONTRACT_MESSAGE} ` +
     'Pass either a CompiledContract container produced by the current toolchain, or the contract ' +
@@ -129,7 +126,7 @@ const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason,
  * Raised before any pipeline is entered, so no proving, no provider round trip and no state decode
  * happens on a request that cannot succeed.
  *
- * @see docs/adr/0007-cross-the-era-boundary-with-plain-data-only.md
+ * @see {@link EraDispatch} for how the era is established and which pairings are refused.
  */
 export class EraArtifactMismatchError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH;
@@ -172,16 +169,13 @@ export class Ledger8DeployOnV9Error extends Error {
  * head reading was the stale half.
  *
  * The two are read at separate moments, so during the fork window an operation can start from a
- * head reading that is already behind the state it goes on to fetch. Nothing in a head integer
- * announces that it has fallen behind, which is why the era is never latched
- * (`docs/adr/0008-never-latch-the-network-head-version.md`) and why this is checked rather than
- * assumed.
+ * head reading that is already behind the state it goes on to fetch.
  *
- * The message deliberately does NOT claim which of the two readings moved. The routing establishes
- * only that they disagree and that a fresh read agrees with the state; it does not establish a
- * direction, and the realistic fork-window case (a stale pre-fork head against a migrated post-fork
- * state) and its mirror both arrive here. Naming a direction the check has not measured would send
- * a caller looking for the wrong thing.
+ * The message deliberately does NOT claim which of the two readings moved: the check establishes
+ * that they disagree and that a fresh read agrees with the state, never a direction. Do not add
+ * one.
+ *
+ * @see {@link EraDispatch} for the five-step check that produces this error.
  */
 export class HeadStateEraMismatchError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH;
@@ -420,7 +414,7 @@ export class BlankVerifierKeySlotError extends Error {
  * This is also what catches a mis-dispatched operation — the wrong pipeline, or the wrong contract
  * address — because either one shows up here as a key that does not match the slot.
  *
- * @see packages/protocol/docs/verifier-keys.md
+ * @see {@link VerificationPath} for what this check buys and what it cannot classify.
  */
 export class VerifierKeyMismatchError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH;
