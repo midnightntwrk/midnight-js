@@ -44,6 +44,15 @@ const captureError = async (action: () => Promise<unknown>): Promise<unknown> =>
   return undefined;
 };
 
+/** Every message reachable from an error, following `cause` and `AggregateError.errors`. */
+const collectErrorMessages = (error: unknown): string[] => {
+  if (!(error instanceof Error)) {
+    return [];
+  }
+  const nested = error instanceof AggregateError ? error.errors : [];
+  return [error.message, ...nested.flatMap(collectErrorMessages), ...collectErrorMessages(error.cause)];
+};
+
 const expectPasswordValidationCause = (
   error: unknown,
   reason: PasswordValidationFailure
@@ -2394,7 +2403,7 @@ describe('Level Private State Provider', (): void => {
         expect(value).toBe('value1');
       });
 
-      test('remove waits for rotation lock before executing', async () => {
+      test('remove is not corrupted by a concurrent rotation', async () => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
@@ -2421,7 +2430,7 @@ describe('Level Private State Provider', (): void => {
         expect(value2).toBe('value2');
       });
 
-      test('removeSigningKey waits for rotation lock before executing', async () => {
+      test('removeSigningKey is not corrupted by a concurrent rotation', async () => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
@@ -2450,7 +2459,7 @@ describe('Level Private State Provider', (): void => {
         expect(key2).toEqual(signingKey2);
       });
 
-      test('get waits for rotation lock before executing', async () => {
+      test('get is not corrupted by a concurrent rotation', async () => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
@@ -2472,7 +2481,7 @@ describe('Level Private State Provider', (): void => {
         expect(value).toBe('value1');
       });
 
-      test('set waits for rotation lock before executing', async () => {
+      test('set is not corrupted by a concurrent rotation', async () => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
@@ -2498,7 +2507,7 @@ describe('Level Private State Provider', (): void => {
         expect(value2).toBe('value2');
       });
 
-      test('getSigningKey waits for rotation lock before executing', async () => {
+      test('getSigningKey is not corrupted by a concurrent rotation', async () => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
@@ -2521,7 +2530,7 @@ describe('Level Private State Provider', (): void => {
         expect(key).toEqual(signingKey);
       });
 
-      test('setSigningKey waits for rotation lock before executing', async () => {
+      test('setSigningKey is not corrupted by a concurrent rotation', async () => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
@@ -3045,6 +3054,269 @@ describe('Level Private State Provider', (): void => {
       } finally {
         await unscopedAfter.close();
         await levelAfter.close();
+      }
+    });
+  });
+
+  describe('Concurrent operations', () => {
+    const CONCURRENCY_DB_NAME = 'test-concurrency-db';
+    const CONCURRENCY_CONTRACT_ADDRESS = 'concurrency-contract' as ContractAddress;
+
+    const concurrencyConfig = {
+      ...testConfig,
+      midnightDbName: CONCURRENCY_DB_NAME
+    };
+
+    const createProvider = () => {
+      const provider = levelPrivateStateProvider<string, unknown>(concurrencyConfig);
+      provider.setContractAddress(CONCURRENCY_CONTRACT_ADDRESS);
+      return provider;
+    };
+
+    const rejectionsOf = (results: PromiseSettledResult<unknown>[]): unknown[] =>
+      results.filter((result) => result.status === 'rejected').map((result) => result.reason);
+
+    beforeEach(async () => {
+      await fs.rm(path.join('.', CONCURRENCY_DB_NAME), { recursive: true, force: true });
+    });
+
+    afterAll(async () => {
+      await fs.rm(path.join('.', CONCURRENCY_DB_NAME), { recursive: true, force: true });
+    });
+
+    test('concurrent set and get on one provider instance all succeed', async () => {
+      const provider = createProvider();
+      await provider.set('warmup', { n: 0 });
+
+      const operations: Promise<unknown>[] = [];
+      for (let i = 0; i < 10; i++) {
+        operations.push(provider.set(`state${i}`, { n: i }));
+        operations.push(provider.get(`state${i}`));
+      }
+      const results = await Promise.allSettled(operations);
+
+      expect(rejectionsOf(results)).toEqual([]);
+    });
+
+    test('every concurrently written state is readable afterwards', async () => {
+      const provider = createProvider();
+
+      await Promise.all(
+        Array.from({ length: 10 }, (_, i) => provider.set(`persisted${i}`, { n: i }))
+      );
+      const values = await Promise.all(
+        Array.from({ length: 10 }, (_, i) => provider.get(`persisted${i}`))
+      );
+
+      expect(values).toEqual(Array.from({ length: 10 }, (_, i) => ({ n: i })));
+    });
+
+    test('concurrent private state and signing key operations take effect', async () => {
+      const provider = createProvider();
+      const signingKey = sampleSigningKey();
+      await provider.set('to-remove', { n: 1 });
+
+      const results = await Promise.allSettled([
+        provider.set('mixed', { n: 2 }),
+        provider.remove('to-remove'),
+        provider.setSigningKey('mixed-address', signingKey)
+      ]);
+
+      expect(rejectionsOf(results)).toEqual([]);
+      expect(await provider.get('mixed')).toEqual({ n: 2 });
+      expect(await provider.get('to-remove')).toBeNull();
+      expect(await provider.getSigningKey('mixed-address')).toEqual(signingKey);
+    });
+
+    test('two providers sharing one database both see all concurrent writes', async () => {
+      const writer = createProvider();
+      const reader = createProvider();
+
+      const writes = await Promise.allSettled(
+        Array.from({ length: 5 }, (_, i) => writer.set(`shared${i}`, { n: i }))
+      );
+      expect(rejectionsOf(writes)).toEqual([]);
+
+      const values = await Promise.all(
+        Array.from({ length: 5 }, (_, i) => reader.get(`shared${i}`))
+      );
+      expect(values).toEqual(Array.from({ length: 5 }, (_, i) => ({ n: i })));
+    });
+
+    test('a failed open reports the underlying reason and leaves the queue usable', async () => {
+      let failOpen = true;
+      const provider = levelPrivateStateProvider<string, unknown>({
+        ...concurrencyConfig,
+        levelFactory: (dbName: string): DatabaseLevel => {
+          const level = new Level(dbName, { createIfMissing: true }) as DatabaseLevel;
+          if (failOpen) {
+            // What abstract-level reports: a constant message, the real reason in `cause`.
+            level.open = () =>
+              Promise.reject(new Error('Database failed to open', { cause: new Error('disk on fire') }));
+          }
+          return level;
+        }
+      });
+      provider.setContractAddress(CONCURRENCY_CONTRACT_ADDRESS);
+
+      const error = await captureError(() => provider.set('after-failure', { n: 1 }));
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain('Failed to open private state database');
+      expect((error as Error).message).toContain('disk on fire');
+      expect((error as Error).cause).toBeInstanceOf(Error);
+
+      failOpen = false;
+      await provider.set('after-failure', { n: 1 });
+      expect(await provider.get('after-failure')).toEqual({ n: 1 });
+    });
+
+    test('a removal called after a write wins over that write', async () => {
+      const provider = createProvider();
+
+      const write = provider.set('ordered', { n: 1 });
+      const removal = provider.remove('ordered');
+      await Promise.all([write, removal]);
+
+      expect(await provider.get('ordered')).toBeNull();
+    });
+
+    test('a clear called after a write wins over that write', async () => {
+      const provider = createProvider();
+
+      const write = provider.set('cleared', { n: 1 });
+      const clear = provider.clear();
+      await Promise.all([write, clear]);
+
+      expect(await provider.get('cleared')).toBeNull();
+    });
+
+    test('a write called after a removal wins over that removal', async () => {
+      const provider = createProvider();
+      await provider.set('rewritten', { n: 1 });
+
+      const removal = provider.remove('rewritten');
+      const write = provider.set('rewritten', { n: 2 });
+      await Promise.all([removal, write]);
+
+      expect(await provider.get('rewritten')).toEqual({ n: 2 });
+    });
+
+    test('one operation opens the database once', async () => {
+      const factory = vi.fn(
+        (dbName: string): DatabaseLevel => new Level(dbName, { createIfMissing: true }) as DatabaseLevel
+      );
+      const provider = levelPrivateStateProvider<string, unknown>({
+        ...concurrencyConfig,
+        levelFactory: factory
+      });
+      provider.setContractAddress(CONCURRENCY_CONTRACT_ADDRESS);
+      await provider.set('warmup', { n: 0 });
+
+      factory.mockClear();
+      await provider.set('counted', { n: 1 });
+
+      expect(factory).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Serialized access to password rotation', () => {
+    const RACE_DB_NAME = 'test-rotation-race-db';
+    const RACE_CONTRACT_ADDRESS = 'rotation-race-contract' as ContractAddress;
+    const RACE_OLD_PASSWORD = 'Old-Password-Race8!';
+    const RACE_NEW_PASSWORD = 'New-Password-Race8!';
+
+    beforeEach(async () => {
+      await fs.rm(path.join('.', RACE_DB_NAME), { recursive: true, force: true });
+    });
+
+    afterAll(async () => {
+      await fs.rm(path.join('.', RACE_DB_NAME), { recursive: true, force: true });
+    });
+
+    test('a write called before a rotation stays readable under the new password', async () => {
+      let currentPassword = RACE_OLD_PASSWORD;
+      const provider = levelPrivateStateProvider<string, unknown>({
+        midnightDbName: RACE_DB_NAME,
+        privateStoragePasswordProvider: () => currentPassword,
+        accountId: TEST_ACCOUNT_ID
+      });
+      provider.setContractAddress(RACE_CONTRACT_ADDRESS);
+      await provider.set('existing', { n: 0 });
+
+      const write = provider.set('racing', { n: 1 });
+      const rotation = provider.changePassword(() => RACE_OLD_PASSWORD, () => RACE_NEW_PASSWORD);
+      await Promise.all([write, rotation]);
+      currentPassword = RACE_NEW_PASSWORD;
+
+      expect(await provider.get('racing')).toEqual({ n: 1 });
+    });
+  });
+
+  describe('Stuck and failing database handles', () => {
+    const STUCK_DB_NAME = 'test-stuck-db';
+    const CLOSE_FAILURE_DB_NAME = 'test-close-failure-db';
+    const STUCK_CONTRACT_ADDRESS = 'stuck-contract' as ContractAddress;
+
+    afterAll(async () => {
+      await fs.rm(path.join('.', STUCK_DB_NAME), { recursive: true, force: true });
+      await fs.rm(path.join('.', CLOSE_FAILURE_DB_NAME), { recursive: true, force: true });
+    });
+
+    test('an operation that never settles times out instead of hanging forever', async () => {
+      vi.useFakeTimers();
+      try {
+        const provider = levelPrivateStateProvider<string, unknown>({
+          ...testConfig,
+          midnightDbName: STUCK_DB_NAME,
+          levelFactory: (dbName: string): DatabaseLevel => {
+            const level = new Level(dbName, { createIfMissing: true }) as DatabaseLevel;
+            level.open = () => new Promise<void>(() => undefined);
+            return level;
+          }
+        });
+        provider.setContractAddress(STUCK_CONTRACT_ADDRESS);
+
+        const pending = captureError(() => provider.get('never-arrives'));
+        // Well past any sane per-operation budget, so the test does not encode the exact value.
+        await vi.advanceTimersByTimeAsync(30 * 60 * 1000);
+        const error = await pending;
+
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toContain('Timed out');
+        expect((error as Error).message).toContain(STUCK_DB_NAME);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    test('a failing close is reported alongside the failure that triggered it', async () => {
+      const handles: { level: DatabaseLevel; restore: () => Promise<void> }[] = [];
+      const provider = levelPrivateStateProvider<string, unknown>({
+        midnightDbName: CLOSE_FAILURE_DB_NAME,
+        privateStoragePasswordProvider: () => {
+          throw new Error('password unavailable');
+        },
+        accountId: TEST_ACCOUNT_ID,
+        levelFactory: (dbName: string): DatabaseLevel => {
+          const level = new Level(dbName, { createIfMissing: true }) as DatabaseLevel;
+          handles.push({ level, restore: level.close.bind(level) });
+          level.close = () => Promise.reject(new Error('close failed'));
+          return level;
+        }
+      });
+      provider.setContractAddress(STUCK_CONTRACT_ADDRESS);
+
+      const error = await captureError(() => provider.set('unreachable', { n: 1 }));
+
+      const reported = collectErrorMessages(error).join(' | ');
+      expect(reported).toContain('password unavailable');
+      expect(reported).toContain('close failed');
+
+      // Release the handle the provider could not close, so later tests can open the directory.
+      for (const { level, restore } of handles) {
+        level.close = restore;
+        await level.close();
       }
     });
   });
