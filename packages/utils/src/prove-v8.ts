@@ -51,24 +51,63 @@ const TRANSACTION_TAG_PREFIX_BYTES = Uint8Array.from(TRANSACTION_TAG_PREFIX, (ch
 );
 
 /**
+ * Names the kind of a value without reproducing any of it.
+ *
+ * The value reaching this is attacker-controlled, so the description is built
+ * only from its type and its constructor's name — never from its contents.
+ */
+const describeType = (value: unknown): string => {
+  if (value === null) {
+    return 'null';
+  }
+  if (typeof value !== 'object') {
+    return typeof value;
+  }
+  const constructorName: unknown = value.constructor?.name;
+  return typeof constructorName === 'string' ? constructorName : 'object';
+};
+
+/**
  * Thrown when a payload handed to a proving seam is not a serialized
  * transaction at all.
  *
  * Distinct from a decode failure on the way through the ledger runtime: this
  * one is raised before any runtime is asked to read the bytes, so it says the
- * caller sent the wrong KIND of payload rather than a damaged one.
+ * caller sent the wrong KIND of payload rather than a damaged one. It covers
+ * both ways that can happen — a `txBytes` field that is not a byte string, and
+ * a byte string that is not a transaction.
  */
 export class PayloadNotATransactionError extends Error {
   readonly code = PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION;
 
-  constructor(byteLength: number) {
+  private constructor(detail: string) {
     super(
-      `Refusing to prove a ${byteLength}-byte payload that does not begin with the ` +
-        `'${TRANSACTION_TAG_PREFIX}' tag of a serialized ledger transaction. Pass the bytes produced ` +
-        'by a sanctioned composition seam; a contract state, a Zswap offer or a proof preimage is ' +
-        'not a transaction and cannot be proved.'
+      `${detail} Pass the bytes produced by a sanctioned composition seam; a contract state, a ` +
+        'Zswap offer or a proof preimage is not a transaction and cannot be proved.'
     );
     this.name = 'PayloadNotATransactionError';
+  }
+
+  /**
+   * The `txBytes` field of a `v8` payload was not a `Uint8Array`.
+   *
+   * Reachable the same way an untagged payload is — from JavaScript, from a
+   * consumer built against a pre-5.0.0 `midnight-js-types`, or across an
+   * untyped boundary — so it is refused with a code rather than left to become
+   * a bare `TypeError` on the first property read.
+   */
+  static notBytes(received: unknown): PayloadNotATransactionError {
+    return new PayloadNotATransactionError(
+      `Refusing to prove a v8 payload whose 'txBytes' is ${describeType(received)} rather than a Uint8Array.`
+    );
+  }
+
+  /** The payload is a byte string, but does not open with a transaction's tag. */
+  static wrongTag(byteLength: number): PayloadNotATransactionError {
+    return new PayloadNotATransactionError(
+      `Refusing to prove a ${byteLength}-byte payload that does not begin with the ` +
+        `'${TRANSACTION_TAG_PREFIX}' tag of a serialized ledger transaction.`
+    );
   }
 }
 
@@ -87,15 +126,23 @@ export class PayloadNotATransactionError extends Error {
  * string that could then reach a log or an error message.
  *
  * @param txBytes The payload to check.
- * @throws PayloadNotATransactionError If the payload is shorter than the tag
- *   prefix, or does not begin with it.
+ * @throws PayloadNotATransactionError If the payload is not a `Uint8Array`, is
+ *   shorter than the tag prefix, or does not begin with it.
  */
 const assertSerializedTransaction = (txBytes: Uint8Array): void => {
+  // Widened rather than cast: the declared type says `Uint8Array`, but this is
+  // the seam an untyped caller reaches, and reading `.byteLength` off whatever
+  // actually arrived would raise a bare `TypeError` carrying no code. Checking
+  // the field is the same hardening the version tag already gets one level up.
+  const payload: unknown = txBytes;
+  if (!(payload instanceof Uint8Array)) {
+    throw PayloadNotATransactionError.notBytes(payload);
+  }
   const matchesPrefix =
-    txBytes.byteLength >= TRANSACTION_TAG_PREFIX_BYTES.length &&
-    TRANSACTION_TAG_PREFIX_BYTES.every((byte, index) => txBytes[index] === byte);
+    payload.byteLength >= TRANSACTION_TAG_PREFIX_BYTES.length &&
+    TRANSACTION_TAG_PREFIX_BYTES.every((byte, index) => payload[index] === byte);
   if (!matchesPrefix) {
-    throw new PayloadNotATransactionError(txBytes.byteLength);
+    throw PayloadNotATransactionError.wrongTag(payload.byteLength);
   }
 };
 

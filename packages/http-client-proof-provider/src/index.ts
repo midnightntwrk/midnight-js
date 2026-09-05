@@ -40,6 +40,21 @@
  * );
  * ```
  *
+ * ### Both ledger eras
+ * This provider serves the retained (`v8`) era as well as the current one. A retained-era
+ * transaction crosses the seam as serialized bytes in both directions, and comes back in the
+ * same arm it was sent in:
+ *
+ * ```typescript
+ * const { txBytes } = await proofProvider.proveTx({ version: 'v8', txBytes: unprovenTxBytes })
+ *   .then((payload) => payload.version === 'v8' ? payload : Promise.reject(new Error('expected v8')));
+ * ```
+ *
+ * The era is carried by the `version` tag, never inferred from the payload. Note that
+ * `createProofProvider` in `@midnight-ntwrk/midnight-js-types` refuses the retained arm — it
+ * adapts a current-era-only `ProvingProvider` — so reach for this provider, not that helper, when
+ * you need both eras.
+ *
  * ## Low-Level: Circuit Proving (ProvingProvider)
  * Use `httpClientProvingProvider` for advanced scenarios where you need fine-grained
  * control over individual circuit proving operations.

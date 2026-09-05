@@ -21,12 +21,22 @@ import {
   type VersionedUnprovenTransaction,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { hasErrorCode, PayloadNotATransactionError, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import type { ProvingProvider } from '@midnightntwrk/dapp-connector-api';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { dappConnectorProofProvider } from '../dapp-connector-proof-provider';
 import type { DAppConnectorProvingAPI } from '../dapp-connector-proving-provider';
+
+/**
+ * The `namespace:type-descriptor:` tag a serialized transaction opens with,
+ * read as a raw prefix. Never `parseSerializedTag`: that parser scans only the
+ * first 64 bytes for its second colon, and transaction tags run past that.
+ */
+const txTag = (bytes: Uint8Array): string => {
+  const head = Buffer.from(bytes.subarray(0, 96)).toString('latin1');
+  return head.slice(0, head.indexOf('):') + 2);
+};
 
 describe('dappConnectorProofProvider', () => {
   const mockUnboundTx = { tag: 'proven-tx' } as unknown as UnboundTransaction;
@@ -112,9 +122,13 @@ describe('dappConnectorProofProvider', () => {
       // call SUCCEEDING is the proof that the caller's cost model was not
       // forwarded. Forward it and this test fails.
       expect(result.version).toBe('v8');
-      const provenTag = 'midnight:transaction[v9](signature[v1],proof,embedded-fr[v1]):';
       const returned = result.version === 'v8' ? result.txBytes : new Uint8Array();
-      expect(Buffer.from(returned.subarray(0, provenTag.length)).toString('latin1')).toBe(provenTag);
+      expect(returned).toBeInstanceOf(Uint8Array);
+
+      // Derived from the input's own tag rather than spelled out -- see the
+      // matching case in `http-client-proof-provider`. The two seams answer the
+      // same contract, so they are asserted at the same strictness.
+      expect(txTag(returned)).toBe(txTag(retainedEraTxBytes).replace('proof-preimage', 'proof'));
     });
 
     it('refuses a payload that is not a serialized transaction, with the registered code', async () => {
@@ -125,6 +139,8 @@ describe('dappConnectorProofProvider', () => {
         (error: unknown) => error
       );
 
+      expect(rejection).toBeInstanceOf(PayloadNotATransactionError);
+      expect(rejection).toHaveProperty('code', PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION);
       expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION)).toBe(true);
       expect(mockUnprovenTx.prove).not.toHaveBeenCalled();
     });

@@ -68,9 +68,14 @@ export interface ProofProvider {
    *                   `{ version: 'v8', txBytes }`.
    * @param proveTxConfig The configuration for the proof request to the proof provider. Empty in case
    *                      a deploy transaction is being proved with no user-defined timeout.
-   * @returns The proven transaction, version-tagged. Narrow on `version` — or call `unwrapV9` —
-   *          before reading the payload.
-   * @throws V8PayloadUnsupportedError if the implementation does not handle the v8 arm.
+   * @returns The proven transaction, version-tagged, and always in the SAME arm the request
+   *          carried. Narrow on `version` — or call `unwrapV9` — before reading the payload.
+   * @throws V8PayloadUnsupportedError if the implementation does not handle the v8 arm. Which
+   *         implementations do is worth knowing before you send one: `httpClientProofProvider`
+   *         and `dappConnectorProofProvider` both serve it, taking and returning serialized
+   *         bytes. {@link createProofProvider} does NOT — it adapts a v9-only `ProvingProvider`,
+   *         so it refuses the v8 arm on the way in, which is the honest answer for what it wraps.
+   * @throws PayloadNotATransactionError if the v8 arm's `txBytes` is not a serialized transaction.
    * @throws UntaggedPayloadError if `version` is missing or unrecognised.
    */
   proveTx(

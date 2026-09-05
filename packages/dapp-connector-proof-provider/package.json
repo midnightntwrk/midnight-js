@@ -30,7 +30,6 @@
     "@midnightntwrk/dapp-connector-api": "4.1.0-beta.1"
   },
   "devDependencies": {
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "rollup": "^4.60.4",
     "vitest": "^4.1.7"
   },
