@@ -16,7 +16,9 @@
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  ImportPasswordValidationError,
   InvalidExportFormatError,
+  type PrivateStateExport,
   type SigningKeyExport
 } from '@midnight-ntwrk/midnight-js-types';
 import { createCipheriv, pbkdf2Sync, randomBytes } from 'crypto';
@@ -112,5 +114,36 @@ describe('[Unit tests] inMemoryPrivateStateProvider importSigningKeys validation
 
     expect(result.imported).toBe(1);
     expect(await provider.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(VALID_SIGNING_KEY);
+  });
+});
+
+describe('[Unit tests] inMemoryPrivateStateProvider rejects weak import passwords', () => {
+  const WEAK_PASSWORD = 'short';
+
+  it('importSigningKeys throws ImportPasswordValidationError, not an export error', async () => {
+    const provider = inMemoryPrivateStateProvider<PSI, PS>();
+    const goodExport = buildExport({ [CONTRACT_ADDRESS_1]: VALID_SIGNING_KEY });
+
+    await expect(
+      provider.importSigningKeys(goodExport, { password: WEAK_PASSWORD })
+    ).rejects.toThrow(ImportPasswordValidationError);
+  });
+
+  it('importPrivateStates throws ImportPasswordValidationError, not an export error', async () => {
+    const provider = inMemoryPrivateStateProvider<PSI, PS>();
+    const salt = randomBytes(SALT_LENGTH);
+    const stateExport: PrivateStateExport = {
+      format: 'midnight-private-state-export',
+      encryptedPayload: encryptPayload(
+        JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), stateCount: 0, states: {} }),
+        VALID_PASSWORD,
+        salt
+      ),
+      salt: salt.toString('hex')
+    };
+
+    await expect(
+      provider.importPrivateStates(stateExport, { password: WEAK_PASSWORD })
+    ).rejects.toThrow(ImportPasswordValidationError);
   });
 });

@@ -21,6 +21,7 @@ import {
   type ExportPrivateStatesOptions,
   type ExportSigningKeysOptions,
   ImportConflictError,
+  ImportPasswordValidationError,
   type ImportPrivateStatesOptions,
   type ImportPrivateStatesResult,
   type ImportSigningKeysOptions,
@@ -123,6 +124,12 @@ const validateExportPassword = (password: string): void => {
 const validateSigningKeyExportPassword = (password: string): void => {
   if (password.length < MIN_PASSWORD_LENGTH) {
     throw new SigningKeyExportError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+  }
+};
+
+const validateImportPassword = (password: string): void => {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new ImportPasswordValidationError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
   }
 };
 
@@ -320,7 +327,7 @@ export const inMemoryPrivateStateProvider = <
         throw new InvalidExportFormatError('Password is required for in-memory provider import');
       }
 
-      validateExportPassword(options.password);
+      validateImportPassword(options.password);
 
       let payload: PrivateStatePayload<PSI>;
       try {
@@ -461,7 +468,7 @@ export const inMemoryPrivateStateProvider = <
         throw new InvalidExportFormatError('Password is required for in-memory provider import');
       }
 
-      validateSigningKeyExportPassword(options.password);
+      validateImportPassword(options.password);
 
       let payload: SigningKeyPayload;
       try {

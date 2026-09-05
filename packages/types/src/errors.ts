@@ -56,6 +56,7 @@ export type PrivateStateImportErrorCause =
   | 'decryption_failed'
   | 'invalid_format'
   | 'conflict'
+  | 'invalid_password'
   | 'unknown';
 
 /**
@@ -93,6 +94,20 @@ export class InvalidExportFormatError extends PrivateStateImportError {
   constructor(message = 'Invalid export format') {
     super(message, 'invalid_format');
     this.name = 'InvalidExportFormatError';
+  }
+}
+
+/**
+ * Error thrown when the password supplied for an import operation does not
+ * satisfy the password strength policy. Extends {@link PrivateStateImportError}
+ * so callers can catch every import failure via a single base type, while the
+ * `'invalid_password'` cause distinguishes a policy violation from a failed
+ * decryption or malformed payload.
+ */
+export class ImportPasswordValidationError extends PrivateStateImportError {
+  constructor(message: string) {
+    super(message, 'invalid_password');
+    this.name = 'ImportPasswordValidationError';
   }
 }
 
