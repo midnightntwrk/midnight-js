@@ -406,21 +406,16 @@ const STALE_HEAD_MESSAGES: Readonly<
  * operation resolving the head era and its transaction being submitted, and
  * that a fresh head read confirms the move.
  *
- * ## Why a submit rejection is diagnosed rather than propagated
- *
- * A node rejects a transaction for many reasons, and during the fork window one
- * of them is that the transaction belongs to the era the network has just left.
- * Nothing in the node's own rejection distinguishes that case, and the era the
- * operation started from cannot report itself as stale
- * (`docs/adr/0008-never-latch-the-network-head-version.md`) — so the head is
- * read again, once, and the two ERAS are compared. Two readings of the same era
- * one node minor release apart are not a fork and are not reported as one.
+ * Carries a two-step remediation, and the order matters: verify the transaction
+ * did not finalize BEFORE acting, because a submission rejected while the head
+ * was moving can still have been recorded.
  *
  * The provider's own rejection travels on `cause`, already sanitized of
  * anything that could carry transaction or witness material — see
  * {@link Ledger8SeamFailedError}, which is the form it arrives in.
  *
- * @see docs/adr/0008-never-latch-the-network-head-version.md
+ * @see {@link StaleHeadRemediation} for why a submit rejection is diagnosed
+ *      rather than propagated, and why a deploy's remediation differs.
  */
 export class StaleHeadError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.STALE_HEAD;
@@ -504,8 +499,8 @@ const undiagnosedMessage = (operation: SubmittedOperation, undiagnosed: SubmitRe
         `the transaction finalized, then check the health of the configured indexer before retrying.`
       );
     default: {
-      // A compile-time exhaustiveness gate; the runtime throw is not redundant
-      // with it, because a new reason reaches here before this switch is updated.
+      // The runtime throw is not redundant with the compile-time gate: a new reason reaches here
+      // before this switch is updated.
       const unhandled: never = undiagnosed;
       throw new Error(`unhandled undiagnosed-rejection reason: ${String(unhandled)}`);
     }
@@ -519,24 +514,15 @@ const undiagnosedErrors = (rejection: unknown, undiagnosed: SubmitRejectionUndia
  * An error indicating that a submission was rejected and that whether the
  * network crossed the ledger fork under it could not be established.
  *
- * ## Why this carries a code of its own
- *
- * Without one it would arrive as a bare `AggregateError`, and a caller
- * branching on `hasErrorCode(e, LEDGER8_SEAM_FAILED)` to decide retry-or-
- * escalate would escalate INTERMITTENTLY for one and the same node rejection —
- * depending on whether the read surface happened to answer. Both failures here
- * are the same network, so they correlate: they coincide more often than
- * independence would suggest.
- *
- * The code is its OWN rather than copied from the rejection it carries, because
- * copying would make one error report two different codes depending on which
- * of the two failures came first.
- *
  * An `AggregateError` because nothing may be dropped: the submission rejection
- * is what happened to the transaction, and the reason on
- * {@link SubmitRejectionUndiagnosedError.reason} is why no diagnosis could be
- * made. `cause` names the proximate failure so a consumer walking only cause
- * chains still lands somewhere useful.
+ * is what happened to the transaction, and {@link reason} is why no diagnosis
+ * could be made. `cause` names the proximate failure so a consumer walking only
+ * cause chains still lands somewhere useful.
+ *
+ * DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own for
+ * a reason.
+ *
+ * @see {@link StaleHeadRemediation} for that reason, and for the two arms.
  */
 export class SubmitRejectionUndiagnosedError extends AggregateError {
   readonly code = CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED;
@@ -675,32 +661,16 @@ export class ContractTypeError extends TypeError {
  * An error indicating that a contract-scoped transaction was created while the
  * network head is on a ledger era that has no way to express one.
  *
- * ## Why this is a refusal rather than a narrower scope
+ * The pre-fork era composes exactly one call per transaction, which leaves a
+ * pre-fork scope nothing to batch into.
  *
- * A scope exists to batch several circuit calls into ONE transaction. The
- * pre-fork era composes exactly one call per transaction and refuses a longer
- * list outright — a call tree is a post-fork ledger feature, so that era has no
- * structure to express a second call in — which leaves a pre-fork scope nothing
- * to batch into. A contract compiled by the retained toolchain is also
- * single-call by construction, so a pre-fork scope has little to be atomic
- * about in the first place.
- *
- * The refusal is raised when the scope is CREATED, before the scope body runs,
- * so no circuit is executed and no private state is touched on a batch that
- * could never be submitted. It is also raised from the head READING alone,
- * before that era's runtime is acquired: a caller that only ever uses the
- * current toolchain must not be made to instantiate the pre-fork ledger to be
- * told its scope cannot run, and must not receive an acquisition failure in
- * place of this refusal when that lazy subpath cannot be loaded at all
- * (`docs/adr/0004-lazy-v8-era-access-via-protocol-subpath.md`).
+ * Raised when the scope is CREATED, and from the head READING alone — before
+ * that era's runtime is acquired. Both are load-bearing; do not move it later.
  *
  * Both ways forward are named in the message, because the caller's batching
- * intent cannot be honoured either way and it needs to choose: give up the
- * batching and submit each call on its own, or keep the batching and run the
- * scope once the network head has crossed the fork.
+ * intent cannot be honoured either way and it needs to choose.
  *
- * @see docs/adr/0008-never-latch-the-network-head-version.md for why the head
- * era is read per scope rather than cached across scopes.
+ * @see {@link StaleHeadRemediation} for what each placement property prevents.
  */
 export class ScopedTxEraUnsupportedError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED;
@@ -724,15 +694,14 @@ export class ScopedTxEraUnsupportedError extends Error {
  * An error indicating that a call against a contract produced by the RETAINED
  * Compact toolchain was handed a contract-scoped transaction to join.
  *
- * A scope merges its calls by merging live CURRENT-era transactions, and a
- * retained-era call is composed on its own, against whichever era the head is
- * on, and crosses the provider seams as its own transaction. So the two cannot
- * be batched: the scope would have to hold an era object this package is not
- * allowed to hold (`docs/adr/0007-cross-the-era-boundary-with-plain-data-only.md`).
+ * A scope merges live CURRENT-era transactions, and a retained-era call crosses
+ * the provider seams as its own transaction, so there is nothing to merge it
+ * into at either head.
  *
  * Raised rather than ignored, and that is the change it makes: the retained-era
- * arm previously accepted a scope context and ran outside it, which submitted a
- * transaction the caller believed had been batched.
+ * arm previously accepted a scope context and ran outside it.
+ *
+ * @see {@link StaleHeadRemediation} for why the two cannot be batched.
  */
 export class MixedEraScopeError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE;

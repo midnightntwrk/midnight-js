@@ -90,18 +90,13 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
  * Resolves the ONE era reading a scope runs under, and refuses a scope the head
  * era cannot express.
  *
- * Read once, when the scope is created, and threaded down as a value — the same
- * discipline the scope already applies to the block it pins: a scope is a
- * single chain snapshot, and a second head reading could answer differently
- * mid-scope and leave the batched transaction composed half against each era.
- * Nothing is cached ACROSS scopes, deliberately
- * (`docs/adr/0008-never-latch-the-network-head-version.md`).
+ * Read once, when the scope is created, and threaded down as a value. Nothing is
+ * cached ACROSS scopes.
  *
- * The refusal is here rather than deeper because this is the earliest point it
- * can be made: before the scope body runs, so nothing is executed and no
- * private state is touched on a batch that could never be submitted -- and
- * before the head era's own runtime is acquired, so a refused scope pays for no
- * era load and its refusal cannot be replaced by one failing.
+ * KEEP THE REFUSAL HERE. It is the earliest point it can be made: before the
+ * scope body runs, and before the head era's own runtime is acquired, so a
+ * refused scope pays for no era load and its refusal cannot be replaced by one
+ * failing.
  *
  * @internal
  * @param pdp The read surface, for the single head read.
@@ -109,6 +104,8 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
  * @throws ScopedTxEraUnsupportedError if the head era composes only one call
  * per transaction, so has nothing for a scope to batch into.
  * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
+ * @see {@link StaleHeadRemediation} for why both properties of this placement
+ *      are load-bearing.
  */
 export const resolveScopeEra = async (pdp: HeadVersionSource): Promise<ResolvedOperationEra> => {
   const reading = await readHeadEra(pdp);
@@ -274,23 +271,13 @@ export const isTransactionContext = (u: unknown): u is Transaction.TransactionCo
 /**
  * Refuses a retained-era call that was handed a scope to join.
  *
- * The scope's merge is `unprovenTx.merge(...)` on live CURRENT-era
- * transactions, and a retained-era call never produces one: it is composed
- * against whichever era the head is on and crosses the provider seams as its
- * own transaction, in that era's own form. So there is nothing to merge it
- * into, at either head.
- *
  * Reachable only from JavaScript today — the retained-era `submitCallTx`
- * overload declares no scope parameter, so a TypeScript caller cannot pass one
- * — and it is still checked, because the alternative is what this replaces: the
- * retained arm accepted the scope context and quietly ran outside it, returning
- * a transaction the caller believed had been batched with the rest.
+ * overload declares no scope parameter — and still checked, because the
+ * alternative is what it replaces: the retained arm accepted the scope context
+ * and quietly ran outside it.
  *
- * The three outcomes are kept apart on purpose. No third argument is the normal
- * case. A real scope is the mixed-era refusal. Anything ELSE is a malformed
- * argument -- `null`, or a stray value a JavaScript caller passed by mistake --
- * and reporting THAT as "this circuit cannot join a scope" would name a scope
- * the caller never had and send it looking for batching it never asked for.
+ * KEEP THE THREE OUTCOMES APART. No third argument is the normal case; a real
+ * scope is the mixed-era refusal; anything else is a malformed argument.
  *
  * @internal
  * @param circuitId The circuit whose call was made.
@@ -299,10 +286,9 @@ export const isTransactionContext = (u: unknown): u is Transaction.TransactionCo
  * implementation signature widens both arms, and a JavaScript caller can pass
  * anything at all here.
  * @throws MixedEraScopeError if a real transaction context was passed.
- * @throws TypeError if a third argument was passed that is not one. A bare
- * `TypeError` rather than a registered code: a registered code is a published
- * consumer surface for a condition worth branching on, and "you passed the
- * wrong thing" is a mistake to fix, not a state to handle.
+ * @throws TypeError if a third argument was passed that is not one.
+ * @see {@link StaleHeadRemediation} for why a retained-era call cannot join a
+ *      scope, and why the malformed-argument arm is a bare `TypeError`.
  */
 export const assertScopeAdmitsRetainedEraCall = (circuitId: string, transactionContext: unknown): void => {
   if (transactionContext === undefined) {
