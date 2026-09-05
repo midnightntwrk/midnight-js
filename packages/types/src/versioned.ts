@@ -91,10 +91,11 @@ export type VersionedTx<T> = V8TxBytes | V9Tx<T>;
  * that builds it, so this shape is only produced for a record that resolves to
  * the v8 ledger runtime.
  *
- * No provider produces this arm yet: the read path decodes with the v9-only
- * deserializer, so a v8-era record surfaces as a thrown error rather than as a
- * value. The arm exists so that consumers narrow once now, rather than after a
- * second breaking change when dual decode lands.
+ * `indexerPublicDataProvider` produces this arm for any record whose
+ * `protocolVersion` places it in the v8 era, decoding it with the pre-fork
+ * runtime it acquires lazily. A consumer that narrows on `version` therefore
+ * has to handle it: it is a value the read surface really returns, not a
+ * placeholder.
  */
 export interface FinalizedTxDataV8 extends FinalizedTxRecord {
   readonly version: 'v8';

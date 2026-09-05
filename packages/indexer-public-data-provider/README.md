@@ -275,19 +275,27 @@ for await (const event of getAllContractEvents(provider, { contractAddress })) {
 
 ## Transaction Data
 
-`IndexerPublicDataProvider.watchForTxData` and `watchForDeployTxData` declare
-`Promise<FinalizedTxData>` — the v9 arm only, narrower than the
-`PublicDataProvider` interface they satisfy. Holding this concrete class, you
-need no narrowing. Holding the interface, you get `VersionedFinalizedTxData`
-(the closed union of this record and `FinalizedTxDataV8`) and must narrow on
-`version` before reading `tx`.
+`IndexerPublicDataProvider.watchForTxData` and `watchForDeployTxData` resolve
+`Promise<VersionedFinalizedTxData>` — the closed union of `FinalizedTxData`
+(v9) and `FinalizedTxDataV8` — exactly as the `PublicDataProvider` interface
+they satisfy does. Narrow on `version` before reading `tx`: the two arms carry
+transaction objects from different ledger runtimes, and neither runtime's
+object can be handed to the other.
 
-Either way the discriminant is resolved from the record's own
-`protocolVersion`, never asserted: a record this provider cannot decode is
-reported as `EraUnsupportedError` — or `EraUnresolvableError` when the
-`protocolVersion` maps to no known era — rather than mislabelled as v9. Both
-are `IndexerError` subclasses and both name the raw `protocolVersion` and the
-record being read.
+Each record is decoded with the runtime of the era the record itself reports.
+A v8-era record is read with the pre-fork runtime, which is acquired lazily on
+first use — a session that meets no v8 record never instantiates that WASM.
+
+The discriminant is resolved from the record's own `protocolVersion`, never
+asserted, so it cannot disagree with the `protocolVersion` beside it. Two
+refusals can arise from that resolution, both `IndexerError` subclasses naming
+the raw `protocolVersion` and the record being read:
+
+- `EraUnresolvableError` — the `protocolVersion` maps to no known ledger era.
+- `DecodeVersionMismatchError` — the era resolved, but the bytes did not
+  decode on that era's runtime. The record contradicts itself, so this reports
+  an inconsistent indexer rather than a dependency-version problem in your
+  dApp; the runtime's own diagnosis is preserved on `cause`.
 
 The v9 record includes:
 

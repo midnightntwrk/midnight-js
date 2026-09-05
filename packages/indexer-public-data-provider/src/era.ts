@@ -14,45 +14,47 @@
  */
 
 import { UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { type VersionedRecord,versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol/version';
+import {
+  type LedgerVersion,
+  type VersionedRecord,
+  versionOfRecord
+} from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { ReadSeam } from '@midnight-ntwrk/midnight-js-types';
 
-import { EraUnresolvableError,EraUnsupportedError } from './errors';
+import { EraUnresolvableError } from './errors';
 
 /**
- * Resolves the ledger era of a record read from the indexer and confirms this
- * provider can decode it.
+ * Resolves the ledger era of a record read from the indexer, so the read path
+ * can dispatch the decode to the runtime that wrote the bytes.
  *
  * The `version` discriminant on a finalized-transaction record is derived from
  * the record's own `protocolVersion`, never asserted: stamping a literal
  * `'v9'` would let the discriminant disagree with the `protocolVersion` in the
  * same record, and a consumer that narrows on it would be misled.
  *
- * The read path deserializes with the v9-only ledger runtime, so a record that
- * resolves to any other era is reported rather than mislabelled. That makes
- * this the one place an unsupported network is named, instead of surfacing as a
- * deserialization failure deep inside the codec.
+ * Resolved BEFORE any deserializer runs, deliberately. Each era has its own
+ * decoder, and handing bytes to the wrong one yields a header-tag failure that
+ * says nothing about which runtime should have read them. Settling the era
+ * first is what lets {@link decodeVersionedTransaction} name the era it
+ * dispatched to when a decode does fail.
  *
- * Both failures are reported as an {@link IndexerError} subclass, so the
- * package's documented "catch any indexer error with one `instanceof` check"
- * contract holds on this path too.
+ * A `protocolVersion` this client cannot place on the era timeline is reported
+ * as an {@link IndexerError} subclass, so the package's documented "catch any
+ * indexer error with one `instanceof` check" contract holds on this path too.
  *
  * @param record The indexer record, carrying the raw `protocolVersion`.
  * @param seam The read-surface method resolving the era, for the error message.
  * @param recordRef The transaction id or contract address being read, so a
  *                  failure names which record it was. Optional only because
  *                  not every call site has one to hand.
- * @returns `'v9'`, the only era this provider decodes.
- * @throws EraUnsupportedError if the record resolves to a known era this
- *         provider cannot decode.
+ * @returns The era the record was written under.
  * @throws EraUnresolvableError if `protocolVersion` maps to no era at all — a
  *         network outside the node 1.x/2.x range this framework supports, or a
  *         value that is not a non-negative integer.
  */
-export const requireV9Era = (record: VersionedRecord, seam: ReadSeam, recordRef?: string): 'v9' => {
-  let era;
+export const resolveReadEra = (record: VersionedRecord, seam: ReadSeam, recordRef?: string): LedgerVersion => {
   try {
-    era = versionOfRecord(record);
+    return versionOfRecord(record);
   } catch (error) {
     // Re-reported rather than propagated so that an unmappable era reaches
     // consumers as an IndexerError like every other failure from this package.
@@ -62,8 +64,4 @@ export const requireV9Era = (record: VersionedRecord, seam: ReadSeam, recordRef?
     }
     throw error;
   }
-  if (era !== 'v9') {
-    throw new EraUnsupportedError(seam, era, record.protocolVersion, recordRef);
-  }
-  return era;
 };

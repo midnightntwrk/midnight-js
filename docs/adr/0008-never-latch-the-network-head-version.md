@@ -160,7 +160,7 @@ MJS-02/MJS-03, and this ADR is what it will be built against.
   "era does not go backwards" argument actually applies to what is stored), and
   because every read now carries its own `protocolVersion`, reads become a
   free continuous cross-check: any record whose era contradicts the cached one
-  clears it. `requireV9Era` (`packages/indexer-public-data-provider/src/era.ts`)
+  clears it. `resolveReadEra` (`packages/indexer-public-data-provider/src/era.ts`)
   already sees every record and is the natural hook. That inverts the rejected
   design — light continuous invalidation on contradiction, instead of heavy
   one-shot corroboration on entry.

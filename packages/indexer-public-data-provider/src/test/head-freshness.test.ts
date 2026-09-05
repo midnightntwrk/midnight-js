@@ -18,11 +18,11 @@ import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';
 
-import { EraUnsupportedError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
 import { HEAD_PROTOCOL_VERSION_QUERY, RAW_CONTRACT_STATE_QUERY } from '../query-definitions';
 import { type ApolloRequest, stubApolloHandle, type WatchQueryStub } from './apollo-stub';
 import {
+  mintV8TransactionHex,
   mintV9ContractStateHex,
   mintV9TransactionHex,
   V8_ERA_PROTOCOL_VERSION,
@@ -57,15 +57,20 @@ const composedResponse = (state: string, protocolVersion: number): unknown => ({
 const headRequestCount = (query: QueryMock): number =>
   query.mock.calls.filter(([request]) => request.query === HEAD_PROTOCOL_VERSION_QUERY).length;
 
-/** A finalized-transaction payload shaped the way `TX_ID_QUERY` returns it. */
-const finalizedTransactionEmission = (protocolVersion: number): unknown =>
+/**
+ * A finalized-transaction payload shaped the way `TX_ID_QUERY` returns it.
+ * `raw` is passed in rather than fixed, because the read path decodes with the
+ * runtime `protocolVersion` selects — bytes from the other era would be
+ * refused, not decoded.
+ */
+const finalizedTransactionEmission = (protocolVersion: number, raw: string): unknown =>
   Rx.of({
     data: {
       transactions: [
         {
           id: 1,
           protocolVersion,
-          raw: mintV9TransactionHex(),
+          raw,
           hash: 'ab'.repeat(32),
           identifiers: [TX_ID],
           block: { height: 10, hash: 'cd'.repeat(32), author: null, timestamp: 0 },
@@ -133,7 +138,7 @@ describe('head protocol-version freshness', () => {
     // A finalization read must cost exactly the requests the caller asked
     // for. Nothing may ride along on it to warm a cache that no longer exists.
     const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]]));
-    const watchQuery = vi.fn().mockReturnValue(finalizedTransactionEmission(V9_ERA_PROTOCOL_VERSION));
+    const watchQuery = vi.fn().mockReturnValue(finalizedTransactionEmission(V9_ERA_PROTOCOL_VERSION, mintV9TransactionHex()));
     const provider = buildProvider(query, watchQuery);
 
     const finalized = await provider.watchForTxData(TX_ID);
@@ -142,16 +147,20 @@ describe('head protocol-version freshness', () => {
     expect(headRequestCount(query)).toBe(0);
   });
 
-  test('refuses an older-era finalized record, and still asks the head nothing', async () => {
-    // The read path deserializes with the v9 runtime only, so an older-era
-    // record is named and refused rather than decoded - and a refused read,
-    // like a successful one, issues no request the caller did not ask for.
+  test('decodes an older-era finalized record, and still asks the head nothing', async () => {
+    // The read path decodes each record with the runtime of the era the record
+    // itself reports, so an older-era record is served rather than refused -
+    // and acquiring that runtime is not an excuse to read the head. The era
+    // arrives with the bytes it dates, on this arm exactly as on the other.
     const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V8_ERA_PROTOCOL_VERSION)]]));
-    const watchQuery = vi.fn().mockReturnValue(finalizedTransactionEmission(V8_ERA_PROTOCOL_VERSION));
+    const watchQuery = vi
+      .fn()
+      .mockReturnValue(finalizedTransactionEmission(V8_ERA_PROTOCOL_VERSION, await mintV8TransactionHex()));
     const provider = buildProvider(query, watchQuery);
 
-    await expect(provider.watchForTxData(TX_ID)).rejects.toThrow(EraUnsupportedError);
+    const finalized = await provider.watchForTxData(TX_ID);
 
+    expect(finalized.version).toBe('v8');
     expect(headRequestCount(query)).toBe(0);
   });
 });
