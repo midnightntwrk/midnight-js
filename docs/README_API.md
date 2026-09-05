@@ -150,3 +150,6 @@ const publicStates = await getPublicStates(providers, contractAddress);
 - **Isolation**: Account-scoped storage keyed by SHA-256 hash of wallet address
 - **No built-in recovery**: Production deployments require a backup strategy
 
+## Guides
+
+- **[Error Handling](./guides/error-handling.md)** — Best practices for managing provider, contract, and private state errors.
