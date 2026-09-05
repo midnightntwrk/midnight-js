@@ -291,15 +291,11 @@ export class Ledger8ShieldedSpendUnsupportedError extends Error {
  * carrying the original's CLASS NAME and a redacted message, and nothing else:
  * no own properties, and no further `cause` chain.
  *
- * Redaction removes the two shapes payload material takes in a message — long
- * hex runs and long base64 runs — rather than trying to recognise a particular
- * provider's format, because the set of providers is open.
- *
  * This package's own coded errors are NOT wrapped: they carry no external
  * payload, and a caller narrowing on `V8PayloadUnsupportedError` or
  * {@link EraInvariantViolationError} must keep seeing them.
  *
- * @see docs/adr/0006-version-tagged-payloads-at-provider-seams.md
+ * @see {@link KeepStatePipeline} for what redaction removes and what is dropped.
  */
 export class Ledger8SeamFailedError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED;
