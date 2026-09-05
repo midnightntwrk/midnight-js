@@ -210,6 +210,21 @@ import {
 } from '@midnight-ntwrk/midnight-js-contracts';
 ```
 
+## Architecture Documents
+
+The reasoning behind this package's shape lives in `docs/`, not in the source
+docstrings. Each file is registered with TypeDoc through `projectDocuments`, so
+it is a page in the generated API reference and `@see {@link Title}` in a
+docstring resolves to it.
+
+| Document | What it explains |
+|---|---|
+| [Overload typing](./docs/overload-typing.md) | Why the retained-era contract types are hand-written, what discriminates the two toolchain eras, how openness is expressed without `any`, and why overload order is load-bearing |
+
+Docstrings in `src/` carry the API contract: what a symbol does, its
+parameters, what it returns and what it throws. Anything that answers "why is
+it built this way" belongs in a document above, stated once.
+
 ## Resources
 
 - [Midnight Network](https://midnight.network)
