@@ -54,26 +54,18 @@ export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.P
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
  * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
- * the retained-era-native pipeline, a post-fork head the keep-state one. Both compose through the
- * era facade, but they do NOT cross the provider seams on the same arm, because the `version` tag
- * names the ledger runtime that produced the payload rather than the toolchain that produced the
- * contract:
+ * the retained-era-native pipeline, a post-fork head the keep-state one.
  *
- * | network head | composed by | crosses the seams as |
- * | ------------ | ----------- | -------------------- |
- * | pre-fork | the retained ledger | `{ version: 'v8', txBytes }` |
- * | post-fork | the current ledger | `{ version: 'v9', tx }` |
+ * A post-fork keep-state call is an ORDINARY current-era transaction that happens to carry a
+ * retained-era call, so a provider needs no pre-fork support to serve it. A provider must handle
+ * the `'v8'` seam arm only to serve calls made while the network head is still pre-fork.
  *
- * So a post-fork keep-state call is an ORDINARY current-era transaction that happens to carry a
- * retained-era call, and a provider needs no pre-fork support to serve it. A provider must handle
- * the `'v8'` arm only to serve calls made while the network head is still pre-fork
- * (`docs/adr/0006-version-tagged-payloads-at-provider-seams.md`).
+ * @see {@link KeepStatePipeline} for the seam table and why the two arms differ.
  *
- * ARM ORDER IS LOAD-BEARING, in two ways, and both are pinned by
- * `src/test/typecheck/overloads.test-d.ts`. This arm is declared FIRST so no current-era arm can
- * shadow it, and the LAST arm is left exactly as it was before this arm existed, because
- * `ReturnType<typeof f>` and `Parameters<typeof f>` both resolve from it and so does the error
- * TypeScript prints when no arm matches. See the module documentation in `./ledger8-contract.ts`.
+ * ARM ORDER IS LOAD-BEARING: this arm is declared FIRST, and the arm that was already LAST stays
+ * last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ *
+ * @see {@link OverloadTyping} for what resolves from the last arm.
  */
 export async function submitCallTx<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
   providers: Ledger8ContractProviders<C, K>,
@@ -198,26 +190,18 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
  * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
- * the retained-era-native pipeline, a post-fork head the keep-state one. Both compose through the
- * era facade, but they do NOT cross the provider seams on the same arm, because the `version` tag
- * names the ledger runtime that produced the payload rather than the toolchain that produced the
- * contract:
+ * the retained-era-native pipeline, a post-fork head the keep-state one.
  *
- * | network head | composed by | crosses the seams as |
- * | ------------ | ----------- | -------------------- |
- * | pre-fork | the retained ledger | `{ version: 'v8', txBytes }` |
- * | post-fork | the current ledger | `{ version: 'v9', tx }` |
+ * A post-fork keep-state call is an ORDINARY current-era transaction that happens to carry a
+ * retained-era call, so a provider needs no pre-fork support to serve it. A provider must handle
+ * the `'v8'` seam arm only to serve calls made while the network head is still pre-fork.
  *
- * So a post-fork keep-state call is an ORDINARY current-era transaction that happens to carry a
- * retained-era call, and a provider needs no pre-fork support to serve it. A provider must handle
- * the `'v8'` arm only to serve calls made while the network head is still pre-fork
- * (`docs/adr/0006-version-tagged-payloads-at-provider-seams.md`).
+ * @see {@link KeepStatePipeline} for the seam table and why the two arms differ.
  *
- * ARM ORDER IS LOAD-BEARING, in two ways, and both are pinned by
- * `src/test/typecheck/overloads.test-d.ts`. This arm is declared FIRST so no current-era arm can
- * shadow it, and the LAST arm is left exactly as it was before this arm existed, because
- * `ReturnType<typeof f>` and `Parameters<typeof f>` both resolve from it and so does the error
- * TypeScript prints when no arm matches. See the module documentation in `./ledger8-contract.ts`.
+ * ARM ORDER IS LOAD-BEARING: this arm is declared FIRST, and the arm that was already LAST stays
+ * last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ *
+ * @see {@link OverloadTyping} for what resolves from the last arm.
  */
 export async function submitCallTxAsync<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
   providers: Ledger8ContractProviders<C, K>,

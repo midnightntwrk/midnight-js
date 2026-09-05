@@ -120,24 +120,20 @@ const createDeployTxOptions = <C extends Contract.Any>(
  * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
- * REFUSED, and for a MEASURED reason that is about the maintenance authority rather than about the
- * era pairing: the retained constructor leaves an empty committee with a threshold of one, so the
- * deployed contract could never be maintained by anyone. See
- * {@link LEDGER8_DEPLOY_UNMAINTAINABLE} for the measurement and
- * `packages/protocol/src/test/v8-deploy.test.ts` for the test that pins it. The retained-era deploy
- * TRANSACTION composes and submits perfectly well — `runLedger8Deploy` in
- * `./internal/ledger8-entry` is that path, and it is exercised directly — so this refusal is about
- * the result being unmaintainable, not about the pipeline being unfinished.
+ * REFUSED, for a MEASURED reason about the maintenance authority rather than about the era
+ * pairing: the retained constructor leaves an empty committee with a threshold of one, so the
+ * deployed contract could never be maintained by anyone. The deploy TRANSACTION path itself
+ * composes and submits correctly — this refusal is about the result, not an unfinished pipeline.
  *
  * Separately, a retained-era deploy against a POST-FORK head is refused with
- * `Ledger8DeployOnV9Error`: the retained era stays supported for calls against contracts already
- * on chain, and a new deployment has no such history to preserve.
+ * `Ledger8DeployOnV9Error`.
  *
- * ARM ORDER IS LOAD-BEARING, in two ways, and both are pinned by
- * `src/test/typecheck/overloads.test-d.ts`. This arm is declared FIRST so no current-era arm can
- * shadow it, and the LAST arm is left exactly as it was before this arm existed, because
- * `ReturnType<typeof f>` and `Parameters<typeof f>` both resolve from it and so does the error
- * TypeScript prints when no arm matches. See the module documentation in `./ledger8-contract.ts`.
+ * @see {@link KeepStatePipeline} for the measurement and the test that pins it.
+ *
+ * ARM ORDER IS LOAD-BEARING: this arm is declared FIRST, and the arm that was already LAST stays
+ * last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ *
+ * @see {@link OverloadTyping} for what resolves from the last arm.
  */
 export async function deployContract<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
