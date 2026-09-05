@@ -154,6 +154,31 @@ describe('proveV8Transaction', () => {
         label: 'an object whose constructor name is over-long',
         payload: { constructor: { name: 'A'.repeat(200) } },
         described: 'A'.repeat(32)
+      },
+      // Reading the constructor is itself a property access on caller data, so
+      // it can fail: an accessor that throws, or an exotic object whose trap
+      // does. Naming the value is best-effort diagnostics on something already
+      // being refused, so neither may turn the coded refusal into a raw throw.
+      {
+        label: 'an object whose constructor accessor throws',
+        payload: Object.defineProperty({}, 'constructor', {
+          get: () => {
+            throw new Error('constructor accessor exploded');
+          }
+        }),
+        described: 'object'
+      },
+      {
+        label: 'an exotic object whose property trap throws',
+        payload: new Proxy(
+          {},
+          {
+            get: () => {
+              throw new Error('proxy trap exploded');
+            }
+          }
+        ),
+        described: 'object'
       }
     ])('refuses $label with the registered code, not a TypeError', async ({ payload, described }) => {
       // Reachable exactly as an untagged payload is: from JavaScript, from a

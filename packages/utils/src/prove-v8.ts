@@ -77,7 +77,31 @@ const TYPE_NAME_PATTERN = /^[A-Za-z0-9_$]+$/;
  * Validated AFTER truncation on purpose: what is checked has to be exactly what
  * is emitted, or a name whose disallowed characters sit past the cut would pass
  * a check on the full string and still be printed.
+ *
+ * Total by construction: every branch returns a string, and the one property
+ * read that could fail is contained in {@link readConstructorName}. A caller
+ * that sends a malformed payload always gets {@link PayloadNotATransactionError},
+ * never a throw from the code describing it.
  */
+/**
+ * Reads a value's constructor name, or `undefined` where it cannot be read.
+ *
+ * The read is itself a property access on caller data, so it can fail: an
+ * object may define `constructor` as an accessor that throws, or be an exotic
+ * object whose property trap does. Nothing is swallowed here — no operation is
+ * being attempted, only a label being chosen for a payload that has ALREADY
+ * been refused. Letting that label's absence propagate would replace the coded
+ * refusal with the caller's own raw throw, which is the failure mode this whole
+ * guard chain exists to prevent.
+ */
+const readConstructorName = (value: object): unknown => {
+  try {
+    return value.constructor?.name;
+  } catch {
+    return undefined;
+  }
+};
+
 const describeType = (value: unknown): string => {
   if (value === null) {
     return 'null';
@@ -85,7 +109,7 @@ const describeType = (value: unknown): string => {
   if (typeof value !== 'object') {
     return typeof value;
   }
-  const constructorName: unknown = value.constructor?.name;
+  const constructorName = readConstructorName(value);
   if (typeof constructorName !== 'string') {
     return 'object';
   }
