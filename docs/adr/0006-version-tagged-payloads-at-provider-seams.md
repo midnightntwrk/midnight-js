@@ -184,3 +184,61 @@ Nothing produces the v8 arm yet, so a smart constructor would have no caller.
 Recorded here because adding the brand after the arm ships is itself a breaking
 change, so it should be a deliberate decision at that point rather than an
 oversight.
+
+---
+
+## Amendment — provider-side v8 proving ships (2026-09-05)
+
+The decision above stands unchanged. This note records that one of its accepted
+risks rested on a premise that has now expired, and that one follow-up is done.
+Nothing in the original text is edited: it remains the record of what was
+decided and why, at the time it was decided.
+
+**The accepted stage-erasure risk is now reachable.** The original consequence
+notes accept that `V8TxBytes` is identical across the three seams — so an
+unproven v8 payload is assignable where a finalized one is expected — and accept
+it explicitly "because nothing produces the v8 arm". That premise no longer
+holds. `httpClientProofProvider` and `dappConnectorProofProvider` now RETURN the
+v8 arm from `proveTx`, so consumer code can hold one and the erasure is
+reachable in practice rather than only in principle:
+
+```typescript
+const proven = await proofProvider.proveTx({ version: 'v8', txBytes });
+if (proven.version === 'v8') {
+  await midnightProvider.submitTx(proven); // compiles: balanceTx skipped
+}
+```
+
+That compiles. On the v9 arm the equivalent does not, because its stage
+distinctions survive in the type. The mitigation the original text names —
+a phantom type parameter on `V8TxBytes` — is unchanged and is still itself a
+breaking change, so it remains a deliberate decision rather than an oversight.
+The related deferral recorded under "Brand `txBytes` as a nominal
+`SerializedV8Tx`" is affected the same way: it too was deferred on the ground
+that nothing produces the arm, and that ground is gone.
+
+Two things currently limit the blast radius, neither of them a type-level
+guarantee:
+
+- `createWalletProvider` and `createMidnightProvider` still refuse the v8 arm,
+  so the erasure above fails at runtime with `V8PayloadUnsupportedError` rather
+  than submitting an unbalanced transaction. A caller supplying its own
+  `MidnightProvider` — which is what serving the v8 arm end to end requires —
+  loses that accident of protection.
+- `packages/contracts` narrows every retained-era response with `requireV8` at
+  each seam in order, so the framework's own flow cannot skip a stage.
+
+**Follow-up status.** "Provider-side v8 support, which retires
+`V8PayloadUnsupportedError`" is now **partly done**: the two proof providers
+implement the v8 arm, so `proveTx` no longer refuses it. The error is NOT
+retired, and for the three `create*Provider` adapters the refusal is now
+understood as permanent rather than transitional — each lifts a v9-only
+implementation into the version-tagged interface, so refusing the v8 arm is the
+adapter telling the truth about what it wraps. `balanceTx` and `submitTx` have
+no framework-supplied v8 implementation; a consumer needing them implements the
+interfaces directly.
+
+One consequence of that split is worth recording because it is invisible from
+any type signature: a retained-era transaction wired through the `create*`
+adapters now proves successfully and is refused at `balanceTx`, so the refusal
+lands after a full proving cycle rather than at the first seam it meets.

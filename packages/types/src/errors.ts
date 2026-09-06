@@ -57,9 +57,21 @@ const UNTAGGED_PAYLOAD = 'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD';
  * handed the v8 arm of a versioned transaction payload — serialized,
  * tag-prefixed bytes instead of a live v9 transaction object.
  *
- * This is transitional: the provider seams already carry both arms so that
- * callers can be written once, but handling of the v8 arm is not implemented
- * in these providers yet.
+ * Which providers raise this, and why, differs — the distinction matters at the
+ * point of failure:
+ *
+ * - `createProofProvider`, `createWalletProvider` and `createMidnightProvider`
+ *   raise it PERMANENTLY. Each lifts a v9-only implementation into the
+ *   version-tagged interface, so refusing the v8 arm is the adapter reporting
+ *   what it actually wraps. Supply a `WalletProvider` or `MidnightProvider`
+ *   implementing the interface directly to serve the v8 arm.
+ * - Concrete providers may or may not implement it.
+ *   `httpClientProofProvider` and `dappConnectorProofProvider` both DO, taking
+ *   and returning serialized bytes; other implementations that have not been
+ *   widened still raise this.
+ *
+ * So catching this does not mean "the framework cannot do it yet" — it means
+ * the specific implementation on that seam does not serve the v8 arm.
  *
  * Lives in this package (rather than in each provider package) because the
  * payload union it rejects is defined here, on the provider interfaces every
@@ -84,9 +96,12 @@ export class V8PayloadUnsupportedError extends Error {
     super(
       `${seam} received a v8-era transaction payload (serialized bytes${
         byteLength === undefined ? ', size unknown: txBytes was missing or not a Uint8Array' : `, ${byteLength} bytes`
-      }), which is not yet supported by this provider. ` +
-        `Send the v9 arm of the payload ({ version: 'v9', tx }) on this seam, or route v8-era traffic to a provider ` +
-        `that handles v8 payloads.`
+      }), which this provider does not serve. ` +
+        `The createProofProvider, createWalletProvider and createMidnightProvider adapters never serve the v8 arm: ` +
+        `each lifts a v9-only implementation, so this is by design rather than a gap. ` +
+        `Send the v9 arm of the payload ({ version: 'v9', tx }) on this seam, or use an implementation that serves ` +
+        `v8 — httpClientProofProvider and dappConnectorProofProvider do so for proveTx, while balanceTx and submitTx ` +
+        `need a WalletProvider or MidnightProvider written against the version-tagged interface directly.`
     );
     this.name = 'V8PayloadUnsupportedError';
   }

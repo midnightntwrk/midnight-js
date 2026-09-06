@@ -23,6 +23,7 @@ import {
   type ZKConfigProvider,
   type ZKConfigRegistry
 } from '@midnight-ntwrk/midnight-js-types';
+import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-utils';
 
 import { DEFAULT_TIMEOUT, httpClientProvingProvider, type ProvingProviderConfig } from './http-client-proving-provider';
 
@@ -127,12 +128,13 @@ export function httpClientProofProvider<K extends string>(
       unprovenTx: VersionedUnprovenTransaction,
       proveTxConfig?: ProveTxConfig
     ): Promise<VersionedUnboundTransaction> {
-      const tx = unwrapV9(unprovenTx, 'proveTx');
       const perCallTimeout = resolveTimeout(resolvedConfig, proveTxConfig);
 
       // Wrap the construction-time provider so every circuit-level check/prove in this proveTx uses
       // the per-call timeout, without rebuilding the underlying provider. The timeout override is
-      // exposed by TimeoutAwareProvingProvider, so this needs no cast.
+      // exposed by TimeoutAwareProvingProvider, so this needs no cast. Built before the version
+      // branch because both eras drive the same proof server through the same per-call timeout —
+      // the proving protocol is per-circuit and era-independent.
       const perCallProvingProvider: ProvingProvider = {
         check: (serializedPreimage, keyLocation) =>
           baseProvingProvider.check(serializedPreimage, keyLocation, perCallTimeout),
@@ -141,6 +143,23 @@ export function httpClientProofProvider<K extends string>(
         lookupKey: (keyLocation) => baseProvingProvider.lookupKey(keyLocation)
       };
 
+      // Bytes in, bytes out. The retained era is answered in its own arm because a caller that sent
+      // it -- `submitLedger8Tx` in `midnight-js-contracts` -- narrows the response with `requireV8`
+      // and rejects the current-era arm, so replying in the wrong one strands a submit mid-flight.
+      // `proveV8Transaction` owns the tag assertion and the retained cost model; see its doc for
+      // why the cost model may not come from here.
+      //
+      // Read through `?.` so a payload that is not an object at all falls through to `unwrapV9`
+      // below, which reports it as `UntaggedPayloadError`. Dispatching on a bare `.version` would
+      // turn that caller's mistake into a bare `TypeError` carrying no code.
+      if (unprovenTx?.version === 'v8') {
+        return { version: 'v8', txBytes: await proveV8Transaction(unprovenTx.txBytes, perCallProvingProvider) };
+      }
+
+      // Left as `unwrapV9` rather than an `else`: it keeps reporting an untagged or unrecognised
+      // payload as `UntaggedPayloadError`, which is reachable from JavaScript callers and from
+      // consumers built against a pre-5.0.0 `midnight-js-types`.
+      const tx = unwrapV9(unprovenTx, 'proveTx');
       const costModel = CostModel.initialCostModel();
       return { version: 'v9', tx: await tx.prove(perCallProvingProvider, costModel) };
     }
