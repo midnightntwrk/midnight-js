@@ -325,8 +325,7 @@ describe('an object belonging to neither era is refused by both eras', () => {
   //
   // What remains here are the facts the overloads actually rely on: that a neither-era object is
   // refused by BOTH eras' options types, and that the message the future error will carry is the
-  // wording that was reviewed. `../current-era-diagnostic.test.ts` is the companion, and pins the
-  // consequence of the arrangement: that a mistyped current-era call still names its real cause.
+  // wording that was reviewed.
   it('carries the migration-guide message verbatim, so a reword cannot pass unnoticed', () => {
     expectTypeOf<NeitherContractShape['__error']>().toEqualTypeOf<'Object is neither a 0.16- nor a 0.18-generated contract. See migration guide §window.'>();
   });
@@ -365,8 +364,8 @@ describe('adding era arms leaves the pre-existing entry points public surface un
   // `Parameters<typeof f>`, and the error TypeScript prints when no arm matches. So the era arms
   // are declared FIRST and the arm that was already last is left exactly where it was. Both
   // families of pin below exist because both `ReturnType` and `Parameters` read that last
-  // signature, so neither can be moved silently; the third is pinned by
-  // `../current-era-diagnostic.test.ts`, which runs the compiler and reads what it printed.
+  // signature, so neither can be moved silently -- and because they do, the third moves only when
+  // they do. Its exact wording is TypeScript's to choose, and is not pinned anywhere.
   //
   // Every expected type below was DERIVED from the base commit 72b071a2 rather than hand-written:
   // each was stated as a candidate and verified there by a strict type-identity assertion before
