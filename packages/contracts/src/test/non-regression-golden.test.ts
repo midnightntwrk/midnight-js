@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -92,6 +93,7 @@ const redactGasCostFields = (debugString: string): string =>
     .replace(/bytes_deleted: [^,}]+/g, `bytes_deleted: ${REDACTED_COST_PLACEHOLDER}`);
 
 type GoldenFixture = {
+  inputHashes: Record<string, string>;
   fixedInputs: {
     contractAddress: string;
     coinPublicKey: string;
@@ -150,6 +152,26 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
   const DUMMY_VERIFIER_KEY = new Uint8Array(
     readFileSync(new URL('./resources/compiled/shielded-map/keys/deposit.verifier', import.meta.url))
   );
+
+  // Guards the fixture's INPUTS, so a failure below can be read as what it is. Every byte-pinned
+  // value in this file was captured from these two artifacts; recompiling the contract moves them
+  // all at once, which looks identical to a composition regression unless the inputs are checked
+  // first. `note` is prose, not a path, so it is dropped rather than resolved.
+  it('was captured from the compiled artifacts still checked in here', () => {
+    const REPO_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
+    const observed = Object.fromEntries(
+      Object.keys(fixture.inputHashes)
+        .filter((key) => key !== 'note')
+        .map((repoRelativePath) => [
+          repoRelativePath,
+          createHash('sha256').update(readFileSync(`${REPO_ROOT}${repoRelativePath}`)).digest('hex')
+        ])
+    );
+
+    expect(observed).toEqual(
+      Object.fromEntries(Object.entries(fixture.inputHashes).filter(([key]) => key !== 'note'))
+    );
+  });
 
   let shieldedInitialState: ContractState;
   let transcript: Transcript<AlignedValue>;
