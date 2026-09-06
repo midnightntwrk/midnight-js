@@ -26,10 +26,10 @@ import {
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
 import { isLedger8Request } from './internal/era';
+import { LEDGER8_DEPLOY_UNMAINTAINABLE } from './internal/ledger8-entry';
 import {
   type AnyLedger8DeployContractOptions,
   type AnyLedger8DeployedContract,
-  LEDGER8_PIPELINE_NOT_WIRED,
   type Ledger8CircuitId,
   type Ledger8Contract,
   type Ledger8ContractProviders,
@@ -118,8 +118,17 @@ const createDeployTxOptions = <C extends Contract.Any>(
 
 /**
  * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
- * the raw contract instance rather than inside a `CompiledContract` container. It accepts the
- * shape but cannot execute it yet — see {@link LEDGER8_PIPELINE_NOT_WIRED}.
+ * the raw contract instance rather than inside a `CompiledContract` container.
+ *
+ * REFUSED, for a MEASURED reason about the maintenance authority rather than about the era
+ * pairing: the retained constructor leaves an empty committee with a threshold of one, so the
+ * deployed contract could never be maintained by anyone. The deploy TRANSACTION path itself
+ * composes and submits correctly — this refusal is about the result, not an unfinished pipeline.
+ *
+ * Separately, a retained-era deploy against a POST-FORK head is refused with
+ * `Ledger8DeployOnV9Error`.
+ *
+ * @see {@link KeepStatePipeline} for the measurement and the test that pins it.
  *
  * ARM ORDER IS LOAD-BEARING: this arm is declared FIRST, and the arm that was already LAST stays
  * last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
@@ -156,7 +165,7 @@ export async function deployContract<C extends Contract.Any>(
   options: DeployContractOptions<C> | AnyLedger8DeployContractOptions
 ): Promise<DeployedContract<C> | AnyLedger8DeployedContract> {
   if (isLedger8Request<AnyLedger8DeployContractOptions>(options)) {
-    throw new Error(LEDGER8_PIPELINE_NOT_WIRED);
+    throw new Error(LEDGER8_DEPLOY_UNMAINTAINABLE);
   }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
   return {

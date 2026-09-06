@@ -247,6 +247,23 @@ export interface Ledger8DeployContractOptions<C extends Ledger8Contract> {
 export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
   readonly compiledContract: C;
   readonly contractAddress: ContractAddress;
+  /**
+   * NOT HONOURED on this arm: a key supplied here is DISCARDED.
+   *
+   * The current era's `findDeployedContract` stores this key against the
+   * contract address in the private-state provider, so a caller that deployed
+   * the contract elsewhere can still issue maintenance transactions for it.
+   * The retained arm stores nothing, so passing a key here has no effect —
+   * which is recorded at the field rather than left for a caller to discover,
+   * because a silently discarded key reads as a stored one.
+   *
+   * The field is retained rather than removed so this arm's options stay the
+   * shape the current era's are, and so it can start being honoured without a
+   * change to the type: honouring it is client-side storage, which is
+   * era-independent, so nothing about the retained ledger prevents it. Store
+   * the key yourself, through the private-state provider, if you need it for a
+   * retained-era contract in the meantime.
+   */
   readonly signingKey?: SigningKey;
 }
 
@@ -263,6 +280,24 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
  * A retained-era contract deployed by the caller, which additionally holds the
  * signing key registered as the contract's maintenance authority — something
  * only the deployer has.
+ *
+ * ## No value of this type is produced today, and the reason is measured
+ *
+ * `deployContract`'s retained-era arm refuses, so nothing constructs this. The
+ * refusal is not about an unfinished pipeline: the retained-era deploy
+ * transaction composes and submits, but the contract it would create carries an
+ * EMPTY maintenance committee with a threshold of ONE, which nothing can ever
+ * satisfy, so it could never have a verifier key inserted, removed or replaced
+ * by anyone. `packages/protocol/src/test/v8-deploy.test.ts` pins that
+ * measurement; the full reasoning is on the refusal itself, in
+ * `./internal/ledger8-entry`.
+ *
+ * {@link Ledger8DeployedContract.signingKey} is therefore retained as the shape
+ * this type WILL have once the era seam carries an authority — at which point
+ * the field becomes fillable and the refusal is lifted together with it. Do not
+ * read the field's presence as evidence that the deploy arm works, and do not
+ * fill it with a sampled key: on the retained era that key would be registered
+ * nowhere, so it would name an authority the deployment never had.
  */
 export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledger8FoundContract<C> {
   readonly signingKey: SigningKey;
@@ -331,14 +366,3 @@ export type NeitherContractShape = { readonly __error: typeof NEITHER_ERA_CONTRA
 export interface NeitherEraContractOptions {
   readonly compiledContract: NeitherContractShape;
 }
-
-/**
- * The message every retained-era overload body throws with at this stage.
- *
- * The overloads accept and type-check the retained-era shape, but no execution
- * path exists behind them yet. A bare `Error` on purpose: a registered error
- * code is a published consumer surface, and this condition is removed as soon
- * as the pipeline lands.
- */
-export const LEDGER8_PIPELINE_NOT_WIRED =
-  'The retained-era contract pipeline is not wired yet; this overload accepts the shape but cannot execute it.';

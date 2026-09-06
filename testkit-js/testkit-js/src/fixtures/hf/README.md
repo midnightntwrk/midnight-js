@@ -347,10 +347,61 @@ The `compiled/` path segment matters for the same reason it does under
 `counter-016/`: `.licenserc.yaml`'s `paths-ignore` excludes `**/compiled/**`
 from the Apache-2.0 header check, which generated code must not carry.
 
+### The three recorded `coin-receiver-016` fixtures
+
+Three fixtures were added beside the compiled artifact so that a **coin-moving
+call can be driven without a retained runtime**. They are minted, and on every
+run re-verified against a live execution, by
+`packages/protocol/src/test/era-record-coin-receiver.test.ts` — the same
+provenance pattern as `counter-016/increment-transcript.golden.json`, which was
+itself minted from `v8-execute.test.ts`'s own real execution.
+
+| File | What it is |
+|---|---|
+| `coin-receiver-016/receive-coin-transcript.recording.json` | The `TranscriptPojo` the real `compact-runtime@0.16` runtime produces for `receive_coin`, with the state it ran against. Values are TAGGED — `{"__bigint"}`, `{"__bytes"}` (lower-case hex), `{"__map"}` — because unlike the counter golden this recording is *decoded* and fed back to a real ledger, and `partitionContext.block.parentBlockHash` is a genuine hex string sitting beside genuine byte arrays. |
+| `coin-receiver-016/state-v6-envelope.hex` | A real retained-era `ContractState` (`contract-state[v6]`) whose `.data` is the state that same constructor built, with `receive_coin` registered. The state a pre-fork call is dispatched against. |
+| `coin-receiver-016/state-v9.hex` | The same primary state as a current-era `ContractState` (`contract-state[v8]`), with `receive_coin` registered. The state a post-fork keep-state call is dispatched against. |
+
+Neither `.hex` is reachable through `readHfFixture` — that accessor covers the
+nine top-level state fixtures. Reach these by path, through `hfFixturePath`.
+
+> **The recording substitutes exactly two values, and nothing else.**
+> `partitionContext.block.secondsSinceEpoch` and `.lastBlockTime` carry the wall
+> clock the glue stamps when a circuit context is built, and `executeCircuit`
+> takes no clock — so a recording that kept them would be a different file on
+> every run. They are frozen to `1700000000n` and `0n`. Every other member is
+> the runtime's own output, and the minting suite asserts both halves of that:
+> that the recording matches a live execution everywhere else, and that the
+> frozen recording still composes on **both** eras, so the substitution is not
+> load-bearing.
+
+> **THE VERIFIER KEY IN BOTH ENVELOPES IS A STAND-IN, AND IT IS NOT THE COIN
+> RECEIVER'S KEY.** `coin-receiver-016` ships no `keys/` — nothing in this repo
+> proves against it — so both envelopes register
+> `twin-contract/compiled/keys/increment.verifier` under `receive_coin`. That
+> key belongs to a **different circuit**. It is used only because a
+> `ContractOperation`'s setter validates a real, tagged verifier-key blob and
+> rejects arbitrary bytes, so the slot cannot be filled with a placeholder. Any
+> pre-proving key check driven off these fixtures therefore passes **only
+> because both sides of the comparison use the same stand-in**: it exercises the
+> check as wiring and says nothing about this circuit's real key. Do not read
+> these envelopes as carrying a genuine `receive_coin` key, and do not use them
+> to argue anything about key provenance. Contrast
+> `state-co-v2-only-foreign.hex`, which wears a foreign key deliberately in
+> order to FAIL.
+
 ## Regenerating
 
 ```
 node testkit-js/testkit-js/src/fixtures/hf/generators/generate-all.mjs
+```
+
+To regenerate the three recorded `coin-receiver-016` fixtures (they are minted
+from a real execution inside a test, not by a generator script — see their
+section above):
+
+```
+MINT_HF_FIXTURES=1 yarn --cwd packages/protocol vitest run src/test/era-record-coin-receiver.test.ts
 ```
 
 runs every mint/derive script and overwrites the seven non-golden `.hex`

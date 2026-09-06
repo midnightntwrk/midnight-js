@@ -36,10 +36,10 @@ import {
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
 import { isLedger8Request, requireV9Record } from './internal/era';
+import { findLedger8Contract } from './internal/ledger8-entry';
 import {
   type AnyLedger8FindDeployedContractOptions,
   type AnyLedger8FoundContract,
-  LEDGER8_PIPELINE_NOT_WIRED,
   type Ledger8CircuitId,
   type Ledger8Contract,
   type Ledger8ContractProviders,
@@ -234,8 +234,16 @@ export interface FoundContract<C extends Contract.Any> {
 
 /**
  * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
- * the raw contract instance rather than inside a `CompiledContract` container. It accepts the
- * shape but cannot execute it yet — see {@link LEDGER8_PIPELINE_NOT_WIRED}.
+ * the raw contract instance rather than inside a `CompiledContract` container.
+ *
+ * A READ path, so it composes and submits nothing. It still resolves the head era, dates the
+ * fetched state's envelope against it, and byte-matches every local verifier key against the slot
+ * the chain holds — the checks that make a later call against this contract safe, done once here
+ * so a mis-dispatch is caught at attach time rather than at the first call.
+ *
+ * The deploy record is returned VERSION-TAGGED rather than narrowed to the current era: a
+ * retained-era contract was deployed in whichever era was current at the time, and refusing the
+ * pre-fork arm would refuse exactly the contracts this arm exists to keep callable.
  *
  * ARM ORDER IS LOAD-BEARING: this arm is declared FIRST, and the arm that was already LAST stays
  * last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
@@ -284,7 +292,34 @@ export async function findDeployedContract<C extends Contract.Any>(
   options: FindDeployedContractOptions<C> | AnyLedger8FindDeployedContractOptions
 ): Promise<FoundContract<C> | AnyLedger8FoundContract> {
   if (isLedger8Request<AnyLedger8FindDeployedContractOptions>(options)) {
-    throw new Error(LEDGER8_PIPELINE_NOT_WIRED);
+    const found = await findLedger8Contract(providers, {
+      contract: options.compiledContract,
+      contractAddress: options.contractAddress,
+      // EVERY circuit the artifact declares is checked, not just one the caller
+      // names, and that choice is stated here because it has a cost. It matches
+      // the current era, whose `verifyContractState` checks every provable
+      // circuit id the artifact exposes: attaching is the point at which a
+      // wrong artifact should be caught, and a mismatch on any entry point
+      // means this is not the artifact on chain.
+      //
+      // THE COST: a contract that had a verifier key REMOVED by a maintenance
+      // update can no longer be attached to at all, because the removed slot
+      // now reads as never-deployed. That is not a retained-era quirk -- the
+      // current era refuses the same contract for the same reason -- so the two
+      // eras behave alike, which is what makes it the right default here. A
+      // caller that must attach to such a contract needs a narrower check, and
+      // that would be a change to both eras rather than to this arm alone.
+      //
+      // The names come off the ARTIFACT rather than off the state, so a circuit
+      // the caller can call but the chain never registered is reported as a
+      // blank slot rather than silently skipped.
+      circuitIds: Object.keys(options.compiledContract.impureCircuits)
+    });
+    return {
+      compiledContract: options.compiledContract,
+      contractAddress: options.contractAddress,
+      deployTxData: found.deployTxData
+    };
   }
   const { compiledContract, contractAddress } = options;
   assertIsContractAddress(contractAddress);

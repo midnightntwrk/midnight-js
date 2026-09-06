@@ -51,15 +51,19 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
 };
 
 /**
- * An error indicating that a v8-era payload came back from a provider on a
- * flow that only ever hands out v9 transactions, or that a v8-era record came
- * back from the read surface into that same flow.
+ * An error indicating that a provider, or the read surface, answered in a
+ * different ledger era from the one the flow submitted.
  *
- * The provider seams and the read surface both carry two eras, but this flow
- * tags every outgoing payload as v9 and cannot submit or report anything else.
- * A v8 response therefore means the provider re-tagged or down-converted the
- * payload it was handed, or that the flow is pointed at a network whose records
- * belong to the v8 era.
+ * The provider seams and the read surface both carry two eras, but any ONE
+ * flow through this package tags every outgoing payload with a single era and
+ * cannot submit or report anything else. An answer in the other era therefore
+ * means the provider re-tagged or converted the payload it was handed, or that
+ * the flow is pointed at a network whose records belong to the other era.
+ *
+ * {@link EraInvariantViolationError.expected} names the era the flow submitted,
+ * and so which direction the violation went. It defaults to `'v9'` — the era
+ * every flow that predates the retained-era pipelines submits — so existing
+ * call sites read exactly as they did before it existed.
  */
 export class EraInvariantViolationError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION;
@@ -69,14 +73,17 @@ export class EraInvariantViolationError extends Error {
    * @param circuitId The circuit, or circuits, whose flow this happened on,
    *                  when known. A dApp firing many circuits needs this to
    *                  tell which call broke.
+   * @param expected The era this flow submits, and therefore the only era it
+   *                 can accept back. Defaults to `'v9'`.
    */
   constructor(
     readonly seam: EraSeam,
-    readonly circuitId?: string | readonly string[]
+    readonly circuitId?: string | readonly string[],
+    readonly expected: LedgerVersion = 'v9'
   ) {
     super(
-      `${seam} returned a v8-era payload on a flow that only submits v9 transactions` +
-        `${formatCircuitClause(circuitId) ?? ''}. ` +
+      `${seam} returned a payload from a ledger era other than '${expected}', on a flow that only submits ` +
+        `'${expected}' transactions${formatCircuitClause(circuitId) ?? ''}. ` +
         `Check that the configured provider matches the network this application targets, and that no custom ` +
         `provider implementation re-tags the payload it was handed.`
     );
@@ -228,6 +235,88 @@ export class IndexerInconsistencyError extends Error {
         `client can correct. Retry the operation, and if it persists check the health of the configured indexer.`
     );
     this.name = 'IndexerInconsistencyError';
+  }
+}
+
+/**
+ * An error indicating that a retained-era call would spend a shielded coin the
+ * contract already holds on chain, which this pipeline structurally cannot
+ * compose.
+ *
+ * Building the transaction's Zswap offer for such a spend needs the contract's
+ * Zswap CHAIN state, to locate the coin's commitment in the chain's Merkle tree
+ * — and the retained-era pipeline does not read one. A coin the same call
+ * produced needs no chain state (it is paired with its own output as a
+ * transient), which is why only spends of previously held coins are refused.
+ *
+ * Raised BEFORE the offer is built rather than left to fail deeper: without
+ * this the condition surfaced as a bare assertion inside the offer builder,
+ * naming neither the era nor the circuit, which told a caller nothing about
+ * why its call could not be composed.
+ *
+ * The fix is to supply the retained arm with a Zswap chain state, which is
+ * tracked separately; until then this refuses in the caller's own test run
+ * rather than in production.
+ */
+export class Ledger8ShieldedSpendUnsupportedError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SHIELDED_SPEND_UNSUPPORTED;
+
+  /**
+   * @param circuitId The circuit whose call was refused.
+   */
+  constructor(readonly circuitId: string) {
+    super(
+      `Circuit '${circuitId}' spends a shielded coin the contract already holds on chain, which a ` +
+        'retained-era call cannot compose: building the Zswap offer for such a spend needs the ' +
+        "contract's Zswap chain state, and the retained-era pipeline does not read one. A coin the same " +
+        'call produces is fine — it is paired with its own output — so only spends of previously held ' +
+        'coins are affected. Run this circuit against a contract produced by the current toolchain.'
+    );
+    this.name = 'Ledger8ShieldedSpendUnsupportedError';
+  }
+}
+
+/**
+ * An error indicating that a provider rejected a retained-era transaction at
+ * one of the three transaction-flow seams, with the provider's own failure
+ * SANITIZED onto `cause`.
+ *
+ * ## Why the external failure does not travel as-is
+ *
+ * A proof-server HTTP failure and a node submit rejection both routinely carry
+ * payload material: a response body echoing the request, a message quoting the
+ * serialized transaction, or vendor-specific own properties holding either.
+ * Propagating such an error unchanged puts that material into whatever the
+ * caller logs it with. So the cause is rebuilt here as a plain {@link Error}
+ * carrying the original's CLASS NAME and a redacted message, and nothing else:
+ * no own properties, and no further `cause` chain.
+ *
+ * This package's own coded errors are NOT wrapped: they carry no external
+ * payload, and a caller narrowing on `V8PayloadUnsupportedError` or
+ * {@link EraInvariantViolationError} must keep seeing them.
+ *
+ * @see {@link KeepStatePipeline} for what redaction removes and what is dropped.
+ */
+export class Ledger8SeamFailedError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED;
+
+  /**
+   * @param seam The provider method that rejected.
+   * @param circuitId The circuit this flow was running.
+   * @param cause The provider's failure, already sanitized by the caller.
+   */
+  constructor(
+    readonly seam: EraSeam,
+    readonly circuitId: string,
+    cause: Error
+  ) {
+    super(
+      `${seam} rejected a retained-era transaction (circuit '${circuitId}'). The provider's own failure ` +
+        'is on `cause`, with its message redacted of anything that could carry transaction or witness ' +
+        'material; read the provider\'s own logs for the unredacted detail.',
+      { cause }
+    );
+    this.name = 'Ledger8SeamFailedError';
   }
 }
 
