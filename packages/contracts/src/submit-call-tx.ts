@@ -20,12 +20,12 @@ import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight
 import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
+import { isLedger8Request } from './internal/era';
 import * as Transaction from './internal/transaction';
 import {
   type AnyLedger8CallTxOptions,
   type AnyLedger8FinalizedCallTxData,
   type AnyLedger8SubmittedCallTx,
-  isLedger8Options,
   LEDGER8_PIPELINE_NOT_WIRED,
   type Ledger8CallTxOptions,
   type Ledger8CircuitId,
@@ -131,7 +131,7 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
   options: CallTxOptions<C, PCK> | AnyLedger8CallTxOptions,
   transactionContext?: TransactionContext<C, PCK>
 ): Promise<FinalizedCallTxData<C, PCK> | CallResult<C, PCK> | AnyLedger8FinalizedCallTxData> {
-  if (isLedger8Options<AnyLedger8CallTxOptions>(options)) {
+  if (isLedger8Request<AnyLedger8CallTxOptions>(options)) {
     throw new Error(LEDGER8_PIPELINE_NOT_WIRED);
   }
   assertIsContractAddress(options.contractAddress);
@@ -265,7 +265,7 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
   providers: SubmitCallTxProviders<C, PCK>,
   options: CallTxOptions<C, PCK> | AnyLedger8CallTxOptions
 ): Promise<SubmittedCallTx<C, PCK> | AnyLedger8SubmittedCallTx> {
-  if (isLedger8Options<AnyLedger8CallTxOptions>(options)) {
+  if (isLedger8Request<AnyLedger8CallTxOptions>(options)) {
     throw new Error(LEDGER8_PIPELINE_NOT_WIRED);
   }
   assertIsContractAddress(options.contractAddress);

@@ -16,6 +16,7 @@
 import { ledger, loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  contractStateEnvelopeVersion,
   DeserializationError,
   fromHex,
   hasErrorCode,
@@ -25,7 +26,6 @@ import {
 } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, test, vi } from 'vitest';
 
-import { contractStateEnvelopeVersion } from '../codec';
 import { IndexerDataError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
 import { HEAD_PROTOCOL_VERSION_QUERY, RAW_CONTRACT_STATE_QUERY } from '../query-definitions';
@@ -97,6 +97,14 @@ describe('contract-state envelope tags', () => {
   // Pins the tag-to-era table against what the runtimes actually write. A
   // runtime bump that changes the state format version fails here, loudly,
   // instead of turning every state read into a rejected envelope.
+  //
+  // The table itself lives in `@midnight-ntwrk/midnight-js-utils`
+  // (`contractStateEnvelopeVersion`), beside the tag parser it is built on, because the contracts
+  // package's era dispatch reads it too and a second copy of a table that decides which era
+  // decodes attacker-supplied bytes is a security-relevant divergence
+  // (`packages/protocol/docs/shared-table-discipline.md`). These two assertions stay HERE because
+  // this is the package that has both ledger runtimes as devDependencies to mint a real state
+  // with; they exercise the shared implementation through the import above.
   test('maps the tag the v9 runtime writes onto the v9 ledger era', () => {
     expect(contractStateEnvelopeVersion(new Uint8Array(fromHex(mintV9ContractStateHex())))).toBe('v9');
   });

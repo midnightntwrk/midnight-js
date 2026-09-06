@@ -21,8 +21,10 @@ import type { ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { deployContract } from '../deploy-contract';
+import { EraArtifactMismatchError } from '../errors';
 import { findDeployedContract } from '../find-deployed-contract';
-import { isLedger8Options, LEDGER8_PIPELINE_NOT_WIRED, type Ledger8ContractProviders } from '../ledger8-contract';
+import { isLedger8Request } from '../internal/era';
+import { LEDGER8_PIPELINE_NOT_WIRED, type Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
 import type {
   CoinReceiver016Contract,
@@ -238,9 +240,18 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
     };
 
     it('recognises the real artifact as retained-era, and the current-era container as not', () => {
-      expect(isLedger8Options({ compiledContract: contract })).toBe(true);
-      expect(isLedger8Options({ compiledContract: { tag: 'counter', pipe: (): void => undefined } })).toBe(false);
-      expect(isLedger8Options({ compiledContract: undefined })).toBe(false);
+      // `isLedger8Request` is the single era predicate, in the narrowing form these entry points
+      // need; it replaced a provisional `'impureCircuits' in ...` check that answered TRUE for a
+      // raw current-era contract instance, which carries that member too.
+      expect(isLedger8Request({ compiledContract: contract })).toBe(true);
+      expect(isLedger8Request({ compiledContract: { tag: 'counter', pipe: (): void => undefined } })).toBe(false);
+    });
+
+    it('refuses a contract belonging to neither era, where the superseded check returned false', () => {
+      // The changed failure mode, and the reason the predicate was replaced rather than patched:
+      // the provisional check answered `false` here and let the request fall into the current-era
+      // pipeline, to fail later on something unrelated to the era.
+      expect(() => isLedger8Request({ compiledContract: undefined })).toThrow(EraArtifactMismatchError);
     });
 
     // No `args` on these options: the fixture circuit takes no arguments of its own, and

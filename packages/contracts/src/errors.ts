@@ -13,9 +13,12 @@
  * limitations under the License.
  */
 
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { AnyProvableCircuitId, FinalizedTxData, PrivateStateId, Seam } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+
+import { NEITHER_ERA_CONTRACT_MESSAGE } from './ledger8-contract';
 
 /**
  * The seams this flow narrows an era at: the three transaction-flow provider
@@ -81,6 +84,152 @@ export class EraInvariantViolationError extends Error {
   }
 }
 
+/**
+ * Why an object was refused as belonging to the wrong era, or to neither.
+ *
+ * One error class over three reasons rather than three classes: a caller catches "I handed the
+ * framework the wrong kind of contract" as one condition, and the reason is what tells it which
+ * of the three mistakes it made.
+ */
+export type EraArtifactMismatchReason =
+  /** A raw current-era contract instance, passed where its `CompiledContract` container belongs. */
+  | 'unwrapped-current-era-contract'
+  /** An object matching no era's shape at all. */
+  | 'unrecognised-contract-shape'
+  /** A current-era artifact, on a network head that is still pre-fork. */
+  | 'current-era-artifact-on-pre-fork-head';
+
+const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason, string>> = Object.freeze({
+  // Named as the mistake it is: the raw instance and the container both carry `impureCircuits`, so
+  // nothing about the value the caller passed looks wrong to it.
+  'unwrapped-current-era-contract':
+    'A raw contract instance was passed where a CompiledContract container is expected. ' +
+    'The current Compact toolchain wraps its generated contract in a CompiledContract, which is what ' +
+    'carries the witnesses and the compiled-asset paths an execution needs; the bare instance carries ' +
+    'neither. Wrap it — CompiledContract.make(tag, Contract), then attach its witnesses — and pass the ' +
+    'container instead of the instance.',
+  // The single settled wording, read from where it is written rather than restated.
+  'unrecognised-contract-shape':
+    `${NEITHER_ERA_CONTRACT_MESSAGE} ` +
+    'Pass either a CompiledContract container produced by the current toolchain, or the contract ' +
+    'instance the retained toolchain generates.',
+  'current-era-artifact-on-pre-fork-head':
+    'This contract was produced by the current Compact toolchain, but the network head is still on the ' +
+    'pre-fork ledger era, which cannot execute it. Run this operation against a contract produced by the ' +
+    'retained toolchain until the network head has crossed the fork.'
+});
+
+/**
+ * An error indicating that the contract handed to an entry point does not belong to the era the
+ * operation can execute — or to either era.
+ *
+ * Raised before any pipeline is entered, so no proving, no provider round trip and no state decode
+ * happens on a request that cannot succeed.
+ *
+ * @see {@link EraDispatch} for how the era is established and which pairings are refused.
+ */
+export class EraArtifactMismatchError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH;
+
+  /**
+   * @param reason Which of the three era mismatches this is. Also the discriminant a caller
+   *               branches on, so it is retained on the error rather than only rendered.
+   */
+  constructor(readonly reason: EraArtifactMismatchReason) {
+    super(ERA_ARTIFACT_MISMATCH_MESSAGES[reason]);
+    this.name = 'EraArtifactMismatchError';
+  }
+}
+
+/**
+ * An error indicating that a contract produced by the retained Compact toolchain was submitted for
+ * DEPLOYMENT to a network head that has already crossed the fork.
+ *
+ * The retained era is supported for calls against contracts already on chain, which is what keeps
+ * pre-fork deployments callable. A new deployment has no such history to preserve, so it is refused
+ * rather than written to the chain in an era the network has left.
+ */
+export class Ledger8DeployOnV9Error extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9;
+
+  constructor() {
+    super(
+      'A contract produced by the retained Compact toolchain cannot be deployed to a post-fork network ' +
+        'head. The retained era stays supported for calls against contracts that were deployed before the ' +
+        'fork, but a new deployment has no pre-fork history to preserve. Recompile the contract with the ' +
+        'current toolchain and deploy that artifact — see the runtime-deploy chapter of the migration guide.'
+    );
+    this.name = 'Ledger8DeployOnV9Error';
+  }
+}
+
+/**
+ * An error indicating that the network head this operation resolved is a different ledger era from
+ * the one the contract state it fetched was written by, and that a fresh head read confirms the
+ * head reading was the stale half.
+ *
+ * The two are read at separate moments, so during the fork window an operation can start from a
+ * head reading that is already behind the state it goes on to fetch.
+ *
+ * The message deliberately does NOT claim which of the two readings moved: the check establishes
+ * that they disagree and that a fresh read agrees with the state, never a direction. Do not add
+ * one.
+ *
+ * @see {@link EraDispatch} for the five-step check that produces this error.
+ */
+export class HeadStateEraMismatchError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH;
+
+  /**
+   * @param head The era the operation resolved from the network head.
+   * @param stateEra The era the fetched state's own envelope was written by.
+   */
+  constructor(
+    readonly head: LedgerVersion,
+    readonly stateEra: LedgerVersion
+  ) {
+    super(
+      `This operation resolved a '${head}'-era network head, but the contract state it fetched carries a ` +
+        `'${stateEra}'-era envelope, and re-reading the head returned '${stateEra}' as well. The era this ` +
+        `operation started from is not the era the network now reports, which is what happens while the ` +
+        `network crosses the ledger fork. Re-read the network head, then re-run the operation against the ` +
+        `era it now reports.`
+    );
+    this.name = 'HeadStateEraMismatchError';
+  }
+}
+
+/**
+ * An error indicating that the read surface reported a network head and a contract state whose eras
+ * disagree, and that the disagreement survived a fresh head read.
+ *
+ * Distinct from {@link HeadStateEraMismatchError}, and the distinction is the point: there the head
+ * reading was merely stale and re-running fixes it. Here the head is confirmed, so the served state
+ * and the served head cannot both describe one chain — which is a fault in the data served, not a
+ * timing artefact the caller can correct. Deliberately NOT reported as a fork in progress: nothing
+ * observed here establishes that one is under way, and telling a caller to wait out a fork that is
+ * not happening is worse than telling it to retry.
+ */
+export class IndexerInconsistencyError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY;
+
+  /**
+   * @param head The era the network head reported, confirmed by a fresh read.
+   * @param stateEra The era the fetched state's own envelope was written by.
+   */
+  constructor(
+    readonly head: LedgerVersion,
+    readonly stateEra: LedgerVersion
+  ) {
+    super(
+      `The read surface reported a '${head}'-era network head — confirmed by a second, fresh read — while ` +
+        `serving a contract state that carries a '${stateEra}'-era envelope. Those two answers cannot both ` +
+        `describe one chain, so this is an inconsistency in what was served rather than a stale reading this ` +
+        `client can correct. Retry the operation, and if it persists check the health of the configured indexer.`
+    );
+    this.name = 'IndexerInconsistencyError';
+  }
+}
 
 interface EffectContractError {
   readonly _tag: string;
@@ -227,5 +376,59 @@ export class ScopedTransactionIdentityMismatchError extends Error {
       ` for contract '${requested.contractAddress}'` +
       (requested.privateStateId ? ` (privateStateId: '${requested.privateStateId}')` : '') +
       '. Scoped transactions must target the same contract and private state identity.';
+  }
+}
+
+/**
+ * An error indicating that a contract's on-chain entry point declares no verifier key at all.
+ *
+ * An absent key means that entry point was never deployed — the shape a constructor-built state
+ * has before a deploy fills it in — rather than a key that happens to be empty
+ * (`packages/protocol/docs/fail-closed-decoding.md`). There is nothing for a proof to be verified
+ * against, so the call is refused before any proving happens.
+ */
+export class BlankVerifierKeySlotError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT;
+
+  /**
+   * @param circuitId The entry point whose slot is blank.
+   */
+  constructor(readonly circuitId: string) {
+    super(
+      `The deployed contract declares entry point '${circuitId}' but registers no verifier key against ` +
+        `it, so a call to '${circuitId}' has nothing to be verified against. A blank slot means that entry ` +
+        `point was never deployed: deploy the contract's verifier keys, or check that the address this ` +
+        `operation targets is the contract you compiled.`
+    );
+    this.name = 'BlankVerifierKeySlotError';
+  }
+}
+
+/**
+ * An error indicating that the verifier key compiled locally for a circuit does not byte-match the
+ * key registered on chain for that entry point.
+ *
+ * Raised BEFORE proving, which is the whole value of the check: a proof generated against a key the
+ * chain does not hold is rejected on submission, after the cost of generating it has been paid.
+ *
+ * This is also what catches a mis-dispatched operation — the wrong pipeline, or the wrong contract
+ * address — because either one shows up here as a key that does not match the slot.
+ *
+ * @see {@link VerificationPath} for what this check buys and what it cannot classify.
+ */
+export class VerifierKeyMismatchError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH;
+
+  /**
+   * @param circuitId The entry point whose key did not match.
+   */
+  constructor(readonly circuitId: string) {
+    super(
+      `The verifier key compiled for '${circuitId}' does not match the key the deployed contract registers ` +
+        `for that entry point, so a proof generated from this artifact would be rejected on submission. The ` +
+        `deployed contract is a different build from this local one: point the operation at the address this ` +
+        `artifact was compiled for, or rebuild against the deployed contract's source.`
+    );
+    this.name = 'VerifierKeyMismatchError';
   }
 }

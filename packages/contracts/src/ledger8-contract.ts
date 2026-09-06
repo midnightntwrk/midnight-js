@@ -25,9 +25,13 @@
  * container, and the fact that retained-era circuits and `initialState` return
  * plain objects where the current era returns `Promise`s.
  *
+ * There is no era predicate in this file. The single RUNTIME predicate is
+ * `pipelineEraOf` in `./internal/era`; do not add a second one here.
+ *
  * @see {@link OverloadTyping} for why the declarations are hand-written and
  *      runtime-pinned, how openness is expressed without `any`, and why the
  *      order of the overload arms is load-bearing.
+ * @see {@link EraDispatch} for the runtime predicate and what it may not use.
  */
 
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
@@ -287,39 +291,17 @@ export type AnyLedger8FindDeployedContractOptions = Ledger8FindDeployedContractO
 export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
 
 /**
- * Tells the two eras apart at runtime, so each entry point's implementation can refuse a
- * retained-era request before touching the current-era pipeline.
+ * The migration-guide message for a contract belonging to neither era. This is the SINGLE place its
+ * text is written.
  *
- * A PROVISIONAL structural check, and deliberately not the era predicate this framework will
- * ship: it tests for the member the retained-era artifact installs and the current era's container
- * does not, which is enough to fork a body whose retained-era branch only throws.
+ * DO NOT DELETE AS UNUSED, and do not inline it either. It is consumed by
+ * `EraArtifactMismatchError` in `./errors`, which is what `pipelineEraOf` in `./internal/era`
+ * raises when it is handed an object belonging to neither era.
+ * `src/test/typecheck/overloads.test-d.ts` pins the wording verbatim, and it is not re-exported
+ * from the package index.
  *
- * Name the type parameter explicitly at each call site rather than letting it infer, so the
- * narrowing removes exactly the retained-era arm of that entry point's parameter union.
- *
- * @param options The entry point's argument, before its era is known.
- * @returns `true` when the contract is a retained-era instance.
- * @see {@link OverloadTyping} for this check's known blind spot, and for the branded predicate
- *      that replaces it.
- */
-export const isLedger8Options = <L extends { readonly compiledContract: Ledger8Contract }>(
-  options: { readonly compiledContract: unknown } | L
-): options is L =>
-  typeof options.compiledContract === 'object' &&
-  options.compiledContract !== null &&
-  'impureCircuits' in options.compiledContract;
-
-/**
- * The migration-guide message the compiler renders for a contract belonging to neither era. This is
- * the SINGLE place its text is written.
- *
- * DO NOT DELETE AS UNUSED. Nothing consumes this text yet, and that is expected: its destination
- * is the typed, thrown error that era resolution raises when it is handed an object belonging to
- * neither era. `src/test/typecheck/overloads.test-d.ts` pins the wording verbatim, and it is not
- * re-exported from the package index.
- *
- * @see {@link OverloadTyping} for why the text is retained ahead of its consumer, and why it is
- *      not wired into an overload arm.
+ * @see {@link OverloadTyping} for why the text is a runtime `const`, and why it is not wired into
+ *      an overload arm.
  */
 export const NEITHER_ERA_CONTRACT_MESSAGE =
   'Object is neither a 0.16- nor a 0.18-generated contract. See migration guide §window.';

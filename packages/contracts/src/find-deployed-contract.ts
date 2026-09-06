@@ -35,11 +35,10 @@ import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
-import { requireV9Record } from './internal/era';
+import { isLedger8Request, requireV9Record } from './internal/era';
 import {
   type AnyLedger8FindDeployedContractOptions,
   type AnyLedger8FoundContract,
-  isLedger8Options,
   LEDGER8_PIPELINE_NOT_WIRED,
   type Ledger8CircuitId,
   type Ledger8Contract,
@@ -284,7 +283,7 @@ export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: FindDeployedContractOptions<C> | AnyLedger8FindDeployedContractOptions
 ): Promise<FoundContract<C> | AnyLedger8FoundContract> {
-  if (isLedger8Options<AnyLedger8FindDeployedContractOptions>(options)) {
+  if (isLedger8Request<AnyLedger8FindDeployedContractOptions>(options)) {
     throw new Error(LEDGER8_PIPELINE_NOT_WIRED);
   }
   const { compiledContract, contractAddress } = options;
