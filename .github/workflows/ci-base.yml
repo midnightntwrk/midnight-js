@@ -55,6 +55,15 @@ jobs:
       - name: Check dependency constraints
         run: yarn constraints
 
+      # Test files sit outside tsconfig.build.json and vitest transpiles without
+      # type-checking them, so a compile-time assertion written in a test file is
+      # invisible to `yarn test`. The pre-push hook runs the same check, but a
+      # `--no-verify` push would otherwise carry a type-level regression through a
+      # green CI. Scoped to `packages/*` because that is what this job builds; the
+      # testkit workspaces are typechecked in their own leg.
+      - name: Typecheck tests
+        run: yarn typecheck:tests:core
+
       - name: Run tests
         run: |
           yarn test ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
