@@ -39,6 +39,20 @@ const TWIN_COMPILED = hfFixturePath('private-counter-twin/compiled/contract/inde
 const RETAINED_CONTRACT_INFO = hfFixturePath('private-counter-016/compiled/compiler/contract-info.json');
 const TWIN_CONTRACT_INFO = hfFixturePath('private-counter-twin/compiled/compiler/contract-info.json');
 const SOURCE = hfFixturePath('private-counter-twin/private-counter.compact');
+const FROZEN_STORE = path.dirname(hfFixturePath('pre-fork-private-state-store/store/CURRENT'));
+const FROZEN_STORE_ENVELOPE = hfFixturePath('pre-fork-private-state-store/ENVELOPE.md');
+// The state `generators/mint-pre-fork-store.mjs` wrote into that store, and the
+// id it wrote it under. Synthetic; see the fixture's ENVELOPE.md.
+const FROZEN_STATE_ID = 'private-counter-frozen';
+const FROZEN_PRIVATE_STATE: CounterPrivateState = {
+  step: 7n,
+  callCount: 1n,
+  secretKey: Uint8Array.from({ length: 32 }, (_, index) => index),
+  nullifiers: new Map([
+    ['0xfeed', 3n],
+    ['0xbeef', 9n]
+  ])
+};
 
 // The digest of the source BOTH builds were compiled from. Spelled out rather
 // than derived, so editing the contract without recompiling fails here: the
@@ -49,6 +63,58 @@ const SOURCE_SHA256 = '183c8ca3b57d5c9d466a5d1915f6cfc4ebb45e33dbd056d46483e12ab
 
 // Where a maintainer goes when one of the fixture gates below fires.
 const RECOMPILE = 'recompile BOTH sides from the one source and recommit them - see "Regenerating" in src/fixtures/hf/README.md';
+
+// Deliberately NOT "regenerate the store". These bytes were written by an
+// earlier build; failing to read them means this checkout can no longer open
+// private state a released version wrote, which is a finding, not a stale
+// fixture. ENVELOPE.md spells out what accepting such a break requires.
+const ENVELOPE_BREAK =
+  'this checkout cannot read a private-state store an earlier build wrote - do NOT re-mint the fixture to make this pass; read src/fixtures/hf/pre-fork-private-state-store/ENVELOPE.md';
+
+// The other half of that decision: the store was re-minted, so a generation
+// section recording the new digest and what it broke has to go with it. Also
+// the first thing to check when the read below fails -- if the bytes on disk are
+// not the bytes ENVELOPE.md describes, nothing said about the envelope applies.
+const ENVELOPE_UNRECORDED =
+  'the frozen store on disk is not the one src/fixtures/hf/pre-fork-private-state-store/ENVELOPE.md records - either it was re-minted without adding a generation section, or the checkout is missing part of it';
+
+// A LevelDB store opens perfectly happily with files missing and simply finds
+// no record, so an incomplete fixture reads as `null` rather than as an error.
+// That is NOT an envelope break, and it must never be reported as one: it
+// happened once already, when `.gitignore`'s `*.log` rule left the only file
+// holding the encrypted state untracked and a fresh clone got a store that
+// opened and returned nothing. Checked against the recorded digest rather than
+// against a `null` read, because `null` has a second cause — see the test.
+const FIXTURE_INCOMPLETE =
+  'the frozen store on disk is not the bytes ENVELOPE.md records, so nothing below can be concluded about the envelope - most likely the checkout is missing part of src/fixtures/hf/pre-fork-private-state-store/store/; restore it rather than re-minting';
+
+/**
+ * Digest over a directory's committed bytes: every file's path, length and
+ * content, in sorted order. Stable for as long as nobody re-mints the store,
+ * which is exactly the event it exists to make visible.
+ */
+const digestDirectory = async (root: string): Promise<string> => {
+  const walk = async (dir: string): Promise<string[]> => {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const nested = await Promise.all(
+      entries.map(async (entry) => {
+        const full = path.join(dir, entry.name);
+        return entry.isDirectory() ? walk(full) : [path.relative(root, full).split(path.sep).join('/')];
+      })
+    );
+    return nested.flat();
+  };
+  const digest = createHash('sha256');
+  for (const member of (await walk(root)).sort()) {
+    const bytes = await fs.readFile(path.join(root, member));
+    digest.update(member).update('\0').update(String(bytes.length)).update('\0').update(bytes);
+  }
+  return digest.digest('hex');
+};
+
+/** The digest the newest generation in ENVELOPE.md records. */
+const recordedStoreDigest = async (): Promise<string | undefined> =>
+  /^- digest: ([0-9a-f]{64})$/m.exec(await fs.readFile(FROZEN_STORE_ENVELOPE, 'utf8'))?.[1];
 
 const RETAINED_RUNTIME_VERSION = '0.16.0';
 const COIN_PUBLIC_KEY = 'ca'.repeat(32);
@@ -417,6 +483,64 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     expect(postFork.seen).toEqual([{ ledger: { round: 0n }, privateState: preFork.privateState }]);
     expect(postFork.round).toBe(preFork.round);
     expect(postFork.seen[0].privateState.callCount).toBe(1n);
+  });
+
+  /**
+   * The one test here whose INPUT bytes this process did not write. Every other
+   * round trip in this file writes and reads with the same build, so a change to
+   * the persistence envelope — superjson's encoding, the AES framing, the PBKDF2
+   * parameters — moves both halves together and goes unnoticed. These bytes
+   * cannot move.
+   *
+   * The store is opened from a copy: LevelDB writes `LOCK` and `LOG` into any
+   * directory it opens, and the fixture must stay untouched.
+   */
+  it('opens a private-state store written by an earlier build, and decodes it to the same value', async () => {
+    // Completeness established from the BYTES, before the store is opened,
+    // rather than inferred afterwards from a read that came back empty. A
+    // COMPLETE store reads back `null` too — if the provider changed how a state
+    // id maps to a stored key, say — and calling that a missing file would send
+    // a maintainer hunting a phantom while the real finding is that no existing
+    // user store can be read. With this ahead of the read, any `null` below is
+    // unambiguously an envelope break.
+    expect(await digestDirectory(FROZEN_STORE), FIXTURE_INCOMPLETE).toBe(await recordedStoreDigest());
+
+    const store = path.join(dbName, 'frozen-store-copy');
+    await fs.cp(FROZEN_STORE, store, { recursive: true });
+    const provider = levelPrivateStateProvider<string, CounterPrivateState>({
+      midnightDbName: store,
+      privateStoragePasswordProvider: () => PASSWORD,
+      accountId: ACCOUNT_ID
+    });
+    provider.setContractAddress(CONTRACT_ADDRESS);
+    await provider.invalidateEncryptionCache();
+
+    // The envelope break shows up as a decrypt failure, thrown before any
+    // assertion runs, so the guidance is re-thrown here rather than left on an
+    // `expect` the maintainer never reaches. Original error kept as the cause.
+    const readBack = await provider.get(FROZEN_STATE_ID).catch((error: unknown) => {
+      throw new Error(ENVELOPE_BREAK, { cause: error });
+    });
+
+    // Decoded value, as everywhere else here — what is frozen is the input, not
+    // the comparison. The key is re-derived from the fixed test password and the
+    // salt these committed bytes carry, so this also pins the salt record.
+    expect(readBack, ENVELOPE_BREAK).toEqual(FROZEN_PRIVATE_STATE);
+    expect(readBack?.step, ENVELOPE_BREAK).toBe(7n);
+    expect(readBack?.secretKey).toBeInstanceOf(Uint8Array);
+    expect(readBack?.nullifiers).toBeInstanceOf(Map);
+  });
+
+  /**
+   * Couples the note to the bytes. Re-minting the store without recording a new
+   * generation fails here, so the decision ENVELOPE.md asks for cannot be
+   * skipped by quietly regenerating.
+   */
+  it('records the frozen store\'s digest in the envelope note it ships with', async () => {
+    const recorded = await recordedStoreDigest();
+
+    expect(recorded, `${FROZEN_STORE_ENVELOPE} declares no "- digest: <sha256>" line`).toBeDefined();
+    expect(await digestDirectory(FROZEN_STORE), ENVELOPE_UNRECORDED).toBe(recorded);
   });
 
   it('keeps the values written before the fork intact when the post-fork dApp writes on top of them', async () => {

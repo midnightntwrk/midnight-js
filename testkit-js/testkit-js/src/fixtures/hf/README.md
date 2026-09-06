@@ -48,8 +48,8 @@ const source = hfFixturePath('twin-contract/counter.compact');  // absolute path
 ```
 
 `readHfFixture` covers the nine `.hex` states. Everything else — every compiled
-contract, `increment-transcript.golden.json`, `fixtures.json`, this README —
-is reached by path through `hfFixturePath`. Both accessors throw rather than
+contract, `increment-transcript.golden.json`, the frozen private-state store,
+`fixtures.json`, this README — is reached by path through `hfFixturePath`. Both accessors throw rather than
 returning a placeholder: an unknown fixture name, a path that climbs out of the
 fixture directory, a missing file and a hex file that is not whole hex are all
 errors. `hfFixturesManifest` is validated against `HF_FIXTURE_NAMES` at import,
@@ -434,6 +434,52 @@ other and cannot see a source that has moved out from under both of them.
 that shared source, since nothing else in that directory says where its contents
 came from.
 
+## `pre-fork-private-state-store/`
+
+A small LevelDB database written by this repo's own private-state provider and
+then **frozen** — the one fixture here that is not about the ledger's schema at
+all, but about the envelope private state is stored IN.
+
+Why it exists: every other private-state round trip in this repo writes and
+reads with the same build, in the same process. A change to the persistence
+envelope — superjson's encoding, the AES framing, the PBKDF2 parameters, the
+salt record — moves both halves of such a round trip together, so the suite
+stays green while every store an earlier release wrote becomes unreadable. This
+is measured, not asserted: with the KDF iteration count changed by one, the
+provider's own 276-test suite passes clean and only the test that reads these
+frozen bytes fails.
+
+| File | What it is |
+|---|---|
+| `store/` | The database: `CURRENT`, `MANIFEST-000004`, `000005.ldb`, `000006.log`. About 1.3 KB. `LOCK`/`LOG`/`LOG.old` are runtime files and are not committed. |
+| `ENVELOPE.md` | The generation log, and the rules for changing it. Read it before touching anything here. |
+
+One private state, under one contract address and state id, holding a bigint, a
+`Uint8Array` and a `Map` — the three kinds JSON cannot carry, which is what makes
+a decode regression visible. Nothing more: this is a fixture, not a corpus.
+
+**Everything in it is synthetic and it is safe to publish.** The password is the
+consuming suite's own fixed test constant, committed in plain sight next to the
+ciphertext; `secretKey` is the bytes `0x00..0x1f` in order; the nullifiers are
+two made-up strings; the salt was minted for this fixture alone. There is no key
+material here that means anything outside this suite. It is not a captured
+artifact from any wallet, and its password must not be copied anywhere.
+
+**Regenerating it is how you ACCEPT a break, not how you fix a red test.** If
+the consuming test fails against these bytes, the finding is that this checkout
+can no longer read private state an earlier release wrote — a dApp user's own
+state, unreadable after an upgrade. Re-minting makes the failure disappear along
+with the evidence. `ENVELOPE.md` sets out what accepting the break requires, and
+the suite enforces the part that can be enforced: it compares the digest recorded
+in that note with the bytes on disk, so a regeneration that does not record a new
+generation fails. `generators/mint-pre-fork-store.mjs` is deliberately **not**
+wired into `generate-all.mjs`, so nothing re-mints it as a side effect of
+regenerating something else.
+
+Read by `testkit-js/testkit-js/test/cross-window.ut.test.ts`, which copies
+`store/` to a temporary directory first — LevelDB writes `LOCK` and `LOG` into
+any directory it opens, and the fixture has to stay untouched.
+
 ## `coin-receiver-016/`
 
 The one thing `counter-016/` cannot exercise: a circuit that **receives a
@@ -481,8 +527,15 @@ that never reaches the seam under test.
 
 The artifact is committed byte-verbatim, including its trailing
 `//# sourceMappingURL=index.js.map` line with no `.js.map` beside it — same as
-`counter-016/`, so a recompile can be diffed against it directly. Vitest prints
-one harmless "could not read map file" line per run because of it.
+`counter-016/`, so a recompile can be diffed against it directly. That line
+makes Vitest print a "could not read map file" block on any run that imports the
+artifact; nothing imports it in this package's own unit suite, so testkit's
+output is clean, and it shows up wherever the artifact is actually driven. No
+list of those places is given here on purpose — the claim this paragraph
+replaced named a count, went stale, and its replacement named one package and
+went stale again. `grep -rl 'counter-016' packages/` answers it at the time of
+asking. The `private-counter` pair deletes that line instead — see its section
+above for why the two differ.
 
 The `compiled/` path segment matters for the same reason it does under
 `counter-016/`: `.licenserc.yaml`'s `paths-ignore` excludes `**/compiled/**`
@@ -598,6 +651,23 @@ shows it as plain `0.34.0`; the directory it installs under carries the `-rc.0`)
 and the consuming test asserts that coupling, so a mismatch is caught rather
 than discovered at import. Do not copy `index.js.map` or `zkir/` across: neither
 is committed.
+
+To re-mint `pre-fork-private-state-store/` — **read
+`pre-fork-private-state-store/ENVELOPE.md` first.** Doing this is a decision to
+let private state written by earlier releases stop being readable, not a way to
+clear a red test, which is why it is not part of `generate-all.mjs`:
+
+```
+cd testkit-js/testkit-js
+node src/fixtures/hf/generators/mint-pre-fork-store.mjs
+# Exactly these three. NOT the numbered NNNNNN.log -- that is LevelDB's
+# write-ahead log and holds the state; a store without it opens and finds
+# nothing. (`.gitignore` has a negation for this directory for that reason.)
+rm -f src/fixtures/hf/pre-fork-private-state-store/store/{LOCK,LOG,LOG.old}
+# then add a generation section to ENVELOPE.md recording the new digest and what
+# the break means for a user holding an older store -- the suite compares that
+# recorded digest with the bytes, so this step cannot be skipped.
+```
 
 ## Version pin note (deviation from the brief, with evidence)
 
