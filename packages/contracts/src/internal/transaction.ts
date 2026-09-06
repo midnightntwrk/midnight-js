@@ -20,11 +20,17 @@ import { type AnyProvableCircuitId, type PrivateStateId, SucceedEntirely } from 
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';
-import { CallTxFailedError, ScopedTransactionIdentityMismatchError } from '../errors';
+import {
+  CallTxFailedError,
+  MixedEraScopeError,
+  ScopedTransactionIdentityMismatchError,
+  ScopedTxEraUnsupportedError
+} from '../errors';
 import { type ContractStates,type PublicContractStates } from '../get-states';
 import { submitTx, type SubmitTxOptions } from '../submit-tx';
 import type * as Transaction from '../transaction';
 import { type FinalizedCallTxData, type UnsubmittedCallTxData } from '../tx-model';
+import { acquireHeadEra, type HeadVersionSource, readHeadEra, type ResolvedOperationEra } from './era';
 
 /** @internal */
 export interface CachedStateIdentity {
@@ -80,6 +86,41 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
   };
 };
 
+/**
+ * Resolves the ONE era reading a scope runs under, and refuses a scope the head
+ * era cannot express.
+ *
+ * Read once, when the scope is created, and threaded down as a value. Nothing is
+ * cached ACROSS scopes.
+ *
+ * KEEP THE REFUSAL HERE. It is the earliest point it can be made: before the
+ * scope body runs, and before the head era's own runtime is acquired, so a
+ * refused scope pays for no era load and its refusal cannot be replaced by one
+ * failing.
+ *
+ * @internal
+ * @param pdp The read surface, for the single head read.
+ * @returns The era facts the scope runs under.
+ * @throws ScopedTxEraUnsupportedError if the head era composes only one call
+ * per transaction, so has nothing for a scope to batch into.
+ * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
+ * @see {@link StaleHeadRemediation} for why both properties of this placement
+ *      are load-bearing.
+ */
+export const resolveScopeEra = async (pdp: HeadVersionSource): Promise<ResolvedOperationEra> => {
+  const reading = await readHeadEra(pdp);
+  // REFUSED FROM THE READING ALONE, before any era is acquired. Acquiring first would make every
+  // refused scope pay to instantiate a ledger it is about to be refused on -- and would make the
+  // refusal depend on that instantiation succeeding, so a current-era-only caller, which is exactly
+  // the caller the lazy pre-fork subpath exists for, would be told to acquire the retained runtime
+  // instead of being told what to do about its scope.
+  if (reading.head !== 'v9') {
+    throw new ScopedTxEraUnsupportedError(reading.head);
+  }
+
+  return acquireHeadEra(reading);
+};
+
 /** @internal */
 export class TransactionContextImpl<
   C extends Contract.Any,
@@ -88,14 +129,32 @@ export class TransactionContextImpl<
   readonly [TypeId]: Transaction.TypeId = TypeId;
   readonly providers: ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   readonly options?: Transaction.ScopedTransactionOptions;
+  /**
+   * The era facts this scope resolved when it was created, or `undefined` for a
+   * context built without them.
+   *
+   * OPTIONAL, and the two cases are genuinely different rather than one being a
+   * degraded form of the other. A scope created through
+   * `withContractScopedTransaction` always carries a reading, resolved once by
+   * {@link resolveScopeEra}. A context built for a SINGLE call outside any
+   * scope carries none, because the current-era single-call path resolves no
+   * era of its own and reading the head for it would add a network round trip
+   * to every call in the framework to answer a question that path does not ask.
+   */
+  readonly resolvedEra?: ResolvedOperationEra;
 
   cachedStates: CachedStatesWithIdentity<Contract.PrivateState<C>> | undefined = undefined;
   currentUnsubmittedCall: [callTxData: UnsubmittedCallTxData<C, PCK>, privateStateId?: PrivateStateId] | undefined;
   submitTxOptions: SubmitTxOptions<PCK> | undefined = undefined;
 
-  constructor(providers: ContractProviders<C, PCK>, options?: Transaction.ScopedTransactionOptions) {
+  constructor(
+    providers: ContractProviders<C, PCK>,
+    options?: Transaction.ScopedTransactionOptions,
+    resolvedEra?: ResolvedOperationEra
+  ) {
     this.providers = providers;
     this.options = options;
+    this.resolvedEra = resolvedEra;
   }
 
   getAdditionalMappings(): ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined {
@@ -209,33 +268,63 @@ export const mergeUnsubmittedCallTxData = <
 export const isTransactionContext = (u: unknown): u is Transaction.TransactionContext<Contract.Any> =>
   typeof u === "object" && u != null && TypeId in u;
 
-/** @internal */
-export const scoped: {
-  <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-    providers: ContractProviders<C, PCK>,
-    fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
-    options?: Transaction.ScopedTransactionOptions,
-  ): Promise<FinalizedCallTxData<C, PCK>>,
-  <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-    providers: ContractProviders<C, PCK>,
-    fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
-    txCtx: Transaction.TransactionContext<C, PCK>,
-    options?: Transaction.ScopedTransactionOptions
-  ): Promise<CallResult<C, PCK>>
-} = async <
+/**
+ * Refuses a retained-era call that was handed a scope to join.
+ *
+ * Reachable only from JavaScript today — the retained-era `submitCallTx`
+ * overload declares no scope parameter — and still checked, because the
+ * alternative is what it replaces: the retained arm accepted the scope context
+ * and quietly ran outside it.
+ *
+ * KEEP THE THREE OUTCOMES APART. No third argument is the normal case; a real
+ * scope is the mixed-era refusal; anything else is a malformed argument.
+ *
+ * @internal
+ * @param circuitId The circuit whose call was made.
+ * @param transactionContext The scope the caller passed, if any. Typed as
+ * `unknown` for the same reason `isTransactionContext` is: the era-dispatching
+ * implementation signature widens both arms, and a JavaScript caller can pass
+ * anything at all here.
+ * @throws MixedEraScopeError if a real transaction context was passed.
+ * @throws TypeError if a third argument was passed that is not one.
+ * @see {@link StaleHeadRemediation} for why a retained-era call cannot join a
+ *      scope, and why the malformed-argument arm is a bare `TypeError`.
+ */
+export const assertScopeAdmitsRetainedEraCall = (circuitId: string, transactionContext: unknown): void => {
+  if (transactionContext === undefined) {
+    return;
+  }
+  if (isTransactionContext(transactionContext)) {
+    throw new MixedEraScopeError(circuitId);
+  }
+  throw new TypeError(
+    `submitCallTx was passed a third argument that is not a transaction context (received ` +
+      `${transactionContext === null ? 'null' : typeof transactionContext}). A transaction context comes ` +
+      `from the callback withContractScopedTransaction runs; pass that value, or omit the argument to ` +
+      `submit this call as its own transaction.`
+  );
+};
+
+/**
+ * The body every scope runs, with its inputs already separated: the outer
+ * context if this is a nested call, the scope options, and the era reading if
+ * this scope has one.
+ *
+ * Split out from {@link scoped} so the two entry points below differ in exactly
+ * ONE thing -- whether an era was resolved for the scope -- rather than each
+ * re-implementing the execute-then-submit-or-rebuild logic here.
+ */
+const runScope = async <
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
 > (
   providers: ContractProviders<C, PCK>,
   fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
-  txCtxOrOptions?: Transaction.TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
-  options?: Transaction.ScopedTransactionOptions
+  outerTxCtx: Transaction.TransactionContext<C, PCK> | undefined,
+  txOptions: Transaction.ScopedTransactionOptions | undefined,
+  scopeEra: ResolvedOperationEra | undefined
 ): Promise<any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
-  const outerTxCtx = isTransactionContext(txCtxOrOptions) ? txCtxOrOptions : undefined;
-  const txOptions = isTransactionContext(txCtxOrOptions)
-    ? options
-    : txCtxOrOptions as Transaction.ScopedTransactionOptions | undefined;
-  const innerTxCtx = outerTxCtx ?? new TransactionContextImpl<C, PCK>(providers, txOptions);
+  const innerTxCtx = outerTxCtx ?? new TransactionContextImpl<C, PCK>(providers, txOptions, scopeEra);
 
   try {
     await fn(innerTxCtx);
@@ -298,4 +387,88 @@ export const scoped: {
     );
     throw submitErr;
   }
+};
+
+/**
+ * Runs `fn` against a transaction context, WITHOUT resolving an era of its own.
+ *
+ * This is the single-call entry point, plus the nested form a call inside a
+ * user scope takes. It resolves no era deliberately: the current-era
+ * single-call path asks no era question, and reading the head here would add a
+ * network round trip to every call in the framework. A call nested inside a
+ * user scope inherits that scope's reading through `outerTxCtx`, so the scope
+ * is still read once and only once.
+ *
+ * @internal
+ */
+export const scoped: {
+  <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+    providers: ContractProviders<C, PCK>,
+    fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
+    options?: Transaction.ScopedTransactionOptions,
+  ): Promise<FinalizedCallTxData<C, PCK>>,
+  <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+    providers: ContractProviders<C, PCK>,
+    fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
+    txCtx: Transaction.TransactionContext<C, PCK>,
+    options?: Transaction.ScopedTransactionOptions
+  ): Promise<CallResult<C, PCK>>
+} = async <
+  C extends Contract.Any,
+  PCK extends Contract.ProvableCircuitId<C>
+> (
+  providers: ContractProviders<C, PCK>,
+  fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
+  txCtxOrOptions?: Transaction.TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
+  options?: Transaction.ScopedTransactionOptions
+): Promise<any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const outerTxCtx = isTransactionContext(txCtxOrOptions) ? txCtxOrOptions : undefined;
+  const txOptions = isTransactionContext(txCtxOrOptions)
+    ? options
+    : txCtxOrOptions as Transaction.ScopedTransactionOptions | undefined;
+
+  return runScope(providers, fn, outerTxCtx, txOptions, undefined);
+};
+
+/**
+ * Runs `fn` as a USER scope: one head read up front, and a refusal if the head
+ * era cannot express a scope at all.
+ *
+ * The era read happens BEFORE the context exists, so a scope on an era that
+ * cannot batch is refused before any circuit runs -- see
+ * {@link resolveScopeEra}. Every call merged into the scope afterwards inherits
+ * that one reading, which is what makes the head read once per scope rather
+ * than once per call.
+ *
+ * @internal
+ */
+export const scopedTransaction = async <
+  C extends Contract.Any,
+  PCK extends Contract.ProvableCircuitId<C>
+> (
+  providers: ContractProviders<C, PCK>,
+  fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
+  txCtxOrOptions?: Transaction.TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions
+): Promise<FinalizedCallTxData<C, PCK>> => {
+  // The third argument is DISCRIMINATED, not assumed to be options, and the
+  // guard is not decorative: this parameter is declared as options on the
+  // public entry point, so a JavaScript caller passing a transaction context
+  // here -- which the entry point accepted before these era rules, by nesting
+  // into it -- would otherwise have it read as an options bag. A fresh scope
+  // would be created and the transaction the caller believed was nested would
+  // be submitted on its own. That is the same "silently ran outside the scope
+  // it was handed" failure `MixedEraScopeError` exists to stop, one arm over.
+  const outerTxCtx = isTransactionContext(txCtxOrOptions) ? txCtxOrOptions : undefined;
+  if (outerTxCtx !== undefined) {
+    // Nested: no head read of its own. The scope this joins already made one,
+    // which is what keeps it at one read per scope, and the outer scope is the
+    // one that submits -- so this returns that scope's `CallResult`, exactly as
+    // it did before.
+    return runScope(providers, fn, outerTxCtx, undefined, undefined);
+  }
+
+  const options = txCtxOrOptions as Transaction.ScopedTransactionOptions | undefined;
+  const scopeEra = await resolveScopeEra(providers.publicDataProvider);
+
+  return runScope(providers, fn, undefined, options, scopeEra);
 };

@@ -903,7 +903,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(V8PayloadUnsupportedError);
   });
 
-  it('does not re-read the head when a provider rejects', async () => {
+  it('re-reads the head on a SUBMIT rejection and, finding the same era, re-throws the seam failure', async () => {
     const providers = preForkProviders(v6Envelope);
     providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
 
@@ -917,9 +917,22 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED)).toBe(true);
     expect((caught as Ledger8SeamFailedError).seam).toBe('submitTx');
 
-    // Deciding whether a rejection means the head moved is the next task's
-    // work, and it needs its own tests honestly red: the head is read once,
-    // for routing, and never again on a rejection.
+    // TWO head reads: one for the routing, and one on the rejection to ask
+    // whether the network moved under this call. This head has not moved, so
+    // the rejection is what it says it is and travels unchanged -- a submit
+    // rejection is not reported as a fork crossing on the strength of being a
+    // rejection. `./stale-head.test.ts` covers the case where it HAS moved.
+    expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not re-read the head when a rejection comes from a seam OTHER than submit', async () => {
+    const providers = preForkProviders(v6Envelope);
+    // A proving failure cannot mean the network moved -- the proof server
+    // touches no chain state -- so asking the network about it would be a round
+    // trip that could not change the answer.
+    providers.proofProvider.proveTx = vi.fn().mockRejectedValue(new Error('proof server refused the request'));
+
+    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(Ledger8SeamFailedError);
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
   });
 

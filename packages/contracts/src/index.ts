@@ -50,6 +50,19 @@ export {
 // `Ledger8SeamFailedError` carries a provider's own rejection with its message redacted, and
 // `Ledger8ShieldedSpendUnsupportedError` refuses a retained-era call that would spend a coin the
 // contract already holds; both are reachable through the same entry points and exercised there.
+// `StaleHeadError` is the fork-crossing refusal: a submission rejected after the network head moved
+// under the operation, carrying the two-step remediation for that operation kind. It is thrown from
+// the submit seam of both retained-era arms and exercised through the entry points in
+// `src/test/stale-head.test.ts`.
+// `ScopedTxEraUnsupportedError` and `MixedEraScopeError` are the scoped-transaction era rules: a
+// scope is refused outright on a head era that composes only one call per transaction, and a
+// retained-toolchain call cannot join a scope at all. Both are exercised in
+// `src/test/scoped-era.test.ts`.
+// `SubmitRejectionUndiagnosedError` is the other half of the fork-crossing diagnosis: a submission
+// rejected where the head could not be re-read, or reported an EARLIER era than the operation
+// started against. Reported as undiagnosable rather than as a fork, because neither case
+// establishes one, and carrying a registered code of its own so a retry handler branching on
+// `hasErrorCode` behaves the same whichever failure came first.
 export {
   BlankVerifierKeySlotError,
   CallTxFailedError,
@@ -66,6 +79,13 @@ export {
   Ledger8DeployOnV9Error,
   Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
+  MixedEraScopeError,
+  ScopedTxEraUnsupportedError,
+  StaleHeadError,
+  type StaleHeadOperationKind,
+  type SubmitRejectionUndiagnosedCause,
+  SubmitRejectionUndiagnosedError,
+  type SubmittedOperation,
   TxFailedError,
   VerifierKeyMismatchError} from './errors';
 export {

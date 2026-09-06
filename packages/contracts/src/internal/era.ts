@@ -177,18 +177,32 @@ export type PipelineEra = 'ledger8' | 'v9native';
  *
  * @see {@link EraDispatch} for why this is per-operation and never cached across operations.
  */
-export interface ResolvedOperationEra {
+export interface ResolvedOperationEra extends HeadEraReading {
+  /** The era facade bound to {@link HeadEraReading.head}, acquired once so nothing downstream awaits an era. */
+  readonly era: LedgerEra;
+}
+
+/**
+ * ONE reading of the network head, resolved to an era — and NOTHING acquired yet.
+ *
+ * The half of {@link ResolvedOperationEra} that costs one network round trip and no runtime
+ * instantiation. Separate from the whole because acquiring an era is a lazy RUNTIME LOAD: for the
+ * pre-fork era it reaches that ledger's own subpath and instantiates its WASM. A caller that only
+ * has to decide whether it can proceed against this head must be able to decide it from the reading
+ * alone, before paying for a runtime it may be about to refuse — and without its refusal being
+ * replaced by an acquisition failure when that subpath cannot be loaded at all
+ * (`docs/adr/0004-lazy-v8-era-access-via-protocol-subpath.md`).
+ */
+export interface HeadEraReading {
   /** The ledger era the network head is on, as resolved at this operation's start. */
   readonly head: LedgerVersion;
   /**
-   * The raw head `protocolVersion` integer {@link head} was resolved from.
+   * The raw head `protocolVersion` integer {@link HeadEraReading.head} was resolved from.
    *
    * Retained alongside the era because the integer distinguishes node minor versions that the era
    * deliberately collapses.
    */
   readonly headProtocolVersion: number;
-  /** The era facade bound to {@link head}, acquired once so nothing downstream awaits an era. */
-  readonly era: LedgerEra;
 }
 
 /**
@@ -292,6 +306,50 @@ export const isLedger8Request = <L extends { readonly compiledContract: Ledger8C
 ): options is L => pipelineEraOf(options.compiledContract) === 'ledger8';
 
 /**
+ * Makes the ONE head read and resolves it to an era, acquiring nothing.
+ *
+ * The first half of {@link resolveOperationEra}, split out so a caller that may REFUSE this head can
+ * decide that from the reading alone. Acquiring first would make the refusal cost a runtime
+ * instantiation it then discards, and would make the refusal depend on that instantiation
+ * succeeding — so a caller whose whole point is that it never touches the other era would be told
+ * to go and acquire it.
+ *
+ * Both fields come from the same reading, which is the invariant
+ * {@link resolveOperationEra} exists to hold: two reads could answer differently during the fork
+ * window and leave one operation built half against each era.
+ *
+ * @param pdp The read surface to ask for the network head.
+ * @returns The head era and the integer it was resolved from.
+ * @throws UnknownProtocolVersionError tagged with the `construct` path when the head integer cannot
+ * be placed on the era timeline. A rejection from the provider propagates unchanged.
+ */
+export const readHeadEra = async (pdp: HeadVersionSource): Promise<HeadEraReading> => {
+  const headProtocolVersion = await pdp.queryLatestProtocolVersion();
+
+  return { headProtocolVersion, head: protocolVersionToLedger(headProtocolVersion, 'construct') };
+};
+
+/**
+ * Acquires the era facade for a head reading already taken.
+ *
+ * The second half of {@link resolveOperationEra}. Acquired at the operation's asynchronous start, so
+ * every era operation downstream is synchronous and nothing deeper in the pipeline has to await a
+ * runtime -- see the era-seam document under `packages/protocol/docs/`.
+ *
+ * The SINGLE acquisition site for these flows: `readHeadEra` above deliberately does not acquire,
+ * and every caller that needs a facade comes through here, so there is exactly one place a lazy
+ * era load happens and exactly one place the integer-to-era mapping happens.
+ *
+ * @param reading The head reading to bind an era to.
+ * @returns The reading, with the era facade bound to it.
+ * @throws Ledger8RuntimeMissingError if the retained runtime cannot be acquired.
+ */
+export const acquireHeadEra = async (reading: HeadEraReading): Promise<ResolvedOperationEra> => ({
+  ...reading,
+  era: await loadLedgerEra(reading.head)
+});
+
+/**
  * Resolves the era facts one operation runs against, with EXACTLY ONE head read.
  *
  * The single read is the whole point: two round trips can answer differently inside the fork
@@ -304,15 +362,8 @@ export const isLedger8Request = <L extends { readonly compiledContract: Ledger8C
  * @throws UnknownProtocolVersionError tagged with the `construct` path when the head integer
  * cannot be placed on the era timeline. A rejection from the provider propagates unchanged.
  */
-export const resolveOperationEra = async (pdp: HeadVersionSource): Promise<ResolvedOperationEra> => {
-  const headProtocolVersion = await pdp.queryLatestProtocolVersion();
-  const head = protocolVersionToLedger(headProtocolVersion, 'construct');
-  // Acquired at the operation's asynchronous start, so every era operation downstream is
-  // synchronous and nothing deeper in the pipeline has to await a runtime.
-  const era = await loadLedgerEra(head);
-
-  return { head, headProtocolVersion, era };
-};
+export const resolveOperationEra = async (pdp: HeadVersionSource): Promise<ResolvedOperationEra> =>
+  acquireHeadEra(await readHeadEra(pdp));
 
 /**
  * Refuses an operation whose artifact era and network head era cannot be run together.

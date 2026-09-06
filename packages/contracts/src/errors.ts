@@ -320,6 +320,240 @@ export class Ledger8SeamFailedError extends Error {
   }
 }
 
+/**
+ * Whether the operation a {@link StaleHeadError} refuses was deploying a
+ * contract or calling one already deployed.
+ *
+ * The same discriminant the era pairing table takes, kept as its own type here
+ * because it decides which of two genuinely different remediations the error
+ * carries.
+ */
+export type StaleHeadOperationKind = 'call' | 'deploy';
+
+/**
+ * WHICH operation a submit rejection belongs to: the identity every refusal
+ * below has to name so its remediation can actually be followed.
+ *
+ * A dApp with several calls in flight shares one error handler, so an error
+ * telling it to "check whether this finalized" is unfollowable unless it says
+ * which contract and which entry point. Contract addresses and circuit ids are
+ * identifiers, which messages may carry; decoded state and key bytes are what
+ * they may not.
+ */
+export interface SubmittedOperation {
+  /**
+   * The era the network head was on when this operation started.
+   *
+   * One field, two uses, and they are the same fact: it decides which arm of
+   * the provider seams the transaction crossed on, and it is the `startEra` a
+   * fork diagnosis compares a fresh reading against.
+   */
+  readonly head: LedgerVersion;
+  /** Whether this operation deploys a contract or calls one already deployed. */
+  readonly kind: StaleHeadOperationKind;
+  /**
+   * The entry point this operation ran. A deploy has no circuit of its own and
+   * reports the constructor's own name, `'initialState'`.
+   */
+  readonly circuitId: string;
+  /**
+   * The contract this operation targets. For a deploy this is the address the
+   * composition MINTED, which is the address a caller has to check before
+   * deploying again — a deploy mints a fresh nonce, so a second attempt lands
+   * at a different address and would not overwrite the first.
+   */
+  readonly contractAddress: string;
+}
+
+// The remediation, written once per operation kind. A call and a deploy do NOT
+// share one text, and the reason is not tone: after the head has crossed, a
+// retained-era CALL can simply be run again -- it lands on the keep-state
+// pipeline with no change to the caller's code -- while a retained-era DEPLOY
+// cannot be run again at all, because the retained era has no post-fork
+// deployment. Telling a deployer to re-run would send them at a refusal.
+//
+// Both texts open with the same first step, and its position is load-bearing:
+// a submission rejected while the head was moving may still have been recorded,
+// so anything that repeats the operation has to come second. Both also NAME the
+// thing to check, because "verify it did not finalize" is not an instruction a
+// caller with several operations in flight can act on otherwise.
+const STALE_HEAD_MESSAGES: Readonly<
+  Record<StaleHeadOperationKind, (operation: SubmittedOperation, freshEra: LedgerVersion) => string>
+> = Object.freeze({
+  call: (operation, freshEra) =>
+    `This call was built against a '${operation.head}'-era network head and the node rejected its ` +
+    `transaction; a fresh read of the head now reports '${freshEra}', so the network crossed the ledger ` +
+    `fork while the call was being built. Take two steps, in this order. First, verify the transaction did ` +
+    `not finalize: a submission rejected while the head was moving can still have been recorded, so read ` +
+    `the state of the contract at '${operation.contractAddress}' and check whether the call to ` +
+    `'${operation.circuitId}' is already reflected in it before doing anything that would repeat it. Then ` +
+    `re-run the call unchanged - it resolves the network head again and executes against the era the ` +
+    `network now reports.`,
+  deploy: (operation, freshEra) =>
+    `This deployment was built against a '${operation.head}'-era network head and the node rejected its ` +
+    `transaction; a fresh read of the head now reports '${freshEra}', so the network crossed the ledger ` +
+    `fork while the deployment was being built. Take two steps, in this order. First, verify the ` +
+    `deployment did not finalize: a submission rejected while the head was moving can still have been ` +
+    `recorded, so check the address this deployment composed, '${operation.contractAddress}', before ` +
+    `deploying again - a deploy mints a fresh nonce, so a second attempt lands at a different address and ` +
+    `would leave two copies of the contract on chain. Then recompile the contract with the current ` +
+    `Compact toolchain and deploy that artifact instead - a contract produced by the retained toolchain ` +
+    `cannot be deployed to a post-fork head at all. See the runtime-deploy chapter of the migration guide.`
+});
+
+/**
+ * An error indicating that the network crossed the ledger fork between an
+ * operation resolving the head era and its transaction being submitted, and
+ * that a fresh head read confirms the move.
+ *
+ * Carries a two-step remediation, and the order matters: verify the transaction
+ * did not finalize BEFORE acting, because a submission rejected while the head
+ * was moving can still have been recorded.
+ *
+ * The provider's own rejection travels on `cause`, already sanitized of
+ * anything that could carry transaction or witness material — see
+ * {@link Ledger8SeamFailedError}, which is the form it arrives in.
+ *
+ * @see {@link StaleHeadRemediation} for why a submit rejection is diagnosed
+ *      rather than propagated, and why a deploy's remediation differs.
+ */
+export class StaleHeadError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.STALE_HEAD;
+
+  /** The era the operation resolved when it started. */
+  readonly startEra: LedgerVersion;
+  /**
+   * Whether the refused operation was a call or a deploy — the discriminant a
+   * caller branches on, and which remediation the message carries.
+   */
+  readonly kind: StaleHeadOperationKind;
+  /** The entry point that was run, so a caller with several in flight knows which. */
+  readonly circuitId: string;
+  /** The contract to reconcile, which is the first remediation step's subject. */
+  readonly contractAddress: string;
+
+  /**
+   * @param operation Which operation was rejected. Flattened onto the error
+   *                  rather than nested, so a caller reads `error.circuitId`
+   *                  without knowing this type exists.
+   * @param freshEra The era a fresh head read reports now. Retained on the
+   *                 error because it is what a caller re-runs against.
+   * @param cause The submit rejection, already sanitized.
+   */
+  constructor(
+    operation: SubmittedOperation,
+    readonly freshEra: LedgerVersion,
+    cause: unknown
+  ) {
+    super(STALE_HEAD_MESSAGES[operation.kind](operation, freshEra), { cause });
+    this.name = 'StaleHeadError';
+    this.startEra = operation.head;
+    this.kind = operation.kind;
+    this.circuitId = operation.circuitId;
+    this.contractAddress = operation.contractAddress;
+  }
+}
+
+/**
+ * Why a submit rejection could NOT be diagnosed as a fork crossing or ruled out
+ * as one.
+ *
+ * A discriminated union rather than two error classes, because a caller's
+ * decision is the same for both — do not blindly retry, find out whether the
+ * transaction landed, then look at the read surface — and the reason is what
+ * tells it which of the two happened.
+ */
+export type SubmitRejectionUndiagnosedCause =
+  /** The fresh head read itself rejected, so no reading is available to compare. */
+  | { readonly reason: 'head-read-failed'; readonly headReadFailure: unknown }
+  /**
+   * The fresh read reported an EARLIER era than the operation started against.
+   * A ledger era only ever moves forward, so the two readings cannot both
+   * describe one chain.
+   */
+  | { readonly reason: 'head-moved-backwards'; readonly freshEra: LedgerVersion };
+
+// Neither text claims a fork is under way, and that restraint is the point:
+// nothing observed in either case establishes one, and telling a caller to wait
+// out a fork that is not happening is worse than telling it to retry. Same
+// discipline as `IndexerInconsistencyError`.
+const undiagnosedMessage = (operation: SubmittedOperation, undiagnosed: SubmitRejectionUndiagnosedCause): string => {
+  const subject = operation.kind === 'deploy' ? 'deployment' : 'call';
+  const opening =
+    `This ${subject} was built against a '${operation.head}'-era network head and the node rejected its ` +
+    `transaction (circuit '${operation.circuitId}', contract '${operation.contractAddress}').`;
+
+  switch (undiagnosed.reason) {
+    case 'head-read-failed':
+      return (
+        `${opening} The network head could not be re-read, so whether the network crossed the ledger fork ` +
+        `while this ${subject} was being built is unresolved. Both failures are on 'errors': the ` +
+        `submission rejection first, the failed head read second. Check whether the transaction finalized, ` +
+        `then retry once the read surface is reachable.`
+      );
+    case 'head-moved-backwards':
+      return (
+        `${opening} A fresh read of the head reports '${undiagnosed.freshEra}', an EARLIER ledger era. An ` +
+        `era only ever moves forward, so those two readings cannot both describe one chain and this ` +
+        `rejection cannot be diagnosed either way. The submission rejection is on 'errors'. Check whether ` +
+        `the transaction finalized, then check the health of the configured indexer before retrying.`
+      );
+    default: {
+      // The runtime throw is not redundant with the compile-time gate: a new reason reaches here
+      // before this switch is updated.
+      const unhandled: never = undiagnosed;
+      throw new Error(`unhandled undiagnosed-rejection reason: ${String(unhandled)}`);
+    }
+  }
+};
+
+const undiagnosedErrors = (rejection: unknown, undiagnosed: SubmitRejectionUndiagnosedCause): unknown[] =>
+  undiagnosed.reason === 'head-read-failed' ? [rejection, undiagnosed.headReadFailure] : [rejection];
+
+/**
+ * An error indicating that a submission was rejected and that whether the
+ * network crossed the ledger fork under it could not be established.
+ *
+ * An `AggregateError` because nothing may be dropped: the submission rejection
+ * is what happened to the transaction, and {@link reason} is why no diagnosis
+ * could be made. `cause` names the proximate failure so a consumer walking only
+ * cause chains still lands somewhere useful.
+ *
+ * DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own for
+ * a reason.
+ *
+ * @see {@link StaleHeadRemediation} for that reason, and for the two arms.
+ */
+export class SubmitRejectionUndiagnosedError extends AggregateError {
+  readonly code = CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED;
+
+  /** Which of the two undiagnosable conditions this is. */
+  readonly reason: SubmitRejectionUndiagnosedCause['reason'];
+  /** The era the operation resolved when it started. */
+  readonly startEra: LedgerVersion;
+  readonly kind: StaleHeadOperationKind;
+  readonly circuitId: string;
+  readonly contractAddress: string;
+
+  /**
+   * @param operation Which operation was rejected.
+   * @param rejection The submit rejection, already sanitized. Always the FIRST
+   *                  entry of `errors`.
+   * @param undiagnosed Why no diagnosis could be made.
+   */
+  constructor(operation: SubmittedOperation, rejection: unknown, undiagnosed: SubmitRejectionUndiagnosedCause) {
+    super(undiagnosedErrors(rejection, undiagnosed), undiagnosedMessage(operation, undiagnosed), {
+      cause: undiagnosed.reason === 'head-read-failed' ? undiagnosed.headReadFailure : rejection
+    });
+    this.name = 'SubmitRejectionUndiagnosedError';
+    this.reason = undiagnosed.reason;
+    this.startEra = operation.head;
+    this.kind = operation.kind;
+    this.circuitId = operation.circuitId;
+    this.contractAddress = operation.contractAddress;
+  }
+}
+
 interface EffectContractError {
   readonly _tag: string;
   readonly cause: { readonly name: string; readonly message: string; readonly isCompactError?: boolean };
@@ -420,6 +654,70 @@ export class ContractTypeError extends TypeError {
         ', '
       )}, are undefined or have mismatched verifier keys for contract state ${contractState.toString(false)}`
     );
+  }
+}
+
+/**
+ * An error indicating that a contract-scoped transaction was created while the
+ * network head is on a ledger era that has no way to express one.
+ *
+ * The pre-fork era composes exactly one call per transaction, which leaves a
+ * pre-fork scope nothing to batch into.
+ *
+ * Raised when the scope is CREATED, and from the head READING alone — before
+ * that era's runtime is acquired. Both are load-bearing; do not move it later.
+ *
+ * Both ways forward are named in the message, because the caller's batching
+ * intent cannot be honoured either way and it needs to choose.
+ *
+ * @see {@link StaleHeadRemediation} for what each placement property prevents.
+ */
+export class ScopedTxEraUnsupportedError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED;
+
+  /**
+   * @param head The era the network head is on, as the scope resolved it.
+   */
+  constructor(readonly head: LedgerVersion) {
+    super(
+      `A contract-scoped transaction cannot be created while the network head is on the '${head}' ledger ` +
+        `era. A scope batches several circuit calls into one transaction, and this era composes exactly ` +
+        `one call per transaction and refuses a longer list, so there is nothing for a scope to batch ` +
+        `into. Either submit each call as its own transaction with submitCallTx, or run the scope once ` +
+        `the network head has crossed the fork.`
+    );
+    this.name = 'ScopedTxEraUnsupportedError';
+  }
+}
+
+/**
+ * An error indicating that a call against a contract produced by the RETAINED
+ * Compact toolchain was handed a contract-scoped transaction to join.
+ *
+ * A scope merges live CURRENT-era transactions, and a retained-era call crosses
+ * the provider seams as its own transaction, so there is nothing to merge it
+ * into at either head.
+ *
+ * Raised rather than ignored, and that is the change it makes: the retained-era
+ * arm previously accepted a scope context and ran outside it.
+ *
+ * @see {@link StaleHeadRemediation} for why the two cannot be batched.
+ */
+export class MixedEraScopeError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE;
+
+  /**
+   * @param circuitId The circuit whose call was refused.
+   */
+  constructor(readonly circuitId: string) {
+    super(
+      `Circuit '${circuitId}' belongs to a contract produced by the retained Compact toolchain and cannot ` +
+        `join a contract-scoped transaction: a scope merges its calls into one current-era transaction, ` +
+        `while a retained-era call is composed and submitted on its own. Submit this call as its own ` +
+        `transaction with submitCallTx, outside the scope, and keep the scope for calls against contracts ` +
+        `produced by the current toolchain.`
+    );
+    this.name = 'MixedEraScopeError';
   }
 }
 

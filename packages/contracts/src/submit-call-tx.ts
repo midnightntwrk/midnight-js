@@ -141,10 +141,15 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
 ): Promise<FinalizedCallTxData<C, PCK> | CallResult<C, PCK> | AnyLedger8FinalizedCallTxData> {
   if (isLedger8Request<AnyLedger8CallTxOptions>(options)) {
     // The retained-era pipeline runs OUTSIDE the scoped-transaction machinery:
-    // that machinery merges several current-era calls into one transaction, and
-    // the retained era composes exactly one call, so there is nothing for it to
-    // merge with. A `transactionContext` is therefore not honoured on this arm
-    // -- the retained-era overload declares no parameter for one.
+    // that machinery merges live current-era transactions, and a retained-era
+    // call is composed and submitted on its own, so there is nothing for it to
+    // merge into. A `transactionContext` is therefore REFUSED on this arm
+    // rather than ignored -- ignoring it submitted a transaction the caller
+    // believed had been batched with the rest of its scope. The retained-era
+    // overload declares no parameter for one, so this is reachable from
+    // JavaScript only.
+    Transaction.assertScopeAdmitsRetainedEraCall(options.circuitId, transactionContext);
+
     return submitLedger8CallTx(providers, toLedger8CallEntryOptions(options));
   }
   assertIsContractAddress(options.contractAddress);

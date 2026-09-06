@@ -223,6 +223,7 @@ docstring resolves to it.
 | [Era dispatch](./docs/era-dispatch.md) | How an operation's pipeline era and the network head era are each established, why the artifact check is structural rather than branded, and which pairings may run |
 | [Verification path](./docs/verification-path.md) | What the pre-proving verifier-key check buys, and why routing on key generation is unavailable rather than unimplemented |
 | [Keep-state pipeline](./docs/keep-state-pipeline.md) | The order one retained-era operation runs in, the two composition arms, per-recipient shielded encryption, seam sanitization, and why a retained-era deploy is refused |
+| [Stale-head remediation](./docs/stale-head-remediation.md) | How a submit rejection is told apart from a fork crossing, the two-step remediation it carries, and why a pre-fork contract-scoped transaction is refused outright |
 
 Docstrings in `src/` carry the API contract: what a symbol does, its
 parameters, what it returns and what it throws. Anything that answers "why is
