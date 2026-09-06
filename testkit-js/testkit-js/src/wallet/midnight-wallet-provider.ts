@@ -17,11 +17,14 @@ import {
   type CoinPublicKey,
   DustSecretKey,
   type EncPublicKey,
+  type FinalizedTransaction,
   ZswapSecretKeys
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  createMidnightProvider,
+  createWalletProvider,
   type MidnightProvider,
-  unwrapV9,
+  type UnboundTransaction,
   type VersionedFinalizedTransaction,
   type VersionedUnboundTransaction,
   type WalletProvider
@@ -45,6 +48,12 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
   readonly unshieldedKeystore: UnshieldedKeystore;
   readonly zswapSecretKeys: ZswapSecretKeys;
   readonly dustSecretKey: DustSecretKey;
+  // The version tag lives in the adapters, never in this class — see
+  // ADR 0006. The wallet underneath is v9-only, so the two adapters fit it
+  // exactly: refusing a v8 payload is the right answer for a v9-only wallet,
+  // not a gap in it.
+  private readonly walletProvider: WalletProvider;
+  private readonly midnightProvider: MidnightProvider;
 
   private constructor(
     logger: Logger,
@@ -60,28 +69,39 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     this.zswapSecretKeys = zswapSecretKeys;
     this.dustSecretKey = dustSecretKey;
     this.unshieldedKeystore = unshieldedKeystore;
+    this.walletProvider = createWalletProvider({
+      balanceTx: (tx, ttl = ttlOneHour()) => this.balanceThroughWallet(tx, ttl),
+      getCoinPublicKey: () => this.zswapSecretKeys.coinPublicKey,
+      getEncryptionPublicKey: () => this.zswapSecretKeys.encryptionPublicKey
+    });
+    this.midnightProvider = createMidnightProvider((tx) => this.wallet.submitTransaction(tx));
   }
 
   getCoinPublicKey(): CoinPublicKey {
-    return this.zswapSecretKeys.coinPublicKey;
+    return this.walletProvider.getCoinPublicKey();
   }
 
   getEncryptionPublicKey(): EncPublicKey {
-    return this.zswapSecretKeys.encryptionPublicKey;
+    return this.walletProvider.getEncryptionPublicKey();
   }
 
-  async balanceTx(
-    tx: VersionedUnboundTransaction,
-    ttl: Date = ttlOneHour()
-  ): Promise<VersionedFinalizedTransaction> {
-    const unbound = unwrapV9(tx, 'balanceTx');
-    const finalizedTransactionRecipe = await this.wallet.balanceUnboundTransaction(unbound, { shieldedSecretKeys: this.zswapSecretKeys, dustSecretKey: this.dustSecretKey}, { ttl });
-    const signed = await this.wallet.signRecipe(finalizedTransactionRecipe, (payload) => this.unshieldedKeystore.signDataAsync(payload));
-    return { version: 'v9', tx: await this.wallet.finalizeRecipe(signed) };
+  async balanceTx(tx: VersionedUnboundTransaction, ttl?: Date): Promise<VersionedFinalizedTransaction> {
+    return this.walletProvider.balanceTx(tx, ttl);
   }
 
   async submitTx(tx: VersionedFinalizedTransaction): Promise<string> {
-    return this.wallet.submitTransaction(unwrapV9(tx, 'submitTx'));
+    return this.midnightProvider.submitTx(tx);
+  }
+
+  /** Balances, signs and finalizes one transaction through the v9-only wallet. */
+  private async balanceThroughWallet(tx: UnboundTransaction, ttl: Date): Promise<FinalizedTransaction> {
+    const recipe = await this.wallet.balanceUnboundTransaction(
+      tx,
+      { shieldedSecretKeys: this.zswapSecretKeys, dustSecretKey: this.dustSecretKey },
+      { ttl }
+    );
+    const signed = await this.wallet.signRecipe(recipe, (payload) => this.unshieldedKeystore.signDataAsync(payload));
+    return this.wallet.finalizeRecipe(signed);
   }
 
   async start(waitForFundsInWallet = true): Promise<void> {

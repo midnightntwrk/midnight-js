@@ -47,9 +47,9 @@ const era = hfFixturesManifest['state-v8.hex'].protocolVersion; // 1000000
 const source = hfFixturePath('twin-contract/counter.compact');  // absolute path
 ```
 
-`readHfFixture` covers the nine `.hex` states. Everything else — both compiled
-contracts, `increment-transcript.golden.json`, `fixtures.json`, this README —
-is reached by path through `hfFixturePath`. Both accessors throw rather than
+`readHfFixture` covers the nine `.hex` states. Everything else — every compiled
+contract, `increment-transcript.golden.json`, the frozen private-state store,
+`fixtures.json`, this README — is reached by path through `hfFixturePath`. Both accessors throw rather than
 returning a placeholder: an unknown fixture name, a path that climbs out of the
 fixture directory, a missing file and a hex file that is not whole hex are all
 errors. `hfFixturesManifest` is validated against `HF_FIXTURE_NAMES` at import,
@@ -234,6 +234,15 @@ out/compiler/contract-info.json`) — same single ledger field
 compiler/language/runtime version numbers differ, as expected for a "compiled
 under the current toolchain" twin.
 
+> **That identity does NOT extend to private state, because there is none.**
+> Both sides declare `"witnesses": []`, and witnesses are the only members that
+> read or write private state — so this pair pins the *public* schema and says
+> nothing about a private one. It also cannot execute under this repo's runtime
+> (see the version pin note below). Anything needing real private state, or a
+> current-toolchain build that actually runs, wants
+> [`private-counter-016/` and `private-counter-twin/`](#private-counter-016-and-private-counter-twin)
+> instead.
+
 `twin-contract/compiled/keys/increment.verifier` is used as the KNOWN-GOOD
 key in the smoke test, to confirm `state-co-v2-only-foreign.hex`'s embedded
 key is genuinely foreign (see "The mis-dispatch fixture" above) — that
@@ -293,6 +302,184 @@ plain data — the transcript's post-state is instead asserted directly in the
 same test via the contract's own `ledger()` projector (`round` goes `0n` →
 `1n`).
 
+## `private-counter-016/` and `private-counter-twin/`
+
+The **witness-bearing** pair, and the only fixtures here that carry genuine
+private state. `twin-contract/counter.compact` declares **no witness at all**
+(`contract-info.json`'s `witnesses` is `[]`, and so is
+`coin-receiver-016`'s) — witnesses are the only members of a compiled Compact
+contract that read or write private state, so a dApp built on either of them
+holds nothing a private-state continuity test could carry. A round trip driven
+off that pair would be `{}` in, `{}` out.
+
+`private-counter-twin/private-counter.compact` is `twin-contract/counter.compact`
+plus one witness:
+
+```compact
+export ledger round: Counter;
+
+witness localIncrement(): Uint<16>;
+
+export circuit increment(): [] {
+  round.increment(disclose(localIncrement()));
+}
+```
+
+`localIncrement()` reads the step out of the dApp's own private state, so
+executing `increment()` calls the witness, threads the private state through the
+runtime, and lets the witness hand a **new** private state back — which is what
+makes the state a test persists something the retained toolchain really
+produced, rather than the caller's own object passed through by reference (which
+is all `counter-016` can offer, since nothing there ever touches private state).
+
+**One source, two builds — this is the point of the pair.** Both were compiled
+from the single committed `.compact` file, with `--skip-zk` (nothing here proves;
+see below):
+
+| Directory | Compiler | Language | Runtime | Codegen |
+|---|---|---|---|---|
+| `private-counter-016/compiled/` | 0.31.1 | 0.23.0 | **0.16.0** | sync (retained, pre-fork) |
+| `private-counter-twin/compiled/` | 0.34.0 | 0.26.0 | **0.19.0-rc.0** | async (current) |
+
+The two `contract-info.json` files are **identical apart from those three
+version fields** — same single circuit, same single ledger cell, same single
+witness — which is the machine-checkable form of the "PS-schema-identical twin"
+claim, and is asserted rather than assumed (see below).
+
+**Both builds EXECUTE**, and that is the difference from `twin-contract/`. The
+retained build runs against the retained engine
+(`packages/protocol/src/lib/v8/execute.ts`, reached through `loadLedger8Engine()`),
+exactly as `counter-016` does. The twin's declared runtime is **the one this
+repo resolves** (root `resolutions` pins `@midnight-ntwrk/compact-runtime` to
+`0.19.0-rc.0`), so unlike `twin-contract/` — pinned to `0.18.0-rc.1` and
+therefore refused by its own `checkRuntimeVersion` guard — this twin's module
+can be imported and driven. A cross-window test can consequently hand the
+post-fork build the very private state the pre-fork build wrote and watch it
+read the same meaning out of it.
+
+That coupling is committed **as a gate, not as decoration**: the consuming test
+asserts `private-counter-twin`'s declared `runtime-version` equals the runtime
+the repo actually resolves, so bumping `compact-runtime` without recompiling
+this fixture fails with a named assertion instead of a version-mismatch throw
+from deep inside the twin's own module body. The retained side is pinned to the
+literal `0.16.0` for the same reason.
+
+Consumed by `testkit-js/testkit-js/test/cross-window.ut.test.ts`, which drives
+one `increment()` on each side of the fork and carries the private state between
+them through a real `LevelPrivateStateProvider`. It lives here rather than beside
+that provider because it needs both compact runtimes in hand at once, and
+`eslint.config.mjs`'s version-identity gate exempts testkit-js for exactly that
+reason while `packages/**` — test files included — is gated.
+
+**Deliberately NOT a regeneration of `twin-contract/`.** That fixture's
+`increment.verifier` bytes and its `contract/index.js` / `index.d.ts` are
+consumed as typecheck and known-good-key fixtures by roughly eleven test files
+across `packages/contracts` and `packages/protocol`. None of them executes it,
+so its inability to run under 0.19 costs them nothing, while recompiling it
+would change the key bytes and the codegen shape underneath all of them. It is
+left exactly as it is.
+
+**What is committed, and what is not.** Only `contract/index.js` and
+`compiler/contract-info.json`, on both sides — the same discipline
+`coin-receiver-016/` follows. No `.d.ts` (the consuming test declares the slice
+it drives), no `keys/`, no `zkir/`, no `contract-manifest.json`: nothing here
+proves, so proving keys would be dead weight, and only the newer compiler emits
+a manifest, so committing one would break the pair's symmetry for a file nothing
+reads.
+
+`index.js` is committed verbatim **except for its trailing
+`//# sourceMappingURL=index.js.map` line, which is deleted** — the one departure
+from the older fixtures, and a deliberate one. Those keep the line with no
+`.js.map` beside it, which makes Vitest print a red `ENOENT ... index.js.map`
+block on every run that imports them; two more of those, in a suite whose output
+is otherwise clean, reads like a failure in a CI log. Deleting exactly that one
+line is the same trim `twin-contract/`'s recipe already applies to the `.js.map`
+file itself, and it costs nothing: a recompile still diffs against the committed
+artifact with that single line as the only difference, which is the property the
+"byte-verbatim" rule was protecting.
+
+**A consumer who wants to RUN these needs the runtime.** The fixture tree ships
+with `@midnight-ntwrk/testkit-js`, but `@midnight-ntwrk/compact-runtime` is a
+devDependency of that package, not a dependency — so importing either
+`contract/index.js` from an installed copy fails to resolve its own
+`@midnight-ntwrk/compact-runtime` import unless the consumer has one in their own
+tree. That is true of every compiled contract here; it matters for this pair
+first, because it is the only one a consumer would plausibly want to execute
+rather than read. The retained side additionally needs a real 0.16 instance,
+which no consumer resolves from that specifier by default — see the redirect the
+consuming test uses.
+
+The `compiled/` path segment matters for the same reason it does elsewhere:
+`.licenserc.yaml`'s `paths-ignore` excludes `**/compiled/**` from the Apache-2.0
+header check, which generated code must not carry. The `.compact` source carries
+no header either — `.licenserc.yaml`'s `paths` does not list `**/*.compact`, and
+neither `counter.compact` nor `coin-receiver.compact` carries one.
+
+**Not in `fixtures.json`, on purpose.** The manifest covers the nine `.hex`
+state fixtures and nothing else, and `fixtures-hf.ts` validates its key set
+against `HF_FIXTURE_NAMES` at import — so adding a contract directory to it
+would fail every consumer at load. Compiled contract fixtures are documented
+here and reached by path through `hfFixturePath`, exactly as `counter-016/`,
+`twin-contract/` and `coin-receiver-016/` are.
+
+**Keep the source file's name.** The generated code bakes `private-counter.compact`
+into the witness's own type-error messages, with line numbers; renaming or
+reflowing the source without recompiling both builds would leave those messages
+pointing at the wrong place. The consuming test pins the source's SHA-256, so
+editing it without recompiling fails there with the regeneration recipe named in
+the failure message — the version gates only compare the two builds to each
+other and cannot see a source that has moved out from under both of them.
+
+`private-counter-016/` carries a short `README.md` of its own pointing back at
+that shared source, since nothing else in that directory says where its contents
+came from.
+
+## `pre-fork-private-state-store/`
+
+A small LevelDB database written by this repo's own private-state provider and
+then **frozen** — the one fixture here that is not about the ledger's schema at
+all, but about the envelope private state is stored IN.
+
+Why it exists: every other private-state round trip in this repo writes and
+reads with the same build, in the same process. A change to the persistence
+envelope — superjson's encoding, the AES framing, the PBKDF2 parameters, the
+salt record — moves both halves of such a round trip together, so the suite
+stays green while every store an earlier release wrote becomes unreadable. This
+is measured, not asserted: with the KDF iteration count changed by one, the
+provider's own 276-test suite passes clean and only the test that reads these
+frozen bytes fails.
+
+| File | What it is |
+|---|---|
+| `store/` | The database: `CURRENT`, `MANIFEST-000004`, `000005.ldb`, `000006.log`. About 1.3 KB. `LOCK`/`LOG`/`LOG.old` are runtime files and are not committed. |
+| `ENVELOPE.md` | The generation log, and the rules for changing it. Read it before touching anything here. |
+
+One private state, under one contract address and state id, holding a bigint, a
+`Uint8Array` and a `Map` — the three kinds JSON cannot carry, which is what makes
+a decode regression visible. Nothing more: this is a fixture, not a corpus.
+
+**Everything in it is synthetic and it is safe to publish.** The password is the
+consuming suite's own fixed test constant, committed in plain sight next to the
+ciphertext; `secretKey` is the bytes `0x00..0x1f` in order; the nullifiers are
+two made-up strings; the salt was minted for this fixture alone. There is no key
+material here that means anything outside this suite. It is not a captured
+artifact from any wallet, and its password must not be copied anywhere.
+
+**Regenerating it is how you ACCEPT a break, not how you fix a red test.** If
+the consuming test fails against these bytes, the finding is that this checkout
+can no longer read private state an earlier release wrote — a dApp user's own
+state, unreadable after an upgrade. Re-minting makes the failure disappear along
+with the evidence. `ENVELOPE.md` sets out what accepting the break requires, and
+the suite enforces the part that can be enforced: it compares the digest recorded
+in that note with the bytes on disk, so a regeneration that does not record a new
+generation fails. `generators/mint-pre-fork-store.mjs` is deliberately **not**
+wired into `generate-all.mjs`, so nothing re-mints it as a side effect of
+regenerating something else.
+
+Read by `testkit-js/testkit-js/test/cross-window.ut.test.ts`, which copies
+`store/` to a temporary directory first — LevelDB writes `LOCK` and `LOG` into
+any directory it opens, and the fixture has to stay untouched.
+
 ## `coin-receiver-016/`
 
 The one thing `counter-016/` cannot exercise: a circuit that **receives a
@@ -340,8 +527,15 @@ that never reaches the seam under test.
 
 The artifact is committed byte-verbatim, including its trailing
 `//# sourceMappingURL=index.js.map` line with no `.js.map` beside it — same as
-`counter-016/`, so a recompile can be diffed against it directly. Vitest prints
-one harmless "could not read map file" line per run because of it.
+`counter-016/`, so a recompile can be diffed against it directly. That line
+makes Vitest print a "could not read map file" block on any run that imports the
+artifact; nothing imports it in this package's own unit suite, so testkit's
+output is clean, and it shows up wherever the artifact is actually driven. No
+list of those places is given here on purpose — the claim this paragraph
+replaced named a count, went stale, and its replacement named one package and
+went stale again. `grep -rl 'counter-016' packages/` answers it at the time of
+asking. The `private-counter` pair deletes that line instead — see its section
+above for why the two differ.
 
 The `compiled/` path segment matters for the same reason it does under
 `counter-016/`: `.licenserc.yaml`'s `paths-ignore` excludes `**/compiled/**`
@@ -427,6 +621,52 @@ To recompile `twin-contract/`:
 yarn fetch-compactc   # from packages/contracts/, once, if packages/compact isn't built yet — run `yarn turbo run build --filter=@midnight-ntwrk/midnight-js-compact` first
 node packages/compact/dist/run-compactc.cjs testkit-js/testkit-js/src/fixtures/hf/twin-contract/counter.compact testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled
 rm testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/contract/index.js.map   # trim: not needed, keeps the fixture minimal
+```
+
+To recompile the `private-counter` pair — **both sides, from the one source,
+always together**, or the pair stops being a pair:
+
+```
+compact list          # 0.31.1 AND 0.34.0-rc.0 must both be installed
+# `compact compile` uses whichever version `compact list` marks active (→), and
+# this needs two of them, so name the binaries instead of switching the active
+# toolchain twice. The `*` is the platform triple compact installs under.
+SRC=testkit-js/testkit-js/src/fixtures/hf/private-counter-twin/private-counter.compact
+DST=testkit-js/testkit-js/src/fixtures/hf
+~/.compact/versions/0.31.1/*/compactc      --skip-zk $SRC /tmp/private-counter-016
+~/.compact/versions/0.34.0-rc.0/*/compactc --skip-zk $SRC /tmp/private-counter-cur
+cp /tmp/private-counter-016/contract/index.js           $DST/private-counter-016/compiled/contract/
+cp /tmp/private-counter-016/compiler/contract-info.json $DST/private-counter-016/compiled/compiler/
+cp /tmp/private-counter-cur/contract/index.js           $DST/private-counter-twin/compiled/contract/
+cp /tmp/private-counter-cur/compiler/contract-info.json $DST/private-counter-twin/compiled/compiler/
+# Drop the trailing map comment from both -- see "What is committed" above.
+perl -0pi -e 's{\n?//\# sourceMappingURL=index\.js\.map\n?\z}{\n}' \
+  $DST/private-counter-016/compiled/contract/index.js \
+  $DST/private-counter-twin/compiled/contract/index.js
+```
+
+The current-side compiler is whichever one emits the `runtime-version` the repo
+resolves; `0.34.0-rc.0` is the one that emits `0.19.0-rc.0` today (`compact list`
+shows it as plain `0.34.0`; the directory it installs under carries the `-rc.0`),
+and the consuming test asserts that coupling, so a mismatch is caught rather
+than discovered at import. Do not copy `index.js.map` or `zkir/` across: neither
+is committed.
+
+To re-mint `pre-fork-private-state-store/` — **read
+`pre-fork-private-state-store/ENVELOPE.md` first.** Doing this is a decision to
+let private state written by earlier releases stop being readable, not a way to
+clear a red test, which is why it is not part of `generate-all.mjs`:
+
+```
+cd testkit-js/testkit-js
+node src/fixtures/hf/generators/mint-pre-fork-store.mjs
+# Exactly these three. NOT the numbered NNNNNN.log -- that is LevelDB's
+# write-ahead log and holds the state; a store without it opens and finds
+# nothing. (`.gitignore` has a negation for this directory for that reason.)
+rm -f src/fixtures/hf/pre-fork-private-state-store/store/{LOCK,LOG,LOG.old}
+# then add a generation section to ENVELOPE.md recording the new digest and what
+# the break means for a user holding an older store -- the suite compares that
+# recorded digest with the bytes, so this step cannot be skipped.
 ```
 
 ## Version pin note (deviation from the brief, with evidence)

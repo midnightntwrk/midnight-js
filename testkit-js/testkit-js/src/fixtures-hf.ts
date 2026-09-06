@@ -92,8 +92,12 @@ const isProtocolVersion = (value: unknown): value is number | null => value === 
 
 /**
  * Resolves a path inside the shipped fixture tree, for assets this module
- * exposes no dedicated reader for -- the twin contract, the 0.16-compiled
- * counter, the golden transcript, the manifest and the README.
+ * exposes no dedicated reader for: every compiled contract and its sources,
+ * the golden and recorded transcripts, the two `coin-receiver-016` state
+ * envelopes, the frozen private-state store, the manifest and the README.
+ * Deliberately not enumerated fixture-by-fixture -- that list has gone stale
+ * before. What each asset is, and which of them are reachable only this way, is
+ * documented in `fixtures/hf/README.md`.
  *
  * @param relativePath Path relative to the fixture directory, e.g.
  *   `twin-contract/counter.compact`.

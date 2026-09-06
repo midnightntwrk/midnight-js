@@ -8,6 +8,11 @@ build/
 .idea/
 .env
 *.log
+# ...except the frozen private-state fixture's LevelDB write-ahead log, which is
+# the only file in that store holding the encrypted state. Without it a fresh
+# clone gets a store that opens but returns nothing, and the consuming test
+# reports an envelope break that never happened.
+!testkit-js/testkit-js/src/fixtures/hf/pre-fork-private-state-store/store/*.log
 coverage/
 reports/
 .pnp.*
