@@ -287,6 +287,58 @@ import { deployContract } from '@midnight-ntwrk/midnight-js/contracts';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
 ```
 
+The barrel also publishes the ledger era vocabulary as named exports, so a
+consumer can say which era produced a payload or a record without depending on
+`@midnight-ntwrk/midnight-js-protocol` directly:
+
+```typescript
+import {
+  LEDGER_VERSIONS,         // the closed, frozen set: ['v8', 'v9']
+  type LedgerVersion,      // 'v8' | 'v9'
+  protocolVersionToLedger, // a raw protocolVersion integer -> LedgerVersion
+  versionOfRecord,         // a record carrying protocolVersion -> LedgerVersion
+  networkHeadVersion       // asks a source for the network head -> LedgerVersion
+} from '@midnight-ntwrk/midnight-js';
+
+// Any record carrying a raw protocolVersion, e.g. a transaction or block
+// already read from the indexer.
+const tx = { protocolVersion: 1_000_000 };
+
+const era: LedgerVersion = versionOfRecord(tx); // 'v8' for node 1.x, 'v9' for 2.x
+```
+
+All three resolvers throw `UnknownProtocolVersionError` when a
+`protocolVersion` maps to no known era, so the error class and the code table
+are published alongside them:
+
+```typescript
+import {
+  PROTOCOL_ERROR_CODES,
+  type ProtocolVersionUnknownReason,
+  UnknownProtocolVersionError,
+  utils,
+  versionOfRecord,
+  type VersionResolutionPath
+} from '@midnight-ntwrk/midnight-js';
+
+try {
+  const era = versionOfRecord(tx); // tx as above
+  console.log(`written under ledger ${era}`);
+} catch (error) {
+  if (utils.hasErrorCode(error, PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ)) {
+    // a record this build has no era for
+  }
+  if (error instanceof UnknownProtocolVersionError) {
+    const path: VersionResolutionPath = error.path;            // 'read' | 'construct'
+    const reason: ProtocolVersionUnknownReason = error.reason; // 'unknown' | 'malformed'
+    console.warn(`no era on the ${path} path: ${reason}`);
+  }
+}
+```
+
+The retained pre-fork ledger runtime is **not** re-exported from the barrel,
+and importing the barrel does not load it.
+
 ### Network Setup
 
 ```typescript
