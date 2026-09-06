@@ -13,7 +13,14 @@
  * limitations under the License.
  */
 
-import type { DustSecretKey, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type {
+  CoinPublicKey,
+  DustSecretKey,
+  EncPublicKey,
+  FinalizedTransaction,
+  TransactionId,
+  ZswapSecretKeys
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   UntaggedPayloadError,
   V8PayloadUnsupportedError,
@@ -21,7 +28,13 @@ import {
   type VersionedUnboundTransaction
 } from '@midnight-ntwrk/midnight-js-types';
 import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
-import type { UnshieldedKeystore, WalletFacade } from '@midnightntwrk/wallet-sdk';
+import type {
+  BalancingRecipe,
+  UnboundTransaction,
+  UnboundTransactionRecipe,
+  UnshieldedKeystore,
+  WalletFacade
+} from '@midnightntwrk/wallet-sdk';
 import { pino } from 'pino';
 
 import type { EnvironmentConfiguration } from '../src/test-environment/environment-configuration';
@@ -39,17 +52,70 @@ const createWalletStub = (): WalletFacade => {
   return stub as WalletFacade;
 };
 
+type Signature = Awaited<ReturnType<UnshieldedKeystore['signDataAsync']>>;
+
+const SIGNATURE = {} as Signature;
+const TRANSACTION_ID = 'submitted-tx-id' as TransactionId;
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
+interface BalancingWallet {
+  readonly wallet: WalletFacade;
+  readonly recipe: UnboundTransactionRecipe;
+  readonly signedRecipe: BalancingRecipe;
+  readonly finalized: FinalizedTransaction;
+}
+
+// The wallet's balancing path is three calls deep — balance, sign, finalize —
+// and each stage's output has to reach the next one. The recipes it hands back
+// are opaque markers: this suite asserts the wiring across the seam, not the
+// wallet SDK's own types.
+const createBalancingWallet = (): BalancingWallet => {
+  const recipe = {} as UnboundTransactionRecipe;
+  const signedRecipe = {} as BalancingRecipe;
+  const finalized = {} as FinalizedTransaction;
+  const stub: Partial<WalletFacade> = {
+    balanceUnboundTransaction: vi.fn(async () => recipe),
+    signRecipe: vi.fn(async () => signedRecipe),
+    finalizeRecipe: vi.fn(async () => finalized),
+    submitTransaction: vi.fn(async () => TRANSACTION_ID)
+  };
+  return { wallet: stub as WalletFacade, recipe, signedRecipe, finalized };
+};
+
+const createKeystoreStub = (): UnshieldedKeystore => {
+  const stub: Partial<UnshieldedKeystore> = {
+    signDataAsync: vi.fn(async () => SIGNATURE)
+  };
+  return stub as UnshieldedKeystore;
+};
+
+const COIN_PUBLIC_KEY = 'coin-pk' as CoinPublicKey;
+const ENCRYPTION_PUBLIC_KEY = 'enc-pk' as EncPublicKey;
+
+// Only the two members the key readers project. Distinct values, so a reader
+// wired to the wrong one fails instead of matching by coincidence.
+const createSecretKeysStub = (): ZswapSecretKeys => {
+  const stub: Partial<ZswapSecretKeys> = {
+    coinPublicKey: COIN_PUBLIC_KEY,
+    encryptionPublicKey: ENCRYPTION_PUBLIC_KEY
+  };
+  return stub as ZswapSecretKeys;
+};
+
 // A real pino logger rather than `{}`: `withWallet` only stores it today, but a
 // stub that is not a logger turns any future log call in this path into an
 // unreadable TypeError instead of a failed assertion.
-const createProvider = async (wallet: WalletFacade): Promise<MidnightWalletProvider> =>
+const createProvider = async (
+  wallet: WalletFacade,
+  unshieldedKeystore: UnshieldedKeystore = {} as UnshieldedKeystore
+): Promise<MidnightWalletProvider> =>
   MidnightWalletProvider.withWallet(
     pino({ enabled: false }),
     {} as EnvironmentConfiguration,
     wallet,
-    {} as ZswapSecretKeys,
+    createSecretKeysStub(),
     {} as DustSecretKey,
-    {} as UnshieldedKeystore
+    unshieldedKeystore
   );
 
 describe('MidnightWalletProvider', () => {
@@ -85,6 +151,87 @@ describe('MidnightWalletProvider', () => {
       expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
       expect((rejection as V8PayloadUnsupportedError).seam).toBe('submitTx');
       expect(wallet.submitTransaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('balanceTx with a v9 payload', () => {
+    it('hands the wallet the bare unbound transaction and tags the finalized result as the v9 arm', async () => {
+      const { wallet, recipe, signedRecipe, finalized } = createBalancingWallet();
+      const provider = await createProvider(wallet);
+      const unbound = {} as UnboundTransaction;
+
+      const balanced = await provider.balanceTx({ version: 'v9', tx: unbound });
+
+      // Identity throughout, never structural equality: every marker in this
+      // suite is an opaque object, so `toHaveBeenCalledWith` would not tell one
+      // stage's output from another's. The first assertion is the seam's own
+      // property: the wallet is handed the bare ledger object, never the
+      // version-tagged wrapper.
+      expect(vi.mocked(wallet.balanceUnboundTransaction).mock.calls[0][0]).toBe(unbound);
+      expect(vi.mocked(wallet.signRecipe).mock.calls[0][0]).toBe(recipe);
+      expect(vi.mocked(wallet.finalizeRecipe).mock.calls[0][0]).toBe(signedRecipe);
+      expect(balanced.version).toBe('v9');
+      expect(balanced.version === 'v9' && balanced.tx).toBe(finalized);
+    });
+
+    it('signs the recipe through the unshielded keystore it was built with', async () => {
+      const { wallet } = createBalancingWallet();
+      const keystore = createKeystoreStub();
+      const provider = await createProvider(wallet, keystore);
+      const payload = new Uint8Array([9, 9, 9]);
+
+      await provider.balanceTx({ version: 'v9', tx: {} as UnboundTransaction });
+
+      const signSegment = vi.mocked(wallet.signRecipe).mock.calls[0][1];
+      await expect(signSegment(payload)).resolves.toBe(SIGNATURE);
+      expect(keystore.signDataAsync).toHaveBeenCalledWith(payload);
+    });
+
+    it('forwards the ttl the caller supplied', async () => {
+      const { wallet } = createBalancingWallet();
+      const provider = await createProvider(wallet);
+      const ttl = new Date(0);
+
+      await provider.balanceTx({ version: 'v9', tx: {} as UnboundTransaction }, ttl);
+
+      expect(vi.mocked(wallet.balanceUnboundTransaction).mock.calls[0][2].ttl).toBe(ttl);
+    });
+
+    it('defaults the ttl to one hour ahead when the caller supplies none', async () => {
+      const { wallet } = createBalancingWallet();
+      const provider = await createProvider(wallet);
+      const before = Date.now();
+
+      await provider.balanceTx({ version: 'v9', tx: {} as UnboundTransaction });
+
+      const { ttl } = vi.mocked(wallet.balanceUnboundTransaction).mock.calls[0][2];
+      expect(ttl.getTime()).toBeGreaterThanOrEqual(before + ONE_HOUR_MS);
+      expect(ttl.getTime()).toBeLessThanOrEqual(Date.now() + ONE_HOUR_MS);
+    });
+  });
+
+  // The class routes its whole WalletProvider surface through the adapter, key
+  // readers included, so that the object handed to `createWalletProvider` has no
+  // member the class never calls. That makes these two worth pinning: nothing
+  // else exercises them, and the delegation is only justified while it works.
+  describe('the key readers', () => {
+    it('project the wallet\'s own coin and encryption public keys', async () => {
+      const provider = await createProvider(createBalancingWallet().wallet);
+
+      expect(provider.getCoinPublicKey()).toBe(COIN_PUBLIC_KEY);
+      expect(provider.getEncryptionPublicKey()).toBe(ENCRYPTION_PUBLIC_KEY);
+    });
+  });
+
+  describe('submitTx with a v9 payload', () => {
+    it('hands the wallet the bare finalized transaction and returns its transaction id', async () => {
+      const { wallet, finalized } = createBalancingWallet();
+      const provider = await createProvider(wallet);
+
+      const submitted = await provider.submitTx({ version: 'v9', tx: finalized });
+
+      expect(vi.mocked(wallet.submitTransaction).mock.calls[0][0]).toBe(finalized);
+      expect(submitted).toBe(TRANSACTION_ID);
     });
   });
 
