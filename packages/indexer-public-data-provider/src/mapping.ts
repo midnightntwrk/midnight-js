@@ -13,17 +13,18 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { FinalizedTxRecord, ReadSeam, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 
 import {
   correlateDeployTxId,
-  parseHexTransaction,
+  decodeVersionedTransaction,
   toSegmentStatusMap,
   toTxStatus,
   toUnshieldedUtxos
 } from './codec';
-import { requireV9Era } from './era';
+import { resolveReadEra } from './era';
 import { IndexerInvariantError } from './errors';
 import type { DeployTxQueryQuery } from './gen/graphql';
 import type { ContractBalance, RegularTransaction } from './gen/schema-types';
@@ -97,35 +98,95 @@ export const extractRegularDeployTransaction = (
   return isRegularTransaction(transaction) ? transaction : null;
 };
 
-export const toFinalizedDeployTxData = (
-  contractAddress: ContractAddress,
-  transaction: RegularTransaction
-): FinalizedTxData => {
-  // Resolved before `parseHexTransaction` deliberately: that deserializer is
-  // v9-only, so a v8-era record has to be named here rather than surfacing as
-  // a codec failure. Kept a statement rather than the first property of the
-  // literal below so the ordering is explicit — as a property it held only by
-  // source order, which an alphabetising edit would silently reverse.
-  const version = requireV9Era(transaction, 'watchForDeployTxData', `contractAddress ${contractAddress}`);
+/**
+ * Everything a finalized-transaction record carries except the transaction and
+ * the era it belongs to — the two the decode produces.
+ *
+ * Split out so both read seams build the metadata identically and differ only
+ * where they genuinely do: which identifier the record is keyed by.
+ */
+const toFinalizedTxRecord = (
+  transaction: RegularTransaction & { hash: string; identifiers: string[] },
+  txId: TransactionId
+): FinalizedTxRecord => ({
+  status: toTxStatus(transaction.transactionResult),
+  txId,
+  identifiers: transaction.identifiers,
+  txHash: transaction.hash,
+  blockHeight: transaction.block.height,
+  blockHash: transaction.block.hash,
+  blockTimestamp: transaction.block.timestamp,
+  blockAuthor: transaction.block.author,
+  segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
+  unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs),
+  indexerId: transaction.id,
+  protocolVersion: transaction.protocolVersion,
+  fees: {
+    estimatedFees: transaction.fees.estimatedFees,
+    paidFees: transaction.fees.paidFees
+  }
+});
 
-  return {
-    version,
-    tx: parseHexTransaction(transaction.raw),
-    status: toTxStatus(transaction.transactionResult),
-    txId: correlateDeployTxId(contractAddress, transaction.contractActions, transaction.identifiers),
-    identifiers: transaction.identifiers,
-    txHash: transaction.hash,
-    blockHeight: transaction.block.height,
-    blockHash: transaction.block.hash,
-    blockTimestamp: transaction.block.timestamp,
-    blockAuthor: transaction.block.author,
-    segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
-    unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs),
-    indexerId: transaction.id,
+/**
+ * Builds one version-tagged finalized-transaction record, decoding the payload
+ * with the runtime of the era the record itself reports.
+ *
+ * `version` is what the decode returned, which is what the era resolution
+ * selected, which is what `protocolVersion` says — one fact, not three. That is
+ * why the discriminant is never stamped as a literal here.
+ */
+const toVersionedFinalizedTxData = async (
+  transaction: RegularTransaction & { hash: string; identifiers: string[] },
+  txId: TransactionId,
+  era: LedgerVersion,
+  seam: ReadSeam,
+  recordRef: string
+): Promise<VersionedFinalizedTxData> => {
+  const decoded = await decodeVersionedTransaction(transaction.raw, era, {
+    seam,
     protocolVersion: transaction.protocolVersion,
-    fees: {
-      estimatedFees: transaction.fees.estimatedFees,
-      paidFees: transaction.fees.paidFees
-    }
-  };
+    recordRef
+  });
+  return { ...toFinalizedTxRecord(transaction, txId), ...decoded };
+};
+
+/**
+ * The `watchForDeployTxData` record: keyed by the identifier that sits at the
+ * same positional index as the deploy's contract action.
+ *
+ * The era is resolved first, before anything else in the record is built. Each
+ * era has its own deserializer, so which one runs has to be settled before a
+ * decoder is reached; and a record whose `protocolVersion` places it on no era
+ * at all is refused without any runtime being acquired. Kept statements rather
+ * than folded into the call below so that ordering is explicit — as arguments
+ * it would hold only by evaluation order, which a reordering edit would
+ * silently reverse.
+ *
+ * Declared `async` so every refusal on this path is a rejection. The two
+ * statements below throw synchronously, and a caller should not have to place
+ * its `try`/`catch` differently depending on which stage failed.
+ */
+export const toFinalizedDeployTxData = async (
+  contractAddress: ContractAddress,
+  transaction: RegularTransaction & { hash: string; identifiers: string[] }
+): Promise<VersionedFinalizedTxData> => {
+  const recordRef = `contractAddress ${contractAddress}`;
+  const era = resolveReadEra(transaction, 'watchForDeployTxData', recordRef);
+  const txId = correlateDeployTxId(contractAddress, transaction.contractActions, transaction.identifiers);
+  return toVersionedFinalizedTxData(transaction, txId, era, 'watchForDeployTxData', recordRef);
+};
+
+/**
+ * The `watchForTxData` record: keyed by the identifier the caller asked for.
+ *
+ * Same era-first ordering, and the same reason for being `async`, as
+ * {@link toFinalizedDeployTxData}.
+ */
+export const toFinalizedTxData = async (
+  txId: TransactionId,
+  transaction: RegularTransaction & { hash: string; identifiers: string[] }
+): Promise<VersionedFinalizedTxData> => {
+  const recordRef = `txId ${txId}`;
+  const era = resolveReadEra(transaction, 'watchForTxData', recordRef);
+  return toVersionedFinalizedTxData(transaction, txId, era, 'watchForTxData', recordRef);
 };

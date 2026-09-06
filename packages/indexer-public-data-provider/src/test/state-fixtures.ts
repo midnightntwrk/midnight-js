@@ -47,6 +47,22 @@ export const mintV8ContractStateHex = async (): Promise<string> => toHex(await m
  */
 export const mintV9TransactionHex = (): string => toHex(ledger.Transaction.fromParts('local-test').mockProve().bind().serialize());
 
+/**
+ * The v8-era twin of {@link mintV9TransactionHex}: a minimal, real finalized
+ * transaction in the indexer's wire encoding, produced by the v8 runtime
+ * itself and reached through `loadLedger8()`, the only sanctioned path to it.
+ *
+ * `mockProve()` already yields the `(SignatureEnabled, Proof, Binding)` shape a
+ * finalized transaction has — no separate `bind()` on this era — so the bytes
+ * carry the same `proof,pedersen-schnorr` tag a real finalized v8 transaction
+ * does, and round-trip through `Transaction.deserialize('signature', 'proof',
+ * 'binding', ...)`.
+ */
+export const mintV8TransactionHex = async (): Promise<string> => {
+  const v8 = await loadLedger8();
+  return toHex(v8.Transaction.fromParts('local-test').mockProve().serialize());
+};
+
 /** Protocol-version integer for a node release whose ledger runtime is v8. */
 export const V8_ERA_PROTOCOL_VERSION = 1_000_000;
 

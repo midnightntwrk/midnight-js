@@ -253,22 +253,56 @@ still resolves `FinalizedTxData`, and `findDeployedContract` still resolves a
 is reported as `EraInvariantViolationError`, which carries the `seam` and, where
 the flow knows it, the `circuitId`.
 
-No provider produces the v8 arm yet — the read path deserializes with the
-v9-only runtime, so a v8-era record surfaces as `EraUnsupportedError` rather
-than as a value. Narrowing is required now so that dual decode does not force a
-second breaking change.
+`indexerPublicDataProvider` produces both arms. It decodes each record with the
+ledger runtime of the era that record's own `protocolVersion` reports, so a
+v8-era record arrives as a **value** on the `'v8'` arm, not as a thrown error.
+The pre-fork runtime is acquired lazily on first use, so a session that never
+meets a v8-era record never instantiates that WASM. Narrowing on `version` is
+therefore not a formality: the two arms carry transaction objects built by
+different runtimes, and neither runtime's object can be handed to the other.
 
 ### 8d. `version` is derived, not asserted
 
 `indexerPublicDataProvider` resolves `version` from each record's own
-`protocolVersion` via the resolver in `@midnight-ntwrk/midnight-js-protocol`.
-Consequence: pointing the provider at a network outside the node 2.x range now
-throws at the read boundary — `EraUnsupportedError` for a v8-era network,
-`EraUnresolvableError` for a node 0.x or otherwise unmapped one — where before
-it returned a record that failed later inside the codec, with nothing in the
-message naming the era. Both are `IndexerError` subclasses, so a single
-`instanceof IndexerError` still catches them, and both carry the raw
-`protocolVersion` plus the transaction id or contract address being read.
+`protocolVersion` via the resolver in `@midnight-ntwrk/midnight-js-protocol`,
+and that same answer decides which ledger runtime decodes the record — so the
+discriminant, the decoder that ran and the `protocolVersion` beside it are one
+fact and cannot disagree.
+
+Consequence: a v8-era network is now **served**, on the `'v8'` arm. What throws
+at the read boundary is a network this client cannot place on the era timeline
+at all — `EraUnresolvableError`, for a node 0.x or otherwise unmapped
+`protocolVersion` — where before it returned a record that failed later inside
+the codec, with nothing in the message naming the era.
+
+One further read-boundary failure is new: `DecodeVersionMismatchError`, raised
+when a record's era resolves but its bytes identify themselves as **another
+ledger vintage**. The record contradicts itself, so this reports an inconsistent
+indexer rather than a version mismatch in your own dependencies; the runtime's
+own diagnosis is preserved on `cause`.
+
+"Identify themselves" is the load-bearing part, and the bar is deliberately
+higher than the deserialization layer's `version-mismatch` classification. That
+classification is reached by empty, truncated and garbage payloads too, because
+the tag-header pattern behind it is permissive about the incoming tag. This
+error is raised only where the diagnosis also concluded the data is older or
+newer than the code. Everything else — malformed bytes, a truncated body under
+an intact tag, a payload that is not a serialized anything — surfaces as the
+`DeserializationError` it is, and a `raw` field that is not whole hex is
+refused as `IndexerDataError` before any decoder sees it. Corruption is
+therefore never reported as an era disagreement.
+
+`EraUnresolvableError`, `DecodeVersionMismatchError` and `EraUnsupportedError`
+are all `IndexerError` subclasses, and each carries the raw `protocolVersion`
+plus the transaction id or contract address being read. Two failures a read can
+raise are deliberately **not** `IndexerError`s, so "catch any indexer error with
+one `instanceof IndexerError` check" needs one qualification: `DeserializationError`
+(`midnight-js-utils`), which already escaped it before this release, and
+`Ledger8RuntimeMissingError` (`midnight-js-protocol`), raised when the pre-fork
+runtime cannot be acquired for a v8-era record. Both report something that is
+not an indexer fault — bad bytes and a broken local install respectively — and
+wrapping either would send you looking at the wrong thing. Catch broadly and
+branch, or match on `code` with `hasErrorCode`.
 
 ### 8e. Implementing `WalletProvider` or `MidnightProvider`
 
@@ -313,9 +347,14 @@ discriminant never appears in your code.
 carries `seam` and optional `circuitId`), `EraSeam`.
 
 **`@midnight-ntwrk/midnight-js-indexer-public-data-provider`** — added:
-`EraUnsupportedError` (`MIDNIGHT_JS_PR_ERA_UNSUPPORTED`) and
-`EraUnresolvableError` (`MIDNIGHT_JS_PR_ERA_UNRESOLVABLE`), both
-`IndexerError` subclasses.
+`EraUnresolvableError` (`MIDNIGHT_JS_PR_ERA_UNRESOLVABLE`),
+`DecodeVersionMismatchError` (`MIDNIGHT_JS_PR_DECODE_VERSION_MISMATCH`) and
+`EraUnsupportedError` (`MIDNIGHT_JS_PR_ERA_UNSUPPORTED`), all `IndexerError`
+subclasses. `EraUnsupportedError` is a guard rather than an era policy: the
+per-record decoder table is total over the eras this client ships runtimes for,
+so a TypeScript caller cannot raise it, and it exists to stop an era string
+threaded in from untyped JavaScript resolving an inherited `Object.prototype`
+member instead of failing.
 
 Catch any of these by code with `hasErrorCode(error, CODE)` from
 `midnight-js-utils` rather than by `instanceof` across a package boundary.

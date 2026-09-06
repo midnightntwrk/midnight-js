@@ -16,6 +16,7 @@
 import {
   LEDGER_VERSIONS,
   type LedgerVersion,
+  loadLedger8,
   protocolVersionToLedger,
   UnknownProtocolVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
@@ -31,7 +32,11 @@ import {
   type Transaction as LedgerTransaction,
   type ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { RawContractState } from '@midnight-ntwrk/midnight-js-types';
+// Type-only, so nothing here links the v8 chunk: the runtime is acquired
+// through `loadLedger8()` and only when a v8-era record asks for it. Same
+// precedent as `FinalizedTxDataV8` in `@midnight-ntwrk/midnight-js-types`.
+import type { FinalizedTransaction as V8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { RawContractState, ReadSeam, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import {
   FailEntirely,
   FailFallible,
@@ -46,15 +51,18 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import {
   contractStateEnvelopeVersion,
+  type DeserializationError,
   deserializeCompactContractState,
   deserializeLedgerParameters,
   deserializeLedgerTransaction,
   deserializeZswapChainState,
-  isHex
+  isDeserializationError,
+  isHex,
+  withDeserializationContext
 } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
-import { IndexerDataError } from './errors';
+import { DecodeVersionMismatchError, EraUnsupportedError, IndexerDataError } from './errors';
 import type { ContractBalance, Segment, TransactionResult } from './gen/schema-types';
 
 const toByteArray = (s: string): Buffer => Buffer.from(s, 'hex');
@@ -78,6 +86,165 @@ export const parseHexLedgerParameters = (s: string): LedgerParameters =>
   deserializeLedgerParameters(toByteArray(s), { caller: `${PKG}:parseHexLedgerParameters` });
 
 /**
+ * The v8-era sibling of {@link parseHexTransaction}. Acquires the v8 ledger
+ * runtime through `loadLedger8()` — the only sanctioned path to it — and reads
+ * the payload with the same marker convention the v9 wrapper uses.
+ *
+ * Routed through `withDeserializationContext` so a v8 failure arrives as the
+ * same classified `DeserializationError` a v9 failure does. Without it the raw
+ * WASM error would reach {@link decodeVersionedTransaction} unclassified, and a
+ * genuine version mismatch on this era would be indistinguishable from
+ * corruption.
+ */
+const parseHexTransactionV8 = async (s: string): Promise<V8FinalizedTransaction> => {
+  const v8 = await loadLedger8();
+  return withDeserializationContext(
+    { dataType: 'LedgerTransaction', source: 'ledger', caller: `${PKG}:parseHexTransactionV8` },
+    () => v8.Transaction.deserialize('signature', 'proof', 'binding', toByteArray(s))
+  );
+};
+
+/**
+ * A decoded finalized transaction paired with the era whose runtime produced
+ * it — the two fields {@link VersionedFinalizedTxData} discriminates on.
+ *
+ * Derived from that union rather than restated, so an era added there arrives
+ * here automatically and {@link TRANSACTION_DECODERS} stops type-checking
+ * until it has a decoder.
+ */
+type DecodedArm<Arm> = Arm extends VersionedFinalizedTxData ? Pick<Arm, 'version' | 'tx'> : never;
+
+export type DecodedVersionedTransaction = DecodedArm<VersionedFinalizedTxData>;
+
+/**
+ * One decoder per {@link LedgerVersion}, each returning only its own arm of
+ * {@link DecodedVersionedTransaction}:
+ *
+ * - `v9` — read with the statically bound `@midnightntwrk/ledger-v9`, which is
+ *   already linked because every other read on this provider needs it.
+ * - `v8` — read with the pre-fork runtime, acquired lazily on first use so a
+ *   session that never meets a v8 record never instantiates that WASM.
+ *
+ * A total `Record` on a null prototype, frozen — see the protocol package's
+ * SharedTableDiscipline document. The null prototype is what makes an
+ * off-vocabulary era resolve to `undefined` and reach the guard in
+ * {@link decodeVersionedTransaction}, instead of answering with an inherited
+ * `Object.prototype` member.
+ */
+type TransactionDecoders = {
+  readonly [V in LedgerVersion]: (hexTransaction: string) => Promise<Extract<DecodedVersionedTransaction, { version: V }>>;
+};
+
+const TRANSACTION_DECODERS: TransactionDecoders = Object.freeze(
+  Object.assign(Object.create(null) as TransactionDecoders, {
+    v8: async (hexTransaction: string) => ({ version: 'v8' as const, tx: await parseHexTransactionV8(hexTransaction) }),
+    // Wrapped in a resolved promise rather than decoded eagerly: both arms have
+    // to be awaited the same way, and the v9 read stays the same synchronous
+    // call `parseHexTransaction` already makes.
+    v9: (hexTransaction: string) => Promise.resolve({ version: 'v9' as const, tx: parseHexTransaction(hexTransaction) })
+  } satisfies TransactionDecoders)
+);
+
+/**
+ * Which record a decode was for, and where it was read from. Carried so a
+ * failure names the record and the seam rather than only the era — a dApp with
+ * several watches open cannot otherwise tell which one rejected.
+ */
+export interface TransactionDecodeContext {
+  readonly seam: ReadSeam;
+  readonly protocolVersion: number;
+  readonly recordRef: string;
+}
+
+/**
+ * Whether a decode failure's own diagnosis identifies the payload as ANOTHER
+ * ledger vintage — the only thing that makes {@link DecodeVersionMismatchError}
+ * a true statement rather than a guess.
+ *
+ * The `version-mismatch` classification alone is not that evidence. The
+ * classifier's tag-header pattern
+ * (`@midnight-ntwrk/midnight-js-utils`, `deserialization/patterns.ts`) is
+ * deliberately permissive on the incoming tag so that a mangled one still
+ * classifies rather than falling through to `unknown` — with the result that
+ * empty, truncated and outright garbage payloads all arrive here classified
+ * `version-mismatch`. Reporting those as an era disagreement would tell a
+ * reader their indexer is serving records from two eras when it is really
+ * serving corrupt bytes.
+ *
+ * `direction` is the discriminator, not `extracted.receivedVersion`. It is set
+ * only where the diagnosis concluded the data is OLDER or NEWER than the code,
+ * which is exactly the claim being made downstream. `receivedVersion` is a raw
+ * extraction artifact and is populated by any payload whose header tag happens
+ * to parse — including one truncated mid-body, whose intact tag reports the
+ * very version that was expected. `direction` also covers the classifier's
+ * discriminant-level patterns, which identify a vintage while extracting no
+ * version at all.
+ */
+const namesAnotherVersion = (error: unknown): error is DeserializationError =>
+  isDeserializationError(error) &&
+  error.context.classification === 'version-mismatch' &&
+  error.context.direction !== undefined;
+
+/**
+ * Decodes one finalized transaction with the runtime of the era it was written
+ * under, and tags the result with that era.
+ *
+ * `era` is the authority on which decoder runs, and it is derived from the
+ * record's own `protocolVersion` by `resolveReadEra` (`./era.ts`) before this
+ * is called. Nothing here re-derives it: the era and the `version` on the
+ * returned record are the same fact, which is what keeps the discriminant from
+ * disagreeing with the `protocolVersion` beside it.
+ *
+ * Hex is validated before anything else, for the reason
+ * {@link parseHexContractState} validates it: `Buffer.from(s, 'hex')` stops at
+ * the first character it cannot read and returns a SHORTER buffer without
+ * complaining, so an only-partly-hex payload would otherwise reach a decoder as
+ * a silently truncated byte string and be diagnosed as a bad transaction rather
+ * than a bad encoding.
+ *
+ * A payload that will not decode on the era selected for it is reported as
+ * {@link DecodeVersionMismatchError} — but only when the failure's diagnosis
+ * actually identifies another vintage: see {@link namesAnotherVersion}.
+ * Everything else leaves as the `DeserializationError` it is, because calling
+ * corruption an era disagreement would send a reader to align package versions
+ * that are already right.
+ *
+ * @param hexTransaction The hex-encoded serialized transaction, as the indexer
+ *                       serves it.
+ * @param era The era whose runtime reads the payload. Validated at runtime, not
+ *            merely type-checked.
+ * @param context The record and seam a failure should name.
+ * @throws IndexerDataError if `hexTransaction` is not a whole hex byte string.
+ * @throws EraUnsupportedError if `era` is not a member of `LEDGER_VERSIONS`.
+ * @throws DecodeVersionMismatchError if the payload identifies itself as
+ *   another ledger vintage, carrying the runtime's own diagnosis on `cause`.
+ * @throws DeserializationError for every other decode failure.
+ */
+export const decodeVersionedTransaction = async (
+  hexTransaction: string,
+  era: LedgerVersion,
+  context: TransactionDecodeContext
+): Promise<DecodedVersionedTransaction> => {
+  if (!isHex(hexTransaction)) {
+    throw IndexerDataError.malformedTransactionEncoding();
+  }
+  const decode = TRANSACTION_DECODERS[era];
+  if (typeof decode !== 'function') {
+    throw new EraUnsupportedError(context.seam, era, context.protocolVersion, context.recordRef);
+  }
+  try {
+    return await decode(hexTransaction);
+  } catch (error) {
+    if (namesAnotherVersion(error)) {
+      throw new DecodeVersionMismatchError(context.seam, era, context.protocolVersion, context.recordRef, {
+        cause: error
+      });
+    }
+    throw error;
+  }
+};
+
+/**
  * Decodes the indexer's hex-encoded contract state and reads the ledger era off
  * the envelope in front of the body, in that order.
  *
@@ -96,12 +263,15 @@ const stateBytesAndEnvelopeVersion = (
 };
 
 /**
- * The only ledger era the deserializers reached from this module can read.
+ * The only ledger era {@link parseHexContractState} can read.
  *
- * The wrappers below bind the v9 runtime at import time; the v8 runtime is
- * reachable only through `loadLedger8()` and no read path dispatches on the era
- * yet. Until one does, bytes from any other era are refused here rather than
- * fed to the v9 decoder — which would reject them anyway, but with a header-tag
+ * Deliberately narrower than the transaction path above, which dispatches per
+ * record across both eras. Widening this one would change what
+ * `queryContractState` returns — a `ContractState` from whichever runtime wrote
+ * it, so no longer one type — and `queryRawContractState` already serves the
+ * bytes together with their era for a caller that needs the other runtime.
+ * Until that changes, bytes from any other era are refused here rather than fed
+ * to the v9 decoder — which would reject them anyway, but with a header-tag
  * error that says nothing about what the caller should do instead.
  */
 const DECODABLE_LEDGER_VERSION: LedgerVersion = 'v9';

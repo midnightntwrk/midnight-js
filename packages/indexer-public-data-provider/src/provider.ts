@@ -30,10 +30,10 @@ import type {
   ContractEventsPage,
   ContractEventSubscriptionFilter,
   ContractStateObservableConfig,
-  FinalizedTxData,
   PublicDataProvider,
   RawContractState,
-  UnshieldedBalances
+  UnshieldedBalances,
+  VersionedFinalizedTxData
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
@@ -41,16 +41,11 @@ import * as Rx from 'rxjs';
 import {
   parseHexContractState,
   parseHexLedgerParameters,
-  parseHexTransaction,
   parseHexZswapState,
   toRawContractState,
-  toSegmentStatusMap,
-  toTxStatus,
-  toUnshieldedBalances,
-  toUnshieldedUtxos
+  toUnshieldedBalances
 } from './codec';
 import { DEFAULT_CONTRACT_EVENTS_PAGE_SIZE } from './config';
-import { requireV9Era } from './era';
 import { IndexerDataError, IndexerInvariantError, IndexerProviderConfigError } from './errors';
 import { buildQueryVariables, buildSubscriptionVariables } from './events-filter';
 import { toContractEvent } from './events-mapping';
@@ -61,7 +56,8 @@ import {
   extractRegularDeployTransaction,
   extractUnshieldedBalances,
   isRegularTransaction,
-  toFinalizedDeployTxData
+  toFinalizedDeployTxData,
+  toFinalizedTxData
 } from './mapping';
 import {
   blockOffsetToBlock$,
@@ -408,7 +404,13 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     );
   }
 
-  watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
+  /**
+   * Not declared `async`, so an invalid address is refused synchronously, as
+   * it is on every other address-taking read here. The record itself is built
+   * after the poll resolves, because the era's runtime may still have to be
+   * acquired — see {@link toFinalizedDeployTxData}.
+   */
+  watchForDeployTxData(contractAddress: ContractAddress): Promise<VersionedFinalizedTxData> {
     assertIsContractAddress(contractAddress);
     return Rx.firstValueFrom(
       pollUntilPresent(
@@ -423,14 +425,14 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
               'watchForDeployTxData: extracted transaction unexpectedly null after predicate'
             );
           }
-          return toFinalizedDeployTxData(contractAddress, transaction);
+          return transaction;
         },
         this.pollInterval
       )
-    );
+    ).then((transaction) => toFinalizedDeployTxData(contractAddress, transaction));
   }
 
-  watchForTxData(txId: TransactionId): Promise<FinalizedTxData> {
+  watchForTxData(txId: TransactionId): Promise<VersionedFinalizedTxData> {
     return Rx.firstValueFrom(
       pollUntilPresent(
         this.client,
@@ -440,41 +442,18 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           const first = data.transactions[0];
           return first !== undefined && isRegularTransaction(first);
         },
-        (data): FinalizedTxData => {
+        (data): RegularTransaction & { hash: string; identifiers: string[] } => {
           const first = data.transactions[0];
           if (first === undefined || !isRegularTransaction(first)) {
             throw new IndexerInvariantError(
               'watchForTxData: transactions array unexpectedly empty or non-regular after predicate'
             );
           }
-          const transaction: RegularTransaction & { hash: string; identifiers: string[] } = first;
-          // Resolved before `parseHexTransaction`, which is v9-only: see the
-          // note in `toFinalizedDeployTxData`.
-          const version = requireV9Era(transaction, 'watchForTxData', `txId ${txId}`);
-          return {
-            version,
-            tx: parseHexTransaction(transaction.raw),
-            status: toTxStatus(transaction.transactionResult),
-            txId,
-            txHash: transaction.hash,
-            identifiers: transaction.identifiers,
-            blockHeight: transaction.block.height,
-            blockHash: transaction.block.hash,
-            segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
-            unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs),
-            blockTimestamp: transaction.block.timestamp,
-            blockAuthor: transaction.block.author,
-            indexerId: transaction.id,
-            protocolVersion: transaction.protocolVersion,
-            fees: {
-              paidFees: transaction.fees.paidFees,
-              estimatedFees: transaction.fees.estimatedFees
-            }
-          };
+          return first;
         },
         this.pollInterval
       )
-    );
+    ).then((transaction) => toFinalizedTxData(txId, transaction));
   }
 
   /**

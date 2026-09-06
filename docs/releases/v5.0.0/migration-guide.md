@@ -247,23 +247,35 @@ const provenTx = unwrapV9(await proofProvider.proveTx({ version: 'v9', tx: unpro
 ```
 
 The read surface is a *different* union — its v8 arm carries `tx`, not
-`txBytes` — so `unwrapV9` does not accept it. Use a switch:
+`txBytes` — so `unwrapV9` does not accept it. Both arms are records you will
+receive, so handle both:
 
 ```typescript
 const record = await publicDataProvider.watchForTxData(txId);
-if (record.version !== 'v9') {
-  throw new Error(`unexpected ledger era: ${record.version}`);
+switch (record.version) {
+  case 'v9':
+    return record.tx;              // live v9 ledger object
+  case 'v8':
+    return toMyShape(record.tx);   // v8 ledger object, already decoded
 }
-// record is FinalizedTxData here
 ```
+
+Do not narrow this one by throwing on anything that is not `'v9'`. A v8-era
+record is a record the provider decodes and returns, not an error condition,
+and a dApp that reads its own pre-fork history will meet one.
 
 If you *implement* `WalletProvider` or `MidnightProvider`, wrap a v9-only
 implementation with `createWalletProvider` / `createMidnightProvider` rather
 than tagging by hand — see [breaking-changes.md 8e](./breaking-changes.md).
 
-Pointing the indexer provider at a network outside the node 2.x range now
-throws at the read boundary (`EraUnsupportedError` / `EraUnresolvableError`)
-instead of returning a record that fails later inside the codec.
+That is why a v8-era network is served rather than refused: the indexer
+provider decodes each record with the runtime of the era that record reports,
+acquiring the pre-fork runtime lazily on first use. What throws at the read
+boundary is a `protocolVersion` this client cannot place on the era timeline at
+all (`EraUnresolvableError`), or a record whose bytes identify themselves as
+another ledger vintage than the era it claims (`DecodeVersionMismatchError`) —
+where before either would have returned a record that failed later inside the
+codec. Bytes that are merely malformed still surface as `DeserializationError`.
 
 ---
 
