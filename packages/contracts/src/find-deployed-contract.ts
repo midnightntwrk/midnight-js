@@ -245,11 +245,10 @@ export interface FoundContract<C extends Contract.Any> {
  * retained-era contract was deployed in whichever era was current at the time, and refusing the
  * pre-fork arm would refuse exactly the contracts this arm exists to keep callable.
  *
- * ARM ORDER IS LOAD-BEARING, in two ways, and both are pinned by
- * `src/test/typecheck/overloads.test-d.ts`. This arm is declared FIRST so no current-era arm can
- * shadow it, and the LAST arm is left exactly as it was before this arm existed, because
- * `ReturnType<typeof f>` and `Parameters<typeof f>` both resolve from it and so does the error
- * TypeScript prints when no arm matches. See the module documentation in `./ledger8-contract.ts`.
+ * ARM ORDER IS LOAD-BEARING: this arm is declared FIRST, and the arm that was already LAST stays
+ * last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ *
+ * @see {@link OverloadTyping} for what resolves from the last arm.
  */
 export async function findDeployedContract<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,

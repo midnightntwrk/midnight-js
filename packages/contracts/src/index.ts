@@ -40,44 +40,20 @@ export {
   DeployContractOptionsWithPrivateState,
   DeployedContract
 } from './deploy-contract';
-// The one member of `./internal/breadcrumbs` that is a CONSUMER-FACING value.
-// Its own documentation justifies a fixed message so a log aggregator can group
-// the three dispatch decisions -- which is only true if the aggregator can
-// import the string rather than retype it. The breadcrumb TYPES stay internal:
-// a log consumer reads the emitted JSON, and publishing the shapes would pin
-// them as API before a second consumer has asked for them.
+// The one member of `./internal/breadcrumbs` that is CONSUMER-FACING: an aggregator has to import
+// the fixed message rather than retype it. The breadcrumb TYPES stay internal -- publishing the
+// shapes would pin them as API before a second consumer has asked for them.
 export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // The era errors below become reachable with this release: the retained-era entry points now run
-// real pipelines, so a consumer can catch them. `BlankVerifierKeySlotError` and
-// `VerifierKeyMismatchError` come from the pre-proving key check, `HeadStateEraMismatchError` and
-// `IndexerInconsistencyError` from the head-versus-state era check, and `EraArtifactMismatchError`
-// from era resolution at every entry point; each is exercised through an entry point in
-// `src/test/keep-state.test.ts` or `src/test/v8-native.test.ts`.
-// `Ledger8DeployOnV9Error` is the ONE exception, and it is exported as the published name for a
-// refusal that is currently DORMANT rather than as one a consumer can provoke. The era pairing
-// table does refuse `(ledger8, v9, deploy)` with it, but the only caller that asks the table a
-// `'deploy'` question is `runLedger8Deploy`, which no entry point invokes:
-// `deployContract`'s retained arm refuses unconditionally with `LEDGER8_DEPLOY_UNMAINTAINABLE`
-// before any head is read. Its negative is therefore against that internal function, not an entry
-// point. It becomes consumer-reachable on the day the era seam carries a maintenance authority and
-// the unmaintainable-deploy refusal is lifted -- the same condition `runLedger8Deploy`'s own
-// documentation names.
-// `Ledger8SeamFailedError` carries a provider's own rejection with its message redacted, and
-// `Ledger8ShieldedSpendUnsupportedError` refuses a retained-era call that would spend a coin the
-// contract already holds; both are reachable through the same entry points and exercised there.
-// `StaleHeadError` is the fork-crossing refusal: a submission rejected after the network head moved
-// under the operation, carrying the two-step remediation for that operation kind. It is thrown from
-// the submit seam of both retained-era arms and exercised through the entry points in
-// `src/test/stale-head.test.ts`.
-// `ScopedTxEraUnsupportedError` and `MixedEraScopeError` are the scoped-transaction era rules: a
-// scope is refused outright on a head era that composes only one call per transaction, and a
-// retained-toolchain call cannot join a scope at all. Both are exercised in
-// `src/test/scoped-era.test.ts`.
-// `SubmitRejectionUndiagnosedError` is the other half of the fork-crossing diagnosis: a submission
-// rejected where the head could not be re-read, or reported an EARLIER era than the operation
-// started against. Reported as undiagnosable rather than as a fork, because neither case
-// establishes one, and carrying a registered code of its own so a retry handler branching on
-// `hasErrorCode` behaves the same whichever failure came first.
+// real pipelines, so a consumer can catch them. Each class documents its own condition and
+// remediation, and each is exercised through an entry point in `src/test/keep-state.test.ts`,
+// `src/test/v8-native.test.ts`, `src/test/stale-head.test.ts` or `src/test/scoped-era.test.ts`.
+//
+// `Ledger8DeployOnV9Error` is the ONE exception: it is exported as the published name for a
+// refusal that is currently DORMANT rather than one a consumer can provoke, because
+// `deployContract`'s retained arm refuses unconditionally before any head is read. Its negative is
+// therefore against an internal function, not an entry point. It becomes consumer-reachable on the
+// day the era seam carries a maintenance authority.
 export {
   BlankVerifierKeySlotError,
   CallTxFailedError,

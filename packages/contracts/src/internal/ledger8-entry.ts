@@ -19,44 +19,16 @@
  * transaction across the provider seams.
  *
  * Split from `./ledger8-pipeline.ts` on purpose. That module is the
- * orchestration ORDER and is pure — it is handed an era and an engine and calls
- * them in one fixed sequence. This module is the part that touches the outside
- * world: two independent acquisitions at the operation's asynchronous start,
- * and the version-tagged provider round trip afterwards.
+ * orchestration ORDER and is pure; this one is the part that touches the
+ * outside world.
  *
- * ## Both acquisitions happen at the start, and both are threaded down as values
+ * A successful operation reads the head ONCE. Two re-reads exist beyond it and neither happens on
+ * the ordinary path. EVERY head reading is breadcrumbed with a `HeadReadingProvenance` naming
+ * which it is — adding a reading without one is the mistake that list exists to prevent.
  *
- * The era and the engine are acquired once, before anything else runs, so no
- * step deeper in the pipeline awaits a runtime and no two steps can end up
- * bound to different acquisitions.
- *
- * ## One head read per operation, plus two re-reads that each need a reason
- *
- * `resolveOperationEra` makes the head read every operation takes at its start,
- * and the era it resolves is used for every era-dependent decision afterwards.
- * Nothing re-reads the head to answer a question that reading already answered.
- *
- * Two re-reads exist beyond it, and neither happens on the ordinary path:
- *
- * - `assertHeadStateEraAgreement` re-reads when the fetched state's envelope
- *   disagrees with the starting reading — a re-read that exists precisely to
- *   tell a stale reading from an inconsistent one, and which does not happen at
- *   all when the two agree.
- * - {@link handleSubmitRejection} re-reads after the node REJECTED a submitted
- *   transaction, to decide whether the head crossed the fork underneath the
- *   operation. Only on a `submitTx` rejection: a proving or balancing failure
- *   cannot mean the network moved, and is not given a re-read.
- *
- * So a successful operation reads the head ONCE; a submit rejection reads it
- * twice, which is what `src/test/v8-native.test.ts` measures. `./breadcrumbs.ts`
- * is the authority on the full count — four across this package, the fourth
- * being the reading a SCOPE takes at its start — and every one of them is
- * breadcrumbed with a `HeadReadingProvenance` naming which it is. Do not
- * describe this module as making a single re-read: adding one without a
- * provenance member is the mistake that list exists to prevent.
- *
- * @see docs/adr/0006-version-tagged-payloads-at-provider-seams.md
- * @see docs/adr/0008-never-latch-the-network-head-version.md
+ * @see {@link KeepStatePipeline} for the acquisition rules, the seam arms, and
+ *      how a provider's own failure is sanitized.
+ * @see {@link Breadcrumbs} for all four readings and what each provenance means.
  */
 
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -109,9 +81,7 @@ import { handleSubmitRejection } from './stale-head';
  * transaction its provider seams take.
  *
  * The three markers name the transaction's stage — signature-enabled,
- * unproven, unbound — which is exactly what `composeCallTx` documents its
- * output as: the bytes `Transaction.serialize()` produces before `.prove()` is
- * ever called.
+ * unproven, unbound — which is what `composeCallTx` documents its output as.
  *
  * @param txBytes The serialized unproven current-era transaction.
  * @returns The live transaction.
@@ -154,9 +124,8 @@ export interface Ledger8Runtime {
  * Resolves the head era and acquires the retained engine, then refuses the
  * `(retained artifact, head era)` pairings that cannot run.
  *
- * The two acquisitions are independent and are started together: the head read
- * is a network round trip and the engine load instantiates WASM, and neither
- * needs the other's answer.
+ * The two acquisitions are independent and are started together; keep them
+ * that way, because neither needs the other's answer.
  *
  * @param pdp The read surface, for the one head read.
  * @param kind Whether this operation deploys a contract or calls one already
@@ -168,6 +137,7 @@ export interface Ledger8Runtime {
  * @throws Ledger8DeployOnV9Error for a retained-era deploy on a post-fork head.
  * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
  * @throws Ledger8RuntimeMissingError if the retained runtime cannot be acquired.
+ * @see {@link EraDispatch} for the pairing table.
  */
 export const acquireLedger8Runtime = async (
   pdp: HeadVersionSource,
@@ -190,11 +160,11 @@ export const acquireLedger8Runtime = async (
  * The two shapes transaction and witness material takes inside an error
  * message: a long run of hex, or a long run of base64.
  *
- * Thirty-two characters is the shortest run worth redacting — a 16-byte hex
- * value — and is short enough that no ordinary English word or identifier
- * reaches it, so the redaction does not eat diagnostic text. Matching by SHAPE
- * rather than by a particular provider's message format is deliberate: the set
- * of providers is open, so there is no format to enumerate.
+ * Matched by SHAPE rather than by any provider's message format, because the
+ * set of providers is open. Do not lower the 32-character floor — below it the
+ * redaction starts eating ordinary words.
+ *
+ * @see {@link KeepStatePipeline} for why 32 is the floor.
  */
 const PAYLOAD_SHAPED = /[0-9a-fA-F]{32,}|[A-Za-z0-9+/]{32,}={0,2}/g;
 const REDACTED = '[redacted]';
@@ -203,14 +173,13 @@ const REDACTED = '[redacted]';
  * Rebuilds an external failure as a plain {@link Error} carrying only its class
  * name and a redacted message.
  *
- * Everything else is dropped, and each omission is deliberate: a provider's own
- * ENUMERABLE PROPERTIES are where HTTP clients keep the response body (and
- * therefore the echoed request), and its own `cause` chain is where the
- * unredacted original would otherwise survive. Neither is carried.
+ * The provider's enumerable properties and its own `cause` chain are dropped,
+ * both deliberately — do not carry either.
  *
  * @param cause Whatever the provider rejected with — `unknown`, because a
  * rejection is not obliged to be an `Error`.
  * @returns A plain error safe to hand to a logger.
+ * @see {@link KeepStatePipeline} for what each omission prevents.
  */
 const sanitizeSeamCause = (cause: unknown): Error => {
   const kind = cause instanceof Error ? cause.name : typeof cause;
@@ -224,12 +193,10 @@ const sanitizeSeamCause = (cause: unknown): Error => {
  * Runs one provider seam call, converting a rejection from the provider into
  * {@link Ledger8SeamFailedError} with the failure sanitized onto `cause`.
  *
- * This framework's OWN coded errors pass through UNCHANGED. They carry no
- * external payload, and a caller narrowing on `V8PayloadUnsupportedError` — the
- * refusal a current-era-only provider raises on the way in — or on
- * {@link EraInvariantViolationError} has to keep seeing them. `hasErrorCode`
- * is the registry-backed test for that, so a foreign coded error (a Node
- * `ECONNREFUSED`, say) is still treated as external and sanitized.
+ * This framework's OWN coded errors pass through UNCHANGED: a caller narrowing
+ * on `V8PayloadUnsupportedError` or {@link EraInvariantViolationError} has to
+ * keep seeing them. `hasErrorCode` is the registry-backed test, so a foreign
+ * coded error is still treated as external and sanitized.
  *
  * @param seam The provider method being called.
  * @param circuitId The circuit this flow is running.
@@ -252,34 +219,10 @@ const atSeam = async <T>(seam: EraSeam, circuitId: string, call: () => Promise<T
  * Proves, balances and submits a retained-era-executed transaction, and
  * returns the transaction id.
  *
- * ## Which seam arm the transaction crosses on, and why it is not the same on both heads
- *
- * The `version` tag on a provider payload names the ledger runtime that
- * produced the bytes — NOT the toolchain that produced the contract. A
- * retained-era contract's call is composed against whichever era the network
- * head is on, so the two heads hand the providers genuinely different things:
- *
- * | head | composed by | crosses as | narrowed with |
- * | ---- | ----------- | ---------- | ------------- |
- * | `v8` | the retained ledger | `{ version: 'v8', txBytes }` | {@link requireV8} |
- * | `v9` | the current ledger | `{ version: 'v9', tx }` | {@link requireV9} |
- *
- * On a post-fork head the transaction is an ORDINARY current-era transaction
- * that happens to carry a retained-era call, so it crosses the seams exactly
- * as every current-era transaction does — as a live handle, because both sides
- * of the seam share the current runtime. Tagging it `'v8'` would say the
- * retained runtime produced it, which is false, and would send a
- * current-era-only provider looking for a runtime it does not need.
- *
- * The composition returns bytes either way, so the post-fork arm reads them
- * back into a live transaction. That is not a re-encode across eras: they are
- * this package's OWN era's bytes, produced moments earlier by the same runtime
- * that reads them.
- *
- * A provider that does not serve the pre-fork arm refuses it on the way IN, at
- * the first seam, with `V8PayloadUnsupportedError` — before anything is
- * proven, which is the point of leaving that guard in `types` rather than
- * lifting it here.
+ * The seam arm is NOT the same on both heads: a pre-fork head crosses as
+ * `{ version: 'v8', txBytes }` and a post-fork head as `{ version: 'v9', tx }`,
+ * because the `version` tag names the ledger runtime that produced the bytes,
+ * never the toolchain that produced the contract.
  *
  * ## The SUBMIT seam is the one that gets a second look
  *
@@ -305,6 +248,8 @@ const atSeam = async <T>(seam: EraSeam, circuitId: string, call: () => Promise<T
  * @throws StaleHeadError, SubmitRejectionUndiagnosedError if the submission was
  * rejected and the head has moved, or cannot be compared — see
  * {@link handleSubmitRejection}.
+ * @see {@link KeepStatePipeline} for the seam table and why tagging the
+ *      post-fork arm `'v8'` would be false.
  */
 export const submitLedger8Tx = async (
   providers: Pick<
@@ -373,41 +318,20 @@ export interface Ledger8SubmittedCall {
  * Runs one retained-era call end to end: acquire, compose through the
  * pipeline, then prove, balance and submit.
  *
- * The verifier key the pre-proving check compares comes from the configured
- * ZK config provider — the key compiled beside the local artifact — and is
- * fetched BEFORE the pipeline runs, because the pipeline's key check is the
- * step that has to happen before any proof exists.
+ * The verifier key the pre-proving check compares is fetched BEFORE the
+ * pipeline runs, because the pipeline's key check has to happen before any
+ * proof exists.
  *
- * ## Shielded outputs are encrypted PER RECIPIENT, exactly as on the current era
- *
- * The pipeline is handed a RESOLVER rather than the wallet's encryption key.
- * The distinction is not stylistic: a bare key is coerced into the constant
- * resolver `() => key` inside the offer builder, which encrypts every output —
- * including one paying a third party — to the CALLER'S OWN key. Such a
- * transaction proves, balances and submits, and the recipient owns a coin
- * whose ciphertext they cannot decrypt, so they never discover it. Nothing
- * errors at any stage.
- *
- * {@link createEncryptionPublicKeyResolver} is the same era-independent helper
- * the current era's `unproven-call-tx.ts` resolves through: the wallet's own
- * coin public key maps to its encryption key, the well-known burn address maps
- * to `BURN_ENCRYPTION_PUBLIC_KEY`, and anyone else resolves to `undefined` —
- * which `createZswapOutput` turns into a refusal. A recipient this arm cannot
- * map is therefore REFUSED rather than silently mis-encrypted.
- *
- * No additional recipient mappings are passed, because the retained-era call
- * options carry none: `Ledger8CallTxOptions` has no
- * `additionalCoinEncPublicKeyMappings` member. So a third-party recipient is
- * refused here where the current era would consult the caller's mappings, and
- * the refusal names what to supply. Widening the retained options to accept
- * mappings is additive and belongs with the first contract that needs it — a
- * refusal is the correct answer until then, and is the one answer that cannot
- * lose a recipient's coin.
+ * The pipeline is handed a RESOLVER, never a bare encryption key, so shielded
+ * outputs are encrypted per recipient and an unresolvable recipient is refused
+ * rather than mis-encrypted.
  *
  * @param providers The provider set.
  * @param request The contract, its address, the circuit, its arguments and the
  * private state to run against.
  * @returns The transaction id and what the call produced.
+ * @see {@link KeepStatePipeline} for the per-recipient encryption rule and what
+ *      a bare key would cost.
  */
 export const runLedger8Call = async (
   providers: Ledger8EntryProviders,
@@ -474,33 +398,15 @@ export interface Ledger8SubmittedDeploy {
 /**
  * Runs one retained-era deploy end to end.
  *
- * ## DELIBERATELY DORMANT — dormant by measurement, not dead by accident
+ * DELIBERATELY DORMANT, by measurement rather than by accident. No entry point
+ * calls this and its only callers are tests; DO NOT DELETE IT as unused. See
+ * {@link LEDGER8_DEPLOY_UNMAINTAINABLE} for why it is unreachable and what
+ * would make it reachable. The path below composes and submits correctly and is
+ * exercised by `src/test/v8-native.test.ts`. Its pipeline-selection breadcrumb
+ * is likewise only reachable from tests today, for the same reason.
  *
- * No entry point calls this, and its only callers are tests. That is a
- * recorded decision rather than an oversight, and the three parts of it are:
- *
- * - WHY IT IS UNREACHABLE: {@link LEDGER8_DEPLOY_UNMAINTAINABLE} records that
- *   a retained-era deployment lands with an unsatisfiable maintenance
- *   authority — an empty committee with a threshold of one — so
- *   `deployContract`'s retained arm refuses rather than offering a contract
- *   nobody could ever maintain.
- * - WHERE THAT MEASUREMENT IS PINNED: `packages/protocol/src/test/v8-deploy.test.ts`
- *   asserts the authority the retained constructor actually leaves behind. It
- *   is the test that will fail, and say so, if a future retained runtime or
- *   era seam gains an authority.
- * - WHAT WOULD MAKE IT REACHABLE: the era seam carrying a maintenance
- *   authority. On that day `deployContract`'s retained arm stops refusing and
- *   calls this instead — a one-line change. Deleting this in the meantime
- *   would mean re-deriving the whole composition later.
- *
- * The transaction path below composes and submits correctly and is exercised
- * directly by `src/test/v8-native.test.ts`, which is what keeps it honest
- * while it waits. Its pipeline-selection breadcrumb is likewise only reachable
- * from tests today, for the same reason and no other.
- *
- * Reachable only on a pre-fork head: a retained-era deploy against a post-fork
- * head is refused by {@link acquireLedger8Runtime} before the constructor is
- * executed, because a new deployment has no pre-fork history to preserve.
+ * Reachable only on a pre-fork head; {@link acquireLedger8Runtime} refuses the
+ * post-fork case before the constructor is executed.
  *
  * @param providers The provider set.
  * @param request The contract, its constructor arguments, the private state and
@@ -564,16 +470,11 @@ export interface Ledger8FoundState {
  * Attaches to an already-deployed retained-era contract: a READ path, so no
  * composition and no submission.
  *
- * It still resolves the head era, still dates the fetched state's envelope
- * against it, and still byte-matches the local verifier key against the slot
- * the chain holds — which are exactly the checks that make a later call
- * against this contract safe, done once here so a mis-dispatch is caught at
- * attach time instead of at the first call.
+ * It still resolves the head era, dates the fetched state's envelope against
+ * it, and byte-matches the local verifier key — the checks that make a later
+ * call safe, done once here so a mis-dispatch is caught at attach time.
  *
- * The deploy record is returned version-tagged rather than narrowed: a
- * retained-era contract's deployment record belongs to whichever era was
- * current when it was deployed, and refusing the pre-fork arm here would
- * refuse every contract this pipeline exists to keep callable.
+ * The deploy record is returned version-tagged rather than narrowed.
  *
  * @param providers The provider set.
  * @param request The contract, its address and the entry points to check.
@@ -582,6 +483,7 @@ export interface Ledger8FoundState {
  * address is malformed.
  * @throws BlankVerifierKeySlotError, VerifierKeyMismatchError if the chain's
  * slot is empty or holds different bytes.
+ * @see {@link KeepStatePipeline} for why the record keeps its version tag.
  */
 export const findLedger8Contract = async (
   providers: Pick<Ledger8EntryProviders, 'publicDataProvider' | 'zkConfigProvider' | 'loggerProvider'>,
@@ -659,30 +561,17 @@ export type Ledger8PrivateStateSurface = Pick<PrivateStateProvider, 'get' | 'set
  * Reads the private state a retained-era call runs against, or `undefined`
  * when the caller named no private-state id.
  *
- * The two cases are DIFFERENT, and only one of them is `undefined`:
- *
- * - **No id at all.** Not an error: a contract with no private state is the
- *   normal case for the retained-era fixtures, and an absent id is the caller
- *   saying the circuit reads none.
- * - **An id, with nothing stored under it.** An ERROR, and the same one the
- *   current era raises at `get-states.ts` — naming an id is the caller saying
- *   there IS a private state to run against, so an empty provider means the
- *   state has not been written yet or the id is a typo.
- *
- * The second case is failed fast rather than passed through, because passing
- * `undefined` down is silent and expensive. The retained runtime's witnesses
- * would receive `currentPrivateState: undefined`, and a defensively written
- * witness (`state?.counter ?? 0n`) produces a perfectly valid proof against a
- * DEFAULT state instead of the caller's real one. `submitLedger8CallTx` then
- * writes the result back under that same id — storing a state derived from a
- * phantom starting point, or, on a typo, creating a state under an id nobody
- * reads while the real one goes untouched. Nothing errors at any stage.
+ * NO ID is not an error — a retained-era contract may carry no private state.
+ * AN ID WITH NOTHING STORED UNDER IT is an error, and must stay one: passing
+ * `undefined` down produces a valid proof against a default state and then
+ * writes the result back under the caller's id. Nothing errors at any stage.
  *
  * @param privateStateProvider The private-state surface to read through.
  * @param privateStateId The id the caller named, or `undefined` for a contract
  * that carries no private state.
  * @returns The stored private state, or `undefined` when no id was named.
  * @throws Error if an id was named and the provider holds nothing under it.
+ * @see {@link KeepStatePipeline} for the full failure mode.
  */
 const readLedger8PrivateState = async (
   privateStateProvider: Ledger8PrivateStateSurface,
@@ -821,43 +710,19 @@ export const submitLedger8CallTx = async (
  * Why {@link deployContract}'s retained-era arm refuses, in the SINGLE place
  * the text is written.
  *
- * ## The measured reason: the contract would be permanently unmaintainable
- *
- * Neither half of the retained deploy path accepts a maintenance authority.
- * The retained constructor context is built by
- * `createConstructorContext(initialPrivateState, coinPublicKey)` — two
- * parameters, no key — and the era facade's deploy composition takes
- * `{ contractState, verifierKeys, networkId, ttl }`, also no key. So the
- * authority a retained-era deployment carries is whatever the retained
- * constructor left behind.
- *
- * What it leaves behind was MEASURED, not assumed: an EMPTY committee with a
- * threshold of ONE (`committee: []`, `threshold: 1`, `counter: 0n`), on both
- * the constructor's own state and the state the deploy derives its address
- * from. A rule change on such a contract needs one signature from a set of
- * zero keys, which nothing can ever satisfy — so no verifier key could ever be
- * inserted, removed or replaced on it, and the authority itself could never be
- * updated either, because updating it is a rule change. The contract would be
- * permanently unmaintainable by anyone, including its deployer.
- * `packages/protocol/src/test/v8-deploy.test.ts` pins that measurement, and is
- * the test that will say so if a future retained runtime or era seam gains an
- * authority — at which point this refusal can be lifted.
- *
- * The current era does not have this problem because its constructor registers
- * the signing key it is given, which is what makes its
- * `DeployedContract.signingKey` a true statement about who can maintain the
- * deployment. On the retained era the same key would be registered nowhere, so
- * reporting one is not an option either.
- *
- * A deploy whose result cannot be maintained is not offered. The retained
- * era's purpose is to keep contracts deployed BEFORE the fork callable, and
- * those already carry the authority their own deployment registered; a new
- * retained-era deployment has no such history, which is the same reason a
- * retained-era deploy is refused outright on a post-fork head.
+ * The measured reason: neither half of the retained deploy path accepts a
+ * maintenance authority, and the retained constructor leaves behind an EMPTY
+ * committee with a threshold of ONE — a rule set nothing can ever satisfy, so
+ * the contract would be permanently unmaintainable by anyone, its deployer
+ * included. `packages/protocol/src/test/v8-deploy.test.ts` pins that
+ * measurement and is what will say so if a future era seam gains an authority.
  *
  * A bare `Error` deliberately: a registered error code is a published consumer
- * surface, and this condition is removed as soon as the era seam carries an
+ * surface, and this condition is removed as soon as the seam carries an
  * authority.
+ *
+ * @see {@link KeepStatePipeline} for the measurement in full and why the
+ *      current era does not have this problem.
  */
 export const LEDGER8_DEPLOY_UNMAINTAINABLE =
   'A retained-era contract cannot be deployed. The transaction composes, but neither the retained ' +
