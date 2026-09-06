@@ -107,18 +107,15 @@ export type EraArtifactMismatchReason =
   | 'current-era-artifact-on-pre-fork-head';
 
 const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason, string>> = Object.freeze({
-  // Named as the mistake it is, because it is the one a JavaScript caller actually makes: the raw
-  // instance and the container both carry `impureCircuits`, so nothing about the value it passed
-  // looks wrong to it.
+  // Named as the mistake it is: the raw instance and the container both carry `impureCircuits`, so
+  // nothing about the value the caller passed looks wrong to it.
   'unwrapped-current-era-contract':
     'A raw contract instance was passed where a CompiledContract container is expected. ' +
     'The current Compact toolchain wraps its generated contract in a CompiledContract, which is what ' +
     'carries the witnesses and the compiled-asset paths an execution needs; the bare instance carries ' +
     'neither. Wrap it — CompiledContract.make(tag, Contract), then attach its witnesses — and pass the ' +
     'container instead of the instance.',
-  // The single settled wording, read from where it is written rather than restated. A thrown error
-  // is where this guidance belongs: it can carry a remediation step, which a compiler diagnostic
-  // cannot -- see the module documentation in `./ledger8-contract`.
+  // The single settled wording, read from where it is written rather than restated.
   'unrecognised-contract-shape':
     `${NEITHER_ERA_CONTRACT_MESSAGE} ` +
     'Pass either a CompiledContract container produced by the current toolchain, or the contract ' +
@@ -136,7 +133,7 @@ const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason,
  * Raised before any pipeline is entered, so no proving, no provider round trip and no state decode
  * happens on a request that cannot succeed.
  *
- * @see docs/adr/0007-cross-the-era-boundary-with-plain-data-only.md
+ * @see {@link EraDispatch} for how the era is established and which pairings are refused.
  */
 export class EraArtifactMismatchError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH;
@@ -179,16 +176,13 @@ export class Ledger8DeployOnV9Error extends Error {
  * head reading was the stale half.
  *
  * The two are read at separate moments, so during the fork window an operation can start from a
- * head reading that is already behind the state it goes on to fetch. Nothing in a head integer
- * announces that it has fallen behind, which is why the era is never latched
- * (`docs/adr/0008-never-latch-the-network-head-version.md`) and why this is checked rather than
- * assumed.
+ * head reading that is already behind the state it goes on to fetch.
  *
- * The message deliberately does NOT claim which of the two readings moved. The routing establishes
- * only that they disagree and that a fresh read agrees with the state; it does not establish a
- * direction, and the realistic fork-window case (a stale pre-fork head against a migrated post-fork
- * state) and its mirror both arrive here. Naming a direction the check has not measured would send
- * a caller looking for the wrong thing.
+ * The message deliberately does NOT claim which of the two readings moved: the check establishes
+ * that they disagree and that a fresh read agrees with the state, never a direction. Do not add
+ * one.
+ *
+ * @see {@link EraDispatch} for the five-step check that produces this error.
  */
 export class HeadStateEraMismatchError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH;
@@ -297,15 +291,11 @@ export class Ledger8ShieldedSpendUnsupportedError extends Error {
  * carrying the original's CLASS NAME and a redacted message, and nothing else:
  * no own properties, and no further `cause` chain.
  *
- * Redaction removes the two shapes payload material takes in a message — long
- * hex runs and long base64 runs — rather than trying to recognise a particular
- * provider's format, because the set of providers is open.
- *
  * This package's own coded errors are NOT wrapped: they carry no external
  * payload, and a caller narrowing on `V8PayloadUnsupportedError` or
  * {@link EraInvariantViolationError} must keep seeing them.
  *
- * @see docs/adr/0006-version-tagged-payloads-at-provider-seams.md
+ * @see {@link KeepStatePipeline} for what redaction removes and what is dropped.
  */
 export class Ledger8SeamFailedError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED;
@@ -426,21 +416,16 @@ const STALE_HEAD_MESSAGES: Readonly<
  * operation resolving the head era and its transaction being submitted, and
  * that a fresh head read confirms the move.
  *
- * ## Why a submit rejection is diagnosed rather than propagated
- *
- * A node rejects a transaction for many reasons, and during the fork window one
- * of them is that the transaction belongs to the era the network has just left.
- * Nothing in the node's own rejection distinguishes that case, and the era the
- * operation started from cannot report itself as stale
- * (`docs/adr/0008-never-latch-the-network-head-version.md`) — so the head is
- * read again, once, and the two ERAS are compared. Two readings of the same era
- * one node minor release apart are not a fork and are not reported as one.
+ * Carries a two-step remediation, and the order matters: verify the transaction
+ * did not finalize BEFORE acting, because a submission rejected while the head
+ * was moving can still have been recorded.
  *
  * The provider's own rejection travels on `cause`, already sanitized of
  * anything that could carry transaction or witness material — see
  * {@link Ledger8SeamFailedError}, which is the form it arrives in.
  *
- * @see docs/adr/0008-never-latch-the-network-head-version.md
+ * @see {@link StaleHeadRemediation} for why a submit rejection is diagnosed
+ *      rather than propagated, and why a deploy's remediation differs.
  */
 export class StaleHeadError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.STALE_HEAD;
@@ -524,8 +509,8 @@ const undiagnosedMessage = (operation: SubmittedOperation, undiagnosed: SubmitRe
         `the transaction finalized, then check the health of the configured indexer before retrying.`
       );
     default: {
-      // A compile-time exhaustiveness gate; the runtime throw is not redundant
-      // with it, because a new reason reaches here before this switch is updated.
+      // The runtime throw is not redundant with the compile-time gate: a new reason reaches here
+      // before this switch is updated.
       const unhandled: never = undiagnosed;
       throw new Error(`unhandled undiagnosed-rejection reason: ${String(unhandled)}`);
     }
@@ -539,24 +524,15 @@ const undiagnosedErrors = (rejection: unknown, undiagnosed: SubmitRejectionUndia
  * An error indicating that a submission was rejected and that whether the
  * network crossed the ledger fork under it could not be established.
  *
- * ## Why this carries a code of its own
- *
- * Without one it would arrive as a bare `AggregateError`, and a caller
- * branching on `hasErrorCode(e, LEDGER8_SEAM_FAILED)` to decide retry-or-
- * escalate would escalate INTERMITTENTLY for one and the same node rejection —
- * depending on whether the read surface happened to answer. Both failures here
- * are the same network, so they correlate: they coincide more often than
- * independence would suggest.
- *
- * The code is its OWN rather than copied from the rejection it carries, because
- * copying would make one error report two different codes depending on which
- * of the two failures came first.
- *
  * An `AggregateError` because nothing may be dropped: the submission rejection
- * is what happened to the transaction, and the reason on
- * {@link SubmitRejectionUndiagnosedError.reason} is why no diagnosis could be
- * made. `cause` names the proximate failure so a consumer walking only cause
- * chains still lands somewhere useful.
+ * is what happened to the transaction, and {@link reason} is why no diagnosis
+ * could be made. `cause` names the proximate failure so a consumer walking only
+ * cause chains still lands somewhere useful.
+ *
+ * DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own for
+ * a reason.
+ *
+ * @see {@link StaleHeadRemediation} for that reason, and for the two arms.
  */
 export class SubmitRejectionUndiagnosedError extends AggregateError {
   readonly code = CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED;
@@ -695,32 +671,16 @@ export class ContractTypeError extends TypeError {
  * An error indicating that a contract-scoped transaction was created while the
  * network head is on a ledger era that has no way to express one.
  *
- * ## Why this is a refusal rather than a narrower scope
+ * The pre-fork era composes exactly one call per transaction, which leaves a
+ * pre-fork scope nothing to batch into.
  *
- * A scope exists to batch several circuit calls into ONE transaction. The
- * pre-fork era composes exactly one call per transaction and refuses a longer
- * list outright — a call tree is a post-fork ledger feature, so that era has no
- * structure to express a second call in — which leaves a pre-fork scope nothing
- * to batch into. A contract compiled by the retained toolchain is also
- * single-call by construction, so a pre-fork scope has little to be atomic
- * about in the first place.
- *
- * The refusal is raised when the scope is CREATED, before the scope body runs,
- * so no circuit is executed and no private state is touched on a batch that
- * could never be submitted. It is also raised from the head READING alone,
- * before that era's runtime is acquired: a caller that only ever uses the
- * current toolchain must not be made to instantiate the pre-fork ledger to be
- * told its scope cannot run, and must not receive an acquisition failure in
- * place of this refusal when that lazy subpath cannot be loaded at all
- * (`docs/adr/0004-lazy-v8-era-access-via-protocol-subpath.md`).
+ * Raised when the scope is CREATED, and from the head READING alone — before
+ * that era's runtime is acquired. Both are load-bearing; do not move it later.
  *
  * Both ways forward are named in the message, because the caller's batching
- * intent cannot be honoured either way and it needs to choose: give up the
- * batching and submit each call on its own, or keep the batching and run the
- * scope once the network head has crossed the fork.
+ * intent cannot be honoured either way and it needs to choose.
  *
- * @see docs/adr/0008-never-latch-the-network-head-version.md for why the head
- * era is read per scope rather than cached across scopes.
+ * @see {@link StaleHeadRemediation} for what each placement property prevents.
  */
 export class ScopedTxEraUnsupportedError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED;
@@ -744,15 +704,14 @@ export class ScopedTxEraUnsupportedError extends Error {
  * An error indicating that a call against a contract produced by the RETAINED
  * Compact toolchain was handed a contract-scoped transaction to join.
  *
- * A scope merges its calls by merging live CURRENT-era transactions, and a
- * retained-era call is composed on its own, against whichever era the head is
- * on, and crosses the provider seams as its own transaction. So the two cannot
- * be batched: the scope would have to hold an era object this package is not
- * allowed to hold (`docs/adr/0007-cross-the-era-boundary-with-plain-data-only.md`).
+ * A scope merges live CURRENT-era transactions, and a retained-era call crosses
+ * the provider seams as its own transaction, so there is nothing to merge it
+ * into at either head.
  *
  * Raised rather than ignored, and that is the change it makes: the retained-era
- * arm previously accepted a scope context and ran outside it, which submitted a
- * transaction the caller believed had been batched.
+ * arm previously accepted a scope context and ran outside it.
+ *
+ * @see {@link StaleHeadRemediation} for why the two cannot be batched.
  */
 export class MixedEraScopeError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE;
@@ -852,7 +811,7 @@ export class BlankVerifierKeySlotError extends Error {
  * This is also what catches a mis-dispatched operation — the wrong pipeline, or the wrong contract
  * address — because either one shows up here as a key that does not match the slot.
  *
- * @see packages/protocol/docs/verifier-keys.md
+ * @see {@link VerificationPath} for what this check buys and what it cannot classify.
  */
 export class VerifierKeyMismatchError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH;

@@ -19,97 +19,19 @@
  * entry points accept through an additive overload alongside the current
  * (`compact-runtime@0.19`) `CompiledContract` container.
  *
- * ## Why these types are hand-written
+ * Every declaration here is hand-written from the real generated JavaScript,
+ * because the retained toolchain emits no `index.d.ts` beside it. Two things
+ * separate the eras at the type level: the current era's `CompiledContract`
+ * container, and the fact that retained-era circuits and `initialState` return
+ * plain objects where the current era returns `Promise`s.
  *
- * The retained toolchain emits `contract/index.js` with **no `index.d.ts`**
- * beside it, so there is no declaration file to import a type from — unlike the
- * current toolchain, whose output ships one. Every declaration below is
- * therefore written from the real generated JavaScript, and is only as true as
- * that reading.
+ * There is no era predicate in this file. The single RUNTIME predicate is
+ * `pipelineEraOf` in `./internal/era`; do not add a second one here.
  *
- * That is why this file is paired with a RUNTIME test
- * (`src/test/ledger8-contract.test.ts`) that loads the real generated artifact
- * and asserts the structural facts these declarations encode. The two halves
- * are one unit: the compile assertions
- * (`src/test/typecheck/overloads.test-d.ts`) prove the overloads discriminate
- * the two eras, and the runtime test proves the type they discriminate on is
- * the shape the real artifact actually has. Without the runtime half the family
- * is an unverified guess and the compile assertions prove nothing about a real
- * contract.
- *
- * ## What separates the two eras
- *
- * Only two things do, at the type level:
- *
- * 1. The current era's contract arrives inside a `CompiledContract` container
- *    carrying a `tag` and a `unique symbol` property that a plain object cannot
- *    forge. A retained-era contract is passed as the raw contract instance, with
- *    no container.
- * 2. **Sync versus async.** Retained-era circuit members return a plain object
- *    and `initialState` returns a plain object; the current era's return
- *    `Promise`s. This is the discriminator the declarations below are built on.
- *
- * `provableCircuits` deliberately does NOT discriminate: the real retained-era
- * artifact sets BOTH `impureCircuits` and `provableCircuits`, so its presence
- * says nothing about which toolchain produced the contract.
- *
- * The RUNTIME counterpart of this type-level discrimination is `pipelineEraOf` in
- * `./internal/era`, which is the single era predicate; there is deliberately no second one here.
- * It does not use the vendor's registered `CompiledContract` brand — that symbol lives on a
- * prototype the container's own combinators drop — see its own documentation for the measurement.
- *
- * ## No `any`
- *
- * The vendor family reaches for `any` to get a "top" contract type that every
- * concrete contract satisfies. That is not available here, so the openness is
- * expressed by variance instead: parameter positions widen to `never`
- * (assignable to anything, so contravariance always holds) and every result
- * position the private state does not flow through widens to `unknown`
- * (everything is assignable to it, so covariance always holds). The result is a
- * genuine top type for the era that still excludes the current era's shape,
- * because a `Promise` has none of the members the retained results declare.
- *
- * There is no exception to that: {@link Ledger8Circuit} and {@link Ledger8Witness} both widen their
- * arguments to `never`. What {@link Ledger8Circuit} does differently is declare its leading context
- * EXPLICITLY instead of folding it into the rest parameter, which is what keeps `Parameters<T>`
- * tuple-shaped so {@link Ledger8CircuitParameters} can destructure it. Widening the tail would
- * break contravariance for every argument-taking circuit; see that type for the full reasoning.
- *
- * ## Overload order is load-bearing, and the LAST arm is left alone
- *
- * Three separate things resolve from an overloaded function's LAST signature, and all three were
- * measured against this code rather than assumed:
- *
- * 1. `ReturnType<typeof f>`;
- * 2. `Parameters<typeof f>`;
- * 3. the error TypeScript prints when NO arm matches a call.
- *
- * So every entry point here declares its retained-era arm FIRST — where it cannot be shadowed by a
- * current-era arm — and leaves the arm that was already last exactly where it was. Nothing is
- * appended. `ReturnType` and `Parameters` therefore report what they reported before this file
- * existed, and a call that matches nothing is still reported against a real current-era arm, which
- * names a real cause: a typo'd circuit id, a private state of the wrong type. That last point is
- * the one worth protecting, because a mistyped CURRENT-era call is the common case and a
- * retained-era call is the rare one.
- *
- * There is deliberately no catch-all arm carrying {@link NEITHER_ERA_CONTRACT_MESSAGE}. Adding one
- * last would have made every mistyped current-era call report that the caller's perfectly ordinary
- * contract belonged to neither era — a false statement on the common path — and an arm that is NOT
- * last never renders at all, so it would only distort `ReturnType`
- * and `Parameters`. The guidance belongs in a thrown, typed error instead, which can carry full
- * remediation text where a compiler diagnostic cannot.
- *
- * `src/test/typecheck/overloads.test-d.ts` pins all of it: that each retained-era arm is REACHABLE
- * (a retained-era call resolves to the retained-era result type, not merely compiles), and that
- * `ReturnType` AND `Parameters` on all four entry points still report exactly what they reported at
- * the base commit. `src/test/current-era-diagnostic.test.ts` runs the compiler itself and pins the
- * third one: that a mistyped current-era call still names its real cause.
- *
- * @see docs/adr/0006-version-tagged-payloads-at-provider-seams.md for why a
- *      retained-era result is version-tagged rather than single-era.
- * @see docs/adr/0007-cross-the-era-boundary-with-plain-data-only.md for why the
- *      era-internal values below are `unknown` rather than the previous
- *      runtime's own types.
+ * @see {@link OverloadTyping} for why the declarations are hand-written and
+ *      runtime-pinned, how openness is expressed without `any`, and why the
+ *      order of the overload arms is load-bearing.
+ * @see {@link EraDispatch} for the runtime predicate and what it may not use.
  */
 
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
@@ -148,29 +70,13 @@ export interface Ledger8CircuitResult {
 /**
  * A retained-era circuit member.
  *
- * Two decisions here, and BOTH are load-bearing. Read this before touching the signature.
+ * Two things in this signature are load-bearing, and neither is cosmetic: the leading context is
+ * declared EXPLICITLY so `Parameters<T>` stays tuple-shaped for
+ * {@link Ledger8CircuitParameters}, and the argument tail is `never[]` rather than `unknown[]` so
+ * that argument-taking circuits still satisfy the {@link Ledger8Contract} constraint under
+ * `strictFunctionTypes`. Do not widen the tail for readability.
  *
- * 1. The leading context is declared EXPLICITLY rather than folded into the rest parameter. That is
- *    what keeps `Parameters<T>` tuple-shaped, which is what lets
- *    {@link Ledger8CircuitParameters} destructure it as `[Head, ...infer Tail]`. A bare
- *    `(...args: never[])` makes `Parameters<T>` just `never[]`, which matches no such pattern, so
- *    the era top type's `args` collapsed to `never` and `AnyLedger8CallTxOptions` became
- *    uninhabitable.
- * 2. The argument TAIL is `never[]`, not `unknown[]`. The circuit collections are function-typed
- *    `Record`s, so under `strictFunctionTypes` their parameters are checked CONTRAVARIANTLY: an
- *    `unknown[]` tail would require `unknown` to be assignable to the concrete argument type, so a
- *    real circuit such as `(context, coin: ShieldedCoinInfo)` would fail the
- *    {@link Ledger8Contract} constraint outright and its contract could not select the retained-era
- *    overload at all. `never` is assignable to every type, so every real circuit satisfies it.
- *
- * The two are independent: the tuple shape comes from (1), NOT from widening the tail. Do not
- * widen the tail to `unknown[]` for readability — it costs the feature its argument-taking
- * contracts. `src/test/typecheck/overloads.test-d.ts` pins both directions against a real
- * zero-argument fixture and a real argument-taking one.
- *
- * The context is `Ledger8CircuitContext<never>` for the same contravariance reason: `never` is
- * assignable to every private state, so a concrete circuit declared over a real one satisfies this,
- * and the context gives the family a second, independent reason to reject a current-era contract.
+ * @see {@link OverloadTyping} for what each widening buys and what breaks without it.
  */
 export type Ledger8Circuit = (context: Ledger8CircuitContext<never>, ...args: never[]) => Ledger8CircuitResult;
 
@@ -222,9 +128,10 @@ export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['impureCircuit
  * The leading {@link Ledger8CircuitContext} is stripped, exactly as the current
  * era's `Contract.CircuitParameters` strips its own leading `CircuitContext`:
  * the context is built by the framework from provider data, never passed in by
- * the caller. Handing the caller the raw `Parameters<...>` would oblige it to
- * construct a live value of the previous runtime, which is precisely what
- * `docs/adr/0007-cross-the-era-boundary-with-plain-data-only.md` rules out.
+ * the caller.
+ *
+ * @see {@link OverloadTyping} for why a caller may not be handed the raw
+ *      `Parameters<...>`.
  */
 export type Ledger8CircuitParameters<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
   Parameters<C['impureCircuits'][K]> extends [Ledger8CircuitContext, ...infer A] ? A : never;
@@ -233,9 +140,10 @@ export type Ledger8CircuitParameters<C extends Ledger8Contract, K extends Ledger
  * The providers a retained-era call transaction needs.
  *
  * The same provider set the current era uses, keyed by the retained-era circuit
- * id: providers sit at a version-tagged seam and serve both eras, so there is no
- * separate retained-era provider surface
- * (`docs/adr/0006-version-tagged-payloads-at-provider-seams.md`).
+ * id.
+ *
+ * @see {@link OverloadTyping} for why there is no separate retained-era provider
+ *      surface.
  */
 export type Ledger8ContractProviders<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> = MidnightProviders<
   K,
@@ -267,9 +175,8 @@ export interface Ledger8CallTxTarget<C extends Ledger8Contract, K extends Ledger
  *
  * `args` is CONDITIONAL, mirroring the current era's `CallOptionsWithArguments`: a circuit that
  * takes no arguments of its own has no `args` member at all, rather than one the caller has to
- * satisfy with an empty array. The two eras would otherwise disagree about the same
- * zero-argument circuit — one caller writing `args: []` and the other writing nothing — which is a
- * difference in the API surface, not in the contract.
+ * satisfy with an empty array, so the two eras do not disagree about the same zero-argument
+ * circuit.
  */
 export type Ledger8CallTxOptionsBase<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
   Ledger8CircuitParameters<C, K> extends []
@@ -304,10 +211,11 @@ export type Ledger8CallTxOptions<C extends Ledger8Contract, K extends Ledger8Cir
  * The finalized data a retained-era call transaction resolves with.
  *
  * `txData` is version-tagged rather than single-era: the same retained-era
- * contract is called as a v8 transaction before the fork and as a v9
- * keep-state transaction after it, so the record it finalizes as carries the
- * era that produced it
- * (`docs/adr/0006-version-tagged-payloads-at-provider-seams.md`).
+ * contract is called as a v8 transaction before the fork and as a v9 keep-state
+ * transaction after it, so the record it finalizes as carries the era that
+ * produced it.
+ *
+ * @see {@link OverloadTyping} for the seam that rule follows from.
  */
 export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> {
   readonly circuitId: K;
@@ -401,8 +309,7 @@ export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledg
  *
  * An implementation signature has to be compatible with every overload declared over it, so each
  * entry point's implementation carries the retained-era arm's parameter and result types alongside
- * the current era's. It is never the signature a caller sees — the overloads above it are — so it
- * names the era top type rather than re-deriving a caller's concrete one.
+ * the current era's. It is never the signature a caller sees — the overloads above it are.
  */
 export type AnyLedger8CallTxOptions = Ledger8CallTxOptions<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
 /** @see {@link AnyLedger8CallTxOptions} */
@@ -424,21 +331,12 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  *
  * DO NOT DELETE AS UNUSED, and do not inline it either. It is consumed by
  * `EraArtifactMismatchError` in `./errors`, which is what `pipelineEraOf` in `./internal/era`
- * raises when it is handed an object belonging to neither era. A thrown error can carry full
- * remediation text; a compiler diagnostic cannot, which is why this is not wired into an overload
- * arm (see the module documentation above).
+ * raises when it is handed an object belonging to neither era.
+ * `src/test/typecheck/overloads.test-d.ts` pins the wording verbatim, and it is not re-exported
+ * from the package index.
  *
- * A runtime `const` rather than a bare literal inside {@link NeitherContractShape} so that the text
- * is written ONCE and can be read by a runtime consumer — the error above, and any test asserting
- * on one — while `typeof` still gives the type a string LITERAL member.
- * `src/test/typecheck/overloads.test-d.ts` pins the wording verbatim.
- *
- * Not re-exported from the package index, and that is a decision about THIS CONSTANT rather than
- * about its reachability. The error carrying it is the consumer surface: `EraArtifactMismatchError`
- * IS exported from the package index, and IS thrown on every era-dispatching entry point —
- * `isLedger8Request` calls `pipelineEraOf`, which raises it for an object belonging to neither era.
- * A consumer catches the error and reads `message`; nothing is served by also publishing the string
- * for them to compare against, which would pin the wording as API.
+ * @see {@link OverloadTyping} for why the text is a runtime `const`, and why it is not wired into
+ *      an overload arm.
  */
 // WHY THE VERSIONS READ THIS WAY. `0.16` is exact: the retained era is one frozen toolchain, and
 // the repo's retained fixtures are all `0.16.0`. The current side is a RANGE, not a number, because
@@ -461,10 +359,9 @@ export const NEITHER_ERA_CONTRACT_MESSAGE =
  * wrong.
  *
  * The `__error` member exists only to carry {@link NEITHER_ERA_CONTRACT_MESSAGE}; nothing
- * constructs a value of this type. Retained here alongside the message for the same reason the
- * message is retained: `pipelineEraOf` in `./internal/era` refuses a neither-era object by
- * throwing, and this is the shape that names what it refused.
- * `src/test/typecheck/overloads.test-d.ts` pins the wording.
+ * constructs a value of this type.
+ *
+ * @see {@link OverloadTyping} for why it is retained ahead of its consumer.
  */
 export type NeitherContractShape = { readonly __error: typeof NEITHER_ERA_CONTRACT_MESSAGE }
 
@@ -472,12 +369,11 @@ export type NeitherContractShape = { readonly __error: typeof NEITHER_ERA_CONTRA
  * An options object whose contract belongs to neither era, kept as the named counterpart to
  * {@link NeitherContractShape}.
  *
- * No overload arm takes this type: an arm that is not last never renders a diagnostic, and putting
- * one last made every mistyped CURRENT-era call claim the caller's contract belonged to neither era
- * (see the module documentation above). It is retained as the shape era resolution reports against
- * when it throws, and `src/test/typecheck/overloads.test-d.ts` pins that a neither-era object
- * really is refused by it — which is the assignability fact the overloads rely on, whether or not
- * any arm spells it out.
+ * No overload arm takes this type. `src/test/typecheck/overloads.test-d.ts` pins that a
+ * neither-era object really is refused by it — the assignability fact the overloads rely on,
+ * whether or not any arm spells it out.
+ *
+ * @see {@link OverloadTyping} for why no arm spells it out.
  */
 export interface NeitherEraContractOptions {
   readonly compiledContract: NeitherContractShape;

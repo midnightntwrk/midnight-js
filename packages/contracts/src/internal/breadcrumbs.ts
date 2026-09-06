@@ -16,55 +16,22 @@
 /**
  * What an operator can see about which ledger era an operation ran against.
  *
- * Across a hard fork the same call can take three different routes depending
- * on one integer read from the network, and when it takes the wrong one the
- * symptom appears far from the decision. These breadcrumbs put the decision
- * itself in the log, at DEBUG level, as STRUCTURED fields rather than
- * interpolated prose, so an operator can filter on them.
+ * Three decisions get a breadcrumb, at DEBUG level, as STRUCTURED fields rather
+ * than interpolated prose. Era decisions that are REFUSALS are not breadcrumbed
+ * a second time: each already throws a registered, remediation-carrying error.
  *
- * ## What is breadcrumbed, and what deliberately is not
+ * EVERY head read in this package is breadcrumbed, and there are four. A new
+ * head read has to add a {@link HeadReadingProvenance} member.
  *
- * Three decisions get a breadcrumb, and they are the three this package makes:
- * {@link HeadResolutionBreadcrumb}, {@link PipelineSelectionBreadcrumb} and
- * {@link EncodingBreadcrumb}.
+ * PRIVACY: a breadcrumb may carry version integers, era names, decision names
+ * and a contract address. It must NEVER carry key bytes, decoded contract
+ * state, private state or a raw transaction payload — which is why every field
+ * below is a bounded string literal or a number, and why the emitters take
+ * individual facts rather than an options bag.
+ * `src/test/breadcrumbs.test.ts` asserts it over the serialized breadcrumb.
  *
- * Several era decisions a reader might expect are REFUSALS rather than
- * choices, and are not breadcrumbed a second time: each already throws a
- * registered, remediation-carrying error, which is a stronger signal than a
- * debug line. The retained-era deploy arm refuses; a scoped transaction on a
- * pre-fork head refuses; a provider answering on the other era's arm refuses;
- * a fetched state whose envelope disagrees with the head refuses. The head
- * reading each of those refusals rests on IS breadcrumbed, because that
- * reading is what an operator has to see to know whether the refusal was
- * correct.
- *
- * There is no verifier-key breadcrumb. Which key version the chain holds is
- * not observable from here: both ledgers' read APIs expose only the latest
- * available version of a verifier key, so there is no key-generation decision
- * to record.
- *
- * There is no breadcrumb for a latched or cached era reading, because there is
- * no latch: an era reading is taken per operation and threaded down as a
- * value (`docs/adr/0008-never-latch-the-network-head-version.md`).
- *
- * ## Every head read in this package is breadcrumbed
- *
- * There are four, and {@link HeadReadingProvenance} names which is which: the
- * one an operation takes at its start, the one a scope takes at its start
- * (also `'operation-start'`), the re-read that adjudicates a head/state era
- * disagreement, and the re-read taken after a submitted transaction was
- * rejected. A head read that reported nothing would be the one an operator
- * could not account for, so a new one has to add a provenance member here.
- *
- * ## Privacy
- *
- * A breadcrumb may carry version integers, era names, decision names and a
- * contract address -- all of them public identifiers. It must never carry key
- * bytes, decoded contract state, private state or a raw transaction payload.
- * That is why every field below is a bounded string literal or a number, and
- * why the emitters take the individual facts rather than an options bag they
- * could pass through wholesale. `src/test/breadcrumbs.test.ts` asserts it over
- * the serialized breadcrumb.
+ * @see {@link Breadcrumbs} for the four readings, what each breadcrumb carries,
+ *      and what is deliberately not recorded.
  */
 
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
@@ -74,11 +41,11 @@ import type { HeadEraReading, PipelineEra } from './era';
 /**
  * Where a head reading came from.
  *
- * The distinction matters in the fork window: an operation takes ONE reading
- * at its asynchronous start, and takes a SECOND, fresh one only when the
- * contract state it fetched turns out to be dated to a different era. The two
- * are different observations of the network, and a log that could not tell
- * them apart would read as one operation contradicting itself.
+ * The distinction matters in the fork window: two readings of the network are
+ * different observations, and a log that could not tell them apart would read
+ * as one operation contradicting itself.
+ *
+ * @see {@link Breadcrumbs} for the four readings this names.
  */
 export type HeadReadingProvenance =
   /** The single reading taken at the operation's asynchronous start. */
@@ -88,12 +55,7 @@ export type HeadReadingProvenance =
   /**
    * The fresh re-read taken after the network REJECTED a submitted
    * transaction, to decide whether the head moved across the fork underneath
-   * the operation.
-   *
-   * The most diagnostic head reading in the stack: it is the one that decides
-   * between reporting a fork crossing with a re-run remediation and reporting
-   * a rejection nothing could diagnose, and it is the only reading taken after
-   * bytes were already on the wire.
+   * the operation. The only reading taken after bytes were already on the wire.
    */
   | 'post-rejection-re-read';
 
@@ -103,12 +65,8 @@ export interface HeadResolutionBreadcrumb {
   /** The era the head integer resolved to. */
   readonly version: LedgerVersion;
   /**
-   * The raw head integer.
-   *
-   * Carried BESIDE the era name rather than instead of it: the era
-   * deliberately collapses node minor versions, so two operations can report
-   * the same era while having read different nodes, and only the integer says
-   * which.
+   * The raw head integer, carried BESIDE the era name rather than instead of
+   * it: the era collapses node minor versions and only the integer says which.
    */
   readonly protocolVersion: number;
   readonly source: 'public-data-provider';
@@ -122,32 +80,26 @@ export interface HeadResolutionBreadcrumb {
  * Emitted AFTER the gate, never before: a breadcrumb written before the gate
  * would claim a pipeline for an operation that was then refused.
  *
- * Which ROUTE that pairing runs is the `(path, version)` pair itself and is
- * not restated as a third field -- `path: 'ledger8'` with `version: 'v9'` is
- * the keep-state route, with `version: 'v8'` the retained-native one. A
- * derived route name could disagree with the pair it was derived from, which
- * is the same reason the era gate itself returns nothing.
+ * The route is the `(path, version)` pair itself and is not restated as a third
+ * field. Do not add one — a derived name could disagree with the pair.
+ *
+ * @see {@link Breadcrumbs} for what each field carries and why.
  */
 export interface PipelineSelectionBreadcrumb {
   readonly decision: 'pipeline-selection';
   /** The era the network head is on. */
   readonly version: LedgerVersion;
   readonly protocolVersion: number;
-  /**
-   * A pipeline is selected in exactly one way -- from the shape of the
-   * compiled contract the caller passed -- so this has one value today. It is
-   * carried anyway, because a second selection input is exactly the change
-   * that would need to show up in a log.
-   */
+  /** One value today, carried anyway: a second selection input is exactly the
+   * change that would need to show up in a log. */
   readonly source: 'compiled-contract-shape';
   readonly readingProvenance: HeadReadingProvenance;
   /** The pipeline the artifact belongs to. */
   readonly path: PipelineEra;
   /**
    * The contract being operated on, present exactly when the operation names
-   * one. A deploy has no address until its composition mints one, so the
-   * field is ABSENT there rather than empty -- an empty string would read as a
-   * deployment at the zero address.
+   * one. ABSENT rather than empty for a deploy — an empty string would read as
+   * a deployment at the zero address.
    */
   readonly contractAddress?: string;
 }
@@ -155,15 +107,12 @@ export interface PipelineSelectionBreadcrumb {
 /**
  * The fetched contract state was dated from its envelope tag.
  *
- * This is the byte-level answer, and it is not the same claim as
- * `RawContractState.version`, which is derived from the record's own
- * `protocolVersion` and is explicitly not a verified statement about the
- * envelope.
+ * The byte-level answer, and NOT the same claim as `RawContractState.version`.
  *
- * It carries no head integer and no reading provenance: dating an envelope is
- * not a head reading. When the era it reports disagrees with the head, the
- * re-read that follows is reported as its own
- * {@link HeadResolutionBreadcrumb}.
+ * Carries no head integer and no reading provenance: dating an envelope is not
+ * a head reading.
+ *
+ * @see {@link Breadcrumbs} for the difference from `RawContractState.version`.
  */
 export interface EncodingBreadcrumb {
   readonly decision: 'encoding';
@@ -178,11 +127,10 @@ export type DispatchBreadcrumb = HeadResolutionBreadcrumb | PipelineSelectionBre
 /**
  * The ONE logger member a breadcrumb reaches.
  *
- * Declared as its own narrow shape rather than as `Pick<LoggerProvider,
- * 'debug'>` so the payload parameter is typed as a {@link DispatchBreadcrumb}
- * instead of pino's `unknown`-first `LogFn` -- which is what lets a test read
- * the emitted fields without a cast. A real `LoggerProvider` satisfies this,
- * so nothing at a call site changes.
+ * Its own narrow shape rather than `Pick<LoggerProvider, 'debug'>`, so the
+ * payload parameter is a {@link DispatchBreadcrumb} instead of pino's
+ * `unknown`-first `LogFn` — which is what lets a test read the emitted fields
+ * without a cast. A real `LoggerProvider` satisfies this.
  */
 export interface BreadcrumbSink {
   readonly debug?: (breadcrumb: DispatchBreadcrumb, message: string) => void;
@@ -191,9 +139,9 @@ export interface BreadcrumbSink {
 /**
  * The fixed message every breadcrumb is written under.
  *
- * Fixed, and with nothing interpolated into it, so the fields stay the only
- * thing an operator has to read -- and so a log aggregator can group the three
- * decisions without parsing prose.
+ * Nothing is interpolated into it, so the fields stay the only thing an
+ * operator has to read and an aggregator can group the three decisions without
+ * parsing prose.
  */
 export const DISPATCH_BREADCRUMB_MESSAGE = 'contract era dispatch decision';
 
@@ -203,28 +151,14 @@ const emit = (sink: BreadcrumbSink | undefined, breadcrumb: DispatchBreadcrumb):
     // instance, whose log functions read the logger as `this`.
     sink?.debug?.call(sink, breadcrumb, DISPATCH_BREADCRUMB_MESSAGE);
   } catch {
-    // WHAT IS SWALLOWED: a fault thrown by the CONFIGURED LOGGER, and nothing
-    // else. `loggerProvider` is a public interface a consumer implements, with
-    // every level optional, so `debug` is arbitrary third-party code -- and
-    // without this guard it sits on the success path of every retained-era
-    // call, deploy, attach and scoped transaction, able to fail an operation
-    // that otherwise succeeded.
+    // SWALLOWS: a fault thrown by the CONFIGURED LOGGER, and nothing else.
+    // `debug` is arbitrary third-party code sitting on the success path of every
+    // retained-era operation, and observability must never break execution.
     //
-    // WHY: a breadcrumb is a side effect with no bearing on the outcome, so a
-    // fault in it must not change the outcome. Observability must never be
-    // able to break execution. This is not the never-swallow rule's subject:
-    // that rule stops US from hiding OUR OWN failures, and a logger's fault is
-    // not the operation's fault.
-    //
-    // DO NOT WIDEN. The guard wraps the emission and nothing else. Nothing
-    // that computes a value, reads the network or decides an era may be moved
-    // inside it -- a swallowed fault there would hide a real failure, which is
-    // exactly what the never-swallow rule exists to prevent.
-    //
-    // Re-reporting the fault is not an option either: the only channel for it
-    // is the logger that just failed. `src/test/breadcrumbs.test.ts` states
-    // the intended behaviour in both directions -- the operation does not
-    // fail, and its result is unchanged.
+    // DO NOT WIDEN. The guard wraps the emission and nothing else -- nothing
+    // that computes a value, reads the network or decides an era may move
+    // inside it. See {@link Breadcrumbs} for why this is not the never-swallow
+    // rule's subject, and `src/test/breadcrumbs.test.ts` for both directions.
   }
 };
 
@@ -271,9 +205,8 @@ export const emitPipelineSelection = (
     source: 'compiled-contract-shape',
     readingProvenance: 'operation-start',
     path,
-    // Spread rather than assigned: an operation with no address must leave the
-    // field OUT, not present and undefined, so a strict reader of the log
-    // cannot mistake it for a deployment at an unnamed address.
+    // Spread rather than assigned: an operation with no address must leave the field OUT, not
+    // present and undefined.
     ...(contractAddress === undefined ? {} : { contractAddress })
   });
 

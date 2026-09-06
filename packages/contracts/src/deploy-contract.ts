@@ -120,28 +120,21 @@ const createDeployTxOptions = <C extends Contract.Any>(
  * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
- * REFUSED, and for a MEASURED reason that is about the maintenance authority rather than about the
- * era pairing: the retained constructor leaves an empty committee with a threshold of one, so the
- * deployed contract could never be maintained by anyone. See
- * {@link LEDGER8_DEPLOY_UNMAINTAINABLE} for the measurement and
- * `packages/protocol/src/test/v8-deploy.test.ts` for the test that pins it. The retained-era deploy
- * TRANSACTION composes and submits perfectly well — `runLedger8Deploy` in
- * `./internal/ledger8-entry` is that path, and it is exercised directly — so this refusal is about
- * the result being unmaintainable, not about the pipeline being unfinished.
+ * REFUSED, for a MEASURED reason about the maintenance authority rather than about the era
+ * pairing: the retained constructor leaves an empty committee with a threshold of one, so the
+ * deployed contract could never be maintained by anyone. The deploy TRANSACTION path itself
+ * composes and submits correctly — this refusal is about the result, not an unfinished pipeline.
  *
- * The refusal above is the ONLY one this arm makes, and it is unconditional: it is thrown before
- * any head is read, so a caller never reaches an era-pairing decision here. In particular, do NOT
- * branch on `Ledger8DeployOnV9Error` from this entry point — the pairing table does refuse
- * `(ledger8, v9, deploy)` with it, but the only caller that asks the table a `'deploy'` question
- * is the deliberately dormant `runLedger8Deploy`, so through `deployContract` that branch is never
- * taken. It becomes reachable on the day this refusal is lifted, which is the day the era seam
- * carries a maintenance authority.
+ * The refusal above is the ONLY one this arm makes, and it is unconditional — thrown before any
+ * head is read. Do NOT branch on `Ledger8DeployOnV9Error` from this entry point: through
+ * `deployContract` that branch is never taken.
  *
- * ARM ORDER IS LOAD-BEARING, in two ways, and both are pinned by
- * `src/test/typecheck/overloads.test-d.ts`. This arm is declared FIRST so no current-era arm can
- * shadow it, and the LAST arm is left exactly as it was before this arm existed, because
- * `ReturnType<typeof f>` and `Parameters<typeof f>` both resolve from it and so does the error
- * TypeScript prints when no arm matches. See the module documentation in `./ledger8-contract.ts`.
+ * @see {@link KeepStatePipeline} for the measurement and the test that pins it.
+ *
+ * ARM ORDER IS LOAD-BEARING: this arm is declared FIRST, and the arm that was already LAST stays
+ * last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ *
+ * @see {@link OverloadTyping} for what resolves from the last arm.
  */
 export async function deployContract<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,

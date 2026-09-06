@@ -18,51 +18,13 @@
  * previous-toolchain contract touches the era facade, the retained execution
  * engine, and the read surface.
  *
- * ## What this module owns, and what it deliberately does not
+ * This module owns the order and nothing else, and is pure — the era and the
+ * engine arrive as values. DO NOT ADD A RETAINED-RUNTIME DEPENDENCY HERE, not
+ * even a development one: the engine's construction guard exists to detect a
+ * second acquisition path, and an alias here would create one.
  *
- * It owns the orchestration order and nothing else. Every era-specific step is
- * a call onto a {@link LedgerEra} or a {@link Ledger8ExecutionEngine}, both of
- * which arrive as values: this package holds no retained-runtime dependency,
- * not even a development one, because the engine's own construction guard
- * exists to detect a SECOND acquisition path for the retained runtime and an
- * alias here would create one by construction.
- *
- * ## The two arms differ only in which era object they are handed
- *
- * | arm | head | era object | what it produces |
- * | --- | ---- | ---------- | ---------------- |
- * | keep-state | `v9` | the current era | a current-era transaction carrying a retained-era call |
- * | retained-native | `v8` | the retained era | a retained-era transaction |
- *
- * There is no second composition branch. Both arms end at
- * {@link LedgerEra.composeCallTx}, handing it the transcript as
- * `kind: 'unpartitioned'`, and the era object decides which ledger the call is
- * bound onto. The current era's composition performs exactly the binding the
- * engine's own `wrapKeepStateCall` performs — both reach the same assembly
- * step — so calling the wrap first and then composing would do the binding
- * twice, and the wrap's result could not be handed on anyway: it is a live
- * ledger handle, and only bytes and plain data may cross this package boundary
- * (`docs/adr/0007-cross-the-era-boundary-with-plain-data-only.md`,
- * `packages/protocol/docs/era-seam.md`). So `wrapKeepStateCall` is not called
- * from here.
- *
- * ## Why the engine is a narrowed, generic slice rather than `Ledger8Engine`
- *
- * `downConvertForExecution` returns a live retained-runtime state handle, and
- * nothing in this package may construct one. The slice is therefore GENERIC in
- * that state: the pipeline receives the value from `downConvertForExecution`
- * and hands it straight to `executeCircuit` without looking inside it, so the
- * real engine satisfies the slice at `TState = DownConvertedState` while a test
- * replaying a committed recording satisfies it at a plain marker type. The
- * transcript is narrowed the same way, to the members the pipeline actually
- * reads — all of them plain data — which is the same narrowing discipline
- * `packages/protocol/src/lib/v8/execute.ts` applies to the runtime's own
- * `QueryContext`.
- *
- * @see docs/adr/0006-version-tagged-payloads-at-provider-seams.md for why the
- * transaction crosses the provider seams version-tagged.
- * @see docs/adr/0008-never-latch-the-network-head-version.md for why the head
- * is resolved per operation.
+ * @see {@link KeepStatePipeline} for the two arms, why `wrapKeepStateCall` is
+ *      not called from here, and why the engine is a narrowed generic slice.
  */
 
 import type {
@@ -91,19 +53,10 @@ import { assertVerifierKeyMatches } from './verifier-key';
  * The transcript members this pipeline reads, narrowed off the engine's own
  * result type so the two cannot drift.
  *
- * THREE members of the engine's result are left out, for two different reasons.
+ * Three members of the engine's result are deliberately left out.
  *
- * `preContractState` and `postContractState` carry live retained-runtime
- * handles, which may not cross this package boundary at all. Nothing is lost by
- * dropping them: the pre-call state the composition needs is the one
- * {@link LedgerEra.extractState} already returned, and the down-convert refuses
- * to return unless its decoding re-encodes to exactly that value, so reading it
- * off the transcript would only be a second route to the same bytes.
- *
- * `result` is plain data and could be carried, and is dropped because nothing
- * reads it: the retained-era result types report the next private state and the
- * finalized record, never the circuit's own return value. It belongs here the
- * day one of them does.
+ * @see {@link KeepStatePipeline} for which three, and why nothing is lost by
+ *      dropping them.
  */
 export type Ledger8Transcript = Pick<
   TranscriptPojo,
@@ -187,12 +140,12 @@ export interface Ledger8ConstructRequest {
  * The retained execution capability this pipeline consumes: down-convert a
  * state for retained-era execution, then run one circuit on it.
  *
- * Both members are declared with method syntax deliberately — their parameters
- * are then compared bivariantly, which is what lets the real engine satisfy
- * this slice even though its own request type names the retained runtime's
- * concrete contract and state shapes.
+ * Both members use METHOD syntax deliberately, so their parameters compare
+ * bivariantly. Do not rewrite them as property-typed arrow signatures — the
+ * real engine stops satisfying the slice.
  *
  * @typeParam TState The down-converted state, threaded through opaquely.
+ * @see {@link KeepStatePipeline} for why the state is generic.
  */
 export interface Ledger8ExecutionEngine<TState> {
   downConvertForExecution(state: EncodedStateValue): TState;
@@ -235,18 +188,11 @@ export interface Ledger8Snapshot {
  * it against the head era.
  *
  * The envelope is dated BEFORE anything decodes it, so a decoder is never
- * handed bytes from the other era.
+ * handed bytes from the other era. `extractState` and `decodeContractState`
+ * are two separate reads of the same bytes on purpose; do not collapse them.
  *
- * `extractState` and `decodeContractState` are two separate reads of the same
- * bytes, and that is deliberate rather than an oversight: the extraction is
- * the state the circuit executes against and the decode is the key set. They
- * fail closed at different stages, and collapsing them would make one
- * operation's execution input depend on the key-set read having succeeded.
- *
- * The verifier-key check is NOT here. It is a per-entry-point check and the
- * read path checks several against one snapshot, so it is
- * {@link assertSnapshotVerifierKey}'s job, run against the snapshot this
- * returns.
+ * The verifier-key check is NOT here — see {@link assertSnapshotVerifierKey},
+ * which runs against the snapshot this returns.
  *
  * @param era The era facade bound to the head this operation resolved.
  * @param head The era the network head is on.
@@ -258,6 +204,7 @@ export interface Ledger8Snapshot {
  * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the head and
  * the state's envelope belong to different eras.
  * @throws StateDecodeFailedError if this era's decoder rejects the envelope.
+ * @see {@link KeepStatePipeline} for why the two reads stay separate.
  */
 export const readLedger8Snapshot = async (
   era: LedgerEra,
@@ -281,18 +228,16 @@ export const readLedger8Snapshot = async (
  * Checks one entry point's local verifier key against the slot the fetched
  * snapshot says the chain holds.
  *
- * `entryPoints` is an ARRAY, and two byte entry points can decode to the same
- * name, so this takes the first match by name; a slot that does not hold this
- * artifact's key is then refused by the byte comparison rather than accepted
- * because the name lined up. A name the state does not declare at all arrives
- * as `undefined` and is reported as a never-deployed slot, which is a
- * different fault from a wrong key and has a different fix.
+ * `entryPoints` is an ARRAY and two byte entry points can decode to the same
+ * name, so this takes the first match by name and lets the byte comparison
+ * refuse a slot that does not hold this artifact's key.
  *
  * @param snapshot The one snapshot this operation read.
  * @param circuitId The entry point to check.
  * @param localVerifierKey The key compiled beside the local artifact.
  * @throws BlankVerifierKeySlotError if the chain declares no key for it.
  * @throws VerifierKeyMismatchError if the two keys differ byte for byte.
+ * @see {@link VerificationPath} for what this check buys.
  */
 export const assertSnapshotVerifierKey = (
   snapshot: Ledger8Snapshot,
@@ -307,18 +252,14 @@ export const assertSnapshotVerifierKey = (
  * Whether a call spends a shielded coin the contract already HELD, as opposed
  * to one the same call produced.
  *
- * The distinction decides whether the offer can be built at all. An input
- * paired with an output of the same call is a transient, and the offer builder
- * assembles it from the pair alone; an input with no such pairing has to be
- * located in the chain's Merkle tree of commitments, which needs the
- * contract's Zswap CHAIN state — and the retained-era pipeline reads none.
- *
- * The pairing test is the offer builder's OWN one, reusing its serializers
- * rather than restating it, so the two cannot answer differently about the same
- * state.
+ * The distinction decides whether the offer can be built at all: a held coin
+ * has to be located in the chain's Merkle tree, and this pipeline reads no
+ * Zswap chain state. The pairing test is the offer builder's OWN one, reused
+ * rather than restated so the two cannot disagree.
  *
  * @param zswapLocalState The call's post-execution Zswap local state.
  * @returns `true` if any input needs a chain state to be spent.
+ * @see {@link KeepStatePipeline} for the transient-versus-held distinction.
  */
 const spendsHeldCoin = (zswapLocalState: Ledger8Transcript['zswapLocalState']): boolean => {
   const producedByThisCall = new Set(zswapLocalState.outputs.map((output) => serializeCoinInfo(output.coinInfo)));
@@ -345,24 +286,12 @@ export interface Ledger8CallPipelineRequest<TState> {
   readonly networkId: string;
   readonly ttl: Date;
   /**
-   * A RESOLVER, never a bare key, and the type says so rather than leaving it
-   * to a caller's discretion.
+   * A RESOLVER, never a bare key. DO NOT WIDEN THIS TO ACCEPT A KEY: a bare key
+   * is coerced into the constant resolver `() => key`, which encrypts every
+   * output to the caller's own key and silences `createZswapOutput`'s refusal
+   * branch. The result submits successfully and loses the recipient's coin.
    *
-   * `zswapStateToSegmentedOffer` accepts either, and coerces a bare key into
-   * the constant resolver `() => key`. A constant resolver can never refuse,
-   * so it answers with the CALLER'S OWN encryption key for every recipient:
-   * an output paying a third party would be committed to that party's coin
-   * public key while its ciphertext was encrypted to the sender's, leaving a
-   * coin the recipient owns and cannot discover. It would also silence
-   * `createZswapOutput`'s refusal branch, which is the only thing standing
-   * between an unresolvable recipient and a successfully submitted
-   * mis-encryption.
-   *
-   * So the bare-key arm is not offered here. Every caller hands a real
-   * resolver built by `createEncryptionPublicKeyResolver`, which answers for
-   * the wallet's own key and the burn address and returns `undefined` for
-   * anyone else — the same per-recipient rule the current era applies at
-   * `unproven-call-tx.ts`.
+   * @see {@link KeepStatePipeline} for the full failure mode.
    */
   readonly encryptionPublicKey: EncryptionPublicKeyResolver;
 }
