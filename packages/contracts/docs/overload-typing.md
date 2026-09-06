@@ -130,13 +130,14 @@ names a real cause: a typo'd circuit id, a private state of the wrong type.
 That last point is the one worth protecting, because a mistyped CURRENT-era call
 is the common case and a retained-era call is the rare one.
 
-`overloads.test-d.ts` pins all of it: that each retained-era arm is REACHABLE (a
+`overloads.test-d.ts` pins it: that each retained-era arm is REACHABLE (a
 retained-era call resolves to the retained-era result type, not merely
 compiles), and that `ReturnType` AND `Parameters` on all four entry points still
-report exactly what they reported at the base commit.
-`packages/contracts/src/test/current-era-diagnostic.test.ts` runs the compiler
-itself and pins the third one: that a mistyped current-era call still names its
-real cause.
+report exactly what they reported at the base commit. Those two are what read
+from the LAST signature, so an arm appended to the end of any of these lists
+fails them. The diagnostic a failed call prints resolves from that same last
+signature, and so moves only when they do; its exact wording is TypeScript's to
+choose and is deliberately not pinned.
 
 ## There is no catch-all arm
 
