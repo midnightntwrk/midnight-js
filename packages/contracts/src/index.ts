@@ -40,29 +40,20 @@ export {
   DeployContractOptionsWithPrivateState,
   DeployedContract
 } from './deploy-contract';
-// The eight era errors below become reachable with this release: the retained-era entry points now
-// run real pipelines, so a consumer can catch each of them. Every one is thrown on a path a
-// consumer can reach -- `BlankVerifierKeySlotError` and `VerifierKeyMismatchError` from the
-// pre-proving key check, `HeadStateEraMismatchError` and `IndexerInconsistencyError` from the
-// head-versus-state era check, `EraArtifactMismatchError` from era resolution at every entry
-// point, and `Ledger8DeployOnV9Error` from the era pairing table -- and each is exercised through
-// an entry point in `src/test/keep-state.test.ts` or `src/test/v8-native.test.ts`.
-// `Ledger8SeamFailedError` carries a provider's own rejection with its message redacted, and
-// `Ledger8ShieldedSpendUnsupportedError` refuses a retained-era call that would spend a coin the
-// contract already holds; both are reachable through the same entry points and exercised there.
-// `StaleHeadError` is the fork-crossing refusal: a submission rejected after the network head moved
-// under the operation, carrying the two-step remediation for that operation kind. It is thrown from
-// the submit seam of both retained-era arms and exercised through the entry points in
-// `src/test/stale-head.test.ts`.
-// `ScopedTxEraUnsupportedError` and `MixedEraScopeError` are the scoped-transaction era rules: a
-// scope is refused outright on a head era that composes only one call per transaction, and a
-// retained-toolchain call cannot join a scope at all. Both are exercised in
-// `src/test/scoped-era.test.ts`.
-// `SubmitRejectionUndiagnosedError` is the other half of the fork-crossing diagnosis: a submission
-// rejected where the head could not be re-read, or reported an EARLIER era than the operation
-// started against. Reported as undiagnosable rather than as a fork, because neither case
-// establishes one, and carrying a registered code of its own so a retry handler branching on
-// `hasErrorCode` behaves the same whichever failure came first.
+// The one member of `./internal/breadcrumbs` that is CONSUMER-FACING: an aggregator has to import
+// the fixed message rather than retype it. The breadcrumb TYPES stay internal -- publishing the
+// shapes would pin them as API before a second consumer has asked for them.
+export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
+// The era errors below become reachable with this release: the retained-era entry points now run
+// real pipelines, so a consumer can catch them. Each class documents its own condition and
+// remediation, and each is exercised through an entry point in `src/test/keep-state.test.ts`,
+// `src/test/v8-native.test.ts`, `src/test/stale-head.test.ts` or `src/test/scoped-era.test.ts`.
+//
+// `Ledger8DeployOnV9Error` is the ONE exception: it is exported as the published name for a
+// refusal that is currently DORMANT rather than one a consumer can provoke, because
+// `deployContract`'s retained arm refuses unconditionally before any head is read. Its negative is
+// therefore against an internal function, not an entry point. It becomes consumer-reachable on the
+// day the era seam carries a maintenance authority.
 export {
   BlankVerifierKeySlotError,
   CallTxFailedError,
@@ -113,6 +104,48 @@ export {
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from './governance';
+// The retained-era type family. Exported for the same reason the current era's
+// equivalents are: the entry-point OVERLOADS select these types by inference,
+// but inference alone does not let a consumer NAME one. Without these a caller
+// can make a retained-era call and still not write
+// `function handle(r: Ledger8FinalizedCallTxData<C, K>)`, declare a variable of
+// the result type, or constrain a helper of their own by `Ledger8Contract`.
+//
+// A name appearing in the emitted `.d.ts` because an overload signature
+// mentions it is NOT the same as that name being exported, and this package
+// publishes only a `"."` entry, so there is no subpath to reach them through
+// either. `Awaited<ReturnType<typeof submitCallTx>>` is no substitute: it
+// resolves from the LAST overload by design, so it hands back the current-era
+// shape -- the wrong type for a retained-era call.
+//
+// The whole family goes out together rather than just the four result types: a
+// consumer who cannot also name `Ledger8Circuit` and `Ledger8Witness` cannot
+// declare a contract type that satisfies `Ledger8Contract` in the first place.
+// The `AnyLedger8*` aliases stay internal -- they exist to widen the
+// era-dispatching IMPLEMENTATION signatures and are never a signature a caller
+// sees.
+export type {
+  Ledger8CallTxOptions,
+  Ledger8CallTxOptionsBase,
+  Ledger8CallTxOptionsWithPrivateStateId,
+  Ledger8CallTxTarget,
+  Ledger8Circuit,
+  Ledger8CircuitContext,
+  Ledger8CircuitId,
+  Ledger8CircuitParameters,
+  Ledger8CircuitResult,
+  Ledger8ConstructorResult,
+  Ledger8Contract,
+  Ledger8ContractProviders,
+  Ledger8DeployContractOptions,
+  Ledger8DeployedContract,
+  Ledger8FinalizedCallTxData,
+  Ledger8FindDeployedContractOptions,
+  Ledger8FoundContract,
+  Ledger8PrivateState,
+  Ledger8SubmittedCallTx,
+  Ledger8Witness
+} from './ledger8-contract';
 export { submitCallTx, submitCallTxAsync } from './submit-call-tx';
 export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
 export { submitTx, submitTxAsync, SubmitTxOptions, SubmitTxProviders } from './submit-tx';

@@ -125,8 +125,9 @@ const createDeployTxOptions = <C extends Contract.Any>(
  * deployed contract could never be maintained by anyone. The deploy TRANSACTION path itself
  * composes and submits correctly — this refusal is about the result, not an unfinished pipeline.
  *
- * Separately, a retained-era deploy against a POST-FORK head is refused with
- * `Ledger8DeployOnV9Error`.
+ * The refusal above is the ONLY one this arm makes, and it is unconditional — thrown before any
+ * head is read. Do NOT branch on `Ledger8DeployOnV9Error` from this entry point: through
+ * `deployContract` that branch is never taken.
  *
  * @see {@link KeepStatePipeline} for the measurement and the test that pins it.
  *
