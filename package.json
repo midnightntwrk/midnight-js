@@ -77,6 +77,7 @@
     "*.ts": "eslint --cache"
   },
   "resolutions": {
+    "@midnight-ntwrk/onchain-runtime-v3": "3.1.0",
     "@midnight-ntwrk/platform-js": "3.0.0",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
     "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3",

@@ -2,11 +2,17 @@
   "$schema": "https://turbo.build/schema.v2.json",
   "envMode": "loose",
   "globalEnv": ["COMPACTC_VERSION"],
+  // Repo-root files that decide what a task produces, but live outside any
+  // package's own `inputs`. Without them a change here leaves every task hash
+  // untouched, so turbo replays a cached PASS for a gate that never ran --
+  // `build-tools/` decides how bundles are emitted, and `eslint.config.mjs` is
+  // the subject of the lint canaries in packages/protocol/src/test/.
+  "globalDependencies": ["build-tools/**", "eslint.config.mjs"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputLogs": "new-only",
-      "inputs": ["src/**/*.ts", "!src/**/*.test.ts", "src/**/*.compact"],
+      "inputs": ["src/**/*.ts", "!src/**/*.test.ts", "src/**/*.compact", "rollup.config.mjs"],
       "outputs": ["dist/**", "build/**", "src/**/managed/**"]
     },
     "clean": {
@@ -21,7 +27,7 @@
     },
     "test": {
       "outputLogs": "new-only",
-      "dependsOn": ["^build"],
+      "dependsOn": ["build", "^build"],
       "inputs": ["src/**/*.ts", "vitest.config.ts", "vitest.*.config.ts", "compose.yml"],
       "outputs": ["reports/**", "coverage/**", "logs/**"]
     },

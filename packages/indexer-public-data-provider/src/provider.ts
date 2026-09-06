@@ -32,6 +32,7 @@ import type {
   ContractStateObservableConfig,
   FinalizedTxData,
   PublicDataProvider,
+  RawContractState,
   UnshieldedBalances
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
@@ -42,12 +43,14 @@ import {
   parseHexLedgerParameters,
   parseHexTransaction,
   parseHexZswapState,
+  toRawContractState,
   toSegmentStatusMap,
   toTxStatus,
   toUnshieldedBalances,
   toUnshieldedUtxos
 } from './codec';
 import { DEFAULT_CONTRACT_EVENTS_PAGE_SIZE } from './config';
+import { requireV9Era } from './era';
 import { IndexerDataError, IndexerInvariantError, IndexerProviderConfigError } from './errors';
 import { buildQueryVariables, buildSubscriptionVariables } from './events-filter';
 import { toContractEvent } from './events-mapping';
@@ -82,7 +85,9 @@ import {
   CONTRACT_STATE_QUERY,
   DEPLOY_CONTRACT_STATE_TX_QUERY,
   DEPLOY_TX_QUERY,
+  HEAD_PROTOCOL_VERSION_QUERY,
   QUERY_UNSHIELDED_BALANCES_WITH_OFFSET,
+  RAW_CONTRACT_STATE_QUERY,
   TX_ID_QUERY
 } from './query-definitions';
 import type { ApolloHandle } from './transport';
@@ -140,6 +145,85 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     return block ? { hash: block.hash, height: block.height } : null;
   }
 
+  /**
+   * Reads the protocol-version integer of the network's head block.
+   *
+   * The indexer's `block` root field with no offset resolves to the latest
+   * indexed block, so this is the head version.
+   *
+   * This implementation does not cache: every call issues a request. The
+   * interface permits a cache bounded short of block time — see
+   * `PublicDataProvider.queryLatestProtocolVersion` — but there is no measured
+   * cost here to spend that budget on, and an expiring cache is not free to
+   * get right. For the era of a record already read, use
+   * {@link queryRawContractState}, which costs no request at all.
+   *
+   * @throws {IndexerDataError} When the indexer has not indexed a block yet
+   *   and therefore reports no head block.
+   */
+  async queryLatestProtocolVersion(): Promise<number> {
+    const block = await this.client
+      .query({
+        query: HEAD_PROTOCOL_VERSION_QUERY,
+        fetchPolicy: 'no-cache'
+      })
+      .then(maybeThrowQueryError)
+      .then((queryResult) => queryResult.data?.block ?? null);
+    if (block === null) {
+      throw IndexerDataError.missingHeadBlock();
+    }
+    return block.protocolVersion;
+  }
+
+  /**
+   * Reads the contract state at `address` as the bytes the indexer served,
+   * without deserializing them, paired with the ledger era those bytes belong
+   * to.
+   *
+   * The block that dates the state and the state itself are asked for in a
+   * single document. That saves a round trip; it does **not** make the two
+   * fields a consistent snapshot — the indexer resolves Query-root siblings
+   * concurrently, from independent reads, so they can still come from
+   * different blocks. The era on the returned record therefore describes the
+   * block that dated these bytes, and is not a reading of where the network is
+   * now: for that, ask {@link queryLatestProtocolVersion}, which reads it.
+   *
+   * @throws {TagParseError} When the served state does not carry a
+   *   contract-state envelope from a supported ledger runtime.
+   * @throws {IndexerDataError} When the served state is not hex-encoded, or
+   *   when a state is served with no block to date it.
+   */
+  async queryRawContractState(
+    address: ContractAddress,
+    config?: BlockHeightConfig | BlockHashConfig
+  ): Promise<RawContractState | null> {
+    assertIsContractAddress(address);
+    const offset = toBlockOffset(config);
+    const data = await this.client
+      .query({
+        query: RAW_CONTRACT_STATE_QUERY,
+        variables: {
+          address,
+          offset
+        },
+        fetchPolicy: 'no-cache'
+      })
+      .then(maybeThrowQueryError)
+      .then((queryResult) => queryResult.data);
+    const state = data?.contract?.state ?? null;
+    if (state === null) {
+      return null;
+    }
+    const block = data?.block ?? null;
+    if (block === null) {
+      // A served state with no block to date it is an inconsistent indexer,
+      // not an absent contract. Reporting it as "nothing here" would hand the
+      // caller a wrong answer that reads exactly like a correct one.
+      throw IndexerDataError.undatedState();
+    }
+    return toRawContractState(state, block.protocolVersion);
+  }
+
   queryContractState(
     address: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
@@ -158,8 +242,28 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         fetchPolicy: 'no-cache'
       })
       .then(maybeThrowQueryError)
-      .then((queryResult) => queryResult.data?.contract?.state ?? null)
-      .then((maybeContractState) => (maybeContractState ? parseHexContractState(maybeContractState) : null));
+      .then((queryResult) => queryResult.data)
+      .then((data) => {
+        const state = data?.contract?.state ?? null;
+        if (state === null) {
+          return null;
+        }
+        const block = data?.block ?? null;
+        if (block === null) {
+          // A served state with no block to date it is an inconsistent indexer,
+          // not an absent contract — the same call `queryRawContractState`
+          // makes. Decoding it would mean guessing the era.
+          throw IndexerDataError.undatedState();
+        }
+        // Unpinned: `block` is a Query-root sibling of `contract` and both
+        // followed the chain tip, so a block indexed between the two reads
+        // leaves them on either side of a fork. Pinned: both resolved against
+        // the offset the caller named, so the bound is real.
+        const contractState = parseHexContractState(state, block.protocolVersion, {
+          upperBound: offset === null ? 'withheld' : 'enforced'
+        });
+        return contractState;
+      });
   }
 
   queryZSwapAndContractState(
@@ -173,8 +277,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     // the block (not the contract's last action) on purpose — the ledger keeps only a window of past
     // commitment-tree roots, so a tree from the contract's last modification can age out and be
     // unusable for building transactions; the queried block's tree is the one execution needs.
-    // Callers pin `offset` to a specific block, so both fields resolve at the same anchor with no
-    // race between them.
+    // With `offset` pinned, both fields resolve at that one anchor with no race between them.
+    // `getPublicStates` also reaches here with no offset, and then they do race — which is why the
+    // era bound on the contract state is withheld for exactly that case below.
     const offset = toBlockOffset(config);
     return this.client
       .query({
@@ -195,9 +300,18 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         if (!block || contractState == null || contractZswapState == null) {
           return null;
         }
+        // The contract state is decoded first, and it is the only one of the
+        // three carrying an envelope this client can read the era from. Its
+        // check therefore dates the whole triple: all three fields come from
+        // the one block, so a state the block's era contradicts means the
+        // zswap state and ledger parameters cannot be trusted either — and
+        // neither is decoded.
+        const parsedContractState = parseHexContractState(contractState, block.protocolVersion, {
+          upperBound: offset === null ? 'withheld' : 'enforced'
+        });
         return [
           parseHexZswapState(contractZswapState),
-          parseHexContractState(contractState),
+          parsedContractState,
           parseHexLedgerParameters(block.ledgerParameters)
         ] as [ZswapChainState, ContractState, LedgerParameters];
       });
@@ -255,7 +369,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
             DeployContractStateTxQueryQuery['contractAction']
           >;
           if (!('deploy' in contract)) {
-            return contract.state;
+            return { state: contract.state, protocolVersion: contract.transaction.protocolVersion };
           }
           const deployAction = contract.deploy.transaction.contractActions.find(
             ({ address }) => address === contractAddress
@@ -263,17 +377,27 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           if (!deployAction) {
             throw IndexerDataError.missingContractAction(contractAddress);
           }
-          return deployAction.state;
+          return {
+            state: deployAction.state,
+            protocolVersion: contract.deploy.transaction.protocolVersion
+          };
         }
         return null;
       })
-      .then((maybeContractState) => (maybeContractState ? parseHexContractState(maybeContractState) : null));
+      .then((dated) => (dated === null ? null : parseHexContractState(dated.state, dated.protocolVersion)));
   }
 
   watchForContractState(contractAddress: ContractAddress): Promise<ContractState> {
     assertIsContractAddress(contractAddress);
     return Rx.firstValueFrom(
-      waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(Rx.map(parseHexContractState))
+      waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(
+        // `waitForContractToAppear` polls an unpinned `CONTRACT_STATE_QUERY`, so
+        // the block dating the state is an independently-resolved sibling of it
+        // and the two can straddle a fork. No caller can pin this one.
+        Rx.map(({ state, protocolVersion }) =>
+          parseHexContractState(state, protocolVersion, { upperBound: 'withheld' })
+        )
+      )
     );
   }
 
@@ -324,7 +448,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
             );
           }
           const transaction: RegularTransaction & { hash: string; identifiers: string[] } = first;
+          // Resolved before `parseHexTransaction`, which is v9-only: see the
+          // note in `toFinalizedDeployTxData`.
+          const version = requireV9Era(transaction, 'watchForTxData', `txId ${txId}`);
           return {
+            version,
             tx: parseHexTransaction(transaction.raw),
             status: toTxStatus(transaction.transactionResult),
             txId,

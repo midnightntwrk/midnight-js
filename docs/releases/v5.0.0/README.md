@@ -27,6 +27,8 @@ On top of the protocol work, v5.0.0 adds **cross-contract call support** (multi-
 4. **`@midnightntwrk/wallet-sdk` 2.0.0-beta** (testkit-js) — keystore and signature/verifying-key APIs adopt the structured key/signature types (#970, #967).
 5. **`platform-js` 3.0.0** — models the signing key as `{ tag, value }`; threaded through the Configuration layer (#970).
 6. **ZK artifact integrity verification is fail-closed** — `FetchZkConfigProvider` / `NodeZkConfigProvider` verify artifacts against `compiler/contract-manifest.json` and throw `ZkArtifactIntegrityError` on a missing/stale manifest or digest mismatch by default (#1015).
+7. **The packages are ESM-only** — CommonJS `require()` of any `midnight-js-*` package no longer resolves; consumers need Node >= 22.12 and TypeScript >= 5.8 with `nodenext` or `bundler` resolution (#1180).
+8. **Provider-seam payloads and finalized records are version-tagged** — `proveTx`, `balanceTx` and `submitTx` carry `{ version: 'v9', tx }` / `{ version: 'v8', txBytes }` in both directions, and `watchForTxData` / `watchForDeployTxData` report a `version`-discriminated record. Narrow before reading the payload. External `WalletProvider` / `MidnightProvider` implementations must be updated (#1204).
 
 See [breaking-changes.md](./breaking-changes.md) for full rationale and before/after snippets.
 

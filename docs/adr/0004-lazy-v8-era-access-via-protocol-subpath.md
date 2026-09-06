@@ -3,6 +3,9 @@
 - Status: Accepted
 - Date: 2026-08-20
 - Deciders: Szymon Paluchowski
+- Amended: 2026-08-26 — the accessor moved from `src/lib/load-v8.ts` to
+  `src/lib/v8/load.ts` when `src/lib/` was split by ledger era. Paths and the
+  quoted specifier below track that move; the decision itself is unchanged.
 
 ## Context
 
@@ -29,14 +32,14 @@ inlined into each bundle.
 
 We will expose the v8 era through a dedicated `./v8` subpath export of the
 protocol package (`export * from '@midnightntwrk/ledger-v8'`) and a single
-lazy accessor, `loadLedger8`, which lives in `src/lib/load-v8.ts` and is
+lazy accessor, `loadLedger8`, which lives in `src/lib/v8/load.ts` and is
 re-exported by the barrel:
 
 ```typescript
 export const loadLedger8 = (): Promise<ProtocolV8> =>
-  (v8ModulePromise ??= import('../v8.js').catch((error: unknown) => {
+  (v8ModulePromise ??= import('../../v8.js').catch((error: unknown) => {
     v8ModulePromise = undefined;
-    throw new Ledger8RuntimeMissingError(error);
+    throw new Ledger8RuntimeMissingError('/v8', error);
   }));
 ```
 
@@ -48,8 +51,9 @@ Specifically:
   never part of the eagerly-loaded index bundle, and the specifier resolves
   within the installed copy of the package — no name resolution, no exports
   map, no second copy. The accessor itself is not a published subpath, so it
-  sits in `src/lib/` rather than at the top of `src/`, which the export-surface
-  gate reserves for entries; hence `../v8.js` and not `./v8.js`. `lib/` marks a
+  sits under `src/lib/` rather than at the top of `src/`, which the
+  export-surface gate reserves for entries; hence `../../v8.js` and not
+  `./v8.js`. `lib/` marks a
   module that is not a build entry, which is a different thing from
   `contracts/src/internal` — that name marks implementation hidden from
   consumers, and `loadLedger8` is public API.
@@ -70,9 +74,12 @@ Specifically:
      exemption is expressed with `ignores` — never as
      `'no-restricted-syntax': 'off'`, which would silently drop the unsafe-cast
      gate sharing that rule.
-  2. A source-scan test (`v8-surface.test.ts`) asserts `lib/load-v8.ts` is the
+  2. A source-scan test (`v8-surface.test.ts`) asserts `lib/v8/load.ts` is the
      only module in the protocol package that imports the v8 module at
-     runtime, reading past comments and type-only imports.
+     runtime, reading past comments and type-only imports and re-exports. It
+     resolves each relative specifier against the file naming it, so the
+     `./engine` build entry is never confused with the `lib/v8/engine.ts`
+     sibling that shares its name.
   3. A dist gate (`dist-laziness.test.ts`) inspects the built bundles: no
      static linkage of `ledger-v8` or of the v8 entry may appear in the index
      bundle, the lazy dynamic import must survive the build, and the artifacts

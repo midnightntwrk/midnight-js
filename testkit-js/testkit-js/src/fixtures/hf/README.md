@@ -250,8 +250,8 @@ a v9-era toolchain (`compactc 0.33.0-rc.2`, `runtime-version:
 0.18.0-rc.1`). The two are not interchangeable: `twin-contract/compiled/` emits
 0.18-era (async) codegen and cannot run against a `compact-runtime@0.16`
 instance; `counter-016/` emits the sync codegen the retained pre-fork engine
-(`packages/protocol/src/engine/execute.ts`) actually exercises, and is the
-fixture `engine-execute.test.ts` runs `increment` against.
+(`packages/protocol/src/lib/v8/execute.ts`) actually exercises, and is the
+fixture `v8-execute.test.ts` runs `increment` against.
 
 Ported verbatim (byte-for-byte, only source-map generation trimmed — same
 "drop the map, keep the module minimal" precedent as `twin-contract/`) from
@@ -278,11 +278,11 @@ artifact — same as `twin-contract/compiled/contract/index.js` — must not
 carry.
 
 `counter-016/increment-transcript.golden.json` is a golden regression
-reference for the transcript `executeCircuit` (`engine/execute.ts`) produces
+reference for the transcript `executeCircuit` (`lib/v8/execute.ts`) produces
 when running `increment()` against this contract's freshly-constructed
 initial state (`round: 0`). The spike carries no recorded transcript fixture
 of its own to port, so this one was minted once, directly from
-`engine-execute.test.ts`'s own real execution against this ported artifact
+`v8-execute.test.ts`'s own real execution against this ported artifact
 (no proving involved — circuit execution through `compact-runtime@0.16` is
 fully deterministic), and is committed as JSON with bigints written as
 `` `${n}n` ``-suffixed strings and byte arrays as lower-case hex (the two
@@ -292,6 +292,60 @@ excluded from the golden — they carry live `ChargedState` WASM objects, not
 plain data — the transcript's post-state is instead asserted directly in the
 same test via the contract's own `ledger()` projector (`round` goes `0n` →
 `1n`).
+
+## `coin-receiver-016/`
+
+The one thing `counter-016/` cannot exercise: a circuit that **receives a
+shielded coin in-contract**. Twelve lines of Compact
+(`coin-receiver.compact`) — `receiveShielded(coin)` followed by
+`pot.writeCoin(coin, kernel.self())` into a `QualifiedShieldedCoinInfo` cell.
+
+That shape is the point, not the contract. Receiving registers the coin's
+commitment with the runtime; writing it back has to *qualify* the coin, which
+needs the INDEX that commitment was recorded at. So a transcript from this
+circuit **cannot be partitioned** unless the commitment indices the runtime
+recorded travel with the call — which is what
+`packages/protocol/src/test/era-partition-received-coin.test.ts` asserts, in
+both directions, on both eras. `counter-016` moves no coins and reaches none
+of it.
+
+Deliberately NOT the spike's `micro-dao` (`island-3/driver/src/contracts/micro-dao/`),
+which has the same receive path inside a 239 KB, 11-circuit artifact with
+witnesses, a Merkle tree, minting and voting phases — none of which this
+tests. This fixture is 26 KB and its source is readable in one screen.
+
+**Compiled in this repo, not ported** — the one provenance difference from
+`counter-016/`. The `compact` toolchain manager offers the same compiler the
+spike used, so there was nothing to port:
+
+```
+compact compile --skip-zk \
+  testkit-js/testkit-js/src/fixtures/hf/coin-receiver-016/coin-receiver.compact \
+  <tmpdir>
+```
+
+with `compact` on version **0.31.1**, which reports `language-version 0.23.0`
+and `runtime-version 0.16.0` — the same toolchain triple as `counter-016/`
+(and as the spike's own DAO artifact). Only `contract/index.js` and
+`compiler/contract-info.json` are committed: no `.d.ts` (the consuming test
+declares the slice it drives), no `keys/`, no `zkir/` (nothing here proves,
+and the call's key location hashes whichever registered key the test supplies
+— `twin-contract`'s `increment.verifier`).
+
+`compiler/contract-info.json` is committed **as a gate, not as decoration**:
+the test asserts `runtime-version: 0.16.0` and `compiler-version: 0.31.1` on
+it, so a recompile with the repo's own pinned `compactc` (0.34.x → runtime
+0.19, async codegen) fails loudly instead of silently producing an artifact
+that never reaches the seam under test.
+
+The artifact is committed byte-verbatim, including its trailing
+`//# sourceMappingURL=index.js.map` line with no `.js.map` beside it — same as
+`counter-016/`, so a recompile can be diffed against it directly. Vitest prints
+one harmless "could not read map file" line per run because of it.
+
+The `compiled/` path segment matters for the same reason it does under
+`counter-016/`: `.licenserc.yaml`'s `paths-ignore` excludes `**/compiled/**`
+from the Apache-2.0 header check, which generated code must not carry.
 
 ## Regenerating
 
@@ -305,6 +359,16 @@ generator (there is nothing to regenerate — they are golden ports); to update
 them, re-copy from a newer spike checkout and re-run
 `generate-all.mjs` (the tamper/derive scripts read the goldens back in, so
 they stay consistent automatically).
+
+To recompile `coin-receiver-016/` (needs the retained-era compiler — see its
+section above for why the version is not negotiable):
+
+```
+compact list                      # 0.31.1 must be installed
+compact compile --skip-zk testkit-js/testkit-js/src/fixtures/hf/coin-receiver-016/coin-receiver.compact /tmp/coin-receiver-out
+cp /tmp/coin-receiver-out/contract/index.js            testkit-js/testkit-js/src/fixtures/hf/coin-receiver-016/compiled/contract/
+cp /tmp/coin-receiver-out/compiler/contract-info.json  testkit-js/testkit-js/src/fixtures/hf/coin-receiver-016/compiled/compiler/
+```
 
 To recompile `twin-contract/`:
 

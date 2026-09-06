@@ -35,6 +35,7 @@ import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
+import { requireV9Record } from './internal/era';
 import {
   type CircuitCallTxInterface,
   createCircuitCallTxInterface
@@ -261,7 +262,10 @@ export async function findDeployedContract<C extends Contract.Any>(
   assertIsContractAddress(contractAddress);
   providers.privateStateProvider.setContractAddress(contractAddress);
 
-  const finalizedTxData = await providers.publicDataProvider.watchForDeployTxData(contractAddress);
+  const finalizedTxData = requireV9Record(
+    await providers.publicDataProvider.watchForDeployTxData(contractAddress),
+    'watchForDeployTxData'
+  );
 
   const initialContractState = await providers.publicDataProvider.queryDeployContractState(contractAddress);
   assertDefined(initialContractState, `No contract deployed at contract address '${contractAddress}'`);

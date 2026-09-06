@@ -23,6 +23,7 @@ import {
   toTxStatus,
   toUnshieldedUtxos
 } from './codec';
+import { requireV9Era } from './era';
 import { IndexerInvariantError } from './errors';
 import type { DeployTxQueryQuery } from './gen/graphql';
 import type { ContractBalance, RegularTransaction } from './gen/schema-types';
@@ -99,22 +100,32 @@ export const extractRegularDeployTransaction = (
 export const toFinalizedDeployTxData = (
   contractAddress: ContractAddress,
   transaction: RegularTransaction
-): FinalizedTxData => ({
-  tx: parseHexTransaction(transaction.raw),
-  status: toTxStatus(transaction.transactionResult),
-  txId: correlateDeployTxId(contractAddress, transaction.contractActions, transaction.identifiers),
-  identifiers: transaction.identifiers,
-  txHash: transaction.hash,
-  blockHeight: transaction.block.height,
-  blockHash: transaction.block.hash,
-  blockTimestamp: transaction.block.timestamp,
-  blockAuthor: transaction.block.author,
-  segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
-  unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs),
-  indexerId: transaction.id,
-  protocolVersion: transaction.protocolVersion,
-  fees: {
-    estimatedFees: transaction.fees.estimatedFees,
-    paidFees: transaction.fees.paidFees
-  }
-});
+): FinalizedTxData => {
+  // Resolved before `parseHexTransaction` deliberately: that deserializer is
+  // v9-only, so a v8-era record has to be named here rather than surfacing as
+  // a codec failure. Kept a statement rather than the first property of the
+  // literal below so the ordering is explicit — as a property it held only by
+  // source order, which an alphabetising edit would silently reverse.
+  const version = requireV9Era(transaction, 'watchForDeployTxData', `contractAddress ${contractAddress}`);
+
+  return {
+    version,
+    tx: parseHexTransaction(transaction.raw),
+    status: toTxStatus(transaction.transactionResult),
+    txId: correlateDeployTxId(contractAddress, transaction.contractActions, transaction.identifiers),
+    identifiers: transaction.identifiers,
+    txHash: transaction.hash,
+    blockHeight: transaction.block.height,
+    blockHash: transaction.block.hash,
+    blockTimestamp: transaction.block.timestamp,
+    blockAuthor: transaction.block.author,
+    segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
+    unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs),
+    indexerId: transaction.id,
+    protocolVersion: transaction.protocolVersion,
+    fees: {
+      estimatedFees: transaction.fees.estimatedFees,
+      paidFees: transaction.fees.paidFees
+    }
+  };
+};

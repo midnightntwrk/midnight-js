@@ -123,6 +123,44 @@ export const parseContractKeyLocation: (s: string) => ContractKeyLocation | unde
 export const hashVerifierKey: (/* verifier key */) => string; // sha-256 hex
 ```
 
+### Version-tagged provider seams (#1204)
+
+```ts
+// Seam vocabulary — closed, so a caught error's `seam` can be switched on.
+export type ProviderSeam = 'proveTx' | 'balanceTx' | 'submitTx';
+export type ReadSeam = 'watchForTxData' | 'watchForDeployTxData';
+export type Seam = ProviderSeam | ReadSeam;
+
+// Transaction payloads. No untagged form: a bare Uint8Array is never assignable.
+export interface V8TxBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
+export interface V9Tx<T>   { readonly version: 'v9'; readonly tx: T; }
+export type VersionedTx<T> = V8TxBytes | V9Tx<T>;
+export type VersionedUnprovenTransaction  = VersionedTx<UnprovenTransaction>;
+export type VersionedUnboundTransaction   = VersionedTx<UnboundTransaction>;
+export type VersionedFinalizedTransaction = VersionedTx<FinalizedTransaction>;
+
+// Read surface. A *different* union — its v8 arm carries `tx`, not `txBytes`.
+export interface FinalizedTxRecord { /* the 13 era-independent metadata fields */ }
+export interface FinalizedTxDataV8 extends FinalizedTxRecord { readonly version: 'v8'; readonly tx: V8Transaction; }
+export type VersionedFinalizedTxData = FinalizedTxDataV8 | FinalizedTxData;
+
+// Narrowing. Accepts the three transaction seams only — not the read surface.
+export const unwrapV9: <T>(payload: VersionedTx<T>, seam: ProviderSeam) => T;
+export class V8PayloadUnsupportedError extends Error { readonly code; readonly seam: ProviderSeam; readonly byteLength?: number; }
+export class UntaggedPayloadError extends Error { readonly code; readonly seam: Seam; readonly received: string; }
+
+// Adapters: lift a v9-only implementation into the tagged interfaces.
+export interface V9WalletProvider { /* balanceTx / getCoinPublicKey / getEncryptionPublicKey, untagged */ }
+export const createWalletProvider: (impl: V9WalletProvider) => WalletProvider;
+export const createMidnightProvider: (submitTx: (tx: FinalizedTransaction) => Promise<TransactionId>) => MidnightProvider;
+```
+
+`FinalizedTxData` gained a required `version: 'v9'`. `ProofProvider.proveTx`,
+`WalletProvider.balanceTx` and `MidnightProvider.submitTx` take and return the
+tagged unions; `submitTx` still resolves a bare `TransactionId`.
+`PublicDataProvider.watchForTxData` / `watchForDeployTxData` now resolve
+`VersionedFinalizedTxData`.
+
 ---
 
 ## `@midnight-ntwrk/midnight-js-contracts`
@@ -142,6 +180,22 @@ export const ContractLog: {
 ```
 
 The single `events` list spans the whole call tree. Decode without a direct `compact-js` dependency via `contracts.ContractLog.decodeAll(result.public.events)`.
+
+### Era-invariant error (#1204)
+
+```ts
+// Thrown when a provider returns a v8-era payload, or the read surface reports a
+// v8-era record, on a flow that only submits v9 transactions.
+export type EraSeam = Seam; // re-exported vocabulary from midnight-js-types
+export class EraInvariantViolationError extends Error {
+  readonly code: 'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION';
+  readonly seam: EraSeam;
+  readonly circuitId?: string | readonly string[];
+}
+```
+
+`submitTx` and `findDeployedContract` narrow internally, so their return types
+are unchanged.
 
 ---
 
@@ -177,6 +231,24 @@ export function isRegularTransaction(/* ... */): boolean;
 
 New typed error variants accompany the event surface (e.g. `IndexerDataError.unknownAddressKind` for an unrecognized address kind; unknown `__typename` / missing-field cases continue to fail fast).
 
+Era resolution (#1204) — the `version` on a finalized record is derived from the
+record's own `protocolVersion`, never asserted:
+
+```ts
+export class EraUnsupportedError extends IndexerError {
+  readonly code: 'MIDNIGHT_JS_PR_ERA_UNSUPPORTED';
+  readonly seam: ReadSeam;
+  readonly era: LedgerVersion;      // a known era this provider cannot decode
+  readonly protocolVersion: number; // the raw integer the indexer reported
+  readonly recordRef?: string;      // the txId or contractAddress being read
+}
+export class EraUnresolvableError extends IndexerError {
+  readonly code: 'MIDNIGHT_JS_PR_ERA_UNRESOLVABLE';
+  // protocolVersion maps to no era at all. The originating
+  // UnknownProtocolVersionError is preserved on `cause`.
+}
+```
+
 Internally the provider was split into 7 layered files (#960): `config.ts`, `transport.ts` (`ApolloHandle = { client, dispose }`), `provider.ts` (`class IndexerPublicDataProvider`), `observables.ts`, `events-filter.ts`, `events-mapping.ts`, and `index.ts`.
 
 ---
@@ -186,6 +258,19 @@ Internally the provider was split into 7 layered files (#960): `config.ts`, `tra
 ### New exports
 
 ```ts
+// Coded-error registry and guard (#1204). Prefer hasErrorCode over instanceof
+// across a package boundary.
+export const CONTRACTS_ERROR_CODES: Readonly<{ ERA_INVARIANT_VIOLATION: string }>;
+export const PROVIDER_ERROR_CODES: Readonly<{
+  V8_PAYLOAD_UNSUPPORTED: string; UNTAGGED_PAYLOAD: string;
+  ERA_UNSUPPORTED: string; ERA_UNRESOLVABLE: string;
+}>;
+export type ContractsErrorCode = /* union of the above values */;
+export type ProviderErrorCode = /* union of the above values */;
+export type MidnightJsErrorCode = ProtocolErrorCode | ContractsErrorCode | ProviderErrorCode;
+export const MIDNIGHT_JS_ERROR_CODES: readonly MidnightJsErrorCode[];
+export const hasErrorCode: (error: unknown, code: MidnightJsErrorCode) => boolean;
+
 // Structured signing-key validation (shared by both private-state providers)
 export const isValidSigningKey: (value: unknown) => boolean;
 
