@@ -25,6 +25,17 @@ import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
+import {
+  type AnyLedger8DeployContractOptions,
+  type AnyLedger8DeployedContract,
+  isLedger8Options,
+  LEDGER8_PIPELINE_NOT_WIRED,
+  type Ledger8CircuitId,
+  type Ledger8Contract,
+  type Ledger8ContractProviders,
+  type Ledger8DeployContractOptions,
+  type Ledger8DeployedContract
+} from './ledger8-contract';
 import { type DeployTxOptions, submitDeployTx } from './submit-deploy-tx';
 import { createCircuitCallTxInterface } from './tx-interfaces';
 import type { FinalizedDeployTxData } from './tx-model';
@@ -105,6 +116,21 @@ const createDeployTxOptions = <C extends Contract.Any>(
     : deployTxOptionsBase;
 };
 
+/**
+ * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * the raw contract instance rather than inside a `CompiledContract` container. It accepts the
+ * shape but cannot execute it yet — see {@link LEDGER8_PIPELINE_NOT_WIRED}.
+ *
+ * ARM ORDER IS LOAD-BEARING: this arm is declared FIRST, and the arm that was already LAST stays
+ * last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ *
+ * @see {@link OverloadTyping} for what resolves from the last arm.
+ */
+export async function deployContract<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  options: Ledger8DeployContractOptions<C>
+): Promise<Ledger8DeployedContract<C>>;
+
 export async function deployContract<C extends Contract<undefined>>(
   providers: ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
   options: DeployContractOptionsBase<C>
@@ -127,8 +153,11 @@ export async function deployContract<C extends Contract.Any>(
  */
 export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
-  options: DeployContractOptions<C>
-): Promise<DeployedContract<C>> {
+  options: DeployContractOptions<C> | AnyLedger8DeployContractOptions
+): Promise<DeployedContract<C> | AnyLedger8DeployedContract> {
+  if (isLedger8Options<AnyLedger8DeployContractOptions>(options)) {
+    throw new Error(LEDGER8_PIPELINE_NOT_WIRED);
+  }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
   return {
     deployTxData,
