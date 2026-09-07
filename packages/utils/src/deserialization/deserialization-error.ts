@@ -49,6 +49,12 @@ export interface DeserializationCallSite {
   readonly dataType: string;
   readonly source: SourceLibrary;
   readonly caller: string;
+  /**
+   * Facts identifying the particular read that failed, supplied by the caller
+   * and rendered verbatim. For diagnosis only: nothing here changes the
+   * classification or the mitigation.
+   */
+  readonly details?: Readonly<Record<string, string | number>>;
 }
 
 /** Fully-classified context attached to a `DeserializationError`. */
@@ -77,6 +83,13 @@ const formatMessage = (ctx: DeserializationContext): string => {
     `  Call site: ${ctx.caller}`,
     classificationLine
   ];
+
+  if (ctx.details !== undefined) {
+    const rendered = Object.entries(ctx.details).map(([key, value]) => `${key}=${value}`);
+    if (rendered.length > 0) {
+      lines.push(`  Read: ${rendered.join(', ')}`);
+    }
+  }
 
   if (ctx.extracted !== undefined) {
     lines.push(`  Extracted: ${formatExtracted(ctx.extracted)}`);

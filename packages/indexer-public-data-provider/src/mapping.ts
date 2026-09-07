@@ -131,9 +131,8 @@ const toFinalizedTxRecord = (
  * Builds one version-tagged finalized-transaction record, decoding the payload
  * with the runtime of the era the record itself reports.
  *
- * `version` is what the decode returned, which is what the era resolution
- * selected, which is what `protocolVersion` says — one fact, not three. That is
- * why the discriminant is never stamped as a literal here.
+ * `version` is whatever the decode returned, never a literal: it is the same
+ * fact as the `protocolVersion` beside it.
  */
 const toVersionedFinalizedTxData = async (
   transaction: RegularTransaction & { hash: string; identifiers: string[] },
@@ -154,17 +153,10 @@ const toVersionedFinalizedTxData = async (
  * The `watchForDeployTxData` record: keyed by the identifier that sits at the
  * same positional index as the deploy's contract action.
  *
- * The era is resolved first, before anything else in the record is built. Each
- * era has its own deserializer, so which one runs has to be settled before a
- * decoder is reached; and a record whose `protocolVersion` places it on no era
- * at all is refused without any runtime being acquired. Kept statements rather
- * than folded into the call below so that ordering is explicit — as arguments
- * it would hold only by evaluation order, which a reordering edit would
- * silently reverse.
- *
- * Declared `async` so every refusal on this path is a rejection. The two
- * statements below throw synchronously, and a caller should not have to place
- * its `try`/`catch` differently depending on which stage failed.
+ * Declared `async` so every refusal on this path is a rejection: both
+ * `resolveReadEra` and `correlateDeployTxId` throw synchronously, and a caller
+ * should not have to place its `try`/`catch` differently depending on which
+ * stage failed.
  */
 export const toFinalizedDeployTxData = async (
   contractAddress: ContractAddress,
@@ -179,8 +171,7 @@ export const toFinalizedDeployTxData = async (
 /**
  * The `watchForTxData` record: keyed by the identifier the caller asked for.
  *
- * Same era-first ordering, and the same reason for being `async`, as
- * {@link toFinalizedDeployTxData}.
+ * `async` for the same reason as {@link toFinalizedDeployTxData}.
  */
 export const toFinalizedTxData = async (
   txId: TransactionId,

@@ -301,10 +301,8 @@ export interface FinalizedTxRecord {
  * `version` is a statement about the record rather than an assumption. A
  * third-party `PublicDataProvider` is not obliged to do the same.
  *
- * No provider produces the v8 arm yet — the read path decodes with the v9-only
- * deserializer, so a v8-era record surfaces as a thrown error rather than as a
- * value. Narrowing is still required, because that changes with dual decode
- * and the seam types should not have to change again.
+ * Narrowing is required: a provider that decodes per era returns the v8 arm as
+ * a value for any record whose `protocolVersion` places it in that era.
  */
 export interface FinalizedTxData extends FinalizedTxRecord {
   /**
