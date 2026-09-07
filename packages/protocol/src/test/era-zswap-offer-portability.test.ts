@@ -94,15 +94,26 @@ describe('Zswap offer portability across the ledger eras', () => {
     expect(Buffer.from(bytes.subarray(0, ZSWAP_OFFER_TAG.length)).toString('latin1')).toBe(ZSWAP_OFFER_TAG);
   });
 
-  it('the retained era deserializes an offer the current era serialized', () => {
+  // A ROUND TRIP, not merely "the other era's deserializer did not throw".
+  // `toBeDefined()` alone passes for an offer that decoded into something
+  // structurally valid but semantically wrong -- a dropped field, a different
+  // value, a different token type -- and the retained arm reuses the current
+  // era's offer builder on the strength of exactly this claim. Re-serializing
+  // on the far era and comparing bytes pins the shared ENCODING, which is what
+  // the reuse actually depends on.
+  it('the retained era deserializes an offer the current era serialized, unchanged', () => {
     const bytes = serializeOffer(ledgerV9);
 
-    expect(LedgerV8.ZswapOffer.deserialize('pre-proof', bytes)).toBeDefined();
+    const reserialized = LedgerV8.ZswapOffer.deserialize('pre-proof', bytes).serialize();
+
+    expect(Buffer.from(reserialized).toString('hex')).toBe(Buffer.from(bytes).toString('hex'));
   });
 
-  it('the current era deserializes an offer the retained era serialized', () => {
+  it('the current era deserializes an offer the retained era serialized, unchanged', () => {
     const bytes = serializeOffer(LedgerV8);
 
-    expect(ledgerV9.ZswapOffer.deserialize('pre-proof', bytes)).toBeDefined();
+    const reserialized = ledgerV9.ZswapOffer.deserialize('pre-proof', bytes).serialize();
+
+    expect(Buffer.from(reserialized).toString('hex')).toBe(Buffer.from(bytes).toString('hex'));
   });
 });

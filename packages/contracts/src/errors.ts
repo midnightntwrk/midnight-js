@@ -15,7 +15,13 @@
 
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { AnyProvableCircuitId, FinalizedTxData, PrivateStateId, Seam } from '@midnight-ntwrk/midnight-js-types';
+import type {
+  AnyProvableCircuitId,
+  FinalizedTxData,
+  PrivateStateId,
+  Seam,
+  VersionedFinalizedTxData
+} from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 
 import { NEITHER_ERA_CONTRACT_MESSAGE } from './ledger8-contract';
@@ -382,7 +388,7 @@ export interface SubmittedOperation {
 // `submitCallTx`, and covered there. The `deploy` arm is DORMANT with
 // `runLedger8Deploy`: `kind: 'deploy'` is set at exactly one place, inside that
 // function, and no entry point invokes it -- `deployContract`'s retained arm
-// refuses unconditionally with `LEDGER8_DEPLOY_UNMAINTAINABLE` before any head
+// refuses unconditionally with `Ledger8DeployUnmaintainableError` before any head
 // is read. The text is written and tested against that internal function so it
 // is correct on the day the deploy arm is enabled, which is the day the era
 // seam carries a maintenance authority; it is NOT a message a consumer can
@@ -827,5 +833,151 @@ export class VerifierKeyMismatchError extends Error {
         `artifact was compiled for, or rebuild against the deployed contract's source.`
     );
     this.name = 'VerifierKeyMismatchError';
+  }
+}
+
+/**
+ * An error indicating that a retained-era deploy was refused because this
+ * pipeline does not set a maintenance authority on the contract it would
+ * create.
+ *
+ * A retained constructor leaves behind an EMPTY committee with a threshold of
+ * ONE — a rule set nothing can ever satisfy — so the deployed contract could
+ * never have a verifier key inserted, removed or replaced, by anyone, its
+ * deployer included. `packages/protocol/src/test/v8-deploy.test.ts` pins that
+ * measurement.
+ *
+ * The refusal is about the AUTHORITY THIS PIPELINE SETS, not about a limit of
+ * the retained era: the retained runtime exposes `sampleSigningKey`,
+ * `signatureVerifyingKey` and a mutable `ContractState.maintenanceAuthority`,
+ * and an authority written onto the constructor's own state survives into the
+ * composed deploy. Lifting the refusal therefore means threading a signing key
+ * through the retained execution leg in `packages/protocol` — not widening the
+ * era seam, which already carries the serialized state the authority lives in.
+ *
+ * Carries no registered error code, deliberately: a code is a published
+ * compatibility commitment, and this condition goes away when the authority is
+ * threaded through. The exported CLASS is what a consumer needs in the
+ * meantime — `instanceof` beats matching on a message that is expected to
+ * change.
+ *
+ * @see {@link KeepStatePipeline} for the measurement in full.
+ */
+export class Ledger8DeployUnmaintainableError extends Error {
+  constructor() {
+    super(
+      'A retained-era contract cannot be deployed by this release. The transaction composes, but this ' +
+        'pipeline sets no maintenance authority, and the authority a retained constructor leaves behind ' +
+        'is an empty committee with a threshold of one - which nothing can ever satisfy. The deployed ' +
+        'contract could never have a verifier key inserted, removed or replaced, by anyone, including ' +
+        'you. Deploy a contract produced by the current toolchain instead, and keep using the retained ' +
+        'artifact for calls against contracts that were deployed before the fork - see the ' +
+        'runtime-deploy chapter of the migration guide.'
+    );
+    this.name = 'Ledger8DeployUnmaintainableError';
+  }
+}
+
+/**
+ * An error indicating that a retained-era call was recorded on chain with a
+ * status other than `SucceedEntirely`.
+ *
+ * The retained-era counterpart of {@link CallTxFailedError}, which cannot be
+ * reused because it carries a current-era `FinalizedTxData` where a retained
+ * call is recorded as a version-tagged {@link VersionedFinalizedTxData}.
+ *
+ * Carries no registered error code, for the same reason
+ * {@link Ledger8DeployUnmaintainableError} does not: the code would be a
+ * published commitment on an arm whose record type is expected to converge with
+ * the current era's. The record itself is on {@link txData} so a caller can
+ * branch on the status rather than read it out of the message.
+ *
+ * The message states the local-versus-chain consequence per STATUS, because the
+ * two differ: with the whole transaction rejected nothing landed, but a
+ * fallible-phase failure keeps every guaranteed effect — and this pipeline
+ * places every movement it makes in the guaranteed segment, so the chain moved
+ * while the private state was not stored.
+ */
+export class Ledger8CallTxFailedError extends Error {
+  constructor(
+    readonly txData: VersionedFinalizedTxData,
+    readonly circuitId: string
+  ) {
+    super(
+      `The retained-era call to circuit '${circuitId}' was recorded on chain with status ` +
+        `'${txData.status}' rather than 'SucceedEntirely' (transaction id '${txData.txId}'). ` +
+        (txData.status === 'FailFallible'
+          ? 'The guaranteed phase LANDED, so the contract state advanced on chain, but no private state ' +
+            'was stored locally - reconcile the local state against the chain before calling again.'
+          : 'No private state was stored, and no effect of this call landed on chain, so the local ' +
+            'state still matches it.')
+    );
+    this.name = 'Ledger8CallTxFailedError';
+  }
+}
+
+/**
+ * An error indicating that the fetched contract state declares the same entry
+ * point NAME more than once, so which slot a call would dispatch on is
+ * ambiguous.
+ *
+ * Two byte entry points can decode to the same name. Picking the first match
+ * would let the pre-proving key check pass against one slot while the chain
+ * dispatches the proof on another, which is a paid-for proof rejected at
+ * submission — the exact late failure that check exists to prevent.
+ *
+ * Carries no registered error code: it reports a chain state this package
+ * cannot act on, and there is no remediation a caller can apply beyond
+ * reporting it.
+ */
+export class Ledger8AmbiguousEntryPointError extends Error {
+  constructor(
+    readonly circuitId: string,
+    readonly matchCount: number
+  ) {
+    super(
+      `The contract state on chain declares ${matchCount} entry points that decode to the name ` +
+        `'${circuitId}', so which slot a call would dispatch on is ambiguous. Checking one slot's ` +
+        'verifier key would not establish that the chain verifies the proof against that same slot. ' +
+        'Report this contract address: a state with duplicate entry-point names is not something a ' +
+        'caller can work around.'
+    );
+    this.name = 'Ledger8AmbiguousEntryPointError';
+  }
+}
+
+/**
+ * An error indicating that a retained-era call would pay a shielded coin to a
+ * recipient whose encryption public key this arm cannot resolve.
+ *
+ * Raised BEFORE the offer is built. Without it the condition surfaced from
+ * inside `createZswapOutput` as a bare `Error` naming neither the era nor the
+ * circuit, and advising a `encryptionPublicKeyResolver` mapping that the
+ * retained-era options carry no field for — advice a caller structurally could
+ * not follow.
+ *
+ * Refusal rather than a best effort is the only answer that cannot lose a coin:
+ * encrypting the output to the caller's own key instead would compose, prove,
+ * balance and submit, and leave the recipient owning a coin it could never
+ * discover.
+ *
+ * @see {@link KeepStatePipeline} for why the retained arm resolves only the
+ *      caller's own key and the burn address.
+ */
+export class Ledger8RecipientUnmappableError extends Error {
+  constructor(
+    readonly circuitId: string,
+    readonly recipientCoinPublicKey: string
+  ) {
+    super(
+      `Circuit '${circuitId}' pays a shielded coin to recipient '${recipientCoinPublicKey}', whose ` +
+        'encryption public key a retained-era call cannot resolve: this arm resolves the calling ' +
+        "wallet's own key and the burn address, and its options carry no field for additional " +
+        'recipient mappings. Refusing is deliberate - encrypting the coin to the caller\'s own key ' +
+        'would submit successfully and leave the recipient unable to discover it. Run this circuit ' +
+        'against a contract produced by the current toolchain, which accepts ' +
+        '`additionalCoinEncPublicKeyMappings`.'
+    );
+    this.name = 'Ledger8RecipientUnmappableError';
   }
 }

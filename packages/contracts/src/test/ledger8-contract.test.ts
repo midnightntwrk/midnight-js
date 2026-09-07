@@ -21,9 +21,8 @@ import type { ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { deployContract } from '../deploy-contract';
-import { EraArtifactMismatchError } from '../errors';
+import { EraArtifactMismatchError, Ledger8DeployUnmaintainableError } from '../errors';
 import { isLedger8Request } from '../internal/era';
-import { LEDGER8_DEPLOY_UNMAINTAINABLE } from '../internal/ledger8-entry';
 import type { Ledger8ContractProviders } from '../ledger8-contract';
 import type {
   CoinReceiver016Contract,
@@ -301,26 +300,52 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       expect(() => isLedger8Request({ compiledContract: 'not a contract' })).toThrow(EraArtifactMismatchError);
     });
 
-    // The four era-dispatching entry points no longer refuse a retained-era request outright --
-    // `src/test/keep-state.test.ts` and `src/test/v8-native.test.ts` drive the pipelines behind
-    // them. The one arm that still refuses is the deploy, and it refuses for a MEASURED reason that
-    // is nothing to do with the pipeline: the retained constructor leaves an empty maintenance
-    // committee with a threshold of one, which nothing can ever satisfy, so the deployed contract
-    // could never have a verifier key inserted, removed or replaced by anyone. That measurement is
-    // pinned in `packages/protocol/src/test/v8-deploy.test.ts`. The deploy TRANSACTION itself
-    // composes and submits, and `v8-native.test.ts` exercises that path directly.
+    // The one arm that still refuses outright is the deploy. Its reason is measured and is nothing
+    // to do with the pipeline -- see `Ledger8DeployUnmaintainableError` for the measurement and what
+    // it would take to lift it.
     it('refuses a retained-era deployContract, because the deployment would be unmaintainable', async () => {
-      await expect(deployContract(providers, { compiledContract: contract })).rejects.toThrow(
-        LEDGER8_DEPLOY_UNMAINTAINABLE
-      );
+      let caught: unknown;
+      try {
+        await deployContract(providers, { compiledContract: contract });
+      } catch (error) {
+        caught = error;
+      }
+
+      // The CLASS, not the message constant: asserting against the same string the production code
+      // throws can only fail if one file disagrees with itself, which it cannot. A stable fragment
+      // of the text is asserted separately so a message rewritten into something that no longer
+      // explains the refusal still fails here.
+      expect(caught).toBeInstanceOf(Ledger8DeployUnmaintainableError);
+      expect((caught as Error).message).toContain('verifier key inserted, removed or replaced');
+      // Refused BEFORE anything is read: the refusal is unconditional, so no head read and no state
+      // read should have happened. This is also what makes `Ledger8DeployOnV9Error` unreachable
+      // through this entry point.
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+      expect(providers.publicDataProvider.queryRawContractState).not.toHaveBeenCalled();
     });
 
     it('does NOT refuse a current-era deploy, so the era machinery cannot fire on the common path', async () => {
       // The regression guard for the fork itself: a real container must reach the current-era
-      // pipeline. It fails for an unrelated, current-era reason -- never with an era error.
-      await expect(
-        deployContract(createMockProviders(), { compiledContract: createMockCompiledContract() })
-      ).rejects.not.toBeInstanceOf(EraArtifactMismatchError);
+      // pipeline. Asserted POSITIVELY -- `not.toBeInstanceOf(EraArtifactMismatchError)` would also
+      // pass if the current-era path broke for some entirely unrelated reason. This mock provider
+      // set configures no network id, so reaching the current-era pipeline is exactly what the
+      // network-id guard reports.
+      let caught: unknown;
+      try {
+        await deployContract(createMockProviders(), { compiledContract: createMockCompiledContract() });
+      } catch (error) {
+        caught = error;
+      }
+
+      // POSITIVE evidence that the request reached the current-era deploy: it dies at
+      // `sampleSigningKey`, a current-era-only step, which this file's `compact-runtime` stub does
+      // not provide. Coupled to that stub on purpose -- the alternative, asserting only that the
+      // rejection is not an era error, passes just as happily if the current-era path breaks for a
+      // reason that has nothing to do with the fork.
+      expect((caught as Error).message).toMatch(/sampleSigningKey/);
+      // And it is not an era refusal of any kind.
+      expect(caught).not.toBeInstanceOf(EraArtifactMismatchError);
+      expect(caught).not.toBeInstanceOf(Ledger8DeployUnmaintainableError);
     });
 
   });

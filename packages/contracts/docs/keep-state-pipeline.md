@@ -87,8 +87,13 @@ handle, and only bytes and plain data may cross this package boundary
 ## The order one call runs in
 
 `runLedger8CallPipeline` exists to fix this order: fetch the one snapshot, date
-it, check the key, extract the state, down-convert it, execute the circuit,
-compose the transaction.
+it, read the state and the key set off it, check the key, down-convert, execute
+the circuit, compose the transaction.
+
+Note that reading and DECODING both precede the key check — `readLedger8Snapshot`
+dates the envelope, then extracts the state, then decodes the entry points, and
+only then does the pipeline compare a key. The envelope is dated before anything
+decodes it; the key is checked after.
 
 A deploy has no snapshot and no head read of its own — there is no deployed
 contract to read yet — so `runLedger8DeployPipeline` executes the constructor on
@@ -140,8 +145,13 @@ chain's Merkle tree of commitments, which needs the contract's Zswap CHAIN state
 — and the retained-era pipeline reads none. Such a call is refused with
 `Ledger8ShieldedSpendUnsupportedError`.
 
-The pairing test is the offer builder's OWN one, reusing its serializers rather
-than restating it, so the two cannot answer differently about the same state.
+The check shares the offer builder's own SERIALIZERS, so the two agree on coin
+identity. The PAIRING itself is not shared: the builder consumes a matched
+candidate from its map and this check uses a plain set, so two inputs that
+serialize identically would pass here and then reach the builder's own
+assertion. That needs a repeated nonce, so it is degenerate rather than
+reachable — but the two are "the same test" only up to coin identity, not up to
+multiplicity.
 
 ## Shielded outputs are encrypted PER RECIPIENT
 
@@ -172,11 +182,19 @@ public key maps to its encryption key, the well-known burn address maps to
 No additional recipient mappings are passed, because the retained-era call
 options carry none: `Ledger8CallTxOptions` has no
 `additionalCoinEncPublicKeyMappings` member. So a third-party recipient is
-REFUSED here where the current era would consult the caller's mappings, and the
-refusal names what to supply. Widening the retained options to accept mappings is
-additive and belongs with the first contract that needs it — a refusal is the
-correct answer until then, and is the one answer that cannot lose a recipient's
-coin.
+REFUSED here where the current era would consult the caller's mappings.
+
+The refusal is raised BEFORE the offer is built, as
+`Ledger8RecipientUnmappableError`, naming the era, the circuit and the
+recipient. It deliberately does NOT repeat `createZswapOutput`'s advice to
+supply a resolver mapping: that advice points at a field the retained-era
+options do not have, so a caller could not act on it. What it says instead is
+what is true — this arm resolves the calling wallet's own key and the burn
+address, and a third-party recipient needs a current-toolchain contract.
+
+Widening the retained options to accept mappings is additive and belongs with
+the first contract that needs it. A refusal is the correct answer until then,
+and is the one answer that cannot lose a recipient's coin.
 
 ## Reading the private state, and why an empty id is an error
 
@@ -187,7 +205,7 @@ coin.
   case for the retained-era fixtures, and an absent id is the caller saying the
   circuit reads none.
 - **An id, with nothing stored under it.** An ERROR, and the same one the
-  current era raises at `get-states.ts`. Naming an id is the caller saying there
+  current era raises at `get-states.ts`, with a remediation appended. Naming an id is the caller saying there
   IS a private state to run against, so an empty provider means the state has not
   been written yet, or the id is a typo.
 
@@ -241,19 +259,47 @@ current-era-only provider raises on the way in — or on
 registry-backed test for that, so a foreign coded error (a Node `ECONNREFUSED`,
 say) is still treated as external and sanitized.
 
-`sanitizeSeamCause` rebuilds an external failure as a plain `Error` carrying only
-its class name and a redacted message. Each omission is deliberate: a provider's
-own ENUMERABLE PROPERTIES are where HTTP clients keep the response body — and
-therefore the echoed request — and its own `cause` chain is where the unredacted
-original would otherwise survive. Neither is carried.
+`sanitizeSeamCause` rebuilds an external failure as a plain `Error`. Exactly one
+thing is DROPPED and the rest is kept REDACTED, and the split is deliberate.
 
-Redaction matches by SHAPE rather than by a particular provider's message
-format, because the set of providers is open and there is no format to
-enumerate. The two shapes transaction and witness material takes inside a message
-are a long run of hex or a long run of base64. Thirty-two characters is the
-shortest run worth redacting — a 16-byte hex value — and is short enough that no
-ordinary English word or identifier reaches it, so the redaction does not eat
-diagnostic text.
+Dropped: the provider's own ENUMERABLE PROPERTIES. That is where HTTP clients
+keep the response body, and therefore the echoed request, and there is no
+shape-independent way to redact an arbitrary object graph.
+
+Kept, redacted: the class name, the message, the STACK, the `cause` CHAIN, and
+an `AggregateError`'s members. Dropping these buys nothing the redaction does not
+already buy, and each one is where a real diagnosis lives:
+
+- The cause chain carries the reason. A bare `fetch` failure is
+  `Error: fetch failed` with wrong-port, DNS, TLS or connection-refused one or
+  two links down; truncating at depth one renders all of them identically.
+- `AggregateError.errors` is where `fetch` reports the per-address failures, and
+  it is an own property, so it travels with neither the message nor the chain.
+- The stack is where a bug in the caller's OWN provider implementation is
+  located. A fresh stack points at the sanitizer, which is the one place the
+  answer certainly is not. Frames are paths and function names.
+
+The class name falls back to the constructor name, because `name` reads
+`'Error'` for any subclass that does not assign it — which third-party provider
+errors routinely do not.
+
+### What the redaction catches, and what it does not
+
+Redaction matches by SHAPE, because the set of providers is open and there is no
+format to enumerate. Three alternatives, each deliberately narrow:
+
+| shape | floor | why the floor is there |
+|---|---|---|
+| hex | 24 chars (12 bytes) | A run of hex-alphabet letters can be an ordinary word — `decade`, `defaced`, `facade`. At 24 characters it cannot be. |
+| base64 / base64url | 40 chars, and must mix lower case, upper case and a digit | The mixture is what separates an encoded payload from a URL PATH (no upper case) or a long CLASS NAME (no digit). Both are high-value diagnostics: without the mixture requirement the endpoint a misconfiguration names is exactly what disappears. |
+| decimal byte list | 13 values | `JSON.stringify(new Uint8Array(...))` and Node's own inspection of a typed array. Commas break the other two alternatives, so without this a payload rendered as numbers passes through untouched. |
+
+This is BEST EFFORT, not a guarantee, and `Ledger8SeamFailedError`'s own message
+says so rather than promising more than it delivers. A secret shorter than 12
+bytes is under the hex floor. A payload rendered in some shape none of the three
+matches is not redacted. The message is also length-capped, so a provider that
+renders a whole transaction in an unmatched shape cannot put all of it into
+`error.stack` and from there into every log sink the caller has.
 
 ## Attaching to a deployed contract
 
@@ -268,42 +314,107 @@ contract's deployment record belongs to whichever era was current when it was
 deployed, and refusing the pre-fork arm here would refuse every contract this
 pipeline exists to keep callable.
 
+### Every circuit is checked, and that has a cost
+
+The entry points checked are EVERY circuit the artifact declares, not just one
+the caller names. That matches the current era, whose `verifyContractState`
+checks every provable circuit id the artifact exposes: attaching is the point at
+which a wrong artifact should be caught, and a mismatch on any entry point means
+this is not the artifact on chain.
+
+The cost: a contract that had a verifier key REMOVED by a maintenance update can
+no longer be attached to at all, because the removed slot now reads as
+never-deployed. That is not a retained-era quirk — the current era refuses the
+same contract for the same reason — so the two eras behave alike, which is what
+makes it the right default here. A caller that must attach to such a contract
+needs a narrower check, and that would be a change to both eras rather than to
+this arm alone.
+
+The names come off the ARTIFACT rather than off the state, so a circuit the
+caller can call but the chain never registered is reported as a blank slot
+rather than silently skipped.
+
 ## Why a retained-era deploy is refused
 
-`deployContract`'s retained-era arm refuses, and the reason was measured rather
-than assumed: **the contract would be permanently unmaintainable.**
+`deployContract`'s retained-era arm refuses with
+`Ledger8DeployUnmaintainableError`, and the reason was measured rather than
+assumed: **the contract this path would create would be permanently
+unmaintainable.**
 
-Neither half of the retained deploy path accepts a maintenance authority. The
-retained constructor context is built by
-`createConstructorContext(initialPrivateState, coinPublicKey)` — two parameters,
-no key — and the era facade's deploy composition takes
-`{ contractState, verifierKeys, networkId, ttl }`, also no key. So the authority
-a retained-era deployment carries is whatever the retained constructor left
-behind.
-
-What it leaves behind is an EMPTY committee with a threshold of ONE
+Nothing on this path sets a maintenance authority, so the authority a
+retained-era deployment carries is whatever the retained constructor left
+behind. What it leaves behind is an EMPTY committee with a threshold of ONE
 (`committee: []`, `threshold: 1`, `counter: 0n`), on both the constructor's own
 state and the state the deploy derives its address from. A rule change on such a
 contract needs one signature from a set of zero keys, which nothing can ever
 satisfy. No verifier key could ever be inserted, removed or replaced on it, and
 the authority itself could never be updated either, because updating it is a rule
-change. The contract would be permanently unmaintainable by anyone, including
-its deployer.
+change. `packages/protocol/src/test/v8-deploy.test.ts` pins that measurement.
 
-`packages/protocol/src/test/v8-deploy.test.ts` pins that measurement, and is the
-test that will say so if a future retained runtime or era seam gains an authority
-— at which point the refusal can be lifted.
+### The refusal is about this pipeline, NOT about the retained era
+
+This distinction matters, because the obvious reading — that the retained era
+cannot express a maintenance authority — is wrong, and acting on it would leave
+the refusal in place forever.
+
+The retained runtime exposes everything needed:
+
+- `sampleSigningKey()` and `signatureVerifyingKey(sk)`,
+- a public `ContractMaintenanceAuthority(committee, threshold, counter?)`
+  constructor, whose own documentation states that `counter` must be `0n` at
+  deployment,
+- and a MUTABLE `ContractState.maintenanceAuthority`.
+
+An authority written onto the constructor's own state survives serialization,
+the bridge into the retained ledger's `ContractState`, and `ContractDeploy` — it
+is readable off the composed `initialState` afterwards. The era seam needs no
+new field either: `ComposeDeployOptions` already carries the serialized
+`contractState`, which is where the authority lives.
+
+So lifting the refusal is not "one line the day the seam carries an authority".
+It is three things, and they belong in `packages/protocol`, which is where the
+retained runtime is reachable from:
+
+1. decide where the signing key comes from — the current era gets one back from
+   compact-js, which the retained path does not use,
+2. set the authority on the constructor's state inside the retained execution
+   leg, so `packages/contracts` still takes no retained-runtime dependency,
+3. return the key, filling in `Ledger8DeployedContract.signingKey`.
 
 The current era does not have this problem because its constructor registers the
 signing key it is given, which is what makes its `DeployedContract.signingKey` a
-true statement about who can maintain the deployment. On the retained era the
-same key would be registered nowhere, so reporting one is not an option either.
+true statement about who can maintain the deployment. Reporting a key the
+retained path registered nowhere is not an option, which is why no signing key
+is sampled anywhere on this arm today.
 
-The retained era's purpose is to keep contracts deployed BEFORE the fork
-callable, and those already carry the authority their own deployment registered.
-A new retained-era deployment has no such history — the same reason a retained-era
-deploy is refused outright on a post-fork head.
+### Status of the deploy path
 
-`runLedger8Deploy` itself is complete and correct, and is exercised directly by
-`packages/contracts/src/test/v8-native.test.ts`. No entry point calls it, so
-wiring one is a one-line change the moment the era seam carries an authority.
+`runLedger8Deploy` and `runLedger8DeployPipeline` are complete and correct as
+compositions, and are exercised directly by
+`packages/contracts/src/test/v8-native.test.ts`. No entry point calls them.
+
+They are kept rather than deleted because the MJS-02 plan asked for a working
+retained-era deploy on a pre-fork head, so this is that deliverable held one
+step short of being reachable — not an unimplemented stub, and not dead code
+that was never wanted. The refusal is what the measurement above justifies; the
+composition below it is what the plan asked for.
+
+One consequence worth stating: because the refusal is unconditional and comes
+before the network head is read, `Ledger8DeployOnV9Error` — the era pairing
+table's refusal for a retained-era deploy against a post-fork head — is not
+reachable through `deployContract` today. It becomes reachable when the deploy
+arm is wired.
+
+
+### Seeding a retained-era private state
+
+This arm has no `initialPrivateState`, on either the find options or the call
+options, so there is no API-level way to CREATE a private state for a
+retained-era contract. A caller restoring on a new device has nothing stored and
+nothing to store it with.
+
+Until the options are widened, the refusal names the way through: write the
+state directly with `privateStateProvider.set(privateStateId, state)` before
+calling. That is why the message adds a remediation to the sentence the current
+era raises — the current era can seed through `findDeployedContract`, and this
+arm cannot, so the same first sentence leaves a retained-era caller stuck.

@@ -51,6 +51,8 @@ import {
   createMidnightProvider,
   createProofProvider,
   createWalletProvider,
+  FailEntirely,
+  FailFallible,
   type RawContractState,
   UntaggedPayloadError,
   V8PayloadUnsupportedError,
@@ -65,14 +67,22 @@ import {
   BlankVerifierKeySlotError,
   EraInvariantViolationError,
   IndexerInconsistencyError,
+  Ledger8AmbiguousEntryPointError,
+  Ledger8CallTxFailedError,
   Ledger8DeployOnV9Error,
+  Ledger8RecipientUnmappableError,
   Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
   VerifierKeyMismatchError
 } from '../errors';
 import { findDeployedContract } from '../find-deployed-contract';
 import { findLedger8Contract, runLedger8Deploy, submitLedger8CallTx } from '../internal/ledger8-entry';
-import { runLedger8CallPipeline } from '../internal/ledger8-pipeline';
+import {
+  assertSnapshotVerifierKey,
+  type Ledger8Snapshot,
+  readLedger8Snapshot,
+  runLedger8CallPipeline
+} from '../internal/ledger8-pipeline';
 import type {
   Ledger8CallTxOptions,
   Ledger8ContractProviders,
@@ -199,6 +209,56 @@ const recordingPayingUser = (recording: CoinReceiverRecording, coinPublicKey: st
 };
 
 /**
+ * The per-stage markers each write seam appends to the bytes it answers with.
+ *
+ * Distinct, and distinct from anything the era composes, so "these bytes came
+ * out of proveTx" is a checkable claim rather than an assumption.
+ */
+const PROVEN_MARKER = Uint8Array.from([0xf0, 0x0d, 0x01]);
+const BALANCED_MARKER = Uint8Array.from([0xf0, 0x0d, 0x02]);
+
+/**
+ * The retained-arm payload with a stage marker appended to its bytes.
+ *
+ * @param payload The payload the seam was handed.
+ * @param marker The marker for the stage that is answering.
+ * @returns The same arm, carrying the input bytes plus the marker.
+ */
+const withStageMarker = (payload: VersionedTx<unknown>, marker: Uint8Array): VersionedTx<unknown> => {
+  if (payload.version !== 'v8') {
+    return payload;
+  }
+  const marked = new Uint8Array(payload.txBytes.length + marker.length);
+  marked.set(payload.txBytes);
+  marked.set(marker, payload.txBytes.length);
+  return { version: 'v8', txBytes: marked };
+};
+
+/**
+ * The bytes a retained-arm payload carries, for a chaining assertion.
+ *
+ * @param payload The payload a seam was handed.
+ * @returns Its bytes, or `undefined` if it is not the retained arm.
+ */
+const retainedBytes = (payload: VersionedTx<unknown> | undefined): Uint8Array | undefined =>
+  payload?.version === 'v8' ? payload.txBytes : undefined;
+
+/**
+ * Whether `bytes` ends with every marker in `markers`, in order.
+ *
+ * @param bytes The bytes a seam received.
+ * @param markers The stage markers expected at the tail, earliest first.
+ * @returns `true` if the tail matches.
+ */
+const endsWithMarkers = (bytes: Uint8Array | undefined, markers: readonly Uint8Array[]): boolean => {
+  if (bytes === undefined) {
+    return false;
+  }
+  const tail = markers.flatMap((marker) => [...marker]);
+  return [...bytes.slice(bytes.length - tail.length)].join(',') === tail.join(',');
+};
+
+/**
  * The provider set both retained-era describes start from: a pre-fork head,
  * the committed envelope, and a recorder on each of the three seams.
  *
@@ -237,13 +297,21 @@ const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
   // directly rather than through `createWalletProvider`/`createMidnightProvider`:
   // those adapters lift a CURRENT-ERA-ONLY implementation and refuse the
   // retained arm by design, which is asserted as its own negative below.
+  //
+  // Each write seam answers with DISTINCT bytes -- its input with its own stage
+  // marker appended. Identity mocks (`(tx) => tx`) made every mis-chaining
+  // invisible: `balanceTx({ txBytes })` in place of
+  // `balanceTx({ txBytes: proven })` passed the whole suite while submitting an
+  // UNPROVEN transaction. Appending rather than replacing keeps the retained
+  // tag at the head of the bytes, so the tag assertions still mean what they
+  // say.
   providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
     seen.proveTx = tx;
-    return Promise.resolve(tx);
+    return Promise.resolve(withStageMarker(tx, PROVEN_MARKER));
   });
   providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
     seen.balanceTx = tx;
-    return Promise.resolve(tx);
+    return Promise.resolve(withStageMarker(tx, BALANCED_MARKER));
   });
   providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: VersionedFinalizedTransaction) => {
     seen.submitTx = tx;
@@ -455,6 +523,59 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     expect(result.guaranteedZswapOffer).toBeInstanceOf(Uint8Array);
   });
 
+  /**
+   * The entry-point NAME the pre-proving key check resolves.
+   *
+   * `entryPoints` is an array because two byte entry points can decode to the
+   * same name. Resolving that by taking the first match would let the key check
+   * pass against one slot while the chain dispatches the proof on another — a
+   * proof paid for and then rejected at submission, which is the exact late
+   * failure the check exists to turn into a free one.
+   */
+  describe('the verifier-key check against the fetched snapshot', () => {
+    const snapshotFor = async (envelope: Uint8Array): Promise<Ledger8Snapshot> => {
+      const providers = createMockProviders();
+      providers.publicDataProvider.queryRawContractState = vi
+        .fn()
+        .mockResolvedValue(rawState(envelope, PRE_FORK_PROTOCOL_VERSION));
+      return readLedger8Snapshot(retainedEra, 'v8', providers.publicDataProvider, recording.contractAddress);
+    };
+
+    it('passes against the real committed envelope, which declares the name once', async () => {
+      const snapshot = await snapshotFor(v6Envelope);
+
+      // The POSITIVE half, so the refusal below cannot be satisfied by a check
+      // that refuses everything.
+      expect(snapshot.decoded.entryPoints.filter((entry) => entry.circuitId === CIRCUIT_ID)).toHaveLength(1);
+      expect(() => assertSnapshotVerifierKey(snapshot, CIRCUIT_ID, STAND_IN_VERIFIER_KEY)).not.toThrow();
+    });
+
+    it('REFUSES a state declaring the same entry-point name twice, rather than checking the first', async () => {
+      const snapshot = await snapshotFor(v6Envelope);
+      // The real snapshot's own entry points, duplicated: derived from the
+      // committed envelope rather than invented, so this cannot drift into
+      // describing a state shape the decoder never produces.
+      const ambiguous: Ledger8Snapshot = {
+        ...snapshot,
+        decoded: {
+          ...snapshot.decoded,
+          entryPoints: [...snapshot.decoded.entryPoints, ...snapshot.decoded.entryPoints]
+        }
+      };
+
+      let caught: unknown;
+      try {
+        assertSnapshotVerifierKey(ambiguous, CIRCUIT_ID, STAND_IN_VERIFIER_KEY);
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(Ledger8AmbiguousEntryPointError);
+      expect((caught as Ledger8AmbiguousEntryPointError).circuitId).toBe(CIRCUIT_ID);
+      expect((caught as Ledger8AmbiguousEntryPointError).matchCount).toBe(2);
+    });
+  });
+
   it('refuses more than one call on the retained arm, naming the option it refused', async () => {
     const log: OrchestrationLog = [];
     let composed: ComposeCallOptions | undefined;
@@ -577,6 +698,20 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       expect(bytes).toBeInstanceOf(Uint8Array);
       expect(txTagPrefix(bytes!, RETAINED_ERA_TX_TAG)).toBe(RETAINED_ERA_TX_TAG);
     }
+
+    // THE CHAIN, asserted stage by stage. The three assertions above are the
+    // same claim three times over -- each seam got SOMETHING retained-tagged --
+    // and every one of them passes when the stages are wired in the wrong
+    // order. These are what fail then: `balanceTx` must receive what `proveTx`
+    // answered, and `submitTx` must receive what `balanceTx` answered.
+    expect(endsWithMarkers(retainedBytes(providers.seen.proveTx), [])).toBe(true);
+    expect(endsWithMarkers(retainedBytes(providers.seen.balanceTx), [PROVEN_MARKER])).toBe(true);
+    expect(endsWithMarkers(retainedBytes(providers.seen.submitTx), [PROVEN_MARKER, BALANCED_MARKER])).toBe(true);
+    // And the unproven bytes are NOT what reached the node: the marker tail
+    // above is only meaningful alongside this.
+    expect(retainedBytes(providers.seen.submitTx)?.length).toBeGreaterThan(
+      retainedBytes(providers.seen.proveTx)!.length
+    );
   });
 
   it('returns immediately from submitCallTxAsync, without watching for the record', async () => {
@@ -659,9 +794,12 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // read to discover, and the state read would answer "no contract deployed
     // there" -- which points at the chain for a fault in the caller's own
     // argument.
+    // The error IDENTITY, not merely "something threw": a bare `toThrow()`
+    // passes for a rejection from anywhere, including an `expect` failure
+    // inside the replay engine or a fault in the private-state read.
     await expect(
       submitCallTx(providers, { ...callOptions(), contractAddress: 'not-a-contract-address' })
-    ).rejects.toThrow();
+    ).rejects.toThrow(/Invalid hex-digit/);
     expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
     expect(providers.publicDataProvider.queryRawContractState).not.toHaveBeenCalled();
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
@@ -805,7 +943,15 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     const finalized = await submitCallTx(providers, callOptions());
 
     expect(finalized.txData.version).toBe('v8');
-    expect(finalized.txData).not.toHaveProperty('txBytes');
+    // The record is handed back AS REPORTED, not rebuilt: asserting the shape
+    // of the literal above would only restate the fixture.
+    expect(finalized.txData).toBe(retainedRecord);
+    // And the two surfaces really are different unions -- the WRITE surface's
+    // retained arm, which this same flow produced, carries `txBytes` and no
+    // `tx`. Asserting the read record lacks `txBytes` would be tautological on
+    // a literal that never had one; asserting the contrast is not.
+    expect(providers.seen.submitTx).toHaveProperty('txBytes');
+    expect(providers.seen.submitTx).not.toHaveProperty('tx');
     expect(finalized.txData).toBe(retainedRecord);
   });
 
@@ -945,6 +1091,13 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // makes the read observable, which is what pins that the call ran against
     // the caller's real state rather than a default one.
     providers.privateStateProvider.get = vi.fn().mockResolvedValue({ storedBefore: true });
+    // The engine is told what the pipeline MUST have handed it. Asserting only
+    // that `get` was called leaves `privateState: undefined` in the pipeline
+    // fully green -- the recording replays regardless -- which is the whole
+    // failure mode this test is named for.
+    engineSlot.engine = createReplayEngine(loadCoinReceiverRecording(), [], v6Envelope, {
+      privateState: { storedBefore: true }
+    });
 
     const finalized = await submitCallTx(providers, { ...callOptions(), privateStateId: 'retained-private-state' });
 
@@ -1027,11 +1180,24 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       // transaction proves, balances and submits, and the recipient owns a coin
       // they can never discover on chain. Nothing errors. A refusal is the only
       // answer that cannot lose the recipient's coin.
-      await expect(submitCallTx(providers, callOptions())).rejects.toThrow(
-        /Unable to resolve encryption public key for recipient/
-      );
+      let caught: unknown;
+      try {
+        await submitCallTx(providers, callOptions());
+      } catch (error) {
+        caught = error;
+      }
 
-      // Refused while composing, so nothing was proven, balanced or submitted.
+      // A TYPED refusal naming the era, the circuit and the recipient. The bare
+      // `Error` the offer builder raises names none of them, and its advice --
+      // supply a resolver mapping -- points at a field the retained call
+      // options do not have, so a caller could not act on it.
+      expect(caught).toBeInstanceOf(Ledger8RecipientUnmappableError);
+      expect((caught as Ledger8RecipientUnmappableError).circuitId).toBe(CIRCUIT_ID);
+      expect((caught as Ledger8RecipientUnmappableError).recipientCoinPublicKey).toBe(thirdPartyCoinPublicKey);
+      // The message must not send the caller after a knob this arm lacks.
+      expect((caught as Error).message).not.toMatch(/Provide a mapping via the encryptionPublicKeyResolver/);
+
+      // Refused BEFORE the offer is built, so nothing was proven, balanced or submitted.
       expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
       expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
     });
@@ -1116,6 +1282,280 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // Refused before anything was composed or sent anywhere.
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });
+
+  /**
+   * THE WALLET'S COIN PUBLIC KEY, which a real wallet hands over Bech32m-encoded.
+   *
+   * The testkit wallet answers in hex, so no end-to-end run in this repo can
+   * catch a missing normalization: the retained runtime's `encodeCoinPublicKey`
+   * accepts hex only and throws `Invalid character 'm' at position 0` from
+   * inside the WASM on anything else, which is a total failure of the retained
+   * arm for every Bech32m wallet and a green suite everywhere else.
+   */
+  describe("the wallet's coin public key", () => {
+    // The committed vector from `packages/utils/src/test/hex-utils.test.ts`, so
+    // the two files agree on what this encoding decodes to.
+    const BECH32M_COIN_PUBLIC_KEY = 'mn_shield-cpk_undeployed1mjngjmnlutcq50trhcsk3hugvt9wyjnhq3c7prryd5nqmvtzva0sn7kq7h';
+    const BECH32M_DECODED_HEX = 'dca6896e7fe2f00a3d63be2168df8862cae24a770471e08c646d260db162675f';
+
+    it('is normalized to hex before it reaches the retained runtime', async () => {
+      const providers = preForkProviders(v6Envelope);
+      providers.walletProvider.getCoinPublicKey = (): string => BECH32M_COIN_PUBLIC_KEY;
+      // The recording is re-pointed at the DECODED form, so the replay engine's
+      // own `coinPk` check is the oracle: an un-normalized key arrives as
+      // `mn_shield-cpk_...` and the replay refuses to answer for it.
+      const replay = createReplayEngine(
+        { ...loadCoinReceiverRecording(), coinPublicKey: BECH32M_DECODED_HEX },
+        [],
+        v6Envelope
+      );
+      let seenCoinPk: string | undefined;
+      engineSlot.engine = {
+        ...replay,
+        executeCircuit: (options: Parameters<typeof replay.executeCircuit>[0]) => {
+          seenCoinPk = options.coinPk;
+          return replay.executeCircuit(options);
+        }
+      };
+
+      await submitCallTx(providers, callOptions());
+
+      expect(seenCoinPk).toBe(BECH32M_DECODED_HEX);
+      expect(seenCoinPk).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it('passes an already-hex key through unchanged, so normalizing costs a hex wallet nothing', async () => {
+      const providers = preForkProviders(v6Envelope);
+
+      const finalized = await submitCallTx(providers, callOptions());
+
+      // `retainedProviders` reports the recording's own hex key, and the replay
+      // engine answers only for that exact value.
+      expect(finalized.circuitId).toBe(CIRCUIT_ID);
+    });
+  });
+
+  /**
+   * A call the CHAIN recorded as failed. The two failing statuses differ in
+   * what landed, so they differ in what the caller must do next.
+   */
+  describe('a call recorded on chain with a failing status', () => {
+    const withStatus = (providers: RetainedProviders, status: typeof FailEntirely | typeof FailFallible): void => {
+      providers.publicDataProvider.watchForTxData = vi
+        .fn()
+        .mockResolvedValue({ ...createMockFinalizedTxData(status), txId: 'retained-era-tx-id' });
+    };
+
+    const callAndCatch = async (providers: RetainedProviders): Promise<unknown> => {
+      providers.privateStateProvider.get = vi.fn().mockResolvedValue({ storedBefore: true });
+      engineSlot.engine = createReplayEngine(loadCoinReceiverRecording(), [], v6Envelope, {
+        privateState: { storedBefore: true }
+      });
+      try {
+        await submitCallTx(providers, { ...callOptions(), privateStateId: 'retained-private-state' });
+        return undefined;
+      } catch (error) {
+        return error;
+      }
+    };
+
+    it('refuses FailEntirely with a TYPED error carrying the record, and stores nothing', async () => {
+      const providers = preForkProviders(v6Envelope);
+      withStatus(providers, FailEntirely);
+
+      const caught = await callAndCatch(providers);
+
+      // TYPED, and carrying the record: the current era throws
+      // `CallTxFailedError` with the record on it, and a caller narrowing on a
+      // failed call must be able to read the status off this arm too rather
+      // than parse it out of a message.
+      expect(caught).toBeInstanceOf(Ledger8CallTxFailedError);
+      expect((caught as Ledger8CallTxFailedError).txData.status).toBe(FailEntirely);
+      expect((caught as Ledger8CallTxFailedError).circuitId).toBe(CIRCUIT_ID);
+      // Nothing landed on chain either, so saying the local state still matches
+      // it is TRUE for this status.
+      expect((caught as Error).message).toContain('still matches');
+      expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    });
+
+    it('refuses FailFallible WITHOUT claiming the local state still matches the chain', async () => {
+      const providers = preForkProviders(v6Envelope);
+      withStatus(providers, FailFallible);
+
+      const caught = await callAndCatch(providers);
+
+      expect(caught).toBeInstanceOf(Ledger8CallTxFailedError);
+      expect((caught as Ledger8CallTxFailedError).txData.status).toBe(FailFallible);
+      // THE DISTINCTION. `FailFallible` keeps every GUARANTEED effect, and this
+      // pipeline places every movement it makes in the guaranteed segment, so
+      // the contract state advanced on chain while no private state was stored.
+      // Telling the caller their local state still matches the chain would send
+      // them past a reconciliation they now need.
+      expect((caught as Error).message).not.toContain('still matches');
+      expect((caught as Error).message).toMatch(/guaranteed phase LANDED/i);
+      expect((caught as Error).message).toMatch(/reconcile/i);
+      expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    });
+  });
+
+  it('SANITIZES a FOREIGN CODED rejection, which is the shape real HTTP clients reject with', async () => {
+    const providers = preForkProviders(v6Envelope);
+    // An axios/undici-shaped rejection: a registry-FOREIGN `code`, the payload
+    // echoed on an own property, and the payload in the message too. The
+    // pass-through gate keys on registry membership, so this must be sanitized
+    // -- and no test drove the foreign-coded case, even though it is what a
+    // proof server or node client actually throws.
+    const payloadHex = 'ab'.repeat(40);
+    const rejection = Object.assign(new Error(`Request failed with body ${payloadHex}`), {
+      code: 'ECONNREFUSED',
+      response: { data: { tx: payloadHex } }
+    });
+    providers.proofProvider.proveTx = vi.fn().mockRejectedValue(rejection);
+
+    let caught: unknown;
+    try {
+      await submitCallTx(providers, callOptions());
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    const rendered = inspect(caught, { depth: null, showHidden: true });
+    expect(rendered).not.toContain(payloadHex);
+    // Non-vacuity: the payload IS in the raw rejection, so its absence above is
+    // the sanitizer's doing and not an artefact of the fixture.
+    expect(inspect(rejection, { depth: null, showHidden: true })).toContain(payloadHex);
+    // The class name survives, so the failure is still identifiable.
+    expect((caught as Error).message).toContain('proveTx');
+  });
+
+  it('keeps the DIAGNOSIS from a wrapped rejection, rather than truncating the cause chain', async () => {
+    const providers = preForkProviders(v6Envelope);
+    // What global `fetch` rejects with when nothing is listening: the message
+    // says only "fetch failed", and the reason lives one link down. Truncating
+    // at depth one renders wrong-port, DNS, TLS and refused identically.
+    const rejection = new Error('fetch failed', {
+      cause: new Error('connect ECONNREFUSED 127.0.0.1:6300')
+    });
+    providers.proofProvider.proveTx = vi.fn().mockRejectedValue(rejection);
+
+    let caught: unknown;
+    try {
+      await submitCallTx(providers, callOptions());
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    const rendered = inspect(caught, { depth: null });
+    expect(rendered).toContain('fetch failed');
+    expect(rendered).toContain('ECONNREFUSED');
+    expect(rendered).toContain('6300');
+  });
+
+  it("keeps an AggregateError's members, which is where fetch reports per-address failures", async () => {
+    const providers = preForkProviders(v6Envelope);
+    // `AggregateError.errors` is an OWN property, so it travels with neither
+    // the message nor the cause chain. For a proof server resolving to several
+    // addresses this is the only place the per-address reason exists.
+    const rejection = new Error('fetch failed', {
+      cause: new AggregateError(
+        [new Error('connect ECONNREFUSED ::1:6300'), new Error('connect ECONNREFUSED 127.0.0.1:6300')],
+        'all addresses refused'
+      )
+    });
+    providers.proofProvider.proveTx = vi.fn().mockRejectedValue(rejection);
+
+    let caught: unknown;
+    try {
+      await submitCallTx(providers, callOptions());
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    const rendered = inspect(caught, { depth: null, showHidden: true });
+    expect(rendered).toContain('::1:6300');
+    expect(rendered).toContain('127.0.0.1:6300');
+  });
+
+  /**
+   * WHICH SHAPES the redaction catches, and which diagnostics it must leave
+   * alone. Both directions are asserted, because the regex can fail either way
+   * and the two failures cost different things: a missed payload is a leak into
+   * the caller's log sink, and an over-eager match eats the endpoint or the
+   * exception class name a developer needs to act on.
+   */
+  describe('payload redaction, by shape', () => {
+    const REDACTED_CASES: readonly (readonly [string, string])[] = [
+      // A 32-byte value: the shape a transaction hash or a key takes.
+      ['hex, 64 characters', 'ca'.repeat(32)],
+      // A 12-byte secret. Under a 32-character floor this leaks.
+      ['hex, 24 characters', 'aabbccddeeff001122334455'],
+      // base64url is what JSON and HTTP APIs actually use; `-` and `_` are
+      // outside a `+/`-only character class.
+      ['base64url', 'AbCdEf-_gH12345678901234567890abcdEFGHijKL99'],
+      ['standard base64', 'TWlkbmlnaHQvdHJhbnNhY3Rpb24rcGF5bG9hZDEyMzQ1Njc4OTA='],
+      // What `JSON.stringify(new Uint8Array(...))` produces. Commas break a
+      // contiguous-run match, so this needs an alternative of its own.
+      ['decimal byte list', JSON.stringify([...new Uint8Array(20).keys()].map((i) => i + 7))]
+    ];
+
+    const KEPT_CASES: readonly (readonly [string, string])[] = [
+      // The highest-value diagnostic in a misconfiguration, and the one a
+      // `/`-inclusive base64 class eats.
+      ['a URL path', 'https://indexer.example.com/api/v1/graphql/subscriptions/endpoint'],
+      // 43 characters of mixed case, no digit.
+      ['a long exception class name', 'ContractStateDeserializationFailedException'],
+      ['an address and port', 'connect ECONNREFUSED 127.0.0.1:6300'],
+      ['hex-alphabet English words', 'the decade was defaced by a facade']
+    ];
+
+    const sanitizedMessage = async (raw: string): Promise<string> => {
+      const providers = preForkProviders(v6Envelope);
+      providers.proofProvider.proveTx = vi.fn().mockRejectedValue(new Error(raw));
+      try {
+        await submitCallTx(providers, callOptions());
+      } catch (error) {
+        return inspect(error, { depth: null, showHidden: true });
+      }
+      throw new Error('the seam did not reject');
+    };
+
+    it.each(REDACTED_CASES)('redacts %s', async (_label, payload) => {
+      const rendered = await sanitizedMessage(`provider said: ${payload}`);
+
+      expect(rendered).not.toContain(payload);
+      expect(rendered).toContain('[redacted]');
+    });
+
+    it.each(KEPT_CASES)('keeps %s, which a developer needs in order to act', async (_label, diagnostic) => {
+      const rendered = await sanitizedMessage(`provider said: ${diagnostic}`);
+
+      expect(rendered).toContain(diagnostic);
+    });
+  });
+
+  it('cannot be made to throw FROM ITS OWN CATCH BLOCK by an unrenderable rejection', async () => {
+    const providers = preForkProviders(v6Envelope);
+    // `String(Object.create(null))` throws. Unguarded, that TypeError would
+    // replace the provider's rejection entirely -- no seam, no circuit, and the
+    // original value gone -- so the seam machinery would report its own bug as
+    // the application's.
+    providers.proofProvider.proveTx = vi.fn().mockRejectedValue(Object.create(null));
+
+    let caught: unknown;
+    try {
+      await submitCallTx(providers, callOptions());
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    expect((caught as Ledger8SeamFailedError).seam).toBe('proveTx');
+    expect((caught as Ledger8SeamFailedError).circuitId).toBe(CIRCUIT_ID);
+  });
+
 });
 
 /**
@@ -1235,7 +1675,7 @@ describe('attaching to a retained-era contract already on chain', () => {
 
     await expect(
       findDeployedContract(providers, { ...attachOptions(), contractAddress: 'not-a-contract-address' })
-    ).rejects.toThrow();
+    ).rejects.toThrow(/Invalid hex-digit/);
     // The same local refusal the current-era arm makes. A malformed address
     // would otherwise cost a network round trip to discover.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
