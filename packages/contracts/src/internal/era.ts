@@ -76,6 +76,52 @@ export function requireV9<T>(
 }
 
 /**
+ * Unwraps the RETAINED arm of a versioned payload a provider returned, on a
+ * flow that submitted the retained arm.
+ *
+ * The mirror of {@link requireV9}, and it exists for the same reason: the seam
+ * types do not tie a provider's output era to its input era, so a flow that
+ * submitted retained-era bytes has to check that retained-era bytes came back.
+ *
+ * Note which refusal is NOT this function's. A provider that does not handle
+ * the retained arm at all rejects it on the way IN, with
+ * `V8PayloadUnsupportedError` from `unwrapV9` in
+ * `@midnight-ntwrk/midnight-js-types` — that is the inbound guard a
+ * current-era-only provider implementation runs, and it is deliberately left
+ * where it is so a retained-era submit against a provider that has not been
+ * widened fails with one coherent typed refusal at the seam it entered, rather
+ * than part-way through a submit with a transaction already composed. This
+ * function only catches the other case: a provider that ACCEPTED the retained
+ * payload and answered in the current era.
+ *
+ * @param payload The payload a provider returned.
+ * @param seam The provider method that returned it.
+ * @param circuitId The circuit, or circuits, this flow is running, for the error message.
+ * @returns The serialized retained-era transaction bytes.
+ * @throws EraInvariantViolationError if the payload carries the current-era arm.
+ * @throws UntaggedPayloadError if `version` is missing or unrecognised.
+ */
+export function requireV8<T>(
+  payload: VersionedTx<T>,
+  seam: EraSeam,
+  circuitId?: string | readonly string[]
+): Uint8Array {
+  if (typeof payload !== 'object' || payload === null) {
+    throw new UntaggedPayloadError(seam, payload);
+  }
+  switch (payload.version) {
+    case 'v8':
+      return payload.txBytes;
+    case 'v9':
+      throw new EraInvariantViolationError(seam, circuitId, 'v8');
+    default: {
+      const unhandled: never = payload;
+      throw new UntaggedPayloadError(seam, unhandled);
+    }
+  }
+}
+
+/**
  * Narrows a finalized-transaction record from the read surface to its v9 arm.
  *
  * @see {@link EraDispatch} for why the v9-only flows reject here rather than

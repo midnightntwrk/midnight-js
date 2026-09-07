@@ -20,7 +20,7 @@ import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
-import { Ledger8PipelineNotWiredError } from './errors';
+import { Ledger8DeployUnmaintainableError } from './errors';
 import type { FoundContract } from './find-deployed-contract';
 import {
   createCircuitMaintenanceTxInterfaces,
@@ -123,11 +123,21 @@ const createDeployTxOptions = <C extends Contract.Any>(
  * the first commented sibling -- which published this arm's caveat on the current-era arms.
  */
 /**
- * Accepts a contract produced by the PREVIOUS Compact toolchain (`compact-runtime@0.16`), passed
- * as the raw contract instance rather than inside a `CompiledContract` container.
+ * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * the raw contract instance rather than inside a `CompiledContract` container.
  *
- * @throws `Ledger8PipelineNotWiredError`
- * Always, at this stage: the shape type-checks but no execution path exists behind it yet.
+ * ALWAYS REFUSED, with `Ledger8DeployUnmaintainableError`, for a MEASURED reason about the
+ * maintenance authority rather than about the era pairing: nothing on this path sets one, and the
+ * authority a retained constructor leaves behind is an empty committee with a threshold of one, so
+ * the deployed contract could never be maintained by anyone. The deploy TRANSACTION path itself
+ * composes and submits correctly — this refusal is about the result.
+ *
+ * The refusal is unconditional and comes BEFORE the network head is read, so `Ledger8DeployOnV9Error`
+ * — the era pairing table's refusal for a retained-era deploy against a post-fork head — is not
+ * reachable through this entry point today.
+ *
+ * @see {@link KeepStatePipeline} for the measurement, what it would take to lift the refusal, and
+ *      the test that pins it.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
@@ -171,7 +181,7 @@ export async function deployContract<C extends Contract.Any>(
   options: DeployContractOptions<C> | AnyLedger8DeployContractOptions
 ): Promise<DeployedContract<C> | AnyLedger8DeployedContract> {
   if (isLedger8Request<AnyLedger8DeployContractOptions>(options)) {
-    throw new Ledger8PipelineNotWiredError('deployContract');
+    throw new Ledger8DeployUnmaintainableError();
   }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
   return {

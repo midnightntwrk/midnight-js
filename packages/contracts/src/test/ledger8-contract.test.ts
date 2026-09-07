@@ -18,15 +18,12 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { deployContract } from '../deploy-contract';
-import { EraArtifactMismatchError, Ledger8PipelineNotWiredError } from '../errors';
-import { findDeployedContract } from '../find-deployed-contract';
+import { EraArtifactMismatchError, Ledger8DeployUnmaintainableError } from '../errors';
 import { isLedger8Request } from '../internal/era';
-import { type Ledger8ContractProviders } from '../ledger8-contract';
-import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
+import type { Ledger8ContractProviders } from '../ledger8-contract';
 import type {
   CoinReceiver016Contract,
   CoinReceiver016Module,
@@ -65,13 +62,6 @@ const TWIN_MODULE_TYPES = resolve(FIXTURES_DIR, 'twin-contract/compiled/contract
 // out rather than imported so this test asserts the brand's ABSENCE against the literal key, and
 // keeps asserting it if the vendor moves where the constant is exported from.
 const COMPILED_CONTRACT_BRAND = Symbol.for('compact-js/CompiledContract');
-
-// DELIBERATELY MALFORMED -- 35 bytes, where `assertIsContractAddress` requires 32. That is what
-// makes the era assertions below meaningful: they pass only because each entry point resolves the
-// era BEFORE it validates the address. Replace this with a valid address and the ordering guard
-// disappears silently, so `resolves the era before it validates the address` pins the ordering
-// directly rather than leaving it to rest on this constant.
-const MALFORMED_CONTRACT_ADDRESS = '00'.repeat(35);
 
 // The fixture's generated code opens with `checkRuntimeVersion('0.16.0')`, which the installed
 // (current) `@midnight-ntwrk/compact-runtime` rejects outright, and then builds type descriptors
@@ -310,60 +300,53 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       expect(() => isLedger8Request({ compiledContract: 'not a contract' })).toThrow(EraArtifactMismatchError);
     });
 
-    // No `args` on these options: the fixture circuit takes no arguments of its own, and
-    // `Ledger8CallTxOptionsBase` omits `args` entirely in that case, exactly as the current era's
-    // `CallOptionsWithArguments` does.
-    it('refuses a retained-era submitCallTx, naming itself and the era', async () => {
-      await expect(submitCallTx(providers, { compiledContract: contract, contractAddress: MALFORMED_CONTRACT_ADDRESS, circuitId: 'increment' })).rejects.toThrow(
-        Ledger8PipelineNotWiredError
-      );
-      await expect(submitCallTx(providers, { compiledContract: contract, contractAddress: MALFORMED_CONTRACT_ADDRESS, circuitId: 'increment' })).rejects.toMatchObject({
-        entryPoint: 'submitCallTx'
-      });
-      await expect(submitCallTx(providers, { compiledContract: contract, contractAddress: MALFORMED_CONTRACT_ADDRESS, circuitId: 'increment' })).rejects.toThrow(/compact-runtime@0\.16/);
+    // The one arm that still refuses outright is the deploy. Its reason is measured and is nothing
+    // to do with the pipeline -- see `Ledger8DeployUnmaintainableError` for the measurement and what
+    // it would take to lift it.
+    it('refuses a retained-era deployContract, because the deployment would be unmaintainable', async () => {
+      let caught: unknown;
+      try {
+        await deployContract(providers, { compiledContract: contract });
+      } catch (error) {
+        caught = error;
+      }
+
+      // The CLASS, not the message constant: asserting against the same string the production code
+      // throws can only fail if one file disagrees with itself, which it cannot. A stable fragment
+      // of the text is asserted separately so a message rewritten into something that no longer
+      // explains the refusal still fails here.
+      expect(caught).toBeInstanceOf(Ledger8DeployUnmaintainableError);
+      expect((caught as Error).message).toContain('verifier key inserted, removed or replaced');
+      // Refused BEFORE anything is read: the refusal is unconditional, so no head read and no state
+      // read should have happened. This is also what makes `Ledger8DeployOnV9Error` unreachable
+      // through this entry point.
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+      expect(providers.publicDataProvider.queryRawContractState).not.toHaveBeenCalled();
     });
 
-    it('refuses a retained-era submitCallTxAsync, naming itself and the era', async () => {
-      await expect(submitCallTxAsync(providers, { compiledContract: contract, contractAddress: MALFORMED_CONTRACT_ADDRESS, circuitId: 'increment' })).rejects.toThrow(
-        Ledger8PipelineNotWiredError
-      );
-      await expect(submitCallTxAsync(providers, { compiledContract: contract, contractAddress: MALFORMED_CONTRACT_ADDRESS, circuitId: 'increment' })).rejects.toMatchObject({
-        entryPoint: 'submitCallTxAsync'
-      });
-      await expect(submitCallTxAsync(providers, { compiledContract: contract, contractAddress: MALFORMED_CONTRACT_ADDRESS, circuitId: 'increment' })).rejects.toThrow(/compact-runtime@0\.16/);
-    });
-
-    it('refuses a retained-era deployContract, naming itself and the era', async () => {
-      const call = (): Promise<unknown> => deployContract(providers, { compiledContract: contract });
-
-      await expect(call()).rejects.toThrow(Ledger8PipelineNotWiredError);
-      await expect(call()).rejects.toMatchObject({ entryPoint: 'deployContract' });
-      await expect(call()).rejects.toThrow(/compact-runtime@0\.16/);
-    });
-
-    it('refuses a retained-era findDeployedContract, naming itself and the era', async () => {
-      const call = (): Promise<unknown> =>
-        findDeployedContract(providers, { compiledContract: contract, contractAddress: MALFORMED_CONTRACT_ADDRESS });
-
-      await expect(call()).rejects.toThrow(Ledger8PipelineNotWiredError);
-      await expect(call()).rejects.toMatchObject({ entryPoint: 'findDeployedContract' });
-      await expect(call()).rejects.toThrow(/compact-runtime@0\.16/);
-    });
-
-    it('resolves the era BEFORE it validates the address, on every entry point', () => {
-      // The ordering the assertions above depend on, asserted directly instead of resting on the
-      // malformed-address constant. `MALFORMED_CONTRACT_ADDRESS` is 35 bytes, so a body that
-      // validated the address first would reject with a hex `TypeError` naming neither era.
-      expect(MALFORMED_CONTRACT_ADDRESS).toHaveLength(70);
-      expect(() => assertIsContractAddress(MALFORMED_CONTRACT_ADDRESS)).toThrow(TypeError);
-    });
-
-    it('does NOT refuse a current-era call, so the fork cannot fire on the common path', async () => {
+    it('does NOT refuse a current-era deploy, so the era machinery cannot fire on the common path', async () => {
       // The regression guard for the fork itself: a real container must reach the current-era
-      // pipeline. It fails for an unrelated, current-era reason -- never with the era error.
-      await expect(
-        deployContract(createMockProviders(), { compiledContract: createMockCompiledContract() })
-      ).rejects.not.toBeInstanceOf(Ledger8PipelineNotWiredError);
+      // pipeline. Asserted POSITIVELY -- `not.toBeInstanceOf(EraArtifactMismatchError)` would also
+      // pass if the current-era path broke for some entirely unrelated reason. This mock provider
+      // set configures no network id, so reaching the current-era pipeline is exactly what the
+      // network-id guard reports.
+      let caught: unknown;
+      try {
+        await deployContract(createMockProviders(), { compiledContract: createMockCompiledContract() });
+      } catch (error) {
+        caught = error;
+      }
+
+      // POSITIVE evidence that the request reached the current-era deploy: it dies at
+      // `sampleSigningKey`, a current-era-only step, which this file's `compact-runtime` stub does
+      // not provide. Coupled to that stub on purpose -- the alternative, asserting only that the
+      // rejection is not an era error, passes just as happily if the current-era path breaks for a
+      // reason that has nothing to do with the fork.
+      expect((caught as Error).message).toMatch(/sampleSigningKey/);
+      // And it is not an era refusal of any kind.
+      expect(caught).not.toBeInstanceOf(EraArtifactMismatchError);
+      expect(caught).not.toBeInstanceOf(Ledger8DeployUnmaintainableError);
     });
+
   });
 });

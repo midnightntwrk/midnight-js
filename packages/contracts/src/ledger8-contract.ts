@@ -254,6 +254,23 @@ export interface Ledger8DeployContractOptions<C extends Ledger8Contract> {
 export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
   readonly compiledContract: C;
   readonly contractAddress: ContractAddress;
+  /**
+   * NOT HONOURED on this arm: a key supplied here is DISCARDED.
+   *
+   * The current era's `findDeployedContract` stores this key against the
+   * contract address in the private-state provider, so a caller that deployed
+   * the contract elsewhere can still issue maintenance transactions for it.
+   * The retained arm stores nothing, so passing a key here has no effect —
+   * which is recorded at the field rather than left for a caller to discover,
+   * because a silently discarded key reads as a stored one.
+   *
+   * The field is retained rather than removed so this arm's options stay the
+   * shape the current era's are, and so it can start being honoured without a
+   * change to the type: honouring it is client-side storage, which is
+   * era-independent, so nothing about the retained ledger prevents it. Store
+   * the key yourself, through the private-state provider, if you need it for a
+   * retained-era contract in the meantime.
+   */
   readonly signingKey?: SigningKey;
 }
 
@@ -270,6 +287,17 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
  * A retained-era contract deployed by the caller, which additionally holds the
  * signing key registered as the contract's maintenance authority — something
  * only the deployer has.
+ *
+ * NO VALUE OF THIS TYPE IS PRODUCED TODAY: `deployContract`'s retained-era arm
+ * refuses with `Ledger8DeployUnmaintainableError`, so nothing constructs this.
+ *
+ * Do not read {@link Ledger8DeployedContract.signingKey}'s presence as evidence
+ * that the deploy arm works, and do not fill it with a sampled key — on this arm
+ * a sampled key is registered nowhere, so it would name an authority the
+ * deployment never had.
+ *
+ * @see {@link KeepStatePipeline} for the measurement behind the refusal and what
+ *      lifting it requires.
  */
 export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledger8FoundContract<C> {
   readonly signingKey: SigningKey;

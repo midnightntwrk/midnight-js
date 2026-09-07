@@ -40,6 +40,15 @@ export {
   DeployContractOptionsWithPrivateState,
   DeployedContract
 } from './deploy-contract';
+// The retained-era entry points run real pipelines with this release, so the era errors below are
+// reachable from a call a consumer makes rather than only from an internal helper. Two are NOT
+// reachable through an entry point yet and are exported for completeness:
+// `Ledger8DeployUnmaintainableError` is the only refusal `deployContract`'s retained arm makes, and
+// `Ledger8DeployOnV9Error` sits behind it in the era pairing table, so the pairing refusal cannot
+// be observed until the deploy arm is wired.
+//
+// Deliberately no test-file names here: which suite exercises what is the kind of claim that rots
+// the first time a test moves.
 export {
   BlankVerifierKeySlotError,
   CallTxFailedError,
@@ -53,8 +62,13 @@ export {
   IncompleteCallTxPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   IndexerInconsistencyError,
+  Ledger8AmbiguousEntryPointError,
+  Ledger8CallTxFailedError,
   Ledger8DeployOnV9Error,
-  Ledger8PipelineNotWiredError,
+  Ledger8DeployUnmaintainableError,
+  Ledger8RecipientUnmappableError,
+  Ledger8SeamFailedError,
+  Ledger8ShieldedSpendUnsupportedError,
   TxFailedError,
   VerifierKeyMismatchError} from './errors';
 export {

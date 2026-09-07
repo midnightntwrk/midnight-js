@@ -28,7 +28,7 @@ import {
 import { assertDefined, assertIsContractAddress, toHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
-import { ContractTypeError, IncompleteFindContractPrivateStateConfig, Ledger8PipelineNotWiredError } from './errors';
+import { ContractTypeError, IncompleteFindContractPrivateStateConfig } from './errors';
 import {
   type CircuitMaintenanceTxInterfaces,
   type ContractMaintenanceTxInterface,
@@ -36,6 +36,7 @@ import {
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
 import { isLedger8Request, requireV9Record } from './internal/era';
+import { findLedger8Contract } from './internal/ledger8-entry';
 import {
   type AnyLedger8FindDeployedContractOptions,
   type AnyLedger8FoundContract,
@@ -238,11 +239,17 @@ export interface FoundContract<C extends Contract.Any> {
  * the first commented sibling -- which published this arm's caveat on the current-era arms.
  */
 /**
- * Accepts a contract produced by the PREVIOUS Compact toolchain (`compact-runtime@0.16`), passed
- * as the raw contract instance rather than inside a `CompiledContract` container.
+ * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * the raw contract instance rather than inside a `CompiledContract` container.
  *
- * @throws `Ledger8PipelineNotWiredError`
- * Always, at this stage: the shape type-checks but no execution path exists behind it yet.
+ * A READ path, so it composes and submits nothing. It still resolves the head era, dates the
+ * fetched state's envelope against it, and byte-matches every local verifier key against the slot
+ * the chain holds — the checks that make a later call against this contract safe, done once here
+ * so a mis-dispatch is caught at attach time rather than at the first call.
+ *
+ * The deploy record is returned VERSION-TAGGED rather than narrowed to the current era: a
+ * retained-era contract was deployed in whichever era was current at the time, and refusing the
+ * pre-fork arm would refuse exactly the contracts this arm exists to keep callable.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
@@ -301,7 +308,19 @@ export async function findDeployedContract<C extends Contract.Any>(
   options: FindDeployedContractOptions<C> | AnyLedger8FindDeployedContractOptions
 ): Promise<FoundContract<C> | AnyLedger8FoundContract> {
   if (isLedger8Request<AnyLedger8FindDeployedContractOptions>(options)) {
-    throw new Ledger8PipelineNotWiredError('findDeployedContract');
+    const found = await findLedger8Contract(providers, {
+      contract: options.compiledContract,
+      contractAddress: options.contractAddress,
+      // EVERY circuit the artifact declares, off the ARTIFACT rather than off
+      // the state -- see the attach section of `docs/keep-state-pipeline.md` for
+      // what this costs and why both eras pay it.
+      circuitIds: Object.keys(options.compiledContract.impureCircuits)
+    });
+    return {
+      compiledContract: options.compiledContract,
+      contractAddress: options.contractAddress,
+      deployTxData: found.deployTxData
+    };
   }
   const { compiledContract, contractAddress } = options;
   assertIsContractAddress(contractAddress);

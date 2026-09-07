@@ -19,8 +19,9 @@ import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight
 
 import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
-import { CallTxFailedError, IncompleteCallTxPrivateStateConfig, Ledger8PipelineNotWiredError } from './errors';
+import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
 import { isLedger8Request } from './internal/era';
+import { submitLedger8CallTx, submitLedger8CallTxAsync, toLedger8CallEntryOptions } from './internal/ledger8-entry';
 import * as Transaction from './internal/transaction';
 import {
   type AnyLedger8CallTxOptions,
@@ -55,11 +56,14 @@ export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.P
  * the first commented sibling -- which published this arm's caveat on the current-era arms.
  */
 /**
- * Accepts a contract produced by the PREVIOUS Compact toolchain (`compact-runtime@0.16`), passed
- * as the raw contract instance rather than inside a `CompiledContract` container.
+ * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * the raw contract instance rather than inside a `CompiledContract` container.
  *
- * @throws `Ledger8PipelineNotWiredError`
- * Always, at this stage: the shape type-checks but no execution path exists behind it yet.
+ * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
+ * the retained-era-native pipeline, a post-fork head the keep-state one.
+ *
+ * @see {@link KeepStatePipeline} for the seam table, and for why a provider needs to handle the
+ *      `'v8'` seam arm only while the network head is still pre-fork.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
@@ -152,7 +156,12 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
   transactionContext?: TransactionContext<C, PCK>
 ): Promise<FinalizedCallTxData<C, PCK> | CallResult<C, PCK> | AnyLedger8FinalizedCallTxData> {
   if (isLedger8Request<AnyLedger8CallTxOptions>(options)) {
-    throw new Ledger8PipelineNotWiredError('submitCallTx');
+    // The retained-era pipeline runs OUTSIDE the scoped-transaction machinery:
+    // that machinery merges several current-era calls into one transaction, and
+    // the retained era composes exactly one call, so there is nothing for it to
+    // merge with. A `transactionContext` is therefore not honoured on this arm
+    // -- the retained-era overload declares no parameter for one.
+    return submitLedger8CallTx(providers, toLedger8CallEntryOptions(options));
   }
   assertIsContractAddress(options.contractAddress);
   assertDefined(
@@ -194,11 +203,14 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
  * the first commented sibling -- which published this arm's caveat on the current-era arms.
  */
 /**
- * Accepts a contract produced by the PREVIOUS Compact toolchain (`compact-runtime@0.16`), passed
- * as the raw contract instance rather than inside a `CompiledContract` container.
+ * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * the raw contract instance rather than inside a `CompiledContract` container.
  *
- * @throws `Ledger8PipelineNotWiredError`
- * Always, at this stage: the shape type-checks but no execution path exists behind it yet.
+ * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
+ * the retained-era-native pipeline, a post-fork head the keep-state one.
+ *
+ * @see {@link KeepStatePipeline} for the seam table, and for why a provider needs to handle the
+ *      `'v8'` seam arm only while the network head is still pre-fork.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
@@ -304,7 +316,7 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
   options: CallTxOptions<C, PCK> | AnyLedger8CallTxOptions
 ): Promise<SubmittedCallTx<C, PCK> | AnyLedger8SubmittedCallTx> {
   if (isLedger8Request<AnyLedger8CallTxOptions>(options)) {
-    throw new Ledger8PipelineNotWiredError('submitCallTxAsync');
+    return submitLedger8CallTxAsync(providers, toLedger8CallEntryOptions(options));
   }
   assertIsContractAddress(options.contractAddress);
   assertDefined(
