@@ -45,9 +45,16 @@ const versionOf = (specifier, fromSpecifier) => {
   return require(base).version;
 };
 
+/**
+ * Where a package physically lives, as resolved from `fromSpecifier`.
+ *
+ * Resolves the package's own entry rather than `<specifier>/package.json`: not
+ * every package exports its manifest, and a missing export would otherwise read
+ * as "not installed".
+ */
 const realPathOf = (specifier, fromSpecifier) => {
   const resolver = fromSpecifier === undefined ? require : createRequire(require.resolve(fromSpecifier));
-  return realpathSync(path.dirname(resolver.resolve(`${specifier}/package.json`)));
+  return realpathSync(path.dirname(resolver.resolve(specifier)));
 };
 
 // 1. The persona's own Compact runtime is the one its era's codegen demands.
@@ -82,19 +89,36 @@ if (personaName === 'retained') {
     if (observed['loadLedger8'] !== 'ok') {
       failures.push(`loadLedger8 returned ${observed['loadLedger8']}`);
     }
-    const paths = new Set(
-      ['@midnight-ntwrk/midnight-js-protocol', '@midnight-ntwrk/midnight-js'].map((from) => {
-        try {
-          return realPathOf('@midnight-ntwrk/onchain-runtime-v3', from);
-        } catch {
-          return 'unresolved';
-        }
-      })
-    );
-    paths.delete('unresolved');
-    observed['onchain-runtime-v3 copies'] = paths.size;
-    if (paths.size > 1) {
-      failures.push(`onchain-runtime-v3 resolved to ${paths.size} distinct copies: ${[...paths].join(', ')}`);
+    // `protocol` is the one package that may resolve the retained runtime, and it
+    // must see exactly one copy of it -- two would make objects minted by one
+    // unusable by the other (Ledger8InstanceMismatchError). Unresolvable counts as
+    // a failure, not as zero: an assertion that passes when it cannot look is
+    // worse than no assertion.
+    let retainedRuntimePath;
+    try {
+      retainedRuntimePath = realPathOf('@midnight-ntwrk/onchain-runtime-v3', '@midnight-ntwrk/midnight-js-protocol');
+      observed['onchain-runtime-v3 via protocol'] = retainedRuntimePath;
+    } catch (error) {
+      failures.push(
+        `onchain-runtime-v3 is not resolvable from midnight-js-protocol, which owns it: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+
+    // The AC6 structural claim, from the consumer's side: nothing outside
+    // `protocol` resolves the retained runtime. Under an isolated linker a
+    // package cannot reach an undeclared dependency, so this has to fail.
+    let leaked = false;
+    try {
+      realPathOf('@midnight-ntwrk/onchain-runtime-v3');
+      leaked = true;
+    } catch {
+      leaked = false;
+    }
+    observed['onchain-runtime-v3 reachable from the dApp'] = leaked;
+    if (leaked) {
+      failures.push('onchain-runtime-v3 is resolvable directly from the dApp; only protocol should reach it');
     }
   } catch (error) {
     failures.push(`retained-era load: ${error instanceof Error ? error.message : String(error)}`);
