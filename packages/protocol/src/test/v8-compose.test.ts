@@ -33,7 +33,7 @@ const TTL = new Date(Date.now() + 3_600_000);
 // The exact tag `Transaction.serialize()` emits for an unproven
 // (SignatureEnabled/PreProof/PreBinding) transaction — derived empirically by
 // serializing an unproven transaction against the pinned
-// `@midnightntwrk/ledger-v8@8.1.1` build, not guessed.
+// `@midnightntwrk/ledger-v8@8.1.2` build, not guessed.
 const V8_UNPROVEN_TX_TAG = 'midnight:transaction[v9](signature[v1],proof-preimage,embedded-fr[v1]):';
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
