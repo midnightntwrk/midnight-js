@@ -150,6 +150,10 @@ export async function deployContract<C extends Contract.Any>(
  *
  * @throws DeployTxFailedError If the transaction is submitted successfully but produces an error
  *                             when executed by the node.
+ * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, or
+ *                                  is a raw current-era contract instance passed instead of its
+ *                                  `CompiledContract` container. Raised before any provider is
+ *                                  consulted.
  */
 export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,

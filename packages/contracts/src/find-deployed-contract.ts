@@ -278,6 +278,10 @@ export async function findDeployedContract<C extends Contract.Any>(
  *                           state found at `contractAddress`, or have mis-matched verifier keys.
  * @throws IncompleteFindContractPrivateStateConfig If an `initialPrivateState` is given but no
  *                                                  `privateStateId` is given to store it under.
+ * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, or
+ *                                  is a raw current-era contract instance passed instead of its
+ *                                  `CompiledContract` container. Raised before any provider is
+ *                                  consulted.
  */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,

@@ -119,6 +119,9 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  *
  * @throws {CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
+ * @throws {EraArtifactMismatchError} When `options.compiledContract` belongs to neither Compact
+ *         era, or is a raw current-era contract instance passed instead of its `CompiledContract`
+ *         container. Raised before any provider is consulted.
  *
  * @remarks
  * The returned {@link FinalizedCallTxData} (and the {@link CallResult} variant)
@@ -221,6 +224,10 @@ export async function submitCallTxAsync<C extends Ledger8Contract, K extends Led
  *
  * @returns A `Promise` that resolves with the transaction ID and call transaction data immediately after submission;
  *         or rejects with an error if the submission fails.
+ *
+ * @throws {EraArtifactMismatchError} When `options.compiledContract` belongs to neither Compact
+ *         era, or is a raw current-era contract instance passed instead of its `CompiledContract`
+ *         container. Raised before any provider is consulted.
  *
  * @remarks
  * The returned {@link SubmittedCallTx} is privacy-sensitive and carries the
