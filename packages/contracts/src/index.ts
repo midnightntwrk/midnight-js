@@ -48,6 +48,7 @@ export {
   type EraSeam,
   IncompleteCallTxPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
+  Ledger8PipelineNotWiredError,
   TxFailedError} from './errors';
 export {
   findDeployedContract,

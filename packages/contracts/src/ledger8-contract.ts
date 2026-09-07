@@ -66,21 +66,23 @@ export interface Ledger8CircuitResult {
 /**
  * A retained-era circuit member.
  *
- * Two things in this signature are load-bearing, and neither is cosmetic: the leading context is
- * declared EXPLICITLY so `Parameters<T>` stays tuple-shaped for
- * {@link Ledger8CircuitParameters}, and the argument tail is `never[]` rather than `unknown[]` so
- * that argument-taking circuits still satisfy the {@link Ledger8Contract} constraint under
- * `strictFunctionTypes`. Do not widen the tail for readability.
+ * Two things here are load-bearing and neither is cosmetic: the leading context is declared
+ * EXPLICITLY, and the argument tail is `never[]` rather than `unknown[]`. Do not widen either for
+ * readability.
  *
- * @see {@link OverloadTyping} for what each widening buys and what breaks without it.
+ * @see {@link OverloadTyping} for what each buys and what breaks without it.
  */
 export type Ledger8Circuit = (context: Ledger8CircuitContext<never>, ...args: never[]) => Ledger8CircuitResult;
 
 /**
  * A retained-era witness implementation, which returns the next private state
  * paired with the value the circuit reads.
+ *
+ * `PS` is threaded through the FIRST tuple member so a witness declared over the wrong private
+ * state is refused. It sits in a result position, where `PS` is covariant, so every concrete
+ * contract still satisfies the era top type.
  */
-export type Ledger8Witness = (...args: never[]) => readonly [unknown, unknown];
+export type Ledger8Witness<PS = unknown> = (...args: never[]) => readonly [PS, unknown];
 
 /**
  * What a retained-era `initialState` returns: a plain object, NOT a `Promise`.
@@ -100,7 +102,7 @@ export interface Ledger8ConstructorResult<PS = unknown> {
  * circuit members return `Promise`s.
  */
 export interface Ledger8Contract<PS = unknown> {
-  readonly witnesses: Readonly<Record<string, Ledger8Witness>>;
+  readonly witnesses: Readonly<Record<string, Ledger8Witness<PS>>>;
   readonly circuits: Readonly<Record<string, Ledger8Circuit>>;
   readonly impureCircuits: Readonly<Record<string, Ledger8Circuit>>;
   readonly provableCircuits: Readonly<Record<string, Ledger8Circuit>>;
@@ -126,11 +128,16 @@ export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['impureCircuit
  * the context is built by the framework from provider data, never passed in by
  * the caller.
  *
+ * A circuit whose parameters are not tuple-shaped falls to `never[]`, NOT to `never`: `never`
+ * satisfies `extends []`, so it would make {@link Ledger8CallTxOptionsBase} report that such a
+ * circuit takes no arguments at all. `never[]` is uninhabited but not empty, so the caller is
+ * asked for an `args` it cannot supply and the mismatch surfaces instead of being swallowed.
+ *
  * @see {@link OverloadTyping} for why a caller may not be handed the raw
  *      `Parameters<...>`.
  */
 export type Ledger8CircuitParameters<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
-  Parameters<C['impureCircuits'][K]> extends [Ledger8CircuitContext, ...infer A] ? A : never;
+  Parameters<C['impureCircuits'][K]> extends [Ledger8CircuitContext, ...infer A] ? A : never[];
 
 /**
  * The providers a retained-era call transaction needs.
@@ -290,73 +297,38 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  * Tells the two eras apart at runtime, so each entry point's implementation can refuse a
  * retained-era request before touching the current-era pipeline.
  *
- * A PROVISIONAL structural check, and deliberately not the era predicate this framework will
- * ship: it tests for the member the retained-era artifact installs and the current era's container
- * does not, which is enough to fork a body whose retained-era branch only throws.
+ * Tests the SAME discriminator the type family is built on: a retained-era `initialState` is
+ * synchronous, where the current toolchain's is `async`. `impureCircuits` is checked only to
+ * establish that the value is a contract at all — it does NOT discriminate, because the current
+ * toolchain installs it too, on the raw contract instance.
+ *
+ * That distinction matters for a caller who passes the raw current-era instance instead of its
+ * `CompiledContract` container — a mistake the types catch but plain JavaScript does not. Such a
+ * value is reported as CURRENT era, so it fails against the current-era pipeline rather than
+ * being told, wrongly, that its contract came from the previous toolchain.
  *
  * Name the type parameter explicitly at each call site rather than letting it infer, so the
  * narrowing removes exactly the retained-era arm of that entry point's parameter union.
  *
  * @param options The entry point's argument, before its era is known.
  * @returns `true` when the contract is a retained-era instance.
- * @see {@link OverloadTyping} for this check's known blind spot, and for the branded predicate
- *      that replaces it.
+ * @see {@link OverloadTyping} for why the container's brand cannot be used for this.
  */
 export const isLedger8Options = <L extends { readonly compiledContract: Ledger8Contract }>(
   options: { readonly compiledContract: unknown } | L
-): options is L =>
-  typeof options.compiledContract === 'object' &&
-  options.compiledContract !== null &&
-  'impureCircuits' in options.compiledContract;
+): options is L => {
+  const compiledContract = options.compiledContract;
 
-/**
- * The migration-guide message the compiler renders for a contract belonging to neither era. This is
- * the SINGLE place its text is written.
- *
- * DO NOT DELETE AS UNUSED. Nothing consumes this text yet, and that is expected: its destination
- * is the typed, thrown error that era resolution raises when it is handed an object belonging to
- * neither era. `src/test/typecheck/overloads.test-d.ts` pins the wording verbatim, and it is not
- * re-exported from the package index.
- *
- * @see {@link OverloadTyping} for why the text is retained ahead of its consumer, and why it is
- *      not wired into an overload arm.
- */
-export const NEITHER_ERA_CONTRACT_MESSAGE =
-  'Object is neither a 0.16- nor a 0.18-generated contract. See migration guide §window.';
+  if (typeof compiledContract !== 'object' || compiledContract === null) {
+    return false;
+  }
+  if (!('impureCircuits' in compiledContract) || !('initialState' in compiledContract)) {
+    return false;
+  }
 
-/**
- * The type the catch-all arm of every era-dispatching entry point expects, so that an object
- * matching NEITHER era's shape is refused against a name whose own definition says what went
- * wrong.
- *
- * The `__error` member exists only to carry {@link NEITHER_ERA_CONTRACT_MESSAGE}; nothing
- * constructs a value of this type.
- *
- * @see {@link OverloadTyping} for why it is retained ahead of its consumer.
- */
-export type NeitherContractShape = { readonly __error: typeof NEITHER_ERA_CONTRACT_MESSAGE }
+  const { initialState } = compiledContract as { readonly initialState: unknown };
 
-/**
- * An options object whose contract belongs to neither era, kept as the named counterpart to
- * {@link NeitherContractShape}.
- *
- * No overload arm takes this type. `src/test/typecheck/overloads.test-d.ts` pins that a
- * neither-era object really is refused by it — the assignability fact the overloads rely on,
- * whether or not any arm spells it out.
- *
- * @see {@link OverloadTyping} for why no arm spells it out.
- */
-export interface NeitherEraContractOptions {
-  readonly compiledContract: NeitherContractShape;
-}
+  return typeof initialState === 'function' && initialState.constructor.name !== 'AsyncFunction';
+};
 
-/**
- * The message every retained-era overload body throws with at this stage.
- *
- * The overloads accept and type-check the retained-era shape, but no execution
- * path exists behind them yet. A bare `Error` on purpose: a registered error
- * code is a published consumer surface, and this condition is removed as soon
- * as the pipeline lands.
- */
-export const LEDGER8_PIPELINE_NOT_WIRED =
-  'The retained-era contract pipeline is not wired yet; this overload accepts the shape but cannot execute it.';
+
