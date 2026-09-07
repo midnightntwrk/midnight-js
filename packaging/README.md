@@ -60,13 +60,23 @@ Wallet.Sync -> Failed to decode ledger event payload
 Error: Wallet sync timeout after 90000ms
 ```
 
-Observed on a chain carrying ledger-v8 history, independently of the indexer tag
-(reproduced on `4.4.0-rc.5` and on devnet's `4.4.0-pre-alpha.16`) and
-independently of whether the fork has already been enacted. A wallet syncs from
-genesis, so enacting the fork first does **not** remove the pre-fork blocks from
-its path — an early reading here that treated "fork first" as an era control was
-wrong. The same wallet syncs normally against devnet, which is ledger-v9 from
-genesis, on every CI run of the e2e suite.
+Isolated by holding the persona constant and varying the chain:
+
+| Chain | Node | Indexer | Genesis | Wallet |
+|---|---|---|---|---|
+| devnet | 2.0.0-rc.3 | 4.4.0-pre-alpha.16 | ledger-v9 | syncs |
+| fork-stack images, ordinary genesis | 2.1.0-beta.1 | 4.4.0-rc.5 | ledger-v9 | syncs |
+| fork stack | 2.1.0-beta.1 | 4.4.0-rc.5 *and* pre-alpha.16 | **ledger-v8** | **fails** |
+
+The node binary and the indexer are both exonerated: with exactly the fork
+stack's images and an ordinary genesis, the same wallet in the same persona
+install syncs. The only remaining variable is the ledger-v8 genesis.
+
+Two things ruled out along the way. Enacting the fork *before* the dApp starts
+does not help, and is not an era control at all — a wallet syncs from genesis, so
+the pre-fork blocks stay on its path whatever the head is. And
+`SIDECHAIN_BLOCK_BENEFICIARY`, which the fork node was missing relative to
+`compose.yml`, is now set but did not change the outcome.
 
 That is the OQ7 dependency the spec names: FR0 holds end to end only if the
 wallet crosses the fork, `migrateState` is a stub, and the wallet test shim is a

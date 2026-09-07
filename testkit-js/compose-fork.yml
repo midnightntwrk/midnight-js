@@ -85,6 +85,10 @@ services:
       CFG_PRESET: 'dev'
       CHAIN: '/chainspec/chainspec.json'
       SHOW_CONFIG: 'false'
+      # The same beneficiary `compose.yml` sets. Without it the node authors
+      # blocks with no reward beneficiary, and a syncing wallet never sees the
+      # ledger events it expects.
+      SIDECHAIN_BLOCK_BENEFICIARY: '04bcf7ad3be7a5c790460be82a713af570f22e0f801f6659ab8e84a52be6969e'
     # `/health` is not a truthful readiness signal for a new binary on an old chain: it answers
     # before the node has authored anything. Asking for block #1 proves the chain is producing on
     # the pre-fork runtime, which is the state every test here starts from.
