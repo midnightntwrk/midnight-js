@@ -3,6 +3,7 @@
     "../../typedoc.base.json"
   ],
   "projectDocuments": [
+    "docs/*.md",
     "../contracts/docs/*.md"
   ]
 }
