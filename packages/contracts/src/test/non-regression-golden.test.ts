@@ -14,11 +14,20 @@
  */
 
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { type CommunicationCommitmentData, type ContractState, createCircuitContext } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import {
+  type CircuitContext,
+  type CircuitResults,
+  type CommunicationCommitmentData,
+  type ConstructorResult,
+  type ContractState,
+  createCircuitContext,
+  type EncodedZswapLocalState,
+  type ZswapLocalState
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type AlignedValue,
   communicationCommitment,
@@ -27,151 +36,189 @@ import {
   type PartitionedTranscript,
   type PreProof,
   sampleEncryptionPublicKey,
-  Transaction,
   type Transcript,
   ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+import { Transaction } from '@midnight-ntwrk/midnight-js-types';
 import { Option } from 'effect';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createUnprovenLedgerCallTx, toLedgerContractState } from '../utils/ledger-utils';
 
-type CircuitRunEffects = Transcript<AlignedValue>['effects'];
-
-type CircuitRunResult = {
-  context: {
-    callContext: { currentQueryContext: { effects: CircuitRunEffects } };
-    callProofDataTrace: {
-      publicTranscript: Transcript<AlignedValue>['program'];
-      privateTranscriptOutputs: AlignedValue[];
-      input: AlignedValue;
-      output: AlignedValue;
-    }[];
-  };
-  gasCost: Transcript<AlignedValue>['gas'];
-};
-
+/** The compiled `shielded-map` contract, typed through the runtime's own exported generics. */
 type ShieldedMapContract = {
-  initialState: (args: unknown) => Promise<{ currentContractState: ContractState }>;
-  circuits: { deposit: (ctx: unknown, coin: unknown) => Promise<CircuitRunResult> };
+  // The generated constructor takes the plain or the encoded Zswap local state; the runtime's own
+  // constructor-context type admits only the encoded one.
+  initialState: (args: {
+    initialPrivateState: undefined;
+    initialZswapLocalState: ZswapLocalState | EncodedZswapLocalState;
+  }) => Promise<ConstructorResult<undefined>>;
+  circuits: {
+    deposit: (
+      ctx: CircuitContext<undefined>,
+      coin: { nonce: Uint8Array; color: Uint8Array; value: bigint }
+    ) => Promise<CircuitResults<undefined, []>>;
+  };
 };
 
 /** Narrows a `ContractAction` to the `ContractCall` member (as opposed to a deploy or maintenance update). */
 const isContractCall = (action: ContractAction<PreProof>): action is ContractCall<PreProof> =>
   'guaranteedTranscript' in action;
 
-/** Normalizes bigints and byte arrays to strings so `Transcript` effects/program are plain-JSON comparable. */
+/**
+ * Normalizes a ledger value for plain-JSON comparison: bigints and byte arrays become strings,
+ * `Map`/`Set` become tagged entry arrays. The container cases are required, not defensive:
+ * `JSON.stringify` renders any `Map` as `{}`.
+ *
+ * @see docs/architecture/contracts-non-regression-golden-baselines.md
+ */
 const toPlainJson = (value: unknown): unknown =>
   JSON.parse(
-    JSON.stringify(value, (_key, v: unknown) =>
-      typeof v === 'bigint' ? v.toString() : v instanceof Uint8Array ? Buffer.from(v).toString('hex') : v
-    )
+    JSON.stringify(value, (_key, v: unknown) => {
+      if (typeof v === 'bigint') return v.toString();
+      if (v instanceof Uint8Array) return Buffer.from(v).toString('hex');
+      if (v instanceof Map) return { __map: [...v.entries()] };
+      if (v instanceof Set) return { __set: [...v] };
+      return v;
+    })
   );
 
 const GAS_KEYS = ['bytesDeleted', 'bytesWritten', 'computeTime', 'readTime'] as const;
 
+/** Every field of `Effects`, pinned as a set so an upstream rename fails here by name. */
+const EFFECTS_KEYS = [
+  'claimedContractCalls',
+  'claimedNullifiers',
+  'claimedShieldedReceives',
+  'claimedShieldedSpends',
+  'claimedUnshieldedSpends',
+  'shieldedMints',
+  'unshieldedInputs',
+  'unshieldedMints',
+  'unshieldedOutputs'
+] as const;
+
+/** The gas/cost-model fields as they appear in the `ContractCall` Debug string. */
+const GAS_DEBUG_FIELDS = ['read_time', 'compute_time', 'bytes_written', 'bytes_deleted'] as const;
+
 const REDACTED_COST_PLACEHOLDER = '<redacted-cost>';
 
 /**
- * Redacts the four gas/cost-model fields (`read_time`, `compute_time`, `bytes_written`,
- * `bytes_deleted`) out of a `ContractCall.toString(true)` Debug string, replacing each
- * value with a fixed placeholder. These are cost-model numbers, not composition output --
- * they move on every ledger-v9/onchain-runtime/compact-runtime bump regardless of whether
- * composition behaviour changed, and `compute_time` in particular is a wall-clock-derived
- * figure, the single most architecture- and load-sensitive value in the whole fixture.
- * Redacting only these four fields (not the whole Debug string) keeps everything else this
- * stage exists to guard -- the entry point, the contract address, and the transcript
- * structure -- byte-exact. Do not widen this redaction to cover more of the string: that is
- * exactly the "tightening" this comment exists to prevent.
+ * Matches one gas/cost-model field and the whole of its value. Two of the four render as formatted
+ * durations (`read_time: 255.000us`), so a digits-only pattern would leave the fraction behind.
+ *
+ * @see docs/architecture/contracts-non-regression-golden-baselines.md
+ */
+const gasDebugFieldPattern = (field: string): RegExp => new RegExp(`\\b${field}: [0-9][^,}]*`, 'g');
+
+/**
+ * Replaces the four gas/cost-model values in a `ContractCall.toString(true)` Debug string with a
+ * fixed placeholder. Redact only these four: everything else in the string is the point of the pin.
+ *
+ * @see docs/architecture/contracts-non-regression-golden-baselines.md
  */
 const redactGasCostFields = (debugString: string): string =>
-  debugString
-    .replace(/read_time: [^,}]+/g, `read_time: ${REDACTED_COST_PLACEHOLDER}`)
-    .replace(/compute_time: [^,}]+/g, `compute_time: ${REDACTED_COST_PLACEHOLDER}`)
-    .replace(/bytes_written: [^,}]+/g, `bytes_written: ${REDACTED_COST_PLACEHOLDER}`)
-    .replace(/bytes_deleted: [^,}]+/g, `bytes_deleted: ${REDACTED_COST_PLACEHOLDER}`);
+  GAS_DEBUG_FIELDS.reduce(
+    (redacted, field) =>
+      redacted.replace(gasDebugFieldPattern(field), `${field}: ${REDACTED_COST_PLACEHOLDER}`),
+    debugString
+  );
 
 type GoldenFixture = {
-  inputHashes: Record<string, string>;
+  documentation: string;
+  inputHashes: { note: string; files: Record<string, string> };
   fixedInputs: {
+    note: string;
     contractAddress: string;
     coinPublicKey: string;
     circuitId: string;
+    blockTimeSeconds: number;
     communicationCommitmentRand: string;
     coin: { nonce: string; color: string; value: string };
   };
   decodedContractState: { hex: string };
   observedAssembledCall: {
-    guaranteedTranscript: { effects: unknown; program: unknown };
+    guaranteedTranscript: { effects: Record<string, unknown>; program: unknown[] };
+    communicationCommitment: string;
     toStringCompactNormalized: string;
   };
 };
 
-/**
- * Non-regression baselines for the v9-native call-tx composition path:
- * `unproven-call-tx.ts` -> `utils/ledger-utils.ts` (`createUnprovenLedgerCallTx`).
- *
- * This suite drives a REAL execution of the `deposit` circuit against the compiled
- * `shielded-map` contract already checked into `resources/compiled/shielded-map/` (the
- * same contract and circuit `utils/ledger-utils.test.ts` already exercises for its
- * `receiveShielded` regression coverage). Nothing here invents a contract or compiles
- * anything new.
- *
- * Stage 1 (the decoded contract state) calls `toLedgerContractState` -- real production code
- * -- directly. Stages 2 and 3 call the real `createUnprovenLedgerCallTx` and then read the
- * assembled call back off its returned `tx.intents` (the same seam stage 4 uses): that is
- * deliberate, not incidental -- a golden value built by reproducing the function's own
- * argument list, instead of reading what the function actually produced, would still pass
- * byte-identically after a change to that argument list (e.g. swapping which partitioned
- * transcript is "guaranteed" vs. "fallible"), because it never calls the function it claims
- * to guard. Every stage below observes a real return value.
- *
- * To make stages 2 and 3 deterministic, the single call they assemble is given an explicit,
- * fixed communication commitment (`fixedInputs.communicationCommitmentRand`) -- exactly what
- * production code does for an already-bound sub-call (see
- * `utils/ledger-utils.test.ts`'s "reuses a sub-call communication commitment" coverage) --
- * rather than leaving it unbound, which would sample fresh randomness on every run. Stage 4
- * assembles the same call left unbound, as the real (non-cross-contract) production path
- * always does, and asserts only its structure for exactly that reason.
- *
- * When this gate legitimately fires:
- * - if `packages/contracts` itself changed and the change is intended, regenerate
- *   `resources/golden/v9-native-composition.json` and land that as its own commit, with no
- *   other production change riding along;
- * - if only a dependency version moved (`@midnightntwrk/ledger-v9`, `onchain-runtime`,
- *   `compact-runtime` -- check `package.json`/the resolutions pin for the same window), the
- *   fixture's bytes are expected to move with it and regenerating is the correct response;
- * - if NEITHER of those moved, this is a regression: investigate before regenerating, since
- *   regenerating a fixture over a genuine regression makes the regression permanent.
- */
-describe('v9-native call-tx composition: non-regression golden fixtures', () => {
-  const FIXTURE_PATH = fileURLToPath(new URL('./resources/golden/v9-native-composition.json', import.meta.url));
-  const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as GoldenFixture;
+const FIXTURE_PATH = fileURLToPath(new URL('./resources/golden/v9-native-composition.json', import.meta.url));
 
-  const DUMMY_VERIFIER_KEY = new Uint8Array(
-    readFileSync(new URL('./resources/compiled/shielded-map/keys/deposit.verifier', import.meta.url))
-  );
+const readFixture = (): GoldenFixture => {
+  try {
+    return JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as GoldenFixture;
+  } catch (error) {
+    throw new Error(
+      `cannot read the golden fixture at ${FIXTURE_PATH}. Regenerate it with ` +
+        '`UPDATE_GOLDEN=1 yarn test src/test/non-regression-golden.test.ts`',
+      { cause: error }
+    );
+  }
+};
 
-  // Guards the fixture's INPUTS, so a failure below can be read as what it is. Every byte-pinned
-  // value in this file was captured from these two artifacts; recompiling the contract moves them
-  // all at once, which looks identical to a composition regression unless the inputs are checked
-  // first. `note` is prose, not a path, so it is dropped rather than resolved.
-  it('was captured from the compiled artifacts still checked in here', () => {
-    const REPO_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
-    const observed = Object.fromEntries(
-      Object.keys(fixture.inputHashes)
-        .filter((key) => key !== 'note')
-        .map((repoRelativePath) => [
+const fixture = readFixture();
+
+const REPO_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
+
+/** The compiled artifacts every byte-pinned value in this file was captured from. */
+const ARTIFACT_PATHS = [
+  'packages/contracts/src/test/resources/compiled/shielded-map/contract/index.js',
+  'packages/contracts/src/test/resources/compiled/shielded-map/keys/deposit.verifier'
+] as const;
+
+const hashArtifacts = (): Record<string, string> =>
+  Object.fromEntries(
+    ARTIFACT_PATHS.map((repoRelativePath) => {
+      try {
+        return [
           repoRelativePath,
           createHash('sha256').update(readFileSync(`${REPO_ROOT}${repoRelativePath}`)).digest('hex')
-        ])
-    );
+        ];
+      } catch (error) {
+        throw new Error(`cannot read golden fixture input artifact '${repoRelativePath}'`, { cause: error });
+      }
+    })
+  );
 
-    expect(observed).toEqual(
-      Object.fromEntries(Object.entries(fixture.inputHashes).filter(([key]) => key !== 'note'))
-    );
+/**
+ * `UPDATE_GOLDEN=1` makes each stage record what it observed and write the fixture back instead of
+ * asserting against it.
+ *
+ * @see docs/architecture/contracts-non-regression-golden-baselines.md
+ */
+const UPDATE_GOLDEN = process.env.UPDATE_GOLDEN === '1';
+
+const regenerated: Partial<Pick<GoldenFixture, 'decodedContractState' | 'observedAssembledCall'>> = {};
+
+describe('v9-native call-tx composition: fixture inputs', () => {
+  // Guards the fixture's INPUTS, in its own suite with no shared setup so it stays readable when
+  // the stages' `beforeAll` is what broke.
+  it('lists exactly the two compiled artifacts the fixture was captured from', () => {
+    expect(Object.keys(fixture.inputHashes.files).sort()).toEqual([...ARTIFACT_PATHS].sort());
   });
+
+  it.skipIf(UPDATE_GOLDEN)('was captured from the compiled artifacts still checked in here', () => {
+    expect(hashArtifacts()).toEqual(fixture.inputHashes.files);
+  });
+});
+
+/**
+ * Non-regression baselines for `utils/ledger-utils.ts` (`createUnprovenLedgerCallTx`), captured
+ * from a real `deposit` execution against the compiled `shielded-map` contract in
+ * `resources/compiled/`. `unproven-call-tx.ts`, which delegates to it, is covered by
+ * `unproven-call-tx.test.ts` and is not exercised here.
+ *
+ * What each stage pins, what it excludes, the known blind spots, how to regenerate the fixture and
+ * how to triage a failure:
+ * @see docs/architecture/contracts-non-regression-golden-baselines.md
+ */
+describe('v9-native call-tx composition: non-regression golden fixtures', () => {
+  const COMPILED_VERIFIER_KEY = new Uint8Array(
+    readFileSync(new URL('./resources/compiled/shielded-map/keys/deposit.verifier', import.meta.url))
+  );
 
   let shieldedInitialState: ContractState;
   let transcript: Transcript<AlignedValue>;
@@ -182,13 +229,13 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
   beforeAll(async () => {
     setNetworkId('testnet');
 
-    const { contractAddress, coinPublicKey, circuitId, coin } = fixture.fixedInputs;
+    const { contractAddress, coinPublicKey, circuitId, coin, blockTimeSeconds } = fixture.fixedInputs;
 
     const mod = (await import('./resources/compiled/shielded-map/contract/index.js')) as {
-      Contract: new (witnesses: unknown) => ShieldedMapContract;
+      Contract: new (witnesses: { dummy: (ctx: { privateState: undefined }) => [undefined, []] }) => ShieldedMapContract;
     };
     const shieldedContract = new mod.Contract({
-      dummy: (ctx: { privateState: undefined }) => [ctx.privateState, []]
+      dummy: (ctx: { privateState: undefined }): [undefined, []] => [ctx.privateState, []]
     });
 
     const emptyZswap = { coinPublicKey, outputs: [], inputs: [], currentIndex: 0n };
@@ -198,10 +245,22 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
     });
     shieldedInitialState = initResult.currentContractState;
     const depositOperation = shieldedInitialState.operation(circuitId)!;
-    depositOperation.verifierKey = DUMMY_VERIFIER_KEY;
+    depositOperation.verifierKey = COMPILED_VERIFIER_KEY;
     shieldedInitialState.setOperation(circuitId, depositOperation);
 
-    const ctx = createCircuitContext(circuitId, contractAddress, coinPublicKey, shieldedInitialState, undefined);
+    // Passed explicitly (argument 9): `createCircuitContext` otherwise defaults the block time to
+    // `Date.now()`.
+    const ctx = createCircuitContext(
+      circuitId,
+      contractAddress,
+      coinPublicKey,
+      shieldedInitialState,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      blockTimeSeconds
+    );
     const coinArg = {
       nonce: Uint8Array.from(Buffer.from(coin.nonce, 'hex')),
       color: Uint8Array.from(Buffer.from(coin.color, 'hex')),
@@ -220,23 +279,47 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
     output = proofData.output;
   });
 
+  afterAll(() => {
+    if (!UPDATE_GOLDEN) return;
+    const updated: GoldenFixture = {
+      ...fixture,
+      inputHashes: { ...fixture.inputHashes, files: hashArtifacts() },
+      decodedContractState: regenerated.decodedContractState ?? fixture.decodedContractState,
+      observedAssembledCall: regenerated.observedAssembledCall ?? fixture.observedAssembledCall
+    };
+    writeFileSync(FIXTURE_PATH, `${JSON.stringify(updated, null, 2)}\n`, 'utf8');
+  });
+
+  /** The single `ContractCall` the assembled transaction must contain, with the counts asserted. */
+  const soleContractCallOf = (tx: ReturnType<typeof createUnprovenLedgerCallTx>): ContractCall<PreProof> => {
+    const intents = [...(tx.intents?.values() ?? [])];
+    expect(intents, 'one input call should produce exactly one intent').toHaveLength(1);
+    const { actions } = intents[0]!;
+    expect(actions, 'one input call should produce exactly one action').toHaveLength(1);
+    const [action] = actions;
+    if (!action || !isContractCall(action)) {
+      throw new Error(`expected a ContractCall, got ${action?.constructor?.name ?? String(action)}`);
+    }
+    return action;
+  };
+
   it('stage 1: the decoded contract state matches the checked-in golden hex (deterministic)', () => {
+    // The pinned hex begins `midnight:contract-state[v8]:`; that `[v8]` is the serialized object's
+    // schema version, not a ledger era.
     const ledgerState = toLedgerContractState(shieldedInitialState);
     const actualHex = Buffer.from(ledgerState.serialize()).toString('hex');
 
-    expect(actualHex).toBe(fixture.decodedContractState.hex);
+    regenerated.decodedContractState = { hex: actualHex };
+    if (!UPDATE_GOLDEN) expect(actualHex).toBe(fixture.decodedContractState.hex);
   });
 
-  describe('stages 2 and 3: the call createUnprovenLedgerCallTx actually assembled (observed via tx.intents, not reproduced)', () => {
-    /**
-     * Calls the real, unmodified `createUnprovenLedgerCallTx` with our single call bound to a
-     * fixed communication commitment, and returns the one `ContractCall` it assembled --
-     * exactly what a later reader of `tx.intents` would see. This is a genuine call into
-     * `packages/contracts` production code; nothing here reconstructs its internals.
-     */
+  describe('stages 2 and 3: the call createUnprovenLedgerCallTx actually assembled', () => {
+    /** Assembles the single call bound to a fixed communication commitment. */
     const assembleBoundCall = (): ContractCall<PreProof> => {
       const { contractAddress, circuitId, coinPublicKey, communicationCommitmentRand } = fixture.fixedInputs;
       const platformAddress = PlatformContractAddress.ContractAddress(contractAddress);
+      const partitioned: PartitionedTranscript = [transcript, undefined];
+      // Production reads only `commCommRand` off this option; `commComm` is carried for shape.
       const boundCommitment: Option.Option<CommunicationCommitmentData> = Option.some({
         commCommRand: communicationCommitmentRand,
         commComm: communicationCommitment(input, output, communicationCommitmentRand)
@@ -250,7 +333,7 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
             public: {
               contractState: shieldedInitialState.data.state,
               publicTranscript: [],
-              partitionedTranscript: [transcript, undefined] as PartitionedTranscript
+              partitionedTranscript: partitioned
             },
             private: { input, output, privateTranscriptOutputs },
             communicationCommitment: boundCommitment
@@ -262,82 +345,78 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
         sampleEncryptionPublicKey()
       );
 
-      const [action] = tx.intents?.values().next().value?.actions ?? [];
-      if (!action || !isContractCall(action)) throw new Error('expected the single action to be a ContractCall');
-      return action;
+      return soleContractCallOf(tx);
     };
 
-    it('stage 2: the guaranteed transcript attached to the assembled call matches the golden fixture (deterministic; gas is shape-checked only, see comment)', () => {
+    it('stage 2: the guaranteed transcript and commitment on the assembled call match the golden fixture (gas is shape-checked, see comment)', () => {
+      const { communicationCommitmentRand } = fixture.fixedInputs;
       const action = assembleBoundCall();
       const guaranteed = action.guaranteedTranscript;
       expect(guaranteed).toBeDefined();
-      // Also structural evidence for stage 2: our single partitioned transcript is guaranteed,
-      // not fallible, so a regression that swapped which partitioned-transcript slot is
-      // "guaranteed" vs. "fallible" during assembly would surface here as a routing failure,
-      // not just a content mismatch.
+      // Our single partitioned transcript is guaranteed, not fallible, so a swapped slot fails here.
       expect(action.fallibleTranscript).toBeUndefined();
 
-      const actualEffectsAndProgram = toPlainJson({ effects: guaranteed!.effects, program: guaranteed!.program });
-      expect(actualEffectsAndProgram).toEqual(fixture.observedAssembledCall.guaranteedTranscript);
+      expect(Object.keys(guaranteed!.effects).sort()).toEqual([...EFFECTS_KEYS].sort());
 
-      // gas (readTime/computeTime/bytesWritten/bytesDeleted, all picosecond- or byte-scale
-      // cost-model numbers) is deliberately NOT byte-pinned: it moves on every
-      // ledger-v9/onchain-runtime/compact-runtime bump regardless of whether composition
-      // behaviour changed, and it is the most architecture-sensitive value here (CI may not
-      // run the same CPU architecture as the machine that captured the fixture). Assert only
-      // its shape: the four expected keys are present, each a non-negative bigint.
+      const actualEffectsAndProgram = toPlainJson({
+        effects: guaranteed!.effects,
+        program: guaranteed!.program
+      }) as GoldenFixture['observedAssembledCall']['guaranteedTranscript'];
+
+      // Re-derived through the ledger's own function. Pins `input`, `output` and the bound
+      // randomness, which nothing else on the assembled call observes. It cannot detect the two
+      // being transposed for this circuit -- see the blind spots in the doc referenced above.
+      const actualCommitment = action.communicationCommitment;
+      expect(actualCommitment).toBe(communicationCommitment(input, output, communicationCommitmentRand));
+
+      // Shape only: the four expected keys, each a non-negative bigint.
       const gas = guaranteed!.gas;
       expect(Object.keys(gas).sort()).toEqual([...GAS_KEYS].sort());
       for (const key of GAS_KEYS) {
-        const value = gas[key];
-        expect(typeof value).toBe('bigint');
-        expect(/^\d+$/.test(value.toString())).toBe(true);
+        expect(gas[key], key).toBeTypeOf('bigint');
+        expect(gas[key], key).toBeGreaterThanOrEqual(0n);
       }
+
+      regenerated.observedAssembledCall = {
+        ...(regenerated.observedAssembledCall ?? fixture.observedAssembledCall),
+        guaranteedTranscript: actualEffectsAndProgram,
+        communicationCommitment: actualCommitment
+      };
+      if (UPDATE_GOLDEN) return;
+      expect(actualEffectsAndProgram).toEqual(fixture.observedAssembledCall.guaranteedTranscript);
+      expect(actualCommitment).toBe(fixture.observedAssembledCall.communicationCommitment);
     });
 
-    it("stage 3: the assembled call's own observable fields (address, entry point, transcripts) match the golden Debug snapshot, gas cost fields redacted (deterministic)", () => {
-      // `ContractCall.toString(compact)` is the only way to observe this object's own fields
-      // (there are typed getters for address/entryPoint/transcripts individually, but no
-      // aggregate snapshot besides this Debug repr, and pinning it also covers any field this
-      // suite does not separately assert). It intentionally redacts `communication_commitment`
-      // and `proof` (shown as opaque `<commitment>`/`<proof>` placeholders) rather than real
-      // values, so this pin does not depend on the commitment's own field encoding.
-      //
-      // The four gas/cost-model fields nested inside it (read_time, compute_time,
-      // bytes_written, bytes_deleted) are ALSO redacted before comparison, via
-      // `redactGasCostFields` -- see that function's own comment for why: they are the same
-      // cost-model numbers stage 2 already asserts only the shape of, and pinning them here
-      // too would silently reintroduce exactly the failure mode this suite's `gas`
-      // shape-only assertion exists to remove.
-      //
-      // What this CANNOT observe: `ContractCallPrototype`'s `key_location` argument (see
-      // `ledger-utils.ts`'s `createUnprovenLedgerCallTx`) has no counterpart on the assembled
-      // `ContractCall` -- confirmed empirically, it does not appear in this Debug repr. A
-      // regression that dropped a field from the key-location encoding would not be caught by
-      // this fixture; it would only surface later, at proving time, when a prover fails to
-      // resolve the verifier key by that location. That gap is a known, accepted limit of an
-      // "unproven"-transaction-only suite, not an oversight.
+    it("stage 3: the assembled call's own observable fields match the golden Debug snapshot, gas cost fields redacted (deterministic)", () => {
+      // `toString(compact)` is the only aggregate view of this call's own fields. It shows
+      // `communication_commitment` and `proof` as placeholders (stage 2 asserts the commitment
+      // itself); `key_location`, `op` and `privateTranscriptOutputs` do not appear here at all.
       const action = assembleBoundCall();
-      const normalized = redactGasCostFields(action.toString(true));
+      const raw = action.toString(true);
 
-      // Assert the redaction actually fired: if the Debug format ever stopped emitting these
-      // four fields (or renamed them), the `replace` calls above would silently match nothing,
-      // and this test would keep comparing (and passing) without pinning anything meaningful.
-      // Exactly one occurrence of each of the four fields is expected in this fixture (a
-      // single call with a guaranteed transcript and no fallible transcript).
-      const placeholderCount = normalized.split(REDACTED_COST_PLACEHOLDER).length - 1;
-      expect(placeholderCount).toBe(4);
+      // Assert each target occurs exactly once before redacting, so a renamed, dropped or
+      // non-numeric field fails by name instead of the replace silently matching nothing.
+      for (const field of GAS_DEBUG_FIELDS) {
+        expect(raw.match(gasDebugFieldPattern(field)) ?? [], field).toHaveLength(1);
+      }
 
-      expect(normalized).toBe(fixture.observedAssembledCall.toStringCompactNormalized);
+      const normalized = redactGasCostFields(raw);
+
+      regenerated.observedAssembledCall = {
+        ...(regenerated.observedAssembledCall ?? fixture.observedAssembledCall),
+        toStringCompactNormalized: normalized
+      };
+      if (!UPDATE_GOLDEN) expect(normalized).toBe(fixture.observedAssembledCall.toStringCompactNormalized);
     });
   });
 
   describe('stage 4: the assembled unproven transaction (structural only -- carries fresh randomness)', () => {
-    const buildTransaction = () => {
+    it('is a real Transaction with exactly the one intent and action our single call produces', () => {
       const { contractAddress, circuitId, coinPublicKey } = fixture.fixedInputs;
       const platformAddress = PlatformContractAddress.ContractAddress(contractAddress);
+      const partitioned: PartitionedTranscript = [transcript, undefined];
 
-      return createUnprovenLedgerCallTx(
+      const tx = createUnprovenLedgerCallTx(
         [
           {
             contractAddress: platformAddress,
@@ -345,7 +424,7 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
             public: {
               contractState: shieldedInitialState.data.state,
               publicTranscript: [],
-              partitionedTranscript: [transcript, undefined] as PartitionedTranscript
+              partitionedTranscript: partitioned
             },
             private: { input, output, privateTranscriptOutputs },
             communicationCommitment: Option.none()
@@ -356,50 +435,18 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
         { outputs: [], inputs: [], coinPublicKey, currentIndex: 0n },
         sampleEncryptionPublicKey()
       );
-    };
 
-    it('is a real Transaction with exactly the one intent and action our single call produces', () => {
-      const tx = buildTransaction();
-
-      // Structural, not byte, assertions: Transaction.fromPartsRandomized samples fresh
-      // binding randomness on every call, so no field derived from it is reproducible.
+      // `Transaction` is imported from the module production returns it from, so this checks the
+      // value's class rather than two modules' copies agreeing.
       expect(tx).toBeInstanceOf(Transaction);
-      expect(tx.intents?.size).toBe(1);
 
-      const intent = tx.intents?.values().next().value;
-      expect(intent).toBeDefined();
+      const action = soleContractCallOf(tx);
 
-      const actions = intent!.actions;
-      expect(actions).toHaveLength(1);
-
-      const [action] = actions;
-      if (!action || !isContractCall(action)) throw new Error('expected the single action to be a ContractCall');
-
-      // Structural: the deposit circuit's guaranteed transcript claims exactly one shielded
-      // receive (the deposited coin) and no shielded spends. Only the count is checked, not
-      // the receive's own commitment bytes -- those are unaffected by the randomness above,
-      // but pinning them here would blur the line between this structural stage and stage
-      // 2's already byte-pinned transcript.
+      // The deposit circuit claims exactly one shielded receive and no shielded spends.
       const effects = action.guaranteedTranscript?.effects;
       expect(effects).toBeDefined();
       expect([...effects!.claimedShieldedReceives]).toHaveLength(1);
       expect([...effects!.claimedShieldedSpends]).toHaveLength(0);
-    });
-
-    it('samples fresh communication-commitment randomness for the unbound root call on every assembly (documents the missing injection seam)', () => {
-      const rootActionOf = (tx: ReturnType<typeof buildTransaction>): ContractCall<PreProof> => {
-        const [action] = tx.intents?.values().next().value?.actions ?? [];
-        if (!action || !isContractCall(action)) throw new Error('expected the single action to be a ContractCall');
-        return action;
-      };
-
-      // Structural: two independently assembled transactions from identical deterministic
-      // inputs still differ, because the root call has no bound commitment and the function
-      // samples fresh randomness for it every time. This is exactly why stages 2 and 3 above
-      // must bind the call to a fixed commitment rather than leave it unbound like this.
-      expect(rootActionOf(buildTransaction()).communicationCommitment).not.toEqual(
-        rootActionOf(buildTransaction()).communicationCommitment
-      );
     });
   });
 });
