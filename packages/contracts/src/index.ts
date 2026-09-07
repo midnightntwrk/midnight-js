@@ -47,6 +47,17 @@ export {
 // `Ledger8DeployOnV9Error` sits behind it in the era pairing table, so the pairing refusal cannot
 // be observed until the deploy arm is wired.
 //
+// The fork-window refusals are the other group. `StaleHeadError` is raised when a submission was
+// rejected and a fresh head read confirms the network crossed the fork under the operation, and it
+// carries the two-step remediation for that operation kind. `SubmitRejectionUndiagnosedError` is
+// the other half of that diagnosis, for a head that could not be re-read or that reported an
+// EARLIER era: reported as undiagnosable rather than as a fork, because neither case establishes
+// one, and carrying a registered code of its own so a retry handler branching on `hasErrorCode`
+// behaves the same whichever failure came first. `ScopedTxEraUnsupportedError` and
+// `MixedEraScopeError` are the scoped-transaction era rules -- a scope is refused outright on a
+// head era that composes only one call per transaction, and a retained-toolchain call cannot join
+// a scope at all.
+//
 // Deliberately no test-file names here: which suite exercises what is the kind of claim that rots
 // the first time a test moves.
 export {
@@ -69,6 +80,13 @@ export {
   Ledger8RecipientUnmappableError,
   Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
+  MixedEraScopeError,
+  ScopedTxEraUnsupportedError,
+  StaleHeadError,
+  type StaleHeadOperationKind,
+  type SubmitRejectionUndiagnosedCause,
+  SubmitRejectionUndiagnosedError,
+  type SubmittedOperation,
   TxFailedError,
   VerifierKeyMismatchError} from './errors';
 export {

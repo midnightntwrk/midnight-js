@@ -28,7 +28,7 @@
  */
 
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type { DownConvertedState, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import type { DownConvertedState } from '@midnight-ntwrk/midnight-js-protocol';
 import { loadLedger8Engine, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import { Transaction, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
@@ -53,7 +53,8 @@ import {
   type EraSeam,
   IncompleteCallTxPrivateStateConfig,
   Ledger8CallTxFailedError,
-  Ledger8SeamFailedError
+  Ledger8SeamFailedError,
+  type SubmittedOperation
 } from '../errors';
 import type { AnyLedger8CallTxOptions } from '../ledger8-contract';
 import { createEncryptionPublicKeyResolver } from '../utils';
@@ -74,6 +75,7 @@ import {
   runLedger8CallPipeline,
   runLedger8DeployPipeline
 } from './ledger8-pipeline';
+import { handleSubmitRejection } from './stale-head';
 
 /**
  * Reads the current era's own freshly composed bytes back into the live
@@ -328,17 +330,30 @@ const atSeam = async <T>(seam: EraSeam, circuitId: string, call: () => Promise<T
 };
 
 /**
+ * How an era arm reaches the submit seam.
+ *
+ * Taken as a parameter rather than called directly, so the fork-crossing
+ * diagnosis is applied ONCE, by the caller, around whichever arm runs. Two arms
+ * each calling `atSeam('submitTx', ...)` themselves is exactly how they drift
+ * into different failure handling.
+ */
+type SubmitSeam = (call: () => Promise<string>) => Promise<string>;
+
+/**
  * Proves, balances and submits on the CURRENT-era seam arm, as a live handle.
  *
  * @param providers The proof, wallet and submission providers.
  * @param txBytes The serialized unproven transaction the era composed.
  * @param circuitId The circuit this flow is running, named in any refusal.
+ * @param submit The submit seam, already wrapped with the fork-crossing
+ * diagnosis by {@link submitLedger8Tx}.
  * @returns The transaction id the network assigned.
  */
 const submitLedger8TxOnCurrentEra = async (
   providers: Pick<Ledger8EntryProviders, 'proofProvider' | 'walletProvider' | 'midnightProvider'>,
   txBytes: Uint8Array,
-  circuitId: string
+  circuitId: string,
+  submit: SubmitSeam
 ): Promise<string> => {
   const unproven = readCurrentEraTransaction(txBytes);
   const proven = requireV9(
@@ -351,7 +366,7 @@ const submitLedger8TxOnCurrentEra = async (
     'balanceTx',
     circuitId
   );
-  return atSeam('submitTx', circuitId, () => providers.midnightProvider.submitTx({ version: 'v9', tx: balanced }));
+  return submit(() => providers.midnightProvider.submitTx({ version: 'v9', tx: balanced }));
 };
 
 /**
@@ -366,7 +381,8 @@ const submitLedger8TxOnCurrentEra = async (
 const submitLedger8TxOnRetainedEra = async (
   providers: Pick<Ledger8EntryProviders, 'proofProvider' | 'walletProvider' | 'midnightProvider'>,
   txBytes: Uint8Array,
-  circuitId: string
+  circuitId: string,
+  submit: SubmitSeam
 ): Promise<string> => {
   const proven = requireV8(
     await atSeam('proveTx', circuitId, () => providers.proofProvider.proveTx({ version: 'v8', txBytes })),
@@ -378,9 +394,7 @@ const submitLedger8TxOnRetainedEra = async (
     'balanceTx',
     circuitId
   );
-  return atSeam('submitTx', circuitId, () =>
-    providers.midnightProvider.submitTx({ version: 'v8', txBytes: balanced })
-  );
+  return submit(() => providers.midnightProvider.submitTx({ version: 'v8', txBytes: balanced }));
 };
 /**
  * Proves, balances and submits a retained-era-executed transaction, and
@@ -391,33 +405,62 @@ const submitLedger8TxOnRetainedEra = async (
  * because the `version` tag names the ledger runtime that produced the bytes,
  * never the toolchain that produced the contract.
  *
- * @param providers The proof, wallet and submission providers.
+ * ## The SUBMIT seam is the one that gets a second look
+ *
+ * A rejection at `proveTx` or `balanceTx` is what it says it is. A rejection at
+ * `submitTx` is the one that can mean the network moved while this transaction
+ * was being built, so that one — and only that one — is handed to
+ * {@link handleSubmitRejection}, which re-reads the head and compares eras. The
+ * proving and balancing seams touch no chain state and cannot tell a fork
+ * crossing from anything else, so asking the network about their rejections
+ * would be a round trip that could not change the answer.
+ *
+ * @param providers The read surface (for the fork-crossing head re-read) plus
+ * the proof, wallet and submission providers.
  * @param txBytes The serialized unproven transaction the era composed.
- * @param circuitId The circuit this flow is running, named in any refusal.
- * @param head The era the network head is on, which decides the seam arm.
+ * @param operation Which operation this is: the head era it resolved — which
+ * also decides the seam arm — whether it is a call or a deploy, and the
+ * identifiers a fork-crossing refusal has to name.
  * @returns The transaction id the network assigned.
  * @throws V8PayloadUnsupportedError if a provider does not serve the pre-fork arm.
  * @throws EraInvariantViolationError if a provider answers in the other era.
  * @throws Ledger8SeamFailedError if a provider rejects, with its own failure
  * sanitized onto `cause` — see {@link atSeam}.
+ * @throws StaleHeadError, SubmitRejectionUndiagnosedError if the submission was
+ * rejected and the head has moved, or cannot be compared — see
+ * {@link handleSubmitRejection}.
  * @see {@link KeepStatePipeline} for the seam table and why tagging the
  *      post-fork arm `'v8'` would be false.
  */
 export const submitLedger8Tx = async (
-  providers: Pick<Ledger8EntryProviders, 'proofProvider' | 'walletProvider' | 'midnightProvider'>,
+  providers: Pick<
+    Ledger8EntryProviders,
+    'publicDataProvider' | 'proofProvider' | 'walletProvider' | 'midnightProvider'
+  >,
   txBytes: Uint8Array,
-  circuitId: string,
-  head: LedgerVersion
+  operation: SubmittedOperation
 ): Promise<string> => {
+  const { circuitId, head } = operation;
+  // Wrapped ONCE, around whichever arm's submit runs, so the two arms cannot end
+  // up with different failure handling. `atSeam` still does the sanitizing --
+  // what this adds is the fork-crossing diagnosis on top of its result.
+  const submit: SubmitSeam = async (call) => {
+    try {
+      return await atSeam('submitTx', circuitId, call);
+    } catch (rejection) {
+      return handleSubmitRejection(providers.publicDataProvider, operation, rejection);
+    }
+  };
+
   // A SWITCH closing on `never`, not an `if`: an era added to `LedgerVersion`
   // must not fall through into the pre-fork arm and submit retained-era bytes
   // to a head that never asked for them. Every other era decision in this
   // package closes the same way -- see `assertEraCompatible`.
   switch (head) {
     case 'v9':
-      return submitLedger8TxOnCurrentEra(providers, txBytes, circuitId);
+      return submitLedger8TxOnCurrentEra(providers, txBytes, circuitId, submit);
     case 'v8':
-      return submitLedger8TxOnRetainedEra(providers, txBytes, circuitId);
+      return submitLedger8TxOnRetainedEra(providers, txBytes, circuitId, submit);
     default: {
       const unhandled: never = head;
       throw new UnknownLedgerVersionError(String(unhandled));
@@ -514,7 +557,12 @@ export const runLedger8Call = async (
     )
   });
 
-  const txId = await submitLedger8Tx(providers, call.txBytes, request.circuitId, resolved.head);
+  const txId = await submitLedger8Tx(providers, call.txBytes, {
+    head: resolved.head,
+    kind: 'call',
+    circuitId: request.circuitId,
+    contractAddress: request.contractAddress
+  });
 
   return { txId, call };
 };
@@ -576,12 +624,19 @@ export const runLedger8Deploy = async (
     ttl: ttlOneHour()
   });
 
-  // The deploy has no circuit of its own to name, so the constructor's own
-  // vocabulary is used rather than inventing a circuit id.
-  // Only ever a pre-fork head here -- a retained-era deploy against a post-fork
-  // head was refused above -- but the era is passed rather than assumed, so the
-  // seam arm is chosen by the same rule everywhere.
-  const txId = await submitLedger8Tx(providers, deploy.txBytes, 'initialState', resolved.head);
+  const txId = await submitLedger8Tx(providers, deploy.txBytes, {
+    // Only ever a pre-fork head here -- a retained-era deploy against a
+    // post-fork head was refused above -- but the era is passed rather than
+    // assumed, so the seam arm is chosen by the same rule everywhere.
+    head: resolved.head,
+    kind: 'deploy',
+    // The deploy has no circuit of its own to name, so the constructor's own
+    // vocabulary is used rather than inventing a circuit id.
+    circuitId: 'initialState',
+    // READ OFF the composition record: a deploy mints a fresh nonce, so this is
+    // the one address a caller has to check before deploying again.
+    contractAddress: deploy.contractAddress
+  });
 
   return { txId, deploy };
 };
