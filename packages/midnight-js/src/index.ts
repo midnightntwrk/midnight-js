@@ -36,13 +36,16 @@ export {
 // remaining classes are the protocol errors that reach a barrel consumer
 // unwrapped through `contracts`; each travels with the code it carries and the
 // types its payload names, so one can catch by class and read the payload
-// without a cast. See BarrelPublishedSurface.
+// without a cast. `PayloadNotATransactionError` arrives as a `proveTx`
+// rejection rather than from the era pipeline, and has a private constructor:
+// it is published to be caught, not built. See BarrelPublishedSurface.
 export {
   ComposeFailedError,
   type ComposeOption,
   ComposeOptionError,
   type ComposeStage,
   Ledger8RuntimeMissingError,
+  PayloadNotATransactionError,
   PROTOCOL_ERROR_CODES,
   type ProtocolVersionUnknownReason,
   type RetainedEraSubpath,
