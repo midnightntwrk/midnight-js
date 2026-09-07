@@ -62,11 +62,8 @@ export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.P
  * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
  * the retained-era-native pipeline, a post-fork head the keep-state one.
  *
- * A post-fork keep-state call is an ORDINARY current-era transaction that happens to carry a
- * retained-era call, so a provider needs no pre-fork support to serve it. A provider must handle
- * the `'v8'` seam arm only to serve calls made while the network head is still pre-fork.
- *
- * @see {@link KeepStatePipeline} for the seam table and why the two arms differ.
+ * @see {@link KeepStatePipeline} for the seam table, and for why a provider needs to handle the
+ *      `'v8'` seam arm only while the network head is still pre-fork.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
@@ -217,11 +214,8 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
  * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
  * the retained-era-native pipeline, a post-fork head the keep-state one.
  *
- * A post-fork keep-state call is an ORDINARY current-era transaction that happens to carry a
- * retained-era call, so a provider needs no pre-fork support to serve it. A provider must handle
- * the `'v8'` seam arm only to serve calls made while the network head is still pre-fork.
- *
- * @see {@link KeepStatePipeline} for the seam table and why the two arms differ.
+ * @see {@link KeepStatePipeline} for the seam table, and for why a provider needs to handle the
+ *      `'v8'` seam arm only while the network head is still pre-fork.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
