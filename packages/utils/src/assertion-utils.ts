@@ -40,3 +40,40 @@ export function assertUndefined<A>(value: A | null | undefined, message?: string
     throw new Error(message ?? 'Expected value to be null or undefined');
   }
 }
+
+/**
+ * Asserts that every member of a union has already been handled.
+ *
+ * Put it in the `default` arm of a `switch` over a discriminated union. While
+ * the switch is exhaustive the compiler narrows `value` to `never` and the call
+ * type-checks; add an arm to the union and the same call stops compiling,
+ * pointing at every switch that has to change.
+ *
+ * @param value The narrowed value, which must be `never` for the call to compile.
+ * @param context Names the switch, so the runtime throw says where it came from.
+ *
+ * @throws Error Always. Reaching it means a value the compiler ruled out arrived
+ *         anyway, which happens when a payload is decoded from outside the build.
+ *
+ * @remarks
+ * The message deliberately never includes `value`. The unions this exists for
+ * carry transaction bytes and decoded contract state on their arms, so
+ * serializing the unhandled member would copy payloads into every log that
+ * catches the error. Pass a `context` instead of widening the message.
+ *
+ * @example
+ * ```ts
+ * switch (record.version) {
+ *   case 'v8': return readRetained(record);
+ *   case 'v9': return readNative(record);
+ *   default: return assertNever(record, 'readContractRecord');
+ * }
+ * ```
+ */
+export function assertNever(value: never, context?: string): never {
+  throw new Error(
+    context === undefined
+      ? 'Unhandled union member: the union grew and a switch over it was not updated'
+      : `Unhandled union member in ${context}: the union grew and this switch was not updated`
+  );
+}

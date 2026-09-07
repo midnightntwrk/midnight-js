@@ -1,0 +1,152 @@
+/*
+ * This file is part of midnight-js.
+ * Copyright (C) Midnight Foundation
+ * SPDX-License-Identifier: Apache-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { describe, expect, test } from 'vitest';
+
+import { PROTOCOL_ERROR_CODES, type types, utils } from '../index';
+
+// The AC5 positive compile assertion. The recipe below is real code reaching the
+// framework only through this barrel, so `yarn typecheck:tests` is what proves the
+// guide's instructions compile for a reader who follows them. The assertions in
+// this file guard the two ways that proof can go hollow: the guide drifting from
+// the code, and the region being emptied.
+//
+// The recipe is not executed. Its `v8` arm is typed by a WASM class from
+// `protocol/v8`, which this package is forbidden to import by the repo's own
+// structural gate, so a `VersionedFinalizedTxData` cannot be built here without
+// the cast this repo does not accept.
+
+// #region guide:narrowing-recipe
+const summarize = (record: types.VersionedFinalizedTxData): string => {
+  switch (record.version) {
+    case 'v9':
+      return `native ${record.txId}`;
+    case 'v8':
+      return `retained ${record.txId}`;
+    default:
+      return utils.assertNever(record, 'summarize');
+  }
+};
+// #endregion guide:narrowing-recipe
+
+const REPOSITORY_ROOT = path.resolve(fileURLToPath(import.meta.url), '..', '..', '..', '..', '..');
+const GUIDE_PATH = path.join(REPOSITORY_ROOT, 'docs', 'releases', 'v5.0.0', 'migration-guide.md');
+
+/**
+ * Lifts a `#region <name>` .. `#endregion <name>` block out of this file's own
+ * source, so the comparison below is against code the compiler has accepted
+ * rather than against a second copy of it.
+ */
+const regionSource = (name: string): string => {
+  const source = readFileSync(fileURLToPath(import.meta.url), 'utf8');
+  const opening = `// #region ${name}\n`;
+  const start = source.indexOf(opening);
+  const end = source.indexOf(`// #endregion ${name}`);
+  if (start < 0 || end < 0) {
+    throw new Error(`Region '${name}' is not present in this file`);
+  }
+  return source.slice(start + opening.length, end).trimEnd();
+};
+
+/** Every fenced ```ts block in the guide, in order. */
+const guideTypeScriptBlocks = (): string[] => {
+  const guide = readFileSync(GUIDE_PATH, 'utf8');
+  return [...guide.matchAll(/```ts\n([\s\S]*?)```/g)].map((match) => match[1].trimEnd());
+};
+
+describe('migration guide narrowing recipe (AC5)', () => {
+  test('the recipe the guide prints is byte-identical to the recipe that compiles', () => {
+    // Arrange: the guide's fence carries the import a reader needs, which this file
+    // cannot reproduce verbatim -- a package cannot import itself by name. So the
+    // fence is asserted to be exactly that import, a blank line, then the pinned
+    // region, which keeps the comparison byte-exact rather than fuzzy.
+    const compiled = regionSource('guide:narrowing-recipe');
+    const importLine = "import { types, utils } from '@midnight-ntwrk/midnight-js';";
+
+    // Act.
+    const printed = guideTypeScriptBlocks().filter((block) => block.includes('const summarize'));
+
+    // Assert.
+    expect(printed).toHaveLength(1);
+    expect(printed[0]).toBe(`${importLine}\n\n${compiled}`);
+  });
+
+  test('the compiled region is the whole recipe, not an emptied placeholder', () => {
+    // Arrange / Act: without this, deleting the body of the region and the guide's
+    // fence together would leave the equality assertion above passing on ''.
+    const compiled = regionSource('guide:narrowing-recipe');
+
+    // Assert: both arms present, and closed by the helper the chapter is about.
+    expect(compiled).toContain("case 'v9':");
+    expect(compiled).toContain("case 'v8':");
+    expect(compiled).toContain("utils.assertNever(record, 'summarize')");
+    expect(typeof summarize).toBe('function');
+  });
+
+  test('the guide discriminates on an error code that exists and does not over-match', () => {
+    // Arrange: `hasErrorCode(e, undefined)` silently degrades to "carries any
+    // registered code", so the member the guide names is asserted by value rather
+    // than merely dereferenced.
+    const code = PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ;
+    const coded = Object.assign(new Error('a record this build cannot date'), { code });
+    const foreign = Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' });
+
+    // Act / Assert.
+    expect(code).toBe('MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_READ');
+    expect(utils.hasErrorCode(coded, code)).toBe(true);
+    expect(utils.hasErrorCode(coded, PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT)).toBe(false);
+    expect(utils.hasErrorCode(coded)).toBe(true);
+    expect(utils.hasErrorCode(foreign)).toBe(false);
+  });
+
+  test('every in-document link in the guide resolves to a heading it contains', () => {
+    // Arrange: the fork chapters cross-reference each other by anchor, and a
+    // mistyped one is invisible in review -- it renders as a working link that
+    // scrolls nowhere.
+    const guide = readFileSync(GUIDE_PATH, 'utf8');
+    const slug = (heading: string): string =>
+      heading
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .trim()
+        .replace(/\s/g, '-');
+    const headings = new Set([...guide.matchAll(/^#{2,6} (.+)$/gm)].map((match) => slug(match[1])));
+
+    // Act.
+    const anchors = [...guide.matchAll(/\]\(#([^)]+)\)/g)].map((match) => match[1]);
+
+    // Assert.
+    expect(anchors.length).toBeGreaterThan(0);
+    expect(anchors.filter((anchor) => !headings.has(anchor))).toEqual([]);
+  });
+
+  test('the guide names only error codes the registry actually carries', () => {
+    // Arrange.
+    const guide = readFileSync(GUIDE_PATH, 'utf8');
+    const registry = new Set<string>(utils.MIDNIGHT_JS_ERROR_CODES);
+
+    // Act.
+    const named = [...new Set([...guide.matchAll(/\bMIDNIGHT_JS_[A-Z0-9_]+\b/g)].map((match) => match[0]))];
+
+    // Assert: a code the guide invents would send a reader looking for a handler
+    // that can never fire.
+    expect(named.length).toBeGreaterThan(0);
+    expect(named.filter((code) => !registry.has(code))).toEqual([]);
+  });
+});
