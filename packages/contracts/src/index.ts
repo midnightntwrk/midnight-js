@@ -44,16 +44,26 @@ export {
 // the fixed message rather than retype it. The breadcrumb TYPES stay internal -- publishing the
 // shapes would pin them as API before a second consumer has asked for them.
 export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
-// The era errors below become reachable with this release: the retained-era entry points now run
-// real pipelines, so a consumer can catch them. Each class documents its own condition and
-// remediation, and each is exercised through an entry point in `src/test/keep-state.test.ts`,
-// `src/test/v8-native.test.ts`, `src/test/stale-head.test.ts` or `src/test/scoped-era.test.ts`.
+// The retained-era entry points run real pipelines with this release, so the era errors below are
+// reachable from a call a consumer makes rather than only from an internal helper. Two are NOT
+// reachable through an entry point yet and are exported for completeness:
+// `Ledger8DeployUnmaintainableError` is the only refusal `deployContract`'s retained arm makes, and
+// `Ledger8DeployOnV9Error` sits behind it in the era pairing table, so the pairing refusal cannot
+// be observed until the deploy arm is wired.
 //
-// `Ledger8DeployOnV9Error` is the ONE exception: it is exported as the published name for a
-// refusal that is currently DORMANT rather than one a consumer can provoke, because
-// `deployContract`'s retained arm refuses unconditionally before any head is read. Its negative is
-// therefore against an internal function, not an entry point. It becomes consumer-reachable on the
-// day the era seam carries a maintenance authority.
+// The fork-window refusals are the other group. `StaleHeadError` is raised when a submission was
+// rejected and a fresh head read confirms the network crossed the fork under the operation, and it
+// carries the two-step remediation for that operation kind. `SubmitRejectionUndiagnosedError` is
+// the other half of that diagnosis, for a head that could not be re-read or that reported an
+// EARLIER era: reported as undiagnosable rather than as a fork, because neither case establishes
+// one, and carrying a registered code of its own so a retry handler branching on `hasErrorCode`
+// behaves the same whichever failure came first. `ScopedTxEraUnsupportedError` and
+// `MixedEraScopeError` are the scoped-transaction era rules -- a scope is refused outright on a
+// head era that composes only one call per transaction, and a retained-toolchain call cannot join
+// a scope at all.
+//
+// Deliberately no test-file names here: which suite exercises what is the kind of claim that rots
+// the first time a test moves.
 export {
   BlankVerifierKeySlotError,
   CallTxFailedError,
@@ -67,7 +77,11 @@ export {
   IncompleteCallTxPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   IndexerInconsistencyError,
+  Ledger8AmbiguousEntryPointError,
+  Ledger8CallTxFailedError,
   Ledger8DeployOnV9Error,
+  Ledger8DeployUnmaintainableError,
+  Ledger8RecipientUnmappableError,
   Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
   MixedEraScopeError,

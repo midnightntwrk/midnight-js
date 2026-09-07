@@ -333,6 +333,20 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
   });
 
+  it('makes NO fork claim about a rejection carrying no registered code at all', async () => {
+    // Nothing uncoded is evidence of a fork. The sanitizing wrapper normally
+    // guarantees a code, so this arm fires when the sanitizer ITSELF failed --
+    // and it fires during a fork window, the only time the head moves at all.
+    // Diagnosing it would attach a confident "the network crossed the fork"
+    // verdict, and a two-step on-chain reconciliation, to a failure that has
+    // nothing to do with the fork.
+    const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
+    const uncoded = new Error('sanitizing the provider rejection threw');
+
+    await expect(handleSubmitRejection(pdp, callOperation(), uncoded)).rejects.toBe(uncoded);
+    expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
+  });
+
   it('loses NEITHER failure when the fresh head read itself rejects', async () => {
     const transportFailure = new Error('indexer unreachable');
     const pdp = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(transportFailure) };
