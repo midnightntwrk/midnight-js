@@ -261,9 +261,48 @@ itself is unchanged from `../twin-contract/counter.compact` — a single
 `round: Counter` ledger cell with one nullary circuit `increment()` — so it is
 not duplicated here.
 
-Only the compiled contract module is ported — no `.d.ts`, no
-`compiler/contract-info.json`, no `keys/`, no `zkir/`. None of those are read
-at import time; the module's only own-time dependency is a bare
+Originally only the compiled contract module was ported. The rest of the
+artifact set — `contract/index.d.ts`, `compiler/contract-info.json`, `keys/`
+and `zkir/` — is now generated here rather than ported, because nothing can be
+proved or deployed on a pre-fork chain without the keys, which left the FR8
+end-to-end positive and the AC0 scenario gated at unit tier.
+
+Regenerate with the same toolchain that produced the ported module:
+
+```bash
+cd testkit-js/testkit-js-e2e
+COMPACT_TAG_PREFIX=compactc-v COMPACT_ASSET_PREFIX=compactc_v \
+  COMPACT_REPO=LFDT-Minokawa/compact yarn fetch-compactc --version=0.31.1
+COMPACTC_VERSION=0.31.1 yarn run-compactc \
+  ../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/counter.compact <out>
+```
+
+**Provenance is corroborated, not asserted.** The `contract/index.js` that
+command emits is byte-identical to the module ported from the spike (the only
+difference is the trailing `//# sourceMappingURL` comment, which the port
+retains and a fresh compile without map generation does not). So the committed
+artifacts demonstrably belong to the committed module.
+
+The keys are 20 KB and the zkir 8 KB, within the minimal-size mandate.
+`coin-receiver-016/` is deliberately left without keys: its ZKIR-v2 prover key
+is **5 MB**, nothing needs it yet, and committing it would blow that mandate for
+no current caller. Regenerate it on demand with the same command against
+`coin-receiver-016/coin-receiver.compact`.
+
+**A finding worth carrying (verified 2026-09-07).** Every `compactc` this repo
+can fetch — 0.31.1, 0.33.0 and 0.34.0-rc.0 — emits a **byte-identical** prover
+key, verifier key and zkir for `increment()`: all ZKIR `"version": {"major": 2}`
+under a `midnight:verifier-key[v6]:` envelope. Two consequences. Keep-state is
+helped: key material does not change across the toolchains, so a pre-fork
+contract's preserved key is what a current build would produce anyway. AC3's
+negative is blocked: "a V3 proof fails against a preserved `co.v2` key" cannot
+be built from `twin-contract/` as committed, because its keys are v2 as well.
+Producing a genuine V3 key means running the bundled `zkir-v3 compile` against
+the emitted zkir deliberately; `compactc` alone will not do it.
+`counter-016-artifacts.ut.test.ts` carries this as a canary that goes red if a
+toolchain ever starts emitting V3 by default.
+
+None of the generated files are read at import time; the module's only own-time dependency is a bare
 `@midnight-ntwrk/compact-runtime` import, satisfied in tests by redirecting
 that specifier (module-registry-scoped to the one test file that imports this
 fixture) to this repo's own `compact-runtime-ledger8` — the same retained
