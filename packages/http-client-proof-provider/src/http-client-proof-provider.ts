@@ -14,6 +14,7 @@
  */
 
 import { CostModel, type ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 import {
   type ProofProvider,
   type ProveTxConfig,
@@ -23,7 +24,6 @@ import {
   type ZKConfigProvider,
   type ZKConfigRegistry
 } from '@midnight-ntwrk/midnight-js-types';
-import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-utils';
 
 import { DEFAULT_TIMEOUT, httpClientProvingProvider, type ProvingProviderConfig } from './http-client-proving-provider';
 
@@ -143,15 +143,11 @@ export function httpClientProofProvider<K extends string>(
         lookupKey: (keyLocation) => baseProvingProvider.lookupKey(keyLocation)
       };
 
-      // Bytes in, bytes out. The retained era is answered in its own arm because a caller that sent
-      // it -- `submitLedger8Tx` in `midnight-js-contracts` -- narrows the response with `requireV8`
-      // and rejects the current-era arm, so replying in the wrong one strands a submit mid-flight.
-      // `proveV8Transaction` owns the tag assertion and the retained cost model; see its doc for
-      // why the cost model may not come from here.
+      // Answered in the arm it arrived in: callers narrow the response with `requireV8` and reject
+      // the current-era arm, so replying in the wrong one strands a submit mid-flight.
       //
-      // Read through `?.` so a payload that is not an object at all falls through to `unwrapV9`
-      // below, which reports it as `UntaggedPayloadError`. Dispatching on a bare `.version` would
-      // turn that caller's mistake into a bare `TypeError` carrying no code.
+      // Read through `?.` so a payload that is not an object at all reaches `unwrapV9` below and
+      // gets a coded error instead of a bare `TypeError`.
       if (unprovenTx?.version === 'v8') {
         return { version: 'v8', txBytes: await proveV8Transaction(unprovenTx.txBytes, perCallProvingProvider) };
       }

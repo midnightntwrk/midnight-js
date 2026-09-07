@@ -13,15 +13,17 @@
  * limitations under the License.
  */
 
-export * from './assertion-utils';
-export * from './contract-state-envelope';
-export * from './date-utils';
-export * from './deserialization';
-export * from './error-codes';
-export * from './hex-utils';
-export * from './password-validation';
-export * from './security-utils';
-export * from './serialized-tag';
-export * from './signing-key-utils';
-export * from './type-utils';
-export * from './zk-artifact-manifest';
+/**
+ * The retained-era half of the `proveTx` seam, published as a LEAF subpath.
+ *
+ * Deliberately not on the package root: the root barrel re-exports the
+ * `ledger`, `compactRuntime`, `compactJs`, `platform` and `onchainRuntime`
+ * namespaces, and a proof provider that needs only this function should not
+ * link them. Same discipline as `./errors` and `./version`.
+ *
+ * The retained runtime itself stays behind the dynamic import inside
+ * `loadLedger8`, so importing this entry does not load the v8 WASM. That is
+ * gated by `src/test/dist-laziness.test.ts`.
+ */
+
+export * from './lib/v8/prove';

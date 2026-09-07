@@ -61,17 +61,12 @@
  * you need both eras.
  *
  * #### Proving is only the first seam
- * Read this before wiring a retained-era flow. Proving the retained arm is supported here, but the
- * two seams AFTER it are not served by the framework's convenience adapters: `createWalletProvider`
- * and `createMidnightProvider` both refuse the retained arm, by design, because each wraps a
- * current-era-only implementation and would otherwise misreport what it can do.
- *
- * The practical consequence is worth stating plainly, because it is not visible from a type
- * signature: a retained-era transaction wired through those adapters **proves successfully and is
- * then refused at `balanceTx`** — so the refusal arrives after a full proving cycle has been paid
- * for, rather than at the first seam. To run a retained-era transaction end to end, supply your own
- * `WalletProvider` and `MidnightProvider` implementing the version-tagged interfaces directly,
- * rather than lifting a current-era implementation through the `create*Provider` helpers.
+ * Read this before wiring a retained-era flow. `createWalletProvider` and
+ * `createMidnightProvider` both refuse the retained arm, so a retained-era transaction wired
+ * through them **proves successfully and is then refused at `balanceTx`** — after a full proving
+ * cycle, not at the first seam. To run one end to end, implement `WalletProvider` and
+ * `MidnightProvider` against the version-tagged interfaces directly. Why the adapters refuse
+ * permanently is recorded in `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`.
  *
  * ## Low-Level: Circuit Proving (ProvingProvider)
  * Use `httpClientProvingProvider` for advanced scenarios where you need fine-grained

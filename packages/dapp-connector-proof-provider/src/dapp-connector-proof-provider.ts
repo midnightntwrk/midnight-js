@@ -14,6 +14,7 @@
  */
 
 import type { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 import {
   createProofProvider,
   type ProofProvider,
@@ -23,7 +24,6 @@ import {
   type ZKConfigProvider,
   type ZKConfigRegistry
 } from '@midnight-ntwrk/midnight-js-types';
-import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from './dapp-connector-proving-provider';
 
@@ -46,10 +46,9 @@ import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from './da
  * **Not consulted on the retained (`v8`) era**, which uses that era's own cost model instead. This
  * is not an oversight and not a silent fallback: the retained ledger ships its own `CostModel`
  * class and type-checks `prove()`'s argument against it across the WASM boundary, so the value
- * passed here would be rejected outright. A caller cannot supply a correct one either — the
- * retained runtime is reachable only through the framework's own lazy loader, so the class is not
- * constructible from application code. Overriding the cost model on the retained era is therefore
- * not offered at all, rather than offered and quietly ignored.
+ * passed here would be rejected outright. Pairing the transaction with its own era's model is the
+ * only correct pairing, so an override is not offered at all rather than offered and quietly
+ * ignored.
  * @returns A {@link ProofProvider} whose `proveTx` method delegates to the wallet.
  */
 export const dappConnectorProofProvider = async <K extends string>(
@@ -67,12 +66,10 @@ export const dappConnectorProofProvider = async <K extends string>(
       proveTxConfig?: ProveTxConfig
     ): Promise<VersionedUnboundTransaction> {
       // Bytes in, bytes out: a retained-era transaction cannot cross this seam as a live object.
-      // `proveV8Transaction` owns the payload tag assertion and pairs the transaction with its own
-      // era's cost model -- see the `costModel` parameter above for why this one is not forwarded.
+      // See the `costModel` parameter above for why this one is not forwarded.
       //
-      // Read through `?.` so a payload that is not an object at all falls through to the current-era
-      // provider, which reports it as `UntaggedPayloadError`. Dispatching on a bare `.version` would
-      // turn that caller's mistake into a bare `TypeError` carrying no code.
+      // Read through `?.` so a payload that is not an object at all reaches the current-era
+      // provider and gets a coded error instead of a bare `TypeError`.
       if (unprovenTx?.version === 'v8') {
         return { version: 'v8', txBytes: await proveV8Transaction(unprovenTx.txBytes, provingProvider) };
       }

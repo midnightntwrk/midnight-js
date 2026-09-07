@@ -25,7 +25,7 @@ import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '..
 import { type ComposeV8CallOptions, composeV8CallTx } from '../lib/v8/compose';
 import type { DownConvertedState } from '../lib/v8/down-convert';
 import type { TranscriptPojo } from '../lib/v8/execute';
-import { emptyPartitionContext, emptyZswapLocalState } from './fixtures';
+import { emptyPartitionContext, emptyZswapLocalState, V8_UNPROVEN_TX_TAG } from './fixtures';
 
 const NETWORK_ID = 'test-network';
 const TTL = new Date(Date.now() + 3_600_000);
@@ -34,7 +34,6 @@ const TTL = new Date(Date.now() + 3_600_000);
 // (SignatureEnabled/PreProof/PreBinding) transaction — derived empirically by
 // serializing an unproven transaction against the pinned
 // `@midnightntwrk/ledger-v8@8.1.1` build, not guessed.
-const V8_UNPROVEN_TX_TAG = 'midnight:transaction[v9](signature[v1],proof-preimage,embedded-fr[v1]):';
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT });

@@ -44,7 +44,7 @@ MidnightProviders
 | `@midnight-ntwrk/midnight-js-node-zk-config-provider` | Node.js filesystem ZK artifact provider |
 | `@midnight-ntwrk/midnight-js-network-id` | Network identifier management |
 | `@midnight-ntwrk/midnight-js-logger-provider` | Pino logger wrapper |
-| `@midnight-ntwrk/midnight-js-utils` | Shared utilities (hex, bech32m, assertions, error-code registry, retained-era proving seam) |
+| `@midnight-ntwrk/midnight-js-utils` | Shared utilities (hex, bech32m, assertions, error-code registry) |
 | `@midnight-ntwrk/midnight-js-compact` | Compact compiler manager |
 
 ### Testing (testkit-js/*)
@@ -241,8 +241,13 @@ Two things to know before wiring a retained-era flow:
   `WalletProvider` and `MidnightProvider` against the version-tagged interfaces directly.
 
 A payload sent on the `v8` arm that is not a serialized transaction is refused with
-`PayloadNotATransactionError` (from `@midnight-ntwrk/midnight-js-utils`, code
-`PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`) before any proving is attempted.
+`PayloadNotATransactionError` (from `@midnight-ntwrk/midnight-js-protocol/errors`, code
+`PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`) before any proving is attempted.
+
+The seam itself is `proveV8Transaction`, published from the leaf subpath
+`@midnight-ntwrk/midnight-js-protocol/prove` for anyone implementing a `ProofProvider` that serves
+the retained arm. Importing it does not load the v8 WASM: the runtime stays behind the dynamic
+import inside `loadLedger8`.
 
 ### DApp Connector Proof Generation
 

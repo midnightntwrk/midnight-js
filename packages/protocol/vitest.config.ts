@@ -70,6 +70,7 @@ export default defineConfig({
         // guarantee rests on. It had no floor of its own before the directory
         // split; it does now.
         'src/lib/v8/load.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/lib/v8/prove.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/v8/load-engine.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/v8/engine.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/v8/instance-guard.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },

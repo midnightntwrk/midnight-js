@@ -272,10 +272,12 @@ That is why a v8-era network is served rather than refused: the indexer
 provider decodes each record with the runtime of the era that record reports,
 acquiring the pre-fork runtime lazily on first use. What throws at the read
 boundary is a `protocolVersion` this client cannot place on the era timeline at
-all (`EraUnresolvableError`), or a record whose bytes identify themselves as
-another ledger vintage than the era it claims (`DecodeVersionMismatchError`) —
-where before either would have returned a record that failed later inside the
-codec. Bytes that are merely malformed still surface as `DeserializationError`.
+all (`EraUnresolvableError`), where before it would have returned a record that
+failed later inside the codec. Bytes that will not decode on the era selected
+for them — whether the record disagrees with itself or your ledger package is a
+different vintage than the network's — surface as `DeserializationError`,
+carrying the era, the `protocolVersion`, the seam and the record on
+`context.details`.
 
 ---
 

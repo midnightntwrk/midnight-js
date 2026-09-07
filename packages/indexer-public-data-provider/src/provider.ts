@@ -405,10 +405,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   }
 
   /**
-   * Not declared `async`, so an invalid address is refused synchronously, as
-   * it is on every other address-taking read here. The record itself is built
-   * after the poll resolves, because the era's runtime may still have to be
-   * acquired — see {@link toFinalizedDeployTxData}.
+   * Not declared `async`, so an invalid address is refused synchronously. The
+   * record itself is built after the poll resolves, because the era's runtime
+   * may still have to be acquired.
    */
   watchForDeployTxData(contractAddress: ContractAddress): Promise<VersionedFinalizedTxData> {
     assertIsContractAddress(contractAddress);

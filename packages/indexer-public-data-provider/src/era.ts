@@ -32,15 +32,12 @@ import { EraUnresolvableError } from './errors';
  * `'v9'` would let the discriminant disagree with the `protocolVersion` in the
  * same record, and a consumer that narrows on it would be misled.
  *
- * Resolved BEFORE any deserializer runs, deliberately. Each era has its own
- * decoder, and handing bytes to the wrong one yields a header-tag failure that
- * says nothing about which runtime should have read them. Settling the era
- * first is what lets {@link decodeVersionedTransaction} name the era it
- * dispatched to when a decode does fail.
+ * Resolved BEFORE any deserializer runs: each era has its own decoder, and the
+ * era is what selects it.
  *
  * A `protocolVersion` this client cannot place on the era timeline is reported
- * as an {@link IndexerError} subclass, so the package's documented "catch any
- * indexer error with one `instanceof` check" contract holds on this path too.
+ * as an `IndexerError` subclass, so the package's documented "catch any indexer
+ * error with one `instanceof` check" contract holds on this path too.
  *
  * @param record The indexer record, carrying the raw `protocolVersion`.
  * @param seam The read-surface method resolving the era, for the error message.
