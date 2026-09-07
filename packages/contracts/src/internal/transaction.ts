@@ -17,6 +17,7 @@ import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/e
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/onchain-runtime';
 import { type AnyProvableCircuitId, type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';
@@ -329,7 +330,12 @@ const runScope = async <
   try {
     await fn(innerTxCtx);
   } catch (err: unknown) {
-    if (outerTxCtx) {
+    // A coded refusal passes through UNCHANGED. A caller branching on `code`
+    // has to read the same code whether the call was scoped or standalone, and
+    // `MixedEraScopeError` can only ever be raised from inside a scope -- so
+    // rebuilding it here as a bare Error is not a loss of detail, it is the
+    // whole of that error's reachable surface.
+    if (outerTxCtx || hasErrorCode(err)) {
       throw err;
     }
     const execErr = new Error(

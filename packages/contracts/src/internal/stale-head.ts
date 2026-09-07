@@ -56,9 +56,10 @@ const eraPosition = (era: LedgerVersion): number => LEDGER_VERSIONS.indexOf(era)
  * inequality: a head that moved backwards is not a fork crossing, and saying so
  * would be false.
  *
- * This framework's OWN coded refusals are re-thrown untouched and the network is
- * not asked about them. {@link Ledger8SeamFailedError} is the one exception — it
- * IS the sanitized external rejection this diagnosis is written for.
+ * ONLY a sanitized submit rejection is diagnosed. This framework's own coded
+ * refusals are re-thrown untouched and the network is not asked about them, and
+ * so is anything that arrives with no registered code at all — neither is
+ * evidence about where the network head is.
  *
  * @param pdp The read surface, for the one fresh head read. Declared as the
  * head-read slice rather than the whole provider, so a reader — and a test —
@@ -85,7 +86,12 @@ export const handleSubmitRejection = async (
   operation: SubmittedOperation,
   rejection: unknown
 ): Promise<never> => {
-  if (hasErrorCode(rejection) && !hasErrorCode(rejection, CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED)) {
+  // Matched POSITIVELY, on the ONE rejection shape this diagnosis is written
+  // for -- never as "anything that is not one of ours", which would fail open:
+  // an uncoded rejection would then be diagnosed, and during a fork window,
+  // the only time the head moves, it would come back as a confident fork
+  // claim about a failure that never reached the network.
+  if (!hasErrorCode(rejection, CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED)) {
     throw rejection;
   }
 
