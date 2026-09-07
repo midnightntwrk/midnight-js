@@ -287,19 +287,19 @@ A v8-era record is read with the pre-fork runtime, which is acquired lazily on
 first use — a session that meets no v8 record never instantiates that WASM.
 
 The discriminant is resolved from the record's own `protocolVersion`, never
-asserted, so it cannot disagree with the `protocolVersion` beside it. Two
-refusals can arise from that resolution, both `IndexerError` subclasses naming
-the raw `protocolVersion` and the record being read:
+asserted, so it cannot disagree with the `protocolVersion` beside it. Era
+resolution itself can refuse the read one way: `EraUnresolvableError`, an
+`IndexerError` naming the raw `protocolVersion` and the record, when that
+integer maps to no known ledger era. A `raw` that is not a whole hex byte
+string is refused as `IndexerDataError` before any decoder runs.
 
-- `EraUnresolvableError` — the `protocolVersion` maps to no known ledger era.
-- `DecodeVersionMismatchError` — the era resolved, but the bytes identify
-  themselves as another ledger vintage. The record contradicts itself, so this
-  reports an inconsistent indexer rather than a dependency-version problem in
-  your dApp; the runtime's own diagnosis is preserved on `cause`, and the error
-  renders no payload of its own. Raised only where the decode failure actually
-  identified another vintage — malformed, truncated or garbage bytes surface as
-  `DeserializationError` instead, and a `raw` that is not whole hex is refused
-  as `IndexerDataError` before any decoder runs.
+Bytes that will not decode on the era selected for them surface as the
+`DeserializationError` the runtime produced, carrying the era, the
+`protocolVersion`, the seam and the record on `context.details`. This provider
+does not re-attribute that failure: a self-contradicting record and a
+`@midnightntwrk/ledger`-vN in your dApp of a different vintage than the
+network's are indistinguishable from here, and the error's own mitigation
+covers both.
 
 Two failures a read can raise are deliberately outside the `IndexerError`
 hierarchy, because neither is an indexer fault: `DeserializationError`

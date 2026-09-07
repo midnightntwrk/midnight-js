@@ -91,11 +91,11 @@ export type VersionedTx<T> = V8TxBytes | V9Tx<T>;
  * that builds it, so this shape is only produced for a record that resolves to
  * the v8 ledger runtime.
  *
- * `indexerPublicDataProvider` produces this arm for any record whose
- * `protocolVersion` places it in the v8 era, decoding it with the pre-fork
- * runtime it acquires lazily. A consumer that narrows on `version` therefore
- * has to handle it: it is a value the read surface really returns, not a
- * placeholder.
+ * A provider that decodes per era produces this arm for any record whose
+ * `protocolVersion` places it in the v8 era. A consumer that narrows on
+ * `version` therefore has to handle it: it is a value the read surface really
+ * returns, not a placeholder. Contract-STATE reads are a separate question and
+ * remain v9-only — see the provider's own documentation.
  */
 export interface FinalizedTxDataV8 extends FinalizedTxRecord {
   readonly version: 'v8';

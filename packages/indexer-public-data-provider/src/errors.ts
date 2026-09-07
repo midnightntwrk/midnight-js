@@ -27,7 +27,8 @@ import type { GraphQLFormattedError } from 'graphql';
  * they are:
  *
  * - `DeserializationError` (`@midnight-ntwrk/midnight-js-utils`) — bytes that
- *   will not decode. Predates the dual-decode read path and is unchanged by it.
+ *   will not decode, whichever era's runtime read them. It carries the era,
+ *   the `protocolVersion`, the seam and the record on its `context.details`.
  * - `Ledger8RuntimeMissingError`
  *   (`@midnight-ntwrk/midnight-js-protocol`) — the pre-fork ledger runtime
  *   could not be acquired for a v8-era record. That is an installation or
@@ -299,16 +300,14 @@ export class IndexerInvariantError extends IndexerError {
 }
 
 /**
- * Raised when the era-keyed transaction decoder is asked for an era it has no
- * decoder for.
+ * Raised when the era-keyed transaction decoder is asked for an era this build
+ * ships no decoder for.
  *
- * A TypeScript caller cannot produce this: the era reaching
- * {@link decodeVersionedTransaction} is a `LedgerVersion`, and every member of
- * that union has a decoder — a missing one is a build failure, not a runtime
- * one. It exists for the untyped JavaScript consumers this package also serves,
- * where an era string threaded in from elsewhere would otherwise index the
- * decoder table and resolve an inherited `Object.prototype` member instead of
- * failing.
+ * Within one build this cannot happen: the era is a `LedgerVersion` and the
+ * decoder table is total over that union, so a missing entry is a compile
+ * error. It is reachable across builds — a consumer whose installed
+ * `@midnight-ntwrk/midnight-js-protocol` is newer than this package, whose era
+ * resolver therefore answers an era this decoder table predates.
  *
  * `protocolVersion` is the raw integer the indexer reported, kept so a report
  * of this error identifies the network rather than only the era.
@@ -317,8 +316,8 @@ export class EraUnsupportedError extends IndexerError {
   readonly code = PROVIDER_ERROR_CODES.ERA_UNSUPPORTED;
 
   /**
-   * @param seam The read-surface method that resolved the era.
-   * @param era The era the record resolved to.
+   * @param seam The read-surface method that performed the decode.
+   * @param era The era the decoder table was asked for.
    * @param protocolVersion The raw integer the indexer reported.
    * @param recordRef The record this happened on — a transaction id or a
    *                  contract address. A dApp holding several watches open
@@ -330,11 +329,9 @@ export class EraUnsupportedError extends IndexerError {
     readonly protocolVersion: number,
     readonly recordRef?: string
   ) {
-    // The era is NOT rendered as the one `protocolVersion` resolves to. The
-    // only way to reach this class is a caller supplying an era this build has
-    // no decoder for, so the two do not describe each other, and the old
-    // phrasing ("read a record from the v7 ledger era (protocolVersion
-    // 2000000)") read as a contradiction to the one consumer who ever sees it.
+    // The era and the `protocolVersion` do not describe each other here: the
+    // era came from a resolver this build does not know the vocabulary of, so
+    // the message reports them as two separate facts.
     super(
       `${seam} was asked to decode with ledger era '${era}', which this build has no decoder for` +
         `${recordRef === undefined ? '' : ` (record ${recordRef}, indexer-reported protocolVersion ${protocolVersion})`}` +
@@ -346,75 +343,17 @@ export class EraUnsupportedError extends IndexerError {
 }
 
 /**
- * Raised when a record's bytes will not decode on the runtime its own
- * `protocolVersion` selected.
- *
- * The era decides which runtime reads the bytes, and the two normally agree —
- * they come from the same indexer row. When they do not, the decoder rejects
- * the payload on its header tag, and that raw diagnosis on its own reads as a
- * dependency-version problem in the consumer's own dApp. It is not: both
- * runtimes are present and correct, and it is the record that is internally
- * inconsistent. Naming the era this read dispatched to is what tells those two
- * situations apart.
- *
- * Raised only where the deserialization layer's diagnosis actually IDENTIFIES
- * another vintage — a `version-mismatch` classification whose `direction` says
- * the data is older or newer than the code. That is a stricter test than the
- * classification alone, and deliberately so: the classifier's tag-header
- * pattern is permissive on the incoming tag, so empty, truncated and garbage
- * payloads all classify as `version-mismatch` while identifying no version at
- * all. Those propagate as the `DeserializationError` they are, and so does a
- * payload whose tag parses to the very version that was expected. Corruption is
- * therefore never reported as an era disagreement.
- *
- * The message renders the era, the raw `protocolVersion` and the record
- * reference, and never the payload or anything decoded from it. The runtime's
- * own diagnosis is preserved on `cause`.
- */
-export class DecodeVersionMismatchError extends IndexerError {
-  readonly code = PROVIDER_ERROR_CODES.DECODE_VERSION_MISMATCH;
-
-  /**
-   * @param seam The read-surface method that performed the decode.
-   * @param era The era the record's `protocolVersion` dispatched the decode to.
-   * @param protocolVersion The raw integer the indexer reported.
-   * @param recordRef The record this happened on — a transaction id or a
-   *                  contract address. Required, unlike on the two era
-   *                  resolution errors: every decode is reached from a read
-   *                  that knows which record it is serving.
-   * @param options Carries the classified deserialization failure on `cause`.
-   */
-  constructor(
-    readonly seam: ReadSeam,
-    readonly era: LedgerVersion,
-    readonly protocolVersion: number,
-    readonly recordRef: string,
-    options: { cause: unknown }
-  ) {
-    super(
-      `${seam} read a record dated to the ${era} ledger era (protocolVersion ${protocolVersion}` +
-        `, ${recordRef}), but its bytes did not decode on the ${era} ` +
-        `runtime. The record contradicts itself, so this is an inconsistent indexer rather than a version ` +
-        `mismatch in your dApp's dependencies. Retry against a healthy indexer; the runtime's own diagnosis ` +
-        `is on \`cause\`.`,
-      options
-    );
-    this.name = 'DecodeVersionMismatchError';
-  }
-}
-
-/**
  * Raised when a record's `protocolVersion` maps to no ledger era at all —
  * a network outside the node major range this framework knows about, or a
  * value that is not a non-negative integer.
  *
- * Distinct from {@link EraUnsupportedError}, which reports an era string this
- * build has no decoder for — an era that was named, just not one of ours. Here
+ * Distinct from {@link EraUnsupportedError}, which reports an era this build
+ * has no decoder for — an era that was named, just not one of ours. Here
  * nothing was named: the integer maps to no era, so there is no era to report.
- * Distinct again from {@link DecodeVersionMismatchError}, where the era
- * resolved fine and it was the bytes that disagreed with it.
+ * A record whose era resolved but whose bytes then would not decode is neither
+ * of these: it leaves as the `DeserializationError` the runtime produced.
  *
- * Exists so that all three era failures reach a consumer through
+ * Exists so that both era-resolution failures reach a consumer through
  * `IndexerError`.
  * The underlying `UnknownProtocolVersionError` from
  * `@midnight-ntwrk/midnight-js-protocol` is preserved on `cause`.
