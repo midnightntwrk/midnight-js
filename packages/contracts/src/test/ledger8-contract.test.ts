@@ -31,7 +31,7 @@ import type {
   Counter016Contract,
   Counter016Module
 } from './ledger8-fixture-types';
-import { createMockProviders } from './test-mocks';
+import { createMockCompiledContract, createMockProviders } from './test-mocks';
 
 // The other half of `../ledger8-contract.ts`. That file hand-writes the retained-era
 // (`compact-runtime@0.16`) contract type family, because the retained toolchain emits
@@ -56,7 +56,8 @@ const COUNTER_016_DIR = resolve(FIXTURES_DIR, 'counter-016/compiled/contract');
 const COUNTER_016_MODULE = resolve(COUNTER_016_DIR, 'index.js');
 const COIN_RECEIVER_016_DIR = resolve(FIXTURES_DIR, 'coin-receiver-016/compiled/contract');
 const COIN_RECEIVER_016_MODULE = resolve(COIN_RECEIVER_016_DIR, 'index.js');
-const TWIN_018_MODULE_TYPES = resolve(FIXTURES_DIR, 'twin-contract/compiled/contract/index.d.ts');
+const TWIN_MODULE = resolve(FIXTURES_DIR, 'twin-contract/compiled/contract/index.js');
+const TWIN_MODULE_TYPES = resolve(FIXTURES_DIR, 'twin-contract/compiled/contract/index.d.ts');
 
 // The registered symbol the current era's `CompiledContract` container is branded with. Spelled
 // out rather than imported so this test asserts the brand's ABSENCE against the literal key, and
@@ -96,6 +97,7 @@ vi.mock('@midnight-ntwrk/compact-runtime', () => {
     CompactTypeUnsignedInteger: CompactTypeStub,
     ContractState: ContractStateStub,
     dummyContractAddress: (): string => '00'.repeat(32),
+    emptyRunningCost: (): unknown => ({}),
     QueryContext: QueryContextStub
   };
 });
@@ -103,6 +105,10 @@ vi.mock('@midnight-ntwrk/compact-runtime', () => {
 const loadCounter016 = async (): Promise<Counter016Module> => import(/* @vite-ignore */ COUNTER_016_MODULE);
 const loadCoinReceiver016 = async (): Promise<CoinReceiver016Module> =>
   import(/* @vite-ignore */ COIN_RECEIVER_016_MODULE);
+// The current-era twin, loaded for its RAW contract instance rather than its declaration file.
+// `Contract` is the only member read, and it is generated code like the retained-era fixtures.
+const loadTwin = async (): Promise<{ readonly Contract: new (witnesses: object) => object }> =>
+  import(/* @vite-ignore */ TWIN_MODULE);
 
 describe('the retained-era contract family matches the real compact-runtime@0.16 artifact', () => {
   let contract: Counter016Contract;
@@ -154,7 +160,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
     expect(() => readFileSync(resolve(COUNTER_016_DIR, 'index.d.ts'))).toThrow();
     // The current era's twin fixture DOES ship one — so the absence above is a property of the
     // retained toolchain, not of how the fixtures happen to be checked in.
-    expect(readFileSync(TWIN_018_MODULE_TYPES, 'utf8')).toContain('export declare class Contract');
+    expect(readFileSync(TWIN_MODULE_TYPES, 'utf8')).toContain('export declare class Contract');
   });
 
   it('exports no expectedVk, unlike the current era whose modules always do', () => {
@@ -194,6 +200,17 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       expect(asyncCircuitIds).toEqual([]);
     });
 
+    it('declares the coin argument with the field names and widths the hand-written type claims', () => {
+      // `CoinReceiver016Coin` is hand-written, and until now only its ARITY was tied to the
+      // artifact. Field names and byte widths are what a caller has to satisfy, and the generated
+      // source states them outright in its own type-error text, so pin them there.
+      const source = readFileSync(COIN_RECEIVER_016_MODULE, 'utf8');
+
+      expect(source).toContain('nonce: Bytes<32>');
+      expect(source).toContain('color: Bytes<32>');
+      expect(source).toContain('value: Uint<0..340282366920938463463374607431768211456>');
+    });
+
     it('really does take one argument beyond the context, which is what the counter cannot show', () => {
       // Read off the generated arity guard rather than the compact source: the guard is what the
       // artifact enforces, and `2` is the context plus one real argument. The counter's is `1`.
@@ -210,6 +227,12 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
     it('ships no declaration file and exports no expectedVk, like the other retained artifact', () => {
       expect(() => readFileSync(resolve(COIN_RECEIVER_016_DIR, 'index.d.ts'))).toThrow();
       expect('expectedVk' in coinReceiverModule).toBe(false);
+    });
+
+    it('and the current era DOES export expectedVk, so the absence above is a property of the era', () => {
+      // Without this, `expectedVk` absence is unfalsifiable: it would keep passing if the current
+      // toolchain stopped emitting it too.
+      expect(readFileSync(TWIN_MODULE, 'utf8')).toContain('export const expectedVk');
     });
   });
 
@@ -234,12 +257,39 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       zkConfigProvider
     };
 
-    it('recognises the real artifact as retained-era, and the current-era container as not', () => {
+    let rawCurrentEraContract: object;
+    let coinReceiverContract: CoinReceiver016Contract;
+
+    beforeAll(async () => {
+      const twin = await loadTwin();
+      rawCurrentEraContract = new twin.Contract({ round: (): readonly [unknown, unknown] => [0n, 0n] });
+      coinReceiverContract = new (await loadCoinReceiver016()).Contract({});
+    });
+
+    it('recognises the real retained-era artifacts, and a current-era container as not', () => {
       // `isLedger8Request` is the single era predicate, in the narrowing form these entry points
       // need; it replaced a provisional `'impureCircuits' in ...` check that answered TRUE for a
       // raw current-era contract instance, which carries that member too.
       expect(isLedger8Request({ compiledContract: contract })).toBe(true);
+      expect(isLedger8Request({ compiledContract: coinReceiverContract })).toBe(true);
       expect(isLedger8Request({ compiledContract: { tag: 'counter', pipe: (): void => undefined } })).toBe(false);
+    });
+
+    it('rejects a REAL current-era container, not just a hand-rolled stand-in', () => {
+      // `createMockCompiledContract` goes through `CompiledContract.make(...).pipe(withVacantWitnesses)`,
+      // which is how every real container is built. A literal `{ tag, pipe }` resembles only the
+      // transient `make()` result and would keep passing if the predicate were widened.
+      expect(isLedger8Request({ compiledContract: createMockCompiledContract() })).toBe(false);
+    });
+
+    it('refuses a RAW current-era contract instance, which also carries impureCircuits', () => {
+      // The blind spot that made the error message lie. A raw current-era instance is what a
+      // JavaScript consumer passes when they forget the container, and `impureCircuits` alone does
+      // not tell the eras apart -- the current toolchain installs it too. Only the sync/async split
+      // does, which is the discriminator the type family is already built on. The consolidated
+      // predicate REFUSES such a value rather than reporting `false`, so the caller is told what is
+      // wrong instead of failing later, against the current-era pipeline, for an unrelated reason.
+      expect(() => isLedger8Request({ compiledContract: rawCurrentEraContract })).toThrow(EraArtifactMismatchError);
     });
 
     it('refuses a contract belonging to neither era, where the superseded check returned false', () => {
@@ -247,6 +297,8 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       // the provisional check answered `false` here and let the request fall into the current-era
       // pipeline, to fail later on something unrelated to the era.
       expect(() => isLedger8Request({ compiledContract: undefined })).toThrow(EraArtifactMismatchError);
+      expect(() => isLedger8Request({ compiledContract: null })).toThrow(EraArtifactMismatchError);
+      expect(() => isLedger8Request({ compiledContract: 'not a contract' })).toThrow(EraArtifactMismatchError);
     });
 
     // The four era-dispatching entry points no longer refuse a retained-era request outright --
@@ -262,5 +314,14 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
         LEDGER8_DEPLOY_UNMAINTAINABLE
       );
     });
+
+    it('does NOT refuse a current-era deploy, so the era machinery cannot fire on the common path', async () => {
+      // The regression guard for the fork itself: a real container must reach the current-era
+      // pipeline. It fails for an unrelated, current-era reason -- never with an era error.
+      await expect(
+        deployContract(createMockProviders(), { compiledContract: createMockCompiledContract() })
+      ).rejects.not.toBeInstanceOf(EraArtifactMismatchError);
+    });
+
   });
 });

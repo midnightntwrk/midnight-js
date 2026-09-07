@@ -103,8 +103,9 @@ describe('contract-state envelope tags', () => {
   // package's era dispatch reads it too and a second copy of a table that decides which era
   // decodes attacker-supplied bytes is a security-relevant divergence
   // (`packages/protocol/docs/shared-table-discipline.md`). These two assertions stay HERE because
-  // this is the package that has both ledger runtimes as devDependencies to mint a real state
-  // with; they exercise the shared implementation through the import above.
+  // this is where the minting fixtures live -- a real state produced by each runtime, reached
+  // through `midnight-js-protocol` -- and they exercise the shared implementation through the
+  // import above.
   test('maps the tag the v9 runtime writes onto the v9 ledger era', () => {
     expect(contractStateEnvelopeVersion(new Uint8Array(fromHex(mintV9ContractStateHex())))).toBe('v9');
   });

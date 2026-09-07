@@ -49,6 +49,12 @@ export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.P
   | ContractProviders<C>
   | SubmitTxProviders<C, PCK>;
 
+/*
+ * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
+ * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
+ * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ */
 /**
  * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
@@ -62,32 +68,42 @@ export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.P
  *
  * @see {@link KeepStatePipeline} for the seam table and why the two arms differ.
  *
- * ARM ORDER IS LOAD-BEARING: this arm is declared FIRST, and the arm that was already LAST stays
- * last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
- *
- * @see {@link OverloadTyping} for what resolves from the last arm.
+ * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
 export async function submitCallTx<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
   providers: Ledger8ContractProviders<C, K>,
   options: Ledger8CallTxOptions<C, K>
 ): Promise<Ledger8FinalizedCallTxData<C, K>>;
 
+/**
+ * Calls a circuit on a contract that declares no private state.
+ */
 export async function submitCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: CallTxOptionsBase<C, PCK>
 ): Promise<FinalizedCallTxData<C, PCK>>;
 
+/**
+ * Calls a circuit on a contract that declares private state, naming where that state is stored.
+ */
 export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: ContractProviders<C>,
   options: CallTxOptionsWithPrivateStateId<C, PCK>
 ): Promise<FinalizedCallTxData<C, PCK>>;
 
+/**
+ * Calls a circuit inside a scoped transaction, on a contract that declares private state. The
+ * call is added to the scope rather than submitted on its own.
+ */
 export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: ContractProviders<C>,
   options: CallTxOptionsWithPrivateStateId<C, PCK>,
   transactionContext: TransactionContext<C, PCK>
 ): Promise<CallResult<C, PCK>>;
 
+/**
+ * Calls a circuit inside a scoped transaction, on a contract that declares no private state.
+ */
 export async function submitCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: CallTxOptionsBase<C, PCK>,
@@ -127,6 +143,9 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  *
  * @throws {CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
+ * @throws {EraArtifactMismatchError} When `options.compiledContract` belongs to neither Compact
+ *         era, or is a raw current-era contract instance passed instead of its `CompiledContract`
+ *         container. Raised before any provider is consulted.
  *
  * @remarks
  * The returned {@link FinalizedCallTxData} (and the {@link CallResult} variant)
@@ -185,6 +204,12 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
     : Transaction.scoped(providers as ContractProviders<C, PCK>, callTxFn)
 }
 
+/*
+ * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
+ * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
+ * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ */
 /**
  * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
@@ -198,10 +223,7 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
  *
  * @see {@link KeepStatePipeline} for the seam table and why the two arms differ.
  *
- * ARM ORDER IS LOAD-BEARING: this arm is declared FIRST, and the arm that was already LAST stays
- * last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
- *
- * @see {@link OverloadTyping} for what resolves from the last arm.
+ * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
 export async function submitCallTxAsync<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
   providers: Ledger8ContractProviders<C, K>,
@@ -248,6 +270,10 @@ export async function submitCallTxAsync<C extends Ledger8Contract, K extends Led
  * @returns A `Promise` that resolves with the transaction ID and call transaction data immediately after submission;
  *         or rejects with an error if the submission fails.
  *
+ * @throws {EraArtifactMismatchError} When `options.compiledContract` belongs to neither Compact
+ *         era, or is a raw current-era contract instance passed instead of its `CompiledContract`
+ *         container. Raised before any provider is consulted.
+ *
  * @remarks
  * The returned {@link SubmittedCallTx} is privacy-sensitive and carries the
  * unproven transaction and private state via `callTxData`. See that type for
@@ -287,6 +313,15 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
   options: CallTxOptions<C, PCK>
 ): Promise<SubmittedCallTx<C, PCK>>;
 
+/*
+ * The TSDoc below is the function-level summary, and it sits on the IMPLEMENTATION signature
+ * because that is where TypeDoc reads a function's summary from. Per-era detail belongs on each
+ * declared overload above, not here.
+ */
+/**
+ * Creates and submits a transaction for the invocation of a circuit on a given contract,
+ * returning immediately after submission without waiting for finalization.
+ */
 export async function submitCallTxAsync<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitCallTxProviders<C, PCK>,
   options: CallTxOptions<C, PCK> | AnyLedger8CallTxOptions

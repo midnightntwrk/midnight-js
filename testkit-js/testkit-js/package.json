@@ -45,7 +45,7 @@
     "@midnightntwrk/dapp-connector-api": "4.1.0-beta.1",
     "@midnightntwrk/wallet-sdk": "2.0.0-beta.2",
     "@midnightntwrk/wallet-sdk-prover-client": "2.0.0-beta.2",
-    "@scure/bip39": "^2.2.0",
+    "@scure/bip39": "^2.3.0",
     "axios": "^1.16.1",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.1.0",

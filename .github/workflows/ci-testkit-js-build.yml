@@ -110,6 +110,12 @@ jobs:
       - name: Run linter
         run: yarn lint -- ${{ inputs.yarn_lint_paths }}
 
+      # The `packages/*` half runs in the Midnight.js leg (ci-base.yml); this covers
+      # the testkit workspaces, whose test files are outside tsconfig.build.json for
+      # the same reason and so go unchecked by `yarn test` too.
+      - name: Typecheck tests
+        run: yarn typecheck:tests:testkit
+
       - name: Run tests
         run: |
           yarn test --filter="./testkit-js/*" --cache-dir ./turbo

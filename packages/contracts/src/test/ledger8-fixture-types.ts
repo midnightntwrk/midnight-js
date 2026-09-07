@@ -40,12 +40,10 @@ export type Counter016PrivateState = Record<string, never>;
  * The fixture's single circuit. It takes only the framework-built context, so a caller supplies
  * no arguments of its own, and it returns a plain object rather than a `Promise`.
  *
- * A type ALIAS rather than an interface, deliberately: TypeScript gives an implicit index
- * signature to an object type alias but not to an interface, and without one a circuit collection
- * is not assignable to the family's `Readonly<Record<string, Ledger8Circuit>>`. Generated Compact
- * declarations are written the same way — the current era's twin fixture declares its
- * `ImpureCircuits<PS>` as a type alias — so this matches real generated code rather than working
- * around the family.
+ * A type ALIAS rather than an interface, deliberately, for the implicit index signature the
+ * family's circuit collections require. Generated Compact declarations are written the same way.
+ *
+ * @see {@link OverloadTyping} for the rule and why a consumer hits it too.
  */
 export type Counter016Circuits = {
   readonly increment: (context: Ledger8CircuitContext<Counter016PrivateState>) => Ledger8CircuitResult;
