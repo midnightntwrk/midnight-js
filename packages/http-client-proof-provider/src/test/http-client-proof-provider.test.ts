@@ -14,6 +14,7 @@
  */
 
 import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { PayloadNotATransactionError, PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type ProverKey,
@@ -24,7 +25,7 @@ import {
   ZKConfigProvider,
   type ZKIR
 } from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, PayloadNotATransactionError, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { ProvingProviderConfig } from '../http-client-proving-provider';
@@ -191,10 +192,13 @@ describe('httpClientProofProvider', () => {
 
       // Proven, not merely round-tripped: the stage marker in the tag moves
       // from `proof-preimage` to `proof` only when the transaction was proved.
-      // Derived from the input's own tag rather than spelled out, so a vendor
-      // schema bump moves one pinned literal (in the `utils` suite that owns
-      // this helper) instead of breaking a copy in every provider package.
-      expect(txTag(returned)).toBe(txTag(retainedEraTxBytes).replace('proof-preimage', 'proof'));
+      // Derived from the input's own tag rather than spelled out; the literal
+      // itself is pinned once, in the protocol package's own suites.
+      const expectedTag = txTag(retainedEraTxBytes).replace('proof-preimage', 'proof');
+      // Without this, a vendor rename of the stage marker would make `replace`
+      // a no-op and invert the assertion below into "the same bytes came back".
+      expect(expectedTag).not.toBe(txTag(retainedEraTxBytes));
+      expect(txTag(returned)).toBe(expectedTag);
     });
 
     test('refuses a payload that is not a serialized transaction, with the registered code', async () => {
@@ -207,8 +211,8 @@ describe('httpClientProofProvider', () => {
       );
 
       expect(rejection).toBeInstanceOf(PayloadNotATransactionError);
-      expect(rejection).toHaveProperty('code', PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION)).toBe(true);
+      expect(rejection).toHaveProperty('code', PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION);
+      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION)).toBe(true);
       expect(proveTimeouts).toEqual([]);
     });
 

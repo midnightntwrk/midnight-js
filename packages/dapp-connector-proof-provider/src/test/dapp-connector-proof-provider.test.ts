@@ -14,6 +14,7 @@
  */
 
 import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { PayloadNotATransactionError, PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CostModel, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type KeyMaterialProvider,
@@ -21,7 +22,7 @@ import {
   type VersionedUnprovenTransaction,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, PayloadNotATransactionError, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import type { ProvingProvider } from '@midnightntwrk/dapp-connector-api';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -158,7 +159,11 @@ describe('dappConnectorProofProvider', () => {
       // Derived from the input's own tag rather than spelled out -- see the
       // matching case in `http-client-proof-provider`. The two seams answer the
       // same contract, so they are asserted at the same strictness.
-      expect(txTag(returned)).toBe(txTag(retainedEraTxBytes).replace('proof-preimage', 'proof'));
+      const expectedTag = txTag(retainedEraTxBytes).replace('proof-preimage', 'proof');
+      // Without this, a vendor rename of the stage marker would make `replace`
+      // a no-op and invert the assertion below into "the same bytes came back".
+      expect(expectedTag).not.toBe(txTag(retainedEraTxBytes));
+      expect(txTag(returned)).toBe(expectedTag);
     });
 
     it('refuses a payload that is not a serialized transaction, with the registered code', async () => {
@@ -170,9 +175,9 @@ describe('dappConnectorProofProvider', () => {
       );
 
       expect(rejection).toBeInstanceOf(PayloadNotATransactionError);
-      expect(rejection).toHaveProperty('code', PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION)).toBe(true);
-      expect(mockUnprovenTx.prove).not.toHaveBeenCalled();
+      expect(rejection).toHaveProperty('code', PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION);
+      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION)).toBe(true);
+      expect(mockProvingProvider.prove).not.toHaveBeenCalled();
     });
 
     it("drives the retained runtime through the WALLET's proving provider", async () => {
