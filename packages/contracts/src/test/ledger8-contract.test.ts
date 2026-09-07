@@ -155,11 +155,16 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
   });
 
   it('ships no declaration file, which is why the family is hand-written rather than imported', () => {
-    // If the retained toolchain ever starts emitting an `index.d.ts`, this fails and
-    // `../ledger8-contract.ts` should be replaced by an import of the generated type.
+    // CORRECTION (2026-09-07): the retained toolchain DOES emit an `index.d.ts` --
+    // running `compactc 0.31.1` against this fixture's own source produces one. The
+    // absence asserted here is a property of what the fixture PORTED, not of the
+    // toolchain, and the earlier comment claiming otherwise was wrong.
+    //
+    // The assertion is kept as-is because `../ledger8-contract.ts` is still
+    // hand-written and this pins the fixture it is written against. Whether to port
+    // the declaration and import the generated type instead is an MJS-02 decision,
+    // not a fixture one. See `fixtures/hf/README.md` under `counter-016/`.
     expect(() => readFileSync(resolve(COUNTER_016_DIR, 'index.d.ts'))).toThrow();
-    // The current era's twin fixture DOES ship one — so the absence above is a property of the
-    // retained toolchain, not of how the fixtures happen to be checked in.
     expect(readFileSync(TWIN_MODULE_TYPES, 'utf8')).toContain('export declare class Contract');
   });
 
