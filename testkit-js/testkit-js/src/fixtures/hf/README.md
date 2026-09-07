@@ -267,6 +267,15 @@ and `zkir/` — is now generated here rather than ported, because nothing can be
 proved or deployed on a pre-fork chain without the keys, which left the FR8
 end-to-end positive and the AC0 scenario gated at unit tier.
 
+**The declaration file is deliberately NOT committed.** `compactc 0.31.1` does
+emit `contract/index.d.ts`, so its absence here is a porting choice, not a
+property of the retained toolchain -- `packages/contracts/src/test/ledger8-contract.test.ts`
+carried a comment claiming the opposite, now corrected. Committing one would
+make that suite's assertion fail and would raise an MJS-02 question this fixture
+has no business answering: whether `contracts/src/ledger8-contract.ts`, which is
+hand-written today, should import the generated type instead. Flagged for the
+MJS-02 owner rather than decided here.
+
 Regenerate with the same toolchain that produced the ported module:
 
 ```bash

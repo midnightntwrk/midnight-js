@@ -131,12 +131,17 @@ jobs:
           path: image-cache
           key: docker-images-zst-${{ inputs.testkit_docker_env }}-${{ hashFiles(format('testkit-js/env/{0}.env', inputs.testkit_docker_env)) }}
 
-      # ghcr is only needed on a cache miss: on a hit the images are loaded from
-      # the tarball below and `docker compose up` finds them locally (no pull).
-      # Mirrors prepare_images' conditional login and removes a per-matrix-job
-      # ghcr round-trip that was prone to `Client.Timeout` failures.
+      # ghcr is normally only needed on a cache miss: on a hit the images are
+      # loaded from the tarball below and `docker compose up` finds them locally
+      # (no pull). Mirrors prepare_images' conditional login and removes a
+      # per-matrix-job ghcr round-trip that was prone to `Client.Timeout`.
+      #
+      # A `fork.` test file is the exception: it stands up its own compose stack
+      # (compose-fork.yml) whose images are not in the cached set at all, so on a
+      # cache hit it would reach ghcr unauthenticated and fail with
+      # `unauthorized`. Only that job pays the extra login.
       - name: Log in to GitHub Container registry
-        if: steps.image-cache.outputs.cache-hit != 'true'
+        if: steps.image-cache.outputs.cache-hit != 'true' || startsWith(matrix.test-file, 'fork.')
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
         with:
           registry: 'https://ghcr.io'
