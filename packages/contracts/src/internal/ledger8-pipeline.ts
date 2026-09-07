@@ -38,7 +38,11 @@ import type {
 import type { PublicDataProvider, RawContractState } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 
-import { Ledger8ShieldedSpendUnsupportedError } from '../errors';
+import {
+  Ledger8AmbiguousEntryPointError,
+  Ledger8RecipientUnmappableError,
+  Ledger8ShieldedSpendUnsupportedError
+} from '../errors';
 import {
   type EncryptionPublicKeyResolver,
   serializeCoinInfo,
@@ -49,8 +53,14 @@ import { assertHeadStateEraAgreement } from './era';
 import { assertVerifierKeyMatches } from './verifier-key';
 
 /**
- * The transcript members this pipeline reads, narrowed off the engine's own
- * result type so the two cannot drift.
+ * The transcript members this pipeline is entitled to read, narrowed off the
+ * engine's own result type so the two cannot drift.
+ *
+ * `circuitId` is in the set but is not read: the pipeline names the circuit
+ * from its own request, so reading it back off the transcript would let a
+ * mismatched recording rename the call. It stays in the `Pick` because the
+ * replay harness requires the fixture to carry it, which is what makes a
+ * recording's own claim about which circuit it recorded checkable.
  *
  * Three members of the engine's result are deliberately left out.
  *
@@ -70,8 +80,17 @@ export type Ledger8Transcript = Pick<
 >;
 
 /**
- * The one member the pipeline needs off a caller's retained-era contract: the
- * circuit collection, passed through to the engine untouched.
+ * Everything either arm needs off a caller's retained-era contract: the UNION of
+ * the two arms' slices, so one entry point can accept a contract it will route
+ * to whichever arm applies.
+ *
+ * Each arm passes on only its own member — see {@link Ledger8CallableContract}
+ * and {@link Ledger8ConstructibleContract}, and why they stay separate.
+ */
+export interface Ledger8ContractSlice extends Ledger8CallableContract, Ledger8ConstructibleContract {}
+
+/**
+ * The circuit collection alone, which is all the call arm passes on.
  *
  * Widened to `unknown` values on purpose. The circuits are the previous
  * runtime's own functions and nothing here calls them — only the engine does —
@@ -79,9 +98,6 @@ export type Ledger8Transcript = Pick<
  * and would stop the real engine's own narrower contract type from satisfying
  * this slice.
  */
-export interface Ledger8ContractSlice extends Ledger8CallableContract, Ledger8ConstructibleContract {}
-
-/** The circuit collection alone, which is all the call arm passes on. */
 export interface Ledger8CallableContract {
   readonly impureCircuits: Readonly<Record<string, unknown>>;
 }
@@ -226,12 +242,17 @@ export const readLedger8Snapshot = async (
  * snapshot says the chain holds.
  *
  * `entryPoints` is an ARRAY and two byte entry points can decode to the same
- * name, so this takes the first match by name and lets the byte comparison
- * refuse a slot that does not hold this artifact's key.
+ * name. AMBIGUITY IS REFUSED rather than resolved by taking the first match:
+ * the chain dispatches on the raw bytes, not on the decoded name, so checking
+ * one slot's key would not establish that the proof is verified against that
+ * same slot — and a proof verified against another slot is paid for and then
+ * rejected at submission, which is the late failure this check exists to
+ * prevent.
  *
  * @param snapshot The one snapshot this operation read.
  * @param circuitId The entry point to check.
  * @param localVerifierKey The key compiled beside the local artifact.
+ * @throws Ledger8AmbiguousEntryPointError if the state declares the name twice.
  * @throws BlankVerifierKeySlotError if the chain declares no key for it.
  * @throws VerifierKeyMismatchError if the two keys differ byte for byte.
  * @see {@link VerificationPath} for what this check buys.
@@ -241,8 +262,11 @@ export const assertSnapshotVerifierKey = (
   circuitId: string,
   localVerifierKey: Uint8Array
 ): void => {
-  const entryPoint = snapshot.decoded.entryPoints.find((candidate) => candidate.circuitId === circuitId);
-  assertVerifierKeyMatches(localVerifierKey, entryPoint?.verifierKey, circuitId);
+  const matches = snapshot.decoded.entryPoints.filter((candidate) => candidate.circuitId === circuitId);
+  if (matches.length > 1) {
+    throw new Ledger8AmbiguousEntryPointError(circuitId, matches.length);
+  }
+  assertVerifierKeyMatches(localVerifierKey, matches[0]?.verifierKey, circuitId);
 };
 
 /**
@@ -251,8 +275,10 @@ export const assertSnapshotVerifierKey = (
  *
  * The distinction decides whether the offer can be built at all: a held coin
  * has to be located in the chain's Merkle tree, and this pipeline reads no
- * Zswap chain state. The pairing test is the offer builder's OWN one, reused
- * rather than restated so the two cannot disagree.
+ * Zswap chain state. This shares the offer builder's own SERIALIZERS, so the
+ * two agree on coin identity; the pairing itself is not shared — the builder
+ * consumes a matched candidate and this does not, so two inputs serializing
+ * identically would pass here and reach the builder's own assertion.
  *
  * @param zswapLocalState The call's post-execution Zswap local state.
  * @returns `true` if any input needs a chain state to be spent.
@@ -263,6 +289,35 @@ const spendsHeldCoin = (zswapLocalState: Ledger8Transcript['zswapLocalState']): 
   return zswapLocalState.inputs.some(
     (input) => !producedByThisCall.has(serializeQualifiedShieldedCoinInfo(input))
   );
+};
+
+/**
+ * Refuses a call whose shielded outputs pay a recipient the resolver cannot
+ * answer for, BEFORE the offer is built.
+ *
+ * Without this the condition surfaces from inside `createZswapOutput` as a bare
+ * `Error` naming neither the era nor the circuit, and advising a resolver
+ * mapping the retained-era options carry no field for.
+ *
+ * Only USER-owned outputs are checked. A contract-owned output takes
+ * `ZswapOutput.newContractOwned`, which is given an address and never consults
+ * the resolver at all.
+ *
+ * @param zswapLocalState The call's post-execution Zswap local state.
+ * @param resolve The resolver this call will build its offer with.
+ * @param circuitId The circuit this flow is running, for the refusal.
+ * @throws Ledger8RecipientUnmappableError for the first unresolvable recipient.
+ */
+const assertRecipientsResolvable = (
+  zswapLocalState: Ledger8Transcript['zswapLocalState'],
+  resolve: EncryptionPublicKeyResolver,
+  circuitId: string
+): void => {
+  for (const { recipient } of zswapLocalState.outputs) {
+    if (recipient.is_left && resolve(recipient.left) === undefined) {
+      throw new Ledger8RecipientUnmappableError(circuitId, recipient.left);
+    }
+  }
 };
 
 /** Everything one retained-era call needs. */
@@ -294,9 +349,14 @@ export interface Ledger8CallPipelineRequest<TState> {
 /** What one retained-era call produced. */
 export interface Ledger8CallPipelineResult {
   /**
-   * The UNPROVEN transaction, serialized. Bytes rather than a handle: the two
-   * eras' ledgers are separate runtimes, so the transaction crosses the
-   * provider seams in its serialized form.
+   * The UNPROVEN transaction, serialized. Bytes rather than a handle because
+   * `LedgerEra.composeCallTx` returns bytes and nothing in this module may hold
+   * a live ledger handle.
+   *
+   * Which form it crosses the PROVIDER SEAMS in is a separate question decided
+   * by the network head, not by this field — a post-fork head deserializes
+   * these bytes and crosses as a live current-era handle. See
+   * `submitLedger8Tx`.
    */
   readonly txBytes: Uint8Array;
   readonly circuitId: string;
@@ -305,15 +365,21 @@ export interface Ledger8CallPipelineResult {
   readonly guaranteedZswapOffer: Uint8Array | undefined;
   /**
    * Always `undefined` today, and the reason is structural rather than a
-   * simplification — see the comment at the offer build below.
+   * simplification: the retained execution leg emits one UNPARTITIONED
+   * operation sequence, so there is no partition to route a movement against
+   * and every movement lands in the guaranteed segment.
+   *
+   * @see {@link KeepStatePipeline} for why tightening this into a two-segment
+   *      expectation would be wrong.
    */
   readonly fallibleZswapOffer: Uint8Array | undefined;
 }
 
 /**
  * Runs one call against a retained-era contract, in the order this module
- * exists to fix: fetch the one snapshot, date it, check the key, extract the
- * state, down-convert it, execute the circuit, compose the transaction.
+ * exists to fix: fetch the one snapshot, date it, read the state and the key
+ * set off it, check the key, down-convert, execute the circuit, compose the
+ * transaction.
  *
  * @param request The era and engine to run against, the read surface, and the
  * call's own inputs.
@@ -366,6 +432,11 @@ export const runLedger8CallPipeline = async <TState>(
   // two-segment expectation -- there is no partition to route against at this
   // point in the order, and a call whose coins are placed in the wrong segment
   // is refused by the ledger rather than silently mis-split.
+  // Also before the offer is built, and for the same reason: a recipient this
+  // arm cannot resolve is refused by name here rather than by a bare assertion
+  // inside the offer builder.
+  assertRecipientsResolvable(transcript.zswapLocalState, request.encryptionPublicKey, circuitId);
+
   const offers = zswapStateToSegmentedOffer(transcript.zswapLocalState, request.encryptionPublicKey);
   const guaranteedZswapOffer = offers.guaranteed?.serialize();
   const fallibleZswapOffer = offers.fallible?.serialize();

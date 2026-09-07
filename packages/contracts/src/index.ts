@@ -40,29 +40,26 @@ export {
   DeployContractOptionsWithPrivateState,
   DeployedContract
 } from './deploy-contract';
-// The eight era errors below become reachable with this release: the retained-era entry points now
-// run real pipelines, so a consumer can catch each of them. Every one is thrown on a path a
-// consumer can reach -- `BlankVerifierKeySlotError` and `VerifierKeyMismatchError` from the
-// pre-proving key check, `HeadStateEraMismatchError` and `IndexerInconsistencyError` from the
-// head-versus-state era check, `EraArtifactMismatchError` from era resolution at every entry
-// point, and `Ledger8DeployOnV9Error` from the era pairing table -- and each is exercised through
-// an entry point in `src/test/keep-state.test.ts` or `src/test/v8-native.test.ts`.
-// `Ledger8SeamFailedError` carries a provider's own rejection with its message redacted, and
-// `Ledger8ShieldedSpendUnsupportedError` refuses a retained-era call that would spend a coin the
-// contract already holds; both are reachable through the same entry points and exercised there.
-// `StaleHeadError` is the fork-crossing refusal: a submission rejected after the network head moved
-// under the operation, carrying the two-step remediation for that operation kind. It is thrown from
-// the submit seam of both retained-era arms and exercised through the entry points in
-// `src/test/stale-head.test.ts`.
-// `ScopedTxEraUnsupportedError` and `MixedEraScopeError` are the scoped-transaction era rules: a
-// scope is refused outright on a head era that composes only one call per transaction, and a
-// retained-toolchain call cannot join a scope at all. Both are exercised in
-// `src/test/scoped-era.test.ts`.
-// `SubmitRejectionUndiagnosedError` is the other half of the fork-crossing diagnosis: a submission
-// rejected where the head could not be re-read, or reported an EARLIER era than the operation
-// started against. Reported as undiagnosable rather than as a fork, because neither case
-// establishes one, and carrying a registered code of its own so a retry handler branching on
-// `hasErrorCode` behaves the same whichever failure came first.
+// The retained-era entry points run real pipelines with this release, so the era errors below are
+// reachable from a call a consumer makes rather than only from an internal helper. Two are NOT
+// reachable through an entry point yet and are exported for completeness:
+// `Ledger8DeployUnmaintainableError` is the only refusal `deployContract`'s retained arm makes, and
+// `Ledger8DeployOnV9Error` sits behind it in the era pairing table, so the pairing refusal cannot
+// be observed until the deploy arm is wired.
+//
+// The fork-window refusals are the other group. `StaleHeadError` is raised when a submission was
+// rejected and a fresh head read confirms the network crossed the fork under the operation, and it
+// carries the two-step remediation for that operation kind. `SubmitRejectionUndiagnosedError` is
+// the other half of that diagnosis, for a head that could not be re-read or that reported an
+// EARLIER era: reported as undiagnosable rather than as a fork, because neither case establishes
+// one, and carrying a registered code of its own so a retry handler branching on `hasErrorCode`
+// behaves the same whichever failure came first. `ScopedTxEraUnsupportedError` and
+// `MixedEraScopeError` are the scoped-transaction era rules -- a scope is refused outright on a
+// head era that composes only one call per transaction, and a retained-toolchain call cannot join
+// a scope at all.
+//
+// Deliberately no test-file names here: which suite exercises what is the kind of claim that rots
+// the first time a test moves.
 export {
   BlankVerifierKeySlotError,
   CallTxFailedError,
@@ -76,7 +73,11 @@ export {
   IncompleteCallTxPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   IndexerInconsistencyError,
+  Ledger8AmbiguousEntryPointError,
+  Ledger8CallTxFailedError,
   Ledger8DeployOnV9Error,
+  Ledger8DeployUnmaintainableError,
+  Ledger8RecipientUnmappableError,
   Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
   MixedEraScopeError,

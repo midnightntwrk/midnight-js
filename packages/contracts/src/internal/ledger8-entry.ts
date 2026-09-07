@@ -29,7 +29,7 @@
 
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { DownConvertedState } from '@midnight-ntwrk/midnight-js-protocol';
-import { loadLedger8Engine } from '@midnight-ntwrk/midnight-js-protocol';
+import { loadLedger8Engine, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import { Transaction, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type MidnightProvider,
@@ -41,11 +41,18 @@ import {
   type WalletProvider,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, hasErrorCode, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
+import {
+  assertDefined,
+  assertIsContractAddress,
+  hasErrorCode,
+  parseCoinPublicKeyToHex,
+  ttlOneHour
+} from '@midnight-ntwrk/midnight-js-utils';
 
 import {
   type EraSeam,
   IncompleteCallTxPrivateStateConfig,
+  Ledger8CallTxFailedError,
   Ledger8SeamFailedError,
   type SubmittedOperation
 } from '../errors';
@@ -135,36 +142,165 @@ export const acquireLedger8Runtime = async (
 };
 
 /**
- * The two shapes transaction and witness material takes inside an error
- * message: a long run of hex, or a long run of base64.
+ * The three shapes transaction and witness material takes inside an error
+ * message: a long run of hex, a long run of base64 or base64url, or a long list
+ * of decimal byte values.
  *
  * Matched by SHAPE rather than by any provider's message format, because the
- * set of providers is open. Do not lower the 32-character floor — below it the
- * redaction starts eating ordinary words.
+ * set of providers is open. Each alternative is deliberately narrow:
  *
- * @see {@link KeepStatePipeline} for why 32 is the floor.
+ * - HEX at 24 characters and up, which is a 12-byte value. The floor is not
+ *   lower because a run of hex-alphabet characters can be an ordinary word
+ *   (`decade`, `defaced`); at 24 it cannot be. A secret shorter than 12 bytes
+ *   is NOT redacted — see {@link Ledger8SeamFailedError} for why this is stated
+ *   as best effort rather than as a guarantee.
+ * - BASE64 / BASE64URL at 40 characters and up, and only when the run mixes
+ *   lower case, upper case and a digit. That mixture is what separates an
+ *   encoded payload from a URL path or a long class name, both of which are
+ *   high-value diagnostics: `com/api/v1/graphql/subscriptions` has no upper
+ *   case, and `ContractStateDeserializationFailed` has no digit, so neither is
+ *   eaten. Do not drop the three lookaheads to "simplify" this — without them
+ *   the endpoint a misconfiguration names is exactly what disappears.
+ * - A DECIMAL BYTE LIST of 13 values or more, which is what
+ *   `JSON.stringify(new Uint8Array(...))` and Node's own inspection of a typed
+ *   array produce. Commas and spaces break the other two alternatives, so
+ *   without this a payload rendered as numbers passes through untouched.
+ *
+ * @see {@link KeepStatePipeline} for what each alternative catches and misses.
  */
-const PAYLOAD_SHAPED = /[0-9a-fA-F]{32,}|[A-Za-z0-9+/]{32,}={0,2}/g;
+const PAYLOAD_SHAPED = new RegExp(
+  [
+    '[0-9a-fA-F]{24,}',
+    '(?=[A-Za-z0-9+/_-]*[a-z])(?=[A-Za-z0-9+/_-]*[A-Z])(?=[A-Za-z0-9+/_-]*[0-9])[A-Za-z0-9+/_-]{40,}={0,2}',
+    '(?:\\d{1,3}\\s*,\\s*){12,}\\d{1,3}'
+  ].join('|'),
+  'g'
+);
 const REDACTED = '[redacted]';
 
 /**
- * Rebuilds an external failure as a plain {@link Error} carrying only its class
- * name and a redacted message.
+ * How much of a provider's message is copied onto the sanitized cause.
  *
- * The provider's enumerable properties and its own `cause` chain are dropped,
- * both deliberately — do not carry either.
+ * An unbounded copy ends up in `error.stack` and from there in every log sink
+ * the caller has. A provider that renders a whole transaction in a shape no
+ * alternative above matches would otherwise put all of it there.
+ */
+const MAX_SEAM_MESSAGE_LENGTH = 2_000;
+
+/** How many links of a `cause` chain are rebuilt before the walk stops. */
+const MAX_SEAM_CAUSE_DEPTH = 5;
+
+/** How many members of an `AggregateError` are rebuilt. */
+const MAX_SEAM_AGGREGATE = 5;
+
+/**
+ * Whether a value is an `Error`, including one minted in another realm.
+ *
+ * `instanceof` is realm-sensitive: an `Error` from a worker, a `vm` context or
+ * a WASM module fails it and would be reported as `object: ...`, losing both
+ * the class name and the message.
+ *
+ * @param value The rejection to classify.
+ * @returns `true` if the value is an `Error` from any realm.
+ */
+const isErrorLike = (value: unknown): value is Error =>
+  value instanceof Error || Object.prototype.toString.call(value) === '[object Error]';
+
+/**
+ * The class name to report for a rejection.
+ *
+ * `name` is only correct when a subclass assigns it — this repo's own errors do,
+ * third-party provider errors routinely do not, and for those `name` reads
+ * `'Error'`. The constructor name is the fallback, so a
+ * `ProofServerHttpError` is still named one.
+ *
+ * @param cause The rejection to name.
+ * @returns The most specific class name available, or the `typeof` for a
+ * non-error rejection.
+ */
+const describeSeamKind = (cause: unknown): string => {
+  if (!isErrorLike(cause)) {
+    return typeof cause;
+  }
+  const constructorName = cause.constructor?.name;
+  return cause.name !== 'Error' || constructorName === undefined ? cause.name : constructorName;
+};
+
+/**
+ * Renders a rejection as text without being able to throw.
+ *
+ * `String(value)` throws for a null-prototype object and for anything with a
+ * throwing `toString` or `Symbol.toPrimitive` — shapes that RPC bridges and
+ * WASM glue do produce. Unguarded, that `TypeError` would propagate FROM THE
+ * CATCH BLOCK and replace the provider's rejection entirely, losing the seam,
+ * the circuit and the original value.
+ *
+ * @param cause The rejection to render.
+ * @returns Its message, its string form, or a placeholder naming its shape.
+ */
+const renderSeamCause = (cause: unknown): string => {
+  try {
+    return isErrorLike(cause) ? cause.message : String(cause);
+  } catch {
+    return `<unrenderable ${Object.prototype.toString.call(cause)}>`;
+  }
+};
+
+/** Redacts payload-shaped runs and caps the length of a copied message. */
+const redact = (text: string): string => {
+  const redacted = text.replace(PAYLOAD_SHAPED, REDACTED);
+  return redacted.length <= MAX_SEAM_MESSAGE_LENGTH
+    ? redacted
+    : `${redacted.slice(0, MAX_SEAM_MESSAGE_LENGTH)}... [truncated]`;
+};
+
+/**
+ * Rebuilds an external failure as a plain {@link Error} carrying its class
+ * name, a redacted message, a redacted stack and a redacted `cause` chain.
+ *
+ * The provider's ENUMERABLE PROPERTIES are dropped — that is where HTTP clients
+ * keep echoed request bodies, and there is no shape-independent way to redact
+ * an arbitrary object graph. Everything else is kept REDACTED rather than
+ * dropped, because dropping it buys nothing the redaction does not already buy:
+ *
+ * - The `cause` CHAIN is where modern wrapping errors keep the diagnosis. A
+ *   bare `fetch` failure is `Error: fetch failed` with the real reason — wrong
+ *   port, DNS, TLS, connection refused — one or two links down. Truncating at
+ *   depth one renders every one of those identically.
+ * - The STACK is where a bug in the caller's OWN provider implementation is
+ *   located. A fresh stack points at this function instead, which is the one
+ *   place the answer certainly is not. Frames are paths and function names, and
+ *   they go through the same redaction anyway.
  *
  * @param cause Whatever the provider rejected with — `unknown`, because a
  * rejection is not obliged to be an `Error`.
+ * @param depth How many links have already been rebuilt.
  * @returns A plain error safe to hand to a logger.
- * @see {@link KeepStatePipeline} for what each omission prevents.
+ * @see {@link KeepStatePipeline} for what is dropped and what is kept redacted.
  */
-const sanitizeSeamCause = (cause: unknown): Error => {
-  const kind = cause instanceof Error ? cause.name : typeof cause;
-  // `String(cause)` rather than `cause.message`, so a rejection that is not an
-  // Error still contributes something, and is redacted just the same.
-  const rendered = cause instanceof Error ? cause.message : String(cause);
-  return new Error(`${kind}: ${rendered.replace(PAYLOAD_SHAPED, REDACTED)}`);
+const sanitizeSeamCause = (cause: unknown, depth = 0): Error => {
+  const nested = isErrorLike(cause) ? (cause as Error).cause : undefined;
+  const rebuilt = new Error(
+    `${describeSeamKind(cause)}: ${redact(renderSeamCause(cause))}`,
+    depth < MAX_SEAM_CAUSE_DEPTH && nested !== undefined
+      ? { cause: sanitizeSeamCause(nested, depth + 1) }
+      : undefined
+  );
+  if (isErrorLike(cause) && typeof cause.stack === 'string') {
+    rebuilt.stack = redact(cause.stack);
+  }
+  // `AggregateError.errors` is where `fetch` reports the per-address failures
+  // behind a connection error, and it is an own property, so it does not travel
+  // with the message or the cause chain.
+  if (cause instanceof AggregateError && depth < MAX_SEAM_CAUSE_DEPTH) {
+    Object.defineProperty(rebuilt, 'errors', {
+      value: cause.errors
+        .slice(0, MAX_SEAM_AGGREGATE)
+        .map((member: unknown) => sanitizeSeamCause(member, depth + 1)),
+      enumerable: true
+    });
+  }
+  return rebuilt;
 };
 
 /**
@@ -193,6 +329,73 @@ const atSeam = async <T>(seam: EraSeam, circuitId: string, call: () => Promise<T
   }
 };
 
+/**
+ * How an era arm reaches the submit seam.
+ *
+ * Taken as a parameter rather than called directly, so the fork-crossing
+ * diagnosis is applied ONCE, by the caller, around whichever arm runs. Two arms
+ * each calling `atSeam('submitTx', ...)` themselves is exactly how they drift
+ * into different failure handling.
+ */
+type SubmitSeam = (call: () => Promise<string>) => Promise<string>;
+
+/**
+ * Proves, balances and submits on the CURRENT-era seam arm, as a live handle.
+ *
+ * @param providers The proof, wallet and submission providers.
+ * @param txBytes The serialized unproven transaction the era composed.
+ * @param circuitId The circuit this flow is running, named in any refusal.
+ * @param submit The submit seam, already wrapped with the fork-crossing
+ * diagnosis by {@link submitLedger8Tx}.
+ * @returns The transaction id the network assigned.
+ */
+const submitLedger8TxOnCurrentEra = async (
+  providers: Pick<Ledger8EntryProviders, 'proofProvider' | 'walletProvider' | 'midnightProvider'>,
+  txBytes: Uint8Array,
+  circuitId: string,
+  submit: SubmitSeam
+): Promise<string> => {
+  const unproven = readCurrentEraTransaction(txBytes);
+  const proven = requireV9(
+    await atSeam('proveTx', circuitId, () => providers.proofProvider.proveTx({ version: 'v9', tx: unproven })),
+    'proveTx',
+    circuitId
+  );
+  const balanced = requireV9(
+    await atSeam('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v9', tx: proven })),
+    'balanceTx',
+    circuitId
+  );
+  return submit(() => providers.midnightProvider.submitTx({ version: 'v9', tx: balanced }));
+};
+
+/**
+ * Proves, balances and submits on the RETAINED-era seam arm, as serialized
+ * bytes.
+ *
+ * @param providers The proof, wallet and submission providers.
+ * @param txBytes The serialized unproven transaction the era composed.
+ * @param circuitId The circuit this flow is running, named in any refusal.
+ * @returns The transaction id the network assigned.
+ */
+const submitLedger8TxOnRetainedEra = async (
+  providers: Pick<Ledger8EntryProviders, 'proofProvider' | 'walletProvider' | 'midnightProvider'>,
+  txBytes: Uint8Array,
+  circuitId: string,
+  submit: SubmitSeam
+): Promise<string> => {
+  const proven = requireV8(
+    await atSeam('proveTx', circuitId, () => providers.proofProvider.proveTx({ version: 'v8', txBytes })),
+    'proveTx',
+    circuitId
+  );
+  const balanced = requireV8(
+    await atSeam('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v8', txBytes: proven })),
+    'balanceTx',
+    circuitId
+  );
+  return submit(() => providers.midnightProvider.submitTx({ version: 'v8', txBytes: balanced }));
+};
 /**
  * Proves, balances and submits a retained-era-executed transaction, and
  * returns the transaction id.
@@ -238,10 +441,10 @@ export const submitLedger8Tx = async (
   operation: SubmittedOperation
 ): Promise<string> => {
   const { circuitId, head } = operation;
-  // Wrapped once, around whichever arm's submit runs, so the two arms cannot
-  // end up with different failure handling. `atSeam` still does the sanitizing
-  // -- what this adds is the fork-crossing diagnosis on top of its result.
-  const submit = async (call: () => Promise<string>): Promise<string> => {
+  // Wrapped ONCE, around whichever arm's submit runs, so the two arms cannot end
+  // up with different failure handling. `atSeam` still does the sanitizing --
+  // what this adds is the fork-crossing diagnosis on top of its result.
+  const submit: SubmitSeam = async (call) => {
     try {
       return await atSeam('submitTx', circuitId, call);
     } catch (rejection) {
@@ -249,32 +452,20 @@ export const submitLedger8Tx = async (
     }
   };
 
-  if (head === 'v9') {
-    const unproven = readCurrentEraTransaction(txBytes);
-    const proven = requireV9(
-      await atSeam('proveTx', circuitId, () => providers.proofProvider.proveTx({ version: 'v9', tx: unproven })),
-      'proveTx',
-      circuitId
-    );
-    const balanced = requireV9(
-      await atSeam('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v9', tx: proven })),
-      'balanceTx',
-      circuitId
-    );
-    return submit(() => providers.midnightProvider.submitTx({ version: 'v9', tx: balanced }));
+  // A SWITCH closing on `never`, not an `if`: an era added to `LedgerVersion`
+  // must not fall through into the pre-fork arm and submit retained-era bytes
+  // to a head that never asked for them. Every other era decision in this
+  // package closes the same way -- see `assertEraCompatible`.
+  switch (head) {
+    case 'v9':
+      return submitLedger8TxOnCurrentEra(providers, txBytes, circuitId, submit);
+    case 'v8':
+      return submitLedger8TxOnRetainedEra(providers, txBytes, circuitId, submit);
+    default: {
+      const unhandled: never = head;
+      throw new UnknownLedgerVersionError(String(unhandled));
+    }
   }
-
-  const proven = requireV8(
-    await atSeam('proveTx', circuitId, () => providers.proofProvider.proveTx({ version: 'v8', txBytes })),
-    'proveTx',
-    circuitId
-  );
-  const balanced = requireV8(
-    await atSeam('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v8', txBytes: proven })),
-    'balanceTx',
-    circuitId
-  );
-  return submit(() => providers.midnightProvider.submitTx({ version: 'v8', txBytes: balanced }));
 };
 
 /** What a retained-era call arrived with. */
@@ -308,6 +499,20 @@ export interface Ledger8SubmittedCall {
  * @param request The contract, its address, the circuit, its arguments and the
  * private state to run against.
  * @returns The transaction id and what the call produced.
+ * @throws EraArtifactMismatchError, UnknownLedgerVersionError from era resolution.
+ * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the fetched
+ * envelope's era disagrees with the head.
+ * @throws StateDecodeFailedError if the envelope will not decode on this era.
+ * @throws Ledger8AmbiguousEntryPointError if the state names the circuit twice.
+ * @throws BlankVerifierKeySlotError, VerifierKeyMismatchError from the
+ * pre-proving key check.
+ * @throws Ledger8ShieldedSpendUnsupportedError if the circuit spends a coin the
+ * contract already held.
+ * @throws Ledger8RecipientUnmappableError if a shielded output pays a recipient
+ * this arm cannot resolve.
+ * @throws V8PayloadUnsupportedError if a provider does not serve the pre-fork arm.
+ * @throws EraInvariantViolationError if a provider answers in the other era.
+ * @throws Ledger8SeamFailedError if a provider rejects.
  * @see {@link KeepStatePipeline} for the per-recipient encryption rule and what
  *      a bare key would cost.
  */
@@ -322,7 +527,15 @@ export const runLedger8Call = async (
   // resolver's notion of "the wallet's own key". Two reads of the same wallet
   // member could disagree, and a resolver built against a different key than
   // the circuit executed under is exactly the mismatch that mis-encrypts.
-  const coinPublicKey = providers.walletProvider.getCoinPublicKey();
+  //
+  // NORMALIZED, exactly as every current-era call site normalizes it. A real
+  // wallet hands this over Bech32m-encoded; the retained runtime's
+  // `encodeCoinPublicKey` accepts hex only and throws `Invalid character 'm' at
+  // position 0` from inside the WASM on anything else. `parseCoinPublicKeyToHex`
+  // passes hex through unchanged, so this is free for a wallet that already
+  // answers in hex. DO NOT DROP IT: the testkit wallet answers in hex, so no
+  // test in this repo can catch its absence.
+  const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId());
 
   const call = await runLedger8CallPipeline({
     era: resolved.era,
@@ -372,9 +585,16 @@ export interface Ledger8SubmittedDeploy {
 /**
  * Runs one retained-era deploy end to end.
  *
- * NO ENTRY POINT CALLS THIS YET, deliberately: see
- * {@link LEDGER8_DEPLOY_UNMAINTAINABLE}. The path below composes and submits
- * correctly and is exercised by `src/test/v8-native.test.ts`.
+ * NO ENTRY POINT CALLS THIS YET, deliberately: `deployContract`'s retained arm
+ * refuses with {@link Ledger8DeployUnmaintainableError} because nothing here
+ * sets a maintenance authority, so the contract this would create could never
+ * be maintained. The composition and submission below are correct and tested;
+ * the missing piece is a signing key threaded through the retained execution
+ * leg in `packages/protocol`, which is where the retained runtime lives.
+ *
+ * The MJS-02 plan asked for a working retained-era deploy, so this path is that
+ * deliverable held one step short of being reachable rather than an
+ * unimplemented stub.
  *
  * Reachable only on a pre-fork head; {@link acquireLedger8Runtime} refuses the
  * post-fork case before the constructor is executed.
@@ -397,7 +617,8 @@ export const runLedger8Deploy = async (
     contract: request.contract,
     args: request.args,
     privateState: request.privateState,
-    coinPublicKey: providers.walletProvider.getCoinPublicKey(),
+    // Normalized for the same reason the call arm normalizes it.
+    coinPublicKey: parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()),
     verifierKeys: request.verifierKeys,
     networkId: getNetworkId(),
     ttl: ttlOneHour()
@@ -448,6 +669,11 @@ export interface Ledger8FoundState {
  * @returns The deploy record as the read surface reported it.
  * @throws Error if the artifact declares no callable circuits, or if the
  * address is malformed.
+ * @throws EraArtifactMismatchError, UnknownLedgerVersionError from era resolution.
+ * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the fetched
+ * envelope's era disagrees with the head.
+ * @throws StateDecodeFailedError if the envelope will not decode on this era.
+ * @throws Ledger8AmbiguousEntryPointError if the state names a circuit twice.
  * @throws BlankVerifierKeySlotError, VerifierKeyMismatchError if the chain's
  * slot is empty or holds different bytes.
  * @see {@link KeepStatePipeline} for why the record keeps its version tag.
@@ -506,17 +732,13 @@ export const findLedger8Contract = async (
  *
  * @param record The finalized record the read surface reported.
  * @param circuitId The circuit this flow ran.
- * @throws Error if the recorded status is not `SucceedEntirely`.
+ * @throws Ledger8CallTxFailedError if the recorded status is not `SucceedEntirely`.
  */
 const assertLedger8TxSucceeded = (record: VersionedFinalizedTxData, circuitId: string): void => {
   if (record.status === SucceedEntirely) {
     return;
   }
-  throw new Error(
-    `The retained-era call to circuit '${circuitId}' was recorded on chain with status ` +
-      `'${record.status}' rather than '${SucceedEntirely}' (transaction id '${record.txId}'). No private ` +
-      `state was stored, so the local state still matches the chain.`
-  );
+  throw new Ledger8CallTxFailedError(record, circuitId);
 };
 
 /** The private-state members a retained-era call reads and writes. */
@@ -546,7 +768,18 @@ const readLedger8PrivateState = async (
     return undefined;
   }
   const privateState = await privateStateProvider.get(privateStateId);
-  assertDefined(privateState, `No private state found at private state ID '${privateStateId}'`);
+  // The current era raises the same first sentence from `get-states.ts`, and the
+  // REMEDIATION is appended rather than replacing it: this arm has no
+  // `initialPrivateState` to seed through, so a caller restoring on a new device
+  // has no API-level way to create the state and would otherwise be told only
+  // that it is missing.
+  assertDefined(
+    privateState,
+    `No private state found at private state ID '${privateStateId}'. The retained-era arm cannot ` +
+      'seed one - its find and call options carry no `initialPrivateState` - so write it directly ' +
+      'with `privateStateProvider.set(privateStateId, state)` before calling, or omit ' +
+      '`privateStateId` for a contract that carries no private state.'
+  );
   return privateState;
 };
 
@@ -579,6 +812,9 @@ export interface Ledger8CallEntryProviders extends Ledger8EntryProviders {
  * no arguments of its own has no `args` at all, rather than one the caller has
  * to satisfy with an empty array — so it is read with an `in` check and
  * defaulted here, in one place, rather than at each entry point.
+ *
+ * @param options The options a retained-era call entry point received.
+ * @returns The same call in the shape this layer reads.
  */
 export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Ledger8CallEntryOptions => ({
   compiledContract: options.compiledContract,
@@ -601,6 +837,12 @@ export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Led
  * @param providers The provider set.
  * @param options The call the entry point received.
  * @returns The transaction id, the circuit, and the next private state.
+ * @throws TypeError if the contract address is malformed.
+ * @throws Error if the artifact declares no such circuit, or if a named
+ * `privateStateId` has nothing stored under it.
+ * @throws IncompleteCallTxPrivateStateConfig if a `privateStateId` is named
+ * with no private-state provider.
+ * @throws Every error {@link runLedger8Call} raises.
  */
 export const submitLedger8CallTxAsync = async (
   providers: Ledger8CallEntryProviders,
@@ -649,8 +891,10 @@ export const submitLedger8CallTxAsync = async (
  * @param providers The provider set.
  * @param options The call the entry point received.
  * @returns The circuit, the next private state, and the finalized record.
- * @throws Error if the node recorded a non-success status — see
- * {@link assertLedger8TxSucceeded}.
+ * @throws Ledger8CallTxFailedError if the node recorded a non-success status —
+ * see {@link assertLedger8TxSucceeded}. Raised BEFORE the private state is
+ * stored, so a failed call never leaves the local state ahead of the chain.
+ * @throws Every error {@link submitLedger8CallTxAsync} raises.
  */
 export const submitLedger8CallTx = async (
   providers: Ledger8CallEntryProviders,
@@ -670,30 +914,3 @@ export const submitLedger8CallTx = async (
 
   return { circuitId, nextPrivateState, txData };
 };
-
-/**
- * Why {@link deployContract}'s retained-era arm refuses, in the SINGLE place
- * the text is written.
- *
- * The measured reason: neither half of the retained deploy path accepts a
- * maintenance authority, and the retained constructor leaves behind an EMPTY
- * committee with a threshold of ONE — a rule set nothing can ever satisfy, so
- * the contract would be permanently unmaintainable by anyone, its deployer
- * included. `packages/protocol/src/test/v8-deploy.test.ts` pins that
- * measurement and is what will say so if a future era seam gains an authority.
- *
- * A bare `Error` deliberately: a registered error code is a published consumer
- * surface, and this condition is removed as soon as the seam carries an
- * authority.
- *
- * @see {@link KeepStatePipeline} for the measurement in full and why the
- *      current era does not have this problem.
- */
-export const LEDGER8_DEPLOY_UNMAINTAINABLE =
-  'A retained-era contract cannot be deployed. The transaction composes, but neither the retained ' +
-  'constructor nor the era deploy composition accepts a maintenance authority, and the authority a ' +
-  'retained constructor leaves behind is an empty committee with a threshold of one - which nothing ' +
-  'can ever satisfy. The deployed contract could never have a verifier key inserted, removed or ' +
-  'replaced, by anyone, including you. Deploy a contract produced by the current toolchain instead, ' +
-  'and keep using the retained artifact for calls against contracts that were deployed before the ' +
-  'fork - see the runtime-deploy chapter of the migration guide.';
