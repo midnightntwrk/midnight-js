@@ -432,3 +432,28 @@ export class VerifierKeyMismatchError extends Error {
     this.name = 'VerifierKeyMismatchError';
   }
 }
+
+/**
+ * An error indicating that a contract built by the PREVIOUS Compact toolchain
+ * (`compact-runtime@0.16`) was handed to an entry point that accepts its shape but has no
+ * execution path for it yet.
+ *
+ * Carries no registered error code, deliberately: a code is a published compatibility
+ * commitment, and this condition is removed as soon as the retained-era pipeline lands. The
+ * exported CLASS is what a consumer needs in the meantime — `instanceof` beats matching on a
+ * message that is expected to change.
+ */
+export class Ledger8PipelineNotWiredError extends Error {
+  /**
+   * @param entryPoint The entry point that refused the call, so a consumer calling several in one
+   *                   flow can tell which one failed.
+   */
+  constructor(readonly entryPoint: 'deployContract' | 'findDeployedContract' | 'submitCallTx' | 'submitCallTxAsync') {
+    super(
+      `${entryPoint}: this release cannot execute a contract compiled with compact-runtime@0.16. ` +
+        'Recompile the contract with the current toolchain, or pin a release that supports the ' +
+        'retained era.'
+    );
+    this.name = 'Ledger8PipelineNotWiredError';
+  }
+}

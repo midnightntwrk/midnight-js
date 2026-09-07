@@ -54,6 +54,7 @@ export {
   IncompleteFindContractPrivateStateConfig,
   IndexerInconsistencyError,
   Ledger8DeployOnV9Error,
+  Ledger8PipelineNotWiredError,
   TxFailedError,
   VerifierKeyMismatchError} from './errors';
 export {

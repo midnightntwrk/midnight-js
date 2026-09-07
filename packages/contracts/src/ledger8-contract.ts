@@ -70,21 +70,23 @@ export interface Ledger8CircuitResult {
 /**
  * A retained-era circuit member.
  *
- * Two things in this signature are load-bearing, and neither is cosmetic: the leading context is
- * declared EXPLICITLY so `Parameters<T>` stays tuple-shaped for
- * {@link Ledger8CircuitParameters}, and the argument tail is `never[]` rather than `unknown[]` so
- * that argument-taking circuits still satisfy the {@link Ledger8Contract} constraint under
- * `strictFunctionTypes`. Do not widen the tail for readability.
+ * Two things here are load-bearing and neither is cosmetic: the leading context is declared
+ * EXPLICITLY, and the argument tail is `never[]` rather than `unknown[]`. Do not widen either for
+ * readability.
  *
- * @see {@link OverloadTyping} for what each widening buys and what breaks without it.
+ * @see {@link OverloadTyping} for what each buys and what breaks without it.
  */
 export type Ledger8Circuit = (context: Ledger8CircuitContext<never>, ...args: never[]) => Ledger8CircuitResult;
 
 /**
  * A retained-era witness implementation, which returns the next private state
  * paired with the value the circuit reads.
+ *
+ * `PS` is threaded through the FIRST tuple member so a witness declared over the wrong private
+ * state is refused. It sits in a result position, where `PS` is covariant, so every concrete
+ * contract still satisfies the era top type.
  */
-export type Ledger8Witness = (...args: never[]) => readonly [unknown, unknown];
+export type Ledger8Witness<PS = unknown> = (...args: never[]) => readonly [PS, unknown];
 
 /**
  * What a retained-era `initialState` returns: a plain object, NOT a `Promise`.
@@ -104,7 +106,7 @@ export interface Ledger8ConstructorResult<PS = unknown> {
  * circuit members return `Promise`s.
  */
 export interface Ledger8Contract<PS = unknown> {
-  readonly witnesses: Readonly<Record<string, Ledger8Witness>>;
+  readonly witnesses: Readonly<Record<string, Ledger8Witness<PS>>>;
   readonly circuits: Readonly<Record<string, Ledger8Circuit>>;
   readonly impureCircuits: Readonly<Record<string, Ledger8Circuit>>;
   readonly provableCircuits: Readonly<Record<string, Ledger8Circuit>>;
@@ -130,11 +132,16 @@ export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['impureCircuit
  * the context is built by the framework from provider data, never passed in by
  * the caller.
  *
+ * A circuit whose parameters are not tuple-shaped falls to `never[]`, NOT to `never`: `never`
+ * satisfies `extends []`, so it would make {@link Ledger8CallTxOptionsBase} report that such a
+ * circuit takes no arguments at all. `never[]` is uninhabited but not empty, so the caller is
+ * asked for an `args` it cannot supply and the mismatch surfaces instead of being swallowed.
+ *
  * @see {@link OverloadTyping} for why a caller may not be handed the raw
  *      `Parameters<...>`.
  */
 export type Ledger8CircuitParameters<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
-  Parameters<C['impureCircuits'][K]> extends [Ledger8CircuitContext, ...infer A] ? A : never;
+  Parameters<C['impureCircuits'][K]> extends [Ledger8CircuitContext, ...infer A] ? A : never[];
 
 /**
  * The providers a retained-era call transaction needs.
@@ -335,14 +342,3 @@ export type NeitherContractShape = { readonly __error: typeof NEITHER_ERA_CONTRA
 export interface NeitherEraContractOptions {
   readonly compiledContract: NeitherContractShape;
 }
-
-/**
- * The message every retained-era overload body throws with at this stage.
- *
- * The overloads accept and type-check the retained-era shape, but no execution
- * path exists behind them yet. A bare `Error` on purpose: a registered error
- * code is a published consumer surface, and this condition is removed as soon
- * as the pipeline lands.
- */
-export const LEDGER8_PIPELINE_NOT_WIRED =
-  'The retained-era contract pipeline is not wired yet; this overload accepts the shape but cannot execute it.';

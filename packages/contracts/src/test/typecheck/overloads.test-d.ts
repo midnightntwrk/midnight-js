@@ -18,10 +18,16 @@ import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/e
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { describe, expectTypeOf, it } from 'vitest';
 
-// The real current-era ("0.18") twin of the retained-era fixture. Imported TYPE-ONLY from the
-// artifact's own generated `index.d.ts`, so the current-era side of every assertion below is the
-// real compiler's view of real generated code rather than a restatement of it. The retained-era
-// side has no `.d.ts` to import (see `../ledger8-fixture-types.ts`).
+// The current-era twin of the retained-era fixture. Imported TYPE-ONLY from the artifact's own
+// generated `index.d.ts`, so the current-era side of every assertion below is the real compiler's
+// view of real generated code rather than a restatement of it. The retained-era side has no
+// `.d.ts` to import (see `../ledger8-fixture-types.ts`).
+//
+// The twin is a `0.18.0-rc.1` artifact while the installed runtime is `0.19.0-rc.0` -- it was not
+// regenerated when the repo bumped. That does not weaken these assertions: the generated
+// `Contract` class declaration is IDENTICAL across the two (same four members, same async
+// `initialState`), so the shape they discriminate on is the current era's. If the twin is ever
+// regenerated, the identifiers named `Twin018*` should be renamed with it.
 import type { Contract as Twin018Contract } from '../../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/contract/index.js';
 import type { CallResult } from '../../call';
 import type { ContractProviders } from '../../contract-providers';
@@ -52,6 +58,7 @@ import {
   type Ledger8FindDeployedContractOptions,
   type Ledger8FoundContract,
   type Ledger8SubmittedCallTx,
+  type Ledger8Witness,
   type NEITHER_ERA_CONTRACT_MESSAGE,
   type NeitherContractShape,
   type NeitherEraContractOptions
@@ -97,7 +104,7 @@ declare const contract016: Counter016Contract;
 declare const providersCoin: Ledger8ContractProviders<CoinReceiver016Contract, 'receive_coin'>;
 declare const optionsCoin: Ledger8CallTxOptionsBase<CoinReceiver016Contract, 'receive_coin'>;
 
-// Current-era ("0.18") call-site material, typed off the real generated declaration file.
+// Current-era call-site material, typed off the real generated declaration file.
 declare const providers018: ContractProviders<Twin018, 'increment'>;
 declare const options018: CallTxOptionsWithPrivateStateId<Twin018, 'increment'>;
 declare const compiledContract018: CompiledContract.CompiledContract<Twin018, Twin018PrivateState>;
@@ -105,6 +112,12 @@ declare const contract018: Twin018;
 
 // An object matching NEITHER era: not a container, not a retained-era instance.
 declare const neitherShapeContract: { readonly nonsense: true };
+
+// A retained-era contract whose circuit is NOT tuple-shaped, so `Ledger8CircuitParameters`
+// cannot destructure a leading context off it. Real 0.16 codegen never emits this; the type
+// family must still not claim such a circuit takes no arguments.
+type NotTupleShapedCircuits = { readonly odd: (...args: never[]) => Ledger8CircuitResult };
+type NotTupleShaped = Ledger8Contract & { readonly impureCircuits: NotTupleShapedCircuits };
 
 describe('the retained-era contract type family pins the real 0.16 artifact shape', () => {
   it('reads the fixture circuit ids off the family rather than off the fixture declaration', () => {
@@ -129,15 +142,19 @@ describe('the retained-era contract type family pins the real 0.16 artifact shap
     // impossible to satisfy or to read inside the widened implementation signatures. Concrete
     // contracts were unaffected, which is exactly why it needed asserting here.
     //
-    // The tuple shape comes from `Ledger8Circuit` declaring its leading CONTEXT explicitly, NOT
-    // from the width of its argument tail. The tail is `never[]` and must stay `never[]`: the
-    // circuit collections are function-typed records, so widening it to `unknown[]` breaks
-    // contravariance and locks every argument-taking contract out of the retained-era overload
-    // entirely (see the argument-taking fixture's own describe block below). `never[]` reads less
-    // obviously than `unknown[]`, and is inhabited all the same — `[]` satisfies it.
+    // The tuple shape comes from the explicit leading CONTEXT, not from the width of the argument
+    // tail; the tail must stay `never[]`. See {@link OverloadTyping} for why, and the
+    // argument-taking fixture's describe block below for the assertion that holds it.
     expectTypeOf<Ledger8CircuitParameters<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>>().toEqualTypeOf<never[]>();
     expectTypeOf<AnyLedger8CallTxOptions['args']>().toEqualTypeOf<never[]>();
     expectTypeOf<AnyLedger8CallTxOptions['args']>().not.toBeNever();
+
+    // And the no-match branch is `never[]`, not `never`. `never` satisfies `extends []`, so a
+    // circuit whose parameters are not tuple-shaped would be reported as taking NO arguments --
+    // silently wrong in the one direction a caller cannot detect. `never[]` keeps `args` required
+    // and uninhabitable, so the mismatch surfaces.
+    expectTypeOf<Ledger8CircuitParameters<NotTupleShaped, 'odd'>>().toEqualTypeOf<never[]>();
+    expectTypeOf<Ledger8CallTxOptionsBase<NotTupleShaped, 'odd'>>().toHaveProperty('args');
   });
 
   it('rejects a current-era contract instance', () => {
@@ -148,9 +165,11 @@ describe('the retained-era contract type family pins the real 0.16 artifact shap
     // sync/async split that fires here, even though that split is what the family is designed
     // around — the next assertion anchors on that separately, so a later relaxation of
     // `Ledger8CircuitContext` cannot quietly move this test onto the other reason.
-    // @ts-expect-error - a 0.18 contract's circuit context is not the retained era's
+    // @ts-expect-error - a current-era contract's circuit context is not the retained era's
     const notRetainedEra: Ledger8Contract = contract018;
-    expectTypeOf(notRetainedEra).toMatchTypeOf<Ledger8Contract>();
+    // `void`, not an `expectTypeOf` against its own annotation: that would assert nothing and read
+    // as coverage. The directive above is the assertion.
+    void notRetainedEra;
   });
 
   it('rejects the async results the current era returns, independently of any context mismatch', () => {
@@ -158,12 +177,17 @@ describe('the retained-era contract type family pins the real 0.16 artifact shap
     // `Promise` has none of the members the retained-era result types declare, in either position.
     expectTypeOf<ReturnType<Twin018['impureCircuits']['increment']>>().not.toMatchTypeOf<Ledger8CircuitResult>();
     expectTypeOf<ReturnType<Twin018['initialState']>>().not.toMatchTypeOf<Ledger8ConstructorResult>();
+
+    // ...and the mirror, so the split is pinned in BOTH directions rather than only the one the
+    // near-miss guard happens to exercise: a plain retained-era result is not a `Promise` either.
+    expectTypeOf<Ledger8CircuitResult>().not.toMatchTypeOf<ReturnType<Twin018['impureCircuits']['increment']>>();
+    expectTypeOf<Ledger8ConstructorResult>().not.toMatchTypeOf<ReturnType<Twin018['initialState']>>();
   });
 
   it('is rejected BY the current era in turn, so neither shape is a subtype of the other', () => {
-    // @ts-expect-error - a 0.16 contract's circuits are synchronous
+    // @ts-expect-error - a retained-era contract's circuit context is not the current era's
     const notCurrentEra: Contract.Any = contract016;
-    expectTypeOf(notCurrentEra).toMatchTypeOf<Contract.Any>();
+    void notCurrentEra;
   });
 });
 
@@ -206,15 +230,15 @@ describe('an argument-taking retained-era contract works, not just a zero-argume
 
 describe('the two eras options types do not structurally match each other', () => {
   it('does not accept retained-era options where the current-era overload expects its own', () => {
-    // @ts-expect-error - a raw 0.16 contract instance is not a 0.18 CompiledContract container
+    // @ts-expect-error - a raw retained-era contract instance is not a CompiledContract container
     const notCurrentEraOptions: CallTxOptionsBase<Twin018, 'increment'> = options016;
-    expectTypeOf(notCurrentEraOptions).toMatchTypeOf<CallTxOptionsBase<Twin018, 'increment'>>();
+    void notCurrentEraOptions;
   });
 
   it('does not accept current-era options where the retained-era overload expects its own, and does so ON the contract', () => {
-    // @ts-expect-error - a 0.18 CompiledContract container has no impureCircuits of its own
+    // @ts-expect-error - a CompiledContract container has no impureCircuits of its own
     const notRetainedEraOptions: Ledger8CallTxOptionsBase<Counter016Contract, 'increment'> = options018;
-    expectTypeOf(notRetainedEraOptions).toMatchTypeOf<Ledger8CallTxOptionsBase<Counter016Contract, 'increment'>>();
+    void notRetainedEraOptions;
 
     // `compiledContract` is the ONLY thing that does not line up, which is what makes the directive
     // above a test of era discrimination rather than of a missing field. It was not: while
@@ -318,10 +342,11 @@ describe('submitCallTxAsync, deployContract and findDeployedContract resolve bot
 });
 
 describe('an object belonging to neither era is refused by both eras', () => {
-  // No overload arm names {@link NeitherContractShape}, deliberately. An arm that is not LAST never
-  // renders a diagnostic, and putting one last made every mistyped CURRENT-era call report that the
-  // caller's ordinary contract belonged to neither era. The guidance moves to a thrown, typed error
-  // in era resolution, which can carry full remediation text where a compiler diagnostic cannot.
+  // No overload arm names a "neither era" type, deliberately. An arm that is not LAST never
+  // renders a diagnostic, and putting one last made every mistyped CURRENT-era call report that
+  // the caller's ordinary contract belonged to neither era. The guidance belongs in the thrown,
+  // typed error era resolution raises, which can carry full remediation text where a compiler
+  // diagnostic cannot.
   //
   // What remains here are the facts the overloads actually rely on: that a neither-era object is
   // refused by BOTH eras' options types, and that the message the future error will carry is the
@@ -348,9 +373,9 @@ describe('an object belonging to neither era is refused by both eras', () => {
 
   it('refuses a neither-era call outright', () => {
     // A GUARD, not a driver: this call fails against the current-era arms whatever the retained-era
-    // arm does, so the directive stays "used" either way. The four assertions above are what
+    // arm does, so the directive stays "used" either way. The two assertions above are what
     // actually discriminate.
-    // @ts-expect-error - neither a 0.16- nor a 0.18-generated contract
+    // @ts-expect-error - neither a 0.16- nor a current-era-generated contract
     submitCallTx(providers016, { compiledContract: neitherShapeContract, contractAddress, circuitId: 'increment' });
   });
 });
@@ -367,11 +392,16 @@ describe('adding era arms leaves the pre-existing entry points public surface un
   // signature, so neither can be moved silently -- and because they do, the third moves only when
   // they do. Its exact wording is TypeScript's to choose, and is not pinned anywhere.
   //
-  // Every expected type below was DERIVED from the base commit 72b071a2 rather than hand-written:
-  // each was stated as a candidate and verified there by a strict type-identity assertion before
-  // being written down here. `Parameters` in particular had already regressed once, to
-  // `[providers: unknown, options: NeitherEraContractOptions]`, because a trailing arm instantiated
-  // `providers` to `unknown` and nothing was watching.
+  // Every expected type below was DERIVED from the state of these entry points BEFORE the era
+  // arms were added (the tip of the parent PR in this stack) rather than hand-written: each was
+  // stated as a candidate and verified there by a strict type-identity assertion before being
+  // written down here. No commit SHA is cited, because the parent branch is squash-merged and the
+  // SHA would not survive it.
+  //
+  // `Parameters` in particular had already regressed once, reporting
+  // `[providers: unknown, options: ...]` off a trailing catch-all arm that instantiated
+  // `providers` to `unknown`, with nothing watching. That arm is gone; these pins are why its
+  // return could not come back unnoticed.
   it('leaves ReturnType<typeof submitCallTx> reporting the current-era CallResult', () => {
     expectTypeOf<ReturnType<typeof submitCallTx>>().toEqualTypeOf<Promise<CallResult<Contract<undefined>, string>>>();
   });
@@ -420,5 +450,22 @@ describe('adding era arms leaves the pre-existing entry points public surface un
 describe('the retained-era private state flows through the family', () => {
   it('reports the fixture private state on the retained-era result', () => {
     expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['nextPrivateState']>().toEqualTypeOf<Counter016PrivateState>();
+  });
+
+  it('refuses a witness declared over the WRONG private state', () => {
+    // `Ledger8Witness` threads `PS` through its first tuple member, so a witness that returns some
+    // other private state is not assignable. Before that, the member was `unknown` and this type
+    // refused nothing at all.
+    expectTypeOf<Ledger8Witness<Counter016PrivateState>>().not.toEqualTypeOf<Ledger8Witness<{ readonly other: bigint }>>();
+    expectTypeOf<() => readonly [{ readonly other: bigint }, unknown]>().not.toMatchTypeOf<
+      Ledger8Witness<Counter016PrivateState>
+    >();
+  });
+
+  it('still lets a concrete witness satisfy the era TOP type, because PS sits in a result position', () => {
+    // The variance check that makes the threading safe: `PS` is covariant here, so narrowing it on
+    // a concrete contract does not push that contract out of `Ledger8Contract`.
+    expectTypeOf<Ledger8Witness<Counter016PrivateState>>().toMatchTypeOf<Ledger8Witness>();
+    expectTypeOf<Counter016Contract>().toMatchTypeOf<Ledger8Contract<Counter016PrivateState>>();
   });
 });
