@@ -17,6 +17,10 @@
       "types": "./dist/version.d.ts",
       "default": "./dist/version.js"
     },
+    "./prove": {
+      "types": "./dist/prove.d.ts",
+      "default": "./dist/prove.js"
+    },
     "./ledger": {
       "types": "./dist/ledger.d.ts",
       "default": "./dist/ledger.js"
