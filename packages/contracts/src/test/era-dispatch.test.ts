@@ -311,13 +311,6 @@ describe('the era dispatch table: artifact era x network head era x operation ki
       expect.unreachable('a retained-era deploy was accepted on a post-fork head');
     } catch (error) {
       expect(error).toBeInstanceOf(Ledger8DeployOnV9Error);
-      // The registered code asserted DIRECTLY here, and not only through the
-      // refusal table above. The table's own `hasErrorCode(error, code)` spreads
-      // the two idioms over two lines, which `error-codes-negative.test.ts`
-      // deliberately does not accept: it measures negative coverage by
-      // `hasErrorCode(error, CONTRACTS_ERROR_CODES.X)` on ONE line, with no
-      // second form and no exemption, so that the gate cannot be talked around.
-      // This one line is what satisfies it for this code.
       expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9)).toBe(true);
       expect((error as Ledger8DeployOnV9Error).message).toMatch(/runtime-deploy|0\.18 artifacts/);
     }
