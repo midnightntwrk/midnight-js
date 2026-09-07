@@ -42,6 +42,13 @@ import { CURRENT_RUNTIME, PACKAGING_DIR, PERSONAS, personaManifest, readManifest
 const WORK_DIR = path.join(os.tmpdir(), 'midnight-js-packaging-personas');
 
 /**
+ * The Yarn release this repository pins, invoked directly. `yarn` on PATH is
+ * whatever the machine happens to have -- CI's is 1.22 -- and a `packageManager`
+ * field would only turn that mismatch into an error rather than fixing it.
+ */
+const YARN_BIN = path.join(REPOSITORY_ROOT, '.yarn', 'releases', 'yarn-4.14.1.cjs');
+
+/**
  * Resolved from this repository's own pinned devDependency, not from PATH and not
  * through Corepack. `pnpm` exports only its own `package.json`, so the bin is
  * reached by resolving that and reading the `bin` map rather than by subpath.
@@ -77,7 +84,9 @@ const LINKERS = {
     run: (cwd, args) => execFileSync('node', args, { cwd, stdio: 'inherit' })
   },
   pnp: {
-    packageManager: 'yarn@4.14.1',
+    // Same reasoning as pnpm: the version under test is a pinned file in this
+    // repository, not whatever a resolver decides to fetch.
+    packageManager: undefined,
     install: (cwd) => {
       // The scope registry has to be declared here. Yarn finds configuration by
       // walking up from the project, and the persona deliberately sits outside
@@ -97,10 +106,10 @@ const LINKERS = {
         'utf8'
       );
       writeFileSync(path.join(cwd, 'yarn.lock'), '', 'utf8');
-      execFileSync('yarn', ['install', '--no-immutable'], { cwd, stdio: 'inherit' });
+      execFileSync('node', [YARN_BIN, 'install', '--no-immutable'], { cwd, stdio: 'inherit' });
     },
     // PnP has no `node_modules`, so resolution only works through Yarn's loader.
-    run: (cwd, args) => execFileSync('yarn', ['node', ...args], { cwd, stdio: 'inherit' })
+    run: (cwd, args) => execFileSync('node', [YARN_BIN, 'node', ...args], { cwd, stdio: 'inherit' })
   }
 };
 
