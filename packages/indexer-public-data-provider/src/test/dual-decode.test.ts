@@ -21,19 +21,13 @@ import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
 import type { ProtocolV8 } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type LedgerVersion, protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { ReadSeam, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import { type ReadSeam, SucceedEntirely, type VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import { DeserializationError, hasErrorCode, PROVIDER_ERROR_CODES, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { decodeVersionedTransaction } from '../codec';
-import {
-  DecodeVersionMismatchError,
-  EraUnresolvableError,
-  EraUnsupportedError,
-  IndexerDataError,
-  IndexerError
-} from '../errors';
+import { EraUnresolvableError, EraUnsupportedError, IndexerDataError, IndexerError } from '../errors';
 import type { RegularTransaction } from '../gen/schema-types';
 import { toFinalizedDeployTxData, toFinalizedTxData } from '../mapping';
 import { IndexerPublicDataProvider } from '../provider';
@@ -41,6 +35,8 @@ import { type ApolloRequest, stubApolloHandle, type WatchQueryStub } from './apo
 import {
   mintV8TransactionHex,
   mintV9TransactionHex,
+  type RegularTransactionRow,
+  regularTransactionRow,
   UNRESOLVABLE_PROTOCOL_VERSION,
   V8_ERA_PROTOCOL_VERSION,
   V9_ERA_PROTOCOL_VERSION
@@ -78,20 +74,13 @@ beforeEach(() => {
   loadLedger8Spy.mockClear();
 });
 
-const transactionAt = (protocolVersion: number, raw: string): RegularTransaction & { hash: string; identifiers: string[] } =>
-  ({
-    id: 1,
+const transactionAt = (protocolVersion: number, raw: string): RegularTransactionRow =>
+  regularTransactionRow({
     protocolVersion,
     raw,
-    hash: 'ab'.repeat(32),
     identifiers: [TX_ID],
-    block: { height: 10, hash: 'cd'.repeat(32), author: null, timestamp: 0 },
-    contractActions: [{ address: CONTRACT_ADDRESS }],
-    unshieldedCreatedOutputs: [],
-    unshieldedSpentOutputs: [],
-    fees: { estimatedFees: '1', paidFees: '1' },
-    transactionResult: { status: 'SUCCESS' as const, segments: null }
-  }) as unknown as RegularTransaction & { hash: string; identifiers: string[] };
+    contractAddresses: [CONTRACT_ADDRESS]
+  });
 
 type QueryMock = ReturnType<typeof vi.fn<(request: ApolloRequest) => Promise<unknown>>>;
 
@@ -114,6 +103,25 @@ const providerReturning = (transaction: RegularTransaction): IndexerPublicDataPr
     .fn<(request: ApolloRequest) => Promise<unknown>>()
     .mockRejectedValue(new Error('test setup: this read must issue no query of its own'));
   const watchQuery: WatchQueryStub = () => emissionOf(transaction);
+  return new IndexerPublicDataProvider(stubApolloHandle({ query, watchQuery }), 1000);
+};
+
+/**
+ * A provider whose deploy poll resolves to `transaction` at once. Same
+ * no-request-of-its-own discipline as {@link providerReturning}.
+ */
+const deployProviderReturning = (transaction: RegularTransaction): IndexerPublicDataProvider => {
+  const query: QueryMock = vi
+    .fn<(request: ApolloRequest) => Promise<unknown>>()
+    .mockRejectedValue(new Error('test setup: this read must issue no query of its own'));
+  const watchQuery: WatchQueryStub = () =>
+    Rx.of({
+      data: { contractAction: { transaction } },
+      dataState: 'complete',
+      loading: false,
+      networkStatus: 7,
+      partial: false
+    });
   return new IndexerPublicDataProvider(stubApolloHandle({ query, watchQuery }), 1000);
 };
 
@@ -174,6 +182,82 @@ describe('per-record dual decode on the finalized-transaction read path', () => 
   });
 });
 
+describe('the read surface returns the decoded record, on both seams and both eras', () => {
+  it.each([
+    ['v9', V9_ERA_PROTOCOL_VERSION, (): string => v9TransactionHex],
+    ['v8', V8_ERA_PROTOCOL_VERSION, (): string => v8TransactionHex]
+  ])('watchForDeployTxData serves a %s record end to end', async (era, protocolVersion, raw) => {
+    // The only end-to-end coverage of the deploy seam. `watchForDeployTxData`
+    // builds its record in a trailing `.then` after the poll, so a dropped or
+    // mis-wired continuation there would otherwise surface no test at all.
+    const provider = deployProviderReturning(transactionAt(protocolVersion, raw()));
+
+    const record = await provider.watchForDeployTxData(CONTRACT_ADDRESS);
+
+    expect(record.version).toBe(era);
+    expect(toHex(record.tx.serialize())).toBe(raw());
+    expect(record.txId).toBe(TX_ID);
+  });
+
+  // Every field distinct, so a dropped field or a transposed pair cannot pass:
+  // `estimatedFees`/`paidFees` and `txHash`/`blockHash` are the two pairs that
+  // an equal-valued fixture would hide.
+  const DISTINCT = {
+    id: 77,
+    hash: '11'.repeat(32),
+    blockHash: '22'.repeat(32),
+    height: 4321,
+    timestamp: 1_700_000_000,
+    author: '33'.repeat(32),
+    estimatedFees: '111',
+    paidFees: '222'
+  } as const;
+
+  const distinctRecord = (protocolVersion: number, raw: string): RegularTransactionRow =>
+    regularTransactionRow({
+      protocolVersion,
+      raw,
+      indexerId: DISTINCT.id,
+      txHash: DISTINCT.hash,
+      identifiers: [TX_ID, 'second-identifier'],
+      contractAddresses: [CONTRACT_ADDRESS],
+      blockHeight: DISTINCT.height,
+      blockHash: DISTINCT.blockHash,
+      blockAuthor: DISTINCT.author,
+      blockTimestamp: DISTINCT.timestamp,
+      estimatedFees: DISTINCT.estimatedFees,
+      paidFees: DISTINCT.paidFees
+    });
+
+  it.each([
+    ['watchForTxData', (raw: string) => toFinalizedTxData(TX_ID, distinctRecord(V9_ERA_PROTOCOL_VERSION, raw))],
+    [
+      'watchForDeployTxData',
+      (raw: string) => toFinalizedDeployTxData(CONTRACT_ADDRESS, distinctRecord(V9_ERA_PROTOCOL_VERSION, raw))
+    ]
+  ])('%s carries every metadata field through, and none of them transposed', async (_seam, build) => {
+    const record = await build(v9TransactionHex);
+
+    expect({ ...record, tx: 'omitted' }).toEqual({
+      version: 'v9',
+      tx: 'omitted',
+      status: SucceedEntirely,
+      txId: TX_ID,
+      identifiers: [TX_ID, 'second-identifier'],
+      txHash: DISTINCT.hash,
+      blockHeight: DISTINCT.height,
+      blockHash: DISTINCT.blockHash,
+      blockTimestamp: DISTINCT.timestamp,
+      blockAuthor: DISTINCT.author,
+      segmentStatusMap: undefined,
+      unshielded: { created: [], spent: [] },
+      indexerId: DISTINCT.id,
+      protocolVersion: V9_ERA_PROTOCOL_VERSION,
+      fees: { estimatedFees: DISTINCT.estimatedFees, paidFees: DISTINCT.paidFees }
+    });
+  });
+});
+
 describe('the v8 runtime is reached lazily, and only when a v8 record needs it', () => {
   it('never acquires the v8 runtime while decoding v9 records', async () => {
     const records = await Promise.all(
@@ -194,11 +278,11 @@ describe('the v8 runtime is reached lazily, and only when a v8 record needs it',
     );
     const modules = await Promise.all(loadLedger8Spy.mock.results.map((result) => result.value));
 
-    expect(records).toHaveLength(RECORD_COUNT);
-    expect(loadLedger8Spy).toHaveBeenCalledTimes(RECORD_COUNT);
-    // The accessor is called per record; the memo behind it is what makes
-    // those calls one physical load, and a single module identity is how that
-    // shows from here.
+    expect(records.map((record) => record.version)).toEqual(Array.from({ length: RECORD_COUNT }, () => 'v8'));
+    expect(loadLedger8Spy).toHaveBeenCalled();
+    // One physical load is the claim, and a single module identity is how that
+    // shows from here. Deliberately not a call count: a memo added inside the
+    // codec would reduce the calls and still satisfy the claim.
     expect(new Set(modules).size).toBe(1);
   });
 
@@ -295,74 +379,73 @@ describe('the module graph keeps both retained-era chunks off the eager path', (
   });
 });
 
-describe('a decode against the wrong runtime is refused, not mislabelled', () => {
+describe('a decode that fails is reported by the layer that diagnosed it', () => {
+  // The provider does not re-attribute a decode failure. The bytes and the era
+  // it dispatched to are both facts it knows; which SIDE is at fault is not,
+  // and the deserialization layer's own mitigation is the one that helps.
   it.each([
     ['v8-era bytes dated to a v9 block', V9_ERA_PROTOCOL_VERSION, (): string => v8TransactionHex],
     ['v9-era bytes dated to a v8 block', V8_ERA_PROTOCOL_VERSION, (): string => v9TransactionHex]
-  ])('reports %s with the registered version-mismatch code', async (_label, protocolVersion, raw) => {
+  ])('leaves %s as the DeserializationError the runtime produced', async (_label, protocolVersion, raw) => {
     const error = await rejectionOf(toFinalizedTxData(TX_ID, transactionAt(protocolVersion, raw())));
 
-    expect(error).toBeInstanceOf(DecodeVersionMismatchError);
-    expect(hasErrorCode(error, PROVIDER_ERROR_CODES.DECODE_VERSION_MISMATCH)).toBe(true);
+    expect(error).toBeInstanceOf(DeserializationError);
+    expect(error).not.toBeInstanceOf(IndexerError);
   });
 
-  it('names the era it dispatched to, the raw protocolVersion, the seam and the record', async () => {
+  it('keeps the align-your-package-versions mitigation on the error the caller catches', async () => {
+    // The regression this pins: wrapping the failure in an era-attribution
+    // error demoted this mitigation to `cause` and replaced it with a claim
+    // ("inconsistent indexer") that a plain ledger-package skew contradicts.
     const error = await rejectionOf(
       toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
     );
 
-    const mismatch = error as DecodeVersionMismatchError;
-    expect(mismatch.era).toBe('v8');
-    expect(mismatch.protocolVersion).toBe(V8_ERA_PROTOCOL_VERSION);
-    expect(mismatch.seam).toBe('watchForTxData');
-    expect(mismatch.recordRef).toContain(TX_ID);
+    const mitigation = (error as DeserializationError).context.mitigation.join('\n');
+    expect(mitigation).toContain('Align the version');
+  });
+
+  it.each([
+    ['the era it dispatched to', 'era', 'v8'],
+    ['the raw protocolVersion', 'protocolVersion', V8_ERA_PROTOCOL_VERSION],
+    ['the seam', 'seam', 'watchForTxData'],
+    ['the record', 'recordRef', `txId ${TX_ID}`]
+  ])('names %s on the failure, so one of several concurrent watches is identifiable', async (_label, key, value) => {
+    const error = await rejectionOf(
+      toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
+    );
+
+    expect((error as DeserializationError).context.details?.[key]).toBe(value);
   });
 
   it('names the contract address on the deploy seam, not just the transaction id', async () => {
-    // Restores, against the error that now carries it, the assertion the era
-    // wiring suite used to make: whichever read failed, the record it failed on
-    // is identifiable.
     const error = await rejectionOf(
       toFinalizedDeployTxData(CONTRACT_ADDRESS, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
     );
 
-    const mismatch = error as DecodeVersionMismatchError;
-    expect(mismatch.seam).toBe('watchForDeployTxData');
-    expect(mismatch.recordRef).toContain(CONTRACT_ADDRESS);
-    expect(mismatch.message).toContain(CONTRACT_ADDRESS);
+    const details = (error as DeserializationError).context.details;
+    expect(details?.seam).toBe('watchForDeployTxData');
+    expect(details?.recordRef).toBe(`contractAddress ${CONTRACT_ADDRESS}`);
   });
 
-  it('blames the indexer rather than the consumer dependency versions', async () => {
+  it('renders the era and the protocolVersion in the message, not only on the context', async () => {
     const error = await rejectionOf(
       toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
     );
 
-    expect((error as Error).message).toContain('inconsistent indexer');
-    expect(error).toBeInstanceOf(IndexerError);
+    expect((error as Error).message).toContain('era=v8');
+    expect((error as Error).message).toContain(`protocolVersion=${V8_ERA_PROTOCOL_VERSION}`);
   });
 
-  it('preserves the runtime own diagnosis on cause rather than discarding it', async () => {
+  it('renders no payload of its own: not the hex, not a prefix of it', async () => {
     const error = await rejectionOf(
       toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
     );
 
-    const cause = (error as Error).cause;
-    expect(cause).toBeInstanceOf(DeserializationError);
-    expect((cause as DeserializationError).context.classification).toBe('version-mismatch');
-  });
-
-  it('renders no payload of its own: not the hex, not a prefix of it, not a byte count', async () => {
-    // Scoped to the error THIS package raises. The claim is about what this
-    // class renders, and it is the only part of the chain this package
-    // controls.
-    const error = await rejectionOf(
-      toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
-    );
-
-    const own = `${(error as Error).message}\n${JSON.stringify(error, ['message', 'seam', 'era', 'protocolVersion', 'recordRef', 'code', 'name'])}`;
     // The era and the raw protocolVersion ARE the diagnosis and belong in the
     // text; asserting them is also what shows the refusals below are reading
     // populated text rather than an empty string.
+    const own = `${(error as Error).message}\n${JSON.stringify((error as DeserializationError).context)}`;
     expect(own).toContain(String(V8_ERA_PROTOCOL_VERSION));
     expect(own).toContain('v8');
     for (const payload of [v9TransactionHex, v8TransactionHex]) {
@@ -388,7 +471,7 @@ describe('a decode against the wrong runtime is refused, not mislabelled', () =>
       toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
     );
 
-    const chain = [error, (error as Error).cause, ((error as Error).cause as Error).cause]
+    const chain = [error, (error as Error).cause, ((error as Error).cause as Error | undefined)?.cause]
       .map((link) => (link instanceof Error ? `${link.message}\n${JSON.stringify(link)}` : String(link)))
       .join('\n');
     expect(chain).toContain(String(V8_ERA_PROTOCOL_VERSION));
@@ -398,19 +481,14 @@ describe('a decode against the wrong runtime is refused, not mislabelled', () =>
     }
   });
 
-  // The invariant the error's own message asserts — "the record contradicts
-  // itself, so this is an inconsistent indexer rather than a version mismatch
-  // in your dApp's dependencies" — only holds if corruption stays out of this
-  // class. It very nearly did not: the deserialization layer's tag-header
-  // pattern is permissive on the incoming tag, so EVERY payload below arrives
-  // classified `version-mismatch`, and a guard that trusted the classification
-  // alone reported all of them as an era disagreement. Only the two genuine
-  // cross-era payloads above carry a `direction`.
-  //
-  // A single corrupt case would leave that looking proven when it was not, so
-  // the whole shape space is enumerated: nothing before the tag, a tag cut
-  // short, a tag mangled in place, an intact tag over a truncated body, and a
-  // byte flipped past the tag.
+  // Corruption and a genuine era disagreement are NOT distinguished here, and
+  // deliberately so: the classifier's tag-header pattern is permissive on the
+  // incoming tag, so empty, truncated and garbage payloads all classify
+  // `version-mismatch` too, and two of its era-identifying patterns
+  // (`unrecognised discriminant`, `unsupported … version`) set no `direction`
+  // at all. Any predicate this package could write over that would be wrong in
+  // one direction or the other, so it writes none and reports what the
+  // deserializer concluded.
   it.each([
     ['a payload truncated inside its header tag', (): string => v9TransactionHex.slice(0, 6)],
     ['a payload truncated mid-body, its header tag intact', (): string => v9TransactionHex.slice(0, 90)],
@@ -421,11 +499,21 @@ describe('a decode against the wrong runtime is refused, not mislabelled', () =>
       'a payload with a byte flipped after its header tag',
       (): string => flipByte(v9TransactionHex, Buffer.from(v9TransactionHex, 'hex').length - 1)
     ]
-  ])('leaves %s as a deserialization failure instead of blaming the era', async (_label, raw) => {
+  ])('reports %s as a deserialization failure naming the read', async (_label, raw) => {
     const error = await rejectionOf(toFinalizedTxData(TX_ID, transactionAt(V9_ERA_PROTOCOL_VERSION, raw())));
 
     expect(error).toBeInstanceOf(DeserializationError);
-    expect(error).not.toBeInstanceOf(DecodeVersionMismatchError);
+    expect((error as DeserializationError).context.details?.era).toBe('v9');
+  });
+
+  it.each([
+    ['garbage dispatched to the v8 runtime', (): string => 'ab'.repeat(64)],
+    ['a v8 payload truncated mid-body', (): string => v8TransactionHex.slice(0, 90)]
+  ])('classifies %s rather than letting the v8 binding throw escape raw', async (_label, raw) => {
+    const error = await rejectionOf(toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, raw())));
+
+    expect(error).toBeInstanceOf(DeserializationError);
+    expect((error as DeserializationError).context.details?.era).toBe('v8');
   });
 
   it.each([
@@ -442,6 +530,20 @@ describe('a decode against the wrong runtime is refused, not mislabelled', () =>
     expect(error).toBeInstanceOf(IndexerDataError);
     expect((error as IndexerDataError).context.kind).toBe('malformed-transaction-encoding');
   });
+
+  it.each([
+    ['v9', V9_ERA_PROTOCOL_VERSION, (): string => v9TransactionHex],
+    ['v8', V8_ERA_PROTOCOL_VERSION, (): string => v8TransactionHex]
+  ])('decodes a 0x-prefixed %s payload rather than handing the decoder zero bytes', async (era, protocolVersion, raw) => {
+    // `isHex` accepts an optional `0x` prefix; `Buffer.from(s, 'hex')` does
+    // not, and returns an EMPTY buffer for one. A guard and a decoder reading
+    // the string differently is the whole silent-truncation hazard, so both
+    // now go through `parseHex`.
+    const record = await toFinalizedTxData(TX_ID, transactionAt(protocolVersion, `0x${raw()}`));
+
+    expect(record.version).toBe(era);
+    expect(toHex(record.tx.serialize())).toBe(raw());
+  });
 });
 
 describe('an era that resolves to no decoder at all', () => {
@@ -454,13 +556,12 @@ describe('an era that resolves to no decoder at all', () => {
     expect(loadLedger8Spy).not.toHaveBeenCalled();
   });
 
-  // `EraUnsupportedError` is reachable only from an untyped JavaScript
-  // consumer, which this package also serves: `era` is typed, so a TypeScript
-  // caller cannot get here. The cast stands in for that consumer. Without the
-  // guard the era-keyed lookup would answer an inherited `Object.prototype`
-  // member instead of throwing. The class stays a public export with a
-  // registered code, so its fields and its remediation text are asserted here
-  // rather than left to whoever next reads the decoder table.
+  // The reachable path to `EraUnsupportedError` is a consumer whose installed
+  // `midnight-js-protocol` is NEWER than this provider package: `versionOfRecord`
+  // then answers an era this build's decoder table has no entry for. `era` is
+  // typed, so the cast is how a test reproduces that skew inside one build.
+  // Without the guard the era-keyed lookup on a null prototype would answer
+  // `undefined` and the read would fail somewhere further down instead of here.
   const decodeWithEra = (era: string, seam: ReadSeam = 'watchForTxData', recordRef = `txId ${TX_ID}`): Promise<unknown> =>
     decodeVersionedTransaction(v9TransactionHex, era as LedgerVersion, {
       seam,
@@ -485,7 +586,7 @@ describe('an era that resolves to no decoder at all', () => {
     expect(unsupported.era).toBe('v7');
     expect(unsupported.protocolVersion).toBe(V9_ERA_PROTOCOL_VERSION);
     expect(unsupported.seam).toBe('watchForDeployTxData');
-    expect(unsupported.recordRef).toContain(CONTRACT_ADDRESS);
+    expect(unsupported.recordRef).toBe(`contractAddress ${CONTRACT_ADDRESS}`);
   });
 
   it('names the record in its message, so one of several concurrent watches can be identified', async () => {

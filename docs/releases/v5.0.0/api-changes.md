@@ -244,21 +244,6 @@ export class EraUnresolvableError extends IndexerError {
   // protocolVersion maps to no era at all. The originating
   // UnknownProtocolVersionError is preserved on `cause`.
 }
-export class DecodeVersionMismatchError extends IndexerError {
-  readonly code: 'MIDNIGHT_JS_PR_DECODE_VERSION_MISMATCH';
-  readonly seam: ReadSeam;
-  readonly era: LedgerVersion;      // the era the decode was dispatched to
-  readonly protocolVersion: number; // the raw integer the indexer reported
-  readonly recordRef: string;       // the txId or contractAddress being read
-  // The record's era resolved, but its bytes identify themselves as another
-  // ledger vintage -- an inconsistent indexer, not a dependency-version
-  // problem. The runtime's own diagnosis is preserved on `cause`, and this
-  // class renders no payload of its own. Raised only where that diagnosis
-  // concluded the data is older or newer than the code: empty, truncated and
-  // garbage payloads reach the same `version-mismatch` classification but
-  // identify no vintage, and stay a DeserializationError. A `raw` that is not
-  // whole hex is refused as IndexerDataError before any decoder runs.
-}
 export class EraUnsupportedError extends IndexerError {
   readonly code: 'MIDNIGHT_JS_PR_ERA_UNSUPPORTED';
   readonly seam: ReadSeam;
@@ -287,7 +272,6 @@ export const CONTRACTS_ERROR_CODES: Readonly<{ ERA_INVARIANT_VIOLATION: string }
 export const PROVIDER_ERROR_CODES: Readonly<{
   V8_PAYLOAD_UNSUPPORTED: string; UNTAGGED_PAYLOAD: string;
   ERA_UNSUPPORTED: string; ERA_UNRESOLVABLE: string;
-  DECODE_VERSION_MISMATCH: string;
 }>;
 export type ContractsErrorCode = /* union of the above values */;
 export type ProviderErrorCode = /* union of the above values */;

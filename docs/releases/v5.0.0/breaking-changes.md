@@ -275,25 +275,19 @@ at all — `EraUnresolvableError`, for a node 0.x or otherwise unmapped
 `protocolVersion` — where before it returned a record that failed later inside
 the codec, with nothing in the message naming the era.
 
-One further read-boundary failure is new: `DecodeVersionMismatchError`, raised
-when a record's era resolves but its bytes identify themselves as **another
-ledger vintage**. The record contradicts itself, so this reports an inconsistent
-indexer rather than a version mismatch in your own dependencies; the runtime's
-own diagnosis is preserved on `cause`.
+Bytes that will not decode on the era selected for them are **not** re-reported
+as an era disagreement. They surface as the `DeserializationError` the runtime
+produced, now carrying the era, the raw `protocolVersion`, the seam and the
+record on `context.details`. The provider deliberately makes no claim about
+which side is at fault: a self-contradicting record and a
+`@midnightntwrk/ledger`-vN in your dApp of a different vintage than the
+network's produce the same diagnosis from here, and that error's own mitigation
+("align the version … with the protocol version of the network and indexer")
+addresses both. A `raw` field that is not a whole hex byte string is still
+refused as `IndexerDataError` before any decoder sees it.
 
-"Identify themselves" is the load-bearing part, and the bar is deliberately
-higher than the deserialization layer's `version-mismatch` classification. That
-classification is reached by empty, truncated and garbage payloads too, because
-the tag-header pattern behind it is permissive about the incoming tag. This
-error is raised only where the diagnosis also concluded the data is older or
-newer than the code. Everything else — malformed bytes, a truncated body under
-an intact tag, a payload that is not a serialized anything — surfaces as the
-`DeserializationError` it is, and a `raw` field that is not whole hex is
-refused as `IndexerDataError` before any decoder sees it. Corruption is
-therefore never reported as an era disagreement.
-
-`EraUnresolvableError`, `DecodeVersionMismatchError` and `EraUnsupportedError`
-are all `IndexerError` subclasses, and each carries the raw `protocolVersion`
+`EraUnresolvableError` and `EraUnsupportedError`
+are both `IndexerError` subclasses, and each carries the raw `protocolVersion`
 plus the transaction id or contract address being read. Two failures a read can
 raise are deliberately **not** `IndexerError`s, so "catch any indexer error with
 one `instanceof IndexerError` check" needs one qualification: `DeserializationError`
@@ -347,14 +341,13 @@ discriminant never appears in your code.
 carries `seam` and optional `circuitId`), `EraSeam`.
 
 **`@midnight-ntwrk/midnight-js-indexer-public-data-provider`** — added:
-`EraUnresolvableError` (`MIDNIGHT_JS_PR_ERA_UNRESOLVABLE`),
-`DecodeVersionMismatchError` (`MIDNIGHT_JS_PR_DECODE_VERSION_MISMATCH`) and
-`EraUnsupportedError` (`MIDNIGHT_JS_PR_ERA_UNSUPPORTED`), all `IndexerError`
+`EraUnresolvableError` (`MIDNIGHT_JS_PR_ERA_UNRESOLVABLE`) and
+`EraUnsupportedError` (`MIDNIGHT_JS_PR_ERA_UNSUPPORTED`), both `IndexerError`
 subclasses. `EraUnsupportedError` is a guard rather than an era policy: the
 per-record decoder table is total over the eras this client ships runtimes for,
-so a TypeScript caller cannot raise it, and it exists to stop an era string
-threaded in from untyped JavaScript resolving an inherited `Object.prototype`
-member instead of failing.
+so within one build it cannot be raised. It is reachable across builds — an
+installed `midnight-js-protocol` newer than this provider package resolves an
+era whose decoder this build predates.
 
 Catch any of these by code with `hasErrorCode(error, CODE)` from
 `midnight-js-utils` rather than by `instanceof` across a package boundary.
