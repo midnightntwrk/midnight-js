@@ -31,16 +31,14 @@ import {
   type Ledger8ConstructorResult,
   type Ledger8ConstructorRuntime
 } from '../lib/v8/deploy';
+import { V8_UNPROVEN_TX_TAG } from './fixtures';
 
 const NETWORK_ID = 'test-network';
 const TTL = new Date(Date.now() + 3_600_000);
 
-// Same literal tag as v8-compose.test.ts — both legs produce an
-// UnprovenTransaction (SignatureEnabled/PreProof/PreBinding), so the tag is
-// identical regardless of whether the transaction carries a deploy or a call.
-// It contains `proof-preimage`, so asserting it is also what shows the
-// transaction was never proven.
-const V8_UNPROVEN_TX_TAG = 'midnight:transaction[v9](signature[v1],proof-preimage,embedded-fr[v1]):';
+// The tag is identical whether the transaction carries a deploy or a call:
+// both legs produce an UnprovenTransaction. It contains `proof-preimage`, so
+// asserting it is also what shows the transaction was never proven.
 
 const KEYS_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys');
 const REGISTERED_VERIFIER_KEY = new Uint8Array(readFileSync(resolve(KEYS_DIR, 'increment.verifier')));
