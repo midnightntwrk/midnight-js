@@ -47,9 +47,11 @@ const era = hfFixturesManifest['state-v8.hex'].protocolVersion; // 1000000
 const source = hfFixturePath('twin-contract/counter.compact');  // absolute path
 ```
 
-`readHfFixture` covers the nine `.hex` states. Everything else — every compiled
-contract, `increment-transcript.golden.json`, the frozen private-state store,
-`fixtures.json`, this README — is reached by path through `hfFixturePath`. Both accessors throw rather than
+`readHfFixture` covers the nine `.hex` states. Everything else in this tree —
+every compiled contract and its source, the transcripts, the frozen
+private-state store, `fixtures.json`, this README — is reached by path through
+`hfFixturePath`. The sections below are the enumeration; this sentence is
+deliberately not a second one. Both accessors throw rather than
 returning a placeholder: an unknown fixture name, a path that climbs out of the
 fixture directory, a missing file and a hex file that is not whole hex are all
 errors. `hfFixturesManifest` is validated against `HF_FIXTURE_NAMES` at import,
@@ -373,8 +375,9 @@ reason while `packages/**` — test files included — is gated.
 
 **Deliberately NOT a regeneration of `twin-contract/`.** That fixture's
 `increment.verifier` bytes and its `contract/index.js` / `index.d.ts` are
-consumed as typecheck and known-good-key fixtures by roughly eleven test files
-across `packages/contracts` and `packages/protocol`. None of them executes it,
+consumed as typecheck and known-good-key fixtures across `packages/contracts`
+and `packages/protocol` — `grep -rl twin-contract packages/` answers *how many*
+at the time of asking, and the answer has only ever grown. None of them executes it,
 so its inability to run under 0.19 costs them nothing, while recompiling it
 would change the key bytes and the codegen shape underneath all of them. It is
 left exactly as it is.
@@ -446,12 +449,12 @@ envelope — superjson's encoding, the AES framing, the PBKDF2 parameters, the
 salt record — moves both halves of such a round trip together, so the suite
 stays green while every store an earlier release wrote becomes unreadable. This
 is measured, not asserted: with the KDF iteration count changed by one, the
-provider's own 276-test suite passes clean and only the test that reads these
+provider's own unit suite passes clean and only the test that reads these
 frozen bytes fails.
 
 | File | What it is |
 |---|---|
-| `store/` | The database: `CURRENT`, `MANIFEST-000004`, `000005.ldb`, `000006.log`. About 1.3 KB. `LOCK`/`LOG`/`LOG.old` are runtime files and are not committed. |
+| `store/` | The database. As committed: `CURRENT`, `MANIFEST-000004`, `000005.ldb`, `000006.log`, about 1.3 KB — but LevelDB picks its own file names and count, so a re-mint will differ. `LOCK`/`LOG`/`LOG.old` are runtime files, are `.gitignore`d, and are not committed. |
 | `ENVELOPE.md` | The generation log, and the rules for changing it. Read it before touching anything here. |
 
 One private state, under one contract address and state id, holding a bigint, a
@@ -659,14 +662,15 @@ clear a red test, which is why it is not part of `generate-all.mjs`:
 
 ```
 cd testkit-js/testkit-js
-node src/fixtures/hf/generators/mint-pre-fork-store.mjs
-# Exactly these three. NOT the numbered NNNNNN.log -- that is LevelDB's
-# write-ahead log and holds the state; a store without it opens and finds
-# nothing. (`.gitignore` has a negation for this directory for that reason.)
-rm -f src/fixtures/hf/pre-fork-private-state-store/store/{LOCK,LOG,LOG.old}
-# then add a generation section to ENVELOPE.md recording the new digest and what
-# the break means for a user holding an older store -- the suite compares that
-# recorded digest with the bytes, so this step cannot be skipped.
+# Without the flag the script refuses and changes nothing. It verifies it can
+# read the state back before the bytes become a fixture, removes LevelDB's
+# runtime files (LOCK/LOG/LOG.old -- but NOT the numbered NNNNNN.log, which is
+# the write-ahead log and holds the state), and prints the digest to record.
+node src/fixtures/hf/generators/mint-pre-fork-store.mjs --accept-envelope-break
+# then add a generation section to ENVELOPE.md -- at the TOP, above the existing
+# ones -- recording that digest and what the break means for a user holding an
+# older store. The suite reads the FIRST recorded digest and compares it with
+# the bytes, so this step cannot be skipped and the section cannot go at the end.
 ```
 
 ## Version pin note (deviation from the brief, with evidence)

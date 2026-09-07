@@ -24,10 +24,12 @@ const FIXTURE_TARGET = 'dist/fixtures/hf';
 const ACCESSOR_ENTRY = 'fixtures-hf';
 
 // Dev-only: they import the ledger devDependencies, which a consumer of the
-// published package does not get. Everything else -- the state bytes, every
-// compiled contract, the golden transcript, the recorded transcript, the
-// manifest and the README -- ships, because `src/fixtures-hf.ts` resolves them
-// relative to its own module URL and that URL is inside `dist` once published.
+// published package does not get. Everything ELSE under `src/fixtures/hf`
+// ships, whatever it is -- deliberately stated as the rule rather than as an
+// inventory, because every enumeration of this tree has gone stale. It ships
+// because `src/fixtures-hf.ts` resolves fixtures relative to its own module URL
+// and that URL is inside `dist` once published. `fixtures/hf/README.md` is the
+// one place that lists what is there.
 const GENERATORS = 'generators';
 
 const isGeneratorAsset = (source) => relative(FIXTURE_SOURCE, source).split(sep)[0] === GENERATORS;

@@ -102,6 +102,13 @@ const createSecretKeysStub = (): ZswapSecretKeys => {
   return stub as ZswapSecretKeys;
 };
 
+// Shared rather than built per call, so the balancing path can be asserted by
+// identity. Both are opaque to the wallet seam -- it takes them as one bag --
+// so reference equality is the only thing that distinguishes them from each
+// other, and a swap is exactly the regression worth catching here.
+const SECRET_KEYS = createSecretKeysStub();
+const DUST_SECRET_KEY = {} as DustSecretKey;
+
 // A real pino logger rather than `{}`: `withWallet` only stores it today, but a
 // stub that is not a logger turns any future log call in this path into an
 // unreadable TypeError instead of a failed assertion.
@@ -113,8 +120,8 @@ const createProvider = async (
     pino({ enabled: false }),
     {} as EnvironmentConfiguration,
     wallet,
-    createSecretKeysStub(),
-    {} as DustSecretKey,
+    SECRET_KEYS,
+    DUST_SECRET_KEY,
     unshieldedKeystore
   );
 
@@ -185,6 +192,21 @@ describe('MidnightWalletProvider', () => {
       const signSegment = vi.mocked(wallet.signRecipe).mock.calls[0][1];
       await expect(signSegment(payload)).resolves.toBe(SIGNATURE);
       expect(keystore.signDataAsync).toHaveBeenCalledWith(payload);
+    });
+
+    it('hands the wallet the shielded and dust secret keys it was built with', async () => {
+      const { wallet } = createBalancingWallet();
+      const provider = await createProvider(wallet);
+
+      await provider.balanceTx({ version: 'v9', tx: {} as UnboundTransaction });
+
+      // Each member separately, by identity. The wallet takes both in one bag
+      // and this seam never looks inside either, so a refactor that swapped them
+      // -- or passed one where the other belongs -- satisfies every other
+      // assertion in this file. This argument is what the adapter change moved.
+      const keys = vi.mocked(wallet.balanceUnboundTransaction).mock.calls[0][1];
+      expect(keys.shieldedSecretKeys).toBe(SECRET_KEYS);
+      expect(keys.dustSecretKey).toBe(DUST_SECRET_KEY);
     });
 
     it('forwards the ttl the caller supplied', async () => {

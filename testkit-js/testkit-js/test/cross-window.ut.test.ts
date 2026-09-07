@@ -88,6 +88,40 @@ const ENVELOPE_UNRECORDED =
 const FIXTURE_INCOMPLETE =
   'the frozen store on disk is not the bytes ENVELOPE.md records, so nothing below can be concluded about the envelope - most likely the checkout is missing part of src/fixtures/hf/pre-fork-private-state-store/store/; restore it rather than re-minting';
 
+// A read of the frozen store can fail for reasons that say nothing about the
+// envelope -- a full disk, a lock another process holds, a truncated copy.
+// Reported separately because answering those with "earlier releases' private
+// state is unreadable" is a confident wrong diagnosis, and ENVELOPE.md forbids
+// the remedy that diagnosis sends a maintainer towards.
+const FROZEN_READ_FAILED =
+  'could not read the frozen private-state store, for a reason that is NOT a persistence-envelope break - see the cause below, and conclude nothing about the envelope from it';
+
+/**
+ * Whether a failed read says the persistence envelope moved, rather than that
+ * the machine was out of disk. The provider keeps an equivalent predicate
+ * private, so this lists the same signatures: WebCrypto's `OperationError` for
+ * a failed AES-GCM tag, the storage layer's own thrown messages, and a
+ * superjson/JSON decode failure.
+ */
+const isEnvelopeBreak = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  if (error.name === 'OperationError' || error instanceof SyntaxError) {
+    return true;
+  }
+  const message = error.message.toLowerCase();
+  return [
+    'unsupported state',
+    'unsupported encryption version',
+    'salt mismatch',
+    'invalid encrypted data',
+    'bad decrypt',
+    'invalid tag',
+    'unable to authenticate'
+  ].some((signature) => message.includes(signature));
+};
+
 /**
  * Digest over a directory's committed bytes: every file's path, length and
  * content, in sorted order. Stable for as long as nobody re-mints the store,
@@ -148,6 +182,50 @@ const isCounterPrivateState = (value: unknown): value is CounterPrivateState => 
     members.secretKey instanceof Uint8Array &&
     members.nullifiers instanceof Map
   );
+};
+
+/** A value's runtime type, named the way a maintainer reads a degraded field. */
+const runtimeTypeOf = (value: unknown): string => {
+  if (value === null) {
+    return 'null';
+  }
+  if (typeof value !== 'object') {
+    return typeof value;
+  }
+  return value.constructor?.name ?? 'object';
+};
+
+/** Each member's runtime type, so a shape failure can name what degraded. */
+const describeMembers = (value: unknown): string => {
+  if (typeof value !== 'object' || value === null) {
+    return runtimeTypeOf(value);
+  }
+  return Object.entries(value)
+    .map(([member, memberValue]) => `${member}: ${runtimeTypeOf(memberValue)}`)
+    .join(', ');
+};
+
+/**
+ * The carried state, or a failure that says which of two different things went
+ * wrong. "Nothing came back" and "something came back with its types degraded"
+ * are separate findings, and the second one -- `7` where `7n` was written, a
+ * plain object where a `Map` was -- is the regression this whole suite exists
+ * to catch. Reporting it as an absence would send a maintainer to the storage
+ * and key layers while the real fault sat in the codec, so the two are split
+ * and the degraded case names the members it found.
+ */
+const requireCarriedState = (carried: unknown, stateId: string): CounterPrivateState => {
+  if (carried === null || carried === undefined) {
+    throw new Error(
+      `the post-fork reader found no private state at all under "${stateId}" - either nothing was stored, or the state id no longer maps to the stored key`
+    );
+  }
+  if (!isCounterPrivateState(carried)) {
+    throw new Error(
+      `the post-fork reader found a private state under "${stateId}" whose members no longer carry their original types (${describeMembers(carried)}) - the persistence codec stopped preserving them`
+    );
+  }
+  return carried;
 };
 
 /** What `private-counter.compact` projects for its witness: its whole ledger. */
@@ -402,10 +480,11 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     // runtime is the one this repo resolves. Bumping compact-runtime without
     // recompiling the fixture fails here, rather than as a version-mismatch
     // throw from deep inside the twin's own module body. Exact equality is
-    // stricter than the runtime's own `checkRuntimeVersion`, which compares
-    // only major/minor on a 0.x version -- so a 0.19.0-rc.0 -> 0.19.0 bump
-    // trips this while the fixture would still load. That is the intent: the
-    // pair is recompiled deliberately, never left to drift quietly.
+    // stricter than the runtime's own `checkRuntimeVersion`, which strips the
+    // prerelease tag and then requires equal major/minor plus a patch no higher
+    // than the runtime's -- so a 0.19.0-rc.0 -> 0.19.0 bump trips this while the
+    // fixture would still load. That is the intent: the pair is recompiled
+    // deliberately, never left to drift quietly.
     expect(twinInfo['runtime-version'], RECOMPILE).toBe(twin.runtime.versionString);
     expect(retained.runtime.versionString).toBe(RETAINED_RUNTIME_VERSION);
   });
@@ -470,10 +549,7 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     await preForkProvider.set('private-counter-continued', preFork.privateState);
 
     const postForkProvider = await openPostForkProvider();
-    const carried = await postForkProvider.get('private-counter-continued');
-    if (!isCounterPrivateState(carried)) {
-      throw new Error('the post-fork reader found no usable private state to continue from');
-    }
+    const carried = requireCarriedState(await postForkProvider.get('private-counter-continued'), 'private-counter-continued');
     const postFork = await runTwinIncrement(carried);
 
     // Same meaning, not merely the same bytes: the current toolchain's witness
@@ -486,26 +562,27 @@ describe('private state across the ledger v8 to v9 fork window', () => {
   });
 
   /**
-   * The one test here whose INPUT bytes this process did not write. Every other
-   * round trip in this file writes and reads with the same build, so a change to
-   * the persistence envelope — superjson's encoding, the AES framing, the PBKDF2
+   * The frozen store, opened from a fresh copy and decoded. Its INPUT bytes are
+   * the only ones in this file that this process did not write: every other
+   * round trip here writes and reads with the same build, so a change to the
+   * persistence envelope — superjson's encoding, the AES framing, the PBKDF2
    * parameters — moves both halves together and goes unnoticed. These bytes
    * cannot move.
    *
-   * The store is opened from a copy: LevelDB writes `LOCK` and `LOG` into any
-   * directory it opens, and the fixture must stay untouched.
+   * The copy is deliberate: LevelDB writes `LOCK` and `LOG` into any directory
+   * it opens, and the fixture must stay untouched. Each caller names its own
+   * copy so that two tests never open one directory.
    */
-  it('opens a private-state store written by an earlier build, and decodes it to the same value', async () => {
+  const readFrozenStore = async (label: string): Promise<CounterPrivateState | null> => {
     // Completeness established from the BYTES, before the store is opened,
     // rather than inferred afterwards from a read that came back empty. A
     // COMPLETE store reads back `null` too — if the provider changed how a state
     // id maps to a stored key, say — and calling that a missing file would send
     // a maintainer hunting a phantom while the real finding is that no existing
-    // user store can be read. With this ahead of the read, any `null` below is
-    // unambiguously an envelope break.
+    // user store can be read.
     expect(await digestDirectory(FROZEN_STORE), FIXTURE_INCOMPLETE).toBe(await recordedStoreDigest());
 
-    const store = path.join(dbName, 'frozen-store-copy');
+    const store = path.join(dbName, `frozen-store-copy-${label}`);
     await fs.cp(FROZEN_STORE, store, { recursive: true });
     const provider = levelPrivateStateProvider<string, CounterPrivateState>({
       midnightDbName: store,
@@ -515,12 +592,20 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     provider.setContractAddress(CONTRACT_ADDRESS);
     await provider.invalidateEncryptionCache();
 
-    // The envelope break shows up as a decrypt failure, thrown before any
+    // An envelope break shows up as a decrypt failure, thrown before any
     // assertion runs, so the guidance is re-thrown here rather than left on an
-    // `expect` the maintainer never reaches. Original error kept as the cause.
-    const readBack = await provider.get(FROZEN_STATE_ID).catch((error: unknown) => {
-      throw new Error(ENVELOPE_BREAK, { cause: error });
+    // `expect` the maintainer never reaches. Only for failures that ARE envelope
+    // breaks, though: a full disk, a held lock or a truncated copy reach this
+    // same catch, and answering those with "no earlier release's private state
+    // is readable" would be a confident wrong diagnosis pointing at a remedy
+    // ENVELOPE.md forbids. Original error kept as the cause either way.
+    return provider.get(FROZEN_STATE_ID).catch((error: unknown) => {
+      throw new Error(isEnvelopeBreak(error) ? ENVELOPE_BREAK : FROZEN_READ_FAILED, { cause: error });
     });
+  };
+
+  it('opens a private-state store written by an earlier build, and decodes it to the same value', async () => {
+    const readBack = await readFrozenStore('decode');
 
     // Decoded value, as everywhere else here — what is frozen is the input, not
     // the comparison. The key is re-derived from the fixed test password and the
@@ -529,6 +614,30 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     expect(readBack?.step, ENVELOPE_BREAK).toBe(7n);
     expect(readBack?.secretKey).toBeInstanceOf(Uint8Array);
     expect(readBack?.nullifiers).toBeInstanceOf(Map);
+  });
+
+  /**
+   * The two halves of the claim, joined. The test above shows foreign bytes
+   * decoding to an expected literal; the tests above that show one meaning
+   * surviving between the two toolchains, but only for bytes this process wrote
+   * moments earlier. Neither shows the post-fork toolchain doing real work with
+   * state it did not write — which is the property a dApp owner actually holds
+   * across the fork. This drives the current-runtime build directly off the
+   * frozen store's decoded state.
+   */
+  it('lets the post-fork twin execute on a private state written by an earlier build', async () => {
+    const carried = requireCarriedState(await readFrozenStore('continue'), FROZEN_STATE_ID);
+
+    const postFork = await runTwinIncrement(carried);
+
+    // `step` is 7n in the frozen bytes, so a witness that really read it out of
+    // them drives the ledger from 0n to 7n. Absolute rather than compared with
+    // another run: this is the one place where the pre-fork side is bytes on
+    // disk instead of an execution, so there is no sibling result to match.
+    expect(postFork.round).toBe(7n);
+    expect(postFork.seen).toHaveLength(1);
+    expect(postFork.seen[0].ledger.round).toBe(0n);
+    expect(postFork.seen[0].privateState).toEqual(FROZEN_PRIVATE_STATE);
   });
 
   /**
@@ -554,10 +663,7 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     await preForkProvider.set('private-counter-post-fork-write', preFork.privateState);
 
     const postForkProvider = await openPostForkProvider();
-    const carried = await postForkProvider.get('private-counter-post-fork-write');
-    if (!isCounterPrivateState(carried)) {
-      throw new Error('the post-fork reader found no usable private state to continue from');
-    }
+    const carried = requireCarriedState(await postForkProvider.get('private-counter-post-fork-write'), 'private-counter-post-fork-write');
     await postForkProvider.set('private-counter-post-fork-write', {
       ...carried,
       callCount: carried.callCount + 1n,

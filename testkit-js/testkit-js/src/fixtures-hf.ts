@@ -93,7 +93,7 @@ const isProtocolVersion = (value: unknown): value is number | null => value === 
 /**
  * Resolves a path inside the shipped fixture tree, for assets this module
  * exposes no dedicated reader for: every compiled contract and its sources,
- * the golden and recorded transcripts, the two `coin-receiver-016` state
+ * the golden and recorded transcripts, the `coin-receiver-016` state
  * envelopes, the frozen private-state store, the manifest and the README.
  * Deliberately not enumerated fixture-by-fixture -- that list has gone stale
  * before. What each asset is, and which of them are reachable only this way, is

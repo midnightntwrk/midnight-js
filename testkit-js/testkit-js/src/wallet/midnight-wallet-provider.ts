@@ -48,10 +48,9 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
   readonly unshieldedKeystore: UnshieldedKeystore;
   readonly zswapSecretKeys: ZswapSecretKeys;
   readonly dustSecretKey: DustSecretKey;
-  // The version tag lives in the adapters, never in this class — see
-  // ADR 0006. The wallet underneath is v9-only, so the two adapters fit it
-  // exactly: refusing a v8 payload is the right answer for a v9-only wallet,
-  // not a gap in it.
+  // The version tag lives in the adapters, never in this class. The wallet
+  // underneath is v9-only, so the two adapters fit it exactly: refusing a v8
+  // payload is the right answer for a v9-only wallet, not a gap in it.
   private readonly walletProvider: WalletProvider;
   private readonly midnightProvider: MidnightProvider;
 

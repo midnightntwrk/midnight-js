@@ -21,20 +21,31 @@ break is intended — accept it explicitly:
 
 1. Decide, and get agreement, that private state written by earlier releases may
    stop being readable.
-2. Run `node src/fixtures/hf/generators/mint-pre-fork-store.mjs` from
-   `testkit-js/testkit-js/`, then delete exactly `LOCK`, `LOG` and `LOG.old` —
-   those three are runtime files, not part of the fixture. **Keep the numbered
-   `NNNNNN.log`.** Despite the extension it is LevelDB's write-ahead log and, in
-   a store this small, the only file holding the encrypted state; a store
-   without it opens fine and finds nothing. `.gitignore`'s blanket `*.log` rule
-   excluded it once already, which is why there is a negation for this directory
-   and a `.gitattributes` marking every file here binary. Check
-   `git status --short` shows all four files before committing.
-3. Add a generation section BELOW, newest first, recording the new digest and
-   what changed. The consuming test compares the topmost `digest:` here with the
-   bytes on disk, so a regeneration that skips this step fails — the note cannot
+2. Run `node src/fixtures/hf/generators/mint-pre-fork-store.mjs
+   --accept-envelope-break` from `testkit-js/testkit-js/`. The flag is
+   deliberate: without it the script refuses and changes nothing, so reaching
+   for it out of curiosity — or because a test went red — cannot take the
+   fixture with it. The script verifies it can read the state back before the
+   bytes are treated as a fixture, deletes LevelDB's runtime files (`LOCK`,
+   `LOG`, `LOG.old`), and prints the `- digest:` line for step 4.
+3. Check `git status --short`. Expect the store's `CURRENT`, `MANIFEST-*`, one
+   or more `*.ldb` and the numbered `*.log` — and nothing else. **Keep the
+   numbered `NNNNNN.log`.** Despite the extension it is LevelDB's write-ahead
+   log and, in a store this small, the only file holding the encrypted state; a
+   store without it opens fine and finds nothing. `.gitignore`'s blanket `*.log`
+   rule excluded it once already, which is why there is a negation for this
+   directory, an ignore for the three runtime files, and a `.gitattributes`
+   marking every file here binary. How many files there are, and what LevelDB
+   numbered them, varies between runs — do not expect the set an earlier
+   generation happened to commit.
+4. Add a generation section immediately below this list and **above** the
+   existing `## Generation N` headings — newest first — recording the digest the
+   script printed and what changed. The consuming test reads the FIRST
+   `- digest:` line in this file, so a section appended at the bottom leaves it
+   comparing against a superseded generation and reporting that no section was
+   added at all. A regeneration that skips this step fails — the note cannot
    silently fall behind the fixture.
-4. Say in that section what a user with an older store has to do.
+5. Say in that section what a user with an older store has to do.
 
 The generator is deliberately not wired into `generate-all.mjs` for the same
 reason: nothing should re-mint these bytes as a side effect of regenerating
