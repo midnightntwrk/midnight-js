@@ -79,7 +79,23 @@ const LINKERS = {
   pnp: {
     packageManager: 'yarn@4.14.1',
     install: (cwd) => {
-      writeFileSync(path.join(cwd, '.yarnrc.yml'), 'nodeLinker: pnp\nenableGlobalCache: false\n', 'utf8');
+      // The scope registry has to be declared here. Yarn finds configuration by
+      // walking up from the project, and the persona deliberately sits outside
+      // this repository, so it no longer inherits the root `.yarnrc.yml`.
+      // `npmAuthToken` comes from YARN_NPM_AUTH_TOKEN in the environment.
+      writeFileSync(
+        path.join(cwd, '.yarnrc.yml'),
+        [
+          'nodeLinker: pnp',
+          'enableGlobalCache: false',
+          'npmScopes:',
+          '  midnight-ntwrk:',
+          '    npmAlwaysAuth: true',
+          '    npmRegistryServer: "https://npm.pkg.github.com/"',
+          ''
+        ].join('\n'),
+        'utf8'
+      );
       writeFileSync(path.join(cwd, 'yarn.lock'), '', 'utf8');
       execFileSync('yarn', ['install', '--no-immutable'], { cwd, stdio: 'inherit' });
     },
