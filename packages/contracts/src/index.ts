@@ -41,14 +41,21 @@ export {
   DeployedContract
 } from './deploy-contract';
 export {
+  BlankVerifierKeySlotError,
   CallTxFailedError,
   ContractTypeError,
   DeployTxFailedError,
+  EraArtifactMismatchError,
+  type EraArtifactMismatchReason,
   EraInvariantViolationError,
   type EraSeam,
+  HeadStateEraMismatchError,
   IncompleteCallTxPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
-  TxFailedError} from './errors';
+  IndexerInconsistencyError,
+  Ledger8DeployOnV9Error,
+  TxFailedError,
+  VerifierKeyMismatchError} from './errors';
 export {
   findDeployedContract,
   FindDeployedContractOptions,
