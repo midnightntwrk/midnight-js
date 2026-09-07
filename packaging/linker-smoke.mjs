@@ -27,6 +27,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 
 import {
   CONTRACT_PACKAGES,
@@ -55,7 +56,7 @@ import {
  */
 const SHORT_ROOT = process.platform === 'win32' ? os.tmpdir() : '/tmp';
 const WORK_DIR = path.join(SHORT_ROOT, 'mjs-packaging');
-const STAGED_TARBALL_DIR = path.join(WORK_DIR, 'tgz');
+export const STAGED_TARBALL_DIR = path.join(WORK_DIR, 'tgz');
 const PNPM_STORE_DIR = path.join(WORK_DIR, 'pnpm-store');
 
 /**
@@ -87,7 +88,7 @@ const PNPM_BIN = (() => {
  * hoisted linker is deliberately absent -- it cannot satisfy two Compact runtime
  * majors in one tree, which is the situation a retained-era dApp is in.
  */
-const LINKERS = {
+export const LINKERS = {
   pnpm: {
     // No `packageManager` field: that would route the call through Corepack, which
     // resolves and verifies its own download. The version under test is the one
@@ -99,7 +100,8 @@ const LINKERS = {
         [PNPM_BIN, 'install', '--no-frozen-lockfile', '--ignore-scripts', '--store-dir', PNPM_STORE_DIR],
         { cwd, stdio: 'inherit' }
       ),
-    run: (cwd, args) => execFileSync('node', args, { cwd, stdio: 'inherit' })
+    runCommand: (args) => [process.execPath, args],
+    run: (cwd, args) => execFileSync(process.execPath, args, { cwd, stdio: 'inherit' })
   },
   pnp: {
     // Same reasoning as pnpm: the version under test is a pinned file in this
@@ -119,6 +121,17 @@ const LINKERS = {
           '  midnight-ntwrk:',
           '    npmAlwaysAuth: true',
           '    npmRegistryServer: "https://npm.pkg.github.com/"',
+          // Upstream packaging defects, surfaced by PnP because it refuses an
+          // undeclared dependency where a hoisted tree silently satisfies one.
+          // These are patches for OTHER people's manifests, not for ours; each
+          // should be dropped when the upstream package declares its own.
+          'packageExtensions:',
+          '  "@midnightntwrk/wallet-sdk-facade@*":',
+          '    dependencies:',
+          '      "@midnightntwrk/wallet-sdk-utilities": "*"',
+          '  "@midnightntwrk/wallet-sdk-node-client@*":',
+          '    dependencies:',
+          '      "@polkadot/api-base": "*"',
           ''
         ].join('\n'),
         'utf8'
@@ -127,11 +140,12 @@ const LINKERS = {
       execFileSync('node', [YARN_BIN, 'install', '--no-immutable'], { cwd, stdio: 'inherit' });
     },
     // PnP has no `node_modules`, so resolution only works through Yarn's loader.
-    run: (cwd, args) => execFileSync('node', [YARN_BIN, 'node', ...args], { cwd, stdio: 'inherit' })
+    runCommand: (args) => [process.execPath, [YARN_BIN, 'node', ...args]],
+    run: (cwd, args) => execFileSync(process.execPath, [YARN_BIN, 'node', ...args], { cwd, stdio: 'inherit' })
   }
 };
 
-const buildPersona = (name, linkerName, manifest) => {
+export const buildPersona = (name, linkerName, manifest, entryOverride) => {
   const persona = PERSONAS[name];
   const linker = LINKERS[linkerName];
   const cwd = path.join(WORK_DIR, `${name}-${linkerName}`);
@@ -144,7 +158,7 @@ const buildPersona = (name, linkerName, manifest) => {
     `${JSON.stringify(personaManifest(name, persona, manifest, linker.packageManager, STAGED_TARBALL_DIR), null, 2)}\n`,
     'utf8'
   );
-  cpSync(path.join(PACKAGING_DIR, `${persona.entry ?? 'persona-entry'}.mjs`), path.join(cwd, 'entry.mjs'));
+  cpSync(path.join(PACKAGING_DIR, `${entryOverride ?? persona.entry ?? 'persona-entry'}.mjs`), path.join(cwd, 'entry.mjs'));
 
   if (persona.contractSource !== undefined) {
     cpSync(path.join(REPOSITORY_ROOT, persona.contractSource, 'contract'), path.join(cwd, 'contract'), {
@@ -170,6 +184,21 @@ const buildPersona = (name, linkerName, manifest) => {
   return { cwd, persona, linker };
 };
 
+/**
+ * Copies the packed tarballs beside the personas.
+ *
+ * Exported because the AC0 driver installs a persona too, and both have to stage
+ * the same way: pnpm encodes a tarball's path into a store filename.
+ */
+export const stageTarballs = (manifest) => {
+  rmSync(STAGED_TARBALL_DIR, { recursive: true, force: true });
+  mkdirSync(STAGED_TARBALL_DIR, { recursive: true });
+  for (const relative of Object.values(manifest.packages)) {
+    const source = path.join(PACKAGING_DIR, relative);
+    cpSync(source, path.join(STAGED_TARBALL_DIR, path.basename(source)));
+  }
+};
+
 const main = () => {
   const requested = process.argv.slice(2);
   const linkerNames = requested.filter((argument) => argument in LINKERS);
@@ -179,14 +208,7 @@ const main = () => {
 
   const manifest = readManifest();
 
-  // Staged beside the personas so pnpm's store, which encodes a tarball's path
-  // into a filename, never sees a path long enough to overflow NAME_MAX.
-  rmSync(STAGED_TARBALL_DIR, { recursive: true, force: true });
-  mkdirSync(STAGED_TARBALL_DIR, { recursive: true });
-  for (const relative of Object.values(manifest.packages)) {
-    const source = path.join(PACKAGING_DIR, relative);
-    cpSync(source, path.join(STAGED_TARBALL_DIR, path.basename(source)));
-  }
+  stageTarballs(manifest);
 
   const failures = [];
 
@@ -215,4 +237,6 @@ const main = () => {
   process.stdout.write(`\nAll ${linkers.length * personas.length} persona/linker combinations passed.\n`);
 };
 
-main();
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

@@ -97,7 +97,10 @@ export const PERSONAS = {
       '@midnight-ntwrk/midnight-js-indexer-public-data-provider',
       '@midnight-ntwrk/midnight-js-http-client-proof-provider',
       '@midnight-ntwrk/midnight-js-node-zk-config-provider',
-      '@midnight-ntwrk/midnight-js-level-private-state-provider'
+      '@midnight-ntwrk/midnight-js-level-private-state-provider',
+      // The dApp persona uses the testkit's wallet and provider wiring rather than
+      // reimplementing them; a real dApp would bring its own wallet integration.
+      '@midnight-ntwrk/testkit-js'
     ]
   }
 };
