@@ -16,10 +16,16 @@ half of the same admission path is a separate thread — see
 
 ## The pipeline is named by the ledger era, not the toolchain
 
-`PipelineEra` is `'ledger8' | 'v9native'`. Both names are the LEDGER ERA the
+`PipelineEra` is `'ledger8' | 'ledger9'`. Each member names the LEDGER ERA the
 pipeline executes against, never a toolchain version, because the toolchain
 moves independently of the ledger and a name pinned to it goes stale on the next
 compiler bump.
+
+A member names its era and nothing else — not which era is native, current, or
+newest. Those are all relative to a fork that moves: the moment ledger 10 lands,
+a name like `'v9native'` describes the era before last. A further era ADDS a
+member (`'ledger10'`) and leaves every existing member meaning exactly what it
+meant before.
 
 A pipeline era is not a statement about the network. It says only which era's
 artifact the caller handed over; whether that artifact can run at all is the
@@ -50,7 +56,7 @@ What is left is the properties a spread preserves, plus one it cannot:
 
 | shape | own `tag` | own `impureCircuits` | `initialState` | verdict |
 | ----- | --------- | -------------------- | -------------- | ------- |
-| current-era container | string | absent | absent | `'v9native'` |
+| current-era container | string | absent | absent | `'ledger9'` |
 | retained-era instance | absent | present | `Function` | `'ledger8'` |
 | raw current-era instance | absent | present | `AsyncFunction` | refused, by name |
 | anything else | — | — | — | refused as neither era |
@@ -160,9 +166,9 @@ rather than left to fall through:
 
 | artifact | head | `'call'` | `'deploy'` |
 | -------- | ---- | -------- | ---------- |
-| current-era | `v9` | v9-native | v9-native |
+| current-era | `v9` | ledger9 | ledger9 |
 | retained-era | `v9` | keep-state | refused |
-| retained-era | `v8` | v8-native | v8-native |
+| retained-era | `v8` | ledger8 | ledger8 |
 | current-era | `v8` | refused | refused |
 
 A retained-era DEPLOY on a post-fork head is the one cell where the two kinds

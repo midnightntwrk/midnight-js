@@ -111,16 +111,16 @@ export function requireV9Record(
 /**
  * Which execution pipeline an operation takes.
  *
- * `'ledger8'` is the retained pipeline, for a contract produced by the previous Compact
- * toolchain; `'v9native'` is the current one. Both names are the LEDGER ERA the pipeline executes
- * against, never a toolchain version.
+ * Each member names the LEDGER ERA the pipeline executes against — `'ledger8'` runs against
+ * ledger 8, `'ledger9'` against ledger 9 — never a toolchain version, and never which era is the
+ * newest. A further ledger era ADDS a member instead of renaming one.
  *
  * Not a statement about the network — see {@link assertEraCompatible} for the pairing with the
  * head era, which is what decides whether the operation can run at all.
  *
  * @see {@link EraDispatch} for why the names are keyed to the ledger era.
  */
-export type PipelineEra = 'ledger8' | 'v9native';
+export type PipelineEra = 'ledger8' | 'ledger9';
 
 /**
  * The era facts one operation resolves ONCE, at its asynchronous start, and then threads down as
@@ -200,7 +200,7 @@ export const pipelineEraOf = (compiledContract: unknown): PipelineEra => {
     // well as the absence of `impureCircuits` is what stops an arbitrary object — `{}` included —
     // from being routed into the current-era pipeline by default.
     if (hasOwnProperty(compiledContract, 'tag') && typeof compiledContract.tag === 'string') {
-      return 'v9native';
+      return 'ledger9';
     }
     throw new EraArtifactMismatchError('unrecognised-contract-shape');
   }
@@ -290,7 +290,7 @@ export const resolveOperationEra = async (pdp: HeadVersionSource): Promise<Resol
  */
 export const assertEraCompatible = (pipeline: PipelineEra, head: LedgerVersion, kind: 'call' | 'deploy'): void => {
   switch (pipeline) {
-    case 'v9native':
+    case 'ledger9':
       switch (head) {
         case 'v9':
           return;
