@@ -40,17 +40,35 @@ assertions prove nothing about a real contract.
 
 ## What separates the two eras at the type level
 
-Only two things do:
+Three things do, and they are listed in the order the COMPILER reaches them —
+which is not the order of importance, and was measured rather than assumed:
 
-1. **The container.** The current era's contract arrives inside a
-   `CompiledContract` carrying a `tag` and a `unique symbol` property that a
-   plain object cannot forge. A retained-era contract is passed as the raw
-   contract instance, with no container.
-2. **Sync versus async.** Retained-era circuit members return a plain object and
-   `initialState` returns a plain object; the current era's return `Promise`s.
-   This is the discriminator the declarations are built on — a current-era
-   circuit's `Promise<CircuitResults<...>>` has none of the four members
-   `Ledger8CircuitResult` declares, so it is not assignable to it.
+1. **The circuit context**, and this is the one that actually fires for a real
+   contract. `Ledger8Circuit` takes a `Ledger8CircuitContext<never>`, which has
+   none of the members of the current runtime's much larger `CircuitContext`
+   (`callContext`, `queryContexts`, `gasCosts`, `zswapLocalStates`, and more),
+   so a current-era circuit is not assignable to it on a CONTRAVARIANT
+   PARAMETER mismatch. The reverse fails the same way.
+2. **Sync versus async.** Retained-era circuit members and `initialState`
+   return plain objects; the current era's return `Promise`s. A
+   `Promise<CircuitResults<...>>` has none of the four members
+   `Ledger8CircuitResult` declares. This is the discriminator the declarations
+   are DESIGNED around and the one the runtime predicate uses, but at the type
+   level it is second in queue — it only gets a chance once the contexts agree.
+   `overloads.test-d.ts` anchors it separately, in both directions, so
+   relaxing `Ledger8CircuitContext` cannot quietly leave nothing holding the
+   line.
+3. **`impureCircuits` against the vendor top type.** The vendor's `Contract`
+   interface declares only `witnesses`, `circuits`, `provableCircuits` and
+   `initialState` — no `impureCircuits` — so `Contract.Any` fails
+   `Ledger8Contract` on a missing member alone. Note this is a fact about the
+   vendor INTERFACE, not about generated code: a real generated current-era
+   contract does install `impureCircuits`, which is why it cannot be used as a
+   runtime discriminator.
+
+**The container** is what the current-era arms take, and it is what keeps a raw
+current-era instance from reaching them: a `CompiledContract` carries a `tag`
+and a branded property that a plain object does not have.
 
 `provableCircuits` deliberately does NOT discriminate. The real retained-era
 artifact sets BOTH `impureCircuits` and `provableCircuits`, so its presence says
@@ -95,6 +113,17 @@ tail. Widening the tail to `unknown[]` for readability costs the feature its
 argument-taking contracts. `overloads.test-d.ts` pins both directions against a
 real zero-argument fixture and a real argument-taking one.
 
+**Declare your retained-era collections as type ALIASES, not interfaces.**
+`Readonly<Record<string, Ledger8Circuit>>` requires an implicit index
+signature, and TypeScript gives one to an object type alias but not to an
+interface. A consumer who writes `interface MyCircuits { ... }` gets
+`Index signature for type 'string' is missing`, which mentions nothing about
+eras — and because the failure is on the CONSTRAINT, the call then falls
+through to the current-era arms and reports something about `CompiledContract`
+instead. Generated Compact declarations are written as aliases already, so this
+matches real generated code; the fixtures in
+`packages/contracts/src/test/ledger8-fixture-types.ts` follow the same rule.
+
 The context is `Ledger8CircuitContext<never>` for the same contravariance
 reason: `never` is assignable to every private state, so a concrete circuit
 declared over a real one satisfies this, and the context gives the family a
@@ -130,26 +159,22 @@ names a real cause: a typo'd circuit id, a private state of the wrong type.
 That last point is the one worth protecting, because a mistyped CURRENT-era call
 is the common case and a retained-era call is the rare one.
 
-`overloads.test-d.ts` pins all of it: that each retained-era arm is REACHABLE (a
+`overloads.test-d.ts` pins it: that each retained-era arm is REACHABLE (a
 retained-era call resolves to the retained-era result type, not merely
 compiles), and that `ReturnType` AND `Parameters` on all four entry points still
-report exactly what they reported at the base commit.
-`packages/contracts/src/test/current-era-diagnostic.test.ts` runs the compiler
-itself and pins the third one: that a mistyped current-era call still names its
-real cause.
+report exactly what they reported at the base commit. Those two are what read
+from the LAST signature, so an arm appended to the end of any of these lists
+fails them. The diagnostic a failed call prints resolves from that same last
+signature, and so moves only when they do; its exact wording is TypeScript's to
+choose and is deliberately not pinned.
 
 ## There is no catch-all arm
 
 Adding a last arm carrying `NEITHER_ERA_CONTRACT_MESSAGE` would have made every
 mistyped current-era call report that the caller's perfectly ordinary contract
-"is neither a 0.16- nor a 0.18-generated contract" — a false statement on the
-common path. An arm that is NOT last never renders at all, so placing one
+"is neither a retained-era nor a current-era generated contract" — a false
+statement on the common path. An arm that is NOT last never renders at all, so placing one
 earlier would only distort `ReturnType` and `Parameters`.
-
-The guidance belongs in a thrown, typed error instead, which can carry full
-remediation text where a compiler diagnostic cannot.
-
-## The neither-era vocabulary is retained unused
 
 `NEITHER_ERA_CONTRACT_MESSAGE` is consumed by `EraArtifactMismatchError`, which
 `pipelineEraOf` raises when it is handed an object belonging to neither era. A

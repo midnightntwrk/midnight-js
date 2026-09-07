@@ -232,6 +232,12 @@ export interface FoundContract<C extends Contract.Any> {
   readonly contractMaintenanceTx: ContractMaintenanceTxInterface;
 }
 
+/*
+ * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
+ * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
+ * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ */
 /**
  * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
@@ -245,26 +251,32 @@ export interface FoundContract<C extends Contract.Any> {
  * retained-era contract was deployed in whichever era was current at the time, and refusing the
  * pre-fork arm would refuse exactly the contracts this arm exists to keep callable.
  *
- * ARM ORDER IS LOAD-BEARING: this arm is declared FIRST, and the arm that was already LAST stays
- * last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
- *
- * @see {@link OverloadTyping} for what resolves from the last arm.
+ * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
 export async function findDeployedContract<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
   options: Ledger8FindDeployedContractOptions<C>
 ): Promise<Ledger8FoundContract<C>>;
 
+/**
+ * Attaches to a deployed contract that declares no private state.
+ */
 export async function findDeployedContract<C extends Contract<undefined>>(
   providers: ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
   options: FindDeployedContractOptionsBase<C>
 ): Promise<FoundContract<C>>;
 
+/**
+ * Attaches to a deployed contract, reusing the private state already stored at `privateStateId`.
+ */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: FindDeployedContractOptionsExistingPrivateState<C>
 ): Promise<FoundContract<C>>;
 
+/**
+ * Attaches to a deployed contract, storing the given `initialPrivateState` at `privateStateId`.
+ */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: FindDeployedContractOptionsStorePrivateState<C>
@@ -286,6 +298,10 @@ export async function findDeployedContract<C extends Contract.Any>(
  *                           state found at `contractAddress`, or have mis-matched verifier keys.
  * @throws IncompleteFindContractPrivateStateConfig If an `initialPrivateState` is given but no
  *                                                  `privateStateId` is given to store it under.
+ * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, or
+ *                                  is a raw current-era contract instance passed instead of its
+ *                                  `CompiledContract` container. Raised before any provider is
+ *                                  consulted.
  */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,

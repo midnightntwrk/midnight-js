@@ -70,21 +70,23 @@ export interface Ledger8CircuitResult {
 /**
  * A retained-era circuit member.
  *
- * Two things in this signature are load-bearing, and neither is cosmetic: the leading context is
- * declared EXPLICITLY so `Parameters<T>` stays tuple-shaped for
- * {@link Ledger8CircuitParameters}, and the argument tail is `never[]` rather than `unknown[]` so
- * that argument-taking circuits still satisfy the {@link Ledger8Contract} constraint under
- * `strictFunctionTypes`. Do not widen the tail for readability.
+ * Two things here are load-bearing and neither is cosmetic: the leading context is declared
+ * EXPLICITLY, and the argument tail is `never[]` rather than `unknown[]`. Do not widen either for
+ * readability.
  *
- * @see {@link OverloadTyping} for what each widening buys and what breaks without it.
+ * @see {@link OverloadTyping} for what each buys and what breaks without it.
  */
 export type Ledger8Circuit = (context: Ledger8CircuitContext<never>, ...args: never[]) => Ledger8CircuitResult;
 
 /**
  * A retained-era witness implementation, which returns the next private state
  * paired with the value the circuit reads.
+ *
+ * `PS` is threaded through the FIRST tuple member so a witness declared over the wrong private
+ * state is refused. It sits in a result position, where `PS` is covariant, so every concrete
+ * contract still satisfies the era top type.
  */
-export type Ledger8Witness = (...args: never[]) => readonly [unknown, unknown];
+export type Ledger8Witness<PS = unknown> = (...args: never[]) => readonly [PS, unknown];
 
 /**
  * What a retained-era `initialState` returns: a plain object, NOT a `Promise`.
@@ -104,7 +106,7 @@ export interface Ledger8ConstructorResult<PS = unknown> {
  * circuit members return `Promise`s.
  */
 export interface Ledger8Contract<PS = unknown> {
-  readonly witnesses: Readonly<Record<string, Ledger8Witness>>;
+  readonly witnesses: Readonly<Record<string, Ledger8Witness<PS>>>;
   readonly circuits: Readonly<Record<string, Ledger8Circuit>>;
   readonly impureCircuits: Readonly<Record<string, Ledger8Circuit>>;
   readonly provableCircuits: Readonly<Record<string, Ledger8Circuit>>;
@@ -130,11 +132,16 @@ export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['impureCircuit
  * the context is built by the framework from provider data, never passed in by
  * the caller.
  *
+ * A circuit whose parameters are not tuple-shaped falls to `never[]`, NOT to `never`: `never`
+ * satisfies `extends []`, so it would make {@link Ledger8CallTxOptionsBase} report that such a
+ * circuit takes no arguments at all. `never[]` is uninhabited but not empty, so the caller is
+ * asked for an `args` it cannot supply and the mismatch surfaces instead of being swallowed.
+ *
  * @see {@link OverloadTyping} for why a caller may not be handed the raw
  *      `Parameters<...>`.
  */
 export type Ledger8CircuitParameters<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
-  Parameters<C['impureCircuits'][K]> extends [Ledger8CircuitContext, ...infer A] ? A : never;
+  Parameters<C['impureCircuits'][K]> extends [Ledger8CircuitContext, ...infer A] ? A : never[];
 
 /**
  * The providers a retained-era call transaction needs.
@@ -326,8 +333,12 @@ export type AnyLedger8FindDeployedContractOptions = Ledger8FindDeployedContractO
 export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
 
 /**
- * The migration-guide message for a contract belonging to neither era. This is the SINGLE place its
- * text is written.
+ * The message for a contract belonging to neither era. This is the SINGLE place its text is
+ * written.
+ *
+ * Names the two eras by ROLE, never by toolchain version: this text is thrown at users, and a
+ * version number in it goes stale on every runtime bump. The retained/current vocabulary is the
+ * one the rest of this package uses.
  *
  * DO NOT DELETE AS UNUSED, and do not inline it either. It is consumed by
  * `EraArtifactMismatchError` in `./errors`, which is what `pipelineEraOf` in `./internal/era`
@@ -338,20 +349,17 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  * @see {@link OverloadTyping} for why the text is a runtime `const`, and why it is not wired into
  *      an overload arm.
  */
-// WHY THE VERSIONS READ THIS WAY. `0.16` is exact: the retained era is one frozen toolchain, and
-// the repo's retained fixtures are all `0.16.0`. The current side is a RANGE, not a number, because
-// it is still moving -- the current-era fixture used by the typecheck tests is `0.18.0-rc.1` while
-// the toolchain this release actually pins is `0.19.0-rc.0` (see the module documentation above),
-// and BOTH are accepted by the current-era arm. Naming either one alone is what made this text
-// contradict itself: a consumer on 0.19 was told their object was "neither a 0.16- nor a
-// 0.18-generated contract", which names two versions neither of which is theirs. The message is
-// about which ERA an object belongs to, so it names the eras and anchors each with the version that
-// opens it, and no future toolchain release invalidates it.
+// WHY NO VERSION NUMBERS. Earlier wordings named the toolchains -- "neither a 0.16- nor a
+// 0.18-generated contract" -- and that text contradicted itself as soon as the current side moved:
+// a consumer on `0.19.0-rc.0`, which this release pins, was told their object matched neither of
+// two versions, neither of which was theirs. The message is about which ERA an object belongs to,
+// and the eras are named by role everywhere else in this package, so it names them that way here
+// too and no future toolchain release invalidates it.
 // ONE string literal deliberately, never a `+` concatenation: TypeScript widens `'a' + 'b'` to
 // `string`, which would cost {@link NeitherContractShape} its string LITERAL member and break the
 // verbatim pin in `src/test/typecheck/overloads.test-d.ts`.
 export const NEITHER_ERA_CONTRACT_MESSAGE =
-  'Object is neither a retained-era (compact-runtime 0.16) nor a current-era (compact-runtime 0.18 or later) contract. See migration guide §window.';
+  'Object is neither a retained-era nor a current-era generated contract.';
 
 /**
  * The type the catch-all arm of every era-dispatching entry point expects, so that an object
