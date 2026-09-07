@@ -14,6 +14,7 @@
  */
 
 export * from './assertion-utils';
+export * from './contract-state-envelope';
 export * from './date-utils';
 export * from './deserialization';
 export * from './error-codes';

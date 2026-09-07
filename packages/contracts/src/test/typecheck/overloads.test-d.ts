@@ -58,7 +58,10 @@ import {
   type Ledger8FindDeployedContractOptions,
   type Ledger8FoundContract,
   type Ledger8SubmittedCallTx,
-  type Ledger8Witness
+  type Ledger8Witness,
+  type NEITHER_ERA_CONTRACT_MESSAGE,
+  type NeitherContractShape,
+  type NeitherEraContractOptions
 } from '../../ledger8-contract';
 import { submitCallTx, submitCallTxAsync, type SubmitCallTxProviders } from '../../submit-call-tx';
 import type { SubmitTxProviders } from '../../submit-tx';
@@ -345,8 +348,24 @@ describe('an object belonging to neither era is refused by both eras', () => {
   // typed error era resolution raises, which can carry full remediation text where a compiler
   // diagnostic cannot.
   //
-  // What remains here is the fact the overloads actually rely on: a neither-era object is refused
-  // by BOTH eras.
+  // What remains here are the facts the overloads actually rely on: that a neither-era object is
+  // refused by BOTH eras' options types, and that the message the future error will carry is the
+  // wording that was reviewed.
+  it('carries the migration-guide message verbatim, so a reword cannot pass unnoticed', () => {
+    expectTypeOf<NeitherContractShape['__error']>().toEqualTypeOf<'Object is neither a retained-era nor a current-era generated contract.'>();
+  });
+
+  it('keeps the message and the named shape in step', () => {
+    expectTypeOf<NeitherEraContractOptions['compiledContract']>().toEqualTypeOf<NeitherContractShape>();
+    expectTypeOf<NeitherContractShape['__error']>().toEqualTypeOf<typeof NEITHER_ERA_CONTRACT_MESSAGE>();
+  });
+
+  it('does not match the named neither-era shape', () => {
+    // @ts-expect-error - neither a 0.16- nor a 0.18-generated contract
+    const neither: NeitherEraContractOptions = { compiledContract: neitherShapeContract };
+    expectTypeOf(neither).toMatchTypeOf<NeitherEraContractOptions>();
+  });
+
   it('is refused by the retained era and by the current era alike', () => {
     expectTypeOf<{ readonly nonsense: true }>().not.toMatchTypeOf<Ledger8Contract>();
     expectTypeOf<{ readonly nonsense: true }>().not.toMatchTypeOf<CompiledContract.CompiledContract<Twin018, Twin018PrivateState>>();

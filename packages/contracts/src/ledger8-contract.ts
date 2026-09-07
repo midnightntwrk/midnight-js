@@ -25,9 +25,13 @@
  * container, and the fact that retained-era circuits and `initialState` return
  * plain objects where the current era returns `Promise`s.
  *
+ * There is no era predicate in this file. The single RUNTIME predicate is
+ * `pipelineEraOf` in `./internal/era`; do not add a second one here.
+ *
  * @see {@link OverloadTyping} for why the declarations are hand-written and
  *      runtime-pinned, how openness is expressed without `any`, and why the
  *      order of the overload arms is load-bearing.
+ * @see {@link EraDispatch} for the runtime predicate and what it may not use.
  */
 
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
@@ -294,41 +298,47 @@ export type AnyLedger8FindDeployedContractOptions = Ledger8FindDeployedContractO
 export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
 
 /**
- * Tells the two eras apart at runtime, so each entry point's implementation can refuse a
- * retained-era request before touching the current-era pipeline.
+ * The message for a contract belonging to neither era. This is the SINGLE place its text is
+ * written.
  *
- * Tests the SAME discriminator the type family is built on: a retained-era `initialState` is
- * synchronous, where the current toolchain's is `async`. `impureCircuits` is checked only to
- * establish that the value is a contract at all — it does NOT discriminate, because the current
- * toolchain installs it too, on the raw contract instance.
+ * Names the two eras by ROLE, never by toolchain version: this text is thrown at users, and a
+ * version number in it goes stale on every runtime bump. The retained/current vocabulary is the
+ * one the rest of this package uses.
  *
- * That distinction matters for a caller who passes the raw current-era instance instead of its
- * `CompiledContract` container — a mistake the types catch but plain JavaScript does not. Such a
- * value is reported as CURRENT era, so it fails against the current-era pipeline rather than
- * being told, wrongly, that its contract came from the previous toolchain.
+ * DO NOT DELETE AS UNUSED, and do not inline it either. It is consumed by
+ * `EraArtifactMismatchError` in `./errors`, which is what `pipelineEraOf` in `./internal/era`
+ * raises when it is handed an object belonging to neither era.
+ * `src/test/typecheck/overloads.test-d.ts` pins the wording verbatim, and it is not re-exported
+ * from the package index.
  *
- * Name the type parameter explicitly at each call site rather than letting it infer, so the
- * narrowing removes exactly the retained-era arm of that entry point's parameter union.
- *
- * @param options The entry point's argument, before its era is known.
- * @returns `true` when the contract is a retained-era instance.
- * @see {@link OverloadTyping} for why the container's brand cannot be used for this.
+ * @see {@link OverloadTyping} for why the text is a runtime `const`, and why it is not wired into
+ *      an overload arm.
  */
-export const isLedger8Options = <L extends { readonly compiledContract: Ledger8Contract }>(
-  options: { readonly compiledContract: unknown } | L
-): options is L => {
-  const compiledContract = options.compiledContract;
+export const NEITHER_ERA_CONTRACT_MESSAGE =
+  'Object is neither a retained-era nor a current-era generated contract.';
 
-  if (typeof compiledContract !== 'object' || compiledContract === null) {
-    return false;
-  }
-  if (!('impureCircuits' in compiledContract) || !('initialState' in compiledContract)) {
-    return false;
-  }
+/**
+ * The type the catch-all arm of every era-dispatching entry point expects, so that an object
+ * matching NEITHER era's shape is refused against a name whose own definition says what went
+ * wrong.
+ *
+ * The `__error` member exists only to carry {@link NEITHER_ERA_CONTRACT_MESSAGE}; nothing
+ * constructs a value of this type.
+ *
+ * @see {@link OverloadTyping} for why it is retained ahead of its consumer.
+ */
+export type NeitherContractShape = { readonly __error: typeof NEITHER_ERA_CONTRACT_MESSAGE }
 
-  const { initialState } = compiledContract as { readonly initialState: unknown };
-
-  return typeof initialState === 'function' && initialState.constructor.name !== 'AsyncFunction';
-};
-
-
+/**
+ * An options object whose contract belongs to neither era, kept as the named counterpart to
+ * {@link NeitherContractShape}.
+ *
+ * No overload arm takes this type. `src/test/typecheck/overloads.test-d.ts` pins that a
+ * neither-era object really is refused by it — the assignability fact the overloads rely on,
+ * whether or not any arm spells it out.
+ *
+ * @see {@link OverloadTyping} for why no arm spells it out.
+ */
+export interface NeitherEraContractOptions {
+  readonly compiledContract: NeitherContractShape;
+}

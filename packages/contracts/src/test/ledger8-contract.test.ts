@@ -22,9 +22,10 @@ import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { deployContract } from '../deploy-contract';
-import { Ledger8PipelineNotWiredError } from '../errors';
+import { EraArtifactMismatchError, Ledger8PipelineNotWiredError } from '../errors';
 import { findDeployedContract } from '../find-deployed-contract';
-import { isLedger8Options, type Ledger8ContractProviders } from '../ledger8-contract';
+import { isLedger8Request } from '../internal/era';
+import { type Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
 import type {
   CoinReceiver016Contract,
@@ -274,30 +275,39 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       coinReceiverContract = new (await loadCoinReceiver016()).Contract({});
     });
 
-    it('recognises the real retained-era artifact', () => {
-      expect(isLedger8Options({ compiledContract: contract })).toBe(true);
-      expect(isLedger8Options({ compiledContract: coinReceiverContract })).toBe(true);
+    it('recognises the real retained-era artifacts, and a current-era container as not', () => {
+      // `isLedger8Request` is the single era predicate, in the narrowing form these entry points
+      // need; it replaced a provisional `'impureCircuits' in ...` check that answered TRUE for a
+      // raw current-era contract instance, which carries that member too.
+      expect(isLedger8Request({ compiledContract: contract })).toBe(true);
+      expect(isLedger8Request({ compiledContract: coinReceiverContract })).toBe(true);
+      expect(isLedger8Request({ compiledContract: { tag: 'counter', pipe: (): void => undefined } })).toBe(false);
     });
 
     it('rejects a REAL current-era container, not just a hand-rolled stand-in', () => {
       // `createMockCompiledContract` goes through `CompiledContract.make(...).pipe(withVacantWitnesses)`,
       // which is how every real container is built. A literal `{ tag, pipe }` resembles only the
       // transient `make()` result and would keep passing if the predicate were widened.
-      expect(isLedger8Options({ compiledContract: createMockCompiledContract() })).toBe(false);
+      expect(isLedger8Request({ compiledContract: createMockCompiledContract() })).toBe(false);
     });
 
-    it('rejects a RAW current-era contract instance, which also carries impureCircuits', () => {
+    it('refuses a RAW current-era contract instance, which also carries impureCircuits', () => {
       // The blind spot that made the error message lie. A raw current-era instance is what a
       // JavaScript consumer passes when they forget the container, and `impureCircuits` alone does
       // not tell the eras apart -- the current toolchain installs it too. Only the sync/async split
-      // does, which is the discriminator the type family is already built on.
-      expect(isLedger8Options({ compiledContract: rawCurrentEraContract })).toBe(false);
+      // does, which is the discriminator the type family is already built on. The consolidated
+      // predicate REFUSES such a value rather than reporting `false`, so the caller is told what is
+      // wrong instead of failing later, against the current-era pipeline, for an unrelated reason.
+      expect(() => isLedger8Request({ compiledContract: rawCurrentEraContract })).toThrow(EraArtifactMismatchError);
     });
 
-    it('rejects values that are not contracts at all, without throwing on null', () => {
-      expect(isLedger8Options({ compiledContract: undefined })).toBe(false);
-      expect(isLedger8Options({ compiledContract: null })).toBe(false);
-      expect(isLedger8Options({ compiledContract: 'not a contract' })).toBe(false);
+    it('refuses a contract belonging to neither era, where the superseded check returned false', () => {
+      // The changed failure mode, and the reason the predicate was replaced rather than patched:
+      // the provisional check answered `false` here and let the request fall into the current-era
+      // pipeline, to fail later on something unrelated to the era.
+      expect(() => isLedger8Request({ compiledContract: undefined })).toThrow(EraArtifactMismatchError);
+      expect(() => isLedger8Request({ compiledContract: null })).toThrow(EraArtifactMismatchError);
+      expect(() => isLedger8Request({ compiledContract: 'not a contract' })).toThrow(EraArtifactMismatchError);
     });
 
     // No `args` on these options: the fixture circuit takes no arguments of its own, and

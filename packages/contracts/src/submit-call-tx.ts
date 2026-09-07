@@ -20,12 +20,12 @@ import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight
 import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig, Ledger8PipelineNotWiredError } from './errors';
+import { isLedger8Request } from './internal/era';
 import * as Transaction from './internal/transaction';
 import {
   type AnyLedger8CallTxOptions,
   type AnyLedger8FinalizedCallTxData,
   type AnyLedger8SubmittedCallTx,
-  isLedger8Options,
   type Ledger8CallTxOptions,
   type Ledger8CircuitId,
   type Ledger8Contract,
@@ -136,6 +136,9 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  *
  * @throws {CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
+ * @throws {EraArtifactMismatchError} When `options.compiledContract` belongs to neither Compact
+ *         era, or is a raw current-era contract instance passed instead of its `CompiledContract`
+ *         container. Raised before any provider is consulted.
  *
  * @remarks
  * The returned {@link FinalizedCallTxData} (and the {@link CallResult} variant)
@@ -148,7 +151,7 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
   options: CallTxOptions<C, PCK> | AnyLedger8CallTxOptions,
   transactionContext?: TransactionContext<C, PCK>
 ): Promise<FinalizedCallTxData<C, PCK> | CallResult<C, PCK> | AnyLedger8FinalizedCallTxData> {
-  if (isLedger8Options<AnyLedger8CallTxOptions>(options)) {
+  if (isLedger8Request<AnyLedger8CallTxOptions>(options)) {
     throw new Ledger8PipelineNotWiredError('submitCallTx');
   }
   assertIsContractAddress(options.contractAddress);
@@ -244,6 +247,10 @@ export async function submitCallTxAsync<C extends Ledger8Contract, K extends Led
  * @returns A `Promise` that resolves with the transaction ID and call transaction data immediately after submission;
  *         or rejects with an error if the submission fails.
  *
+ * @throws {EraArtifactMismatchError} When `options.compiledContract` belongs to neither Compact
+ *         era, or is a raw current-era contract instance passed instead of its `CompiledContract`
+ *         container. Raised before any provider is consulted.
+ *
  * @remarks
  * The returned {@link SubmittedCallTx} is privacy-sensitive and carries the
  * unproven transaction and private state via `callTxData`. See that type for
@@ -296,7 +303,7 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
   providers: SubmitCallTxProviders<C, PCK>,
   options: CallTxOptions<C, PCK> | AnyLedger8CallTxOptions
 ): Promise<SubmittedCallTx<C, PCK> | AnyLedger8SubmittedCallTx> {
-  if (isLedger8Options<AnyLedger8CallTxOptions>(options)) {
+  if (isLedger8Request<AnyLedger8CallTxOptions>(options)) {
     throw new Ledger8PipelineNotWiredError('submitCallTxAsync');
   }
   assertIsContractAddress(options.contractAddress);

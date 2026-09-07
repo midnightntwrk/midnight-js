@@ -26,10 +26,10 @@ import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
+import { isLedger8Request } from './internal/era';
 import {
   type AnyLedger8DeployContractOptions,
   type AnyLedger8DeployedContract,
-  isLedger8Options,
   type Ledger8CircuitId,
   type Ledger8Contract,
   type Ledger8ContractProviders,
@@ -161,12 +161,16 @@ export async function deployContract<C extends Contract.Any>(
  *
  * @throws DeployTxFailedError If the transaction is submitted successfully but produces an error
  *                             when executed by the node.
+ * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, or
+ *                                  is a raw current-era contract instance passed instead of its
+ *                                  `CompiledContract` container. Raised before any provider is
+ *                                  consulted.
  */
 export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: DeployContractOptions<C> | AnyLedger8DeployContractOptions
 ): Promise<DeployedContract<C> | AnyLedger8DeployedContract> {
-  if (isLedger8Options<AnyLedger8DeployContractOptions>(options)) {
+  if (isLedger8Request<AnyLedger8DeployContractOptions>(options)) {
     throw new Ledger8PipelineNotWiredError('deployContract');
   }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));

@@ -170,11 +170,11 @@ choose and is deliberately not pinned.
 
 ## There is no catch-all arm
 
-Adding a last arm whose parameter type named a "neither era" shape would have
-made every mistyped current-era call report that the caller's perfectly
-ordinary contract belonged to neither era — a false statement on the common
-path. An arm that is NOT last never renders at all, so placing one earlier
-would only distort `ReturnType` and `Parameters`.
+Adding a last arm carrying `NEITHER_ERA_CONTRACT_MESSAGE` would have made every
+mistyped current-era call report that the caller's perfectly ordinary contract
+"is neither a retained-era nor a current-era generated contract" — a false
+statement on the common path. An arm that is NOT last never renders at all, so placing one
+earlier would only distort `ReturnType` and `Parameters`.
 
 The guidance belongs in a thrown, typed error instead, which can carry full
 remediation text where a compiler diagnostic cannot. That is
@@ -183,63 +183,36 @@ call and the toolchain version that produced the contract, and it is exported
 so a consumer can branch on it with `instanceof` rather than matching a
 message.
 
-An earlier revision of this work also carried a `NEITHER_ERA_CONTRACT_MESSAGE`
-constant and two phantom types to hold its wording ahead of that error. They
-were removed: nothing consumed them, the wording they froze named the wrong
-toolchain version, and a test pinned it verbatim — so the placeholder was
-harder to fix than to write correctly at the point of use.
+`NEITHER_ERA_CONTRACT_MESSAGE` is consumed by `EraArtifactMismatchError`, which
+`pipelineEraOf` raises when it is handed an object belonging to neither era. A
+thrown error can carry full remediation text where a compiler diagnostic cannot,
+which is why the text is not wired into an overload arm.
 
-## The runtime predicate
+`NeitherContractShape` and `NeitherEraContractOptions` are the named shapes that
+error reports against. Neither is constructed by anything; they exist so a
+refusal has a name whose own definition says what went wrong.
 
-`isLedger8Options` tells the two eras apart at runtime so each entry point's
-implementation can refuse a retained-era request before touching the
-current-era pipeline.
+The message is a runtime `const` rather than a bare literal inside
+`NeitherContractShape` so the text is written ONCE and can be read by a runtime
+consumer — the error above, and any test asserting on one — while `typeof` still
+gives the type a string LITERAL member. It is not re-exported from the package
+index: the error that carries it is the consumer surface, and that error is not
+exported yet either. `overloads.test-d.ts` pins the wording
+verbatim, and pins that a neither-era object really is refused by
+`NeitherEraContractOptions` — the assignability fact the overloads rely on,
+whether or not any arm spells it out.
 
-It tests the **sync/async split** — discriminator 2 above — because that is the
-only one of the three that is available at runtime and actually separates the
-eras:
+## The runtime predicate lives elsewhere
 
-- `impureCircuits` does NOT discriminate. The predicate checks it, but only to
-  establish that the value is a contract at all. A real generated CURRENT-era
-  contract installs `impureCircuits` too, exactly as it installs
-  `provableCircuits`.
-- A retained-era `initialState` is a plain function; the current toolchain's is
-  `async`. `Function` versus `AsyncFunction` is the same fact the type family
-  is built on, so the runtime check and the types agree by construction rather
-  than by coincidence.
+This file declares no era predicate. Telling the two eras apart at runtime is
+`pipelineEraOf` in `packages/contracts/src/internal/era.ts`, and it is the only
+one — see [EraDispatch](./era-dispatch.md) for why it is a structural check, why
+it must not be "improved" to test the vendor's `CompiledContract` brand, and
+what it refuses.
 
-**Why not the container's brand.** An earlier version of this document proposed
-testing the registered brand, `Symbol.for('compact-js/CompiledContract')`, and
-called it the duplicate-install-safe answer. That does not work, and the reason
-is worth recording so it is not proposed again: `CompiledContract.make` installs
-the brand on the PROTOTYPE (`Object.create(CompiledContractProto)`), and every
-combinator — `withWitnesses`, `withVacantWitnesses`, `withCompiledFileAssets` —
-returns `{ ...self }`, which copies own properties only. Measured against the
-installed package:
-
-| value | brand present |
-|---|---|
-| `make(tag, ctor)` | yes |
-| `.pipe(withVacantWitnesses)` | **no** |
-| `.pipe(withWitnesses(w), withCompiledFileAssets(p))` | **no** |
-
-Every container a caller actually builds goes through those combinators, so a
-brand-PRESENCE test would classify every real current-era contract as
-retained-era and make every current-era call throw.
-
-**What this predicate gets right that a structural `impureCircuits` test did
-not.** A caller who passes the raw current-era contract instance instead of its
-container is making a one-line mistake at the call site. The types catch it, but
-plain JavaScript does not, and `impureCircuits` alone reported such a value as
-retained-era — so the framework told them their contract came from the previous
-toolchain and that this release cannot run it. Both halves were false. Testing
-`initialState` reports it as current era, so it fails against the current-era
-pipeline, where the cause actually lies.
-
-The predicate's type parameter is named explicitly at each call site rather
-than inferred, so the narrowing removes exactly the retained-era arm of that
-entry point's parameter union and leaves the current-era arm the rest of the
-body is written against.
+An earlier, provisional check tested for `impureCircuits` alone. It lived here,
+answered `true` for a raw current-era contract instance, and could not close that
+blind spot; `pipelineEraOf` replaced it.
 
 ## Why a retained-era result is version-tagged
 
