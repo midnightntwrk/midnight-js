@@ -28,18 +28,35 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 
-import { CURRENT_RUNTIME, PACKAGING_DIR, PERSONAS, personaManifest, readManifest, REPOSITORY_ROOT } from './personas.mjs';
+import {
+  CONTRACT_PACKAGES,
+  contractPackageManifest,
+  CURRENT_RUNTIME,
+  PACKAGING_DIR,
+  PERSONAS,
+  personaManifest,
+  readManifest,
+  REPOSITORY_ROOT
+} from './personas.mjs';
 
 /**
- * Outside the repository, deliberately.
+ * Outside the repository, deliberately, and at a deliberately short path.
  *
- * Node resolution walks *up* the directory tree, so a persona built inside the
- * repo reaches the monorepo's own hoisted `node_modules` from any depth. That
- * makes the install look isolated while it is not: under pnpm's linker the
- * persona could resolve `onchain-runtime-v3` it never declared, purely because
- * the repo root had it. Yarn PnP hid the problem by not walking up at all.
+ * Outside, because Node resolution walks *up* the directory tree: a persona built
+ * inside the repo reaches the monorepo's own hoisted `node_modules` from any
+ * depth, which makes the install look isolated while it is not. Under pnpm's
+ * linker the persona could resolve `onchain-runtime-v3` it never declared, purely
+ * because the repo root had it; Yarn PnP hid the same defect by not walking up.
+ *
+ * Short, because pnpm's content-addressable store encodes a tarball's path into a
+ * store filename. A deep checkout plus this repo's longer package names overflows
+ * `NAME_MAX` with `ENAMETOOLONG`. Staging the tarballs beside the personas keeps
+ * the encoded path short regardless of where the checkout lives.
  */
-const WORK_DIR = path.join(os.tmpdir(), 'midnight-js-packaging-personas');
+const SHORT_ROOT = process.platform === 'win32' ? os.tmpdir() : '/tmp';
+const WORK_DIR = path.join(SHORT_ROOT, 'mjs-packaging');
+const STAGED_TARBALL_DIR = path.join(WORK_DIR, 'tgz');
+const PNPM_STORE_DIR = path.join(WORK_DIR, 'pnpm-store');
 
 /**
  * The Yarn release this repository pins, invoked directly. `yarn` on PATH is
@@ -77,10 +94,11 @@ const LINKERS = {
     // this repo pins as a devDependency, invoked directly.
     packageManager: undefined,
     install: (cwd) =>
-      execFileSync('node', [PNPM_BIN, 'install', '--no-frozen-lockfile', '--ignore-scripts'], {
-        cwd,
-        stdio: 'inherit'
-      }),
+      execFileSync(
+        'node',
+        [PNPM_BIN, 'install', '--no-frozen-lockfile', '--ignore-scripts', '--store-dir', PNPM_STORE_DIR],
+        { cwd, stdio: 'inherit' }
+      ),
     run: (cwd, args) => execFileSync('node', args, { cwd, stdio: 'inherit' })
   },
   pnp: {
@@ -123,13 +141,31 @@ const buildPersona = (name, linkerName, manifest) => {
 
   writeFileSync(
     path.join(cwd, 'package.json'),
-    `${JSON.stringify(personaManifest(name, persona, manifest, linker.packageManager), null, 2)}\n`,
+    `${JSON.stringify(personaManifest(name, persona, manifest, linker.packageManager, STAGED_TARBALL_DIR), null, 2)}\n`,
     'utf8'
   );
-  cpSync(path.join(PACKAGING_DIR, 'persona-entry.mjs'), path.join(cwd, 'entry.mjs'));
-  cpSync(path.join(REPOSITORY_ROOT, persona.contractSource, 'contract'), path.join(cwd, 'contract'), {
-    recursive: true
-  });
+  cpSync(path.join(PACKAGING_DIR, `${persona.entry ?? 'persona-entry'}.mjs`), path.join(cwd, 'entry.mjs'));
+
+  if (persona.contractSource !== undefined) {
+    cpSync(path.join(REPOSITORY_ROOT, persona.contractSource, 'contract'), path.join(cwd, 'contract'), {
+      recursive: true
+    });
+  }
+
+  // Each contract is wrapped in its own package declaring the Compact runtime its
+  // codegen demands, so the linker -- not a hoisting accident -- is what decides
+  // whether both eras can be loaded at once.
+  for (const key of persona.contracts ?? []) {
+    const contract = CONTRACT_PACKAGES[key];
+    const contractDir = path.join(cwd, 'contracts', key);
+    mkdirSync(contractDir, { recursive: true });
+    writeFileSync(
+      path.join(contractDir, 'package.json'),
+      `${JSON.stringify(contractPackageManifest(contract), null, 2)}\n`,
+      'utf8'
+    );
+    cpSync(path.join(REPOSITORY_ROOT, contract.source), contractDir, { recursive: true });
+  }
 
   return { cwd, persona, linker };
 };
@@ -142,6 +178,16 @@ const main = () => {
   const personas = personaNames.length > 0 ? personaNames : Object.keys(PERSONAS);
 
   const manifest = readManifest();
+
+  // Staged beside the personas so pnpm's store, which encodes a tarball's path
+  // into a filename, never sees a path long enough to overflow NAME_MAX.
+  rmSync(STAGED_TARBALL_DIR, { recursive: true, force: true });
+  mkdirSync(STAGED_TARBALL_DIR, { recursive: true });
+  for (const relative of Object.values(manifest.packages)) {
+    const source = path.join(PACKAGING_DIR, relative);
+    cpSync(source, path.join(STAGED_TARBALL_DIR, path.basename(source)));
+  }
+
   const failures = [];
 
   for (const linkerName of linkers) {
@@ -151,7 +197,7 @@ const main = () => {
       try {
         const { cwd, persona, linker } = buildPersona(personaName, linkerName, manifest);
         linker.install(cwd);
-        linker.run(cwd, ['entry.mjs', personaName, persona.runtime, CURRENT_RUNTIME]);
+        linker.run(cwd, ['entry.mjs', personaName, persona.runtime ?? '', CURRENT_RUNTIME]);
         process.stdout.write(`--- ${label}: ok\n`);
       } catch (error) {
         failures.push(`${label}: ${error instanceof Error ? error.message : String(error)}`);

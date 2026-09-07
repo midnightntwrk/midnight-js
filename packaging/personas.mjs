@@ -43,6 +43,34 @@ const CURRENT_CONTRACT = 'testkit-js/testkit-js-e2e/src/contract/compiled/counte
 export const RETAINED_RUNTIME = '0.16.0';
 export const CURRENT_RUNTIME = '0.19.0-rc.0';
 
+/**
+ * A dApp that holds contracts from BOTH eras at once -- the shape FR0 describes.
+ *
+ * It declares no Compact runtime of its own. Each contract instead arrives as its
+ * own little package that declares the runtime its codegen demands, which is what
+ * a real consumer's tree looks like once a retained contract is packaged rather
+ * than pasted in. Under an isolated linker the two runtimes coexist; that is the
+ * only arrangement in which one process can execute a pre-fork contract and a
+ * current one, and therefore the only arrangement in which AC0 can be written.
+ */
+export const CONTRACT_PACKAGES = {
+  retained: { name: '@midnight-ntwrk/ac0-contract-retained', runtime: '0.16.0', source: RETAINED_CONTRACT },
+  current: { name: '@midnight-ntwrk/ac0-contract-current', runtime: '0.19.0-rc.0', source: CURRENT_CONTRACT }
+};
+
+/** The `package.json` of one wrapped contract. */
+export const contractPackageManifest = (contract) => ({
+  name: contract.name,
+  version: '0.0.0',
+  private: true,
+  type: 'module',
+  // `./package.json` is exported deliberately: the smoke reads it to report which
+  // Compact runtime this wrapper resolved, and a package that hides its manifest
+  // cannot be interrogated that way.
+  exports: { '.': './contract/index.js', './contract/*': './contract/*', './package.json': './package.json' },
+  dependencies: { '@midnight-ntwrk/compact-runtime': contract.runtime }
+});
+
 export const PERSONAS = {
   retained: {
     runtime: RETAINED_RUNTIME,
@@ -56,6 +84,21 @@ export const PERSONAS = {
     runtime: CURRENT_RUNTIME,
     contractSource: CURRENT_CONTRACT,
     framework: ['@midnight-ntwrk/midnight-js', '@midnight-ntwrk/midnight-js-protocol']
+  },
+  'fork-crossing': {
+    // No runtime of its own: each wrapped contract brings the one its era needs.
+    runtime: undefined,
+    entry: 'fork-crossing-entry',
+    contracts: ['retained', 'current'],
+    framework: [
+      '@midnight-ntwrk/midnight-js',
+      '@midnight-ntwrk/midnight-js-protocol',
+      '@midnight-ntwrk/midnight-js-contracts',
+      '@midnight-ntwrk/midnight-js-indexer-public-data-provider',
+      '@midnight-ntwrk/midnight-js-http-client-proof-provider',
+      '@midnight-ntwrk/midnight-js-node-zk-config-provider',
+      '@midnight-ntwrk/midnight-js-level-private-state-provider'
+    ]
   }
 };
 
@@ -78,14 +121,18 @@ export const readManifest = () => {
  * versions that are not published yet, so without pinning the whole set the
  * install reaches for versions that do not exist.
  */
-export const personaManifest = (name, persona, manifest, packageManager) => {
-  // Absolute, because the persona is installed outside the repository and a
-  // relative `file:` would resolve against the temp directory.
-  const tarballSpecifier = (packageName) => `file:${path.join(PACKAGING_DIR, manifest.packages[packageName])}`;
+export const personaManifest = (name, persona, manifest, packageManager, tarballDir) => {
+  // Absolute, and pointing at the staged copy: the persona is installed outside
+  // the repository, and pnpm encodes a tarball's path into a store filename, so
+  // the path has to be both absolute and short.
+  const tarballSpecifier = (packageName) => `file:${path.join(tarballDir, path.basename(manifest.packages[packageName]))}`;
   const everyFrameworkPackage = Object.keys(manifest.packages);
 
   const dependencies = {
-    '@midnight-ntwrk/compact-runtime': persona.runtime,
+    ...(persona.runtime === undefined ? {} : { '@midnight-ntwrk/compact-runtime': persona.runtime }),
+    ...Object.fromEntries(
+      (persona.contracts ?? []).map((key) => [CONTRACT_PACKAGES[key].name, `file:./contracts/${key}`])
+    ),
     ...Object.fromEntries(persona.framework.map((packageName) => [packageName, tarballSpecifier(packageName)]))
   };
 
