@@ -40,16 +40,15 @@ export {
   DeployContractOptionsWithPrivateState,
   DeployedContract
 } from './deploy-contract';
-// The eight era errors below become reachable with this release: the retained-era entry points now
-// run real pipelines, so a consumer can catch each of them. Every one is thrown on a path a
-// consumer can reach -- `BlankVerifierKeySlotError` and `VerifierKeyMismatchError` from the
-// pre-proving key check, `HeadStateEraMismatchError` and `IndexerInconsistencyError` from the
-// head-versus-state era check, `EraArtifactMismatchError` from era resolution at every entry
-// point, and `Ledger8DeployOnV9Error` from the era pairing table -- and each is exercised through
-// an entry point in `src/test/keep-state.test.ts` or `src/test/v8-native.test.ts`.
-// `Ledger8SeamFailedError` carries a provider's own rejection with its message redacted, and
-// `Ledger8ShieldedSpendUnsupportedError` refuses a retained-era call that would spend a coin the
-// contract already holds; both are reachable through the same entry points and exercised there.
+// The retained-era entry points run real pipelines with this release, so the era errors below are
+// reachable from a call a consumer makes rather than only from an internal helper. Two are NOT
+// reachable through an entry point yet and are exported for completeness:
+// `Ledger8DeployUnmaintainableError` is the only refusal `deployContract`'s retained arm makes, and
+// `Ledger8DeployOnV9Error` sits behind it in the era pairing table, so the pairing refusal cannot
+// be observed until the deploy arm is wired.
+//
+// Deliberately no test-file names here: which suite exercises what is the kind of claim that rots
+// the first time a test moves.
 export {
   BlankVerifierKeySlotError,
   CallTxFailedError,
@@ -63,7 +62,11 @@ export {
   IncompleteCallTxPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   IndexerInconsistencyError,
+  Ledger8AmbiguousEntryPointError,
+  Ledger8CallTxFailedError,
   Ledger8DeployOnV9Error,
+  Ledger8DeployUnmaintainableError,
+  Ledger8RecipientUnmappableError,
   Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
   TxFailedError,
