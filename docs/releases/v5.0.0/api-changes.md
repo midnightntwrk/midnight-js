@@ -232,20 +232,28 @@ export function isRegularTransaction(/* ... */): boolean;
 New typed error variants accompany the event surface (e.g. `IndexerDataError.unknownAddressKind` for an unrecognized address kind; unknown `__typename` / missing-field cases continue to fail fast).
 
 Era resolution (#1204) — the `version` on a finalized record is derived from the
-record's own `protocolVersion`, never asserted:
+record's own `protocolVersion`, never asserted, and that answer also selects the
+ledger runtime the record is decoded with. `watchForTxData` and
+`watchForDeployTxData` therefore resolve `VersionedFinalizedTxData` and really
+do produce both arms; the pre-fork runtime is acquired lazily, so a session that
+meets no v8-era record never instantiates it.
 
 ```ts
-export class EraUnsupportedError extends IndexerError {
-  readonly code: 'MIDNIGHT_JS_PR_ERA_UNSUPPORTED';
-  readonly seam: ReadSeam;
-  readonly era: LedgerVersion;      // a known era this provider cannot decode
-  readonly protocolVersion: number; // the raw integer the indexer reported
-  readonly recordRef?: string;      // the txId or contractAddress being read
-}
 export class EraUnresolvableError extends IndexerError {
   readonly code: 'MIDNIGHT_JS_PR_ERA_UNRESOLVABLE';
   // protocolVersion maps to no era at all. The originating
   // UnknownProtocolVersionError is preserved on `cause`.
+}
+export class EraUnsupportedError extends IndexerError {
+  readonly code: 'MIDNIGHT_JS_PR_ERA_UNSUPPORTED';
+  readonly seam: ReadSeam;
+  readonly era: LedgerVersion;      // an era the decoder table has no entry for
+  readonly protocolVersion: number; // the raw integer the indexer reported
+  readonly recordRef?: string;      // the txId or contractAddress being read
+  // A guard on the era-keyed decoder table, which is total over the eras this
+  // client ships runtimes for. A TypeScript caller cannot raise it; it exists
+  // so an era string threaded in from untyped JavaScript fails here instead of
+  // resolving an inherited Object.prototype member.
 }
 ```
 

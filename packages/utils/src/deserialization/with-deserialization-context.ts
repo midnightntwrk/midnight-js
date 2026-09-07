@@ -17,10 +17,14 @@ import { classify } from './classify';
 import { type DeserializationCallSite, DeserializationError } from './deserialization-error';
 
 /**
- * Wraps a synchronous deserialization call. If `fn()` throws an `Error`,
- * the wrapper classifies it and re-throws a `DeserializationError` with
- * structured context. Non-`Error` throws (`string`, `number`, `null`, etc.)
- * pass through unchanged.
+ * Wraps a synchronous deserialization call. Whatever `fn()` throws, the
+ * wrapper classifies it and re-throws a `DeserializationError` carrying
+ * structured context, with the original value on `cause`.
+ *
+ * A non-`Error` throw is classified on its string form rather than escaping
+ * unwrapped: some wasm-bindgen bindings surface a `Result<_, String>` as a
+ * bare string, and a caller that received one would get a value with no
+ * `cause`, no call site and no `instanceof` identity to branch on.
  *
  * Sync-only by contract. The typed wrappers in `./typed-wrappers.ts` are
  * the primary API; use this HOF directly only for ad-hoc deserialization
@@ -30,7 +34,7 @@ import { type DeserializationCallSite, DeserializationError } from './deserializ
  * than silently bypassing classification — any rejection from the
  * thenable would otherwise escape the try/catch.
  *
- * @throws {DeserializationError} When `fn()` throws an `Error`.
+ * @throws {DeserializationError} When `fn()` throws anything at all.
  * @throws {TypeError} When `fn()` returns a thenable (sync-only violation).
  *
  * @example
@@ -48,8 +52,8 @@ export const withDeserializationContext = <T>(
   try {
     result = fn();
   } catch (cause) {
-    if (!(cause instanceof Error)) throw cause;
-    throw new DeserializationError(classify(callSite, cause), cause);
+    const classifiable = cause instanceof Error ? cause : new Error(String(cause));
+    throw new DeserializationError(classify(callSite, classifiable), cause);
   }
   if (
     result !== null &&

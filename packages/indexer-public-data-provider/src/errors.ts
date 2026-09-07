@@ -19,8 +19,26 @@ import { PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import type { GraphQLFormattedError } from 'graphql';
 
 /**
- * Base class for all errors raised by the indexer public data provider.
- * Consumers can catch any indexer error with a single `instanceof IndexerError` check.
+ * Base class for the errors this provider raises itself. Consumers can catch
+ * them with a single `instanceof IndexerError` check.
+ *
+ * Two failure classes deliberately escape that check, because both report
+ * something that is not an indexer fault and wrapping them would hide what
+ * they are:
+ *
+ * - `DeserializationError` (`@midnight-ntwrk/midnight-js-utils`) — bytes that
+ *   will not decode, whichever era's runtime read them. It carries the era,
+ *   the `protocolVersion`, the seam and the record on its `context.details`.
+ * - `Ledger8RuntimeMissingError`
+ *   (`@midnight-ntwrk/midnight-js-protocol`) — the pre-fork ledger runtime
+ *   could not be acquired for a v8-era record. That is an installation or
+ *   bundling failure in the consumer's own dependency tree, not a bad record,
+ *   and a caller who saw it as an `IndexerError` would go looking at the
+ *   indexer.
+ *
+ * A consumer that needs to catch everything a read can raise should catch
+ * broadly and branch, or match on `code` via `hasErrorCode` from
+ * `@midnight-ntwrk/midnight-js-utils`.
  */
 export abstract class IndexerError extends Error {}
 
@@ -74,6 +92,7 @@ export type IndexerDataErrorContext =
   | { kind: 'missing-head-block' }
   | { kind: 'undated-state' }
   | { kind: 'malformed-state-encoding' }
+  | { kind: 'malformed-transaction-encoding' }
   | { kind: 'missing-contract-action'; contractAddress: string }
   | {
       kind: 'missing-identifier';
@@ -131,6 +150,10 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'malformed-state-encoding' });
   }
 
+  static malformedTransactionEncoding(): IndexerDataError {
+    return new IndexerDataError({ kind: 'malformed-transaction-encoding' });
+  }
+
   static missingContractAction(contractAddress: string): IndexerDataError {
     return new IndexerDataError({ kind: 'missing-contract-action', contractAddress });
   }
@@ -179,6 +202,11 @@ export class IndexerDataError extends IndexerError {
       case 'malformed-state-encoding':
         return (
           'The indexer returned a contract state that is not a hex-encoded byte string. ' +
+          'Check that the indexer and this client agree on the wire encoding, and retry against a healthy indexer.'
+        );
+      case 'malformed-transaction-encoding':
+        return (
+          'The indexer returned a transaction that is not a hex-encoded byte string. ' +
           'Check that the indexer and this client agree on the wire encoding, and retry against a healthy indexer.'
         );
       case 'missing-head-block':
@@ -272,14 +300,14 @@ export class IndexerInvariantError extends IndexerError {
 }
 
 /**
- * Raised when a record read from the indexer resolves to a ledger era this
- * provider cannot decode.
+ * Raised when the era-keyed transaction decoder is asked for an era this build
+ * ships no decoder for.
  *
- * The read path deserializes with the v9-only ledger runtime, so a record
- * belonging to the v8 era cannot be turned into a value. Reporting it here is
- * deliberate: the alternative is stamping the record `version: 'v9'` and
- * handing back a mislabelled result that fails later, inside the codec, with
- * no mention of the era.
+ * Within one build this cannot happen: the era is a `LedgerVersion` and the
+ * decoder table is total over that union, so a missing entry is a compile
+ * error. It is reachable across builds — a consumer whose installed
+ * `@midnight-ntwrk/midnight-js-protocol` is newer than this package, whose era
+ * resolver therefore answers an era this decoder table predates.
  *
  * `protocolVersion` is the raw integer the indexer reported, kept so a report
  * of this error identifies the network rather than only the era.
@@ -288,8 +316,8 @@ export class EraUnsupportedError extends IndexerError {
   readonly code = PROVIDER_ERROR_CODES.ERA_UNSUPPORTED;
 
   /**
-   * @param seam The read-surface method that resolved the era.
-   * @param era The era the record resolved to.
+   * @param seam The read-surface method that performed the decode.
+   * @param era The era the decoder table was asked for.
    * @param protocolVersion The raw integer the indexer reported.
    * @param recordRef The record this happened on — a transaction id or a
    *                  contract address. A dApp holding several watches open
@@ -301,11 +329,14 @@ export class EraUnsupportedError extends IndexerError {
     readonly protocolVersion: number,
     readonly recordRef?: string
   ) {
+    // The era and the `protocolVersion` do not describe each other here: the
+    // era came from a resolver this build does not know the vocabulary of, so
+    // the message reports them as two separate facts.
     super(
-      `${seam} read a record from the ${era} ledger era (protocolVersion ${protocolVersion}` +
-        `${recordRef === undefined ? '' : `, ${recordRef}`}), which this provider ` +
-        `cannot decode: the read path deserializes with the v9 ledger runtime only. Point this provider at a ` +
-        `network whose records belong to the v9 era.`
+      `${seam} was asked to decode with ledger era '${era}', which this build has no decoder for` +
+        `${recordRef === undefined ? '' : ` (record ${recordRef}, indexer-reported protocolVersion ${protocolVersion})`}` +
+        `. This client decodes only the ledger eras it ships runtimes for. Pass an era this build supports, or ` +
+        `upgrade to a release that knows this one.`
     );
     this.name = 'EraUnsupportedError';
   }
@@ -316,11 +347,14 @@ export class EraUnsupportedError extends IndexerError {
  * a network outside the node major range this framework knows about, or a
  * value that is not a non-negative integer.
  *
- * Distinct from {@link EraUnsupportedError}, which names an era this provider
- * recognises but cannot decode. Here the era is unknown, so there is nothing to
- * name.
+ * Distinct from {@link EraUnsupportedError}, which reports an era this build
+ * has no decoder for — an era that was named, just not one of ours. Here
+ * nothing was named: the integer maps to no era, so there is no era to report.
+ * A record whose era resolved but whose bytes then would not decode is neither
+ * of these: it leaves as the `DeserializationError` the runtime produced.
  *
- * Exists so that both era failures reach a consumer through `IndexerError`.
+ * Exists so that both era-resolution failures reach a consumer through
+ * `IndexerError`.
  * The underlying `UnknownProtocolVersionError` from
  * `@midnight-ntwrk/midnight-js-protocol` is preserved on `cause`.
  */

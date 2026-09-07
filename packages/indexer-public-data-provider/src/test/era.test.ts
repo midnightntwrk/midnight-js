@@ -17,8 +17,8 @@ import { UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protoco
 import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
-import { requireV9Era } from '../era';
-import { EraUnresolvableError, EraUnsupportedError, IndexerError } from '../errors';
+import { resolveReadEra } from '../era';
+import { EraUnresolvableError, IndexerError } from '../errors';
 
 function getThrown(fn: () => unknown): unknown {
   try {
@@ -29,44 +29,27 @@ function getThrown(fn: () => unknown): unknown {
   throw new Error('expected the call to throw, but it returned');
 }
 
-describe('requireV9Era', () => {
+describe('resolveReadEra', () => {
   it.each([
-    ['the bottom of the node 2.x range', 2_000_000],
-    ['a patch release inside it', 2_001_003]
-  ])('resolves %s to the v9 era', (_label, protocolVersion) => {
-    const era = requireV9Era({ protocolVersion }, 'watchForTxData');
+    ['the bottom of the node 2.x range', 2_000_000, 'v9'],
+    ['a patch release inside it', 2_001_003, 'v9'],
+    ['the bottom of the node 1.x range', 1_000_000, 'v8'],
+    ['a patch release inside it', 1_002_003, 'v8']
+  ])('resolves %s to the %s era', (_label, protocolVersion, expected) => {
+    const era = resolveReadEra({ protocolVersion }, 'watchForTxData');
 
-    expect(era).toBe('v9');
+    expect(era).toBe(expected);
   });
 
-  // The point of deriving the discriminant rather than hardcoding it: a record
-  // from a v8-era network is reported here, naming the era and the network,
-  // instead of being stamped `version: 'v9'` and failing later inside the
-  // v9-only deserializer with no mention of the era.
-  describe('a record from an era this provider cannot decode', () => {
-    it('rejects a node 1.x record with the registered unsupported-era code', () => {
-      const error = getThrown(() => requireV9Era({ protocolVersion: 1_000_000 }, 'watchForTxData'));
+  // The point of deriving the discriminant rather than hardcoding it: the era
+  // a record is decoded and tagged with comes from the record itself, so a
+  // record from either era is decoded by the runtime that wrote it instead of
+  // being stamped with whichever era the code happened to be written for.
+  it('never answers the same era for records from different networks', () => {
+    const older = resolveReadEra({ protocolVersion: 1_000_000 }, 'watchForTxData');
+    const newer = resolveReadEra({ protocolVersion: 2_000_000 }, 'watchForTxData');
 
-      expect(error).toBeInstanceOf(EraUnsupportedError);
-      expect(hasErrorCode(error, PROVIDER_ERROR_CODES.ERA_UNSUPPORTED)).toBe(true);
-    });
-
-    it('carries the era, the raw protocolVersion and the seam', () => {
-      const error = getThrown(() => requireV9Era({ protocolVersion: 1_002_003 }, 'watchForDeployTxData'));
-
-      expect(error).toBeInstanceOf(EraUnsupportedError);
-      const eraError = error as EraUnsupportedError;
-      expect(eraError.era).toBe('v8');
-      expect(eraError.protocolVersion).toBe(1_002_003);
-      expect(eraError.seam).toBe('watchForDeployTxData');
-    });
-
-    it('names the record, so one of several concurrent watches can be identified', () => {
-      const error = getThrown(() => requireV9Era({ protocolVersion: 1_000_000 }, 'watchForTxData', 'txId 0xabc'));
-
-      expect((error as EraUnsupportedError).recordRef).toBe('txId 0xabc');
-      expect((error as Error).message).toContain('txId 0xabc');
-    });
+    expect(older).not.toBe(newer);
   });
 
   // The resolver in `midnight-js-protocol` maps only node majors 1 and 2, so a
@@ -84,15 +67,22 @@ describe('requireV9Era', () => {
       ['a missing protocolVersion', undefined as unknown as number],
       ['a null protocolVersion', null as unknown as number]
     ])('reports %s as an unresolvable era rather than guessing one', (_label, protocolVersion) => {
-      const error = getThrown(() => requireV9Era({ protocolVersion }, 'watchForTxData'));
+      const error = getThrown(() => resolveReadEra({ protocolVersion }, 'watchForTxData'));
 
       expect(error).toBeInstanceOf(EraUnresolvableError);
       expect(hasErrorCode(error, PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE)).toBe(true);
       expect((error as EraUnresolvableError).seam).toBe('watchForTxData');
     });
 
+    it('names the record, so one of several concurrent watches can be identified', () => {
+      const error = getThrown(() => resolveReadEra({ protocolVersion: 22_001 }, 'watchForTxData', 'txId 0xabc'));
+
+      expect((error as EraUnresolvableError).recordRef).toBe('txId 0xabc');
+      expect((error as Error).message).toContain('txId 0xabc');
+    });
+
     it('preserves the resolver error on cause rather than discarding it', () => {
-      const error = getThrown(() => requireV9Era({ protocolVersion: 22_001 }, 'watchForTxData'));
+      const error = getThrown(() => resolveReadEra({ protocolVersion: 22_001 }, 'watchForTxData'));
 
       expect((error as Error).cause).toBeInstanceOf(UnknownProtocolVersionError);
     });
@@ -101,11 +91,9 @@ describe('requireV9Era', () => {
     // `instanceof IndexerError` check". Before this was wrapped, an unmapped
     // network was the one read-path failure that escaped that contract.
     it('reaches consumers through the IndexerError hierarchy', () => {
-      const unresolvable = getThrown(() => requireV9Era({ protocolVersion: 22_001 }, 'watchForTxData'));
-      const unsupported = getThrown(() => requireV9Era({ protocolVersion: 1_000_000 }, 'watchForTxData'));
+      const error = getThrown(() => resolveReadEra({ protocolVersion: 22_001 }, 'watchForTxData'));
 
-      expect(unresolvable).toBeInstanceOf(IndexerError);
-      expect(unsupported).toBeInstanceOf(IndexerError);
+      expect(error).toBeInstanceOf(IndexerError);
     });
   });
 });
