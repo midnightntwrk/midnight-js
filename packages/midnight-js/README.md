@@ -39,49 +39,97 @@ directly, alongside the namespaces above:
 
 ```typescript
 import {
-  LEDGER_VERSIONS,         // the closed, frozen set: ['v8', 'v9']
-  type LedgerVersion,      // 'v8' | 'v9'
-  protocolVersionToLedger, // a raw protocolVersion integer -> LedgerVersion
-  versionOfRecord,         // a record carrying protocolVersion -> LedgerVersion
-  networkHeadVersion       // asks a source for the network head -> LedgerVersion
+  LEDGER_VERSIONS,    // the closed, frozen set: ['v8', 'v9']
+  type LedgerVersion, // 'v8' | 'v9'
+  versionOfRecord,    // a record carrying protocolVersion -> LedgerVersion
+  networkHeadVersion  // asks a source for the network head -> LedgerVersion
 } from '@midnight-ntwrk/midnight-js';
 ```
 
-The three resolvers throw `UnknownProtocolVersionError` when a
-`protocolVersion` has no known era, so the error and its codes are published
-alongside them:
+Use `versionOfRecord` for a `protocolVersion` read off an existing record, and
+`networkHeadVersion` for the era a transaction built now would land in. Each
+tags its failures with the path it was called on, so a handler can tell the two
+apart.
+
+Both refuse rather than guess. They raise `UnknownProtocolVersionError` when a
+`protocolVersion` is malformed (not a non-negative integer) or is well-formed
+but maps to no era this build knows. `versionOfRecord` throws;
+`networkHeadVersion` is `async`, so it rejects instead, and a rejection from
+the source itself propagates unchanged.
 
 ```typescript
 import {
-  PROTOCOL_ERROR_CODES,
   type ProtocolVersionUnknownReason,
   UnknownProtocolVersionError,
-  utils,
   versionOfRecord,
   type VersionResolutionPath
 } from '@midnight-ntwrk/midnight-js';
 
 // Any record carrying a raw protocolVersion -- e.g. a transaction or block
-// already read from the indexer.
-const record = { protocolVersion: 1_000_000 };
+// already read from the indexer. Node major 9 is one this build has no era
+// for, so this record takes the failure path.
+const record = { protocolVersion: 9_000_000 };
 
 try {
   const era = versionOfRecord(record);
   console.log(`this record was written under ledger ${era}`);
 } catch (error) {
-  if (utils.hasErrorCode(error, PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ)) {
-    // a record this build has no era for
+  // Anything that is not ours is not ours to interpret. Never swallow it.
+  if (!(error instanceof UnknownProtocolVersionError)) {
+    throw error;
   }
-  if (error instanceof UnknownProtocolVersionError) {
-    const path: VersionResolutionPath = error.path;
-    const reason: ProtocolVersionUnknownReason = error.reason;
-    console.warn(`could not resolve an era on the ${path} path: ${reason}`);
-  }
+
+  const path: VersionResolutionPath = error.path;            // 'read' | 'construct'
+  const reason: ProtocolVersionUnknownReason = error.reason; // 'unknown' | 'malformed'
+
+  throw new Error(
+    reason === 'unknown'
+      ? `This record is from a ledger era this build does not know (${path} path). Upgrade midnight-js.`
+      : `The protocolVersion handed to versionOfRecord was malformed (${path} path). Check the source record.`,
+    { cause: error }
+  );
 }
 ```
 
-The pre-fork ledger runtime itself is **not** re-exported here, and importing
-the barrel does not load it.
+Both eras are worth handling explicitly, because the two reasons need different
+responses: `'unknown'` means this framework build predates the network, and
+`'malformed'` means the wrong field was wired into the resolver.
+
+If you would rather discriminate on a stable string than on a class, every
+error here also carries a `code`. `PROTOCOL_ERROR_CODES` names them and
+`utils.hasErrorCode` is the guard:
+
+```typescript
+import { PROTOCOL_ERROR_CODES, utils } from '@midnight-ntwrk/midnight-js';
+
+if (utils.hasErrorCode(error, PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ)) {
+  // the era of an existing record could not be resolved
+}
+```
+
+### Errors from the retained era
+
+Deploying to or calling a `v8` contract runs through the retained pre-fork
+pipeline, which raises errors of its own. The barrel publishes those classes
+too, so you can catch them and read their payload without a cast:
+
+| Class | Payload | Means |
+| ----- | ------- | ----- |
+| `Ledger8RuntimeMissingError` | `subpath` | the retained runtime chunk could not be loaded at all |
+| `ComposeFailedError` | `version`, `stage`, `circuitId` | a circuit operation is missing or under-registered |
+| `ComposeOptionError` | `version`, `option` | one composition option cannot be used |
+| `StateDecodeFailedError` | `version` | a contract-state envelope could not be read as that era |
+| `UnknownLedgerVersionError` | `requestedVersion` | an era outside `LEDGER_VERSIONS` was requested |
+
+### What importing the barrel loads
+
+The retained pre-fork (`v8`) ledger runtime is **not** re-exported here, and it
+is absent from the barrel's static import graph. It is loaded on demand, only
+once you actually touch a `v8` contract.
+
+Importing the barrel is not otherwise free: it pulls the `v9` ledger and
+onchain-runtime, because `contracts` needs them. The sub-path imports below let
+you take one module without the rest.
 
 ## Sub-path Imports
 
