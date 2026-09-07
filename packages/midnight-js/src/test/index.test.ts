@@ -17,9 +17,12 @@ import { describe, expect, it } from 'vitest';
 
 import * as contracts from '../contracts';
 import type {
+  ComposeOption,
+  ComposeStage,
   LedgerVersion,
   ProtocolVersionSource,
   ProtocolVersionUnknownReason,
+  RetainedEraSubpath,
   VersionedRecord,
   VersionResolutionPath
 } from '../index';
@@ -33,19 +36,23 @@ import * as utils from '../utils';
 // fails the test. That equality is what keeps a provider package, or any other
 // unintended re-export, off the barrel.
 //
-// Runtime names only. The five type-only exports (`LedgerVersion`,
-// `ProtocolVersionSource`, `VersionedRecord`, `VersionResolutionPath`,
-// `ProtocolVersionUnknownReason`) never appear in `Object.keys`; each is
-// instead load-bearing in a type annotation below, so `typecheck:tests:core`
-// fails if the barrel drops one.
+// Runtime names only -- a type-only export never appears in `Object.keys`, so
+// this list cannot gate one. The eight type-only exports are gated instead by
+// the `import type` above: dropping any of them from the barrel makes that
+// statement unresolvable, and `typecheck:tests:core` fails. The annotations
+// further down assert assignability on top of that.
 const EXPECTED_BARREL_EXPORTS = [
+  'ComposeFailedError',
+  'ComposeOptionError',
   'LEDGER_VERSIONS',
+  'Ledger8RuntimeMissingError',
   'PROTOCOL_ERROR_CODES',
+  'StateDecodeFailedError',
+  'UnknownLedgerVersionError',
   'UnknownProtocolVersionError',
   'contracts',
   'networkHeadVersion',
   'networkId',
-  'protocolVersionToLedger',
   'types',
   'utils',
   'versionOfRecord'
@@ -61,6 +68,21 @@ const captureThrown = (run: () => unknown): unknown => {
   }
   throw new Error('expected the call to throw, but it returned normally');
 };
+
+// The async sibling of `captureThrown`. `networkHeadVersion` is the barrel's
+// only construct-path resolver, and it rejects rather than throws.
+const captureRejected = async (run: () => Promise<unknown>): Promise<unknown> => {
+  try {
+    await run();
+  } catch (error) {
+    return error;
+  }
+  throw new Error('expected the call to reject, but it resolved normally');
+};
+
+const headSource = (protocolVersion: number): ProtocolVersionSource => ({
+  queryLatestProtocolVersion: () => Promise.resolve(protocolVersion)
+});
 
 describe('barrel exports', () => {
   it('should export contracts namespace', () => {
@@ -95,26 +117,20 @@ describe('ledger version vocabulary', () => {
     expect(eras).toEqual(['v8', 'v9']);
   });
 
-  it('should map a raw protocolVersion onto its ledger era', () => {
-    expect(midnightJs.protocolVersionToLedger(1_000_000)).toBe('v8');
-    expect(midnightJs.protocolVersionToLedger(2_000_000)).toBe('v9');
-  });
-
   it('should resolve the era a record was written under', () => {
     const record: VersionedRecord = { protocolVersion: 1_000_000 };
     expect(midnightJs.versionOfRecord(record)).toBe('v8');
   });
 
   it('should resolve the era at the network head', async () => {
-    const source: ProtocolVersionSource = { queryLatestProtocolVersion: () => Promise.resolve(2_000_000) };
-    await expect(midnightJs.networkHeadVersion(source)).resolves.toBe('v9');
+    await expect(midnightJs.networkHeadVersion(headSource(2_000_000))).resolves.toBe('v9');
   });
 });
 
 describe('ledger version failures', () => {
-  it('should let a caller tell the read path from the construct path by code', () => {
+  it('should let a caller tell the read path from the construct path by code', async () => {
     const fromRead = captureThrown(() => midnightJs.versionOfRecord({ protocolVersion: 9_000_000 }));
-    const fromConstruct = captureThrown(() => midnightJs.protocolVersionToLedger(9_000_000));
+    const fromConstruct = await captureRejected(() => midnightJs.networkHeadVersion(headSource(9_000_000)));
 
     expect(
       midnightJs.utils.hasErrorCode(fromRead, midnightJs.PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ)
@@ -122,11 +138,12 @@ describe('ledger version failures', () => {
     expect(
       midnightJs.utils.hasErrorCode(fromConstruct, midnightJs.PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT)
     ).toBe(true);
-    // Both negatives are load-bearing, not decoration. `hasErrorCode(e, code)`
-    // falls back to "carries any registered code" when `code` is `undefined`,
-    // so a positive assertion alone would still pass if the member it names
-    // vanished. Each member therefore appears once expected true and once
-    // expected false, which no `undefined` can satisfy at the same time.
+    // Both negatives are load-bearing, not decoration. A renamed member is a
+    // compile error, but two members that accidentally share one string are
+    // not, and `hasErrorCode(e, code)` falls back to "carries any registered
+    // code" when `code` is `undefined`. Each member therefore appears once
+    // expected true and once expected false, which neither a shared literal
+    // nor an `undefined` can satisfy at the same time.
     expect(
       midnightJs.utils.hasErrorCode(fromRead, midnightJs.PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT)
     ).toBe(false);
@@ -135,8 +152,8 @@ describe('ledger version failures', () => {
     ).toBe(false);
   });
 
-  it('should throw the error class the barrel publishes, carrying the path and reason', () => {
-    const thrown = captureThrown(() => midnightJs.protocolVersionToLedger(1.5));
+  it('should reject with the error class the barrel publishes, carrying the path and reason', async () => {
+    const thrown = await captureRejected(() => midnightJs.networkHeadVersion(headSource(1.5)));
     expect(thrown).toBeInstanceOf(midnightJs.UnknownProtocolVersionError);
     // Narrows without a cast, and only succeeds if the class the barrel
     // publishes is the same module instance the thrown error was built from.
@@ -148,6 +165,66 @@ describe('ledger version failures', () => {
     const reason: ProtocolVersionUnknownReason = thrown.reason;
     expect(path).toBe('construct');
     expect(reason).toBe('malformed');
+  });
+
+  it('should propagate a head-source rejection unchanged', async () => {
+    const cause = new Error('indexer unreachable');
+    const thrown = await captureRejected(() =>
+      midnightJs.networkHeadVersion({ queryLatestProtocolVersion: () => Promise.reject(cause) })
+    );
+
+    expect(thrown).toBe(cause);
+    expect(thrown).not.toBeInstanceOf(midnightJs.UnknownProtocolVersionError);
+  });
+});
+
+describe('retained-era error classes', () => {
+  // These codes were already reachable through `utils.MIDNIGHT_JS_ERROR_CODES`
+  // before the classes were published; what a barrel consumer could not do was
+  // `instanceof` the class or read its payload without a cast. Both halves are
+  // asserted here, so publishing a code whose class stays behind -- or a class
+  // whose payload type stays behind -- fails.
+  it('should pair each published error class with its published code', () => {
+    expect(
+      midnightJs.utils.hasErrorCode(
+        new midnightJs.Ledger8RuntimeMissingError('/engine', new Error('resolution failed')),
+        midnightJs.PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING
+      )
+    ).toBe(true);
+    expect(
+      midnightJs.utils.hasErrorCode(
+        new midnightJs.ComposeFailedError('v9', 'call-empty', 'increment'),
+        midnightJs.PROTOCOL_ERROR_CODES.COMPOSE_FAILED
+      )
+    ).toBe(true);
+    expect(
+      midnightJs.utils.hasErrorCode(
+        new midnightJs.ComposeOptionError('v8', 'ttl'),
+        midnightJs.PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID
+      )
+    ).toBe(true);
+    expect(
+      midnightJs.utils.hasErrorCode(
+        new midnightJs.StateDecodeFailedError('v8', new Error('truncated')),
+        midnightJs.PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED
+      )
+    ).toBe(true);
+    expect(
+      midnightJs.utils.hasErrorCode(
+        new midnightJs.UnknownLedgerVersionError('v7'),
+        midnightJs.PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION
+      )
+    ).toBe(true);
+  });
+
+  it('should let a caller read each error payload without a cast', () => {
+    const subpath: RetainedEraSubpath = new midnightJs.Ledger8RuntimeMissingError('/v8', new Error('boom')).subpath;
+    const stage: ComposeStage = new midnightJs.ComposeFailedError('v9', 'call-empty', 'increment').stage;
+    const option: ComposeOption = new midnightJs.ComposeOptionError('v8', 'ttl').option;
+    const decodedEra: LedgerVersion = new midnightJs.StateDecodeFailedError('v8', new Error('boom')).version;
+    const requested: string = new midnightJs.UnknownLedgerVersionError('v7').requestedVersion;
+
+    expect([subpath, stage, option, decodedEra, requested]).toEqual(['/v8', 'call-empty', 'ttl', 'v8', 'v7']);
   });
 });
 

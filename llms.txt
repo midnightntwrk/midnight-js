@@ -289,55 +289,74 @@ import { setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
 
 The barrel also publishes the ledger era vocabulary as named exports, so a
 consumer can say which era produced a payload or a record without depending on
-`@midnight-ntwrk/midnight-js-protocol` directly:
+`@midnight-ntwrk/midnight-js-protocol` directly. `versionOfRecord` resolves the
+era of an existing record; `networkHeadVersion` resolves the era a transaction
+built now would land in.
 
 ```typescript
 import {
-  LEDGER_VERSIONS,         // the closed, frozen set: ['v8', 'v9']
-  type LedgerVersion,      // 'v8' | 'v9'
-  protocolVersionToLedger, // a raw protocolVersion integer -> LedgerVersion
-  versionOfRecord,         // a record carrying protocolVersion -> LedgerVersion
-  networkHeadVersion       // asks a source for the network head -> LedgerVersion
+  LEDGER_VERSIONS,    // the closed, frozen set: ['v8', 'v9']
+  type LedgerVersion, // 'v8' | 'v9'
+  networkHeadVersion,
+  versionOfRecord
 } from '@midnight-ntwrk/midnight-js';
 
 // Any record carrying a raw protocolVersion, e.g. a transaction or block
 // already read from the indexer.
-const tx = { protocolVersion: 1_000_000 };
+const era: LedgerVersion = versionOfRecord({ protocolVersion: 1_000_000 }); // 'v8'
 
-const era: LedgerVersion = versionOfRecord(tx); // 'v8' for node 1.x, 'v9' for 2.x
+// The era at the network head, asked of a provider on every call.
+const head: LedgerVersion = await networkHeadVersion(providers.publicDataProvider);
 ```
 
-All three resolvers throw `UnknownProtocolVersionError` when a
-`protocolVersion` maps to no known era, so the error class and the code table
-are published alongside them:
+Both resolvers refuse rather than guess: they raise `UnknownProtocolVersionError`
+when a `protocolVersion` is malformed (not a non-negative integer) or is
+well-formed but maps to no era this build knows. `versionOfRecord` throws;
+`networkHeadVersion` is `async` and rejects, passing a rejection from the
+source itself through unchanged. Handle it by class and rethrow anything else:
 
 ```typescript
 import {
-  PROTOCOL_ERROR_CODES,
   type ProtocolVersionUnknownReason,
   UnknownProtocolVersionError,
-  utils,
   versionOfRecord,
   type VersionResolutionPath
 } from '@midnight-ntwrk/midnight-js';
 
+// Node major 9 is one this build has no era for, so this takes the failure path.
 try {
-  const era = versionOfRecord(tx); // tx as above
+  const era = versionOfRecord({ protocolVersion: 9_000_000 });
   console.log(`written under ledger ${era}`);
 } catch (error) {
-  if (utils.hasErrorCode(error, PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ)) {
-    // a record this build has no era for
+  // Anything that is not ours is not ours to interpret. Never swallow it.
+  if (!(error instanceof UnknownProtocolVersionError)) {
+    throw error;
   }
-  if (error instanceof UnknownProtocolVersionError) {
-    const path: VersionResolutionPath = error.path;            // 'read' | 'construct'
-    const reason: ProtocolVersionUnknownReason = error.reason; // 'unknown' | 'malformed'
-    console.warn(`no era on the ${path} path: ${reason}`);
-  }
+
+  const path: VersionResolutionPath = error.path;            // 'read' | 'construct'
+  const reason: ProtocolVersionUnknownReason = error.reason; // 'unknown' | 'malformed'
+
+  // 'unknown' means this build predates the network; 'malformed' means the
+  // wrong field was wired into the resolver. Different fixes, so do not
+  // collapse them into one warning.
+  throw new Error(`no era on the ${path} path: ${reason}`, { cause: error });
 }
 ```
 
-The retained pre-fork ledger runtime is **not** re-exported from the barrel,
-and importing the barrel does not load it.
+To discriminate on a stable string instead of a class, every error here also
+carries a `code`: `utils.hasErrorCode(error, PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ)`.
+
+The retained pre-fork (`v8`) pipeline raises its own errors, whose classes the
+barrel also publishes so a consumer can read their payload without a cast:
+`Ledger8RuntimeMissingError` (`subpath`), `ComposeFailedError` (`version`,
+`stage`, `circuitId`), `ComposeOptionError` (`version`, `option`),
+`StateDecodeFailedError` (`version`) and `UnknownLedgerVersionError`
+(`requestedVersion`).
+
+The retained pre-fork ledger runtime itself is **not** re-exported from the
+barrel and is absent from its static import graph, loaded only on demand when a
+`v8` contract is actually touched. Importing the barrel does pull the `v9`
+ledger and onchain-runtime, because `contracts` needs them.
 
 ### Network Setup
 

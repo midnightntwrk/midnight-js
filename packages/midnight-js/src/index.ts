@@ -19,48 +19,40 @@ export * as types from '@midnight-ntwrk/midnight-js-types';
 export * as utils from '@midnight-ntwrk/midnight-js-utils';
 
 // The era vocabulary: what a consumer needs to say which ledger produced a
-// payload or a record, to resolve one from a raw `protocolVersion`, and to
-// handle the failure when that resolution has no answer.
-//
-// Inclusion rule for the type-only names below: a type is published here when
-// it is named in the public shape of a value published here -- the parameters
-// of an exported function (optional ones included), its return type, or a
-// public field of the exported error class. That is why `VersionResolutionPath`
-// is present (second parameter of `protocolVersionToLedger`, and the error's
-// `path`) and `ProtocolErrorCode` is not: nothing on this surface names it, and
-// discriminating goes through the `PROTOCOL_ERROR_CODES` members, which carry
-// their own literal types.
-//
-// Named re-exports off the `protocol/version` subpath rather than a whole
-// `protocol` namespace. `version` reaches exactly two modules of its own,
-// `protocol/errors` and the `ledger-version` declaration the two share, and
-// neither pulls anything further at runtime. Protocol's root barrel by
-// contrast eagerly pulls the ledger, onchain-runtime, compact-js and platform
-// bindings -- a cost this package's own dependencies happen to pay today, but
-// one nothing on this surface needs, and one the barrel must not pin in
-// place.
-//
-// Deliberately no `protocol/v8` re-export in any form: the retained pre-fork
-// runtime stays off every consumer's eager path, reached only through the
-// loaders that dynamically import it.
+// payload or a record, and to handle the failure when that resolution has no
+// answer. Which names qualify, what importing the barrel does and does not
+// cost, and why these come off leaf subpaths rather than protocol's root
+// barrel are all recorded in BarrelPublishedSurface.
 export {
   LEDGER_VERSIONS,
   type LedgerVersion,
   networkHeadVersion,
   type ProtocolVersionSource,
-  protocolVersionToLedger,
   type VersionedRecord,
   versionOfRecord
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-// The three resolvers above all throw this one error, so it travels with them:
-// published together, a consumer can catch it, tell it apart with
-// `utils.hasErrorCode`, and narrow on `path`/`reason` without hardcoding a code
-// string. `protocol/errors` imports nothing at runtime, and `protocol/version`
-// already pulls it, so this adds no module to the graph.
+// The resolvers above reject or throw with `UnknownProtocolVersionError`. The
+// remaining classes are the protocol errors that reach a barrel consumer
+// unwrapped through `contracts`; each travels with the code it carries and the
+// types its payload names, so one can catch by class and read the payload
+// without a cast. See BarrelPublishedSurface.
 export {
+  ComposeFailedError,
+  type ComposeOption,
+  ComposeOptionError,
+  type ComposeStage,
+  Ledger8RuntimeMissingError,
   PROTOCOL_ERROR_CODES,
   type ProtocolVersionUnknownReason,
+  type RetainedEraSubpath,
+  StateDecodeFailedError,
+  UnknownLedgerVersionError,
   UnknownProtocolVersionError,
   type VersionResolutionPath
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
+
+// No `protocol/v8` re-export in any form, in either block above: the retained
+// pre-fork runtime is reachable only through the loaders that dynamically
+// import it -- see docs/adr/0004-lazy-v8-era-access-via-protocol-subpath.md.
+// `src/test/dist-laziness.test.ts` is what holds that in place.
