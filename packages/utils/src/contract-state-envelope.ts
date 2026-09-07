@@ -30,8 +30,9 @@ import { parseSerializedTag, TagParseError } from './serialized-tag';
 // `packages/protocol/docs/shared-table-discipline.md`.
 //
 // Both entries are pinned against what the runtimes actually WRITE, by
-// `packages/indexer-public-data-provider/src/test/raw-contract-state.test.ts`, which is where the
-// two ledger runtimes are available as devDependencies.
+// `packages/indexer-public-data-provider/src/test/raw-contract-state.test.ts`, which mints a real
+// state with each runtime through `midnight-js-protocol` -- `ledger` for v9, `loadLedger8()` for
+// v8 -- rather than checking byte blobs in.
 const CONTRACT_STATE_TAG_TO_LEDGER_VERSION: Readonly<Partial<Record<string, LedgerVersion>>> = Object.freeze({
   'midnight:contract-state[v6]': 'v8',
   'midnight:contract-state[v8]': 'v9'

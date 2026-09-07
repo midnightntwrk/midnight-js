@@ -20,9 +20,9 @@ import { TagParseError } from '../serialized-tag';
 
 // The mapping's own behaviour, tested here with the mapping. What the two ledger RUNTIMES actually
 // write is pinned separately, against real minted states, by
-// `packages/indexer-public-data-provider/src/test/raw-contract-state.test.ts` -- that assertion needs
-// both ledger runtimes as devDependencies, which is why it stays in that package and reaches this
-// implementation through its import.
+// `packages/indexer-public-data-provider/src/test/raw-contract-state.test.ts` -- that assertion mints
+// a real state with each runtime through `midnight-js-protocol`, using the fixtures that already
+// live in that package, and reaches this implementation through its import.
 const envelope = (tag: string, body = 'state-body'): Uint8Array =>
   Uint8Array.from(Buffer.from(`${tag}:${body}`, 'utf8'));
 

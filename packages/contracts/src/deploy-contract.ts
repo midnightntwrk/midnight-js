@@ -116,6 +116,12 @@ const createDeployTxOptions = <C extends Contract.Any>(
     : deployTxOptionsBase;
 };
 
+/*
+ * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
+ * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
+ * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ */
 /**
  * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
@@ -130,21 +136,24 @@ const createDeployTxOptions = <C extends Contract.Any>(
  *
  * @see {@link KeepStatePipeline} for the measurement and the test that pins it.
  *
- * ARM ORDER IS LOAD-BEARING: this arm is declared FIRST, and the arm that was already LAST stays
- * last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
- *
- * @see {@link OverloadTyping} for what resolves from the last arm.
+ * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
 export async function deployContract<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
   options: Ledger8DeployContractOptions<C>
 ): Promise<Ledger8DeployedContract<C>>;
 
+/**
+ * Deploys a contract that declares no private state, so no private state id is required.
+ */
 export async function deployContract<C extends Contract<undefined>>(
   providers: ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
   options: DeployContractOptionsBase<C>
 ): Promise<DeployedContract<C>>;
 
+/**
+ * Deploys a contract that declares private state, naming where to store the initial state.
+ */
 export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: DeployContractOptionsWithPrivateState<C>
@@ -159,6 +168,10 @@ export async function deployContract<C extends Contract.Any>(
  *
  * @throws DeployTxFailedError If the transaction is submitted successfully but produces an error
  *                             when executed by the node.
+ * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, or
+ *                                  is a raw current-era contract instance passed instead of its
+ *                                  `CompiledContract` container. Raised before any provider is
+ *                                  consulted.
  */
 export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
