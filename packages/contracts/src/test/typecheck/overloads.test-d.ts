@@ -361,7 +361,7 @@ describe('an object belonging to neither era is refused by both eras', () => {
   });
 
   it('does not match the named neither-era shape', () => {
-    // @ts-expect-error - neither a 0.16- nor a 0.18-generated contract
+    // @ts-expect-error - neither a retained-era nor a current-era contract
     const neither: NeitherEraContractOptions = { compiledContract: neitherShapeContract };
     expectTypeOf(neither).toMatchTypeOf<NeitherEraContractOptions>();
   });
@@ -375,7 +375,7 @@ describe('an object belonging to neither era is refused by both eras', () => {
     // A GUARD, not a driver: this call fails against the current-era arms whatever the retained-era
     // arm does, so the directive stays "used" either way. The two assertions above are what
     // actually discriminate.
-    // @ts-expect-error - neither a 0.16- nor a current-era-generated contract
+    // @ts-expect-error - neither a retained-era nor a current-era contract
     submitCallTx(providers016, { compiledContract: neitherShapeContract, contractAddress, circuitId: 'increment' });
   });
 });

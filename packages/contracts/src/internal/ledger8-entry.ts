@@ -22,9 +22,13 @@
  * orchestration ORDER and is pure; this one is the part that touches the
  * outside world.
  *
+ * A successful operation reads the head ONCE. Two re-reads exist beyond it and neither happens on
+ * the ordinary path. EVERY head reading is breadcrumbed with a `HeadReadingProvenance` naming
+ * which it is — adding a reading without one is the mistake that list exists to prevent.
+ *
  * @see {@link KeepStatePipeline} for the acquisition rules, the seam arms, and
  *      how a provider's own failure is sanitized.
- * @see {@link EraDispatch} for the single head read per operation.
+ * @see {@link Breadcrumbs} for all four readings and what each provenance means.
  */
 
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -58,8 +62,10 @@ import {
 } from '../errors';
 import type { AnyLedger8CallTxOptions } from '../ledger8-contract';
 import { createEncryptionPublicKeyResolver } from '../utils';
+import { type BreadcrumbSink, emitPipelineSelection } from './breadcrumbs';
 import {
   assertEraCompatible,
+  type HeadVersionSource,
   requireV8,
   requireV9,
   type ResolvedOperationEra,
@@ -101,6 +107,12 @@ export interface Ledger8EntryProviders {
   readonly proofProvider: ProofProvider;
   readonly walletProvider: WalletProvider;
   readonly midnightProvider: MidnightProvider;
+  /**
+   * OPTIONAL, exactly as it is on the provider set the entry points receive.
+   * Only the dispatch breadcrumbs read it, so an absent logger costs an
+   * operation nothing.
+   */
+  readonly loggerProvider?: BreadcrumbSink;
 }
 
 /**
@@ -125,6 +137,9 @@ export interface Ledger8Runtime {
  * @param pdp The read surface, for the one head read.
  * @param kind Whether this operation deploys a contract or calls one already
  * deployed — the one cell where the era table differs.
+ * @param breadcrumbs The optional logger the head-resolution and
+ * pipeline-selection breadcrumbs are written to, and the contract this
+ * operation names — omitted by a deploy, which has no address yet.
  * @returns The resolved era facts and the acquired engine.
  * @throws Ledger8DeployOnV9Error for a retained-era deploy on a post-fork head.
  * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
@@ -132,11 +147,18 @@ export interface Ledger8Runtime {
  * @see {@link EraDispatch} for the pairing table.
  */
 export const acquireLedger8Runtime = async (
-  pdp: Pick<PublicDataProvider, 'queryLatestProtocolVersion'>,
-  kind: 'call' | 'deploy'
+  pdp: HeadVersionSource,
+  kind: 'call' | 'deploy',
+  breadcrumbs?: { readonly logger?: BreadcrumbSink; readonly contractAddress?: string }
 ): Promise<Ledger8Runtime> => {
-  const [resolved, engine] = await Promise.all([resolveOperationEra(pdp), loadLedger8Engine()]);
+  const [resolved, engine] = await Promise.all([
+    resolveOperationEra(pdp, breadcrumbs?.logger),
+    loadLedger8Engine()
+  ]);
   assertEraCompatible('ledger8', resolved.head, kind);
+  // AFTER the gate: a selection breadcrumb written before it would claim a
+  // pipeline for an operation the very next line refuses.
+  emitPipelineSelection(breadcrumbs?.logger, resolved, 'ledger8', breadcrumbs?.contractAddress);
 
   return { resolved, engine };
 };
@@ -435,7 +457,7 @@ const submitLedger8TxOnRetainedEra = async (
 export const submitLedger8Tx = async (
   providers: Pick<
     Ledger8EntryProviders,
-    'publicDataProvider' | 'proofProvider' | 'walletProvider' | 'midnightProvider'
+    'publicDataProvider' | 'proofProvider' | 'walletProvider' | 'midnightProvider' | 'loggerProvider'
   >,
   txBytes: Uint8Array,
   operation: SubmittedOperation
@@ -448,7 +470,7 @@ export const submitLedger8Tx = async (
     try {
       return await atSeam('submitTx', circuitId, call);
     } catch (rejection) {
-      return handleSubmitRejection(providers.publicDataProvider, operation, rejection);
+      return handleSubmitRejection(providers.publicDataProvider, operation, rejection, providers.loggerProvider);
     }
   };
 
@@ -520,7 +542,10 @@ export const runLedger8Call = async (
   providers: Ledger8EntryProviders,
   request: Ledger8CallRequest
 ): Promise<Ledger8SubmittedCall> => {
-  const { resolved, engine } = await acquireLedger8Runtime(providers.publicDataProvider, 'call');
+  const { resolved, engine } = await acquireLedger8Runtime(providers.publicDataProvider, 'call', {
+    logger: providers.loggerProvider,
+    contractAddress: request.contractAddress
+  });
   const localVerifierKey = await providers.zkConfigProvider.getVerifierKey(request.circuitId);
 
   // Read ONCE and used for both the circuit's coin public key and the
@@ -542,6 +567,7 @@ export const runLedger8Call = async (
     engine,
     publicDataProvider: providers.publicDataProvider,
     head: resolved.head,
+    logger: providers.loggerProvider,
     contract: request.contract,
     contractAddress: request.contractAddress,
     circuitId: request.circuitId,
@@ -594,7 +620,9 @@ export interface Ledger8SubmittedDeploy {
  *
  * The MJS-02 plan asked for a working retained-era deploy, so this path is that
  * deliverable held one step short of being reachable rather than an
- * unimplemented stub.
+ * unimplemented stub. Its only callers are tests; DO NOT DELETE IT as unused,
+ * and note its pipeline-selection breadcrumb is only reachable from tests today
+ * for the same reason.
  *
  * Reachable only on a pre-fork head; {@link acquireLedger8Runtime} refuses the
  * post-fork case before the constructor is executed.
@@ -609,7 +637,11 @@ export const runLedger8Deploy = async (
   providers: Ledger8EntryProviders,
   request: Ledger8DeployRequest
 ): Promise<Ledger8SubmittedDeploy> => {
-  const { resolved, engine } = await acquireLedger8Runtime(providers.publicDataProvider, 'deploy');
+  // No contract address on this arm: a deploy has none until the composition
+  // below mints one, so the selection breadcrumb leaves the field out.
+  const { resolved, engine } = await acquireLedger8Runtime(providers.publicDataProvider, 'deploy', {
+    logger: providers.loggerProvider
+  });
 
   const deploy = runLedger8DeployPipeline({
     era: resolved.era,
@@ -679,13 +711,14 @@ export interface Ledger8FoundState {
  * @see {@link KeepStatePipeline} for why the record keeps its version tag.
  */
 export const findLedger8Contract = async (
-  providers: Pick<Ledger8EntryProviders, 'publicDataProvider' | 'zkConfigProvider'>,
+  providers: Pick<Ledger8EntryProviders, 'publicDataProvider' | 'zkConfigProvider' | 'loggerProvider'>,
   request: Ledger8FindRequest
 ): Promise<Ledger8FoundState> => {
   assertIsContractAddress(request.contractAddress);
 
-  const resolved = await resolveOperationEra(providers.publicDataProvider);
+  const resolved = await resolveOperationEra(providers.publicDataProvider, providers.loggerProvider);
   assertEraCompatible('ledger8', resolved.head, 'call');
+  emitPipelineSelection(providers.loggerProvider, resolved, 'ledger8', request.contractAddress);
 
   // EVERY cheap refusal happens before the deploy record is watched for, and
   // that order is the whole value of checking here: `watchForDeployTxData` is
@@ -707,7 +740,8 @@ export const findLedger8Contract = async (
     resolved.era,
     resolved.head,
     providers.publicDataProvider,
-    request.contractAddress
+    request.contractAddress,
+    providers.loggerProvider
   );
   for (const circuitId of request.circuitIds) {
     assertSnapshotVerifierKey(snapshot, circuitId, await providers.zkConfigProvider.getVerifierKey(circuitId));

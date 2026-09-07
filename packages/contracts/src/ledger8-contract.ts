@@ -342,6 +342,15 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  * @see {@link OverloadTyping} for why the text is a runtime `const`, and why it is not wired into
  *      an overload arm.
  */
+// WHY NO VERSION NUMBERS. Earlier wordings named the toolchains -- "neither a 0.16- nor a
+// 0.18-generated contract" -- and that text contradicted itself as soon as the current side moved:
+// a consumer on `0.19.0-rc.0`, which this release pins, was told their object matched neither of
+// two versions, neither of which was theirs. The message is about which ERA an object belongs to,
+// and the eras are named by role everywhere else in this package, so it names them that way here
+// too and no future toolchain release invalidates it.
+// ONE string literal deliberately, never a `+` concatenation: TypeScript widens `'a' + 'b'` to
+// `string`, which would cost {@link NeitherContractShape} its string LITERAL member and break the
+// verbatim pin in `src/test/typecheck/overloads.test-d.ts`.
 export const NEITHER_ERA_CONTRACT_MESSAGE =
   'Object is neither a retained-era nor a current-era generated contract.';
 

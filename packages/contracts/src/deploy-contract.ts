@@ -134,7 +134,8 @@ const createDeployTxOptions = <C extends Contract.Any>(
  *
  * The refusal is unconditional and comes BEFORE the network head is read, so `Ledger8DeployOnV9Error`
  * — the era pairing table's refusal for a retained-era deploy against a post-fork head — is not
- * reachable through this entry point today.
+ * reachable through this entry point today. Do NOT branch on it here: through `deployContract` that
+ * branch is never taken.
  *
  * @see {@link KeepStatePipeline} for the measurement, what it would take to lift the refusal, and
  *      the test that pins it.

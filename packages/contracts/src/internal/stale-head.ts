@@ -29,11 +29,12 @@
  *      and why the re-read is a real second reading of the network.
  */
 
-import { LEDGER_VERSIONS, type LedgerVersion, networkHeadVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 
 import { StaleHeadError, SubmitRejectionUndiagnosedError,type SubmittedOperation } from '../errors';
-import type { HeadVersionSource } from './era';
+import { type BreadcrumbSink, emitHeadResolution } from './breadcrumbs';
+import { type HeadEraReading, type HeadVersionSource, readHeadEra } from './era';
 
 /**
  * Where an era sits on the timeline, for comparing two readings by DIRECTION
@@ -61,6 +62,12 @@ const eraPosition = (era: LedgerVersion): number => LEDGER_VERSIONS.indexOf(era)
  * so is anything that arrives with no registered code at all — neither is
  * evidence about where the network head is.
  *
+ * The fresh read is BREADCRUMBED, with its own `'post-rejection-re-read'`
+ * provenance. It is the only head reading taken after bytes were already on
+ * the wire, and it is the reading the verdict below rests on, so an operator
+ * asked to act on a {@link StaleHeadError} needs the integer it returned —
+ * see `./breadcrumbs.ts`.
+ *
  * @param pdp The read surface, for the one fresh head read. Declared as the
  * head-read slice rather than the whole provider, so a reader — and a test —
  * sees exactly which member is consulted; a full `PublicDataProvider`
@@ -70,6 +77,7 @@ const eraPosition = (era: LedgerVersion): number => LEDGER_VERSIONS.indexOf(era)
  * name so a caller with several operations in flight can act on it.
  * @param rejection Whatever the submit seam rejected with — `unknown`, because
  * a rejection is not obliged to be an `Error`.
+ * @param logger The optional logger the post-rejection head reading is written to.
  * @returns Never; the returned promise always rejects.
  * @throws StaleHeadError if a fresh head read reports a LATER era.
  * @throws SubmitRejectionUndiagnosedError if the fresh read reports an earlier
@@ -84,7 +92,8 @@ const eraPosition = (era: LedgerVersion): number => LEDGER_VERSIONS.indexOf(era)
 export const handleSubmitRejection = async (
   pdp: HeadVersionSource,
   operation: SubmittedOperation,
-  rejection: unknown
+  rejection: unknown,
+  logger?: BreadcrumbSink
 ): Promise<never> => {
   // Matched POSITIVELY, on the ONE rejection shape this diagnosis is written
   // for -- never as "anything that is not one of ours", which would fail open:
@@ -95,9 +104,13 @@ export const handleSubmitRejection = async (
     throw rejection;
   }
 
-  let freshEra: LedgerVersion;
+  let freshReading: HeadEraReading;
   try {
-    freshEra = await networkHeadVersion(pdp);
+    // `readHeadEra` rather than `networkHeadVersion`: the same one round trip
+    // and the same `'construct'` era mapping, but it also yields the raw head
+    // integer -- which is the value an operator acting on the verdict below
+    // actually needs, and which the breadcrumb reports.
+    freshReading = await readHeadEra(pdp);
   } catch (headReadFailure) {
     // Nothing is dropped: reporting only the transport failure hides what happened to the
     // transaction, and reporting only the rejection claims a diagnosis that was never made.
@@ -107,6 +120,11 @@ export const handleSubmitRejection = async (
     });
   }
 
+  // Reported BEFORE the verdict, so the reading is in the log whichever of the
+  // three arms below is taken.
+  emitHeadResolution(logger, freshReading, 'post-rejection-re-read');
+
+  const freshEra = freshReading.head;
   const movement = eraPosition(freshEra) - eraPosition(operation.head);
   if (movement === 0) {
     // Not a fork. Re-thrown exactly as the seam wrapper built it.

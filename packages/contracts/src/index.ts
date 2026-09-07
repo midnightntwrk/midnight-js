@@ -40,6 +40,10 @@ export {
   DeployContractOptionsWithPrivateState,
   DeployedContract
 } from './deploy-contract';
+// The one member of `./internal/breadcrumbs` that is CONSUMER-FACING: an aggregator has to import
+// the fixed message rather than retype it. The breadcrumb TYPES stay internal -- publishing the
+// shapes would pin them as API before a second consumer has asked for them.
+export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // The retained-era entry points run real pipelines with this release, so the era errors below are
 // reachable from a call a consumer makes rather than only from an internal helper. Two are NOT
 // reachable through an entry point yet and are exported for completeness:
@@ -114,6 +118,48 @@ export {
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from './governance';
+// The retained-era type family. Exported for the same reason the current era's
+// equivalents are: the entry-point OVERLOADS select these types by inference,
+// but inference alone does not let a consumer NAME one. Without these a caller
+// can make a retained-era call and still not write
+// `function handle(r: Ledger8FinalizedCallTxData<C, K>)`, declare a variable of
+// the result type, or constrain a helper of their own by `Ledger8Contract`.
+//
+// A name appearing in the emitted `.d.ts` because an overload signature
+// mentions it is NOT the same as that name being exported, and this package
+// publishes only a `"."` entry, so there is no subpath to reach them through
+// either. `Awaited<ReturnType<typeof submitCallTx>>` is no substitute: it
+// resolves from the LAST overload by design, so it hands back the current-era
+// shape -- the wrong type for a retained-era call.
+//
+// The whole family goes out together rather than just the four result types: a
+// consumer who cannot also name `Ledger8Circuit` and `Ledger8Witness` cannot
+// declare a contract type that satisfies `Ledger8Contract` in the first place.
+// The `AnyLedger8*` aliases stay internal -- they exist to widen the
+// era-dispatching IMPLEMENTATION signatures and are never a signature a caller
+// sees.
+export type {
+  Ledger8CallTxOptions,
+  Ledger8CallTxOptionsBase,
+  Ledger8CallTxOptionsWithPrivateStateId,
+  Ledger8CallTxTarget,
+  Ledger8Circuit,
+  Ledger8CircuitContext,
+  Ledger8CircuitId,
+  Ledger8CircuitParameters,
+  Ledger8CircuitResult,
+  Ledger8ConstructorResult,
+  Ledger8Contract,
+  Ledger8ContractProviders,
+  Ledger8DeployContractOptions,
+  Ledger8DeployedContract,
+  Ledger8FinalizedCallTxData,
+  Ledger8FindDeployedContractOptions,
+  Ledger8FoundContract,
+  Ledger8PrivateState,
+  Ledger8SubmittedCallTx,
+  Ledger8Witness
+} from './ledger8-contract';
 export { submitCallTx, submitCallTxAsync } from './submit-call-tx';
 export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
 export { submitTx, submitTxAsync, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
