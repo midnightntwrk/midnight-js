@@ -79,7 +79,9 @@ export const readManifest = () => {
  * install reaches for versions that do not exist.
  */
 export const personaManifest = (name, persona, manifest, packageManager) => {
-  const tarballSpecifier = (packageName) => `file:${path.join('..', '..', manifest.packages[packageName])}`;
+  // Absolute, because the persona is installed outside the repository and a
+  // relative `file:` would resolve against the temp directory.
+  const tarballSpecifier = (packageName) => `file:${path.join(PACKAGING_DIR, manifest.packages[packageName])}`;
   const everyFrameworkPackage = Object.keys(manifest.packages);
 
   const dependencies = {

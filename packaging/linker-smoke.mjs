@@ -24,12 +24,22 @@
 import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 
 import { CURRENT_RUNTIME, PACKAGING_DIR, PERSONAS, personaManifest, readManifest, REPOSITORY_ROOT } from './personas.mjs';
 
-const WORK_DIR = path.join(PACKAGING_DIR, '.personas');
+/**
+ * Outside the repository, deliberately.
+ *
+ * Node resolution walks *up* the directory tree, so a persona built inside the
+ * repo reaches the monorepo's own hoisted `node_modules` from any depth. That
+ * makes the install look isolated while it is not: under pnpm's linker the
+ * persona could resolve `onchain-runtime-v3` it never declared, purely because
+ * the repo root had it. Yarn PnP hid the problem by not walking up at all.
+ */
+const WORK_DIR = path.join(os.tmpdir(), 'midnight-js-packaging-personas');
 
 /**
  * Resolved from this repository's own pinned devDependency, not from PATH and not
