@@ -28,7 +28,7 @@ import {
 import { assertDefined, assertIsContractAddress, toHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
-import { ContractTypeError, IncompleteFindContractPrivateStateConfig } from './errors';
+import { ContractTypeError, IncompleteFindContractPrivateStateConfig, Ledger8PipelineNotWiredError } from './errors';
 import {
   type CircuitMaintenanceTxInterfaces,
   type ContractMaintenanceTxInterface,
@@ -36,6 +36,16 @@ import {
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
 import { requireV9Record } from './internal/era';
+import {
+  type AnyLedger8FindDeployedContractOptions,
+  type AnyLedger8FoundContract,
+  isLedger8Options,
+  type Ledger8CircuitId,
+  type Ledger8Contract,
+  type Ledger8ContractProviders,
+  type Ledger8FindDeployedContractOptions,
+  type Ledger8FoundContract
+} from './ledger8-contract';
 import {
   type CircuitCallTxInterface,
   createCircuitCallTxInterface
@@ -222,16 +232,45 @@ export interface FoundContract<C extends Contract.Any> {
   readonly contractMaintenanceTx: ContractMaintenanceTxInterface;
 }
 
+/*
+ * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
+ * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
+ * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ */
+/**
+ * Accepts a contract produced by the PREVIOUS Compact toolchain (`compact-runtime@0.16`), passed
+ * as the raw contract instance rather than inside a `CompiledContract` container.
+ *
+ * @throws `Ledger8PipelineNotWiredError`
+ * Always, at this stage: the shape type-checks but no execution path exists behind it yet.
+ *
+ * @see {@link OverloadTyping} for how the two eras are discriminated.
+ */
+export async function findDeployedContract<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  options: Ledger8FindDeployedContractOptions<C>
+): Promise<Ledger8FoundContract<C>>;
+
+/**
+ * Attaches to a deployed contract that declares no private state.
+ */
 export async function findDeployedContract<C extends Contract<undefined>>(
   providers: ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
   options: FindDeployedContractOptionsBase<C>
 ): Promise<FoundContract<C>>;
 
+/**
+ * Attaches to a deployed contract, reusing the private state already stored at `privateStateId`.
+ */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: FindDeployedContractOptionsExistingPrivateState<C>
 ): Promise<FoundContract<C>>;
 
+/**
+ * Attaches to a deployed contract, storing the given `initialPrivateState` at `privateStateId`.
+ */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: FindDeployedContractOptionsStorePrivateState<C>
@@ -256,8 +295,11 @@ export async function findDeployedContract<C extends Contract.Any>(
  */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
-  options: FindDeployedContractOptions<C>
-): Promise<FoundContract<C>> {
+  options: FindDeployedContractOptions<C> | AnyLedger8FindDeployedContractOptions
+): Promise<FoundContract<C> | AnyLedger8FoundContract> {
+  if (isLedger8Options<AnyLedger8FindDeployedContractOptions>(options)) {
+    throw new Ledger8PipelineNotWiredError('findDeployedContract');
+  }
   const { compiledContract, contractAddress } = options;
   assertIsContractAddress(contractAddress);
   providers.privateStateProvider.setContractAddress(contractAddress);

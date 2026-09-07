@@ -19,8 +19,20 @@ import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight
 
 import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
-import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
+import { CallTxFailedError, IncompleteCallTxPrivateStateConfig, Ledger8PipelineNotWiredError } from './errors';
 import * as Transaction from './internal/transaction';
+import {
+  type AnyLedger8CallTxOptions,
+  type AnyLedger8FinalizedCallTxData,
+  type AnyLedger8SubmittedCallTx,
+  isLedger8Options,
+  type Ledger8CallTxOptions,
+  type Ledger8CircuitId,
+  type Ledger8Contract,
+  type Ledger8ContractProviders,
+  type Ledger8FinalizedCallTxData,
+  type Ledger8SubmittedCallTx
+} from './ledger8-contract';
 import type { SubmitTxProviders } from './submit-tx';
 import { submitTxAsync } from './submit-tx';
 import { type TransactionContext } from './transaction';
@@ -36,22 +48,55 @@ export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.P
   | ContractProviders<C>
   | SubmitTxProviders<C, PCK>;
 
+/*
+ * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
+ * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
+ * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ */
+/**
+ * Accepts a contract produced by the PREVIOUS Compact toolchain (`compact-runtime@0.16`), passed
+ * as the raw contract instance rather than inside a `CompiledContract` container.
+ *
+ * @throws `Ledger8PipelineNotWiredError`
+ * Always, at this stage: the shape type-checks but no execution path exists behind it yet.
+ *
+ * @see {@link OverloadTyping} for how the two eras are discriminated.
+ */
+export async function submitCallTx<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
+  providers: Ledger8ContractProviders<C, K>,
+  options: Ledger8CallTxOptions<C, K>
+): Promise<Ledger8FinalizedCallTxData<C, K>>;
+
+/**
+ * Calls a circuit on a contract that declares no private state.
+ */
 export async function submitCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: CallTxOptionsBase<C, PCK>
 ): Promise<FinalizedCallTxData<C, PCK>>;
 
+/**
+ * Calls a circuit on a contract that declares private state, naming where that state is stored.
+ */
 export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: ContractProviders<C>,
   options: CallTxOptionsWithPrivateStateId<C, PCK>
 ): Promise<FinalizedCallTxData<C, PCK>>;
 
+/**
+ * Calls a circuit inside a scoped transaction, on a contract that declares private state. The
+ * call is added to the scope rather than submitted on its own.
+ */
 export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: ContractProviders<C>,
   options: CallTxOptionsWithPrivateStateId<C, PCK>,
   transactionContext: TransactionContext<C, PCK>
 ): Promise<CallResult<C, PCK>>;
 
+/**
+ * Calls a circuit inside a scoped transaction, on a contract that declares no private state.
+ */
 export async function submitCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: CallTxOptionsBase<C, PCK>,
@@ -100,9 +145,12 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  */
 export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitCallTxProviders<C, PCK>,
-  options: CallTxOptions<C, PCK>,
+  options: CallTxOptions<C, PCK> | AnyLedger8CallTxOptions,
   transactionContext?: TransactionContext<C, PCK>
-): Promise<FinalizedCallTxData<C, PCK> | CallResult<C, PCK>> {
+): Promise<FinalizedCallTxData<C, PCK> | CallResult<C, PCK> | AnyLedger8FinalizedCallTxData> {
+  if (isLedger8Options<AnyLedger8CallTxOptions>(options)) {
+    throw new Ledger8PipelineNotWiredError('submitCallTx');
+  }
   assertIsContractAddress(options.contractAddress);
   assertDefined(
     ContractExecutable.make(options.compiledContract)
@@ -135,6 +183,26 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
     ? Transaction.scoped(providers as ContractProviders<C, PCK>, callTxFn, transactionContext)
     : Transaction.scoped(providers as ContractProviders<C, PCK>, callTxFn)
 }
+
+/*
+ * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
+ * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
+ * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ */
+/**
+ * Accepts a contract produced by the PREVIOUS Compact toolchain (`compact-runtime@0.16`), passed
+ * as the raw contract instance rather than inside a `CompiledContract` container.
+ *
+ * @throws `Ledger8PipelineNotWiredError`
+ * Always, at this stage: the shape type-checks but no execution path exists behind it yet.
+ *
+ * @see {@link OverloadTyping} for how the two eras are discriminated.
+ */
+export async function submitCallTxAsync<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
+  providers: Ledger8ContractProviders<C, K>,
+  options: Ledger8CallTxOptions<C, K>
+): Promise<Ledger8SubmittedCallTx<C, K>>;
 
 /**
  * Creates and submits a transaction for the invocation of a circuit on a given contract,
@@ -213,7 +281,24 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
 export async function submitCallTxAsync<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitCallTxProviders<C, PCK>,
   options: CallTxOptions<C, PCK>
-): Promise<SubmittedCallTx<C, PCK>> {
+): Promise<SubmittedCallTx<C, PCK>>;
+
+/*
+ * The TSDoc below is the function-level summary, and it sits on the IMPLEMENTATION signature
+ * because that is where TypeDoc reads a function's summary from. Per-era detail belongs on each
+ * declared overload above, not here.
+ */
+/**
+ * Creates and submits a transaction for the invocation of a circuit on a given contract,
+ * returning immediately after submission without waiting for finalization.
+ */
+export async function submitCallTxAsync<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: SubmitCallTxProviders<C, PCK>,
+  options: CallTxOptions<C, PCK> | AnyLedger8CallTxOptions
+): Promise<SubmittedCallTx<C, PCK> | AnyLedger8SubmittedCallTx> {
+  if (isLedger8Options<AnyLedger8CallTxOptions>(options)) {
+    throw new Ledger8PipelineNotWiredError('submitCallTxAsync');
+  }
   assertIsContractAddress(options.contractAddress);
   assertDefined(
     ContractExecutable.make(options.compiledContract)

@@ -20,11 +20,22 @@ import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
+import { Ledger8PipelineNotWiredError } from './errors';
 import type { FoundContract } from './find-deployed-contract';
 import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
+import {
+  type AnyLedger8DeployContractOptions,
+  type AnyLedger8DeployedContract,
+  isLedger8Options,
+  type Ledger8CircuitId,
+  type Ledger8Contract,
+  type Ledger8ContractProviders,
+  type Ledger8DeployContractOptions,
+  type Ledger8DeployedContract
+} from './ledger8-contract';
 import { type DeployTxOptions, submitDeployTx } from './submit-deploy-tx';
 import { createCircuitCallTxInterface } from './tx-interfaces';
 import type { FinalizedDeployTxData } from './tx-model';
@@ -105,11 +116,37 @@ const createDeployTxOptions = <C extends Contract.Any>(
     : deployTxOptionsBase;
 };
 
+/*
+ * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
+ * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
+ * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ */
+/**
+ * Accepts a contract produced by the PREVIOUS Compact toolchain (`compact-runtime@0.16`), passed
+ * as the raw contract instance rather than inside a `CompiledContract` container.
+ *
+ * @throws `Ledger8PipelineNotWiredError`
+ * Always, at this stage: the shape type-checks but no execution path exists behind it yet.
+ *
+ * @see {@link OverloadTyping} for how the two eras are discriminated.
+ */
+export async function deployContract<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  options: Ledger8DeployContractOptions<C>
+): Promise<Ledger8DeployedContract<C>>;
+
+/**
+ * Deploys a contract that declares no private state, so no private state id is required.
+ */
 export async function deployContract<C extends Contract<undefined>>(
   providers: ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
   options: DeployContractOptionsBase<C>
 ): Promise<DeployedContract<C>>;
 
+/**
+ * Deploys a contract that declares private state, naming where to store the initial state.
+ */
 export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: DeployContractOptionsWithPrivateState<C>
@@ -127,8 +164,11 @@ export async function deployContract<C extends Contract.Any>(
  */
 export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
-  options: DeployContractOptions<C>
-): Promise<DeployedContract<C>> {
+  options: DeployContractOptions<C> | AnyLedger8DeployContractOptions
+): Promise<DeployedContract<C> | AnyLedger8DeployedContract> {
+  if (isLedger8Options<AnyLedger8DeployContractOptions>(options)) {
+    throw new Ledger8PipelineNotWiredError('deployContract');
+  }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
   return {
     deployTxData,
