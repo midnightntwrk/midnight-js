@@ -291,8 +291,12 @@ export type AnyLedger8FindDeployedContractOptions = Ledger8FindDeployedContractO
 export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
 
 /**
- * The migration-guide message for a contract belonging to neither era. This is the SINGLE place its
- * text is written.
+ * The message for a contract belonging to neither era. This is the SINGLE place its text is
+ * written.
+ *
+ * Names the two eras by ROLE, never by toolchain version: this text is thrown at users, and a
+ * version number in it goes stale on every runtime bump. The retained/current vocabulary is the
+ * one the rest of this package uses.
  *
  * DO NOT DELETE AS UNUSED, and do not inline it either. It is consumed by
  * `EraArtifactMismatchError` in `./errors`, which is what `pipelineEraOf` in `./internal/era`
@@ -304,7 +308,7 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  *      an overload arm.
  */
 export const NEITHER_ERA_CONTRACT_MESSAGE =
-  'Object is neither a 0.16- nor a 0.18-generated contract. See migration guide §window.';
+  'Object is neither a retained-era nor a current-era generated contract.';
 
 /**
  * The type the catch-all arm of every era-dispatching entry point expects, so that an object

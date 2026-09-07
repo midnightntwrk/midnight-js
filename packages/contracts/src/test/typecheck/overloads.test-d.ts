@@ -327,7 +327,7 @@ describe('an object belonging to neither era is refused by both eras', () => {
   // refused by BOTH eras' options types, and that the message the future error will carry is the
   // wording that was reviewed.
   it('carries the migration-guide message verbatim, so a reword cannot pass unnoticed', () => {
-    expectTypeOf<NeitherContractShape['__error']>().toEqualTypeOf<'Object is neither a 0.16- nor a 0.18-generated contract. See migration guide §window.'>();
+    expectTypeOf<NeitherContractShape['__error']>().toEqualTypeOf<'Object is neither a retained-era nor a current-era generated contract.'>();
   });
 
   it('keeps the message and the named shape in step', () => {

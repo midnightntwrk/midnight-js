@@ -143,8 +143,8 @@ choose and is deliberately not pinned.
 
 Adding a last arm carrying `NEITHER_ERA_CONTRACT_MESSAGE` would have made every
 mistyped current-era call report that the caller's perfectly ordinary contract
-"is neither a 0.16- nor a 0.18-generated contract" — a false statement on the
-common path. An arm that is NOT last never renders at all, so placing one
+"is neither a retained-era nor a current-era generated contract" — a false
+statement on the common path. An arm that is NOT last never renders at all, so placing one
 earlier would only distort `ReturnType` and `Parameters`.
 
 The guidance belongs in a thrown, typed error instead, which can carry full
