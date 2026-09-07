@@ -356,7 +356,8 @@ barrel also publishes so a consumer can read their payload without a cast:
 `Ledger8RuntimeMissingError` (`subpath`), `ComposeFailedError` (`version`,
 `stage`, `circuitId`), `ComposeOptionError` (`version`, `option`),
 `StateDecodeFailedError` (`version`) and `UnknownLedgerVersionError`
-(`requestedVersion`).
+(`requestedVersion`). `PayloadNotATransactionError` is published alongside them
+for the `proveTx` rejection path.
 
 The retained pre-fork ledger runtime itself is **not** re-exported from the
 barrel and is absent from its static import graph, loaded only on demand when a

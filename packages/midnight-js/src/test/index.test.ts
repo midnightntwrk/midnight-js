@@ -47,6 +47,7 @@ const EXPECTED_BARREL_EXPORTS = [
   'LEDGER_VERSIONS',
   'Ledger8RuntimeMissingError',
   'PROTOCOL_ERROR_CODES',
+  'PayloadNotATransactionError',
   'StateDecodeFailedError',
   'UnknownLedgerVersionError',
   'UnknownProtocolVersionError',
@@ -213,6 +214,14 @@ describe('retained-era error classes', () => {
       midnightJs.utils.hasErrorCode(
         new midnightJs.UnknownLedgerVersionError('v7'),
         midnightJs.PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION
+      )
+    ).toBe(true);
+    // Built through a static factory, not `new`: the constructor is private,
+    // because this one is published to be caught rather than constructed.
+    expect(
+      midnightJs.utils.hasErrorCode(
+        midnightJs.PayloadNotATransactionError.notBytes('not bytes'),
+        midnightJs.PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION
       )
     ).toBe(true);
   });

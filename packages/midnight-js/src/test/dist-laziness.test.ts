@@ -35,8 +35,8 @@
  * The retained pre-fork (v8) runtime is a separate matter: it stays off the
  * eager path entirely, and the second assertion holds that.
  *
- * Modelled on `packages/utils/src/test/dist-laziness.test.ts`, which guards
- * the same class of invariant for the retained-era proving seam.
+ * Modelled on `packages/protocol/src/test/dist-laziness.test.ts`, which guards
+ * the same class of invariant for the v8 and engine chunks.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
