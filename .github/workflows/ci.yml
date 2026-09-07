@@ -67,6 +67,16 @@ jobs:
         }}
     secrets: inherit
 
+  # The only lane that exercises the framework as a consumer installs it: packed
+  # tarballs, isolated linker, outside the workspace.
+  packaging:
+    needs: ci
+    name: Packaging
+    with:
+      should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
+    uses: ./.github/workflows/ci-packaging.yml
+    secrets: inherit
+
   ci-testkit:
     needs: ci
     name: Build Testkit.js

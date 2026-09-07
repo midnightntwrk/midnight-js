@@ -1,0 +1,137 @@
+#!/usr/bin/env node
+// This file is part of midnight-js.
+// Copyright (C) 2025-2026 Midnight Foundation
+// SPDX-License-Identifier: Apache-2.0
+// Licensed under the Apache License, Version 2.0 (the "License");
+// You may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// The isolated-linker install smoke (spec AC6, split-topology milestone).
+//
+// Builds each dApp persona outside the workspace, installs it from the packed
+// framework tarballs with an isolated linker, and runs its entry. Usage:
+//
+//   node packaging/linker-smoke.mjs [pnpm|pnp] [retained|current] ...
+//
+// Defaults to every linker and every persona.
+
+import { execFileSync } from 'node:child_process';
+import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import process from 'node:process';
+
+import { CURRENT_RUNTIME, PACKAGING_DIR, PERSONAS, personaManifest, readManifest, REPOSITORY_ROOT } from './personas.mjs';
+
+const WORK_DIR = path.join(PACKAGING_DIR, '.personas');
+
+/**
+ * Resolved from this repository's own pinned devDependency, not from PATH and not
+ * through Corepack. `pnpm` exports only its own `package.json`, so the bin is
+ * reached by resolving that and reading the `bin` map rather than by subpath.
+ */
+const PNPM_BIN = (() => {
+  const require = createRequire(import.meta.url);
+  // `pnpm`'s only export is its own manifest, so "." resolves to package.json.
+  const manifestPath = require.resolve('pnpm');
+  const binRelative = require(manifestPath).bin?.pnpm;
+  if (typeof binRelative !== 'string') {
+    throw new Error('The pinned pnpm package declares no `pnpm` bin');
+  }
+  return path.join(path.dirname(manifestPath), binRelative);
+})();
+
+/**
+ * The linkers under test. Both isolate: pnpm's default gives each package its own
+ * `node_modules` with symlinks, and Yarn PnP gives no `node_modules` at all. A
+ * hoisted linker is deliberately absent -- it cannot satisfy two Compact runtime
+ * majors in one tree, which is the situation a retained-era dApp is in.
+ */
+const LINKERS = {
+  pnpm: {
+    // No `packageManager` field: that would route the call through Corepack, which
+    // resolves and verifies its own download. The version under test is the one
+    // this repo pins as a devDependency, invoked directly.
+    packageManager: undefined,
+    install: (cwd) =>
+      execFileSync('node', [PNPM_BIN, 'install', '--no-frozen-lockfile', '--ignore-scripts'], {
+        cwd,
+        stdio: 'inherit'
+      }),
+    run: (cwd, args) => execFileSync('node', args, { cwd, stdio: 'inherit' })
+  },
+  pnp: {
+    packageManager: 'yarn@4.14.1',
+    install: (cwd) => {
+      writeFileSync(path.join(cwd, '.yarnrc.yml'), 'nodeLinker: pnp\nenableGlobalCache: false\n', 'utf8');
+      writeFileSync(path.join(cwd, 'yarn.lock'), '', 'utf8');
+      execFileSync('yarn', ['install', '--no-immutable'], { cwd, stdio: 'inherit' });
+    },
+    // PnP has no `node_modules`, so resolution only works through Yarn's loader.
+    run: (cwd, args) => execFileSync('yarn', ['node', ...args], { cwd, stdio: 'inherit' })
+  }
+};
+
+const buildPersona = (name, linkerName, manifest) => {
+  const persona = PERSONAS[name];
+  const linker = LINKERS[linkerName];
+  const cwd = path.join(WORK_DIR, `${name}-${linkerName}`);
+
+  rmSync(cwd, { recursive: true, force: true });
+  mkdirSync(cwd, { recursive: true });
+
+  writeFileSync(
+    path.join(cwd, 'package.json'),
+    `${JSON.stringify(personaManifest(name, persona, manifest, linker.packageManager), null, 2)}\n`,
+    'utf8'
+  );
+  cpSync(path.join(PACKAGING_DIR, 'persona-entry.mjs'), path.join(cwd, 'entry.mjs'));
+  cpSync(path.join(REPOSITORY_ROOT, persona.contractSource, 'contract'), path.join(cwd, 'contract'), {
+    recursive: true
+  });
+
+  return { cwd, persona, linker };
+};
+
+const main = () => {
+  const requested = process.argv.slice(2);
+  const linkerNames = requested.filter((argument) => argument in LINKERS);
+  const personaNames = requested.filter((argument) => argument in PERSONAS);
+  const linkers = linkerNames.length > 0 ? linkerNames : Object.keys(LINKERS);
+  const personas = personaNames.length > 0 ? personaNames : Object.keys(PERSONAS);
+
+  const manifest = readManifest();
+  const failures = [];
+
+  for (const linkerName of linkers) {
+    for (const personaName of personas) {
+      const label = `${personaName} persona / ${linkerName} linker`;
+      process.stdout.write(`\n=== ${label} ===\n`);
+      try {
+        const { cwd, persona, linker } = buildPersona(personaName, linkerName, manifest);
+        linker.install(cwd);
+        linker.run(cwd, ['entry.mjs', personaName, persona.runtime, CURRENT_RUNTIME]);
+        process.stdout.write(`--- ${label}: ok\n`);
+      } catch (error) {
+        failures.push(`${label}: ${error instanceof Error ? error.message : String(error)}`);
+        process.stdout.write(`--- ${label}: FAILED\n`);
+      }
+    }
+  }
+
+  if (failures.length > 0) {
+    for (const failure of failures) {
+      process.stderr.write(`::error::${failure}\n`);
+    }
+    process.exit(1);
+  }
+  process.stdout.write(`\nAll ${linkers.length * personas.length} persona/linker combinations passed.\n`);
+};
+
+main();
