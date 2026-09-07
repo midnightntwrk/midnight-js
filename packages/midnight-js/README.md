@@ -120,6 +120,7 @@ too, so you can catch them and read their payload without a cast:
 | `ComposeOptionError` | `version`, `option` | one composition option cannot be used |
 | `StateDecodeFailedError` | `version` | a contract-state envelope could not be read as that era |
 | `UnknownLedgerVersionError` | `requestedVersion` | an era outside `LEDGER_VERSIONS` was requested |
+| `PayloadNotATransactionError` | none | a `v8` payload sent for proving was not a transaction |
 
 ### What importing the barrel loads
 

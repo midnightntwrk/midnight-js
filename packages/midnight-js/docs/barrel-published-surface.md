@@ -82,6 +82,7 @@ protocol errors reach a barrel consumer directly:
 | `ComposeOptionError` | `lib/shared/compose-options.ts` and the era adapt legs | `version`, `option` |
 | `StateDecodeFailedError` | `lib/shared/contract-state.ts` | `version` |
 | `UnknownLedgerVersionError` | `contracts/src/internal/era.ts`, `lib/era/load-era.ts` | `requestedVersion` |
+| `PayloadNotATransactionError` | `lib/prove`, as a `proveTx` rejection | none; caught, not constructed |
 
 `hasErrorCode` narrows only to `Error & { code }`, so without the class a
 consumer could detect one of these and then not read the field that decides the
@@ -89,6 +90,12 @@ remediation — `Ledger8InstanceMismatchError` builds its whole "run `yarn why`
 on these packages" advice out of `axis`. Reading it would have required a cast,
 which this repo does not accept. Publishing each class next to its code is what
 closes that.
+
+`PayloadNotATransactionError` is the one that does not come from the era
+pipeline: a proof provider raises it from `proveV8Transaction`, and it reaches
+application code as a `proveTx` rejection out of `contracts.deployContract` or
+`submitCallTx`. Its constructor is private and its only public member is
+`code`, so it is published purely so a consumer can `instanceof` it.
 
 The remaining codes in the table have live throwers too, but deeper inside the
 v8 conversion pipeline; their classes stay behind until a consumer has a reason
