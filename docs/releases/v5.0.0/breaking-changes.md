@@ -105,11 +105,13 @@ Opt down or pin explicitly through the constructor option bag (`ZkConfigIntegrit
 
 ```ts
 new NodeZkConfigProvider(baseDir, {
-  verify: 'warn',                 // 'require' (default) | 'warn' | 'off'
+  verify: 'require-if-present',    // 'require' (default) | 'require-if-present' | 'warn' | 'off'
   onWarn: (msg) => logger.warn(msg),
   expectedManifestHash: MANIFEST_SHA256, // pin to resist a coordinated artifact+manifest swap
 });
 ```
+
+`compactc` only began emitting the manifest in 0.33, so artifacts compiled by an earlier toolchain cannot satisfy `require` however intact they are. `require-if-present` is the mode for them: a wholly absent manifest warns, but a manifest that does exist must cover the artifact, so a missing entry throws. That makes it strictly stronger than `warn`, which tolerates a missing entry in a manifest that is present, and it starts verifying in full the moment the artifacts are recompiled on 0.33 or later.
 
 A digest mismatch always throws (except in `'off'` mode). Only `expectedManifestHash` (SHA-256 of the manifest bytes, pinned at build time) defends against an adversary who can rewrite both the artifacts and their co-located manifest.
 

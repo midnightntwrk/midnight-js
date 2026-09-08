@@ -16,7 +16,7 @@
 
 ##### walletProvider
 
-`Pick`\<[`MidnightWalletProvider`](MidnightWalletProvider.md), `"wallet"` \| `"unshieldedKeystore"` \| `"zswapSecretKeys"` \| `"dustSecretKey"`\>
+`Pick`\<[`MidnightWalletProvider`](MidnightWalletProvider.md), `"wallet"` \| `"unshieldedKeystore"` \| `"dustSecretKey"`\>
 
 ##### environmentConfiguration
 
