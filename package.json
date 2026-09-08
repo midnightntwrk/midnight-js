@@ -20,6 +20,7 @@
     "test": "turbo run test",
     "test:unit": "turbo run test --filter='!@midnight-ntwrk/testkit-*'",
     "it": "turbo run it",
+    "test:workflow-scripts": "vitest run --config .github/scripts/vitest.config.mjs",
     "e2e": "turbo run e2e",
     "e2e-single": "turbo run e2e-single",
     "check": "turbo run check && yarn lint && yarn constraints",
@@ -72,7 +73,7 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.63.0",
     "vitest": "^4.1.7",
-    "yaml": "2.9.0"
+    "yaml": "^2.9.0"
   },
   "lint-staged": {
     "*.ts": "eslint --cache"
