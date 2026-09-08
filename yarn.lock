@@ -2093,7 +2093,7 @@ __metadata:
     "@vitest/coverage-v8": "npm:^4.1.10"
     compact-runtime-ledger8: "npm:@midnight-ntwrk/compact-runtime@0.16.0"
     eslint: "npm:^10.8.1"
-    onchain-runtime-v3-alt: "npm:@midnight-ntwrk/onchain-runtime-v3@3.1.1"
+    onchain-runtime-v3-alt: "npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0"
     rollup: "npm:^4.60.4"
     rollup-plugin-dts: "npm:^6.4.1"
     typescript: "npm:^6.0.3"
@@ -2147,7 +2147,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/onchain-runtime-v3@npm:3.1.1, onchain-runtime-v3-alt@npm:@midnight-ntwrk/onchain-runtime-v3@3.1.1":
+"@midnight-ntwrk/onchain-runtime-v3@npm:3.1.1":
   version: 3.1.1
   resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.1.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v3%2F3.1.1%2Fc246131be13bd689bd8568d1aaf22f579465a457"
   checksum: 10/03b5752fcf108e95e3ed8ffd80aedd42fe69a5458f24262dc9928df2e48daf121f8d2b57bfa1a61cea57bf42e166883818050d2469efd9de121d2a249c7b6039
@@ -9933,6 +9933,13 @@ __metadata:
   dependencies:
     wrappy: "npm:1"
   checksum: 10/cd0a88501333edd640d95f0d2700fbde6bff20b3d4d9bdc521bdd31af0656b5706570d6c6afe532045a20bb8dc0849f8332d6f2a416e0ba6d3d3b98806c7db68
+  languageName: node
+  linkType: hard
+
+"onchain-runtime-v3-alt@npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0":
+  version: 3.1.0
+  resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.1.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v3%2F3.1.0%2F9e7166a1a37b28579339a3e3176b4bf024818a73"
+  checksum: 10/b13ce3729fd290220bdad0b5139793f8b3d01fdeb8317b2ed0542262b67a556ebfdebe0ed0e3047e9d5b460368e39f79e29d6c641c2f3b246dc74aa28e8e7f6f
   languageName: node
   linkType: hard
 

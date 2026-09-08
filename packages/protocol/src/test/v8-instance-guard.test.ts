@@ -13,6 +13,10 @@
  * limitations under the License.
  */
 
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+
 import * as onchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
 // The `-alt` package is an npm alias resolved under a different package name, so
 // Node gives it its own physical module instance — a real second copy, not a test
@@ -41,6 +45,42 @@ import { assertSharedLedger8Instance } from '../lib/v8/instance-guard';
 const FIELD_ALIGNMENT: onchainRuntimeV3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const cell = (byte: number): onchainRuntimeV3.StateValue =>
   onchainRuntimeV3.StateValue.newCell({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT });
+
+const require = createRequire(import.meta.url);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const installedVersion = (specifier: string): string => {
+  const manifestPath = join(dirname(require.resolve(specifier)), 'package.json');
+  const manifest: unknown = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  if (!isRecord(manifest) || typeof manifest.version !== 'string') {
+    throw new Error(`no readable version in ${manifestPath}`);
+  }
+  return manifest.version;
+};
+
+// What makes the negative below a negative is that the two specifiers reach two
+// physical copies. Neither half of that is self-enforcing, and the version half
+// has already regressed once: a dependency bump moved the alias onto the version
+// this repository resolves, and one lockfile entry began serving both
+// descriptors. Nothing went red, because the node-modules linker gives an alias
+// its own directory whatever version it carries -- so the copies stayed distinct
+// by the linker's choice rather than by the manifest's instruction. These two
+// assertions are that instruction, stated where it can fail.
+describe('the -alt install fixture the dual-instantiation negative rests on', () => {
+  it('resolves to a different physical copy than the package this repository pins', () => {
+    expect(require.resolve('onchain-runtime-v3-alt')).not.toBe(
+      require.resolve('@midnight-ntwrk/onchain-runtime-v3')
+    );
+  });
+
+  it('carries a different version, so no resolver can satisfy both descriptors from one copy', () => {
+    expect(installedVersion('onchain-runtime-v3-alt')).not.toBe(
+      installedVersion('@midnight-ntwrk/onchain-runtime-v3')
+    );
+  });
+});
 
 describe('assertSharedLedger8Instance', () => {
   it('does not throw when two independent acquisitions resolve to the same physical copy', async () => {
