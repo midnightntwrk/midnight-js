@@ -360,6 +360,42 @@ describe('Fetch ZK config Provider', () => {
       }
     });
 
+    it('warns and resolves when the manifest is absent in require-if-present mode', async () => {
+      const onWarn = vi.fn();
+      const { url, close } = startServer((app) => {
+        app.get('/keys/set_topic.prover', async (_, res) => res.send(await proverFixture()));
+      });
+      try {
+        const key = await new FetchZkConfigProvider(url, { verify: 'require-if-present', onWarn }).getProverKey(
+          'set_topic'
+        );
+        expect(key.length).toBeGreaterThan(0);
+        expect(onWarn).toHaveBeenCalledOnce();
+        expect(onWarn.mock.calls[0][0]).toMatch(/^midnight-js:.*set_topic\.prover/);
+      } finally {
+        close();
+      }
+    });
+
+    it('rejects in require-if-present mode when the served manifest has no entry for the artifact', async () => {
+      const onWarn = vi.fn();
+      const prover = await proverFixture();
+      const { url, close } = startServer((app) => {
+        app.get('/keys/set_topic.prover', (_, res) => res.send(prover));
+        app.get('/compiler/contract-manifest.json', (_, res) =>
+          res.type('application/json').send(manifestFor('keys', 'other.prover', prover))
+        );
+      });
+      try {
+        await expect(
+          new FetchZkConfigProvider(url, { verify: 'require-if-present', onWarn }).getProverKey('set_topic')
+        ).rejects.toThrow(ZkArtifactIntegrityError);
+        expect(onWarn).not.toHaveBeenCalled();
+      } finally {
+        close();
+      }
+    });
+
     it('rejects when the manifest is absent under the default (require)', async () => {
       const app = express();
       app.get('/keys/set_topic.prover', async (_, res) => res.send(await proverFixture()));
