@@ -149,6 +149,36 @@ export class EraArtifactMismatchError extends Error {
 }
 
 /**
+ * An error indicating that the contract at this address is held on chain in a CURRENT-era state,
+ * while the artifacts handed to this operation came from the retained Compact toolchain.
+ *
+ * The retained era stays supported for a contract whose state the retained ledger wrote — that
+ * state keeps its own envelope across the fork, and reading it is the whole of keep-state. A
+ * current-era envelope means this contract has been deployed, or re-deployed, with current-toolchain
+ * artifacts, so the retained ones no longer describe it.
+ *
+ * Distinct from the era disagreements either side of it: nothing here is stale or inconsistent, and
+ * a retry cannot change it. What has to change is which artifacts the caller passes.
+ */
+export class RetainedArtifactOnCurrentEraStateError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE;
+
+  /**
+   * @param contractAddress The contract whose on-chain state was read.
+   */
+  constructor(readonly contractAddress: string) {
+    super(
+      `The contract at '${contractAddress}' is held on chain in a current-era state, but this operation ` +
+        `was given artifacts produced by the retained Compact toolchain, which cannot read it. A contract ` +
+        `deployed before the fork keeps its retained-era state across it, so a current-era state means this ` +
+        `contract was deployed with current-toolchain artifacts. Re-run the operation with the artifacts the ` +
+        `current toolchain produced for it. Retrying with the same artifacts cannot succeed.`
+    );
+    this.name = 'RetainedArtifactOnCurrentEraStateError';
+  }
+}
+
+/**
  * An error indicating that a contract produced by the retained Compact toolchain was submitted for
  * DEPLOYMENT to a network head that has already crossed the fork.
  *

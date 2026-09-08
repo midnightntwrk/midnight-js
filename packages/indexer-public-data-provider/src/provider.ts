@@ -217,7 +217,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       // caller a wrong answer that reads exactly like a correct one.
       throw IndexerDataError.undatedState();
     }
-    return toRawContractState(state, block.protocolVersion);
+    return toRawContractState(state, block.protocolVersion, block.ledgerParameters);
   }
 
   queryContractState(

@@ -46,7 +46,7 @@ import {
   zswapStateToSegmentedOffer
 } from '../utils/zswap-utils';
 import type { BreadcrumbSink } from './breadcrumbs';
-import { assertHeadStateEraAgreement } from './era';
+import { assertRetainedStateEnvelope } from './era';
 import { assertVerifierKeyMatches } from './verifier-key';
 
 /**
@@ -151,6 +151,13 @@ export interface Ledger8ExecutionEngine<TState> {
   downConvertForExecution(state: EncodedStateValue): TState;
   executeCircuit(options: Ledger8ExecuteRequest<TState>): Ledger8Transcript;
   executeConstructor(options: Ledger8ConstructRequest): Ledger8ConstructedState;
+  /**
+   * Re-expresses the entry points a retained-era state declared as a CURRENT-era contract state.
+   *
+   * Needed only when the two eras differ, i.e. keep-state. See the call below for why the chain's
+   * own bytes cannot be passed through in that case.
+   */
+  reexpressOperationsForCurrentEra(entryPoints: ContractStatePojo['entryPoints']): Uint8Array;
 }
 
 /**
@@ -194,8 +201,9 @@ export interface Ledger8Snapshot {
  * The verifier-key check is NOT here — see {@link assertSnapshotVerifierKey},
  * which runs against the snapshot this returns.
  *
- * @param era The era facade bound to the head this operation resolved.
- * @param head The era the network head is on.
+ * @param retainedEra The RETAINED era facade, which is the only one that can read a retained-era
+ * envelope. Deliberately not the head's facade -- see the read below.
+ * @param head The era the network head is on, for the envelope check's impossible-case branch.
  * @param pdp The read surface.
  * @param contractAddress The contract being operated on.
  * @param logger The optional logger the dating step's breadcrumbs are written to.
@@ -207,7 +215,7 @@ export interface Ledger8Snapshot {
  * @see {@link KeepStatePipeline} for why the two reads stay separate.
  */
 export const readLedger8Snapshot = async (
-  era: LedgerEra,
+  retainedEra: LedgerEra,
   head: LedgerVersion,
   pdp: Ledger8PipelineReadSurface,
   contractAddress: string,
@@ -216,10 +224,15 @@ export const readLedger8Snapshot = async (
   const state = await pdp.queryRawContractState(contractAddress);
   assertDefined(state, `No contract deployed at contract address '${contractAddress}'`);
 
-  await assertHeadStateEraAgreement(head, state, pdp, logger);
+  await assertRetainedStateEnvelope(head, state, contractAddress, pdp, logger);
 
-  const encoded = era.extractState(state.raw);
-  const decoded = era.decodeContractState(state.raw);
+  // Read with the RETAINED era, never with the head's. The check above has just
+  // established that the retained ledger wrote these bytes, and it is the only
+  // ledger that can read them -- post-fork included, because the fork does not
+  // rewrite a contract's stored state. Handing them to the head's era is what
+  // made keep-state impossible.
+  const encoded = retainedEra.extractState(state.raw);
+  const decoded = retainedEra.decodeContractState(state.raw);
 
   return { state, encoded, decoded };
 };
@@ -270,7 +283,17 @@ const spendsHeldCoin = (zswapLocalState: Ledger8Transcript['zswapLocalState']): 
 
 /** Everything one retained-era call needs. */
 export interface Ledger8CallPipelineRequest<TState> {
+  /**
+   * The era facade the composed transaction is built on, bound to the network head.
+   *
+   * Distinct from {@link Ledger8CallPipelineRequest.retainedEra}, and the distinction is the whole
+   * of keep-state: the call is composed on the ledger the network is running NOW, over a state the
+   * RETAINED ledger wrote and still owns. Collapsing the two back into one facade is what refused
+   * every post-fork call against a pre-fork contract.
+   */
   readonly era: LedgerEra;
+  /** The retained era facade, which reads the contract's on-chain state. Always the pre-fork one. */
+  readonly retainedEra: LedgerEra;
   readonly engine: Ledger8ExecutionEngine<TState>;
   readonly publicDataProvider: Ledger8PipelineReadSurface;
   readonly head: LedgerVersion;
@@ -333,9 +356,15 @@ export interface Ledger8CallPipelineResult {
 export const runLedger8CallPipeline = async <TState>(
   request: Ledger8CallPipelineRequest<TState>
 ): Promise<Ledger8CallPipelineResult> => {
-  const { era, engine, publicDataProvider, head, contract, contractAddress, circuitId } = request;
+  const { era, retainedEra, engine, publicDataProvider, head, contract, contractAddress, circuitId } = request;
 
-  const snapshot = await readLedger8Snapshot(era, head, publicDataProvider, contractAddress, request.logger);
+  const snapshot = await readLedger8Snapshot(
+    retainedEra,
+    head,
+    publicDataProvider,
+    contractAddress,
+    request.logger
+  );
   // BEFORE proving, and before the circuit runs: a proof generated against a
   // key the chain does not hold is rejected on submission, so checking here
   // turns a paid-for, late failure into a free, immediate one.
@@ -375,15 +404,35 @@ export const runLedger8CallPipeline = async <TState>(
   const guaranteedZswapOffer = offers.guaranteed?.serialize();
   const fallibleZswapOffer = offers.fallible?.serialize();
 
+  // WHICH BYTES THE COMPOSER GETS, and why it is not always the chain's own.
+  //
+  // This entry is an OPERATION REGISTRY: the composer reads one thing out of it, the
+  // `ContractOperation` for this circuit, to get its verifier key. The state the call binds to
+  // travels separately, as the transcript's `preState` below.
+  //
+  // Pre-fork the chain's own bytes already are in the composer's era, so they pass through
+  // untouched -- and a constructor-built state will not do, because it declares its entry points
+  // with blank keys.
+  //
+  // Post-fork they are NOT: the fork does not rewrite a contract's stored state, so a contract
+  // deployed before it is still served carrying the retained envelope, which the current composer
+  // cannot deserialize at all. The registry is therefore re-expressed in the current era, carrying
+  // the same keys the chain holds -- the ones `assertSnapshotVerifierKey` above has just checked
+  // the local artifact against.
+  const registeredOperations =
+    head === 'v9' ? engine.reexpressOperationsForCurrentEra(snapshot.decoded.entryPoints) : snapshot.state.raw;
+
   const txBytes = era.composeCallTx({
     calls: [
       {
         contractAddress,
         circuitId,
-        // The raw state AS READ FROM CHAIN, which is what carries the
-        // registered operation and its verifier key; a constructor-built state
-        // declares its entry points with blank keys and will not do.
-        contractState: snapshot.state.raw,
+        contractState: registeredOperations,
+        // From the SAME read as the state above, which is the point: the parameters are dynamic
+        // and must date from the block the call is built against. Composing against the ledger's
+        // initial parameters partitions the transcript with a cost model the chain does not use,
+        // and the node refuses the guaranteed segment for running out of gas.
+        ledgerParameters: snapshot.state.ledgerParameters,
         transcript: {
           kind: 'unpartitioned',
           preState: snapshot.encoded,

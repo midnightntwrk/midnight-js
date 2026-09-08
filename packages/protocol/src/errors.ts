@@ -534,7 +534,14 @@ export class ComposeFailedError extends Error {
  * @see {@link ComposeRefusalOrder}
  * @see {@link VerifierKeys}
  */
-export type ComposeOption = 'calls' | 'contractState' | 'networkId' | 'ttl' | 'verifierKeys' | 'zswapOffer';
+export type ComposeOption =
+  | 'calls'
+  | 'contractState'
+  | 'ledgerParameters'
+  | 'networkId'
+  | 'ttl'
+  | 'verifierKeys'
+  | 'zswapOffer';
 
 /**
  * Thrown by the composition legs when one of their options cannot be used at
@@ -574,6 +581,11 @@ export class ComposeOptionError extends Error {
       `${version} ledger era. Read the wrapped cause for what the decoder reported; it distinguishes an ` +
       'envelope tagged for a different ledger era from truncated or empty input bytes. Pass the contract ' +
       'state the era it targets produced, not an already down-converted or otherwise re-tagged one.',
+    ledgerParameters: (version) =>
+      `Failed to compose a ${version} transaction: the supplied ledger parameters could not be read by the ` +
+      `${version} ledger. They are era-tagged, so bytes read from a block of the other era will be refused ` +
+      'here — read the wrapped cause for the tag the decoder found. Pass the parameters the block this call ' +
+      'is built against served, which is what `RawContractState.ledgerParameters` carries.',
     networkId: () =>
       'Refusing to compose a transaction against an empty network id. The ledger would accept it and bake ' +
       'it into the transaction, which the network then rejects at submission. Resolve the network id for ' +

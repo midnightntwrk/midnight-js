@@ -14,10 +14,17 @@
  */
 
 import * as onchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
-// The `-alt` package is an npm alias of the same version resolved under a
-// different package name, so Node gives it its own physical module
-// instance — a real second copy, not a test double, of the exact dual-WASM
-// failure mode this guard exists to catch.
+// The `-alt` package is an npm alias resolved under a different package name, so
+// Node gives it its own physical module instance — a real second copy, not a test
+// double, of the exact dual-WASM failure mode this guard exists to catch.
+//
+// It is deliberately pinned to the version BELOW the one this repository
+// resolves, and must stay that way. Two aliases of the same version would let a
+// resolver satisfy both from one copy, which silently turns the negative below
+// into a second positive. The version skew is also the real failure mode: a
+// consumer that does not pin this package gets `compact-runtime@0.16`'s `^3.0.0`
+// alongside protocol's exact pin, which is how 3.1.0 and 3.1.1 ended up loaded
+// side by side in the packaged-consumer harness.
 import * as onchainRuntimeV3Alt from 'onchain-runtime-v3-alt';
 import { describe, expect, it } from 'vitest';
 

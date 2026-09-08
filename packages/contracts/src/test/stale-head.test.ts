@@ -398,12 +398,10 @@ describe('the fork-crossing failure through the retained-era entry points', () =
   let recording: CoinReceiverRecording;
   let contract: CoinReceiver016Contract;
   let v6Envelope: Uint8Array;
-  let v9Envelope: Uint8Array;
 
   beforeAll(async () => {
     recording = loadCoinReceiverRecording();
     v6Envelope = readHfHexFixture('coin-receiver-016', 'state-v6-envelope.hex');
-    v9Envelope = readHfHexFixture('coin-receiver-016', 'state-v9.hex');
     const module: CoinReceiver016Module = await import(
       /* @vite-ignore */ hfFixturePath('coin-receiver-016', 'compiled', 'contract', 'index.js')
     );
@@ -591,11 +589,11 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     const preForkBytes = preForkPayload?.version === 'v8' ? preForkPayload.txBytes : undefined;
     expect(txTagPrefix(preForkBytes!, RETAINED_ERA_TX_TAG)).toBe(RETAINED_ERA_TX_TAG);
 
-    // THE RE-RUN. The network is now post-fork and serves the migrated state;
-    // nothing in the caller's code changes.
-    providers.publicDataProvider.queryRawContractState = vi
-      .fn()
-      .mockResolvedValue(rawState(v9Envelope, POST_FORK_PROTOCOL_VERSION));
+    // THE RE-RUN. Only the HEAD has moved. The chain still serves the very same
+    // retained-era state it served a moment ago -- the fork does not rewrite a
+    // contract's stored state, and this contract has not been touched since --
+    // so `queryRawContractState` is deliberately left alone here. Nothing in the
+    // caller's code changes either.
     providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: VersionedFinalizedTransaction) => {
       providers.seen.submitTx = tx;
       return Promise.resolve('keep-state-tx-id');

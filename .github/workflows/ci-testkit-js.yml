@@ -78,3 +78,24 @@ jobs:
       build_timeout: ${{ inputs.build_timeout }}
       network: ${{ inputs.network }}
     secrets: inherit
+
+  # The pre-fork era lane (spec QA-6). Pinned to `v8era`, the image set that is a
+  # real ledger-v8 network: node 1.0.0 reports protocolVersion 1000000, which
+  # resolves to the v8 era. Deliberately NOT driven by `inputs.testkit_docker_env`
+  # -- these files assert pre-fork behaviour, so the era is the point of the lane
+  # rather than a parameter of it.
+  #
+  # Without this, every e2e signal on the framework is current-era only, because
+  # the default lane pins `devnet` and nightly-e2e is the only other caller that
+  # varies the image set.
+  e2e_v8_era:
+    name: e2e (pre-fork era)
+    needs: build
+    if: inputs.should_run == 'true' && needs.build.outputs.v8-era-test-files != '[]'
+    uses: ./.github/workflows/ci-testkit-js-e2e.yml
+    with:
+      test_files: ${{ needs.build.outputs.v8-era-test-files }}
+      testkit_docker_env: 'v8era'
+      build_timeout: ${{ inputs.build_timeout }}
+      network: 'undeployed'
+    secrets: inherit

@@ -472,6 +472,7 @@ const ALL_STAGES = Object.keys(STAGE_KEYS) as ComposeStage[];
 const OPTION_KEYS: Readonly<Record<ComposeOption, true>> = {
   calls: true,
   contractState: true,
+  ledgerParameters: true,
   networkId: true,
   ttl: true,
   verifierKeys: true,

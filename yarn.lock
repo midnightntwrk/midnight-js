@@ -2043,6 +2043,7 @@ __metadata:
     husky: "npm:^9.1.7"
     lint-staged: "npm:^17.0.7"
     pinst: "npm:^3.0.0"
+    pnpm: "npm:10.20.0"
     prettier: "npm:^3.9.4"
     rollup: "npm:^4.60.4"
     rollup-plugin-dts: "npm:^6.4.1"
@@ -2082,7 +2083,7 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:2.5.5-rc.8"
     "@midnight-ntwrk/compact-runtime": "npm:0.19.0"
-    "@midnight-ntwrk/onchain-runtime-v3": "npm:3.1.0"
+    "@midnight-ntwrk/onchain-runtime-v3": "npm:3.1.1"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
     "@midnightntwrk/ledger-v8": "npm:8.1.2"
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.4"
@@ -2145,10 +2146,10 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/onchain-runtime-v3@npm:3.1.0, onchain-runtime-v3-alt@npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0":
-  version: 3.1.0
-  resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.1.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v3%2F3.1.0%2F9e7166a1a37b28579339a3e3176b4bf024818a73"
-  checksum: 10/b13ce3729fd290220bdad0b5139793f8b3d01fdeb8317b2ed0542262b67a556ebfdebe0ed0e3047e9d5b460368e39f79e29d6c641c2f3b246dc74aa28e8e7f6f
+"@midnight-ntwrk/onchain-runtime-v3@npm:3.1.1":
+  version: 3.1.1
+  resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.1.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v3%2F3.1.1%2Fc246131be13bd689bd8568d1aaf22f579465a457"
+  checksum: 10/03b5752fcf108e95e3ed8ffd80aedd42fe69a5458f24262dc9928df2e48daf121f8d2b57bfa1a61cea57bf42e166883818050d2469efd9de121d2a249c7b6039
   languageName: node
   linkType: hard
 
@@ -9932,6 +9933,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"onchain-runtime-v3-alt@npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0":
+  version: 3.1.0
+  resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.1.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v3%2F3.1.0%2F9e7166a1a37b28579339a3e3176b4bf024818a73"
+  checksum: 10/b13ce3729fd290220bdad0b5139793f8b3d01fdeb8317b2ed0542262b67a556ebfdebe0ed0e3047e9d5b460368e39f79e29d6c641c2f3b246dc74aa28e8e7f6f
+  languageName: node
+  linkType: hard
+
 "onetime@npm:^7.0.0":
   version: 7.0.0
   resolution: "onetime@npm:7.0.0"
@@ -10320,6 +10328,18 @@ __metadata:
   bin:
     pinst: bin.js
   checksum: 10/a75e4f7b5eeb9c76e7fd1b2d9854fcd38c304a3b1f9b563946a0f4357772c742222094e851f4c23d0bbdc4151af2d7875bb919c9ef8a9c4af77a02a73e8f72f0
+  languageName: node
+  linkType: hard
+
+"pnpm@npm:10.20.0":
+  version: 10.20.0
+  resolution: "pnpm@npm:10.20.0"
+  dependencies:
+    node-gyp: "npm:latest"
+  bin:
+    pnpm: bin/pnpm.cjs
+    pnpx: bin/pnpx.cjs
+  checksum: 10/46ad22617eef9b2396416700333c6c29853e6195be2faa2e8b20056e99d12a2f10e089d766164d0ba92061d12bd4f9e736e24f7e59ab297162d42999010b9335
   languageName: node
   linkType: hard
 
