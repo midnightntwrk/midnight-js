@@ -82,6 +82,7 @@ const runScenario = (cwd, linker, environment, contractDir, enactFork) =>
 
     let buffered = '';
     let result;
+    let contractAddress;
 
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', (chunk) => {
@@ -93,9 +94,11 @@ const runScenario = (cwd, linker, environment, contractDir, enactFork) =>
         process.stdout.write(`[dapp] ${line}\n`);
 
         if (line.trim() === 'AC0_AWAIT_FORK') {
-          enactFork()
+          enactFork(contractAddress)
             .then(() => child.stdin.write('FORK_ENACTED\n'))
             .catch(reject);
+        } else if (line.startsWith('AC0_CONTRACT ')) {
+          contractAddress = line.slice('AC0_CONTRACT '.length).trim();
         } else if (line.startsWith('AC0_RESULT ')) {
           result = line.slice('AC0_RESULT '.length);
         }
@@ -139,10 +142,23 @@ const main = async () => {
         postForkProofServer: environment.getPostForkProofServer()
       },
       path.join(cwd, 'contracts', 'retained'),
-      async () => {
+      async (contractAddress) => {
         process.stdout.write('The dApp is mid-session; enacting the fork...\n');
         const enactment = await environment.enactFork();
         process.stdout.write(`Fork applied at #${enactment.appliedAtBlockHeight}\n`);
+
+        // The decisive comparison. The indexer serves "the latest contract action
+        // at or before the block", so its answer reflects what was submitted, not
+        // necessarily what the ledger now holds. Asking the NODE separates a
+        // ledger that did not migrate from an indexer that serves stale bytes.
+        if (contractAddress !== undefined) {
+          const outcome = await environment
+            .runToolkit(['contract-state', '--contract-address', contractAddress, '--src-url', 'ws://node:9944'])
+            .catch((error) => `toolkit failed: ${error instanceof Error ? error.message : String(error)}`);
+          const tag = /midnight:[a-z-]+\[v\d+\]:/.exec(outcome);
+          process.stdout.write(`NODE contract-state envelope: ${tag?.[0] ?? '(no tag found)'}\n`);
+          process.stdout.write(`NODE contract-state output (trimmed):\n${outcome.slice(0, 1500)}\n`);
+        }
       }
     );
   } finally {
