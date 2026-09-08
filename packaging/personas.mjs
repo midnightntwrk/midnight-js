@@ -41,7 +41,29 @@ const CURRENT_CONTRACT = 'testkit-js/testkit-js-e2e/src/contract/compiled/counte
  * one is what this repo's own toolchain asserts.
  */
 export const RETAINED_RUNTIME = '0.16.0';
-export const CURRENT_RUNTIME = '0.19.0-rc.0';
+
+/**
+ * Read from the repository's own pin rather than restated here.
+ *
+ * The current contract module is recompiled whenever the toolchain moves, and it
+ * asserts its runtime version at import time -- so a hardcoded copy of this
+ * number silently goes stale on every `compactc` bump and the persona then fails
+ * for a reason that has nothing to do with what it is testing. The retained one
+ * above is a genuine constant: 0.16.0 is fixed by the pre-fork toolchain.
+ */
+export const CURRENT_RUNTIME = (() => {
+  const root = JSON.parse(readFileSync(path.join(REPOSITORY_ROOT, 'package.json'), 'utf8'));
+  // `resolutions` is where this repo pins it, which is also what every workspace
+  // actually resolves; `devDependencies` is checked as a fallback rather than
+  // assumed absent.
+  const pinned =
+    root.resolutions?.['@midnight-ntwrk/compact-runtime'] ??
+    root.devDependencies?.['@midnight-ntwrk/compact-runtime'];
+  if (typeof pinned !== 'string') {
+    throw new Error('The repository root does not pin @midnight-ntwrk/compact-runtime');
+  }
+  return pinned;
+})();
 
 /**
  * A dApp that holds contracts from BOTH eras at once -- the shape FR0 describes.
@@ -54,8 +76,8 @@ export const CURRENT_RUNTIME = '0.19.0-rc.0';
  * current one, and therefore the only arrangement in which AC0 can be written.
  */
 export const CONTRACT_PACKAGES = {
-  retained: { name: '@midnight-ntwrk/ac0-contract-retained', runtime: '0.16.0', source: RETAINED_CONTRACT },
-  current: { name: '@midnight-ntwrk/ac0-contract-current', runtime: '0.19.0-rc.0', source: CURRENT_CONTRACT }
+  retained: { name: '@midnight-ntwrk/ac0-contract-retained', runtime: RETAINED_RUNTIME, source: RETAINED_CONTRACT },
+  current: { name: '@midnight-ntwrk/ac0-contract-current', runtime: CURRENT_RUNTIME, source: CURRENT_CONTRACT }
 };
 
 /** The `package.json` of one wrapped contract. */
@@ -70,6 +92,19 @@ export const contractPackageManifest = (contract) => ({
   exports: { '.': './contract/index.js', './contract/*': './contract/*', './package.json': './package.json' },
   dependencies: { '@midnight-ntwrk/compact-runtime': contract.runtime }
 });
+
+/**
+ * Retained-era packages this repository pins in its root `resolutions`, carried
+ * into every persona. Read rather than restated, so a bump moves both together.
+ */
+export const PINNED_RETAINED_RUNTIME = (() => {
+  const root = JSON.parse(readFileSync(path.join(REPOSITORY_ROOT, 'package.json'), 'utf8'));
+  const pinned = root.resolutions?.['@midnight-ntwrk/onchain-runtime-v3'];
+  if (typeof pinned !== 'string') {
+    throw new Error('The repository root does not pin @midnight-ntwrk/onchain-runtime-v3');
+  }
+  return { '@midnight-ntwrk/onchain-runtime-v3': pinned };
+})();
 
 export const PERSONAS = {
   retained: {
@@ -142,6 +177,16 @@ export const personaManifest = (name, persona, manifest, packageManager, tarball
   const overrides = Object.fromEntries(
     everyFrameworkPackage.map((packageName) => [packageName, tarballSpecifier(packageName)])
   );
+
+  // The retained runtime has to be pinned, not just installed. `compact-runtime@0.16`
+  // asks for `onchain-runtime-v3@^3.0.0` while `protocol` pins one exact version, so
+  // without this a resolver satisfies both with two different copies -- and objects
+  // minted by one are rejected by the other's classes (Ledger8InstanceMismatchError).
+  // This repository pins it in `resolutions` for exactly that reason; a consumer
+  // installing the framework alongside a retained contract has to do the same.
+  for (const [name, version] of Object.entries(PINNED_RETAINED_RUNTIME)) {
+    overrides[name] = version;
+  }
 
   return {
     name: `@midnight-ntwrk/packaging-persona-${name}`,

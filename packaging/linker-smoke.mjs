@@ -37,6 +37,7 @@ import {
   PERSONAS,
   personaManifest,
   readManifest,
+  RETAINED_RUNTIME,
   REPOSITORY_ROOT
 } from './personas.mjs';
 
@@ -129,6 +130,11 @@ export const LINKERS = {
           '  "@midnightntwrk/wallet-sdk-facade@*":',
           '    dependencies:',
           '      "@midnightntwrk/wallet-sdk-utilities": "*"',
+          // beta.3 runs ledger-v8 below the chain's fork version and reaches for
+          // it on the OLD npm scope without declaring it. Dual-published, so the
+          // old name resolves. One entry per package: YAML keeps only the last
+          // mapping for a repeated key, so a second block would drop the line above.
+          '      "@midnight-ntwrk/ledger-v8": "8.1.2"',
           '  "@midnightntwrk/wallet-sdk-node-client@*":',
           '    dependencies:',
           '      "@polkadot/api-base": "*"',
@@ -219,7 +225,7 @@ const main = () => {
       try {
         const { cwd, persona, linker } = buildPersona(personaName, linkerName, manifest);
         linker.install(cwd);
-        linker.run(cwd, ['entry.mjs', personaName, persona.runtime ?? '', CURRENT_RUNTIME]);
+        linker.run(cwd, ['entry.mjs', personaName, persona.runtime ?? '', RETAINED_RUNTIME, CURRENT_RUNTIME]);
         process.stdout.write(`--- ${label}: ok\n`);
       } catch (error) {
         failures.push(`${label}: ${error instanceof Error ? error.message : String(error)}`);

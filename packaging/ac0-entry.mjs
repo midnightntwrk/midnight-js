@@ -22,7 +22,6 @@
 // are done and waits to be told the fork was enacted, so the boundary falls
 // between two legs of ONE session rather than between two runs.
 
-import { Buffer } from 'node:buffer';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
@@ -131,7 +130,9 @@ await leg('pre-fork retained deploy', async () => {
     contract: new Contract({}),
     args: [],
     privateState: {},
-    coinPk: Buffer.from(session.wallet.getCoinPublicKey()).toString('hex')
+    // Passed through exactly as the internal pipeline does. Re-encoding it here
+    // produced `Not all bytes read, 32 bytes remaining` from the composer.
+    coinPk: session.wallet.getCoinPublicKey()
   });
 
   const verifierKeys = new Map([

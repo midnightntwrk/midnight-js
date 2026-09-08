@@ -49,57 +49,66 @@ Both are defects in those packages, not in this repo, and both should be dropped
 here once upstream declares them. They matter because AC6 names Yarn PnP as a
 supported consumer linker — any PnP consumer of the wallet SDK hits these.
 
-## AC0 is blocked on the wallet-sdk pin, and does not pretend otherwise
+## How far AC0 gets, and where it stops
 
-`ac0-smoke.mjs` is complete and runnable, and it **does not pass on this branch**.
-It stands the chain up, installs the dApp, and gets as far as the wallet, which
-then fails to sync:
+`ac0-smoke.mjs` is complete and runnable, and it **does not pass yet**. What it
+reaches, on wallet-sdk 2.0.0-beta.3:
 
-```
-Wallet.Sync -> Failed to decode ledger event payload
-Error: Wallet sync timeout after 90000ms
-```
+| Leg | Result |
+|---|---|
+| pre-fork head era | **v8** |
+| wallet sync on a ledger-v8 chain | **full** (`shielded`, `unshielded`, `dust`, `synced=true`) |
+| retained deploy: constructor, compose, prove | **succeeds** — 1700 bytes of proven v8 transaction |
+| retained deploy: `balanceTx` | **refused** |
+| fork enactment | **ok** |
 
-**The cause is the pinned wallet-sdk version, not the ledger era.** This tree
-pins `@midnightntwrk/wallet-sdk@2.0.0-beta.2`. **`2.0.0-beta.3` is the hard-fork
-release** -- a wallet on it runs ledger-v8 below the chain's fork version and
-ledger-v9 from it. Probed directly against a live ledger-v8 chain
-(`protocolVersion: 1000000`) using the `build/wallet-sdk-200-beta3` tree:
+The stop is precise:
 
 ```
-Wallet synced state emission (synced=true): { shielded=true, unshielded=true, dust=true }
+balanceTx received a v8-era transaction payload (serialized bytes, 1700 bytes),
+which this provider does not serve.
 ```
 
-So the wallet crosses the fork today, on beta.3. AC0 needs that bump landed
-underneath it; the branch exists and carries the testkit wallet-layer migration
-the bump requires, which is more than a version string.
+`MidnightWalletProvider.balanceTx` narrows with `unwrapV9`, so **the retained-era
+arm is implemented for proving but not for balancing or submitting**. That is the
+remaining half of the tx-flow seam work: the proving seams took the union, the
+wallet seam still refuses it. wallet-sdk beta.3 can balance a retained-era
+transaction — it is the hard-fork release — so implementing that arm is now
+possible rather than blocked on anything external.
 
-How the diagnosis went wrong, recorded because the wrong answer was plausible and
-took three runs to reach. Holding the persona constant and varying the chain
-gave:
+The lane is deliberately **not** wired into CI as a blocking gate until it does.
 
-| Chain | Node | Indexer | Genesis | Wallet (beta.2) |
-|---|---|---|---|---|
-| devnet | 2.0.0-rc.3 | 4.4.0-pre-alpha.16 | ledger-v9 | syncs |
-| fork-stack images, ordinary genesis | 2.1.0-beta.1 | 4.4.0-rc.5 | ledger-v9 | syncs |
-| fork stack | 2.1.0-beta.1 | rc.5 *and* pre-alpha.16 | **ledger-v8** | **fails** |
+### The wallet-sdk pin was the first blocker, and it is gone
 
-That correctly isolates the ledger-v8 history as the trigger, and it is why the
-failure was first read as the OQ7 dependency (`migrateState` is a stub; FR0 holds
-end to end only if the wallet crosses). What the matrix could not show is that
-the *wallet version* was the free variable all along -- every row used beta.2.
-The lesson: varying the chain under a fixed install is necessary but not
-sufficient; the dependency versions are part of the install.
+Worth recording, because the wrong answer was plausible. On **beta.2** the wallet
+could not sync a ledger-v8 chain at all, failing with `Failed to decode ledger
+event payload`. Holding the dApp install constant and varying the chain (devnet
+v9 -> syncs; fork-stack images with a v9 genesis -> syncs; fork stack with a v8
+genesis -> fails) correctly isolated ledger-v8 history as the trigger, and read
+exactly like the OQ7 `migrateState` dependency.
 
-Two further candidates were ruled out along the way. Enacting the fork *before*
-the dApp starts is not an era control at all -- a wallet syncs from genesis, so
-the pre-fork blocks stay on its path whatever the head is. And
-`SIDECHAIN_BLOCK_BENEFICIARY`, which the fork node was missing relative to
-`compose.yml`, is now set for consistency and because funded transactions will
-need it, but it changed nothing.
+It was not. Every row held the wallet at beta.2, so the **version was the free
+variable all along**. `2.0.0-beta.3` is the hard-fork release — a wallet on it
+runs ledger-v8 below the chain's fork version and ledger-v9 from it — and it
+syncs the same chain fully. Varying the chain under a fixed install is necessary
+but not sufficient: the dependency versions are part of the install.
 
-The lane is deliberately **not** wired into CI as a blocking gate until the
-beta.3 bump lands beneath it.
+Two further candidates were ruled out en route: enacting the fork before the dApp
+starts is not an era control (a wallet syncs from genesis, so the pre-fork blocks
+stay on its path whatever the head is), and `SIDECHAIN_BLOCK_BENEFICIARY`, missing
+from the fork node relative to `compose.yml`, changed nothing.
+
+### Pinning the retained runtime is a consumer requirement, not a harness detail
+
+The personas pin `@midnight-ntwrk/onchain-runtime-v3` explicitly. Without it the
+deploy fails with `Ledger8InstanceMismatchError`, because
+`compact-runtime@0.16` asks for `^3.0.0` while `protocol` pins one exact version
+and a resolver satisfies both with two different copies. Note that the error's own
+remediation text blames the two npm scopes; here both copies were on the *same*
+scope at **3.1.0 and 3.1.1**, so that advice would have sent a reader the wrong
+way. This repository pins it in root `resolutions`; a consumer installing the
+framework beside a retained contract has to do the same, and the migration guide
+should say so.
 
 Two AC0 legs are additionally out of reach at this tier, by design of the shipped
 code rather than by anything here: `deployContract`'s retained arm refuses

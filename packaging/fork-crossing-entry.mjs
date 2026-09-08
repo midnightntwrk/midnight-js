@@ -25,6 +25,17 @@ import process from 'node:process';
 
 const require = createRequire(import.meta.url);
 
+// Expectations come from the harness, never restated here: a literal copy agrees
+// with a stale generated manifest instead of catching it, which is exactly how a
+// drifted runtime pin went unnoticed once.
+//
+// Layout, as `linker-smoke.mjs` builds it:
+//   argv[2] persona name
+//   argv[3] the persona's own runtime, empty for this one -- it declares none
+//   argv[4] expected retained runtime
+//   argv[5] expected current runtime
+const [expectedRetainedRuntime, expectedCurrentRuntime] = process.argv.slice(4);
+
 const failures = [];
 const observed = {};
 
@@ -43,8 +54,11 @@ const runtimeSeenBy = (packageName) => {
 
 // 1. Each wrapped contract resolves the runtime its own codegen demands. These are
 //    two different physical copies in one install; a hoisted tree has only one.
-check('retained contract sees runtime', runtimeSeenBy('@midnight-ntwrk/ac0-contract-retained'), '0.16.0');
-check('current contract sees runtime', runtimeSeenBy('@midnight-ntwrk/ac0-contract-current'), '0.19.0-rc.0');
+if (!expectedRetainedRuntime || !expectedCurrentRuntime) {
+  throw new Error('the harness did not pass both expected runtime versions');
+}
+check('retained contract sees runtime', runtimeSeenBy('@midnight-ntwrk/ac0-contract-retained'), expectedRetainedRuntime);
+check('current contract sees runtime', runtimeSeenBy('@midnight-ntwrk/ac0-contract-current'), expectedCurrentRuntime);
 
 // 2. Both modules import. `checkRuntimeVersion` runs at import time and throws on a
 //    mismatch, so a successful import of BOTH is the assertion -- and it is the one
