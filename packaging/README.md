@@ -49,40 +49,57 @@ Both are defects in those packages, not in this repo, and both should be dropped
 here once upstream declares them. They matter because AC6 names Yarn PnP as a
 supported consumer linker — any PnP consumer of the wallet SDK hits these.
 
-## AC0 is blocked, and does not pretend otherwise
+## AC0 is blocked on the wallet-sdk pin, and does not pretend otherwise
 
-`ac0-smoke.mjs` is complete and runnable, and it **does not pass today**. It
-stands the chain up, installs the dApp, and gets as far as the wallet, which then
-fails to sync:
+`ac0-smoke.mjs` is complete and runnable, and it **does not pass on this branch**.
+It stands the chain up, installs the dApp, and gets as far as the wallet, which
+then fails to sync:
 
 ```
 Wallet.Sync -> Failed to decode ledger event payload
 Error: Wallet sync timeout after 90000ms
 ```
 
-Isolated by holding the persona constant and varying the chain:
+**The cause is the pinned wallet-sdk version, not the ledger era.** This tree
+pins `@midnightntwrk/wallet-sdk@2.0.0-beta.2`. **`2.0.0-beta.3` is the hard-fork
+release** -- a wallet on it runs ledger-v8 below the chain's fork version and
+ledger-v9 from it. Probed directly against a live ledger-v8 chain
+(`protocolVersion: 1000000`) using the `build/wallet-sdk-200-beta3` tree:
 
-| Chain | Node | Indexer | Genesis | Wallet |
+```
+Wallet synced state emission (synced=true): { shielded=true, unshielded=true, dust=true }
+```
+
+So the wallet crosses the fork today, on beta.3. AC0 needs that bump landed
+underneath it; the branch exists and carries the testkit wallet-layer migration
+the bump requires, which is more than a version string.
+
+How the diagnosis went wrong, recorded because the wrong answer was plausible and
+took three runs to reach. Holding the persona constant and varying the chain
+gave:
+
+| Chain | Node | Indexer | Genesis | Wallet (beta.2) |
 |---|---|---|---|---|
 | devnet | 2.0.0-rc.3 | 4.4.0-pre-alpha.16 | ledger-v9 | syncs |
 | fork-stack images, ordinary genesis | 2.1.0-beta.1 | 4.4.0-rc.5 | ledger-v9 | syncs |
-| fork stack | 2.1.0-beta.1 | 4.4.0-rc.5 *and* pre-alpha.16 | **ledger-v8** | **fails** |
+| fork stack | 2.1.0-beta.1 | rc.5 *and* pre-alpha.16 | **ledger-v8** | **fails** |
 
-The node binary and the indexer are both exonerated: with exactly the fork
-stack's images and an ordinary genesis, the same wallet in the same persona
-install syncs. The only remaining variable is the ledger-v8 genesis.
+That correctly isolates the ledger-v8 history as the trigger, and it is why the
+failure was first read as the OQ7 dependency (`migrateState` is a stub; FR0 holds
+end to end only if the wallet crosses). What the matrix could not show is that
+the *wallet version* was the free variable all along -- every row used beta.2.
+The lesson: varying the chain under a fixed install is necessary but not
+sufficient; the dependency versions are part of the install.
 
-Two things ruled out along the way. Enacting the fork *before* the dApp starts
-does not help, and is not an era control at all — a wallet syncs from genesis, so
+Two further candidates were ruled out along the way. Enacting the fork *before*
+the dApp starts is not an era control at all -- a wallet syncs from genesis, so
 the pre-fork blocks stay on its path whatever the head is. And
 `SIDECHAIN_BLOCK_BENEFICIARY`, which the fork node was missing relative to
-`compose.yml`, is now set but did not change the outcome.
+`compose.yml`, is now set for consistency and because funded transactions will
+need it, but it changed nothing.
 
-That is the OQ7 dependency the spec names: FR0 holds end to end only if the
-wallet crosses the fork, `migrateState` is a stub, and the wallet test shim is a
-named work item precisely so this lane never silently degrades to `test.skip`.
-It does not skip. It fails, loudly, with the cause named — and it is deliberately
-**not** wired into CI as a blocking gate while that is true.
+The lane is deliberately **not** wired into CI as a blocking gate until the
+beta.3 bump lands beneath it.
 
 Two AC0 legs are additionally out of reach at this tier, by design of the shipped
 code rather than by anything here: `deployContract`'s retained arm refuses
