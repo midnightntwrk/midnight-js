@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { DustSecretKey, LedgerParameters, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type DefaultConfiguration,
   type DefaultDustConfiguration,
@@ -30,7 +30,8 @@ import {
   UnshieldedWallet,
   type UnshieldedWalletAPI,
   WalletEntrySchema,
-  WalletFacade
+  WalletFacade,
+  type WalletSeeds
 } from '@midnightntwrk/wallet-sdk';
 
 import { logger } from '../logger';
@@ -48,7 +49,10 @@ export const DEFAULT_DUST_OPTIONS: DustWalletOptions = {
 };
 
 export class WalletFactory {
-  static createShieldedWallet(config: DefaultShieldedConfiguration, seed: Uint8Array): ShieldedWalletAPI {
+  static createShieldedWallet(
+    config: DefaultShieldedConfiguration,
+    seed: Uint8Array
+  ): Promise<ShieldedWalletAPI> {
     const Shielded = ShieldedWallet(config);
     return Shielded.startWithSeed(seed);
   }
@@ -56,7 +60,7 @@ export class WalletFactory {
   static createUnshieldedWallet(
     config: DefaultUnshieldedConfiguration,
     unshieldedKeystore: UnshieldedKeystore
-  ): UnshieldedWalletAPI {
+  ): Promise<UnshieldedWalletAPI> {
     return UnshieldedWallet({
       ...config,
       txHistoryStorage: new InMemoryTransactionHistoryStorage(WalletEntrySchema, mergeWalletEntries)
@@ -67,7 +71,7 @@ export class WalletFactory {
     config: DefaultDustConfiguration,
     seed: Uint8Array,
     dustOptions: DustWalletOptions = DEFAULT_DUST_OPTIONS
-  ): DustWalletAPI {
+  ): Promise<DustWalletAPI> {
     const dustConfig = {
       ...config,
       costParameters: {
@@ -78,8 +82,7 @@ export class WalletFactory {
     };
     logger.info(`Creating dust wallet with params: ${JSON.stringify(dustConfig)}`);
     const Dust = DustWallet(dustConfig);
-    const dustParameters = LedgerParameters.initialParameters().dust;
-    return Dust.startWithSeed(seed, dustParameters);
+    return Dust.startWithSeed(seed);
   }
 
   static async createWalletFacade(
@@ -96,13 +99,9 @@ export class WalletFactory {
     });
   }
 
-  static async startWalletFacade(
-    wallet: WalletFacade,
-    shieldedSeed: Uint8Array,
-    dustSeed: Uint8Array
-  ): Promise<WalletFacade> {
+  static async startWalletFacade(wallet: WalletFacade, seeds: WalletSeeds): Promise<WalletFacade> {
     logger.info('Starting wallet facade...');
-    await wallet.start(ZswapSecretKeys.fromSeed(shieldedSeed), DustSecretKey.fromSeed(dustSeed));
+    await wallet.start(seeds);
     return wallet;
   }
 
