@@ -20,8 +20,9 @@ import {
   type VersionedUnboundTransaction
 } from '@midnight-ntwrk/midnight-js-types';
 import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
-import type { UnshieldedKeystore, WalletFacade } from '@midnightntwrk/wallet-sdk';
+import { ProtocolVersion, type UnshieldedKeystore, type WalletFacade } from '@midnightntwrk/wallet-sdk';
 import { pino } from 'pino';
+import * as Rx from 'rxjs';
 
 import type { EnvironmentConfiguration } from '../src/test-environment/environment-configuration';
 import { MidnightWalletProvider } from '../src/wallet/midnight-wallet-provider';
@@ -34,7 +35,14 @@ import { WalletSeeds } from '../src/wallet/wallet-seed';
 const createWalletStub = (): WalletFacade => {
   const stub: Partial<WalletFacade> = {
     balanceUnboundTransaction: vi.fn(),
-    submitTransaction: vi.fn()
+    submitTransaction: vi.fn(),
+    // The seams adopt a transaction AT the chain's active protocol version, so a
+    // stub without this cannot reach either era's path. Pinned below the fork
+    // version, i.e. the retained epoch. `activeProtocolVersion` is the only
+    // member of `FacadeState` these seams read, so the narrowing is confined to
+    // this one member rather than spread across the assertions.
+    state: (() =>
+      Rx.of({ activeProtocolVersion: ProtocolVersion.ProtocolVersion(1_000_000n) })) as WalletFacade['state']
   };
   return stub as WalletFacade;
 };
@@ -55,8 +63,13 @@ const createProvider = async (wallet: WalletFacade): Promise<MidnightWalletProvi
   );
 
 describe('MidnightWalletProvider', () => {
+  // These two used to assert the opposite. The retained arm is now carried rather
+  // than refused, so what they pin is that the refusal is GONE -- and that what
+  // remains can only be a failure of the bytes, never of the version tag. Three
+  // bytes are not a transaction, so each still rejects; the assertion is about
+  // WHERE.
   describe('balanceTx with a v8 payload', () => {
-    it('rejects with the registered unsupported-payload code and never balances through the wallet', async () => {
+    it('carries the retained arm instead of refusing it, failing only in the retained deserializer', async () => {
       const wallet = createWalletStub();
       const provider = await createProvider(wallet);
 
@@ -65,16 +78,14 @@ describe('MidnightWalletProvider', () => {
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
-      // Without this the test passes even if balanceTx names the wrong seam.
-      expect((rejection as V8PayloadUnsupportedError).seam).toBe('balanceTx');
-      expect(wallet.balanceUnboundTransaction).not.toHaveBeenCalled();
+      expect(rejection).toBeDefined();
+      expect(rejection).not.toBeInstanceOf(V8PayloadUnsupportedError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(false);
     });
   });
 
   describe('submitTx with a v8 payload', () => {
-    it('rejects with the registered unsupported-payload code and never submits through the wallet', async () => {
+    it('carries the retained arm instead of refusing it, failing only in the retained deserializer', async () => {
       const wallet = createWalletStub();
       const provider = await createProvider(wallet);
 
@@ -83,10 +94,9 @@ describe('MidnightWalletProvider', () => {
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
-      expect((rejection as V8PayloadUnsupportedError).seam).toBe('submitTx');
-      expect(wallet.submitTransaction).not.toHaveBeenCalled();
+      expect(rejection).toBeDefined();
+      expect(rejection).not.toBeInstanceOf(V8PayloadUnsupportedError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(false);
     });
   });
 

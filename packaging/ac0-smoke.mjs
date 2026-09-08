@@ -138,7 +138,7 @@ const main = async () => {
       async () => {
         process.stdout.write('The dApp is mid-session; enacting the fork...\n');
         const enactment = await environment.enactFork();
-        process.stdout.write(`Fork applied at #${enactment.appliedAt}\n`);
+        process.stdout.write(`Fork applied at #${enactment.appliedAtBlockHeight}\n`);
       }
     );
   } finally {

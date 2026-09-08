@@ -38,13 +38,40 @@ const NETWORK_ID = 'undeployed';
 const observed = {};
 const failures = [];
 
+let reported = false;
+
+/** Emits the result exactly once. */
+const report = () => {
+  if (reported) {
+    return;
+  }
+  reported = true;
+  // One line, deliberately: the driver reads this off stdout line by line, and a
+  // pretty-printed object would arrive as many lines it cannot reassemble.
+  process.stdout.write(`AC0_RESULT ${JSON.stringify({ observed, failures })}\n`);
+};
+
+// Without these the process can die between legs -- an unhandled rejection from a
+// torn-down wallet subscription, say -- and the driver sees only a bare exit code
+// with no account of how far the scenario got.
+for (const event of ['uncaughtException', 'unhandledRejection']) {
+  process.on(event, (error) => {
+    failures.push(`${event}: ${error instanceof Error ? error.message : String(error)}`);
+    report();
+    process.exit(1);
+  });
+}
+
 const leg = async (name, run) => {
   try {
     const result = await run();
     observed[name] = result === undefined ? 'ok' : result;
     return result;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    // The stack, not just the message: a WASM class-identity failure says only
+    // "expected instance of X" and is undiagnosable without the frame it came from.
+    const message = error instanceof Error ? `${error.message}
+${error.stack ?? ''}`.trim() : String(error);
     observed[name] = `FAILED: ${message}`;
     failures.push(`${name}: ${message}`);
     return undefined;
@@ -204,7 +231,5 @@ await leg('reads its own pre-fork history', async () => {
 });
 
 await session.wallet?.stop().catch(() => undefined);
-// One line, deliberately: the driver reads this off stdout line by line, and a
-// pretty-printed object would arrive as many lines it cannot reassemble.
-process.stdout.write(`AC0_RESULT ${JSON.stringify({ observed, failures })}\n`);
+report();
 process.exit(failures.length === 0 ? 0 : 1);

@@ -103,7 +103,24 @@ export const PINNED_RETAINED_RUNTIME = (() => {
   if (typeof pinned !== 'string') {
     throw new Error('The repository root does not pin @midnight-ntwrk/onchain-runtime-v3');
   }
-  return { '@midnight-ntwrk/onchain-runtime-v3': pinned };
+
+  // ledger-v8 is dual-published, and the two names are two physical packages:
+  // `protocol` pins the new scope, while wallet-sdk 2.0.0-beta.3 reaches for the
+  // old one. Installing both means two WASM instances, and an object minted by
+  // either is refused by the other's classes ("expected instance of
+  // LedgerParameters"). Aliasing the old name onto the new package collapses them
+  // into one -- the same device `protocol` uses for `compact-runtime-ledger8`.
+  const ledger8 = JSON.parse(
+    readFileSync(path.join(REPOSITORY_ROOT, 'packages', 'protocol', 'package.json'), 'utf8')
+  ).dependencies?.['@midnightntwrk/ledger-v8'];
+  if (typeof ledger8 !== 'string') {
+    throw new Error('packages/protocol does not pin @midnightntwrk/ledger-v8');
+  }
+
+  return {
+    '@midnight-ntwrk/onchain-runtime-v3': pinned,
+    '@midnight-ntwrk/ledger-v8': `npm:@midnightntwrk/ledger-v8@${ledger8}`
+  };
 })();
 
 export const PERSONAS = {
