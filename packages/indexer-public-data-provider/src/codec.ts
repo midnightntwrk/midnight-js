@@ -56,6 +56,7 @@ import {
   deserializeLedgerTransaction,
   deserializeZswapChainState,
   isHex,
+  ledgerParametersEnvelopeVersion,
   parseHex,
   withDeserializationContext
 } from '@midnight-ntwrk/midnight-js-utils';
@@ -85,6 +86,17 @@ const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 type ReadDetails = Readonly<Record<string, string | number>>;
 
 /**
+ * The only ledger era {@link parseHexContractState} and {@link parseHexLedgerParameters} can read.
+ *
+ * Deliberately narrower than the transaction path above, which dispatches per
+ * record across both eras. `queryRawContractState` serves the bytes together
+ * with their era for a caller that needs the other runtime — the contract
+ * state and, since both are era-tagged and dated the same way, the block's
+ * ledger parameters as well.
+ */
+const DECODABLE_LEDGER_VERSION: LedgerVersion = 'v9';
+
+/**
  * Adapters that take hex-encoded indexer payloads, decode to bytes, and
  * dispatch to the typed deserialization wrappers from `@midnight-ntwrk/midnight-js-utils`.
  * They exist (rather than inlining) so the `caller` string is centralized and
@@ -100,8 +112,40 @@ export const parseHexTransaction = (
 ): LedgerTransaction<SignatureEnabled, Proof, Binding> =>
   deserializeLedgerTransaction(toByteArray(s), { caller: `${PKG}:parseHexTransaction`, details });
 
-export const parseHexLedgerParameters = (s: string): LedgerParameters =>
-  deserializeLedgerParameters(toByteArray(s), { caller: `${PKG}:parseHexLedgerParameters` });
+/**
+ * Decodes the ledger parameters of one block, after establishing which ledger runtime wrote them —
+ * and only if that runtime is one this path can decode.
+ *
+ * The dating step is not defence in depth here, it is the whole function: parameters are era-tagged
+ * exactly as a contract state is (`ledger-parameters[v5]` from the retained runtime,
+ * `[v8]` from the current one), each era's deserializer refuses the other's bytes on the header tag,
+ * and the indexer serves them PER BLOCK — so every pre-fork block a caller reads carries parameters
+ * this era cannot decode. Without the dating those bytes reached the deserializer and came back as
+ * an unclassified failure that named neither the era nor the field.
+ *
+ * A retained-era block is an ordinary thing to read, not a fault, so it is reported as an era this
+ * path cannot decode and pointed at `queryRawContractState`, which serves the parameter bytes
+ * undecoded alongside the state.
+ *
+ * @param s The hex-encoded serialized ledger parameters, as the indexer serves them.
+ * @throws {IndexerDataError} When the payload is not hex-encoded, or its era is not decodable here.
+ * @throws {TagParseError} When the payload carries no supported ledger-parameters envelope.
+ */
+export const parseHexLedgerParameters = (s: string): LedgerParameters => {
+  // Hex first, for the reason `stateBytesAndEnvelopeVersion` does it first: `Buffer.from(s, 'hex')`
+  // stops at the first character it cannot read, so an only-partly-hex payload would otherwise be
+  // silently truncated into a shorter, still plausible-looking byte string — and a truncated tag
+  // prefix would then be dated rather than refused.
+  if (!isHex(s)) {
+    throw IndexerDataError.malformedParametersEncoding();
+  }
+  const raw = new Uint8Array(toByteArray(s));
+  const envelopeVersion = ledgerParametersEnvelopeVersion(raw);
+  if (envelopeVersion !== DECODABLE_LEDGER_VERSION) {
+    throw IndexerDataError.unsupportedParametersEra(envelopeVersion);
+  }
+  return deserializeLedgerParameters(raw, { caller: `${PKG}:parseHexLedgerParameters` });
+};
 
 /**
  * The v8-era sibling of {@link parseHexTransaction}. Acquires the v8 ledger
@@ -239,15 +283,6 @@ const stateBytesAndEnvelopeVersion = (
   const raw = new Uint8Array(toByteArray(hexState));
   return { raw, envelopeVersion: contractStateEnvelopeVersion(raw) };
 };
-
-/**
- * The only ledger era {@link parseHexContractState} can read.
- *
- * Deliberately narrower than the transaction path above, which dispatches per
- * record across both eras. `queryRawContractState` serves the bytes together
- * with their era for a caller that needs the other runtime.
- */
-const DECODABLE_LEDGER_VERSION: LedgerVersion = 'v9';
 
 /**
  * Whether `left` is a strictly newer ledger era than `right`.
