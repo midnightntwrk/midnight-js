@@ -22,6 +22,7 @@
 // are done and waits to be told the fork was enacted, so the boundary falls
 // between two legs of ONE session rather than between two runs.
 
+import { Buffer } from 'node:buffer';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
@@ -100,6 +101,38 @@ const awaitFork = () =>
     });
     lines.on('close', () => (seen ? resolve() : reject(new Error('stdin closed before the fork was reported'))));
   });
+
+/**
+ * The envelope tag the served bytes actually carry, as raw text.
+ *
+ * Read directly off the leading bytes rather than through any era resolver: the
+ * question here is what the chain served, not what a resolver makes of it. The
+ * tag runs to the second ':' -- `midnight:contract-state[vN]:`.
+ */
+const envelopeTag = (raw) => {
+  const text = Buffer.from(raw.subarray(0, 64)).toString('latin1');
+  const end = text.indexOf(':', text.indexOf(':') + 1);
+  return end < 0 ? `<no tag in ${text.slice(0, 24)}>` : text.slice(0, end + 1);
+};
+
+/**
+ * Samples the envelope tag over a window of blocks.
+ *
+ * The point is the "is migration lazy?" question: if the tag is still the
+ * pre-fork one many blocks after the boundary, lateness is not the explanation.
+ */
+const sampleEnvelope = async (publicDataProvider, contractAddress, samples, everyMs) => {
+  const seen = [];
+  for (let i = 0; i < samples; i += 1) {
+    const state = await publicDataProvider.queryRawContractState(contractAddress).catch(() => null);
+    const head = await publicDataProvider.queryLatestProtocolVersion().catch(() => null);
+    seen.push(state === null ? `head=${head} state=absent` : `head=${head} tag=${envelopeTag(state.raw)}`);
+    if (i + 1 < samples) {
+      await delay(everyMs);
+    }
+  }
+  return seen;
+};
 
 /**
  * Waits until the indexer serves state for a freshly deployed contract.
@@ -221,8 +254,17 @@ await leg('pre-fork retained deploy', async () => {
   const txId = await midnightProvider.submitTx(balanced);
 
   deployment = { contractAddress: composed.contractAddress, privateState: constructed.privateState };
+  // Announced so the driver can ask the NODE about the same contract. The
+  // indexer's answer alone cannot separate "the ledger did not migrate" from
+  // "the indexer serves the bytes of the last pre-fork action".
+  process.stdout.write(`AC0_CONTRACT ${composed.contractAddress}\n`);
   const state = await waitForContract(session.providers.publicDataProvider, composed.contractAddress, 5 * 60_000);
-  return { txId, contractAddress: composed.contractAddress, indexedAs: state.version };
+  return {
+    txId,
+    contractAddress: composed.contractAddress,
+    indexedAs: state.version,
+    envelope: envelopeTag(state.raw)
+  };
 });
 
 // (a) continued: a CALL through the unified entry, which is the reachable half.
@@ -254,6 +296,13 @@ await leg('post-fork head era', async () => {
   session = await buildProviders('v9', testkit, logger);
   return era;
 });
+
+// Diagnostic, not an acceptance criterion: does the migration re-version the
+// contract-state envelope, and if not, does it do so later? The framework refuses
+// a pre-fork envelope under a post-fork head, so keep-state depends on this.
+await leg('envelope tag across the boundary', () =>
+  sampleEnvelope(session.providers.publicDataProvider, deployment.contractAddress, 6, 10_000)
+);
 
 // ── (c) post-fork: the SAME call site, now on keep-state ──────────────────────
 

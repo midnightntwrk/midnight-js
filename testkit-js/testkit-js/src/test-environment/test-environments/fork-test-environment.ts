@@ -355,6 +355,17 @@ export class ForkTestEnvironment extends TestEnvironment {
     this.composeEnvironment = { TESTCONTAINERS_UID: this.uid, ...imageTagOverrides() };
   }
 
+  /**
+   * The compose project this stack runs under.
+   *
+   * Exposed so a caller can drive the same project itself -- `compose run
+   * --profile tools toolkit ...` for a node-side reading, say -- and reach the
+   * node under its service name rather than through a mapped port.
+   */
+  get composeProject(): string {
+    return this.projectName;
+  }
+
   /** Whether {@link ForkTestEnvironment.enactFork} has already moved this chain across the boundary. */
   get hasForked(): boolean {
     return this.forkEnactment !== undefined;
@@ -549,6 +560,44 @@ export class ForkTestEnvironment extends TestEnvironment {
     }
     return this.dockerEnv.getContainer(`${service}_${this.uid}`).getMappedPort(port);
   }
+
+  /**
+   * Runs one node-toolkit command against this stack and returns its combined output.
+   *
+   * Through `compose run` rather than as a testcontainer, so it joins the project
+   * network and reaches the node under its service name. Exposed because a caller
+   * may need the NODE's own answer about the chain: the indexer serves the latest
+   * contract action at or before a block, so on questions about migrated state
+   * the two sources can legitimately differ and the difference is the finding.
+   *
+   * @param args The toolkit subcommand and its arguments.
+   * @returns stdout and stderr, concatenated.
+   * @throws Error, with the toolkit's stderr on `cause`, if the command fails.
+   */
+  runToolkit = async (args: readonly string[]): Promise<string> => {
+    const composeArgs = [
+      'compose',
+      '-f',
+      this.composeFile,
+      '-p',
+      this.projectName,
+      '--profile',
+      'tools',
+      'run',
+      '--rm',
+      'toolkit',
+      ...args
+    ];
+    try {
+      const { stdout, stderr } = await execFileAsync('docker', composeArgs, {
+        env: { ...process.env, ...this.composeEnvironment },
+        maxBuffer: 32 * 1024 * 1024
+      });
+      return `${stdout}\n${stderr}`;
+    } catch (cause) {
+      throw new Error(`The node toolkit command ${args.join(' ')} failed`, { cause });
+    }
+  };
 
   private async runToolkitUpgrade(): Promise<void> {
     const composeArgs = [
