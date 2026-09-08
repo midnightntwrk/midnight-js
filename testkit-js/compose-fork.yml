@@ -1,9 +1,10 @@
 # The fork-crossing e2e stack: a chain whose genesis carries the ledger-v8 runtime, running on the
 # ledger-v9 node binary, with the node toolkit on hand to enact the fork through governance.
 #
-# Adapted from the midnight-wallet repository's `infra/compose/docker-compose-fork-dynamic.yml`,
-# which is the proven topology for this boundary. Driven from `ForkTestEnvironment` in
-# `@midnight-ntwrk/testkit-js`.
+# Adapted from the midnight-wallet repository's `infra/compose/docker-compose-fork-dynamic.yml`
+# (as of 2026-09; re-check that file if this stack starts behaving differently). Driven from
+# `ForkTestEnvironment` in `@midnight-ntwrk/testkit-js`. Why the stack is shaped this way is recorded
+# in `docs/architecture/fork-e2e-environment.md`.
 #
 # Every image tag has a default here and is overridable from the environment, so a workflow input
 # reaches compose without editing this file. The tag variables are deliberately named apart from the
@@ -86,8 +87,13 @@ services:
       CHAIN: '/chainspec/chainspec.json'
       SHOW_CONFIG: 'false'
     # `/health` is not a truthful readiness signal for a new binary on an old chain: it answers
-    # before the node has authored anything. Asking for block #1 proves the chain is producing on
-    # the pre-fork runtime, which is the state every test here starts from.
+    # before the node has authored anything. Asking for block #1 proves the chain is authoring. (That
+    # it is authoring the pre-fork runtime follows from the chainspec, not from this probe.)
+    #
+    # `retries` has to outlast `ForkTestEnvironment`'s 5-minute wait strategy: Docker marking the
+    # container `unhealthy` first makes testcontainers give up immediately with `Health check failed`
+    # instead of waiting out its own budget. 10s + 200 x 2s = ~6m50s leaves the wait strategy in
+    # charge, so a slow node reports a timeout rather than a health failure.
     healthcheck:
       test:
         - 'CMD-SHELL'
@@ -97,7 +103,7 @@ services:
           '"result":"0x'
       interval: 2s
       timeout: 5s
-      retries: 60
+      retries: 200
       start_period: 10s
 
   indexer:
@@ -119,13 +125,17 @@ services:
       APP__INFRA__SECRET: '303132333435363738393031323334353637383930313233343536373839303132'
       APP__INFRA__SPO_NODE__URL: 'ws://node:9944'
       APP__INFRA__SPO_NODE__BLOCKFROST_ID: 'dummy-not-using-spo'
-      # Standalone stack has no SPO node. The indexer spawns spo-indexer unconditionally and exits
-      # the whole process when it gives up reconnecting (default 30 x 10s ~ 5 min). Stretching the
-      # delay to 24h keeps it alive for the run without disabling the subtask (no flag opts out).
+      # There is no real SPO node here: SPO_NODE__URL above points spo-indexer at the ordinary node
+      # purely so it has somewhere to dial. Indexer 4.4.x spawns the subtask unconditionally and
+      # exits the whole process once it stops retrying -- backoff is capped at 10s by default, so
+      # ~30 attempts exhaust in ~5 min. Raising the cap to 24h keeps the process alive for the run.
+      # (As of indexer 4.4.x no flag disables the subtask.) The trade is that a genuinely
+      # unreachable SPO URL now retries silently instead of failing loudly.
       APP__INFRA__SPO_NODE__RECONNECT_MAX_DELAY: '24h'
-    # No healthcheck: this image ships no curl, so the probe `compose.yml` carries can never pass and
-    # only leaves the container permanently `unhealthy`. Nothing here waits on it -- the environment
-    # polls `/ready` from the host over the mapped port instead, which is a truer readiness check.
+    # No in-container healthcheck. Readiness is probed from the host instead: `ForkTestEnvironment`
+    # polls `/ready` over the mapped port, which proves the API is serving where an open socket would
+    # not. Note what neither check covers -- `/ready` says nothing about whether `chain_indexer` is
+    # still consuming blocks, so an indexer wedged on a decode error still reads as ready.
     depends_on:
       node:
         condition: service_healthy
@@ -143,9 +153,9 @@ services:
       RUST_BACKTRACE: 'full'
       EXTRA_ARGS: -v
 
-  # The proof server of the epoch before the boundary. A second service rather than a second tag on
-  # the first: no image serves both sides, and this lane is the one place a session has to prove on
-  # each in turn. It runs from the start, because ledger-8 operation happens before the fork is enacted.
+  # The proof server of the epoch before the boundary. It runs from the start, because ledger-8
+  # operation happens before the fork is enacted. Why there are two of these rather than one
+  # dual-capable endpoint: `docs/architecture/fork-e2e-environment.md`.
   proof-server-v8:
     image: 'ghcr.io/midnight-ntwrk/proof-server:${PROOF_SERVER_V8_TAG:-8.1.0}'
     container_name: proof-server-v8_$TESTCONTAINERS_UID
@@ -162,7 +172,10 @@ services:
   # Never started by `up` -- `ForkTestEnvironment.enactFork()` drives it with
   # `docker compose ... --profile tools run --rm toolkit runtime-upgrade ...`, which joins the
   # project network so `ws://node:9944` resolves. No `container_name`: `compose run` names its own.
-  # Only on Docker Hub at the pinned tag; ghcr carries the toolkit but not this version.
+  #
+  # This is the one image on Docker Hub rather than ghcr: as of 2026-09 ghcr carried no toolkit at
+  # the pinned tag. So a ghcr login does not authorize this pull -- the CI lane logs in to Docker Hub
+  # as well. Re-check the registry when bumping TOOLKIT_TAG.
   toolkit:
     profiles: ['tools']
     image: 'midnightntwrk/midnight-node-toolkit:${TOOLKIT_TAG:-2.1.0-beta.1}'

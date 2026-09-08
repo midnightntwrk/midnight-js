@@ -14,6 +14,7 @@
  */
 
 import type { ProvingProvider as ZkirProvingProvider } from '@midnight-ntwrk/zkir-v2';
+import { ProtocolVersion, WalletTransaction } from '@midnightntwrk/wallet-sdk';
 import { of } from 'rxjs';
 
 import type { EnvironmentConfiguration } from '../src/test-environment/environment-configuration';
@@ -76,7 +77,14 @@ const mockDustState = {
   balance: vi.fn().mockReturnValue(500n),
 };
 
+const ACTIVE_PROTOCOL_VERSION = ProtocolVersion.ProtocolVersion(2000042n);
+
+const mockFacadeState = {
+  activeProtocolVersion: ACTIVE_PROTOCOL_VERSION,
+};
+
 const mockWalletFacade = {
+  state: vi.fn().mockReturnValue(of(mockFacadeState)),
   shielded: { state: of(mockShieldedState) },
   unshielded: { state: of(mockUnshieldedState) },
   dust: { state: of(mockDustState) },
@@ -116,7 +124,6 @@ const stubbing = <T>(members: object): T => members as T;
 const mockWalletProvider = {
   wallet: stubbing<MidnightWalletProvider['wallet']>(mockWalletFacade),
   unshieldedKeystore: stubbing<MidnightWalletProvider['unshieldedKeystore']>(mockUnshieldedKeystore),
-  zswapSecretKeys: stubbing<MidnightWalletProvider['zswapSecretKeys']>({}),
   dustSecretKey: stubbing<MidnightWalletProvider['dustSecretKey']>({ publicKey: 12345n }),
 };
 
@@ -272,9 +279,10 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
 
       expect(Transaction.deserialize).toHaveBeenCalledWith('signature', 'proof', 'pre-binding', expect.any(Uint8Array));
       expect(mockWalletFacade.balanceUnboundTransaction).toHaveBeenCalled();
-      expect(mockWalletFacade.balanceUnboundTransaction.mock.calls[0][2]).toEqual(
-        expect.objectContaining({ tokenKindsToBalance: 'all' }),
-      );
+      const [handle, options] = mockWalletFacade.balanceUnboundTransaction.mock.calls[0];
+      expect(WalletTransaction.is(handle)).toBe(true);
+      expect(handle).toMatchObject({ stage: 'Unbound', protocolVersion: ACTIVE_PROTOCOL_VERSION });
+      expect(options).toEqual(expect.objectContaining({ tokenKindsToBalance: 'all' }));
       expect(result).toEqual({ tx: 'aabb' });
     });
 
@@ -286,7 +294,7 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
       await adapter.balanceUnsealedTransaction('abcd', { payFees: false });
 
       expect(mockWalletFacade.balanceUnboundTransaction).toHaveBeenCalled();
-      expect(mockWalletFacade.balanceUnboundTransaction.mock.calls[0][2]).toEqual(
+      expect(mockWalletFacade.balanceUnboundTransaction.mock.calls[0][1]).toEqual(
         expect.objectContaining({ tokenKindsToBalance: ['shielded', 'unshielded'] }),
       );
     });
@@ -303,9 +311,10 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
 
       expect(Transaction.deserialize).toHaveBeenCalledWith('signature', 'proof', 'binding', expect.any(Uint8Array));
       expect(mockWalletFacade.balanceFinalizedTransaction).toHaveBeenCalled();
-      expect(mockWalletFacade.balanceFinalizedTransaction.mock.calls[0][2]).toEqual(
-        expect.objectContaining({ tokenKindsToBalance: 'all' }),
-      );
+      const [handle, options] = mockWalletFacade.balanceFinalizedTransaction.mock.calls[0];
+      expect(WalletTransaction.is(handle)).toBe(true);
+      expect(handle).toMatchObject({ stage: 'Finalized', protocolVersion: ACTIVE_PROTOCOL_VERSION });
+      expect(options).toEqual(expect.objectContaining({ tokenKindsToBalance: 'all' }));
       expect(result).toEqual({ tx: 'aabb' });
     });
   });
@@ -317,7 +326,9 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
       await adapter.submitTransaction('abcd');
 
       expect(Transaction.deserialize).toHaveBeenCalledWith('signature', 'proof', 'binding', expect.anything());
-      expect(mockWalletFacade.submitTransaction).toHaveBeenCalled();
+      const [handle] = mockWalletFacade.submitTransaction.mock.calls[0];
+      expect(WalletTransaction.is(handle)).toBe(true);
+      expect(handle).toMatchObject({ stage: 'Finalized', protocolVersion: ACTIVE_PROTOCOL_VERSION });
     });
   });
 
