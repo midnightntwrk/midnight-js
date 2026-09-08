@@ -6,7 +6,7 @@
 
 # Interface: ZkArtifactManifest
 
-Defined in: packages/utils/dist/index.d.ts:453
+Defined in: packages/utils/dist/index.d.ts:463
 
 The parsed manifest: metadata plus files flattened to `"<dir>/<fileName>"` keys.
 
@@ -16,7 +16,7 @@ The parsed manifest: metadata plus files flattened to `"<dir>/<fileName>"` keys.
 
 > `readonly` `optional` **compilerVersion?**: `string`
 
-Defined in: packages/utils/dist/index.d.ts:455
+Defined in: packages/utils/dist/index.d.ts:465
 
 ***
 
@@ -24,7 +24,7 @@ Defined in: packages/utils/dist/index.d.ts:455
 
 > `readonly` **files**: `ReadonlyMap`\<`string`, [`ZkArtifactManifestFile`](ZkArtifactManifestFile.md)\>
 
-Defined in: packages/utils/dist/index.d.ts:458
+Defined in: packages/utils/dist/index.d.ts:468
 
 ***
 
@@ -32,7 +32,7 @@ Defined in: packages/utils/dist/index.d.ts:458
 
 > `readonly` `optional` **languageVersion?**: `string`
 
-Defined in: packages/utils/dist/index.d.ts:456
+Defined in: packages/utils/dist/index.d.ts:466
 
 ***
 
@@ -40,7 +40,7 @@ Defined in: packages/utils/dist/index.d.ts:456
 
 > `readonly` `optional` **runtimeVersion?**: `string`
 
-Defined in: packages/utils/dist/index.d.ts:457
+Defined in: packages/utils/dist/index.d.ts:467
 
 ***
 
@@ -48,4 +48,4 @@ Defined in: packages/utils/dist/index.d.ts:457
 
 > `readonly` **version**: `string`
 
-Defined in: packages/utils/dist/index.d.ts:454
+Defined in: packages/utils/dist/index.d.ts:464
