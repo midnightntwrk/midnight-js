@@ -112,6 +112,9 @@ export const verifierKeysEqual = (a: Uint8Array, b: Uint8Array): boolean =>
 /**
  * Checks that the given `contractState` contains the given `verifierKeys`.
  *
+ * A circuit counts as mismatched when the state registers no operation for it, when the registered
+ * operation carries no verifier key at all, or when the deployed key differs from the local one.
+ *
  * @param verifierKeys The verifier keys the client has for the deployed contract we're checking.
  * @param contractState The (typically already deployed) contract state containing verifier keys.
  *
@@ -121,14 +124,10 @@ export const verifyContractState = (
   verifierKeys: [AnyProvableCircuitId, VerifierKey][],
   contractState: ContractState
 ): void => {
-  const mismatchedCircuitIds = verifierKeys.reduce(
-    (acc, [circuitId, localVk]) =>
-      !contractState.operation(circuitId) ||
-      !verifierKeysEqual(localVk, contractState.operation(circuitId)!.verifierKey)
-        ? [...acc, circuitId]
-        : acc,
-    [] as string[]
-  );
+  const mismatchedCircuitIds = verifierKeys.reduce((acc, [circuitId, localVk]) => {
+    const deployedVk = contractState.operation(circuitId)?.verifierKey;
+    return deployedVk === undefined || !verifierKeysEqual(localVk, deployedVk) ? [...acc, circuitId] : acc;
+  }, [] as string[]);
   if (mismatchedCircuitIds.length > 0) {
     throw new ContractTypeError(contractState, mismatchedCircuitIds);
   }
