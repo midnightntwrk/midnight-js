@@ -95,6 +95,14 @@ export interface ComposeCallEntry {
   readonly contractAddress: string;
   readonly circuitId: string;
   readonly contractState: Uint8Array;
+  /**
+   * The ledger parameters the chain held at the block this call is built against, serialized —
+   * `RawContractState.ledgerParameters`, passed through untouched.
+   *
+   * Omitting them falls back to the ledger's initial parameters, which is a compatibility path and
+   * not a correct one. See `AssembleCallOptions.ledgerParameters`.
+   */
+  readonly ledgerParameters?: Uint8Array;
   readonly transcript: CallTranscriptSource;
   readonly privateTranscriptOutputs: AlignedValue[];
   readonly input: AlignedValue;

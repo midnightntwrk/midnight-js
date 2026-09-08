@@ -24,7 +24,7 @@ import type {
   Transcript
 } from '@midnightntwrk/ledger-v9';
 
-import { ComposeFailedError, type ComposeStage } from '../../errors';
+import { ComposeFailedError, ComposeOptionError, type ComposeStage } from '../../errors';
 import type { CallTranscriptSource, PartitionContext } from './compose-types';
 import type { LedgerVersion } from './ledger-version';
 
@@ -65,7 +65,10 @@ export interface CallAssemblyLedger<
   readonly StateValue: { readonly decode: (value: EncodedStateValue) => TStateValue };
   readonly ChargedState: new (state: TStateValue) => TChargedState;
   readonly QueryContext: new (state: TChargedState, contractAddress: string) => TQueryContext;
-  readonly LedgerParameters: { readonly initialParameters: () => TParams };
+  readonly LedgerParameters: {
+    readonly initialParameters: () => TParams;
+    readonly deserialize: (raw: Uint8Array) => TParams;
+  };
   readonly PreTranscript: new (context: TQueryContext, program: Op<AlignedValue>[]) => TPreTranscript;
   readonly partitionTranscripts: (
     calls: TPreTranscript[],
@@ -134,6 +137,21 @@ export interface AssembleCallOptions<TOperation> {
    */
   readonly communicationCommitmentRandomness?: string;
   readonly operations: CallOperationRegistry<TOperation>;
+  /**
+   * The ledger parameters the CHAIN held at the block this call is built against, serialized.
+   *
+   * The partitioner below decides what goes in the guaranteed segment and what goes in the fallible
+   * one, and it decides it from the cost model these carry. They are dynamic (prices adjust per
+   * block) and era-tagged, so the ledger's own `initialParameters()` is not a stand-in for them: it
+   * is the model the chain started with, not the one it is running. Partitioning against it draws
+   * the boundary in the wrong place, and the node then refuses the guaranteed segment with
+   * `Transcript(Execution(OutOfGas))`.
+   *
+   * Optional only so a caller that has no read surface can still compose. Omitting it falls back to
+   * `initialParameters()`, which is a COMPATIBILITY PATH AND NOT A CORRECT ONE -- pass the chain's
+   * own parameters wherever they are reachable.
+   */
+  readonly ledgerParameters?: Uint8Array;
   readonly stage: CallResolutionStage;
   // The era every failure raised here names -- see ComposeRefusalOrder.
   readonly version: LedgerVersion;
@@ -205,10 +223,30 @@ const resolvePartition = <
   // The partitioner rejects caller data with a raw error from inside wasm, so
   // it is coded here -- see ComposeRefusalOrder.
   let partitioned: (readonly [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined])[];
+  // Read BEFORE the partitioner runs and reported separately, because a rejected parameter blob is
+  // a bad option and not a failed partition -- reporting it as the latter sends a reader after the
+  // transcript when the fault is in the bytes they passed. See ComposeRefusalOrder.
+  let parameters: TParams;
+  try {
+    parameters =
+      options.ledgerParameters === undefined
+        ? // The ledger's INITIAL parameters: a compatibility path for a caller with no read
+          // surface, and not a correct substitute. They are the model the chain started with, not
+          // the one it is running -- prices adjust per block -- so partitioning against them draws
+          // the guaranteed/fallible boundary in the wrong place and the node refuses the guaranteed
+          // segment for running out of gas.
+          ledger.LedgerParameters.initialParameters()
+        : // Deserialized with THIS era's reader, which is right because the bytes came from a block
+          // this era's call is being built against.
+          ledger.LedgerParameters.deserialize(options.ledgerParameters);
+  } catch (cause) {
+    throw new ComposeOptionError(version, 'ledgerParameters', cause);
+  }
+
   try {
     partitioned = ledger.partitionTranscripts(
       [new ledger.PreTranscript(queryContext, transcript.publicTranscript)],
-      ledger.LedgerParameters.initialParameters()
+      parameters
     );
   } catch (cause) {
     throw new ComposeFailedError(version, 'call-partition', circuitId, cause);

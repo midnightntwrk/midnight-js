@@ -428,6 +428,11 @@ export const runLedger8CallPipeline = async <TState>(
         contractAddress,
         circuitId,
         contractState: registeredOperations,
+        // From the SAME read as the state above, which is the point: the parameters are dynamic
+        // and must date from the block the call is built against. Composing against the ledger's
+        // initial parameters partitions the transcript with a cost model the chain does not use,
+        // and the node refuses the guaranteed segment for running out of gas.
+        ledgerParameters: snapshot.state.ledgerParameters,
         transcript: {
           kind: 'unpartitioned',
           preState: snapshot.encoded,

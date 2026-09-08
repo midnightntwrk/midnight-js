@@ -381,7 +381,11 @@ export const parseHexContractState = (
  * @param protocolVersion The protocol-version integer the network reported for
  *                        that state.
  */
-export const toRawContractState = (hexState: string, protocolVersion: number): RawContractState => {
+export const toRawContractState = (
+  hexState: string,
+  protocolVersion: number,
+  hexLedgerParameters?: string
+): RawContractState => {
   // Validates the encoding and rejects anything that is not a contract state
   // from a supported runtime. The envelope reading is deliberately not compared
   // against `protocolVersion` here: this record's contract is that `version`
@@ -391,7 +395,10 @@ export const toRawContractState = (hexState: string, protocolVersion: number): R
   return {
     version: protocolVersionToLedger(protocolVersion, 'read'),
     protocolVersion,
-    raw
+    raw,
+    // Passed through as bytes, undecoded and unexamined. They are era-tagged, and this function
+    // has no business choosing an era for them -- see the field's own documentation.
+    ledgerParameters: hexLedgerParameters === undefined ? undefined : toByteArray(hexLedgerParameters)
   };
 };
 

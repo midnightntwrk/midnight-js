@@ -92,6 +92,7 @@ export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): 
     input: options.input,
     output: options.output,
     communicationCommitmentRandomness: options.communicationCommitmentRandomness,
+    ledgerParameters: options.ledgerParameters,
     operations: contractState,
     stage: 'call-operation',
     version: 'v8'
