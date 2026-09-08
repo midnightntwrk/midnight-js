@@ -161,7 +161,7 @@ services:
   # operation happens before the fork is enacted. Why there are two of these rather than one
   # dual-capable endpoint: `docs/architecture/fork-e2e-environment.md`.
   proof-server-v8:
-    image: 'ghcr.io/midnight-ntwrk/proof-server:${PROOF_SERVER_V8_TAG:-8.1.0}'
+    image: 'ghcr.io/midnight-ntwrk/proof-server:${PROOF_SERVER_V8_TAG:-8.1.2}'
     container_name: proof-server-v8_$TESTCONTAINERS_UID
     cap_drop:
       - ALL
