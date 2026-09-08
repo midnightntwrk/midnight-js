@@ -51,32 +51,93 @@ supported consumer linker — any PnP consumer of the wallet SDK hits these.
 
 ## How far AC0 gets, and where it stops
 
-`ac0-smoke.mjs` is complete and runnable, and it **does not pass yet**. What it
-reaches, on wallet-sdk 2.0.0-beta.3:
+Six of seven legs pass. Latest run:
 
 | Leg | Result |
 |---|---|
 | pre-fork head era | **v8** |
-| wallet sync on a ledger-v8 chain | **full** (`shielded`, `unshielded`, `dust`, `synced=true`) |
-| retained deploy: constructor, compose, prove | **succeeds** — 1700 bytes of proven v8 transaction |
-| retained deploy: `balanceTx` | **refused** |
+| retained deploy (construct, compose, prove, balance, submit, indexed) | **succeeds** |
+| retained call through the unified entry | **succeeds** |
 | fork enactment | **ok** |
+| post-fork head era | **v9** |
+| post-fork keep-state call through the same call site | **refused** |
+| reads its own pre-fork history | **v9 / 2001000** |
 
-The stop is precise:
+A retained-era contract really is deployed and called on a ledger-v8 chain, the
+chain really crosses the fork mid-session, and the same dApp reads its own
+pre-fork history afterwards.
+
+### The one remaining failure looks like a framework defect, not harness plumbing
+
+The post-fork keep-state call is refused by `assertHeadStateEraAgreement`, from
+`readLedger8Snapshot`:
 
 ```
-balanceTx received a v8-era transaction payload (serialized bytes, 1700 bytes),
-which this provider does not serve.
+IndexerInconsistencyError: The read surface reported a 'v9'-era network head
+- confirmed by a second, fresh read - while serving a contract state that
+carries a 'v8'-era envelope. Those two answers cannot both describe one chain...
+Retry the operation, and if it persists check the health of the configured indexer.
 ```
 
-`MidnightWalletProvider.balanceTx` narrows with `unwrapV9`, so **the retained-era
-arm is implemented for proving but not for balancing or submitting**. That is the
-remaining half of the tx-flow seam work: the proving seams took the union, the
-wallet seam still refuses it. wallet-sdk beta.3 can balance a retained-era
-transaction — it is the hard-fork release — so implementing that arm is now
-possible rather than blocked on anything external.
+The check is symmetric — it refuses a disagreement in either direction:
 
-The lane is deliberately **not** wired into CI as a blocking gate until it does.
+```ts
+if (stateEra === head) return;
+const fresh = await readHeadEra(pdp);
+if (fresh.head !== stateEra) throw new IndexerInconsistencyError(fresh.head, stateEra);
+throw new HeadStateEraMismatchError(head, stateEra);
+```
+
+The spec's delivered design is **asymmetric**: "the envelope decides, the block
+bounds ... the reported `protocolVersion` dates the read and is an upper bound
+only ... so **an older envelope under a newer block is the ordinary case**. Only
+the reverse is reported."
+
+A pre-fork contract called after the fork has, by construction, a v8 envelope
+under a v9 head. That is the ordinary case the spec describes and the exact
+situation keep-state exists to serve, and this check refuses it — with a
+remediation that blames indexer health, when the indexer is behaving exactly as
+the spec says it does.
+
+Left untouched deliberately: whether the asymmetry belongs in this function, or
+whether the keep-state read should reach its snapshot another way, is an MJS-02
+design question and not a harness one.
+
+### Four harness defects were fixed to get here
+
+Each was hiding the next, which is why they are worth naming.
+
+1. **The report was silently truncated.** `report()` wrote to stdout and then
+   called `process.exit`, which discards whatever the pipe still has queued.
+   Measured: an 10337-byte payload lost everything past 8192 bytes, including its
+   newline, so the driver's line reader dropped the lot and reported "exited (1)
+   without reporting a result". Only ever visible on the failure path, because a
+   green report is a few txIds. It now exits from the write callback.
+2. **The harness transacted while the wallet was mid-crossing.** The three
+   sub-wallets cross the fork at different moments; `syncWallet` gated only on
+   `isStrictlyComplete()`, which is true throughout that window. Composing then
+   mixes an unshielded V1 leg (stamped at version 0) with a dust V2 leg
+   (demanding the v9 epoch) and the SDK refuses it. Measured settling: unshielded
+   at +27s, shielded at +30s. `syncWallet` now also requires
+   `state.protocol._tag === 'Settled'`, which is the reading the SDK documents
+   for exactly this hazard.
+3. **`submitCallTx` was called with the wrong option names.** The retained arm
+   wants `compiledContract`, not `contract`, and a nullary circuit's options
+   carry no `args` at all. `.mjs` means `tsc` never looked.
+4. **The deploy was not waited for.** The call leg ran before the indexer had
+   served the new contract, which reads as `No contract deployed at ...` rather
+   than as a race.
+
+### Retained artifacts cannot satisfy ZK integrity verification
+
+`compactc` 0.31.1 emits `compiler/contract-info.json` and **no**
+`compiler/contract-manifest.json`; the manifest is what integrity verification
+reads, and the framework requires it fail-closed. So `require` is unsatisfiable
+for any pre-fork artifact however intact it is. The harness drops to
+`{ verify: 'warn' }`, and `ContractConfiguration.zkConfigIntegrity` now exists to
+pass that through. **This is a consumer-facing question, not a harness one**: a
+retained-era dApp has no way to satisfy the default, and the migration guide
+should say what it should do instead.
 
 ### The wallet-sdk pin was the first blocker, and it is gone
 

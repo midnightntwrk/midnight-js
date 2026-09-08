@@ -40,15 +40,24 @@ const failures = [];
 
 let reported = false;
 
-/** Emits the result exactly once. */
-const report = () => {
+/**
+ * Emits the result exactly once and then exits.
+ *
+ * The exit has to wait for the write to reach the OS. stdout is a pipe here, so
+ * the stream write is asynchronous, and `process.exit` discards whatever is still
+ * queued -- past one chunk (8 KiB, measured) the report arrives truncated and
+ * without its newline, which the driver's line reader drops in silence. A report
+ * carrying stack traces is well past that, so the failure path is exactly the one
+ * that loses its account of itself.
+ */
+const report = (code) => {
   if (reported) {
-    return;
+    process.exit(code);
   }
   reported = true;
   // One line, deliberately: the driver reads this off stdout line by line, and a
   // pretty-printed object would arrive as many lines it cannot reassemble.
-  process.stdout.write(`AC0_RESULT ${JSON.stringify({ observed, failures })}\n`);
+  process.stdout.write(`AC0_RESULT ${JSON.stringify({ observed, failures })}\n`, () => process.exit(code));
 };
 
 // Without these the process can die between legs -- an unhandled rejection from a
@@ -57,8 +66,7 @@ const report = () => {
 for (const event of ['uncaughtException', 'unhandledRejection']) {
   process.on(event, (error) => {
     failures.push(`${event}: ${error instanceof Error ? error.message : String(error)}`);
-    report();
-    process.exit(1);
+    report(1);
   });
 }
 
@@ -92,6 +100,28 @@ const awaitFork = () =>
     });
     lines.on('close', () => (seen ? resolve() : reject(new Error('stdin closed before the fork was reported'))));
   });
+
+/**
+ * Waits until the indexer serves state for a freshly deployed contract.
+ *
+ * Submitting a deploy is not the same as the contract existing to be called: the
+ * transaction has to be included and indexed first. Without this the next leg
+ * fails with `No contract deployed at contract address ...`, which reads like a
+ * broken deploy rather than a race.
+ */
+const waitForContract = async (publicDataProvider, contractAddress, timeoutMs) => {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const state = await publicDataProvider.queryRawContractState(contractAddress).catch(() => null);
+    if (state !== null) {
+      return state;
+    }
+    if (Date.now() >= deadline) {
+      throw new Error(`the indexer never served state for ${contractAddress} after its deploy was submitted`);
+    }
+    await delay(2_000);
+  }
+};
 
 /** Polls the head until it reports `era`, so indexer lag is not read as a failure. */
 const waitForHead = async (publicDataProvider, era, timeoutMs) => {
@@ -127,13 +157,25 @@ const buildProviders = async (era, testkit, logger) => {
     wallet,
     providers: testkit.initializeMidnightProviders(wallet, environment, {
       zkConfigPath: config.retainedZkConfigPath,
-      privateStateStoreName: `ac0-${era}`
+      privateStateStoreName: `ac0-${era}`,
+      // The retained toolchain emits no `compiler/contract-manifest.json` --
+      // `compactc` 0.31.1 predates it -- and integrity verification reads exactly
+      // that file. `require` is therefore unsatisfiable for ANY pre-fork artifact,
+      // however intact it is, so this drops to `warn` rather than pretending the
+      // artifacts are unverifiable for some fixable reason.
+      zkConfigIntegrity: { verify: 'warn' }
     })
   };
 };
 
 const testkit = await import('@midnight-ntwrk/testkit-js');
 const logger = testkit.createLogger(config.logPath);
+
+// The dApp is its own process, so it configures its own network id -- the driver
+// setting one says nothing here. Taken off the barrel rather than by adding a
+// dependency on `network-id`, which is what a consumer would reach for too.
+const { networkId } = await import('@midnight-ntwrk/midnight-js');
+networkId.setNetworkId(config.environment.networkId);
 
 let session = await buildProviders('v8', testkit, logger);
 let deployment;
@@ -179,18 +221,22 @@ await leg('pre-fork retained deploy', async () => {
   const txId = await midnightProvider.submitTx(balanced);
 
   deployment = { contractAddress: composed.contractAddress, privateState: constructed.privateState };
-  return { txId, contractAddress: composed.contractAddress };
+  const state = await waitForContract(session.providers.publicDataProvider, composed.contractAddress, 5 * 60_000);
+  return { txId, contractAddress: composed.contractAddress, indexedAs: state.version };
 });
 
 // (a) continued: a CALL through the unified entry, which is the reachable half.
 await leg('pre-fork retained call', async () => {
   const { Contract } = await import('@midnight-ntwrk/ac0-contract-retained');
   const submitted = await submitCallTx(session.providers, {
-    contract: new Contract({}),
+    // `compiledContract`, not `contract`: the retained era has no CompiledContract
+    // container, so the instance is passed raw. And a nullary circuit's options
+    // carry no `args` at all -- `Ledger8CallTxOptionsBase` collapses to the target
+    // when the parameter list is empty. Both were wrong here and neither was
+    // caught, because this file is .mjs and never sees `tsc`.
+    compiledContract: new Contract({}),
     contractAddress: deployment.contractAddress,
-    circuitId: CIRCUIT_ID,
-    args: [],
-    privateState: deployment.privateState
+    circuitId: CIRCUIT_ID
   });
   return { txId: submitted.txId };
 });
@@ -211,11 +257,14 @@ await leg('post-fork head era', async () => {
 await leg('post-fork keep-state call through the same call site', async () => {
   const { Contract } = await import('@midnight-ntwrk/ac0-contract-retained');
   const submitted = await submitCallTx(session.providers, {
-    contract: new Contract({}),
+    // `compiledContract`, not `contract`: the retained era has no CompiledContract
+    // container, so the instance is passed raw. And a nullary circuit's options
+    // carry no `args` at all -- `Ledger8CallTxOptionsBase` collapses to the target
+    // when the parameter list is empty. Both were wrong here and neither was
+    // caught, because this file is .mjs and never sees `tsc`.
+    compiledContract: new Contract({}),
     contractAddress: deployment.contractAddress,
-    circuitId: CIRCUIT_ID,
-    args: [],
-    privateState: deployment.privateState
+    circuitId: CIRCUIT_ID
   });
   return { txId: submitted.txId };
 });
@@ -231,5 +280,4 @@ await leg('reads its own pre-fork history', async () => {
 });
 
 await session.wallet?.stop().catch(() => undefined);
-report();
-process.exit(failures.length === 0 ? 0 : 1);
+report(failures.length === 0 ? 0 : 1);

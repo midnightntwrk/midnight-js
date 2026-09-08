@@ -104,9 +104,13 @@ const runScenario = (cwd, linker, environment, contractDir, enactFork) =>
     });
 
     child.on('error', reject);
-    child.on('close', (code) => {
+    child.on('close', (code, signal) => {
       if (result === undefined) {
-        reject(new Error(`the dApp exited (${code}) without reporting a result`));
+        // `buffered` holds whatever arrived without a closing newline. A report
+        // that reached the driver only in part is a different failure from one
+        // that was never emitted, and only this says which happened.
+        const partial = buffered === '' ? '' : `; ${buffered.length} bytes arrived unterminated: ${buffered.slice(0, 200)}`;
+        reject(new Error(`the dApp exited (code=${code}, signal=${signal}) without reporting a result${partial}`));
         return;
       }
       resolve({ code, result: JSON.parse(result) });
