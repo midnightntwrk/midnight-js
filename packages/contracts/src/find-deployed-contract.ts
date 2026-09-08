@@ -311,24 +311,9 @@ export async function findDeployedContract<C extends Contract.Any>(
     const found = await findLedger8Contract(providers, {
       contract: options.compiledContract,
       contractAddress: options.contractAddress,
-      // EVERY circuit the artifact declares is checked, not just one the caller
-      // names, and that choice is stated here because it has a cost. It matches
-      // the current era, whose `verifyContractState` checks every provable
-      // circuit id the artifact exposes: attaching is the point at which a
-      // wrong artifact should be caught, and a mismatch on any entry point
-      // means this is not the artifact on chain.
-      //
-      // THE COST: a contract that had a verifier key REMOVED by a maintenance
-      // update can no longer be attached to at all, because the removed slot
-      // now reads as never-deployed. That is not a retained-era quirk -- the
-      // current era refuses the same contract for the same reason -- so the two
-      // eras behave alike, which is what makes it the right default here. A
-      // caller that must attach to such a contract needs a narrower check, and
-      // that would be a change to both eras rather than to this arm alone.
-      //
-      // The names come off the ARTIFACT rather than off the state, so a circuit
-      // the caller can call but the chain never registered is reported as a
-      // blank slot rather than silently skipped.
+      // EVERY circuit the artifact declares, off the ARTIFACT rather than off
+      // the state -- see the attach section of `docs/keep-state-pipeline.md` for
+      // what this costs and why both eras pay it.
       circuitIds: Object.keys(options.compiledContract.impureCircuits)
     });
     return {

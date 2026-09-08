@@ -88,13 +88,13 @@ const V8_HEAD = 1_000_000;
 const V9_HEAD = 2_000_000;
 
 describe('pipelineEraOf: which execution pipeline an artifact belongs to', () => {
-  it('routes the current-era CompiledContract container to the v9-native pipeline', () => {
+  it('routes the current-era CompiledContract container to the ledger9 pipeline', () => {
     // Arrange: the container this repo's own mocks build, which is what every current-era
     // caller passes.
     const container = createMockCompiledContract();
 
     // Act + Assert
-    expect(pipelineEraOf(container)).toBe<PipelineEra>('v9native');
+    expect(pipelineEraOf(container)).toBe<PipelineEra>('ledger9');
   });
 
   it('routes an object with the retained-era shape to the retained-era pipeline', () => {
@@ -205,7 +205,7 @@ describe('pipelineEraOf: which execution pipeline an artifact belongs to', () =>
     // `pipe` is dropped by the same spread, which is the vendor half of the same defect.
     expect('pipe' in container).toBe(false);
     // And the predicate still places it correctly, because it does not consult the brand.
-    expect(pipelineEraOf(container)).toBe<PipelineEra>('v9native');
+    expect(pipelineEraOf(container)).toBe<PipelineEra>('ledger9');
   });
 });
 
@@ -222,11 +222,11 @@ const cellKey = ({ pipeline, head, kind }: DispatchCell): string => `${pipeline}
 
 // Every cell the dispatch accepts, and which pipeline it routes to.
 const ACCEPTED_CELLS: readonly (DispatchCell & { readonly route: string })[] = [
-  { artifact: 'current-era (0.18)', pipeline: 'v9native', head: 'v9', kind: 'call', route: 'v9-native' },
-  { artifact: 'current-era (0.18)', pipeline: 'v9native', head: 'v9', kind: 'deploy', route: 'v9-native' },
+  { artifact: 'current-era (0.18)', pipeline: 'ledger9', head: 'v9', kind: 'call', route: 'ledger9' },
+  { artifact: 'current-era (0.18)', pipeline: 'ledger9', head: 'v9', kind: 'deploy', route: 'ledger9' },
   { artifact: 'retained-era (0.16)', pipeline: 'ledger8', head: 'v9', kind: 'call', route: 'keep-state' },
-  { artifact: 'retained-era (0.16)', pipeline: 'ledger8', head: 'v8', kind: 'call', route: 'v8-native' },
-  { artifact: 'retained-era (0.16)', pipeline: 'ledger8', head: 'v8', kind: 'deploy', route: 'v8-native' }
+  { artifact: 'retained-era (0.16)', pipeline: 'ledger8', head: 'v8', kind: 'call', route: 'ledger8' },
+  { artifact: 'retained-era (0.16)', pipeline: 'ledger8', head: 'v8', kind: 'deploy', route: 'ledger8' }
 ];
 
 // Every cell it refuses, with the class and the registered code each refusal must carry.
@@ -236,7 +236,7 @@ const REFUSED_CELLS: readonly (DispatchCell & {
 })[] = [
   {
     artifact: 'current-era (0.18)',
-    pipeline: 'v9native',
+    pipeline: 'ledger9',
     head: 'v8',
     kind: 'call',
     errorClass: EraArtifactMismatchError,
@@ -244,7 +244,7 @@ const REFUSED_CELLS: readonly (DispatchCell & {
   },
   {
     artifact: 'current-era (0.18)',
-    pipeline: 'v9native',
+    pipeline: 'ledger9',
     head: 'v8',
     kind: 'deploy',
     errorClass: EraArtifactMismatchError,
@@ -280,10 +280,10 @@ describe('the era dispatch table: artifact era x network head era x operation ki
   it('covers every artifact-era x head-era x kind cell, so no cell is silently unruled', () => {
     // Strictness gate on the table itself. `assertEraCompatible` takes THREE arguments and rules
     // differently on `kind`, so the cross product has to include it -- omitting it left
-    // `v9native/v9/deploy`, the most common post-fork operation there is, untested while this gate
+    // `ledger9/v9/deploy`, the most common post-fork operation there is, untested while this gate
     // claimed completeness.
     const covered = [...ACCEPTED_CELLS.map(cellKey), ...REFUSED_CELLS.map(cellKey)];
-    const pipelines: readonly PipelineEra[] = ['ledger8', 'v9native'];
+    const pipelines: readonly PipelineEra[] = ['ledger8', 'ledger9'];
     const heads: readonly LedgerVersion[] = ['v8', 'v9'];
     const kinds: readonly OperationKind[] = ['call', 'deploy'];
     const wholeCrossProduct = pipelines.flatMap((pipeline) =>
@@ -297,7 +297,7 @@ describe('the era dispatch table: artifact era x network head era x operation ki
 
   it('names the reason on a current-era artifact refused by a pre-fork head', () => {
     try {
-      assertEraCompatible('v9native', 'v8', 'call');
+      assertEraCompatible('ledger9', 'v8', 'call');
       expect.unreachable('a current-era artifact was accepted on a pre-fork head');
     } catch (error) {
       expect(error).toBeInstanceOf(EraArtifactMismatchError);

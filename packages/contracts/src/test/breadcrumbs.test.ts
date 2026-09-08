@@ -121,7 +121,7 @@ const ALL_PROVENANCES: Record<HeadReadingProvenance, HeadReadingProvenance> = {
 
 const ALL_PIPELINES: Record<PipelineEra, PipelineEra> = {
   ledger8: 'ledger8',
-  v9native: 'v9native'
+  ledger9: 'ledger9'
 };
 
 type DebugSpy = Mock<(breadcrumb: DispatchBreadcrumb, message: string) => void>;
@@ -292,7 +292,7 @@ describe('the breadcrumb emitters', () => {
     // The logger provider is OPTIONAL on every provider set, so this is the
     // ordinary case and must not be a throw.
     expect(() => emitHeadResolution(undefined, { head: 'v9', headProtocolVersion: V9_HEAD }, 'operation-start')).not.toThrow();
-    expect(() => emitPipelineSelection(undefined, { head: 'v9', headProtocolVersion: V9_HEAD }, 'v9native')).not.toThrow();
+    expect(() => emitPipelineSelection(undefined, { head: 'v9', headProtocolVersion: V9_HEAD }, 'ledger9')).not.toThrow();
     expect(() => emitEncoding(undefined, 'v9')).not.toThrow();
   });
 
