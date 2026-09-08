@@ -319,7 +319,7 @@ interface CompactRuntimeLike {
 
 /**
  * The CURRENT runtime, by its own types — which are the right ones for it,
- * since this repo resolves `@midnight-ntwrk/compact-runtime` to 0.19.0-rc.0.
+ * since this repo resolves `@midnight-ntwrk/compact-runtime` to 0.19.0.
  * The retained arm cannot use them (its VALUE is the 0.16 glue while these
  * types are 0.19's), which is why {@link CompactRuntimeLike} above spells out
  * by hand the few members that exist, and agree, on both sides.
@@ -349,13 +349,13 @@ describe('private state across the ledger v8 to v9 fork window', () => {
    *
    * The retained build's own bare `@midnight-ntwrk/compact-runtime` import has
    * to reach a real 0.16 instance, which this repo does not resolve that
-   * specifier to — it pins 0.19.0-rc.0, and the build's
+   * specifier to — it pins 0.19.0, and the build's
    * `checkRuntimeVersion('0.16.0')` guard refuses it. `compact-runtime-ledger8`
    * IS that 0.16 instance, installed under an npm alias so the two can coexist;
    * redirecting the specifier is the same move `v8-execute.test.ts` makes.
    *
    * The redirect then has to be LIFTED, because the twin needs the very
-   * 0.19.0-rc.0 the repo does resolve. `vi.doMock` rather than `vi.mock` so the
+   * 0.19.0 the repo does resolve. `vi.doMock` rather than `vi.mock` so the
    * redirect is not hoisted over the whole file, and both modules are pulled in
    * here so no test has to care which redirect is in force when it runs.
    *

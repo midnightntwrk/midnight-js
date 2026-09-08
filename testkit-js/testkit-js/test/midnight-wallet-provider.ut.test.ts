@@ -13,15 +13,9 @@
  * limitations under the License.
  */
 
-import type {
-  CoinPublicKey,
-  DustSecretKey,
-  EncPublicKey,
-  FinalizedTransaction,
-  TransactionId,
-  ZswapSecretKeys
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { DustSecretKey, type TransactionId, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  type UnboundTransaction,
   UntaggedPayloadError,
   V8PayloadUnsupportedError,
   type VersionedFinalizedTransaction,
@@ -30,20 +24,35 @@ import {
 import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import type {
   BalancingRecipe,
-  UnboundTransaction,
+  ProtocolVersion,
   UnboundTransactionRecipe,
   UnshieldedKeystore,
   WalletFacade
 } from '@midnightntwrk/wallet-sdk';
 import { pino } from 'pino';
+import * as Rx from 'rxjs';
 
 import type { EnvironmentConfiguration } from '../src/test-environment/environment-configuration';
 import { MidnightWalletProvider } from '../src/wallet/midnight-wallet-provider';
+import { FORK_SCHEDULE } from '../src/wallet/wallet-configuration-mapper';
+import { WalletSeeds } from '../src/wallet/wallet-seed';
+import { adoptFinalized, adoptUnbound } from '../src/wallet/wallet-transaction';
+
+// The version the v9 arm runs at. A handle only unwraps within the epoch it was
+// authored in, so the stub and the assertions have to agree on one version.
+const CURRENT_VERSION = FORK_SCHEDULE.v9;
+
+const walletAt = (activeProtocolVersion: ProtocolVersion.ProtocolVersion): Pick<WalletFacade, 'state'> =>
+  ({ state: () => Rx.of({ activeProtocolVersion }) }) as Pick<WalletFacade, 'state'>;
 
 // The payload is rejected before the wallet is touched, so the facade only
 // needs the methods this suite asserts are never reached. A single
 // `Partial<WalletFacade> as WalletFacade` step rather than a double assertion
 // through `Pick`, which is the same escape hatch as `as unknown as`.
+//
+// Deliberately WITHOUT `state`: the refusal happens in the adapter, above the
+// wallet, so a stub that cannot answer a version question is the sharper fixture
+// -- reaching the wallet at all would fail here rather than pass quietly.
 const createWalletStub = (): WalletFacade => {
   const stub: Partial<WalletFacade> = {
     balanceUnboundTransaction: vi.fn(),
@@ -62,22 +71,25 @@ interface BalancingWallet {
   readonly wallet: WalletFacade;
   readonly recipe: UnboundTransactionRecipe;
   readonly signedRecipe: BalancingRecipe;
-  readonly finalized: FinalizedTransaction;
+  readonly finalized: { readonly serialize: () => Uint8Array };
 }
 
-// The wallet's balancing path is three calls deep — balance, sign, finalize —
+// The wallet's balancing path is three calls deep -- balance, sign, finalize --
 // and each stage's output has to reach the next one. The recipes it hands back
 // are opaque markers: this suite asserts the wiring across the seam, not the
-// wallet SDK's own types.
-const createBalancingWallet = (): BalancingWallet => {
+// wallet SDK's own types. The finalized stage is the exception: the seam unwraps
+// what `finalizeRecipe` returns, so that one has to be a real handle.
+const createBalancingWallet = async (): Promise<BalancingWallet> => {
   const recipe = {} as UnboundTransactionRecipe;
   const signedRecipe = {} as BalancingRecipe;
-  const finalized = {} as FinalizedTransaction;
+  const finalized = { serialize: () => new Uint8Array([7, 7, 7]) };
+  const finalizedHandle = await adoptFinalized(walletAt(CURRENT_VERSION), finalized as never);
   const stub: Partial<WalletFacade> = {
     balanceUnboundTransaction: vi.fn(async () => recipe),
     signRecipe: vi.fn(async () => signedRecipe),
-    finalizeRecipe: vi.fn(async () => finalized),
-    submitTransaction: vi.fn(async () => TRANSACTION_ID)
+    finalizeRecipe: vi.fn(async () => finalizedHandle),
+    submitTransaction: vi.fn(async () => TRANSACTION_ID),
+    state: walletAt(CURRENT_VERSION).state
   };
   return { wallet: stub as WalletFacade, recipe, signedRecipe, finalized };
 };
@@ -89,25 +101,11 @@ const createKeystoreStub = (): UnshieldedKeystore => {
   return stub as UnshieldedKeystore;
 };
 
-const COIN_PUBLIC_KEY = 'coin-pk' as CoinPublicKey;
-const ENCRYPTION_PUBLIC_KEY = 'enc-pk' as EncPublicKey;
-
-// Only the two members the key readers project. Distinct values, so a reader
-// wired to the wrong one fails instead of matching by coincidence.
-const createSecretKeysStub = (): ZswapSecretKeys => {
-  const stub: Partial<ZswapSecretKeys> = {
-    coinPublicKey: COIN_PUBLIC_KEY,
-    encryptionPublicKey: ENCRYPTION_PUBLIC_KEY
-  };
-  return stub as ZswapSecretKeys;
-};
-
-// Shared rather than built per call, so the balancing path can be asserted by
-// identity. Both are opaque to the wallet seam -- it takes them as one bag --
-// so reference equality is the only thing that distinguishes them from each
-// other, and a swap is exactly the regression worth catching here.
-const SECRET_KEYS = createSecretKeysStub();
-const DUST_SECRET_KEY = {} as DustSecretKey;
+// Real seeds rather than stubs: wallet-sdk 2.0.0-beta.3 takes the seed set and
+// derives the shielded and dust secret keys itself, so the constructor runs
+// `fromSeed` on whatever is passed here. Shared, so a test can derive the same
+// keys independently and compare.
+const SEEDS = WalletSeeds.testWallet();
 
 // A real pino logger rather than `{}`: `withWallet` only stores it today, but a
 // stub that is not a logger turns any future log call in this path into an
@@ -120,8 +118,7 @@ const createProvider = async (
     pino({ enabled: false }),
     {} as EnvironmentConfiguration,
     wallet,
-    SECRET_KEYS,
-    DUST_SECRET_KEY,
+    SEEDS,
     unshieldedKeystore
   );
 
@@ -162,19 +159,23 @@ describe('MidnightWalletProvider', () => {
   });
 
   describe('balanceTx with a v9 payload', () => {
-    it('hands the wallet the bare unbound transaction and tags the finalized result as the v9 arm', async () => {
-      const { wallet, recipe, signedRecipe, finalized } = createBalancingWallet();
+    it("adopts the transaction at the chain's active version and tags the finalized result as the v9 arm", async () => {
+      const { wallet, recipe, signedRecipe, finalized } = await createBalancingWallet();
       const provider = await createProvider(wallet);
-      const unbound = {} as UnboundTransaction;
+      const unbound = { serialize: () => new Uint8Array([1]) };
 
-      const balanced = await provider.balanceTx({ version: 'v9', tx: unbound });
+      const balanced = await provider.balanceTx({ version: 'v9', tx: unbound as never });
 
-      // Identity throughout, never structural equality: every marker in this
-      // suite is an opaque object, so `toHaveBeenCalledWith` would not tell one
-      // stage's output from another's. The first assertion is the seam's own
-      // property: the wallet is handed the bare ledger object, never the
-      // version-tagged wrapper.
-      expect(vi.mocked(wallet.balanceUnboundTransaction).mock.calls[0][0]).toBe(unbound);
+      // Structural equality against an independently adopted handle, which pins
+      // three things at once: the wallet is handed a handle rather than the
+      // version-tagged wrapper, the handle carries the transaction the caller
+      // passed, and it is stamped at the version the chain is actually at.
+      expect(vi.mocked(wallet.balanceUnboundTransaction).mock.calls[0][0]).toEqual(
+        await adoptUnbound(walletAt(CURRENT_VERSION), unbound as never)
+      );
+      // Identity for the rest, never structural equality: the recipes are opaque
+      // markers, so `toHaveBeenCalledWith` would not tell one stage's output from
+      // another's.
       expect(vi.mocked(wallet.signRecipe).mock.calls[0][0]).toBe(recipe);
       expect(vi.mocked(wallet.finalizeRecipe).mock.calls[0][0]).toBe(signedRecipe);
       expect(balanced.version).toBe('v9');
@@ -182,7 +183,7 @@ describe('MidnightWalletProvider', () => {
     });
 
     it('signs the recipe through the unshielded keystore it was built with', async () => {
-      const { wallet } = createBalancingWallet();
+      const { wallet } = await createBalancingWallet();
       const keystore = createKeystoreStub();
       const provider = await createProvider(wallet, keystore);
       const payload = new Uint8Array([9, 9, 9]);
@@ -194,41 +195,43 @@ describe('MidnightWalletProvider', () => {
       expect(keystore.signDataAsync).toHaveBeenCalledWith(payload);
     });
 
-    it('hands the wallet the shielded and dust secret keys it was built with', async () => {
-      const { wallet } = createBalancingWallet();
-      const provider = await createProvider(wallet);
-
-      await provider.balanceTx({ version: 'v9', tx: {} as UnboundTransaction });
-
-      // Each member separately, by identity. The wallet takes both in one bag
-      // and this seam never looks inside either, so a refactor that swapped them
-      // -- or passed one where the other belongs -- satisfies every other
-      // assertion in this file. This argument is what the adapter change moved.
-      const keys = vi.mocked(wallet.balanceUnboundTransaction).mock.calls[0][1];
-      expect(keys.shieldedSecretKeys).toBe(SECRET_KEYS);
-      expect(keys.dustSecretKey).toBe(DUST_SECRET_KEY);
-    });
-
     it('forwards the ttl the caller supplied', async () => {
-      const { wallet } = createBalancingWallet();
+      const { wallet } = await createBalancingWallet();
       const provider = await createProvider(wallet);
       const ttl = new Date(0);
 
       await provider.balanceTx({ version: 'v9', tx: {} as UnboundTransaction }, ttl);
 
-      expect(vi.mocked(wallet.balanceUnboundTransaction).mock.calls[0][2].ttl).toBe(ttl);
+      expect(vi.mocked(wallet.balanceUnboundTransaction).mock.calls[0][1].ttl).toBe(ttl);
     });
 
     it('defaults the ttl to one hour ahead when the caller supplies none', async () => {
-      const { wallet } = createBalancingWallet();
+      const { wallet } = await createBalancingWallet();
       const provider = await createProvider(wallet);
       const before = Date.now();
 
       await provider.balanceTx({ version: 'v9', tx: {} as UnboundTransaction });
 
-      const { ttl } = vi.mocked(wallet.balanceUnboundTransaction).mock.calls[0][2];
+      const { ttl } = vi.mocked(wallet.balanceUnboundTransaction).mock.calls[0][1];
       expect(ttl.getTime()).toBeGreaterThanOrEqual(before + ONE_HOUR_MS);
       expect(ttl.getTime()).toBeLessThanOrEqual(Date.now() + ONE_HOUR_MS);
+    });
+  });
+
+  // The wallet SDK takes the seed set and derives both key sets itself, so the
+  // swap the class can still get wrong is which seed member feeds which
+  // derivation. Each is asserted against its own seed AND against the other's,
+  // because the two derivations accept the same argument type. This is what the
+  // secret-key argument used to pin, before beta.3 stopped carrying it across
+  // `balanceUnboundTransaction`.
+  describe('the secret keys it derives', () => {
+    it('derives the shielded keys from the shielded seed and the dust key from the dust seed', async () => {
+      const provider = await createProvider((await createBalancingWallet()).wallet);
+
+      expect(provider.zswapSecretKeys.coinPublicKey).toBe(ZswapSecretKeys.fromSeed(SEEDS.shielded).coinPublicKey);
+      expect(provider.zswapSecretKeys.coinPublicKey).not.toBe(ZswapSecretKeys.fromSeed(SEEDS.dust).coinPublicKey);
+      expect(provider.dustSecretKey.publicKey).toBe(DustSecretKey.fromSeed(SEEDS.dust).publicKey);
+      expect(provider.dustSecretKey.publicKey).not.toBe(DustSecretKey.fromSeed(SEEDS.shielded).publicKey);
     });
   });
 
@@ -237,22 +240,25 @@ describe('MidnightWalletProvider', () => {
   // member the class never calls. That makes these two worth pinning: nothing
   // else exercises them, and the delegation is only justified while it works.
   describe('the key readers', () => {
-    it('project the wallet\'s own coin and encryption public keys', async () => {
-      const provider = await createProvider(createBalancingWallet().wallet);
+    it("project the shielded keys derived from the wallet's own seed", async () => {
+      const provider = await createProvider((await createBalancingWallet()).wallet);
+      const shielded = ZswapSecretKeys.fromSeed(SEEDS.shielded);
 
-      expect(provider.getCoinPublicKey()).toBe(COIN_PUBLIC_KEY);
-      expect(provider.getEncryptionPublicKey()).toBe(ENCRYPTION_PUBLIC_KEY);
+      expect(provider.getCoinPublicKey()).toBe(shielded.coinPublicKey);
+      expect(provider.getEncryptionPublicKey()).toBe(shielded.encryptionPublicKey);
     });
   });
 
   describe('submitTx with a v9 payload', () => {
-    it('hands the wallet the bare finalized transaction and returns its transaction id', async () => {
-      const { wallet, finalized } = createBalancingWallet();
+    it('hands the wallet the adopted finalized transaction and returns its transaction id', async () => {
+      const { wallet, finalized } = await createBalancingWallet();
       const provider = await createProvider(wallet);
 
-      const submitted = await provider.submitTx({ version: 'v9', tx: finalized });
+      const submitted = await provider.submitTx({ version: 'v9', tx: finalized as never });
 
-      expect(vi.mocked(wallet.submitTransaction).mock.calls[0][0]).toBe(finalized);
+      expect(vi.mocked(wallet.submitTransaction).mock.calls[0][0]).toEqual(
+        await adoptFinalized(walletAt(CURRENT_VERSION), finalized as never)
+      );
       expect(submitted).toBe(TRANSACTION_ID);
     });
   });
