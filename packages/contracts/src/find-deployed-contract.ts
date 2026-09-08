@@ -112,24 +112,45 @@ export const verifierKeysEqual = (a: Uint8Array, b: Uint8Array): boolean =>
 /**
  * Checks that the given `contractState` contains the given `verifierKeys`.
  *
- * A circuit counts as mismatched when the state registers no operation for it, when the registered
+ * A circuit fails the check when the state registers no operation for it, when the registered
  * operation carries no verifier key at all, or when the deployed key differs from the local one.
+ * The three are reported separately on the thrown error, because only the last one means the local
+ * artifacts are at fault.
  *
  * @param verifierKeys The verifier keys the client has for the deployed contract we're checking.
  * @param contractState The (typically already deployed) contract state containing verifier keys.
+ * @param contractAddress The address `contractState` was read from, used to identify the contract
+ *                        in the thrown error.
  *
- * @throws ContractTypeError When one or more of the local and deployed verifier keys do not match.
+ * @throws ContractTypeError When any circuit is missing from `contractState`, has no deployed
+ *                           verifier key, or has a key differing from the local one.
  */
 export const verifyContractState = (
   verifierKeys: [AnyProvableCircuitId, VerifierKey][],
-  contractState: ContractState
+  contractState: ContractState,
+  contractAddress?: ContractAddress
 ): void => {
-  const mismatchedCircuitIds = verifierKeys.reduce((acc, [circuitId, localVk]) => {
-    const deployedVk = contractState.operation(circuitId)?.verifierKey;
-    return deployedVk === undefined || !verifierKeysEqual(localVk, deployedVk) ? [...acc, circuitId] : acc;
-  }, [] as string[]);
-  if (mismatchedCircuitIds.length > 0) {
-    throw new ContractTypeError(contractState, mismatchedCircuitIds);
+  const missing: AnyProvableCircuitId[] = [];
+  const keyless: AnyProvableCircuitId[] = [];
+  const mismatched: AnyProvableCircuitId[] = [];
+  for (const [circuitId, localVk] of verifierKeys) {
+    const operation = contractState.operation(circuitId);
+    if (operation === undefined) {
+      missing.push(circuitId);
+      continue;
+    }
+    // Widened on purpose. The runtime declares 'verifierKey' as a non-optional 'Uint8Array', but a
+    // registered operation can carry none, so the guard below is unreachable to the type checker
+    // and load-bearing at runtime.
+    const deployedVk: Uint8Array | undefined = operation.verifierKey;
+    if (deployedVk === undefined) {
+      keyless.push(circuitId);
+    } else if (!verifierKeysEqual(localVk, deployedVk)) {
+      mismatched.push(circuitId);
+    }
+  }
+  if (missing.length > 0 || keyless.length > 0 || mismatched.length > 0) {
+    throw new ContractTypeError(contractState, { missing, keyless, mismatched }, contractAddress);
   }
 };
 
@@ -248,7 +269,8 @@ export async function findDeployedContract<C extends Contract.Any>(
  * @throws Error No contract state could be found at `contractAddress`.
  * @throws TypeError Thrown if `contractAddress` is not correctly formatted as a contract address.
  * @throws ContractTypeError One or more circuits defined on `contract` are undefined on the contract
- *                           state found at `contractAddress`, or have mis-matched verifier keys.
+ *                           state found at `contractAddress`, carry no deployed verifier key, or
+ *                           have mis-matched verifier keys.
  * @throws IncompleteFindContractPrivateStateConfig If an `initialPrivateState` is given but no
  *                                                  `privateStateId` is given to store it under.
  */
@@ -271,7 +293,7 @@ export async function findDeployedContract<C extends Contract.Any>(
   const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
     ContractExecutable.make(compiledContract).getProvableCircuitIds()
   );
-  verifyContractState(verifierKeys, currentContractState);
+  verifyContractState(verifierKeys, currentContractState, contractAddress);
 
   const signingKey = await setOrGetInitialSigningKey(providers.privateStateProvider, options);
   const initialPrivateState = await setOrGetInitialPrivateState(providers.privateStateProvider, options);
