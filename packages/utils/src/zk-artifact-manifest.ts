@@ -24,14 +24,24 @@ export const ZK_MANIFEST_FILE_NAME = 'contract-manifest.json';
 const SUPPORTED_MANIFEST_VERSION = '1';
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 
-/** How a provider reacts to a missing manifest. A digest mismatch always throws (except `off`). */
-export type ZkArtifactIntegrityMode = 'require' | 'warn' | 'off';
+/**
+ * How a provider reacts to a manifest that does not cover an artifact. A digest mismatch always
+ * throws (except `off`).
+ *
+ * - `require`: both a wholly absent manifest and a manifest without an entry for the artifact throw.
+ * - `require-if-present`: a wholly absent manifest warns; a manifest that exists must cover the
+ *   artifact, so a missing entry throws. `compactc` only began emitting the manifest in 0.33, so
+ *   this is the mode for artifacts compiled by a toolchain that never produced one.
+ * - `warn`: both cases warn.
+ * - `off`: no verification at all.
+ */
+export type ZkArtifactIntegrityMode = 'require' | 'require-if-present' | 'warn' | 'off';
 
 /** Integrity options shared by both ZK config providers' constructor option bags. */
 export interface ZkConfigIntegrityOptions {
   /**
    * Default `'require'` (fail-closed). Trust boundary: without {@link expectedManifestHash} the
-   * manifest is loaded from the same base location as the artifacts, so `require`/`warn` detect
+   * manifest is loaded from the same base location as the artifacts, so every verifying mode detects
    * corruption (partial deploy, truncation, a stale or wrong artifact set) but NOT an adversary who
    * can rewrite both the artifacts and the co-located manifest. Set {@link expectedManifestHash} to
    * defend against that coordinated substitution.
@@ -153,7 +163,9 @@ const defaultOnWarn = (message: string): void => {
 /**
  * Verifies one artifact's bytes against the manifest entry for `relativePath`.
  * - `off`: no-op.
- * - missing manifest/entry: `require` throws, `warn` warns and returns.
+ * - no manifest at all: `require` throws, every other mode warns and returns.
+ * - manifest present but no entry for the artifact: `require` and `require-if-present` throw,
+ *   `warn` warns and returns.
  * - length or digest mismatch: always throws (except `off`). Length is checked first as a cheap
  *   pre-hash guard so a truncated artifact fails with a clear "expected N bytes" error.
  */
@@ -168,22 +180,35 @@ export function verifyZkArtifactIntegrity(params: {
   if (mode === 'off') {
     return;
   }
-  const entry = manifest?.files.get(relativePath);
-  if (entry === undefined) {
-    const reason =
-      manifest === undefined
-        ? `no ZK artifact manifest (${ZK_MANIFEST_DIR}/${ZK_MANIFEST_FILE_NAME}) was found`
-        : `ZK artifact manifest has no entry for "${relativePath}"`;
+  if (manifest === undefined) {
     if (mode === 'require') {
       throw new ZkArtifactIntegrityError(
-        `${reason}; integrity verification is required. Recompile with a manifest-emitting compactc, ` +
-          `or construct the provider with { verify: 'warn' } or { verify: 'off' } to opt out.`
+        `no ZK artifact manifest (${ZK_MANIFEST_DIR}/${ZK_MANIFEST_FILE_NAME}) was found; integrity ` +
+          `verification is required. Recompile with a manifest-emitting compactc, or construct the ` +
+          `provider with { verify: 'require-if-present' }, { verify: 'warn' } or { verify: 'off' } to ` +
+          `opt out.`
       );
     }
     (params.onWarn ?? defaultOnWarn)(
-      `midnight-js: ${reason}; skipping ZK artifact integrity verification for "${relativePath}"`
+      `midnight-js: no ZK artifact manifest (${ZK_MANIFEST_DIR}/${ZK_MANIFEST_FILE_NAME}) was found; ` +
+        `skipping ZK artifact integrity verification for "${relativePath}"`
     );
     return;
+  }
+  const entry = manifest.files.get(relativePath);
+  if (entry === undefined) {
+    if (mode === 'warn') {
+      (params.onWarn ?? defaultOnWarn)(
+        `midnight-js: ZK artifact manifest has no entry for "${relativePath}"; skipping ZK artifact ` +
+          `integrity verification for it`
+      );
+      return;
+    }
+    throw new ZkArtifactIntegrityError(
+      `ZK artifact manifest has no entry for "${relativePath}"; integrity verification is required. ` +
+        `The manifest does not certify this artifact, so the artifact set is stale or partial. ` +
+        `Construct the provider with { verify: 'warn' } or { verify: 'off' } to opt out.`
+    );
   }
   if (bytes.length !== entry.size) {
     throw new ZkArtifactIntegrityError(

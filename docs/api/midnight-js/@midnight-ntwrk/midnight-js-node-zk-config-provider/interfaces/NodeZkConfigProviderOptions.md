@@ -64,7 +64,7 @@ Warning sink for `warn` mode. Default: `console.warn`.
 > `readonly` `optional` **verify?**: [`ZkArtifactIntegrityMode`](../../midnight-js/utils/type-aliases/ZkArtifactIntegrityMode.md)
 
 Default `'require'` (fail-closed). Trust boundary: without [expectedManifestHash](../../midnight-js/utils/interfaces/ZkConfigIntegrityOptions.md#expectedmanifesthash) the
-manifest is loaded from the same base location as the artifacts, so `require`/`warn` detect
+manifest is loaded from the same base location as the artifacts, so every verifying mode detects
 corruption (partial deploy, truncation, a stale or wrong artifact set) but NOT an adversary who
 can rewrite both the artifacts and the co-located manifest. Set [expectedManifestHash](../../midnight-js/utils/interfaces/ZkConfigIntegrityOptions.md#expectedmanifesthash) to
 defend against that coordinated substitution.

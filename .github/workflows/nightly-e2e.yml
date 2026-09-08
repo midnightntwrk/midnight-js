@@ -16,6 +16,11 @@ on:
   workflow_dispatch:
 
 permissions:
+  # Required by `ci-testkit-js-build.yml`. A reusable workflow cannot be granted more
+  # than its caller holds, and asking for more aborts the whole run at startup with
+  # zero jobs -- which on a schedule is silent. `workflow-permissions.yml` holds
+  # this now, on every PR.
+  actions: read
   contents: read
   issues: read
   id-token: write
