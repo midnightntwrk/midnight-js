@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import type { DustSecretKey, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   UntaggedPayloadError,
   V8PayloadUnsupportedError,
@@ -26,6 +25,7 @@ import { pino } from 'pino';
 
 import type { EnvironmentConfiguration } from '../src/test-environment/environment-configuration';
 import { MidnightWalletProvider } from '../src/wallet/midnight-wallet-provider';
+import { WalletSeeds } from '../src/wallet/wallet-seed';
 
 // The payload is rejected before the wallet is touched, so the facade only
 // needs the methods this suite asserts are never reached. A single
@@ -47,8 +47,10 @@ const createProvider = async (wallet: WalletFacade): Promise<MidnightWalletProvi
     pino({ enabled: false }),
     {} as EnvironmentConfiguration,
     wallet,
-    {} as ZswapSecretKeys,
-    {} as DustSecretKey,
+    // Real seeds rather than stubs: wallet-sdk 2.0.0-beta.3 takes the seed set and
+    // derives the shielded and dust secret keys itself, so the constructor runs
+    // `fromSeed` on whatever is passed here.
+    WalletSeeds.testWallet(),
     {} as UnshieldedKeystore
   );
 
