@@ -10,7 +10,9 @@
 
 Verifies one artifact's bytes against the manifest entry for `relativePath`.
 - `off`: no-op.
-- missing manifest/entry: `require` throws, `warn` warns and returns.
+- no manifest at all: `require` throws, every other mode warns and returns.
+- manifest present but no entry for the artifact: `require` and `require-if-present` throw,
+  `warn` warns and returns.
 - length or digest mismatch: always throws (except `off`). Length is checked first as a cheap
   pre-hash guard so a truncated artifact fails with a clear "expected N bytes" error.
 

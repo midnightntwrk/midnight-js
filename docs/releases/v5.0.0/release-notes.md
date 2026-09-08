@@ -70,7 +70,7 @@ The testkit wallet stack moved to the 2.0.0 major beta line (`@midnightntwrk/wal
 
 ### ZK artifacts verified against the `compactc` integrity manifest (#1015)
 
-`FetchZkConfigProvider` and `NodeZkConfigProvider` now verify every ZK artifact they load against the `compactc`-emitted `contract-manifest.json` (in the `compiler/` directory). Verification is **fail-closed by default** (`verify: 'require'`): a missing manifest or a digest mismatch throws `ZkArtifactIntegrityError`. Opt down to `'warn'` or `'off'`, and pin `expectedManifestHash` (SHA-256 of the manifest bytes) to defend against a coordinated swap of both the artifacts and their co-located manifest. This is a breaking change for any deployment whose local artifacts are stale, partial, or missing the manifest. See [breaking-changes.md](./breaking-changes.md).
+`FetchZkConfigProvider` and `NodeZkConfigProvider` now verify every ZK artifact they load against the `compactc`-emitted `contract-manifest.json` (in the `compiler/` directory). Verification is **fail-closed by default** (`verify: 'require'`): a missing manifest or a digest mismatch throws `ZkArtifactIntegrityError`. Artifacts compiled before `compactc` 0.33 carry no manifest at all and cannot satisfy `require`; `'require-if-present'` is the mode for them — it tolerates a wholly absent manifest but still requires a manifest that does exist to cover the artifact. Opt further down to `'warn'` or `'off'`, and pin `expectedManifestHash` (SHA-256 of the manifest bytes) to defend against a coordinated swap of both the artifacts and their co-located manifest. This is a breaking change for any deployment whose local artifacts are stale, partial, or missing the manifest. See [breaking-changes.md](./breaking-changes.md).
 
 ## New Features
 
@@ -119,7 +119,7 @@ The indexer provider negotiates the `graphql-transport-ws+deflate` WebSocket sub
 
 ### ZK artifact integrity manifest module (#1015)
 
-A new `zk-artifact-manifest` module in `@midnight-ntwrk/midnight-js-utils` parses the `compactc` `contract-manifest.json`, exposing `ZkArtifactManifest`, `ZkConfigIntegrityOptions` (`verify`, `expectedManifestHash`, `onWarn`), `ZkArtifactIntegrityMode` (`'require' | 'warn' | 'off'`), and `ZkArtifactIntegrityError`. Both ZK config providers consume it (see Breaking Changes).
+A new `zk-artifact-manifest` module in `@midnight-ntwrk/midnight-js-utils` parses the `compactc` `contract-manifest.json`, exposing `ZkArtifactManifest`, `ZkConfigIntegrityOptions` (`verify`, `expectedManifestHash`, `onWarn`), `ZkArtifactIntegrityMode` (`'require' | 'require-if-present' | 'warn' | 'off'`), and `ZkArtifactIntegrityError`. Both ZK config providers consume it (see Breaking Changes).
 
 ### Disposable `IndexerPublicDataProvider` with structured config (#961)
 

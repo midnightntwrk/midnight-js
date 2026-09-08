@@ -238,7 +238,7 @@ const provider = new NodeZkConfigProvider(baseDir);
 
 // Explicit control via ZkConfigIntegrityOptions:
 const lenient = new NodeZkConfigProvider(baseDir, {
-  verify: 'warn',                        // 'require' (default) | 'warn' | 'off'
+  verify: 'require-if-present',          // 'require' (default) | 'require-if-present' | 'warn' | 'off'
   onWarn: (msg) => logger.warn(msg),     // default: console.warn
   expectedManifestHash: MANIFEST_SHA256, // pin to resist a coordinated artifact+manifest swap
 });

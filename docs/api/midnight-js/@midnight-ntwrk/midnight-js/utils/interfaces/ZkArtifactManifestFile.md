@@ -6,7 +6,7 @@
 
 # Interface: ZkArtifactManifestFile
 
-Defined in: packages/utils/dist/index.d.ts:448
+Defined in: packages/utils/dist/index.d.ts:458
 
 A single file entry from the manifest.
 
@@ -16,7 +16,7 @@ A single file entry from the manifest.
 
 > `readonly` **hash**: `string`
 
-Defined in: packages/utils/dist/index.d.ts:450
+Defined in: packages/utils/dist/index.d.ts:460
 
 ***
 
@@ -24,4 +24,4 @@ Defined in: packages/utils/dist/index.d.ts:450
 
 > `readonly` **size**: `number`
 
-Defined in: packages/utils/dist/index.d.ts:449
+Defined in: packages/utils/dist/index.d.ts:459
