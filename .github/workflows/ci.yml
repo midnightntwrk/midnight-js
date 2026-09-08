@@ -47,6 +47,8 @@ jobs:
           filters: |
             shared:
               - '.github/workflows/**'
+              - '.github/actions/**'
+              - '.github/scripts/**'
               - 'yarn.lock'
               - 'package.json'
             midnight-js:

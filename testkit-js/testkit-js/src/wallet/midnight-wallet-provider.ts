@@ -30,11 +30,12 @@ import {
   type WalletProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
-import { type UnshieldedKeystore, type WalletFacade } from '@midnightntwrk/wallet-sdk';
+import { type UnshieldedKeystore, type WalletFacade, type WalletSeeds } from '@midnightntwrk/wallet-sdk';
 import type { Logger } from 'pino';
 
 import { type EnvironmentConfiguration } from '../index';
 import { FluentWalletBuilder } from './fluent-wallet-builder';
+import { adoptFinalized, adoptUnbound, unwrapFinalized } from './wallet-transaction';
 import { getInitialShieldedState, waitForFunds } from './wallet-utils';
 
 /**
@@ -48,6 +49,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
   readonly unshieldedKeystore: UnshieldedKeystore;
   readonly zswapSecretKeys: ZswapSecretKeys;
   readonly dustSecretKey: DustSecretKey;
+  readonly seeds: WalletSeeds;
   // The version tag lives in the adapters, never in this class. The wallet
   // underneath is v9-only, so the two adapters fit it exactly: refusing a v8
   // payload is the right answer for a v9-only wallet, not a gap in it.
@@ -58,22 +60,24 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     logger: Logger,
     environmentConfiguration: EnvironmentConfiguration,
     wallet: WalletFacade,
-    zswapSecretKeys: ZswapSecretKeys,
-    dustSecretKey: DustSecretKey,
+    seeds: WalletSeeds,
     unshieldedKeystore: UnshieldedKeystore
   ) {
     this.logger = logger;
     this.env = environmentConfiguration;
     this.wallet = wallet;
-    this.zswapSecretKeys = zswapSecretKeys;
-    this.dustSecretKey = dustSecretKey;
+    this.seeds = seeds;
+    this.zswapSecretKeys = ZswapSecretKeys.fromSeed(seeds.shielded);
+    this.dustSecretKey = DustSecretKey.fromSeed(seeds.dust);
     this.unshieldedKeystore = unshieldedKeystore;
     this.walletProvider = createWalletProvider({
       balanceTx: (tx, ttl = ttlOneHour()) => this.balanceThroughWallet(tx, ttl),
       getCoinPublicKey: () => this.zswapSecretKeys.coinPublicKey,
       getEncryptionPublicKey: () => this.zswapSecretKeys.encryptionPublicKey
     });
-    this.midnightProvider = createMidnightProvider((tx) => this.wallet.submitTransaction(tx));
+    this.midnightProvider = createMidnightProvider(async (tx) =>
+      this.wallet.submitTransaction(await adoptFinalized(this.wallet, tx))
+    );
   }
 
   getCoinPublicKey(): CoinPublicKey {
@@ -92,20 +96,22 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     return this.midnightProvider.submitTx(tx);
   }
 
-  /** Balances, signs and finalizes one transaction through the v9-only wallet. */
+  /**
+   * Balances, signs and finalizes one transaction through the v9-only wallet.
+   *
+   * The adopt/unwrap pair is the wallet SDK's own version handling: it takes a
+   * transaction AT a protocol version and gives one back WITHIN an epoch, so a bare
+   * ledger object cannot cross either boundary.
+   */
   private async balanceThroughWallet(tx: UnboundTransaction, ttl: Date): Promise<FinalizedTransaction> {
-    const recipe = await this.wallet.balanceUnboundTransaction(
-      tx,
-      { shieldedSecretKeys: this.zswapSecretKeys, dustSecretKey: this.dustSecretKey },
-      { ttl }
-    );
+    const recipe = await this.wallet.balanceUnboundTransaction(await adoptUnbound(this.wallet, tx), { ttl });
     const signed = await this.wallet.signRecipe(recipe, (payload) => this.unshieldedKeystore.signDataAsync(payload));
-    return this.wallet.finalizeRecipe(signed);
+    return unwrapFinalized(await this.wallet.finalizeRecipe(signed));
   }
 
   async start(waitForFundsInWallet = true): Promise<void> {
     this.logger.info('Starting wallet...');
-    await this.wallet.start(this.zswapSecretKeys, this.dustSecretKey);
+    await this.wallet.start(this.seeds);
     if (waitForFundsInWallet) {
       const balance = await waitForFunds(this.wallet, this.env, true, this.unshieldedKeystore);
       this.logger.info(`Your wallet NIGHT balance is: ${balance}`);
@@ -131,24 +137,16 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
       `Your wallet seed is: ${seeds.masterSeed} and your address is: ${initialState.address.coinPublicKeyString()}`
     );
 
-    return new MidnightWalletProvider(
-      logger,
-      env,
-      wallet,
-      ZswapSecretKeys.fromSeed(seeds.shielded),
-      DustSecretKey.fromSeed(seeds.dust),
-      keystore
-    );
+    return new MidnightWalletProvider(logger, env, wallet, seeds, keystore);
   }
 
   static async withWallet(
     logger: Logger,
     env: EnvironmentConfiguration,
     wallet: WalletFacade,
-    zswapSecretKeys: ZswapSecretKeys,
-    dustSecretKey: DustSecretKey,
+    seeds: WalletSeeds,
     unshieldedKeystore: UnshieldedKeystore
   ): Promise<MidnightWalletProvider> {
-    return new MidnightWalletProvider(logger, env, wallet, zswapSecretKeys, dustSecretKey, unshieldedKeystore);
+    return new MidnightWalletProvider(logger, env, wallet, seeds, unshieldedKeystore);
   }
 }

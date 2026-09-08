@@ -64,6 +64,12 @@ jobs:
       - name: Typecheck tests
         run: yarn typecheck:tests:core
 
+      # `.github/scripts` is not a workspace, so `turbo run test` never reaches it.
+      # The gate these cover runs in `workflow-permissions.yml`, which deliberately
+      # skips the workspace install and so cannot run vitest itself.
+      - name: Test workflow scripts
+        run: yarn test:workflow-scripts
+
       - name: Run tests
         run: |
           yarn test ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo

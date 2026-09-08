@@ -30,11 +30,6 @@ import { emptyPartitionContext, emptyZswapLocalState, V8_UNPROVEN_TX_TAG } from 
 const NETWORK_ID = 'test-network';
 const TTL = new Date(Date.now() + 3_600_000);
 
-// The exact tag `Transaction.serialize()` emits for an unproven
-// (SignatureEnabled/PreProof/PreBinding) transaction — derived empirically by
-// serializing an unproven transaction against the pinned
-// `@midnightntwrk/ledger-v8@8.1.1` build, not guessed.
-
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT });
 const buildState = (byte: number): DownConvertedState => ({ data: new ocrt3.ChargedState(ocrt3.StateValue.newCell(fieldValue(byte))) });

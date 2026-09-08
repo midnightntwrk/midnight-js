@@ -13,7 +13,14 @@
  * limitations under the License.
  */
 
-import { createKeystore, type DefaultConfiguration, type NetworkId, type UnshieldedKeystore, type WalletFacade } from '@midnightntwrk/wallet-sdk';
+import {
+  createKeystore,
+  type DefaultConfiguration,
+  type NetworkId,
+  type ResolvedConfiguration,
+  type UnshieldedKeystore,
+  type WalletFacade
+} from '@midnightntwrk/wallet-sdk';
 
 import { logger } from '../logger';
 import { type EnvironmentConfiguration } from '../test-environment/environment-configuration';
@@ -23,7 +30,7 @@ import { WalletSeeds } from './wallet-seed';
 
 export class FluentWalletBuilder {
   private constructor(
-    private readonly config: DefaultConfiguration,
+    private readonly config: ResolvedConfiguration<DefaultConfiguration>,
     private readonly networkId: NetworkId.NetworkId,
     private seeds?: WalletSeeds,
     private dustOptions: DustWalletOptions = DEFAULT_DUST_OPTIONS
@@ -86,20 +93,15 @@ export class FluentWalletBuilder {
 
     const unshieldedKeystore = createKeystore({ kind: 'schnorr', secret: seeds.unshielded }, this.networkId);
 
-    const shieldedWallet = WalletFactory.createShieldedWallet(this.config, seeds.shielded);
-    const unshieldedWallet = WalletFactory.createUnshieldedWallet(
-      this.config,
-      unshieldedKeystore
-    );
-    const dustWallet = WalletFactory.createDustWallet(
-      this.config,
-      seeds.dust,
-      this.dustOptions
-    );
+    const [shieldedWallet, unshieldedWallet, dustWallet] = await Promise.all([
+      WalletFactory.createShieldedWallet(this.config, seeds.shielded),
+      WalletFactory.createUnshieldedWallet(this.config, unshieldedKeystore),
+      WalletFactory.createDustWallet(this.config, seeds.dust, this.dustOptions)
+    ]);
 
     const walletFacade = await WalletFactory.createWalletFacade(this.config, shieldedWallet, unshieldedWallet, dustWallet);
 
-    return WalletFactory.startWalletFacade(walletFacade, seeds.shielded, seeds.dust);
+    return WalletFactory.startWalletFacade(walletFacade, seeds);
   }
 
   async buildWithoutStarting(): Promise<{
@@ -114,16 +116,11 @@ export class FluentWalletBuilder {
 
     const unshieldedKeystore = createKeystore({ kind: 'schnorr', secret: seeds.unshielded }, this.networkId);
 
-    const shieldedWallet = WalletFactory.createShieldedWallet(this.config, seeds.shielded);
-    const unshieldedWallet = WalletFactory.createUnshieldedWallet(
-      this.config,
-      unshieldedKeystore
-    );
-    const dustWallet = WalletFactory.createDustWallet(
-      this.config,
-      seeds.dust,
-      this.dustOptions
-    );
+    const [shieldedWallet, unshieldedWallet, dustWallet] = await Promise.all([
+      WalletFactory.createShieldedWallet(this.config, seeds.shielded),
+      WalletFactory.createUnshieldedWallet(this.config, unshieldedKeystore),
+      WalletFactory.createDustWallet(this.config, seeds.dust, this.dustOptions)
+    ]);
 
     const walletFacade = await WalletFactory.createWalletFacade(this.config, shieldedWallet, unshieldedWallet, dustWallet);
 

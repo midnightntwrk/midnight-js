@@ -146,7 +146,6 @@ export default tseslint.config(
       '**/*.json',
       'packages/compact/src/run-compactc.cjs',
       'scripts/**',
-      '.github/scripts/**',
       'yarn.config.cjs',
       '.versionrc.js',
     ]
@@ -154,6 +153,21 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...tseslint.configs.stylistic,
+  {
+    // `.github/scripts` holds plain Node ESM entry points that CI runs straight
+    // off disk. They were ignored outright, which left the workflow-permissions
+    // gate -- a script whose whole job is to catch a silent CI fault -- with no
+    // lint of its own. Linting them only needs the Node globals declared; the
+    // typed rules below are all scoped to `packages/` and never match here.
+    files: ['.github/scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        URL: 'readonly'
+      }
+    }
+  },
   {
     files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts', 'testkit-js/**/*.ts'],
     plugins: {
