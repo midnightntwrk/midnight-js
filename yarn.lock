@@ -2052,6 +2052,7 @@ __metadata:
     typescript: "npm:^6.0.3"
     typescript-eslint: "npm:^8.63.0"
     vitest: "npm:^4.1.7"
+    yaml: "npm:^2.9.0"
   languageName: unknown
   linkType: soft
 

@@ -34,7 +34,9 @@ jobs:
     uses: ./.github/workflows/ci-base.yml
     with:
       yarn_filter: --filter="./packages/*"
-      yarn_lint_paths: ./packages
+      # `.github/scripts` rides along here because this is the only leg that lints;
+      # the workflow-permissions gate lives there and had no lint of its own.
+      yarn_lint_paths: ./packages .github/scripts
     secrets: inherit
 
   cd-prerelease:
