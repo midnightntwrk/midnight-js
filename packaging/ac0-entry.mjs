@@ -280,10 +280,12 @@ await leg('pre-fork retained call', async () => {
     contractAddress: deployment.contractAddress,
     circuitId: CIRCUIT_ID
   });
-  // `submitCallTx` resolves a FinalizedCallTxData, whose non-sensitive fields sit under
-  // `.public` -- reading `submitted.txId` yields undefined, and a leg that never submitted
-  // would then look exactly like one that did.
-  return { txId: submitted.public.txId };
+  // The RETAINED arm resolves a `Ledger8FinalizedCallTxData` -- `{ circuitId,
+  // nextPrivateState, txData }` -- so the id is on the finalized record it carries.
+  // Neither `submitted.txId` nor `submitted.public.txId` exists here: `.public` is the
+  // CURRENT era's `FinalizedCallTxData` shape, and reaching for it on this arm throws a
+  // TypeError inside the reporting rather than reporting what the call did.
+  return { txId: submitted.txData.txId };
 });
 
 // ── (b) the fork moment ───────────────────────────────────────────────────────
@@ -318,10 +320,12 @@ await leg('post-fork keep-state call through the same call site', async () => {
     contractAddress: deployment.contractAddress,
     circuitId: CIRCUIT_ID
   });
-  // `submitCallTx` resolves a FinalizedCallTxData, whose non-sensitive fields sit under
-  // `.public` -- reading `submitted.txId` yields undefined, and a leg that never submitted
-  // would then look exactly like one that did.
-  return { txId: submitted.public.txId };
+  // The RETAINED arm resolves a `Ledger8FinalizedCallTxData` -- `{ circuitId,
+  // nextPrivateState, txData }` -- so the id is on the finalized record it carries.
+  // Neither `submitted.txId` nor `submitted.public.txId` exists here: `.public` is the
+  // CURRENT era's `FinalizedCallTxData` shape, and reaching for it on this arm throws a
+  // TypeError inside the reporting rather than reporting what the call did.
+  return { txId: submitted.txData.txId };
 });
 
 // ── (d) reads its own pre-fork history ────────────────────────────────────────
