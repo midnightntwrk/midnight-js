@@ -25,13 +25,13 @@ import { DockerComposeEnvironment, type StartedDockerComposeEnvironment, Wait } 
 
 import { getContainersConfiguration } from '../../configuration';
 import type { ProofServerContainer } from '../../proof-server-container';
-import { MidnightWalletProvider } from '../../wallet';
+import { delay, MINUTE } from '../../utils';
+import type { MidnightWalletProvider } from '../../wallet';
 import type { EnvironmentConfiguration } from '..';
 import { TestEnvironment } from './test-environment';
 
 const execFileAsync = promisify(execFile);
 
-/** The compose file describing the fork stack, resolved beside `compose.yml`. */
 const FORK_COMPOSE_FILE = 'compose-fork.yml';
 
 /** The runtime blob the `runtime-blob` service lifts out of the new node image, as the toolkit sees it. */
@@ -39,8 +39,8 @@ const RUNTIME_WASM_PATH = '/runtime/midnight_node_runtime.compact.compressed.was
 
 /**
  * Image tags the lane may be pointed at, so a workflow input reaches compose unchanged. Every one
- * has a default in `compose-fork.yml`; only those actually set in the environment are forwarded, so
- * an unset variable keeps the pinned default rather than blanking the tag.
+ * has a default in `compose-fork.yml`; only variables set to a non-empty value are forwarded, so an
+ * unset (or blanked) variable keeps the pinned default rather than resolving to an empty tag.
  */
 const IMAGE_TAG_VARIABLES = [
   'FORK_FROM_NODE_TAG',
@@ -55,6 +55,30 @@ const NODE_PORT = 9944;
 const INDEXER_PORT = 8088;
 const PROOF_SERVER_PORT = 6300;
 
+/** The node's address on the compose project network, which is how the toolkit container reaches it. */
+const NODE_INTERNAL_WS_URL = `ws://node:${NODE_PORT}`;
+
+/**
+ * Deadlines, each a ceiling on one step rather than a target.
+ *
+ * `enactFork` runs four of them back to back, so its worst case is
+ * `FIRST_BLOCK_FINALIZATION + TOOLKIT + RUNTIME_APPLIED + POST_FORK_FINALIZATION` = 12 minutes. A
+ * caller's own test timeout has to exceed that, or the inner deadline that would have named the
+ * failure never fires and the run reports a bare timeout instead.
+ */
+const SERVICE_STARTUP_TIMEOUT = 5 * MINUTE;
+const FIRST_BLOCK_FINALIZATION_TIMEOUT = 2 * MINUTE;
+const TOOLKIT_TIMEOUT = 5 * MINUTE;
+const RUNTIME_APPLIED_TIMEOUT = 3 * MINUTE;
+const POST_FORK_FINALIZATION_TIMEOUT = 2 * MINUTE;
+const CHAIN_POLL_INTERVAL = 3_000;
+const STACK_SHUTDOWN_TIMEOUT = 30_000;
+
+/** A single RPC round trip's ceiling, so a node that accepts a connection and never answers cannot outlive a poll deadline. */
+const RPC_TIMEOUT = 10_000;
+
+const TOOLKIT_MAX_OUTPUT_BYTES = 32 * 1024 * 1024;
+
 /**
  * The governance seeds the dev preset's council and technical committee are built from. These are
  * the public Substrate development URIs, i.e. well-known constants rather than secrets.
@@ -63,14 +87,16 @@ const COUNCIL_SEEDS = ['//Dave', '//Eve'] as const;
 const TECHNICAL_COMMITTEE_SEEDS = ['//Alice', '//Bob'] as const;
 const SIGNER_SEED = '//Alice';
 
-/** What the fork turned out to be, once enacted and finalized past. */
 export interface ForkEnactment {
-  /** The runtime spec version genesis was carrying. */
+  /** The runtime spec version at block #1, i.e. the one genesis brought up. */
   readonly oldSpecVersion: number;
-  /** The runtime spec version in force from the applying block onwards. */
+  /**
+   * The runtime spec version reported from the applying block's state onwards. Guaranteed to be
+   * greater than {@link ForkEnactment.oldSpecVersion}.
+   */
   readonly newSpecVersion: number;
-  /** The height of the block that applied the new code. */
-  readonly appliedAt: number;
+  /** The height of the block that applied the new code; the new runtime first executes at `appliedAt + 1`. */
+  readonly appliedAtBlockHeight: number;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -79,14 +105,15 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 /**
  * One JSON-RPC round trip, returning the `result` member unexamined.
  *
- * Every shape check below is a guard rather than a cast: the node is outside the trust boundary, so
- * a malformed answer has to surface as a named failure here instead of as a confusing one later.
+ * The shape checks are guards rather than casts, so a malformed answer surfaces here under the
+ * method that produced it.
  */
 const rpc = async (url: string, method: string, params: readonly unknown[] = []): Promise<unknown> => {
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: 1, jsonrpc: '2.0', method, params })
+    body: JSON.stringify({ id: 1, jsonrpc: '2.0', method, params }),
+    signal: AbortSignal.timeout(RPC_TIMEOUT)
   });
   if (!response.ok) {
     throw new Error(`${method} -> HTTP ${response.status} ${response.statusText}`);
@@ -112,15 +139,9 @@ const rpcString = async (url: string, method: string, params: readonly unknown[]
   return result;
 };
 
-const sleep = (milliseconds: number): Promise<void> =>
-  new Promise((resolve) => {
-    setTimeout(resolve, milliseconds);
-  });
-
-const blockHashAt = (url: string, height: number): Promise<string> => rpcString(url, 'chain_getBlockHash', [height]);
-
-const specVersionAt = async (url: string, blockHash?: string): Promise<number> => {
-  const result = await rpc(url, 'state_getRuntimeVersion', blockHash === undefined ? [] : [blockHash]);
+const specVersionAtHeight = async (url: string, height: number): Promise<number> => {
+  const blockHash = await rpcString(url, 'chain_getBlockHash', [height]);
+  const result = await rpc(url, 'state_getRuntimeVersion', [blockHash]);
   if (!isRecord(result) || typeof result.specVersion !== 'number') {
     throw new Error('state_getRuntimeVersion -> result carried no numeric specVersion');
   }
@@ -139,29 +160,88 @@ const finalizedHeight = async (url: string): Promise<number> => {
   return height;
 };
 
-const waitForFinalized = async (url: string, height: number, deadline: number): Promise<number> => {
+/**
+ * Waits until the chain has finalized `height`.
+ *
+ * A failed read is retried rather than fatal, because the node's RPC is not always up on the first
+ * iterations. The last failure is carried onto the deadline error as its `cause`, so a node that
+ * never answered is distinguishable from one that answered slowly -- reporting the latter's height
+ * for the former would name the wrong problem.
+ */
+const waitForFinalized = async (url: string, height: number, deadline: number): Promise<void> => {
+  let lastError: unknown;
+  let lastHeight: number | undefined;
   for (;;) {
-    const current = await finalizedHeight(url).catch(() => 0);
-    if (current >= height) {
-      return current;
+    try {
+      lastHeight = await finalizedHeight(url);
+      lastError = undefined;
+      if (lastHeight >= height) {
+        return;
+      }
+    } catch (error) {
+      lastError = error;
     }
     if (Date.now() >= deadline) {
-      throw new Error(`Timed out waiting for finalized block #${height}; the chain is at #${current}`);
+      const observed = lastHeight === undefined ? 'the node never answered' : `the chain last reported #${lastHeight}`;
+      throw new Error(`Timed out waiting for finalized block #${height}; ${observed}`, { cause: lastError });
     }
-    await sleep(3_000);
+    await delay(CHAIN_POLL_INTERVAL);
   }
 };
 
 /**
- * The first height reporting a spec version above `oldSpecVersion` -- the block that applied the new
- * code. `specVersion` is monotonic along the chain, so this is a bisection rather than a scan.
+ * Waits until a finalized block reports a spec version above `oldSpecVersion`, and answers with that
+ * height.
+ *
+ * The toolkit's `runtime-upgrade` returns once governance has been *submitted*: `set_code` takes
+ * effect a block later and finality lags further still. Reading the head straight after it returns
+ * therefore finds no applying block yet, which is a timing condition rather than a failed upgrade.
+ * Polling here is what separates the two, so the deadline error can say which one happened.
+ */
+const waitForRuntimeApplied = async (url: string, oldSpecVersion: number, deadline: number): Promise<number> => {
+  let lastError: unknown;
+  let lastHeight: number | undefined;
+  let lastSpecVersion: number | undefined;
+  for (;;) {
+    try {
+      lastHeight = await finalizedHeight(url);
+      lastSpecVersion = await specVersionAtHeight(url, lastHeight);
+      lastError = undefined;
+      if (lastSpecVersion > oldSpecVersion) {
+        return lastHeight;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+    if (Date.now() >= deadline) {
+      const observed =
+        lastSpecVersion === undefined
+          ? 'the node never reported a spec version'
+          : `spec is still ${lastSpecVersion} at finalized head #${String(lastHeight)}`;
+      throw new Error(
+        `The runtime upgrade never applied: ${observed}. Either the governance motion did not reach ` +
+          `threshold or the submitted wasm was rejected.`,
+        { cause: lastError }
+      );
+    }
+    await delay(CHAIN_POLL_INTERVAL);
+  }
+};
+
+/**
+ * The first height in `[lo, hi]` whose spec version is above `oldSpecVersion` -- the block that
+ * applied the new code.
+ *
+ * `specVersion` only moves up along the chain, so this is a bisection rather than a scan. It
+ * requires `spec(hi) > oldSpecVersion`, which callers get from {@link waitForRuntimeApplied};
+ * without it the search converges on `hi` and would report the head as the applying block.
  */
 const findApplyingBlock = async (url: string, oldSpecVersion: number, lo: number, hi: number): Promise<number> => {
   let low = lo;
   let high = hi;
   while (low < high) {
     const mid = low + Math.floor((high - low) / 2);
-    const spec = await specVersionAt(url, await blockHashAt(url, mid));
+    const spec = await specVersionAtHeight(url, mid);
     if (spec > oldSpecVersion) {
       high = mid;
     } else {
@@ -171,21 +251,52 @@ const findApplyingBlock = async (url: string, oldSpecVersion: number, lo: number
   return low;
 };
 
-const imageTagOverrides = (): Record<string, string> =>
-  IMAGE_TAG_VARIABLES.reduce<Record<string, string>>((collected, name) => {
+const imageTagOverrides = (): Record<string, string> => {
+  const overrides: Record<string, string> = {};
+  for (const name of IMAGE_TAG_VARIABLES) {
     const value = process.env[name];
-    if (value === undefined || value === '') {
-      return collected;
+    if (value !== undefined && value !== '') {
+      overrides[name] = value;
     }
-    return { ...collected, [name]: value };
-  }, {});
+  }
+  return overrides;
+};
+
+/** `execFile` appends the child's stderr to the error message but drops stdout, which is where the toolkit reports governance progress. */
+const describeExecFailure = (error: unknown): string => {
+  if (!isRecord(error)) {
+    return String(error);
+  }
+  const sections = [`code=${String(error.code)} signal=${String(error.signal)}`];
+  if (typeof error.stdout === 'string' && error.stdout !== '') {
+    sections.push(`--- toolkit stdout ---\n${error.stdout}`);
+  }
+  if (typeof error.stderr === 'string' && error.stderr !== '') {
+    sections.push(`--- toolkit stderr ---\n${error.stderr}`);
+  }
+  return sections.join('\n');
+};
+
+/**
+ * Names the failure the toolkit actually hit. A killed process is our doing, not a rejected
+ * governance motion, and reporting it as one sends the reader after the wrong bug.
+ */
+const toolkitFailureMessage = (error: unknown): string => {
+  if (isRecord(error) && error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
+    return `The toolkit produced more than ${TOOLKIT_MAX_OUTPUT_BYTES} bytes of output and was killed; the runtime-upgrade may or may not have been submitted`;
+  }
+  if (isRecord(error) && error.killed === true) {
+    return `The toolkit did not finish within ${TOOLKIT_TIMEOUT}ms and was killed; the runtime-upgrade may or may not have been submitted`;
+  }
+  return `The toolkit's runtime-upgrade failed`;
+};
 
 /**
  * Configuration of the fork stack for a given side of the boundary.
  *
  * The only field that moves across the fork is `proofServer`: the stack runs one proof server per
- * era because no published image serves both. That split is a harness stand-in for the single
- * fork-prepared endpoint the product assumes (spec OQ16) -- do not read it as the shipped topology.
+ * era because no published image serves both. That split is a property of this harness, not the
+ * topology the product assumes -- see `docs/architecture/fork-e2e-environment.md`.
  */
 class ForkTestConfiguration implements EnvironmentConfiguration {
   readonly walletNetworkId: NetworkId.NetworkId;
@@ -213,32 +324,23 @@ class ForkTestConfiguration implements EnvironmentConfiguration {
  * A chain whose genesis carries the ledger-v8 runtime, running on the ledger-v9 node binary, plus
  * the governance call that moves it across the boundary.
  *
- * This is deliberately a sibling of {@link LocalTestEnvironment} rather than a mode of it, and it is
- * deliberately absent from `getTestEnvironment`'s switch: the stack is a different compose file with
- * one-shot services and two proof servers, and a suite-wide run has no business landing on it by
- * accident. A test that wants the fork constructs this class directly.
+ * A test that wants the fork constructs this class directly -- `getTestEnvironment` never returns
+ * it. Why it is a sibling of the other environments rather than a mode of one, and why it runs two
+ * proof servers, is recorded in `docs/architecture/fork-e2e-environment.md`.
+ *
+ * Wallets are not supported here; {@link ForkTestEnvironment.startMidnightWalletProviders} refuses.
  *
  * @example
  * ```ts
  * const environment = new ForkTestEnvironment(logger);
  * const preFork = await environment.start();          // chain is on the ledger-v8 runtime
- * const { appliedAt } = await environment.enactFork(); // governance set_code, finalized past
+ * const { appliedAtBlockHeight } = await environment.enactFork(); // governance set_code, finalized past
  * const postFork = environment.getEnvironmentConfiguration(); // now points at the v9 proof server
  * ```
  */
 export class ForkTestEnvironment extends TestEnvironment {
-  static readonly MAX_NUMBER_OF_WALLETS = 4;
-
-  readonly genesisMintWalletSeed = [
-    '0000000000000000000000000000000000000000000000000000000000000002',
-    '0000000000000000000000000000000000000000000000000000000000000001',
-    '0000000000000000000000000000000000000000000000000000000000000003',
-    '0000000000000000000000000000000000000000000000000000000000000004'
-  ];
-
   private dockerEnv: StartedDockerComposeEnvironment | undefined;
   private environmentConfiguration: EnvironmentConfiguration | undefined;
-  private walletProviders: MidnightWalletProvider[] = [];
   private forkEnactment: ForkEnactment | undefined;
   private readonly composeDirectory: string;
   private readonly composeFile: string;
@@ -253,16 +355,18 @@ export class ForkTestEnvironment extends TestEnvironment {
     this.composeEnvironment = { TESTCONTAINERS_UID: this.uid, ...imageTagOverrides() };
   }
 
-  /** Whether {@link enactFork} has already moved this chain across the boundary. */
+  /** Whether {@link ForkTestEnvironment.enactFork} has already moved this chain across the boundary. */
   get hasForked(): boolean {
     return this.forkEnactment !== undefined;
   }
 
   /**
-   * The proof server for the era the chain is currently in.
+   * The current environment configuration. Its `proofServer` names the pre-fork server until
+   * {@link ForkTestEnvironment.enactFork} runs and the post-fork one afterwards; every other field
+   * is fixed for the life of the stack.
    *
-   * @returns {EnvironmentConfiguration} The configuration, with `proofServer` on the current era's server.
-   * @throws {Error} If the environment has not been started.
+   * @returns {EnvironmentConfiguration} The configuration for the side of the boundary the chain is on.
+   * @throws {Error} If the environment has not been started, or has already been shut down.
    */
   getEnvironmentConfiguration(): EnvironmentConfiguration {
     if (this.environmentConfiguration === undefined) {
@@ -289,48 +393,67 @@ export class ForkTestEnvironment extends TestEnvironment {
     return `http://127.0.0.1:${this.mappedPort('proof-server', PROOF_SERVER_PORT)}`;
   }
 
-  /** The node's JSON-RPC endpoint over HTTP, which is how this environment reads the chain. */
-  getNodeHttpUrl(): string {
-    return `http://127.0.0.1:${this.mappedPort('node', NODE_PORT)}`;
-  }
-
   /**
-   * The runtime spec version reported at the current best block.
+   * The runtime spec version at the chain's finalized head, read from the node rather than from any
+   * state this class holds. Lets a caller check the era against the chain itself.
    *
-   * @returns {Promise<number>} The spec version at head.
+   * @returns {Promise<number>} The spec version in force at the finalized head.
    */
-  specVersionAtHead(): Promise<number> {
-    return specVersionAt(this.getNodeHttpUrl());
+  async specVersionAtFinalizedHead(): Promise<number> {
+    const url = this.getNodeHttpUrl();
+    return specVersionAtHeight(url, await finalizedHeight(url));
   }
 
   /**
    * Starts the fork stack and returns its configuration on the pre-fork side of the boundary.
    *
-   * @param {ProofServerContainer} maybeProofServerContainer - Must be undefined; this stack owns both of its proof servers.
+   * @param {ProofServerContainer} maybeProofServerContainer - Must be nullish; present only to satisfy the base-class signature.
    * @returns {Promise<EnvironmentConfiguration>} The pre-fork environment configuration.
    * @throws {Error} If a proof server container is injected, since neither of this stack's two can be replaced.
+   * @throws {Error} If the stack has already been started, since a second start would orphan the first.
    */
   start = async (maybeProofServerContainer?: ProofServerContainer): Promise<EnvironmentConfiguration> => {
-    if (maybeProofServerContainer) {
+    if (maybeProofServerContainer !== undefined && maybeProofServerContainer !== null) {
       throw new Error(
         'Invalid usage: the fork test environment runs one proof server per era and cannot take an injected one'
       );
     }
+    if (this.dockerEnv !== undefined) {
+      throw new Error('Fork test environment is already started; construct a second instance for a second chain');
+    }
     this.logger.info(`Starting fork test environment... project=${this.projectName}, uid=${this.uid}`);
+    // The resolved tags are the load-bearing fact about a version-boundary test, and a mistyped
+    // variable name is otherwise indistinguishable from an unset one -- both leave the default.
+    this.logger.info(
+      `Fork stack image tags: ${IMAGE_TAG_VARIABLES.map(
+        (name) => `${name}=${this.composeEnvironment[name] ?? '<compose default>'}`
+      ).join(' ')}`
+    );
     this.dockerEnv = await new DockerComposeEnvironment(this.composeDirectory, FORK_COMPOSE_FILE)
       // Named so `enactFork`'s `compose run` targets this same project, and so a leftover stack is
       // identifiable rather than anonymous.
       .withProjectName(this.projectName)
       .withEnvironment(this.composeEnvironment)
-      .withWaitStrategy(`chainspec_${this.uid}`, Wait.forOneShotStartup())
-      .withWaitStrategy(`runtime-blob_${this.uid}`, Wait.forOneShotStartup())
-      .withWaitStrategy(`node_${this.uid}`, Wait.forHealthCheck().withStartupTimeout(5 * 60_000))
-      // Probed from the host over the mapped port: the indexer image has no curl, so an in-container
-      // healthcheck cannot answer this, and a listening port alone does not mean it is serving.
-      .withWaitStrategy(`indexer_${this.uid}`, Wait.forHttp('/ready', INDEXER_PORT).withStartupTimeout(5 * 60_000))
-      .withWaitStrategy(`proof-server_${this.uid}`, Wait.forListeningPorts().withStartupTimeout(5 * 60_000))
-      .withWaitStrategy(`proof-server-v8_${this.uid}`, Wait.forListeningPorts().withStartupTimeout(5 * 60_000))
-      .withStartupTimeout(10 * 60_000)
+      // No wait strategy for `chainspec` or `runtime-blob`: they have exited by the time `up()`
+      // returns, so testcontainers never matches them and warns about the unused strategy instead.
+      // `depends_on: service_completed_successfully` in the compose file is what orders them.
+      .withWaitStrategy(`node_${this.uid}`, Wait.forHealthCheck().withStartupTimeout(SERVICE_STARTUP_TIMEOUT))
+      // Probed from the host over the mapped port rather than in-container, because a listening port
+      // alone does not mean the API is serving.
+      .withWaitStrategy(
+        `indexer_${this.uid}`,
+        Wait.forHttp('/ready', INDEXER_PORT).withStartupTimeout(SERVICE_STARTUP_TIMEOUT)
+      )
+      .withWaitStrategy(
+        `proof-server_${this.uid}`,
+        Wait.forListeningPorts().withStartupTimeout(SERVICE_STARTUP_TIMEOUT)
+      )
+      .withWaitStrategy(
+        `proof-server-v8_${this.uid}`,
+        Wait.forListeningPorts().withStartupTimeout(SERVICE_STARTUP_TIMEOUT)
+      )
+      // Deliberately no environment-level `withStartupTimeout`: testcontainers applies it to every
+      // selected strategy, overwriting the per-service values above.
       .up();
 
     setNetworkId('undeployed');
@@ -341,13 +464,16 @@ export class ForkTestEnvironment extends TestEnvironment {
 
   /**
    * Enacts the ledger-8 to ledger-9 fork on the running chain and waits for it to finalize past the
-   * applying block. From here on {@link getEnvironmentConfiguration} reports the post-fork proof server.
+   * applying block. From here on {@link ForkTestEnvironment.getEnvironmentConfiguration} reports the
+   * post-fork proof server.
    *
    * The toolkit runs through `docker compose run` rather than as a testcontainer so that it joins
    * the project network and reaches the node under its service name.
    *
    * @returns {Promise<ForkEnactment>} The spec versions either side of the boundary and the applying height.
-   * @throws {Error} If the governance call fails, or if no block ever reports a higher spec version.
+   * @throws {Error} If the fork has already been enacted on this chain.
+   * @throws {Error} If the governance call fails, or if no finalized block reports a higher spec version in time.
+   * @throws {Error} If the chain does not reach or finalize past the applying block in time.
    */
   enactFork = async (): Promise<ForkEnactment> => {
     if (this.forkEnactment !== undefined) {
@@ -355,68 +481,60 @@ export class ForkTestEnvironment extends TestEnvironment {
     }
     const url = this.getNodeHttpUrl();
 
-    await waitForFinalized(url, 1, Date.now() + 180_000);
-    const oldSpecVersion = await specVersionAt(url, await blockHashAt(url, 1));
+    await waitForFinalized(url, 1, Date.now() + FIRST_BLOCK_FINALIZATION_TIMEOUT);
+    const oldSpecVersion = await specVersionAtHeight(url, 1);
     this.logger.info(`spec_version at #1: ${oldSpecVersion}`);
 
     await this.runToolkitUpgrade();
 
-    const head = await finalizedHeight(url);
-    const appliedAt = await findApplyingBlock(url, oldSpecVersion, 1, head);
-    const newSpecVersion = await specVersionAt(url, await blockHashAt(url, appliedAt));
-    if (newSpecVersion <= oldSpecVersion) {
-      throw new Error(`No code-applying block found (spec ${oldSpecVersion}, finalized head #${head})`);
-    }
-    this.logger.info(`New runtime applied at #${appliedAt} (spec ${oldSpecVersion} -> ${newSpecVersion})`);
+    const appliedHead = await waitForRuntimeApplied(url, oldSpecVersion, Date.now() + RUNTIME_APPLIED_TIMEOUT);
+    const appliedAtBlockHeight = await findApplyingBlock(url, oldSpecVersion, 1, appliedHead);
+    const newSpecVersion = await specVersionAtHeight(url, appliedAtBlockHeight);
+    this.logger.info(`New runtime applied at #${appliedAtBlockHeight} (spec ${oldSpecVersion} -> ${newSpecVersion})`);
 
-    await waitForFinalized(url, appliedAt + 1, Date.now() + 300_000);
+    await waitForFinalized(url, appliedAtBlockHeight + 1, Date.now() + POST_FORK_FINALIZATION_TIMEOUT);
 
-    this.forkEnactment = { oldSpecVersion, newSpecVersion, appliedAt };
+    this.forkEnactment = { oldSpecVersion, newSpecVersion, appliedAtBlockHeight };
     this.environmentConfiguration = this.configurationFor(this.getPostForkProofServer());
     return this.forkEnactment;
   };
 
   /**
-   * Creates and starts the specified number of wallet providers.
+   * Not supported on this stack. A wallet cannot sync a chain whose history spans the boundary, so
+   * there is nothing here for a wallet-driven test to build on and refusing beats handing back a
+   * provider that cannot see its own funds.
    *
-   * @param {number} [amount] - How many wallets to start.
-   * @param {string[]} [seeds] - Ignored; this stack funds the genesis mint wallets only.
-   * @returns {Promise<MidnightWalletProvider[]>} The started wallet providers.
-   * @throws {Error} If more wallets are requested than the genesis mint funds.
+   * @returns {Promise<MidnightWalletProvider[]>} Never resolves.
+   * @throws {Error} Always.
    */
-  startMidnightWalletProviders = async (amount = 1, seeds?: string[]): Promise<MidnightWalletProvider[]> => {
-    if (seeds) {
-      this.logger.warn('Provided seeds will be ignored, using genesis mint wallet seeds');
-    }
-    if (amount > ForkTestEnvironment.MAX_NUMBER_OF_WALLETS) {
-      throw new Error(
-        `Maximum supported number of wallets for this environment reached: ${ForkTestEnvironment.MAX_NUMBER_OF_WALLETS}`
-      );
-    }
-    const configuration = this.getEnvironmentConfiguration();
-    this.walletProviders = await Promise.all(
-      Array.from({ length: amount }).map((_element, index) =>
-        MidnightWalletProvider.build(this.logger, configuration, this.genesisMintWalletSeed[index])
-      )
+  startMidnightWalletProviders = (): Promise<MidnightWalletProvider[]> => {
+    throw new Error(
+      'Wallets are not supported on the fork test environment; use LocalTestEnvironment for wallet-driven tests'
     );
-    await Promise.all(this.walletProviders.map((wallet) => wallet.start()));
-    return this.walletProviders;
   };
 
   /**
-   * Stops the wallets and tears the stack down, volumes included.
+   * Tears the stack down, volumes included, and forgets the configuration it was reporting.
    *
    * @returns {Promise<void>} Resolves once the stack is down.
    */
   shutdown = async (): Promise<void> => {
     this.logger.info('Shutting down fork test environment...');
-    await Promise.all(this.walletProviders.map((wallet) => wallet.stop()));
-    this.walletProviders = [];
-    if (this.dockerEnv) {
-      await this.dockerEnv.down({ timeout: 30_000, removeVolumes: true });
-      this.dockerEnv = undefined;
+    // Cleared before the await so a failing `down()` cannot leave this instance reporting URLs for
+    // containers that are on their way out.
+    this.environmentConfiguration = undefined;
+    this.forkEnactment = undefined;
+    const dockerEnv = this.dockerEnv;
+    this.dockerEnv = undefined;
+    if (dockerEnv) {
+      await dockerEnv.down({ timeout: STACK_SHUTDOWN_TIMEOUT, removeVolumes: true });
     }
   };
+
+  /** The node's JSON-RPC endpoint over HTTP, which is how this environment reads the chain. */
+  private getNodeHttpUrl(): string {
+    return `http://127.0.0.1:${this.mappedPort('node', NODE_PORT)}`;
+  }
 
   private configurationFor(proofServerUrl: string): EnvironmentConfiguration {
     return new ForkTestConfiguration(
@@ -433,7 +551,7 @@ export class ForkTestEnvironment extends TestEnvironment {
   }
 
   private async runToolkitUpgrade(): Promise<void> {
-    const args = [
+    const composeArgs = [
       'compose',
       '-f',
       this.composeFile,
@@ -443,26 +561,32 @@ export class ForkTestEnvironment extends TestEnvironment {
       'tools',
       'run',
       '--rm',
-      'toolkit',
+      'toolkit'
+    ];
+    const upgradeArgs = [
       'runtime-upgrade',
       '--wasm-file',
       RUNTIME_WASM_PATH,
       ...COUNCIL_SEEDS.flatMap((seed) => ['-c', seed]),
       ...TECHNICAL_COMMITTEE_SEEDS.flatMap((seed) => ['-t', seed]),
       '--rpc-url',
-      'ws://node:9944',
+      NODE_INTERNAL_WS_URL,
       '--signer-key',
       SIGNER_SEED
     ];
     this.logger.info('Enacting the fork (governance set_code) through the node toolkit...');
     try {
-      const { stdout } = await execFileAsync('docker', args, {
+      const { stdout } = await execFileAsync('docker', [...composeArgs, ...upgradeArgs], {
         env: { ...process.env, ...this.composeEnvironment },
-        maxBuffer: 32 * 1024 * 1024
+        maxBuffer: TOOLKIT_MAX_OUTPUT_BYTES,
+        timeout: TOOLKIT_TIMEOUT
       });
-      this.logger.info(`Governance runtime-upgrade submitted: ${stdout.slice(-2000)}`);
+      // "submitted", not "enacted": a zero exit means the CLI drove governance to completion, not
+      // that the new code is in force. `enactFork` proves that separately, against the chain.
+      this.logger.info(`Toolkit runtime-upgrade exited 0 (submitted, not yet enacted):\n${stdout}`);
     } catch (error) {
-      throw new Error(`The toolkit's runtime-upgrade failed`, { cause: error });
+      this.logger.error(`The toolkit's runtime-upgrade failed.\n${describeExecFailure(error)}`);
+      throw new Error(toolkitFailureMessage(error), { cause: error });
     }
   }
 }
