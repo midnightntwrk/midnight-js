@@ -147,12 +147,13 @@ asserting it.
     constructor. Free while nothing produces the arm; breaking for every
     producer once v8 support ships.
   - Migration notes in `docs/releases/v5.0.0/breaking-changes.md`.
-  - `assertNever` is not exported from `midnight-js-utils`: the seam
-    narrowings go through `unwrapV9` and the exhaustiveness guards are inline
-    `never` assignments, so it has no thrower. It was added and removed inside
-    this unreleased feature stack, so no released version ever carried it and
-    there is nothing for a consumer to migrate. It arrives with the change that
-    first needs it.
+  - ~~`assertNever` is not exported from `midnight-js-utils`.~~ **Resolved.**
+    Exported in #1254, which is the change that first needed it: the migration
+    guide publishes a narrowing recipe that closes its `switch` with it, so the
+    helper is consumer-facing. The framework's own seam narrowings still go
+    through `unwrapV9`, and its internal exhaustiveness guards remain inline
+    `never` assignments that throw coded errors — `assertNever` is deliberately
+    for consumer code, not a replacement for those.
 
 ## Alternatives considered
 

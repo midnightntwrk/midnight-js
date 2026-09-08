@@ -75,8 +75,13 @@ describe('assertNever', () => {
     expect(act).toThrow(/unhandled/i);
   });
 
-  test('never puts the unhandled value in the message', () => {
-    // Arrange: the arms of a D14 union carry transaction bytes and decoded state, so
+  // Both message arms are built independently, so redaction is asserted on each.
+  // The contextless arm is the default call form and the easier one to regress.
+  test.each([
+    { arm: 'with a context', context: 'proveTx seam' as string | undefined },
+    { arm: 'without a context', context: undefined as string | undefined }
+  ])('never puts the unhandled value in the message ($arm)', ({ context }) => {
+    // Arrange: the arms of these unions carry transaction bytes and decoded state, so
     // serializing the value here would put payloads into every log that catches it.
     const secret = 'deadbeefcafebabe';
     const grown = { version: 'v10', txBytes: secret, privateState: { balance: 42 } };
@@ -84,7 +89,7 @@ describe('assertNever', () => {
     // Act.
     let thrown: unknown;
     try {
-      assertNever(grown as never, 'proveTx seam');
+      assertNever(grown as never, context);
     } catch (error) {
       thrown = error;
     }
@@ -92,10 +97,14 @@ describe('assertNever', () => {
     // Assert.
     expect(thrown).toBeInstanceOf(Error);
     const message = thrown instanceof Error ? thrown.message : '';
-    expect(message).toContain('proveTx seam');
     expect(message).not.toContain(secret);
+    expect(message).not.toContain('v10');
     expect(message).not.toContain('42');
     expect(message).not.toContain('privateState');
+    expect(message).not.toContain('txBytes');
+    if (context !== undefined) {
+      expect(message).toContain(context);
+    }
   });
 
   test('rejects a value the compiler can still see as inhabited', () => {

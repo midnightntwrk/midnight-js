@@ -277,7 +277,13 @@ export type ContractsErrorCode = /* union of the above values */;
 export type ProviderErrorCode = /* union of the above values */;
 export type MidnightJsErrorCode = ProtocolErrorCode | ContractsErrorCode | ProviderErrorCode;
 export const MIDNIGHT_JS_ERROR_CODES: readonly MidnightJsErrorCode[];
-export const hasErrorCode: (error: unknown, code: MidnightJsErrorCode) => boolean;
+export function hasErrorCode(error: unknown): error is Error & { code: MidnightJsErrorCode };
+export function hasErrorCode<C extends string>(error: unknown, code: C): error is Error & { code: C };
+
+// Exhaustiveness guard for the version-tagged unions (#1254). Closes the
+// `default` arm of a `switch` so a future era arm cannot fall through unhandled.
+// Never renders `value` into its message -- pass `context` to locate the throw.
+export function assertNever(value: never, context?: string): never;
 
 // Structured signing-key validation (shared by both private-state providers)
 export const isValidSigningKey: (value: unknown) => boolean;

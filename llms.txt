@@ -77,7 +77,7 @@ MidnightProviders
 - **`versionOfRecord(record)`**: the era a record was produced in, from its own `protocolVersion` (read path).
 - **`networkHeadVersion(source)`**: the era the network head is in, read fresh on every call — never cached, never latched (ADR 0008). This is the construct path.
 - **Version-tagged payloads**: the `proveTx` / `balanceTx` / `submitTx` seams carry `VersionedTx<T>` = `{ version: 'v9', tx }` | `{ version: 'v8', txBytes }`. Narrow with `unwrapV9(payload, seam)`.
-- **Version-tagged records**: `watchForTxData` / `watchForDeployTxData` return `VersionedFinalizedTxData`. Its v8 arm carries `tx`, not `txBytes`, so `unwrapV9` does not apply — narrow with a `switch` on `version` closed by `assertNever`.
+- **Version-tagged records**: `watchForTxData` / `watchForDeployTxData` return `VersionedFinalizedTxData`. Its v8 arm carries `tx`, not `txBytes`, so `unwrapV9` does not apply — narrow with a `switch` on `version` closed by `assertNever(record, '<call site>')` — always pass the second argument, since the message deliberately never renders the value.
 - **Keep-state**: calling a contract deployed before the fork, after the fork, through the same unchanged call site.
 - Migration: [docs/releases/v5.0.0/migration-guide.md](docs/releases/v5.0.0/migration-guide.md). Error codes: [TROUBLESHOOTING.md](TROUBLESHOOTING.md#midnightjs-error-codes).
 

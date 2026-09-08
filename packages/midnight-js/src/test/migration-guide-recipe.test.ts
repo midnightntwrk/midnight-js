@@ -21,16 +21,17 @@ import { describe, expect, test } from 'vitest';
 
 import { PROTOCOL_ERROR_CODES, type types, utils } from '../index';
 
-// The AC5 positive compile assertion. The recipe below is real code reaching the
-// framework only through this barrel, so `yarn typecheck:tests` is what proves the
-// guide's instructions compile for a reader who follows them. The assertions in
-// this file guard the two ways that proof can go hollow: the guide drifting from
-// the code, and the region being emptied.
+// The positive compile assertion for the migration guide's narrowing recipe. The
+// recipe below is real code reaching the framework only through this barrel, so
+// `yarn typecheck:tests` is what proves the guide's instructions compile for a
+// reader who follows them. The assertions in this file guard the ways that proof
+// can go hollow: the guide drifting from the code, the region being emptied, and
+// the barrel losing the helper the recipe calls.
 //
 // The recipe is not executed. Its `v8` arm is typed by a WASM class from
-// `protocol/v8`, which this package is forbidden to import by the repo's own
-// structural gate, so a `VersionedFinalizedTxData` cannot be built here without
-// the cast this repo does not accept.
+// `protocol/v8`. A type-only import of that class is permitted; building a real
+// `VersionedFinalizedTxData` here would need a runtime import, which the repo's
+// structural gate does forbid, or the cast this repo does not accept.
 
 // #region guide:narrowing-recipe
 const summarize = (record: types.VersionedFinalizedTxData): string => {
@@ -70,7 +71,7 @@ const guideTypeScriptBlocks = (): string[] => {
   return [...guide.matchAll(/```ts\n([\s\S]*?)```/g)].map((match) => match[1].trimEnd());
 };
 
-describe('migration guide narrowing recipe (AC5)', () => {
+describe('migration guide narrowing recipe', () => {
   test('the recipe the guide prints is byte-identical to the recipe that compiles', () => {
     // Arrange: the guide's fence carries the import a reader needs, which this file
     // cannot reproduce verbatim -- a package cannot import itself by name. So the
@@ -97,6 +98,19 @@ describe('migration guide narrowing recipe (AC5)', () => {
     expect(compiled).toContain("case 'v8':");
     expect(compiled).toContain("utils.assertNever(record, 'summarize')");
     expect(typeof summarize).toBe('function');
+  });
+
+  test('the helper the recipe calls is reachable through the barrel at runtime', () => {
+    // Arrange: the recipe above is never executed, and the byte-identity assertion
+    // compares strings lifted from this file's own source -- so neither notices the
+    // barrel losing `assertNever`. Only `tsc` would, and `yarn test` alone would
+    // ship a guide whose first instruction fails.
+
+    // Act.
+    const act = () => utils.assertNever('v10' as never, 'summarize');
+
+    // Assert.
+    expect(act).toThrow('summarize');
   });
 
   test('the guide discriminates on an error code that exists and does not over-match', () => {

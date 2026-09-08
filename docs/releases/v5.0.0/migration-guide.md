@@ -268,10 +268,18 @@ const summarize = (record: types.VersionedFinalizedTxData): string => {
 ```
 
 Close the switch with `assertNever`. While your switch covers the union it
-compiles; when a later major shrinks `LedgerVersion` to drop the retained era,
-**that same line stops compiling and points at every switch that has to
-change**. That is what turns the eventual removal into a compile error instead
-of a runtime surprise.
+compiles; the moment the union carries an arm your switch does not handle,
+**that line stops compiling and points at the switch that has to change**.
+
+Be clear about which direction that buys you, because it is not the one you
+might assume. When a later major *shrinks* `LedgerVersion` to drop the retained
+era, the now-stale `case 'v8':` label is already a compile error on its own —
+`assertNever` adds a second diagnostic beside it, it is not what makes the
+removal visible. What it uniquely catches is the other direction: a union that
+*grows* a further era. For a switch that returns a value, the compiler can
+sometimes catch that at the function signature instead; for a `void`,
+side-effecting switch it catches nothing at all, and the unhandled arm falls
+through in silence. That is the case `assertNever` closes.
 
 Pass the second argument. `assertNever` deliberately never puts the unhandled
 value into its message -- the arms of these unions carry transaction bytes and
@@ -328,18 +336,27 @@ report success for transactions that were dropped at the boundary.
 If an operation resolves the network era, builds against it, and the fork
 applies before it lands, the framework raises `StaleHeadError`
 (`MIDNIGHT_JS_C_STALE_HEAD`) rather than a decode failure. The error carries
-`startEra`, `freshEra`, `circuitId` and `contractAddress`, and its message
-carries the remediation.
+`kind` — `'call'` or `'deploy'`, which is what you branch on to pick between the
+two remediations below — along with `startEra`, `freshEra`, `circuitId` and
+`contractAddress`. Its message carries the matching remediation in full.
 
 For a **call**, the remediation is two steps, in order:
 
-1. **Confirm no finalization.** Check that the original transaction did not
-   finalize. Do not skip this — see the warning below.
+1. **Confirm no finalization.** There is no transaction id to look up: the
+   submission was rejected, so nothing ever resolved to one, and `StaleHeadError`
+   carries none. Do it the way the error's own message prescribes — read the
+   contract state at `error.contractAddress` with `queryContractState`, and check
+   whether the call to `error.circuitId` is already reflected in it. Note that
+   `watchForTxData` is *not* the tool here: it needs an id this error does not
+   carry, and it waits indefinitely rather than ever reporting a transaction
+   absent. Do not skip this step — see the warning below.
 2. **Re-run.** Run the same call again, unchanged. It resolves the new era and
    lands on the retained-era pipeline. Your code does not change.
 
-For a **deploy** the remediation is different and the error says so: a re-run
-cannot help, because a contract built by the retained toolchain has no
+For a **deploy** the remediation is different and the error says so. Check the
+address the deployment composed before deploying again — a deploy mints a fresh
+nonce, so a second attempt lands at a *different* address. A plain re-run cannot
+recover the original, because a contract built by the retained toolchain has no
 post-fork deployment path. See [the runtime-deploy chapter](#runtime-deploy-chapter-factory-patterns).
 
 > **Why step 1 is not optional.** The guidance above assumes in-flight pre-fork
@@ -400,9 +417,11 @@ code through a dynamic `import()`, so a session that never touches a pre-fork
 contract never loads it. Bundlers can defeat that — an aggressive configuration
 may inline the dynamic import back into the main chunk, or emit a
 `modulepreload` for it, and you silently pay for the retained runtime on every
-page load. Check your build output for a separate chunk and confirm it is
-neither inlined nor preloaded. Do not assume the dynamic import survived your
-bundler's defaults.
+page load. There are two such chunks, not one — the retained ledger and the
+down-convert engine are loaded separately — plus further dynamic imports inside
+the engine chunk. Check your build output for each of them and confirm none is
+inlined or preloaded. Do not assume the dynamic imports survived your bundler's
+defaults.
 
 **Do not let the retained runtime be instantiated twice.** Two copies in one
 bundle — usually through a duplicate transitive dependency — means objects
@@ -418,8 +437,8 @@ network indefinitely; upstream has not announced a sunset. The retained-era
 support in *this framework* is a separate question and is scheduled for removal
 in the next major after the window closes — announced from day one so it is
 something you can plan around rather than a surprise. When that removal lands,
-`LedgerVersion` shrinks and every switch you closed with `assertNever` fails to
-compile at exactly the lines that need attention.
+`LedgerVersion` shrinks and every switch over it stops compiling at its stale
+`case 'v8':` label, which is exactly the line that needs attention.
 
 ### A security note on retrying
 
@@ -483,10 +502,10 @@ question to raise, not as an omission that implies "it just works".
 - [ ] Every `proveTx` / `balanceTx` / `submitTx` call site sends a version-tagged payload and narrows the result.
 - [ ] Every `watchForTxData` / `watchForDeployTxData` call site narrows on `record.version`.
 - [ ] Any in-house `WalletProvider` / `MidnightProvider` implementation compiles against the tagged interfaces (or is wrapped with the `create*Provider` adapters).
-- [ ] Every `switch` on `record.version` is closed with `assertNever`, so the eventual retained-era removal is a compile error.
+- [ ] Every `switch` on `record.version` is closed with `assertNever`, so a future era arm cannot fall through unhandled.
 - [ ] Released to users before the fork, not merely merged before it.
 - [ ] Completion is measured by finalization, not by submit success.
-- [ ] `StaleHeadError` handled: confirm non-finalization, then re-run.
+- [ ] `StaleHeadError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then re-run.
 - [ ] Contracts deployed at runtime have current-toolchain artifacts shipped.
 - [ ] Bundle checked: retained-era chunk separate, not preloaded, retained runtime not duplicated.
 - [ ] Checked back for the pending operator, wallet and connector-proving sections.
