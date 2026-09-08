@@ -47,6 +47,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { ComposeCallOptions, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { expect } from 'vitest';
 
 import type {
@@ -324,6 +325,24 @@ export const createReplayEngine = (
     expect(options.coinPk).toBe(recording.coinPublicKey);
     expect(options.state).toEqual({ replayedCircuitId: recording.circuitId });
     return recording.transcript;
+  },
+  // Reimplemented rather than delegated, deliberately: these suites test the
+  // ORDER an operation touches the era and the engine in, and this package
+  // holds no retained-runtime dependency to delegate through. The real
+  // conversion is tested where it lives, in
+  // `packages/protocol/src/test/v9-operations.test.ts`.
+  reexpressOperationsForCurrentEra: (entryPoints): Uint8Array => {
+    log.push('engine.reexpressOperationsForCurrentEra');
+    const state = new ContractState();
+    for (const entryPoint of entryPoints) {
+      if (entryPoint.verifierKey === undefined) {
+        continue;
+      }
+      const operation = new ContractOperation();
+      operation.verifierKey = entryPoint.verifierKey;
+      state.setOperation(entryPoint.circuitId, operation);
+    }
+    return state.serialize();
   },
   executeConstructor: (): Ledger8ConstructedState => {
     log.push('engine.executeConstructor');

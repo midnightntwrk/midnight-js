@@ -1,0 +1,75 @@
+name: CI - Packaging
+
+# The isolated-linker install smoke (spec AC6, split-topology milestone).
+#
+# Packs every publishable workspace and installs each dApp persona from those
+# tarballs with an isolated linker, outside the workspace. This is the only place
+# the framework is exercised the way a consumer installs it: inside the monorepo
+# every package resolves through one hoisted tree, so a retained-era dApp holding
+# `@midnight-ntwrk/compact-runtime@0.16` alongside the framework's own 0.19 cannot
+# be represented at all.
+
+env:
+  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+permissions:
+  contents: read
+  packages: write
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      should_run:
+        required: true
+        type: string
+
+concurrency:
+  group: packaging-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  linker-smoke:
+    name: Isolated-linker install smoke
+    if: inputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          cache-key-prefix: 'turbo-packaging'
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      # The personas consume `dist`, so the smoke is only meaningful against a
+      # real build rather than against sources.
+      - name: Build
+        run: yarn build --cache-dir ./turbo
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Pack the framework
+        run: node packaging/pack-framework.mjs
+
+      # The personas resolve `@midnight-ntwrk/compact-runtime` from GitHub
+      # Packages, and neither pnpm nor a PnP install inherits Yarn's own scope
+      # configuration, so each needs the credential written where it looks.
+      - name: Authorize the persona installs
+        run: |
+          {
+            echo "@midnight-ntwrk:registry=https://npm.pkg.github.com"
+            echo "//npm.pkg.github.com/:_authToken=${MIDNIGHTCI_PACKAGES_WRITE}"
+          } >> "$HOME/.npmrc"
+        env:
+          MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Run the linker smoke
+        run: node packaging/linker-smoke.mjs
+        env:
+          YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

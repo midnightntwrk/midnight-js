@@ -1,0 +1,194 @@
+# The fork-crossing e2e stack: a chain whose genesis carries the ledger-v8 runtime, running on the
+# ledger-v9 node binary, with the node toolkit on hand to enact the fork through governance.
+#
+# Adapted from the midnight-wallet repository's `infra/compose/docker-compose-fork-dynamic.yml`
+# (as of 2026-09; re-check that file if this stack starts behaving differently). Driven from
+# `ForkTestEnvironment` in `@midnight-ntwrk/testkit-js`. Why the stack is shaped this way is recorded
+# in `docs/architecture/fork-e2e-environment.md`.
+#
+# Every image tag has a default here and is overridable from the environment, so a workflow input
+# reaches compose without editing this file. The tag variables are deliberately named apart from the
+# `MIDNIGHT_NODE_VERSION` / `INDEXER_VERSION` / `PROOF_SERVER_VERSION` trio that `compose.yml` and
+# `testkit-js/env/*.env` use: this stack pins two node images and two proof servers at once, so
+# sharing those names would make one of each unreachable.
+services:
+  # One-shot. The OLD release writes the genesis, so the chain starts on the runtime the fork moves
+  # off. Runs as root purely to write into the shared volume, and only re-builds if the spec is absent.
+  chainspec:
+    image: 'ghcr.io/midnight-ntwrk/midnight-node:${FORK_FROM_NODE_TAG:-1.0.1}'
+    container_name: chainspec_$TESTCONTAINERS_UID
+    user: '0:0'
+    entrypoint: ['/bin/bash', '-c']
+    command:
+      - 'test -s /chainspec/chainspec.json || /midnight-node build-spec > /chainspec/chainspec.json'
+    environment:
+      CFG_PRESET: 'dev'
+    volumes:
+      - chainspec:/chainspec
+    cap_drop:
+      - ALL
+    # `build-spec` writes through the image's own data path before emitting the spec on stdout, and
+    # cannot do it as root on an appuser-owned tree without these. The node needs the same three.
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+
+  # One-shot. Lifts the new runtime blob out of the new node image into a volume the toolkit can read,
+  # in place of a `docker create` + `docker cp` on the host.
+  runtime-blob:
+    image: 'ghcr.io/midnight-ntwrk/midnight-node:${NODE_TAG:-2.1.0-beta.1}'
+    container_name: runtime-blob_$TESTCONTAINERS_UID
+    user: '0:0'
+    entrypoint: ['/bin/bash', '-c']
+    command:
+      # `$$` escapes compose interpolation, so the shell sees `$`. The image ships one
+      # `/artifacts-<arch>` directory, named for the architecture of the image that was pulled.
+      - >
+        set -eu; wasm=midnight_node_runtime.compact.compressed.wasm; case "$$(uname -m)" in x86_64) arch=amd64 ;;
+        aarch64|arm64) arch=arm64 ;; *) echo "unsupported architecture $$(uname -m)" >&2; exit 1 ;; esac; test -s
+        "/runtime/$$wasm" || cp "/artifacts-$$arch/$$wasm" "/runtime/$$wasm"; chmod 644 "/runtime/$$wasm"; ls -l
+        "/runtime/$$wasm"
+    volumes:
+      - runtime:/runtime
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  # New binary, old chain. `restart: "no"` on purpose: if the boundary breaks the node, the test
+  # should show that rather than paper over it with a restart.
+  node:
+    image: 'ghcr.io/midnight-ntwrk/midnight-node:${NODE_TAG:-2.1.0-beta.1}'
+    container_name: node_$TESTCONTAINERS_UID
+    depends_on:
+      chainspec:
+        condition: service_completed_successfully
+      runtime-blob:
+        condition: service_completed_successfully
+    restart: 'no'
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - '9944'
+    volumes:
+      - chainspec:/chainspec:ro
+      - node-data:/node
+    environment:
+      CFG_PRESET: 'dev'
+      CHAIN: '/chainspec/chainspec.json'
+      SHOW_CONFIG: 'false'
+      # The same beneficiary `compose.yml` sets. Without it the node authors
+      # blocks with no reward beneficiary, and a syncing wallet never sees the
+      # ledger events it expects.
+      SIDECHAIN_BLOCK_BENEFICIARY: '04bcf7ad3be7a5c790460be82a713af570f22e0f801f6659ab8e84a52be6969e'
+    # `/health` is not a truthful readiness signal for a new binary on an old chain: it answers
+    # before the node has authored anything. Asking for block #1 proves the chain is authoring. (That
+    # it is authoring the pre-fork runtime follows from the chainspec, not from this probe.)
+    #
+    # `retries` has to outlast `ForkTestEnvironment`'s 5-minute wait strategy: Docker marking the
+    # container `unhealthy` first makes testcontainers give up immediately with `Health check failed`
+    # instead of waiting out its own budget. 10s + 200 x 2s = ~6m50s leaves the wait strategy in
+    # charge, so a slow node reports a timeout rather than a health failure.
+    healthcheck:
+      test:
+        - 'CMD-SHELL'
+        - >
+          curl -fs -H 'Content-Type: application/json' -d
+          '{"id":1,"jsonrpc":"2.0","method":"chain_getBlockHash","params":[1]}' http://localhost:9944 | grep -q
+          '"result":"0x'
+      interval: 2s
+      timeout: 5s
+      retries: 200
+      start_period: 10s
+
+  indexer:
+    image: 'ghcr.io/midnight-ntwrk/indexer-standalone:${INDEXER_TAG:-4.4.0-rc.5}'
+    container_name: indexer_$TESTCONTAINERS_UID
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - '8088'
+    environment:
+      RUST_LOG: 'indexer=debug,chain_indexer=debug,indexer_api=debug,wallet_indexer=debug,indexer_common=debug,fastrace_opentelemetry=off,info'
+      APP__INFRA__NODE__URL: 'ws://node:9944'
+      APP__APPLICATION__NETWORK_ID: 'undeployed'
+      APP__INFRA__STORAGE__PASSWORD: 'indexer'
+      APP__INFRA__PUB_SUB__PASSWORD: 'indexer'
+      APP__INFRA__LEDGER_STATE_STORAGE__PASSWORD: 'indexer'
+      APP__INFRA__SECRET: '303132333435363738393031323334353637383930313233343536373839303132'
+      APP__INFRA__SPO_NODE__URL: 'ws://node:9944'
+      APP__INFRA__SPO_NODE__BLOCKFROST_ID: 'dummy-not-using-spo'
+      # There is no real SPO node here: SPO_NODE__URL above points spo-indexer at the ordinary node
+      # purely so it has somewhere to dial. Indexer 4.4.x spawns the subtask unconditionally and
+      # exits the whole process once it stops retrying -- backoff is capped at 10s by default, so
+      # ~30 attempts exhaust in ~5 min. Raising the cap to 24h keeps the process alive for the run.
+      # (As of indexer 4.4.x no flag disables the subtask.) The trade is that a genuinely
+      # unreachable SPO URL now retries silently instead of failing loudly.
+      APP__INFRA__SPO_NODE__RECONNECT_MAX_DELAY: '24h'
+    # No in-container healthcheck. Readiness is probed from the host instead: `ForkTestEnvironment`
+    # polls `/ready` over the mapped port, which proves the API is serving where an open socket would
+    # not. Note what neither check covers -- `/ready` says nothing about whether `chain_indexer` is
+    # still consuming blocks, so an indexer wedged on a decode error still reads as ready.
+    depends_on:
+      node:
+        condition: service_healthy
+
+  proof-server:
+    image: 'ghcr.io/midnight-ntwrk/proof-server:${PROOF_SERVER_TAG:-9.0.0-rc.7}'
+    container_name: proof-server_$TESTCONTAINERS_UID
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - '6300'
+    environment:
+      RUST_BACKTRACE: 'full'
+      EXTRA_ARGS: -v
+
+  # The proof server of the epoch before the boundary. It runs from the start, because ledger-8
+  # operation happens before the fork is enacted. Why there are two of these rather than one
+  # dual-capable endpoint: `docs/architecture/fork-e2e-environment.md`.
+  proof-server-v8:
+    image: 'ghcr.io/midnight-ntwrk/proof-server:${PROOF_SERVER_V8_TAG:-8.1.2}'
+    container_name: proof-server-v8_$TESTCONTAINERS_UID
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - '6300'
+    environment:
+      RUST_BACKTRACE: 'full'
+      EXTRA_ARGS: -v
+
+  # Never started by `up` -- `ForkTestEnvironment.enactFork()` drives it with
+  # `docker compose ... --profile tools run --rm toolkit runtime-upgrade ...`, which joins the
+  # project network so `ws://node:9944` resolves. No `container_name`: `compose run` names its own.
+  #
+  # This is the one image on Docker Hub rather than ghcr: as of 2026-09 ghcr carried no toolkit at
+  # the pinned tag. So a ghcr login does not authorize this pull -- the CI lane logs in to Docker Hub
+  # as well. Re-check the registry when bumping TOOLKIT_TAG.
+  toolkit:
+    profiles: ['tools']
+    image: 'midnightntwrk/midnight-node-toolkit:${TOOLKIT_TAG:-2.1.0-beta.1}'
+    volumes:
+      - runtime:/runtime:ro
+    environment:
+      RUST_BACKTRACE: '1'
+
+volumes:
+  chainspec:
+  runtime:
+  node-data:

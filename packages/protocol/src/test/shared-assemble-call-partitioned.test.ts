@@ -20,7 +20,7 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import { ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
+import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
 import { assembleCallPrototype } from '../lib/shared/assemble-call';
 import type { CallTranscriptSource } from '../lib/shared/compose-types';
 import { emptyPartitionContext } from './fixtures';
@@ -83,6 +83,25 @@ const callIn = (intent: ledgerV9.Intent<ledgerV9.SignatureEnabled, ledgerV9.PreP
   }
   return calls[0];
 };
+
+const assembleWithParameters = (
+  address: string,
+  transcript: CallTranscriptSource,
+  operations: ledgerV9.ContractState,
+  ledgerParameters: Uint8Array | undefined
+): ledgerV9.ContractCallPrototype =>
+  assembleCallPrototype(ledgerV9, {
+    circuitId: 'increment',
+    contractAddress: address,
+    transcript,
+    privateTranscriptOutputs: [],
+    input: fieldValue(0x10),
+    output: fieldValue(0x20),
+    operations,
+    ledgerParameters,
+    stage: 'call-operation',
+    version: 'v9'
+  });
 
 const assembleWith = (
   address: string,
@@ -347,5 +366,64 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
     expect(failure.circuitId).toBe('increment');
     expect(failure.cause).toBeInstanceOf(Error);
     expect(failure.message).not.toMatch(/[0-9a-f]{16,}/i);
+  });
+});
+
+describe('the transcript partitioner and the chain\'s own ledger parameters', () => {
+  // The partitioner decides what goes in the guaranteed segment from the cost model these carry.
+  // They are dynamic (prices adjust per block) and era-tagged, so the ledger's `initialParameters()`
+  // is the model the chain STARTED with, not the one it is running. Partitioning against it draws
+  // the boundary in the wrong place and the node refuses the guaranteed segment for running out of
+  // gas -- which is what kept the post-fork keep-state call from ever being accepted.
+  const address = ledgerV9.sampleContractAddress();
+  const unpartitioned: CallTranscriptSource = {
+    kind: 'unpartitioned',
+    preState: PRE_STATE,
+    publicTranscript: PUBLIC_TRANSCRIPT,
+    partitionContext: emptyPartitionContext()
+  };
+
+  it('partitions against the parameters it is handed, reading them with this era', () => {
+    // Arrange: the chain's parameters, as bytes -- which is how they arrive from a block.
+    const served = ledgerV9.LedgerParameters.initialParameters().serialize();
+
+    // Act.
+    const act = (): ledgerV9.ContractCallPrototype =>
+      assembleWithParameters(address, unpartitioned, contractStateWithOperation(), served);
+
+    // Assert: the deserialized path reaches the partitioner and composes. Asserted as "does not
+    // throw" rather than by comparing transcripts, because these particular bytes ARE the initial
+    // parameters -- what is under test is that supplied bytes are read and used at all.
+    expect(act).not.toThrow();
+  });
+
+  it('falls back to the initial parameters when none are supplied, which is the compatibility path', () => {
+    // Arrange / Act.
+    const act = (): ledgerV9.ContractCallPrototype =>
+      assembleWithParameters(address, unpartitioned, contractStateWithOperation(), undefined);
+
+    // Assert: still composes, so a caller with no read surface is not broken by the new option.
+    expect(act).not.toThrow();
+  });
+
+  it('refuses parameters this era cannot read, naming the option rather than the partition', () => {
+    // Arrange: well-formed bytes that are not ledger parameters. On a real chain this is what
+    // pre-fork parameters look like to the current era -- they carry `ledger-parameters[v5]`.
+    const notParameters = Uint8Array.from([1, 2, 3, 4]);
+
+    // Act.
+    let caught: unknown;
+    try {
+      assembleWithParameters(address, unpartitioned, contractStateWithOperation(), notParameters);
+    } catch (error) {
+      caught = error;
+    }
+
+    // Assert: reported as a bad OPTION, so a reader is sent to the bytes they passed rather than to
+    // the transcript, and the ledger's own diagnosis survives on `cause`.
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    expect((caught as ComposeOptionError).option).toBe('ledgerParameters');
+    expect((caught as ComposeOptionError).version).toBe('v9');
+    expect((caught as ComposeOptionError).cause).toBeDefined();
   });
 });

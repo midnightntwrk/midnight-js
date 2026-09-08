@@ -98,6 +98,10 @@ export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8):
       input: call.input,
       output: call.output,
       communicationCommitmentRandomness: call.communicationCommitmentRandomness,
+      // Carried across the adapter, not dropped. Without this the retained-native arm silently
+      // partitions against this era's INITIAL parameters while the caller believed it had supplied
+      // the chain's -- the same defect this option exists to close, one layer down.
+      ledgerParameters: call.ledgerParameters,
       networkId,
       ttl,
       guaranteedZswapOffer: guaranteedOffer,

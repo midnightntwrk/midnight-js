@@ -64,7 +64,6 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   BlankVerifierKeySlotError,
   EraInvariantViolationError,
-  IndexerInconsistencyError,
   Ledger8DeployOnV9Error,
   Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
@@ -283,10 +282,16 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       .fn()
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
+    // Pre-fork the read era and the compose era are the SAME era, so one recorded facade fills
+    // both roles -- which is exactly what makes the orchestration order below comparable with
+    // keep-state's, where they differ.
+    const recorded = recordEraCalls(retainedEra, log, (options) => {
+      composed = options;
+    });
+
     const result = await runLedger8CallPipeline<ReplayState>({
-      era: recordEraCalls(retainedEra, log, (options) => {
-        composed = options;
-      }),
+      retainedEra: recorded,
+      era: recorded,
       engine,
       publicDataProvider: providers.publicDataProvider,
       head: 'v8',
@@ -335,6 +340,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
 
     const result = await runLedger8CallPipeline<ReplayState>({
       era: retainedEra,
+      retainedEra,
       engine: createReplayEngine(recording, log),
       publicDataProvider: providers.publicDataProvider,
       head: 'v8',
@@ -372,6 +378,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
     const result = await runLedger8CallPipeline<ReplayState>({
+      retainedEra,
       era: recordEraCalls(retainedEra, log, (options) => {
         composed = options;
       }),
@@ -430,6 +437,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
 
     const result = await runLedger8CallPipeline<ReplayState>({
       era: retainedEra,
+      retainedEra,
       engine: createReplayEngine(recordingPayingUser(recording, thirdPartyCoinPublicKey), log),
       publicDataProvider: providers.publicDataProvider,
       head: 'v8',
@@ -464,6 +472,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
     await runLedger8CallPipeline<ReplayState>({
+      retainedEra,
       era: recordEraCalls(retainedEra, log, (options) => {
         composed = options;
       }),
@@ -1242,11 +1251,14 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(providers.publicDataProvider.queryRawContractState).not.toHaveBeenCalled();
   });
 
-  it('dates the fetched envelope against the head, not against the record\'s own era label', async () => {
+  it("routes on the ENVELOPE, not on the record's own era label, when attaching after the fork", async () => {
     const providers = attachProviders(v6Envelope);
-    // The record labels itself current-era and the head agrees with the label,
-    // while the bytes carry a pre-fork envelope. The label is derived from
-    // `protocolVersion` alone and is not a verified statement about the bytes.
+    // The record labels itself current-era and the head agrees with the label, while the bytes
+    // carry a retained envelope. The label is derived from `protocolVersion` alone and is not a
+    // verified statement about the bytes -- and the bytes are what a decoder has to read.
+    //
+    // This is a contract deployed before the fork and attached to after it, which is ordinary:
+    // the fork does not rewrite stored state. It must attach, not be refused.
     providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(POST_FORK_PROTOCOL_VERSION);
     providers.publicDataProvider.queryRawContractState = vi.fn().mockResolvedValue({
       version: 'v9',
@@ -1254,7 +1266,7 @@ describe('attaching to a retained-era contract already on chain', () => {
       raw: v6Envelope
     });
 
-    await expect(findDeployedContract(providers, attachOptions())).rejects.toBeInstanceOf(IndexerInconsistencyError);
-    expect(providers.publicDataProvider.watchForDeployTxData).not.toHaveBeenCalled();
+    await expect(findDeployedContract(providers, attachOptions())).resolves.toBeDefined();
+    expect(providers.publicDataProvider.watchForDeployTxData).toHaveBeenCalled();
   });
 });

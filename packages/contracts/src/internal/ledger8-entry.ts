@@ -32,8 +32,8 @@
  */
 
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type { DownConvertedState } from '@midnight-ntwrk/midnight-js-protocol';
-import { loadLedger8Engine } from '@midnight-ntwrk/midnight-js-protocol';
+import type { DownConvertedState, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import { loadLedger8Engine, loadLedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
 import { Transaction, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type MidnightProvider,
@@ -118,6 +118,17 @@ export interface Ledger8EntryProviders {
 export interface Ledger8Runtime {
   readonly resolved: ResolvedOperationEra;
   readonly engine: Ledger8ExecutionEngine<DownConvertedState>;
+  /**
+   * The RETAINED era facade, which reads the contract's on-chain state.
+   *
+   * Separate from `resolved.era` on purpose. `resolved.era` follows the network head and is what a
+   * transaction is composed on; this one follows the bytes the chain holds, which the fork does not
+   * rewrite. Post-fork the two differ, and that difference IS keep-state.
+   *
+   * Acquiring it costs nothing extra here: the engine beside it has already pulled the retained
+   * runtime, and the era load is memoised.
+   */
+  readonly retainedEra: LedgerEra;
 }
 
 /**
@@ -144,16 +155,17 @@ export const acquireLedger8Runtime = async (
   kind: 'call' | 'deploy',
   breadcrumbs?: { readonly logger?: BreadcrumbSink; readonly contractAddress?: string }
 ): Promise<Ledger8Runtime> => {
-  const [resolved, engine] = await Promise.all([
+  const [resolved, engine, retainedEra] = await Promise.all([
     resolveOperationEra(pdp, breadcrumbs?.logger),
-    loadLedger8Engine()
+    loadLedger8Engine(),
+    loadLedgerEra('v8')
   ]);
   assertEraCompatible('ledger8', resolved.head, kind);
   // AFTER the gate: a selection breadcrumb written before it would claim a
   // pipeline for an operation the very next line refuses.
   emitPipelineSelection(breadcrumbs?.logger, resolved, 'ledger8', breadcrumbs?.contractAddress);
 
-  return { resolved, engine };
+  return { resolved, engine, retainedEra };
 };
 
 /**
@@ -337,7 +349,7 @@ export const runLedger8Call = async (
   providers: Ledger8EntryProviders,
   request: Ledger8CallRequest
 ): Promise<Ledger8SubmittedCall> => {
-  const { resolved, engine } = await acquireLedger8Runtime(providers.publicDataProvider, 'call', {
+  const { resolved, engine, retainedEra } = await acquireLedger8Runtime(providers.publicDataProvider, 'call', {
     logger: providers.loggerProvider,
     contractAddress: request.contractAddress
   });
@@ -351,6 +363,7 @@ export const runLedger8Call = async (
 
   const call = await runLedger8CallPipeline({
     era: resolved.era,
+    retainedEra,
     engine,
     publicDataProvider: providers.publicDataProvider,
     head: resolved.head,
@@ -491,7 +504,10 @@ export const findLedger8Contract = async (
 ): Promise<Ledger8FoundState> => {
   assertIsContractAddress(request.contractAddress);
 
-  const resolved = await resolveOperationEra(providers.publicDataProvider, providers.loggerProvider);
+  const [resolved, retainedEra] = await Promise.all([
+    resolveOperationEra(providers.publicDataProvider, providers.loggerProvider),
+    loadLedgerEra('v8')
+  ]);
   assertEraCompatible('ledger8', resolved.head, 'call');
   emitPipelineSelection(providers.loggerProvider, resolved, 'ledger8', request.contractAddress);
 
@@ -512,7 +528,7 @@ export const findLedger8Contract = async (
   // could answer differently and leave half the keys checked against one state
   // and half against another.
   const snapshot = await readLedger8Snapshot(
-    resolved.era,
+    retainedEra,
     resolved.head,
     providers.publicDataProvider,
     request.contractAddress,
