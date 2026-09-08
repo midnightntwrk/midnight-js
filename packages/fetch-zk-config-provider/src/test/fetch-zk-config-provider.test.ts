@@ -27,6 +27,8 @@ import { FetchZkConfigProvider } from '../index';
 const createHashHex = (binaryLike: BinaryLike): string => crypto.createHash('sha256').update(binaryLike).digest('hex');
 
 describe('Fetch ZK config Provider', () => {
+  // The prover fixture is a small synthetic artifact rather than a real key: hashing a multi-megabyte
+  // one with pure-JS SHA-256 under v8 coverage crosses the default 5s timeout on slow CI runners.
   const resourceDir = `${process.cwd()}/src/test/resources`;
 
   let server: Server;
@@ -86,7 +88,7 @@ describe('Fetch ZK config Provider', () => {
     return crypto.createHash('sha256').update(binaryLike).digest().toString('base64');
   };
 
-  const PROVER_KEY_HASH = 'DnbPkv3mY0+nHwt3NGuaWlMRC+2QhtG+COdhjFd0xB8=';
+  const PROVER_KEY_HASH = 'fJjOkcj1L4rVJ2C3TQRVNNGNpwaGvP5NS/GQ/RUnow8=';
 
   test('reads prover key correctly', async () => {
     const proverKey = await new FetchZkConfigProvider(serverURL).getProverKey('set_topic');
@@ -221,7 +223,7 @@ describe('Fetch ZK config Provider', () => {
   });
 
   describe('ZK artifact integrity verification', () => {
-    const realProver = () => fs.readFile(`${resourceDir}/keys/set_topic.prover`);
+    const proverFixture = () => fs.readFile(`${resourceDir}/keys/set_topic.prover`);
 
     // Spins up an ephemeral fixture server for one test; callers must close() in a finally.
     const startServer = (configure: (app: express.Express) => void): { url: string; close: () => void } => {
@@ -248,7 +250,7 @@ describe('Fetch ZK config Provider', () => {
     });
 
     it('rejects a tampered prover key (digest mismatch) and names the path and digests', async () => {
-      const genuine = await realProver();
+      const genuine = await proverFixture();
       const tampered = Buffer.from(genuine);
       tampered[tampered.length - 1] ^= 0xff;
       const goodHash = createHashHex(genuine);
@@ -266,8 +268,6 @@ describe('Fetch ZK config Provider', () => {
       const addr = tamperServer.address();
       const url = typeof addr === 'object' && addr ? `http://localhost:${addr.port}` : '';
       try {
-        // Single fetch: three separate getProverKey calls each pull and hash the 7.3MB key,
-        // which exceeds the 5s test timeout on slow CI runners under coverage instrumentation.
         const rejection = await new FetchZkConfigProvider(url).getProverKey('set_topic').then(
           () => {
             throw new Error('expected getProverKey to reject');
@@ -325,7 +325,7 @@ describe('Fetch ZK config Provider', () => {
     });
 
     it('treats a present manifest missing the requested entry as absent (require throws)', async () => {
-      const prover = await realProver();
+      const prover = await proverFixture();
       const { url, close } = startServer((app) => {
         app.get('/keys/set_topic.prover', (_, res) => res.send(prover));
         app.get('/compiler/contract-manifest.json', (_, res) =>
@@ -342,7 +342,7 @@ describe('Fetch ZK config Provider', () => {
     });
 
     it('accepts a response with no content-type header (not mistaken for HTML fallback)', async () => {
-      const prover = await realProver();
+      const prover = await proverFixture();
       const { url, close } = startServer((app) => {
         app.get('/keys/set_topic.prover', (_, res) => {
           res.removeHeader('Content-Type');
@@ -360,11 +360,45 @@ describe('Fetch ZK config Provider', () => {
       }
     });
 
+    it('warns and resolves when the manifest is absent in require-if-present mode', async () => {
+      const onWarn = vi.fn();
+      const { url, close } = startServer((app) => {
+        app.get('/keys/set_topic.prover', async (_, res) => res.send(await proverFixture()));
+      });
+      try {
+        const key = await new FetchZkConfigProvider(url, { verify: 'require-if-present', onWarn }).getProverKey(
+          'set_topic'
+        );
+        expect(key.length).toBeGreaterThan(0);
+        expect(onWarn).toHaveBeenCalledOnce();
+        expect(onWarn.mock.calls[0][0]).toMatch(/^midnight-js:.*set_topic\.prover/);
+      } finally {
+        close();
+      }
+    });
+
+    it('rejects in require-if-present mode when the served manifest has no entry for the artifact', async () => {
+      const onWarn = vi.fn();
+      const prover = await proverFixture();
+      const { url, close } = startServer((app) => {
+        app.get('/keys/set_topic.prover', (_, res) => res.send(prover));
+        app.get('/compiler/contract-manifest.json', (_, res) =>
+          res.type('application/json').send(manifestFor('keys', 'other.prover', prover))
+        );
+      });
+      try {
+        await expect(
+          new FetchZkConfigProvider(url, { verify: 'require-if-present', onWarn }).getProverKey('set_topic')
+        ).rejects.toThrow(ZkArtifactIntegrityError);
+        expect(onWarn).not.toHaveBeenCalled();
+      } finally {
+        close();
+      }
+    });
+
     it('rejects when the manifest is absent under the default (require)', async () => {
-      // spaServer-style server with no manifest route and real-looking keys is overkill;
-      // reuse the SPA-fallback server which 404s the manifest. Here: a server that serves the prover but no manifest.
       const app = express();
-      app.get('/keys/set_topic.prover', async (_, res) => res.send(await realProver()));
+      app.get('/keys/set_topic.prover', async (_, res) => res.send(await proverFixture()));
       const noManifestServer = app.listen();
       const addr = noManifestServer.address();
       const url = typeof addr === 'object' && addr ? `http://localhost:${addr.port}` : '';
@@ -377,7 +411,7 @@ describe('Fetch ZK config Provider', () => {
 
     it('warns and resolves when the manifest is absent in warn mode', async () => {
       const app = express();
-      app.get('/keys/set_topic.prover', async (_, res) => res.send(await realProver()));
+      app.get('/keys/set_topic.prover', async (_, res) => res.send(await proverFixture()));
       const noManifestServer = app.listen();
       const addr = noManifestServer.address();
       const url = typeof addr === 'object' && addr ? `http://localhost:${addr.port}` : '';
@@ -400,7 +434,7 @@ describe('Fetch ZK config Provider', () => {
 
     it('rejects in warn mode when expectedManifestHash is set but the manifest is absent', async () => {
       const app = express();
-      app.get('/keys/set_topic.prover', async (_, res) => res.send(await realProver()));
+      app.get('/keys/set_topic.prover', async (_, res) => res.send(await proverFixture()));
       const noManifestServer = app.listen();
       const addr = noManifestServer.address();
       const url = typeof addr === 'object' && addr ? `http://localhost:${addr.port}` : '';
@@ -430,8 +464,8 @@ describe('Fetch ZK config Provider', () => {
 
     it('does not memoize a transient manifest failure (fetchFunc throws)', async () => {
       let manifestFetchAttempts = 0;
-      // Fixture server: real prover key + manifest with a WRONG prover hash (triggers digest mismatch).
-      const proverBytes = await realProver();
+      // The manifest carries a wrong prover hash, so a successful manifest fetch ends in a digest mismatch.
+      const proverBytes = await proverFixture();
       const app = express();
       app.get('/keys/set_topic.prover', (_, res) => res.send(proverBytes));
       app.get('/compiler/contract-manifest.json', (_, res) => {
