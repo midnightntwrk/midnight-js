@@ -28,7 +28,9 @@ import { type ApolloRequest, stubApolloHandle } from './apollo-stub';
 import {
   mintV8ContractStateBytes,
   mintV8ContractStateHex,
+  mintV8LedgerParametersHex,
   mintV9ContractStateHex,
+  mintV9LedgerParametersHex,
   mintV9TransactionHex,
   UNRESOLVABLE_PROTOCOL_VERSION,
   V8_ERA_PROTOCOL_VERSION,
@@ -314,11 +316,19 @@ describe('queryContractState dates the state it decodes', () => {
 });
 
 describe('queryZSwapAndContractState dates the triple it decodes', () => {
-  const tripleResponse = (state: string, protocolVersion: number): unknown => ({
+  // The block's parameters are minted by the era the block's own `protocolVersion` names, because
+  // that is what a chain serves: ledger parameters are era-tagged and served PER BLOCK. An earlier
+  // version of this fixture served current-era parameters under a pre-fork block, which is a shape
+  // no chain produces -- and, being the only pre-fork triple under test, it let the parameters
+  // decode pass on bytes the real thing would have refused.
+  const tripleResponse = async (state: string, protocolVersion: number): Promise<unknown> => ({
     data: {
       block: {
         protocolVersion,
-        ledgerParameters: Buffer.from(ledger.LedgerParameters.initialParameters().serialize()).toString('hex'),
+        ledgerParameters:
+          protocolVersion === V8_ERA_PROTOCOL_VERSION
+            ? await mintV8LedgerParametersHex()
+            : mintV9LedgerParametersHex(),
         contractZswapState: Buffer.from(new ledger.ZswapChainState().serialize()).toString('hex')
       },
       contract: { state }
@@ -327,7 +337,7 @@ describe('queryZSwapAndContractState dates the triple it decodes', () => {
 
   test('returns the triple when the era checks out', async () => {
     const query = dispatchingQuery(
-      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, tripleResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION)]])
+      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, await tripleResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION)]])
     );
 
     const triple = await buildProvider(query).queryZSwapAndContractState(ADDRESS);
@@ -339,7 +349,7 @@ describe('queryZSwapAndContractState dates the triple it decodes', () => {
   test('refuses the triple when the block dates it to an unsupported era', async () => {
     const query = dispatchingQuery(
       new Map([
-        [CONTRACT_AND_ZSWAP_STATE_QUERY, tripleResponse(await mintV8ContractStateHex(), V8_ERA_PROTOCOL_VERSION)]
+        [CONTRACT_AND_ZSWAP_STATE_QUERY, await tripleResponse(await mintV8ContractStateHex(), V8_ERA_PROTOCOL_VERSION)]
       ])
     );
 
@@ -350,21 +360,31 @@ describe('queryZSwapAndContractState dates the triple it decodes', () => {
     expect(rejection).not.toBeInstanceOf(DeserializationError);
   });
 
-  test('decodes an unpinned triple whose state is newer than the block dating it', async () => {
-    // Same sibling shape as `CONTRACT_STATE_QUERY`: the triple's three fields
-    // share one `block` resolution, but `contract` is still its own root
-    // field. `getPublicStates` reaches here with no offset whenever its
-    // caller passes no block hash.
+  test('refuses an unpinned triple dated to a block whose parameters this era cannot read', async () => {
+    // Same sibling shape as `CONTRACT_STATE_QUERY`: the triple's three fields share one `block`
+    // resolution, but `contract` is still its own root field, so an unpinned read can resolve a
+    // state NEWER than the block. `getPublicStates` reaches here with no offset whenever its caller
+    // passes no block hash.
+    //
+    // The state's own upper-bound check is withheld for exactly that reason and the state decodes.
+    // The triple still cannot be completed: its third field is that block's parameters, and a
+    // pre-fork block's parameters are readable only by the retained runtime. Refusing by era names
+    // the field and the era; before the parameters were dated, these bytes reached the deserializer
+    // and came back as an unclassified failure naming neither.
     const query = dispatchingQuery(
-      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, tripleResponse(mintV9ContractStateHex(), V8_ERA_PROTOCOL_VERSION)]])
+      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, await tripleResponse(mintV9ContractStateHex(), V8_ERA_PROTOCOL_VERSION)]])
     );
 
-    await expect(buildProvider(query).queryZSwapAndContractState(ADDRESS)).resolves.toHaveLength(3);
+    const rejection = await rejectionOf(buildProvider(query).queryZSwapAndContractState(ADDRESS));
+
+    expect(rejection).toBeInstanceOf(IndexerDataError);
+    expect((rejection as IndexerDataError).context).toEqual({ kind: 'unsupported-parameters-era', version: 'v8' });
+    expect(rejection).not.toBeInstanceOf(DeserializationError);
   });
 
   test('refuses a pinned triple whose state is newer than the block dating it', async () => {
     const query = dispatchingQuery(
-      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, tripleResponse(mintV9ContractStateHex(), V8_ERA_PROTOCOL_VERSION)]])
+      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, await tripleResponse(mintV9ContractStateHex(), V8_ERA_PROTOCOL_VERSION)]])
     );
 
     const rejection = await rejectionOf(

@@ -109,7 +109,9 @@ export type IndexerDataErrorContext =
       reportedVersion: LedgerVersion;
       envelopeVersion: LedgerVersion;
     }
-  | { kind: 'unsupported-decode-era'; version: LedgerVersion };
+  | { kind: 'unsupported-decode-era'; version: LedgerVersion }
+  | { kind: 'malformed-parameters-encoding' }
+  | { kind: 'unsupported-parameters-era'; version: LedgerVersion };
 
 /**
  * An error raised when indexer-returned data is structurally inconsistent
@@ -195,6 +197,14 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'unsupported-decode-era', version });
   }
 
+  static malformedParametersEncoding(): IndexerDataError {
+    return new IndexerDataError({ kind: 'malformed-parameters-encoding' });
+  }
+
+  static unsupportedParametersEra(version: LedgerVersion): IndexerDataError {
+    return new IndexerDataError({ kind: 'unsupported-parameters-era', version });
+  }
+
   private static formatMessage(context: IndexerDataErrorContext): string {
     switch (context.kind) {
       case 'unknown-status':
@@ -246,6 +256,19 @@ export class IndexerDataError extends IndexerError {
           `The indexer served a contract state from ledger ${context.version}, which this read path cannot ` +
           'decode. Use `queryRawContractState` to obtain the bytes together with their era and decode them ' +
           'with the matching runtime.'
+        );
+      case 'malformed-parameters-encoding':
+        return (
+          'The indexer returned ledger parameters that are not a hex-encoded byte string. ' +
+          'Check that the indexer and this client agree on the wire encoding, and retry against a healthy indexer.'
+        );
+      case 'unsupported-parameters-era':
+        return (
+          `The indexer served the ledger parameters of a block from ledger ${context.version}, which this read ` +
+          'path cannot decode. Ledger parameters are era-tagged and served per block, so a block from before ' +
+          'the fork carries parameters only the retained runtime can read — this is an ordinary pre-fork block, ' +
+          'not a faulty indexer. Use `queryRawContractState`, which serves the parameter bytes together with ' +
+          'their block, and decode them with the matching runtime.'
         );
     }
   }
