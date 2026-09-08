@@ -53,6 +53,13 @@ export interface ComposeV8CallOptions {
   readonly input: AlignedValue;
   readonly output: AlignedValue;
   readonly communicationCommitmentRandomness?: string;
+  /**
+   * The ledger parameters the chain held at the block this call is built against, serialized.
+   *
+   * Read by the partitioner. Omitting them falls back to this era's initial parameters, which is a
+   * compatibility path and not a correct one -- see `AssembleCallOptions.ledgerParameters`.
+   */
+  readonly ledgerParameters?: Uint8Array;
   readonly networkId: string;
   readonly ttl: Date;
   readonly guaranteedZswapOffer?: UnprovenOffer;
