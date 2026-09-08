@@ -238,7 +238,10 @@ await leg('pre-fork retained call', async () => {
     contractAddress: deployment.contractAddress,
     circuitId: CIRCUIT_ID
   });
-  return { txId: submitted.txId };
+  // `submitCallTx` resolves a FinalizedCallTxData, whose non-sensitive fields sit under
+  // `.public` -- reading `submitted.txId` yields undefined, and a leg that never submitted
+  // would then look exactly like one that did.
+  return { txId: submitted.public.txId };
 });
 
 // ── (b) the fork moment ───────────────────────────────────────────────────────
@@ -266,7 +269,10 @@ await leg('post-fork keep-state call through the same call site', async () => {
     contractAddress: deployment.contractAddress,
     circuitId: CIRCUIT_ID
   });
-  return { txId: submitted.txId };
+  // `submitCallTx` resolves a FinalizedCallTxData, whose non-sensitive fields sit under
+  // `.public` -- reading `submitted.txId` yields undefined, and a leg that never submitted
+  // would then look exactly like one that did.
+  return { txId: submitted.public.txId };
 });
 
 // ── (d) reads its own pre-fork history ────────────────────────────────────────

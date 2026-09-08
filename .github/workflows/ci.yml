@@ -77,6 +77,16 @@ jobs:
     uses: ./.github/workflows/ci-packaging.yml
     secrets: inherit
 
+  # The fork-crossing gate. Red on purpose until the keep-state partitioning is
+  # fixed -- see the comment on its own run step for why it is not hidden.
+  hardfork:
+    needs: ci
+    name: Hard fork
+    with:
+      should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
+    uses: ./.github/workflows/ci-hardfork.yml
+    secrets: inherit
+
   ci-testkit:
     needs: ci
     name: Build Testkit.js
