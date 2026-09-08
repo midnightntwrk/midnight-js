@@ -293,6 +293,23 @@ export interface ReplayState {
 export type OrchestrationLog = string[];
 
 /**
+ * What a caller additionally requires the pipeline to have handed the engine.
+ *
+ * The four members the double checks unconditionally are the ones the recording
+ * itself pins. The PRIVATE STATE is not one of them — the recording carries no
+ * private state to compare against — so a test that cares about it says so
+ * here. Without this the engine answered on four of six inputs, and
+ * `privateState: request.privateState` could be replaced with
+ * `privateState: undefined` in the pipeline with the whole suite still green:
+ * the recording replays regardless, `privateStateAfter` still comes back, and
+ * the write-back still happens — against a DEFAULT state.
+ */
+export interface ReplayExpectations {
+  /** The private state the pipeline must have handed the engine. */
+  readonly privateState?: unknown;
+}
+
+/**
  * Builds the engine double: it replays {@link CoinReceiverRecording}, and
  * refuses to replay anything else.
  *
@@ -300,12 +317,14 @@ export type OrchestrationLog = string[];
  * @param log The orchestration log to append each call to.
  * @param constructedState The serialized state the constructor arm replays —
  * the committed retained-era envelope for this same contract.
+ * @param expectations What else the pipeline must have handed the engine.
  * @returns An engine satisfying the pipeline's slice at {@link ReplayState}.
  */
 export const createReplayEngine = (
   recording: CoinReceiverRecording,
   log: OrchestrationLog,
-  constructedState?: Uint8Array
+  constructedState?: Uint8Array,
+  expectations?: ReplayExpectations
 ): Ledger8ExecutionEngine<ReplayState> => ({
   downConvertForExecution: (state): ReplayState => {
     log.push('engine.downConvertForExecution');
@@ -324,6 +343,15 @@ export const createReplayEngine = (
     expect(options.args).toEqual([recording.receivedCoin]);
     expect(options.coinPk).toBe(recording.coinPublicKey);
     expect(options.state).toEqual({ replayedCircuitId: recording.circuitId });
+    // The CONTRACT the pipeline threaded through, not merely that one was
+    // passed: an engine handed some other object would otherwise replay
+    // happily, because the recording answers regardless of what it is given.
+    expect(Object.keys((options.contract as { readonly impureCircuits: object }).impureCircuits)).toContain(
+      recording.circuitId
+    );
+    if (expectations !== undefined && 'privateState' in expectations) {
+      expect(options.privateState).toEqual(expectations.privateState);
+    }
     return recording.transcript;
   },
   // Reimplemented rather than delegated, deliberately: these suites test the

@@ -38,7 +38,7 @@ import { readFileSync } from 'node:fs';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import { type ComposeCallOptions, type LedgerEra, loadLedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
-import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { ContractState, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type RawContractState,
   type VersionedFinalizedTransaction,
@@ -320,6 +320,15 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       // The WRITE surface's current-era arm carries `tx`, and carries no
       // `txBytes` at all -- the two arms are genuinely different shapes.
       expect(payload).not.toHaveProperty('txBytes');
+    }
+
+    // A LIVE HANDLE, not merely a `'v9'` tag over anything.
+    // `readCurrentEraTransaction` could be replaced with `() => undefined` and
+    // every assertion above would still pass, handing `undefined` down the
+    // whole chain: `{ version: 'v9', tx: undefined }` satisfies both the tag
+    // check and the absence of `txBytes`.
+    for (const payload of [providers.seen.proveTx, providers.seen.balanceTx, providers.seen.submitTx]) {
+      expect(payload?.version === 'v9' ? payload.tx : undefined).toBeInstanceOf(Transaction);
     }
   });
 
