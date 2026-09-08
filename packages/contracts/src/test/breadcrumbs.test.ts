@@ -57,7 +57,7 @@ import {
 } from '../errors';
 import type { DispatchBreadcrumb, HeadReadingProvenance } from '../internal/breadcrumbs';
 import { DISPATCH_BREADCRUMB_MESSAGE, emitEncoding, emitHeadResolution, emitPipelineSelection } from '../internal/breadcrumbs';
-import { assertHeadStateEraAgreement, type PipelineEra, resolveOperationEra } from '../internal/era';
+import { assertRetainedStateEnvelope, type PipelineEra, resolveOperationEra } from '../internal/era';
 import { acquireLedger8Runtime, findLedger8Contract } from '../internal/ledger8-entry';
 import { handleSubmitRejection } from '../internal/stale-head';
 import { resolveScopeEra } from '../internal/transaction';
@@ -500,6 +500,8 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
   });
 });
 
+const ADDRESS = '0'.repeat(64);
+
 describe('the encoding breadcrumb dates the fetched state from its envelope tag', () => {
   const v8Envelope = readHexFixture('state-v8.hex');
   const v9Envelope = readHexFixture('state-migrated-v9.hex');
@@ -507,7 +509,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
   it('reports the envelope era on an agreeing head, carrying none of the state bytes', async () => {
     const sink = createSink();
 
-    await assertHeadStateEraAgreement('v8', rawState(v8Envelope, V8_HEAD, 'v8'), headSource(), sink);
+    await assertRetainedStateEnvelope('v8', rawState(v8Envelope, V8_HEAD, 'v8'), ADDRESS, headSource(), sink);
 
     const [breadcrumb] = emitted(sink);
     expect(breadcrumb).toBeDefined();
@@ -526,12 +528,11 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     // The record's own `version` says v9 and its envelope says v8. The
     // breadcrumb reports the envelope, which is the byte-level truth --
     // `RawContractState.version` is explicitly not a verified statement about
-    // the envelope.
+    // the envelope. This is keep-state, so it is accepted, and the breadcrumb
+    // is what tells an operator which decoder the bytes went to.
     const sink = createSink();
 
-    await expect(
-      assertHeadStateEraAgreement('v9', rawState(v8Envelope, V9_HEAD, 'v9'), headSource(V8_HEAD), sink)
-    ).rejects.toThrow(HeadStateEraMismatchError);
+    await assertRetainedStateEnvelope('v9', rawState(v8Envelope, V9_HEAD, 'v9'), ADDRESS, headSource(), sink);
 
     expect(emitted(sink)[0]).toStrictEqual({
       decision: 'encoding',
@@ -548,15 +549,15 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     const sink = createSink();
 
     await expect(
-      assertHeadStateEraAgreement('v9', rawState(v8Envelope, V8_HEAD, 'v8'), headSource(V8_HEAD), sink)
+      assertRetainedStateEnvelope('v8', rawState(v9Envelope, V8_HEAD, 'v8'), ADDRESS, headSource(V9_HEAD), sink)
     ).rejects.toThrow(HeadStateEraMismatchError);
 
     expect(emitted(sink)).toStrictEqual([
-      { decision: 'encoding', version: 'v8', source: 'contract-state-envelope-tag' },
+      { decision: 'encoding', version: 'v9', source: 'contract-state-envelope-tag' },
       {
         decision: 'head-resolution',
-        version: 'v8',
-        protocolVersion: V8_HEAD,
+        version: 'v9',
+        protocolVersion: V9_HEAD,
         source: 'public-data-provider',
         readingProvenance: 'disagreement-re-read'
       }
@@ -567,7 +568,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     const sink = createSink();
 
     await expect(
-      assertHeadStateEraAgreement('v8', rawState(v9Envelope, V9_HEAD, 'v9'), headSource(V8_HEAD), sink)
+      assertRetainedStateEnvelope('v8', rawState(v9Envelope, V9_HEAD, 'v9'), ADDRESS, headSource(V8_HEAD), sink)
     ).rejects.toThrow(IndexerInconsistencyError);
 
     expect(emitted(sink)).toStrictEqual([
@@ -582,11 +583,11 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     ]);
   });
 
-  it('leaves no re-read breadcrumb when the head and the envelope agree', async () => {
+  it('leaves no re-read breadcrumb when the envelope is one this pipeline can read', async () => {
     const sink = createSink();
     const pdp = headSource();
 
-    await assertHeadStateEraAgreement('v9', rawState(v9Envelope, V9_HEAD_MINOR_BUMP, 'v9'), pdp, sink);
+    await assertRetainedStateEnvelope('v9', rawState(v8Envelope, V9_HEAD_MINOR_BUMP, 'v9'), ADDRESS, pdp, sink);
 
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
     expect(emitted(sink).map((breadcrumb) => breadcrumb.decision)).toEqual(['encoding']);
@@ -607,7 +608,7 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
     // One breadcrumb of every kind, produced by real code paths rather than
     // hand-built, so this gate is over what actually ships.
     await acquireLedger8Runtime(headSource(V8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
-    await assertHeadStateEraAgreement('v8', rawState(v8Envelope, V8_HEAD, 'v8'), headSource(), sink);
+    await assertRetainedStateEnvelope('v8', rawState(v8Envelope, V8_HEAD, 'v8'), ADDRESS, headSource(), sink);
     breadcrumbs = emitted(sink);
   });
 
@@ -835,10 +836,12 @@ describe('a faulty logger cannot fail an operation that otherwise succeeds', () 
 
   it('lets the era disagreement refusal through unchanged when the logger throws', async () => {
     const sink = throwingSink();
-    const v8Envelope = readHexFixture('state-v8.hex');
+    // The impossible direction -- an envelope newer than the block dating it -- with a fresh read
+    // that agrees with the envelope, which is the branch that reports a stale head reading.
+    const v9Envelope = readHexFixture('state-migrated-v9.hex');
 
     await expect(
-      assertHeadStateEraAgreement('v9', rawState(v8Envelope, V8_HEAD, 'v8'), headSource(V8_HEAD), sink)
+      assertRetainedStateEnvelope('v8', rawState(v9Envelope, V8_HEAD, 'v8'), ADDRESS, headSource(V9_HEAD), sink)
     ).rejects.toThrow(HeadStateEraMismatchError);
   });
 });

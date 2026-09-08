@@ -64,11 +64,11 @@ describe('createLedger8Engine', () => {
   // Strict equality, not a per-method `typeof` sweep: a method leaked onto the
   // facade, renamed, or silently dropped has to fail here, which a
   // one-directional check of the names we happen to remember cannot do.
-  it('exposes exactly the four documented engine methods, and nothing else', async () => {
+  it('exposes exactly the five documented engine methods, and nothing else', async () => {
     const engine = await createLedger8Engine();
 
     expect(Object.keys(engine).sort()).toEqual(
-      ['downConvertForExecution', 'executeCircuit', 'executeConstructor', 'wrapKeepStateCall'].sort()
+      ['downConvertForExecution', 'executeCircuit', 'executeConstructor', 'reexpressOperationsForCurrentEra', 'wrapKeepStateCall'].sort()
     );
     expect(Object.values(engine).every((method) => typeof method === 'function')).toBe(true);
   });
