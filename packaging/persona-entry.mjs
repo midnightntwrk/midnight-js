@@ -24,7 +24,14 @@ import process from 'node:process';
 import { realpathSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
-const [, , personaName, expectedRuntime, frameworkRuntime] = process.argv;
+// `linker-smoke.mjs` passes four: <persona> <the persona's own runtime> <retained
+// runtime> <current runtime>. The retained one is in that list for
+// `fork-crossing-entry.mjs`, which asserts against both eras; this entry needs
+// only the framework's own, and the framework carries the CURRENT runtime for
+// both personas -- that is the whole point of the retained persona, where the two
+// are different majors in one install. Hence the hole: reading the fourth
+// argument here compared the framework against 0.16.0 and failed every run.
+const [, , personaName, expectedRuntime, , frameworkRuntime] = process.argv;
 
 const failures = [];
 const observed = {};
