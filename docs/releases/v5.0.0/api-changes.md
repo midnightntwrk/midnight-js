@@ -190,7 +190,7 @@ Internally the provider was split into 7 layered files (#960): `config.ts`, `tra
 export const isValidSigningKey: (value: unknown) => boolean;
 
 // ZK artifact integrity manifest (#1015) — consumed by both ZK config providers
-export type ZkArtifactIntegrityMode = 'require' | 'warn' | 'off';
+export type ZkArtifactIntegrityMode = 'require' | 'require-if-present' | 'warn' | 'off';
 export interface ZkConfigIntegrityOptions {
   readonly verify?: ZkArtifactIntegrityMode;   // default 'require' (fail-closed)
   readonly expectedManifestHash?: string;      // SHA-256 hex of the manifest bytes, pinned at build time
