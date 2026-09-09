@@ -532,9 +532,13 @@ export const runLedger8CallPipeline = async <TState>(
         // initial parameters partitions the transcript with a cost model the chain does not use,
         // and the node refuses the guaranteed segment for running out of gas.
         ledgerParameters: snapshot.state.ledgerParameters,
-        // Already split, above. `resolvePartition` returns a caller-supplied pair
-        // untouched, so this is the same pair the offer was routed against --
-        // the two cannot drift, because there is only one.
+        // Already split, above -- the same pair the offer was routed against, so
+        // the two cannot describe different partitions. Note what this does NOT
+        // claim: a caller-supplied pair is not passed through untouched, it is
+        // refused when it carries neither half. Why that refusal cannot reach
+        // the partitioner's own answer sent back through it is recorded under
+        // "Resolving a call's transcript pair" in
+        // `protocol/docs/compose-refusal-order.md`.
         transcript: {
           kind: 'partitioned',
           guaranteed: partitionedTranscript[0],
