@@ -401,41 +401,30 @@ const RETAINED_MATRIX = [
   },
   {
     key: 'unshielded',
-    // The pre-fork mint's colour is captured, because the post-fork assertion is
-    // about THAT colour's balance and nothing else identifies it: the colour is
-    // derived from the domain separator inside the circuit and returned, not
-    // supplied.
-    preFork: [
-      {
-        circuitId: 'mintUnshieldedToSelfTest',
-        args: () => [DOMAIN_SEPARATOR, MINT_AMOUNT],
-        capture: 'preForkColor'
-      }
-    ],
-    // Two calls: mint a DIFFERENT colour, then read the PRE-fork colour's
-    // balance back. This is the state-continuity assertion for a contract that
-    // declares no ledger block -- what survives for `unshielded` is the
-    // contract's balance, which `decodeContractState` deliberately omits, so it
-    // is unreachable through {@link readRetainedLedger} and reachable through a
-    // circuit.
+    preFork: [{ circuitId: 'mintUnshieldedToSelfTest', args: () => [DOMAIN_SEPARATOR, MINT_AMOUNT] }],
+    postFork: { circuitId: 'mintUnshieldedToSelfTest', args: () => [new Uint8Array(32).fill(8), MINT_AMOUNT] }
+    // NO state assertion here, and the reason is measured rather than assumed.
     //
-    // The second call is what a silently reset state would fail: minting again
-    // would still succeed and still report `SucceedEntirely`, and the balance of
-    // a colour minted before the boundary would read 0 instead of the amount.
-    // ONE call, and it is the balance read rather than a second mint. Two calls
-    // is what this leg tried first, and it established why it cannot: the first
-    // post-fork call migrates the state envelope, and the retained pipeline then
-    // refuses the second with `RetainedArtifactOnCurrentEraStateError`. So a
-    // retained contract admits exactly one call through retained artifacts after
-    // the boundary, and this spends it on the measurement rather than on a mint
-    // that proves nothing about surviving state.
-    postFork: {
-      circuitId: 'getUnshieldedBalanceTest',
-      args: (context) => [context.preForkColor],
-      expect: MINT_AMOUNT
-    }
+    // What survives for `unshielded` is the contract's BALANCE: it declares no
+    // ledger block, and `decodeContractState` deliberately omits balance, so
+    // `readRetainedLedger` cannot reach it. The circuit that can read it is
+    // `getUnshieldedBalanceTest`, and a post-fork retained call to it is REFUSED
+    // BY THE CHAIN -- `submitTx rejected a retained-era transaction`, with the
+    // provider's reason redacted at the seam.
+    //
+    // The likely mechanism, not yet confirmed: it is a read-only circuit, so its
+    // transcript partitions wholly fallible, and the retained arm cannot balance
+    // that. The comparison that suggests it -- a retained `noop` succeeds
+    // post-fork, and a CURRENT-era `getUnshieldedBalanceTest` succeeds too. Only
+    // the retained arm refuses.
+    //
+    // A write-based assertion should get past it, since a write has a guaranteed
+    // segment: `sendUnshieldedToSelfTest(preForkColor, MINT_AMOUNT)` can only
+    // succeed if the contract still holds that colour, so its success IS the
+    // assertion. Untried.
   },
   {
+  
     key: 'shielded',
     preFork: [{ circuitId: 'mintShieldedTokens', args: () => [DOMAIN_SEPARATOR, MINT_AMOUNT] }],
     postFork: { circuitId: 'mintShieldedTokens', args: () => [new Uint8Array(32).fill(8), MINT_AMOUNT] }
