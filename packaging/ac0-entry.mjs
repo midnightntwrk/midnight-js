@@ -34,6 +34,18 @@ import { loadLedger8Engine, loadLedgerEra, networkHeadVersion } from '@midnight-
 import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 
 const config = JSON.parse(process.env.AC0_CONFIG ?? '{}');
+
+/**
+ * The contracts this process is answerable for, as the driver narrowed them.
+ *
+ * Absent when the scenario is run whole, which is what a local invocation and
+ * `workflow_dispatch` still do. `covers` treats that as "everything" rather than
+ * "nothing": a shard that quietly ran no legs would report green for work it
+ * never did, and the empty selection is already refused upstream in
+ * `resolveContractSelection`.
+ */
+const SELECTED = config.contracts ?? {};
+const covers = (selected, key) => selected === undefined || selected.includes(key);
 const CIRCUIT_ID = 'increment';
 const NETWORK_ID = 'undeployed';
 
@@ -699,7 +711,7 @@ await leg('pre-fork retained call', async () => {
 // (a) continued: the rest of the retained-era contracts, deployed and called on
 // the pre-fork chain. Same source as the current-era matrix below, built with
 // `compactc` 0.31.1, so the pair differ only in the toolchain that emitted them.
-for (const entry of RETAINED_MATRIX) {
+for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retained, candidate.key))) {
   await leg(`pre-fork retained ${entry.key}`, async () => {
     const providers = retainedProvidersFor('v8', session.wallet, entry.key);
     const deployed = await deployRetained(entry.key, providers, session.wallet);
@@ -808,7 +820,7 @@ await leg('post-fork keep-state call through the same call site', async () => {
 // (c) continued: the same keep-state call for every other retained twin. These
 // are the legs AC0 could not previously pose — a pre-fork contract that is not a
 // counter, called after the boundary through the call site that deployed it.
-for (const entry of RETAINED_MATRIX) {
+for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retained, candidate.key))) {
   await leg(`post-fork keep-state ${entry.key}`, async () => {
     const deployed = retainedDeployments.get(entry.key);
     if (deployed === undefined) {
@@ -1041,7 +1053,7 @@ const runMatrixContract = async (entry) => {
   return { contractAddress, deployTxId: deployed.deployTxData.public.txId, calls };
 };
 
-for (const entry of MATRIX) {
+for (const entry of MATRIX.filter((candidate) => covers(SELECTED.current, candidate.key))) {
   // One leg per contract, so the report names the contract that failed. A leg
   // that throws does not stop the ones after it -- `leg` records and continues.
   await leg(`post-fork ${entry.key}`, () => runMatrixContract(entry));

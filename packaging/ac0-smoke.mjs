@@ -37,16 +37,27 @@ import {
 
 import { buildRetainedTwins } from './build-retained-twins.mjs';
 import { buildPersona, stageTarballs } from './linker-smoke.mjs';
-import {
-  MATRIX_CONTRACTS,
-  readManifest,
-  REPOSITORY_ROOT,
-  RETAINED_MATRIX_CONTRACTS,
-  RETAINED_TWINS
-} from './personas.mjs';
+import { readManifest, REPOSITORY_ROOT, resolveContractSelection } from './personas.mjs';
 
 const PERSONA = 'fork-crossing';
-const LINKER = process.argv[2] ?? 'pnp';
+const argv = process.argv.slice(2);
+const LINKER = argv.find((argument) => !argument.startsWith('--')) ?? 'pnp';
+
+/**
+ * The contracts this run covers, defaulting to the whole matrix.
+ *
+ * Sharded one contract per CI job: the legs are strictly sequential and the
+ * proving in them is what the run costs, so splitting the matrix is what shortens
+ * it. A shard also builds only its OWN retained twin, which is why the 146 MB of
+ * `fee-mint` prover keys stop being everyone's bill.
+ *
+ *   node packaging/ac0-smoke.mjs pnp --contracts=simple
+ */
+const CONTRACTS_FLAG = '--contracts=';
+const requestedContracts = argv
+  .filter((argument) => argument.startsWith(CONTRACTS_FLAG))
+  .flatMap((argument) => argument.slice(CONTRACTS_FLAG.length).split(','));
+const SELECTION = resolveContractSelection(requestedContracts.length === 0 ? undefined : requestedContracts);
 /** The genesis mint seed the dev preset funds; the same one the local environment uses. */
 const WALLET_SEED = '0000000000000000000000000000000000000000000000000000000000000001';
 
@@ -82,12 +93,15 @@ const runScenario = (cwd, linker, environment, contractDir, enactFork) =>
       // script's doing, and a second copy of that knowledge would go stale on
       // the first change to it.
       matrixZkConfigPaths: Object.fromEntries(
-        MATRIX_CONTRACTS.map((key) => [key, path.join(cwd, 'contracts', key)])
+        SELECTION.current.map((key) => [key, path.join(cwd, 'contracts', key)])
       ),
+      // Which contracts this shard is answerable for. The dApp narrows both its
+      // matrices to these, so a shard cannot report on a leg it never ran.
+      contracts: SELECTION,
       // The retained twins, under the same keys their current-era namesakes use,
       // so the dApp can pair the two eras of one contract without a second table.
       retainedMatrixZkConfigPaths: Object.fromEntries(
-        RETAINED_TWINS.map((key) => [key, path.join(cwd, 'contracts', `retained-${key}`)])
+        SELECTION.retained.map((key) => [key, path.join(cwd, 'contracts', `retained-${key}`)])
       ),
       logPath: path.join(cwd, 'dapp.log')
     };
@@ -148,8 +162,10 @@ const main = async () => {
 
     // Before the install, because the persona copies these directories into
     // itself: a twin built afterwards would not be in the tree that gets linked.
-    process.stdout.write('Building the retained-era contract twins (compactc 0.31.1)...\n');
-    const built = buildRetainedTwins();
+    process.stdout.write(
+      `Building the retained-era contract twins (compactc 0.31.1): ${SELECTION.retained.join(', ') || '(none)'}...\n`
+    );
+    const built = buildRetainedTwins(SELECTION.retained);
     process.stdout.write(
       built.length === 0 ? 'Retained twins already built.\n' : `Built retained twins: ${built.join(', ')}\n`
     );
@@ -158,8 +174,8 @@ const main = async () => {
     const manifest = readManifest();
     stageTarballs(manifest);
     const { cwd, linker } = buildPersona(PERSONA, LINKER, manifest, 'ac0-entry', [
-      ...MATRIX_CONTRACTS,
-      ...RETAINED_MATRIX_CONTRACTS
+      ...SELECTION.current,
+      ...SELECTION.retained.map((key) => `retained-${key}`)
     ]);
     linker.install(cwd);
 
