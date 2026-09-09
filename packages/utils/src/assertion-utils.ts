@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { UTILS_ERROR_CODES } from './error-codes';
+
 /**
  * Asserts that the given value is non-nullable.
  *
@@ -42,6 +44,19 @@ export function assertUndefined<A>(value: A | null | undefined, message?: string
 }
 
 /**
+ * Raised by {@link assertNever} when a value the compiler ruled out arrives
+ * anyway, which happens when a payload is decoded from outside the build.
+ */
+export class UnhandledUnionMemberError extends Error {
+  readonly code = UTILS_ERROR_CODES.UNHANDLED_UNION_MEMBER;
+
+  constructor(readonly context: string) {
+    super(`Unhandled union member in ${context}: the union grew and this switch was not updated`);
+    this.name = 'UnhandledUnionMemberError';
+  }
+}
+
+/**
  * Asserts that every member of a union has already been handled.
  *
  * Put it in the `default` arm of a `switch` over a discriminated union. While
@@ -49,17 +64,12 @@ export function assertUndefined<A>(value: A | null | undefined, message?: string
  * type-checks; add an arm to the union and the same call stops compiling,
  * pointing at every switch that has to change.
  *
+ * The thrown message never includes `value`; `context` is what locates the throw.
+ *
  * @param value The narrowed value, which must be `never` for the call to compile.
  * @param context Names the switch, so the runtime throw says where it came from.
  *
- * @throws Error Always. Reaching it means a value the compiler ruled out arrived
- *         anyway, which happens when a payload is decoded from outside the build.
- *
- * @remarks
- * The message deliberately never includes `value`. The unions this exists for
- * carry transaction bytes and decoded contract state on their arms, so
- * serializing the unhandled member would copy payloads into every log that
- * catches the error. Pass a `context` instead of widening the message.
+ * @throws UnhandledUnionMemberError Always.
  *
  * @example
  * ```ts
@@ -70,10 +80,6 @@ export function assertUndefined<A>(value: A | null | undefined, message?: string
  * }
  * ```
  */
-export function assertNever(value: never, context?: string): never {
-  throw new Error(
-    context === undefined
-      ? 'Unhandled union member: the union grew and a switch over it was not updated'
-      : `Unhandled union member in ${context}: the union grew and this switch was not updated`
-  );
+export function assertNever(value: never, context: string): never {
+  throw new UnhandledUnionMemberError(context);
 }

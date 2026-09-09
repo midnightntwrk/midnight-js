@@ -23,11 +23,6 @@ import { PROTOCOL_ERROR_CODES, type ProtocolErrorCode } from '@midnight-ntwrk/mi
 // provider packages depend on `utils`; protocol's own codes are imported
 // rather than re-declared. Add a constant here in the same change that first
 // throws with it.
-//
-// The two groups below hold to that. The imported PROTOCOL_ERROR_CODES do not:
-// LEDGER8_INSTANCE_MISMATCH, DOWN_CONVERT_FAILED and MERKLE_NOT_REHASHED have
-// no thrower yet, and are reserved for the era-conversion work. Do not read
-// membership of MIDNIGHT_JS_ERROR_CODES as proof that something throws it.
 export const CONTRACTS_ERROR_CODES = Object.freeze({
   ERA_INVARIANT_VIOLATION: 'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION',
   ERA_ARTIFACT_MISMATCH: 'MIDNIGHT_JS_C_ERA_ARTIFACT_MISMATCH',
@@ -53,7 +48,10 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
 } as const);
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
 
-export const UTILS_ERROR_CODES = Object.freeze({ TAG_PARSE_FAILED: 'MIDNIGHT_JS_U_TAG_PARSE_FAILED' } as const);
+export const UTILS_ERROR_CODES = Object.freeze({
+  TAG_PARSE_FAILED: 'MIDNIGHT_JS_U_TAG_PARSE_FAILED',
+  UNHANDLED_UNION_MEMBER: 'MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER'
+} as const);
 export type UtilsErrorCode = (typeof UTILS_ERROR_CODES)[keyof typeof UTILS_ERROR_CODES];
 
 /**

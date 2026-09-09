@@ -255,17 +255,25 @@ receive, so handle both:
 ```ts
 import { types, utils } from '@midnight-ntwrk/midnight-js';
 
+declare const describeNative: (tx: types.FinalizedTxData['tx']) => string;
+declare const describeRetained: (tx: types.FinalizedTxDataV8['tx']) => string;
+
 const summarize = (record: types.VersionedFinalizedTxData): string => {
   switch (record.version) {
     case 'v9':
-      return `native ${record.txId}`;
+      return `native ${record.txId}: ${describeNative(record.tx)}`;
     case 'v8':
-      return `retained ${record.txId}`;
+      return `retained ${record.txId}: ${describeRetained(record.tx)}`;
     default:
       return utils.assertNever(record, 'summarize');
   }
 };
 ```
+
+`describeNative` and `describeRetained` stand in for your own code. They are two
+separate functions on purpose: `record.tx` is a different ledger type on each arm,
+which is the whole reason this union has to be narrowed rather than unwrapped. Swap
+the two calls over and the recipe stops compiling.
 
 Close the switch with `assertNever`. While your switch covers the union it
 compiles; the moment the union carries an arm your switch does not handle,
@@ -281,11 +289,10 @@ sometimes catch that at the function signature instead; for a `void`,
 side-effecting switch it catches nothing at all, and the unhandled arm falls
 through in silence. That is the case `assertNever` closes.
 
-Pass the second argument. `assertNever` deliberately never puts the unhandled
-value into its message -- the arms of these unions carry transaction bytes and
-decoded contract state, and serializing one would copy payloads into every log
-that catches the error -- so the context string is the only thing that says
-where the throw came from.
+The second argument is required. `assertNever` never puts the unhandled value into
+its message, so the context string is the only thing that says where the throw came
+from. If one is ever reached, it raises `MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER`, and
+the context is on the error as `context`.
 
 Do not narrow this one by throwing on anything that is not `'v9'`. A v8-era
 record is a record the provider decodes and returns, not an error condition,
@@ -340,6 +347,12 @@ applies before it lands, the framework raises `StaleHeadError`
 two remediations below — along with `startEra`, `freshEra`, `circuitId` and
 `contractAddress`. Its message carries the matching remediation in full.
 
+**Only the `'call'` arm is reachable through the public API today.** `deployContract`
+refuses every retained-era deploy outright, before any head is read (see the
+runtime-deploy chapter), so no public entry point can produce `kind: 'deploy'`. The
+deploy remediation is documented because it becomes reachable the day the era seam
+carries a maintenance authority — not because you can provoke it now.
+
 For a **call**, the remediation is two steps, in order:
 
 1. **Confirm no finalization.** There is no transaction id to look up: the
@@ -353,11 +366,15 @@ For a **call**, the remediation is two steps, in order:
 2. **Re-run.** Run the same call again, unchanged. It resolves the new era and
    lands on the retained-era pipeline. Your code does not change.
 
-For a **deploy** the remediation is different and the error says so. Check the
-address the deployment composed before deploying again — a deploy mints a fresh
-nonce, so a second attempt lands at a *different* address. A plain re-run cannot
-recover the original, because a contract built by the retained toolchain has no
-post-fork deployment path. See [the runtime-deploy chapter](#runtime-deploy-chapter-factory-patterns).
+For a **deploy** the remediation is different, and it is also two steps:
+
+1. **Confirm no finalization**, the same way — but check the *address the deployment
+   composed*, `error.contractAddress`, rather than a circuit's effect. A deploy mints a
+   fresh nonce, so a second attempt lands at a *different* address and a skipped check
+   leaves two copies of the contract on chain.
+2. **Recompile with the current Compact toolchain and deploy that artifact.** Unlike the
+   call case, a plain re-run does not work: a contract produced by the retained toolchain
+   has no deployment path at all. See [the runtime-deploy chapter](#runtime-deploy-chapter-factory-patterns).
 
 > **Why step 1 is not optional.** The guidance above assumes in-flight pre-fork
 > transactions are hard-rejected at the boundary. If any grace window exists, a
@@ -368,30 +385,39 @@ post-fork deployment path. See [the runtime-deploy chapter](#runtime-deploy-chap
 ### Runtime-deploy chapter: factory patterns
 
 This section is linked from `Ledger8DeployOnV9Error`
-(`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9`).
+(`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9`). That code is **currently dormant** — do not
+write a `catch` for the class. The refusal you will actually meet is the uncoded
+`Error` described below, and it has the same remediation.
 
 If your dApp deploys contract instances **at runtime** — a factory that stands
 up a new contract per user, per market, per game — read this before the fork.
 
 The retained era stays supported for **calls against contracts deployed before
-the fork**. It is not supported for **new deployments** after it: a new
-deployment has no pre-fork history to preserve, so there is nothing for the
-retained pipeline to be preserving. Deploying a retained-toolchain artifact to
-a post-fork head is refused.
+the fork**. It does not support **new deployments at all** — not after the fork, and
+not today either. `deployContract` refuses a retained-toolchain artifact
+unconditionally, as its first act, before any network head is read.
+
+The reason is not the era pairing, and not an unfinished pipeline: the deploy
+transaction itself composes and submits correctly. It is the *result* that is
+unusable. Neither the retained constructor nor the era deploy composition accepts a
+maintenance authority, and the authority a retained constructor leaves behind is an
+empty committee with a threshold of one — which nothing can ever satisfy. The
+deployed contract could never have a verifier key inserted, removed or replaced, by
+anyone, including you.
 
 In practice:
 
 - **Obtain current-toolchain artifacts for every contract you deploy at
-  runtime, before the fork.** Recompile and ship those artifacts with your
-  build.
+  runtime.** Recompile and ship those artifacts with your build. This is not a
+  fork-day deadline — a retained artifact cannot be deployed now.
 - Contracts you deployed *before* the fork are unaffected — they keep working
   through the same call sites.
 - A dApp that only calls already-deployed contracts is not affected by this
   section at all.
 
-The failure this exists to prevent is a factory that works right up to the fork
-and then cannot create anything, with artifacts that take a release cycle to
-replace.
+The failure this exists to prevent is a factory whose deploy path was never
+exercised against a retained artifact, discovering only at the fork that the
+artifacts it ships take a release cycle to replace.
 
 ### The retained toolchain stays where it is
 

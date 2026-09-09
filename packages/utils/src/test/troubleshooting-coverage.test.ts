@@ -27,12 +27,7 @@ const TROUBLESHOOTING_PATH = path.join(REPOSITORY_ROOT, 'TROUBLESHOOTING.md');
 /** The section this test governs. Codes named anywhere else in the file do not count. */
 const SECTION_HEADING = '## Midnight.js error codes';
 
-/**
- * The governed section, located once and bounded at the next top-level heading.
- * Every test below reads through this, so none of them can drift into rows that
- * belong to a later section or silently slice from the end of the file when the
- * heading is renamed.
- */
+/** The governed section, bounded at the next top-level heading. */
 const errorCodeSection = (): string => {
   const document = readFileSync(TROUBLESHOOTING_PATH, 'utf8');
   const start = document.indexOf(SECTION_HEADING);
@@ -44,9 +39,8 @@ const errorCodeSection = (): string => {
   return end < 0 ? rest : rest.slice(0, end);
 };
 
-// Only the leading cell of a table row documents a code; a code merely mentioned
-// in a remediation sentence is a cross-reference, not an entry. Cell padding is
-// tolerated so that realigning the table is not read as 31 codes going missing.
+// Only the leading cell of a table row documents a code; a code named in a
+// remediation sentence is a cross-reference, not an entry. Cell padding is tolerated.
 const documentedCodes = (): string[] =>
   [...errorCodeSection().matchAll(/^\|\s*`(MIDNIGHT_JS_[A-Z0-9_]+)`\s*\|/gm)].map((match) => match[1]);
 
@@ -56,15 +50,12 @@ describe('TROUBLESHOOTING.md error-code coverage', () => {
     const documented = documentedCodes();
     const registered = [...MIDNIGHT_JS_ERROR_CODES];
 
-    // Act / Assert: strict equality in both directions. A one-directional
-    // containment check would let a new coded error ship undocumented, which is
-    // the failure this exists to prevent.
+    // Act / Assert: strict equality in both directions.
     expect([...documented].sort()).toEqual([...registered].sort());
   });
 
   test('gives each code exactly one entry', () => {
-    // Arrange / Act: two rows for one code means two remediations, and a reader
-    // finds whichever comes first.
+    // Arrange / Act.
     const documented = documentedCodes();
 
     // Assert: non-emptiness first, or this passes as 0 === 0 on a failed scrape.
@@ -76,8 +67,7 @@ describe('TROUBLESHOOTING.md error-code coverage', () => {
     // Arrange.
     const section = errorCodeSection();
 
-    // Act: the table shape is `| code | what happened | what to do |`, so a row
-    // with an empty final cell documents a code without telling anyone what to do.
+    // Act: the table shape is `| code | what happened | what to do |`.
     const rows = [...section.matchAll(/^\|\s*`(MIDNIGHT_JS_[A-Z0-9_]+)`\s*\|([^|]*)\|([^|]*)\|/gm)];
 
     // Assert.

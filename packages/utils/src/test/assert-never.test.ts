@@ -15,9 +15,9 @@
 
 import { describe, expect, test } from 'vitest';
 
-import { assertNever } from '../assertion-utils';
+import { assertNever, UnhandledUnionMemberError } from '../assertion-utils';
+import { hasErrorCode, UTILS_ERROR_CODES } from '../error-codes';
 
-/** Stands in for a version-tagged union a consumer narrows in the fork window. */
 type Era = { readonly version: 'v8'; readonly bytes: string } | { readonly version: 'v9'; readonly value: number };
 
 const describeEra = (era: Era): string => {
@@ -47,8 +47,7 @@ describe('assertNever', () => {
   });
 
   test('throws when a value the compiler ruled out arrives anyway', () => {
-    // Arrange: what a switch sees once the union has grown a third arm the caller
-    // was not compiled against -- the reason this is a runtime throw at all.
+    // Arrange.
     const grown = { version: 'v10', value: 1 };
 
     // Act / Assert.
@@ -66,30 +65,30 @@ describe('assertNever', () => {
     expect(act).toThrow('submitCallTx era dispatch');
   });
 
-  test('still reports without a context, rather than throwing something unreadable', () => {
+  test('carries a registered code and the context as a field', () => {
     // Arrange / Act.
-    const act = () => assertNever('v10' as never);
+    let thrown: unknown;
+    try {
+      assertNever('v10' as never, 'proveTx seam');
+    } catch (error) {
+      thrown = error;
+    }
 
     // Assert.
-    expect(act).toThrow(Error);
-    expect(act).toThrow(/unhandled/i);
+    expect(thrown).toBeInstanceOf(UnhandledUnionMemberError);
+    expect(hasErrorCode(thrown, UTILS_ERROR_CODES.UNHANDLED_UNION_MEMBER)).toBe(true);
+    expect((thrown as UnhandledUnionMemberError).context).toBe('proveTx seam');
   });
 
-  // Both message arms are built independently, so redaction is asserted on each.
-  // The contextless arm is the default call form and the easier one to regress.
-  test.each([
-    { arm: 'with a context', context: 'proveTx seam' as string | undefined },
-    { arm: 'without a context', context: undefined as string | undefined }
-  ])('never puts the unhandled value in the message ($arm)', ({ context }) => {
-    // Arrange: the arms of these unions carry transaction bytes and decoded state, so
-    // serializing the value here would put payloads into every log that catches it.
+  test('never puts the unhandled value in the message', () => {
+    // Arrange.
     const secret = 'deadbeefcafebabe';
     const grown = { version: 'v10', txBytes: secret, privateState: { balance: 42 } };
 
     // Act.
     let thrown: unknown;
     try {
-      assertNever(grown as never, context);
+      assertNever(grown as never, 'proveTx seam');
     } catch (error) {
       thrown = error;
     }
@@ -102,18 +101,24 @@ describe('assertNever', () => {
     expect(message).not.toContain('42');
     expect(message).not.toContain('privateState');
     expect(message).not.toContain('txBytes');
-    if (context !== undefined) {
-      expect(message).toContain(context);
-    }
+    expect(message).toContain('proveTx seam');
   });
 
-  test('rejects a value the compiler can still see as inhabited', () => {
+  test('rejects calls the type contract forbids', () => {
+    // Arrange: the two directives are the real assertions here -- `yarn typecheck:tests`
+    // fails with TS2578 if either stops being necessary.
     const era: Era = { version: 'v8', bytes: 'ab' };
+    const passLiveMember = () => {
+      // @ts-expect-error a live union member is not `never`; this is the mistake the helper catches.
+      return assertNever(era, 'not exhausted');
+    };
+    const omitContext = () => {
+      // @ts-expect-error `context` is required, so an unlocatable throw cannot be created.
+      return assertNever('v10' as never);
+    };
 
-    // @ts-expect-error assertNever only accepts `never`; passing a live union member
-    // is the mistake it exists to catch, and it must fail at compile time.
-    const act = () => assertNever(era, 'not exhausted');
-
-    expect(act).toThrow();
+    // Act / Assert.
+    expect(passLiveMember).toThrow(UnhandledUnionMemberError);
+    expect(omitContext).toThrow(UnhandledUnionMemberError);
   });
 });

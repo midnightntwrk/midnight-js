@@ -282,8 +282,12 @@ export function hasErrorCode<C extends string>(error: unknown, code: C): error i
 
 // Exhaustiveness guard for the version-tagged unions (#1254). Closes the
 // `default` arm of a `switch` so a future era arm cannot fall through unhandled.
-// Never renders `value` into its message -- pass `context` to locate the throw.
-export function assertNever(value: never, context?: string): never;
+// Never renders `value` into its message; `context` is required and locates the throw.
+export function assertNever(value: never, context: string): never;
+export class UnhandledUnionMemberError extends Error {
+  readonly code: 'MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER';
+  readonly context: string;
+}
 
 // Structured signing-key validation (shared by both private-state providers)
 export const isValidSigningKey: (value: unknown) => boolean;

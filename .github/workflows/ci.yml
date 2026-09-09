@@ -51,6 +51,10 @@ jobs:
               - 'package.json'
             midnight-js:
               - 'packages/**'
+              # Subjects of the doc gates in packages/*/src/test: without these
+              # a doc-only commit skips the job that enforces them entirely.
+              - 'TROUBLESHOOTING.md'
+              - 'docs/releases/v5.0.0/migration-guide.md'
             testkit-js:
               - 'packages/**'
               - 'testkit-js/**'

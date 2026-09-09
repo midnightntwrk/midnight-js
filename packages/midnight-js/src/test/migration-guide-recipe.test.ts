@@ -24,30 +24,35 @@ import { PROTOCOL_ERROR_CODES, type types, utils } from '../index';
 // The positive compile assertion for the migration guide's narrowing recipe. The
 // recipe below is real code reaching the framework only through this barrel, so
 // `yarn typecheck:tests` is what proves the guide's instructions compile for a
-// reader who follows them. The assertions in this file guard the ways that proof
-// can go hollow: the guide drifting from the code, the region being emptied, and
-// the barrel losing the helper the recipe calls.
+// reader who follows them.
 //
-// The recipe is not executed. Its `v8` arm is typed by a WASM class from
-// `protocol/v8`. A type-only import of that class is permitted; building a real
-// `VersionedFinalizedTxData` here would need a runtime import, which the repo's
-// structural gate does forbid, or the cast this repo does not accept.
+// The recipe is not executed: the `v8` arm's `tx` is a WASM class from
+// `protocol/v8`, which this package may reference in a type position but not
+// import at runtime.
 
 // #region guide:narrowing-recipe
+declare const describeNative: (tx: types.FinalizedTxData['tx']) => string;
+declare const describeRetained: (tx: types.FinalizedTxDataV8['tx']) => string;
+
 const summarize = (record: types.VersionedFinalizedTxData): string => {
   switch (record.version) {
     case 'v9':
-      return `native ${record.txId}`;
+      return `native ${record.txId}: ${describeNative(record.tx)}`;
     case 'v8':
-      return `retained ${record.txId}`;
+      return `retained ${record.txId}: ${describeRetained(record.tx)}`;
     default:
       return utils.assertNever(record, 'summarize');
   }
 };
 // #endregion guide:narrowing-recipe
 
-const REPOSITORY_ROOT = path.resolve(fileURLToPath(import.meta.url), '..', '..', '..', '..', '..');
+const PACKAGE_ROOT = path.resolve(fileURLToPath(import.meta.url), '..', '..', '..');
+const REPOSITORY_ROOT = path.resolve(PACKAGE_ROOT, '..', '..');
 const GUIDE_PATH = path.join(REPOSITORY_ROOT, 'docs', 'releases', 'v5.0.0', 'migration-guide.md');
+
+/** This package's own npm name, so the guide's import line is not pinned to a scope. */
+const packageName = (): string =>
+  JSON.parse(readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf8')).name as string;
 
 /**
  * Lifts a `#region <name>` .. `#endregion <name>` block out of this file's own
@@ -73,12 +78,10 @@ const guideTypeScriptBlocks = (): string[] => {
 
 describe('migration guide narrowing recipe', () => {
   test('the recipe the guide prints is byte-identical to the recipe that compiles', () => {
-    // Arrange: the guide's fence carries the import a reader needs, which this file
-    // cannot reproduce verbatim -- a package cannot import itself by name. So the
-    // fence is asserted to be exactly that import, a blank line, then the pinned
-    // region, which keeps the comparison byte-exact rather than fuzzy.
+    // Arrange: a package cannot import itself by name, so the fence is asserted to be
+    // exactly that import, a blank line, then the region this file compiles.
     const compiled = regionSource('guide:narrowing-recipe');
-    const importLine = "import { types, utils } from '@midnight-ntwrk/midnight-js';";
+    const importLine = `import { types, utils } from '${packageName()}';`;
 
     // Act.
     const printed = guideTypeScriptBlocks().filter((block) => block.includes('const summarize'));
@@ -89,24 +92,20 @@ describe('migration guide narrowing recipe', () => {
   });
 
   test('the compiled region is the whole recipe, not an emptied placeholder', () => {
-    // Arrange / Act: without this, deleting the body of the region and the guide's
-    // fence together would leave the equality assertion above passing on ''.
+    // Arrange / Act: guards the equality above passing on '' if both were emptied.
     const compiled = regionSource('guide:narrowing-recipe');
 
-    // Assert: both arms present, and closed by the helper the chapter is about.
-    expect(compiled).toContain("case 'v9':");
-    expect(compiled).toContain("case 'v8':");
+    // Assert: both arms present, each reading its own era's `tx`, and closed by the
+    // helper the chapter is about.
+    expect(compiled).toContain('describeNative(record.tx)');
+    expect(compiled).toContain('describeRetained(record.tx)');
     expect(compiled).toContain("utils.assertNever(record, 'summarize')");
     expect(typeof summarize).toBe('function');
   });
 
   test('the helper the recipe calls is reachable through the barrel at runtime', () => {
-    // Arrange: the recipe above is never executed, and the byte-identity assertion
-    // compares strings lifted from this file's own source -- so neither notices the
-    // barrel losing `assertNever`. Only `tsc` would, and `yarn test` alone would
-    // ship a guide whose first instruction fails.
-
-    // Act.
+    // Arrange / Act: the recipe is never executed and the byte-identity assertion
+    // compares strings, so neither notices the barrel losing `assertNever`.
     const act = () => utils.assertNever('v10' as never, 'summarize');
 
     // Assert.
@@ -114,9 +113,8 @@ describe('migration guide narrowing recipe', () => {
   });
 
   test('the guide discriminates on an error code that exists and does not over-match', () => {
-    // Arrange: `hasErrorCode(e, undefined)` silently degrades to "carries any
-    // registered code", so the member the guide names is asserted by value rather
-    // than merely dereferenced.
+    // Arrange: asserted by value, since `hasErrorCode(e, undefined)` degrades to
+    // "carries any registered code".
     const code = PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ;
     const coded = Object.assign(new Error('a record this build cannot date'), { code });
     const foreign = Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' });
@@ -130,9 +128,7 @@ describe('migration guide narrowing recipe', () => {
   });
 
   test('every in-document link in the guide resolves to a heading it contains', () => {
-    // Arrange: the fork chapters cross-reference each other by anchor, and a
-    // mistyped one is invisible in review -- it renders as a working link that
-    // scrolls nowhere.
+    // Arrange.
     const guide = readFileSync(GUIDE_PATH, 'utf8');
     const slug = (heading: string): string =>
       heading
@@ -158,8 +154,7 @@ describe('migration guide narrowing recipe', () => {
     // Act.
     const named = [...new Set([...guide.matchAll(/\bMIDNIGHT_JS_[A-Z0-9_]+\b/g)].map((match) => match[0]))];
 
-    // Assert: a code the guide invents would send a reader looking for a handler
-    // that can never fire.
+    // Assert.
     expect(named.length).toBeGreaterThan(0);
     expect(named.filter((code) => !registry.has(code))).toEqual([]);
   });

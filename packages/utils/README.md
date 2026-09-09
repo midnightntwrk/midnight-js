@@ -82,6 +82,10 @@ assertUndefined<A>(
   value: A | null | undefined,
   message?: string
 ): asserts value is undefined | null
+
+// Close the `default` arm of a switch over a discriminated union. Compiles only
+// while the switch is exhaustive; `context` names the switch and is required.
+assertNever(value: never, context: string): never
 ```
 
 ### Type Utilities
@@ -162,6 +166,7 @@ import {
   // Assertions
   assertDefined,
   assertUndefined,
+  assertNever,
 
   // Type utilities
   assertIsContractAddress,

@@ -155,6 +155,21 @@ asserting it.
     `never` assignments that throw coded errors — `assertNever` is deliberately
     for consumer code, not a replacement for those.
 
+    Two shape decisions came with it. Its `context` parameter is **required**,
+    matching `unwrapV9`'s required `seam` rather than the optional `message` of
+    its file-neighbours `assertDefined`/`assertUndefined`: the guide instructs
+    readers to always pass it, and a required argument is enforced by `tsc` at
+    the call site where a documented convention is not. It throws a coded
+    `UnhandledUnionMemberError` (`MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER`) rather
+    than a bare `Error`, so a consumer can discriminate it with `hasErrorCode`
+    like the rest of the published surface, and so the TROUBLESHOOTING coverage
+    gate covers it.
+
+    The thrown message never renders the unhandled value. The arms of these
+    unions carry transaction bytes and decoded contract state, so serializing
+    the member would copy payloads into every log that catches the error. The
+    `context` string carries the diagnostic instead.
+
 ## Alternatives considered
 
 **Keep passing bare ledger objects and detect the era by duck-typing.**
