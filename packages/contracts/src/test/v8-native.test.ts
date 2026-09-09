@@ -383,14 +383,16 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     // composition performs exactly the binding that method performs, and its
     // result is a live ledger handle that may not cross this package boundary.
     expect(log).toEqual([
-      'era.extractState',
-      'era.decodeContractState',
+      'era.v8.extractState',
+      'era.v8.decodeContractState',
       'engine.downConvertForExecution',
       'engine.executeCircuit',
       // Between execution and composition, and it has to be: the Zswap offer is
       // routed against this split, and it becomes an option on the composition.
-      'era.partitionCallTranscript',
-      'era.composeCallTx'
+      // The RETAINED era draws it here because on this arm it is also the one
+      // that composes -- the log names the era so that stays checked.
+      'era.v8.partitionCallTranscript',
+      'era.v8.composeCallTx'
     ]);
     expect(result.txBytes).toBeInstanceOf(Uint8Array);
     // Exactly ONE call: the retained era has no call tree to express, and a
@@ -589,7 +591,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     // Exactly one. The offer has to be routed against the split, and the
     // composer needs the split too; resolving it twice would leave two answers
     // that must agree with nothing checking that they do.
-    expect(log.filter((entry) => entry === 'era.partitionCallTranscript')).toHaveLength(1);
+    expect(log.filter((entry) => entry === 'era.v8.partitionCallTranscript')).toHaveLength(1);
     // And this is what makes one enough: the composer is handed the resolved
     // pair, not the raw op sequence. `resolvePartition` returns a caller-supplied
     // pair untouched, so it cannot partition again.
