@@ -20,8 +20,8 @@
 // and of nothing else. These are the same `.compact` sources the e2e suite uses,
 // recompiled with `compactc` 0.31.1 (language 0.23, Compact runtime 0.16.0).
 //
-// Generated rather than committed. The prover keys run to about 285 MB across
-// the set -- `fee-mint` alone is 160 MB -- which is why `counter-016`, at 128 KB,
+// Generated rather than committed. The prover keys run to about 262 MB across
+// the set -- `fee-mint` alone is 146 MB -- which is why `counter-016`, at 27 KB,
 // could be a checked-in fixture and these cannot be.
 //
 //   node packaging/build-retained-twins.mjs            # build what is missing

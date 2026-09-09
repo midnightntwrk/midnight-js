@@ -41,13 +41,14 @@ const E2E_COMPILED = 'testkit-js/testkit-js-e2e/src/contract/compiled';
 /**
  * The current-era contracts the AC0 matrix drives after the boundary.
  *
- * Only current-era artifacts: the retained toolchain (`compactc` 0.31.1) emitted
- * exactly one fixture in this repository, `counter-016`, so the retained half of
- * AC0 -- deploy below the boundary, keep-state call above it -- cannot be posed
- * for any of these. What they cover instead is the other half of the same
- * question: whether the framework's full contract surface works on a chain that
- * carries pre-fork history, which is where every consumer is on day one after
- * the fork.
+ * The retained toolchain (`compactc` 0.31.1) left exactly one COMMITTED fixture
+ * in this repository, `counter-016`; retained-era twins of these are built on
+ * demand instead -- see {@link RETAINED_TWINS}, which covers six of the seven.
+ * `events` is the one for which the retained half of AC0 cannot be posed at all.
+ *
+ * What this current-era set covers is the other half of the same question:
+ * whether the framework's full contract surface works on a chain that carries
+ * pre-fork history, which is where every consumer is on day one after the fork.
  */
 export const MATRIX_CONTRACTS = [
   'simple',
@@ -66,7 +67,7 @@ export const MATRIX_CONTRACTS = [
  */
 export const RETAINED_COMPILER = '0.31.1';
 
-/** Where `build-retained-twins.mjs` puts what it compiles. Gitignored -- the set is about 285 MB. */
+/** Where `build-retained-twins.mjs` puts what it compiles. Gitignored -- the set is about 262 MB. */
 export const RETAINED_TWIN_DIR = path.join(PACKAGING_DIR, '.retained');
 
 /** One twin's artifact directory, which is also the ZK artifact root a provider is pointed at. */
