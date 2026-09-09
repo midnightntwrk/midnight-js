@@ -374,9 +374,12 @@ const tenMinutesAgo = () => BigInt(Math.floor(Date.now() / 1000)) - 600n;
  * mints, so a keep-state call cannot pass by re-minting the identical coin the
  * pre-fork call already made.
  *
- * `roundAfter`, where present, is the ledger counter each side of the boundary
- * should leave behind. It is what separates "the address is still callable" from
- * "the state written before the fork is still there" -- see {@link checkRound}.
+ * `state`, where present, names one ledger field and what it should read on each
+ * side of the boundary. It is what separates "the address is still callable" from
+ * "the state written before the fork is still there" -- see
+ * {@link checkLedgerState}. Two twins carry it, deliberately at opposite ends of
+ * circuit weight: `simple` across a `noop`, `shielded-fallible` across the
+ * partitioned checkpointed mint-and-send.
  *
  * `unshielded` and `shielded` drive ONE of their circuits here against the
  * several their current-era namesakes drive in `MATRIX`: a retained twin exists
@@ -388,9 +391,13 @@ const RETAINED_MATRIX = [
     key: 'simple',
     preFork: [{ circuitId: 'noop' }],
     postFork: { circuitId: 'noop' },
-    // Deploy leaves 0, each `noop` increments. The only state-continuity
-    // assertion in the run.
-    roundAfter: { preFork: 1n, postFork: 2n }
+    // Deploy leaves 0, each `noop` increments.
+    state: {
+      label: 'round',
+      read: (ledgerState) => BigInt(ledgerState.round),
+      preFork: 1n,
+      postFork: 2n
+    }
   },
   {
     key: 'unshielded',
@@ -425,6 +432,22 @@ const RETAINED_MATRIX = [
         { bytes: context.coinPublicKey },
         MINT_AMOUNT
       ]
+    },
+    // The second state-continuity assertion, and the one that carries weight:
+    // `simple` proves state survives across a `noop`, this proves it survives
+    // across the heaviest circuit in the set -- the partitioned, checkpointed
+    // mint-and-send that finding 1 was about.
+    //
+    // `counters` is keyed by `persistentHash([mintNonce, domainSep])` and the
+    // nonce differs either side of the boundary (99 before, 98 after), so a
+    // surviving pre-fork write leaves TWO entries and a silently reset state
+    // leaves one. Asserted by size rather than by key, so the hash does not have
+    // to be recomputed here -- the count is what distinguishes the two outcomes.
+    state: {
+      label: 'counters.size',
+      read: (ledgerState) => BigInt(ledgerState.counters.size()),
+      preFork: 1n,
+      postFork: 2n
     }
   },
   {
@@ -561,18 +584,24 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
 };
 
 /**
- * The `round` counter a retained twin's ledger reports, decoded with the twin's
- * OWN codegen.
+ * Reads one field out of a retained twin's ledger, with the twin's OWN codegen.
  *
- * This is the only measurement in the run that reads state written before the
+ * These are the only measurements in the run that read state written before the
  * boundary. Every other post-fork leg establishes that the address is still
  * callable, which a framework that silently reset the contract's state -- or
  * resolved the address to a fresh one -- would pass just as happily.
  *
- * Only `simple` is read: `round: Counter` is the one ledger field in the matrix
- * that is monotone, cheap to decode, and advanced by the very call the leg makes.
+ * The field is supplied by the matrix entry rather than fixed here: `simple`
+ * has `round: Counter` and `shielded-fallible` has `counters: Map`, and the two
+ * cover different things -- state across a trivial circuit, and state across the
+ * heaviest one in the set. Contracts declaring no ledger block at all
+ * (`unshielded`, `shielded`, `block-time`) cannot be read this way: what
+ * survives for them is the contract's BALANCE, which `decodeContractState`
+ * deliberately omits and the retained arm of `submitCallTx` does not return
+ * either, since it answers `{ circuitId, nextPrivateState, txData }` with no
+ * circuit result on it.
  */
-const readRetainedRound = async (key, providers, contractAddress) => {
+const readRetainedLedger = async (key, providers, contractAddress, read) => {
   const [{ ledger }, runtime, { utils }] = await Promise.all([
     import(`@midnight-ntwrk/fork-retained-${key}`),
     import(`@midnight-ntwrk/fork-retained-${key}/runtime`),
@@ -605,26 +634,27 @@ const readRetainedRound = async (key, providers, contractAddress) => {
   // provider's module included -- is what `ledger()` refuses with
   // `expected instance of ChargedState`.
   const encoded = era.extractState(state.raw);
-  return ledger(runtime.StateValue.decode(encoded)).round;
+  return read(ledger(runtime.StateValue.decode(encoded)));
 };
 
 /**
- * Checks a twin's ledger counter against what the calls so far should have left.
+ * Checks one of a twin's ledger fields against what the calls so far should have
+ * left in it.
  *
  * A mismatch is recorded rather than thrown: the call itself succeeded, and "the
  * call worked but the state did not carry" is a different and far more
- * interesting row than a failed call. Twins with no `roundAfter` are skipped.
+ * interesting row than a failed call. Twins declaring no `state` are skipped.
  */
-const checkRound = async (label, entry, phase, providers, contractAddress) => {
-  const expected = entry.roundAfter?.[phase];
+const checkLedgerState = async (label, entry, phase, providers, contractAddress) => {
+  const expected = entry.state?.[phase];
   if (expected === undefined) {
     return undefined;
   }
-  const round = await readRetainedRound(entry.key, providers, contractAddress);
-  if (round !== expected) {
-    failures.push(`${label}: ledger round is ${round}, expected ${expected}`);
+  const actual = await readRetainedLedger(entry.key, providers, contractAddress, entry.state.read);
+  if (actual !== expected) {
+    failures.push(`${label}: ledger ${entry.state.label} is ${actual}, expected ${expected}`);
   }
-  return round;
+  return { [entry.state.label]: actual.toString() };
 };
 
 const walletContext = async (wallet) => ({
@@ -733,14 +763,14 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     for (const call of entry.preFork) {
       calls.push(await callRetained(entry.key, providers, deployed.contractAddress, call, context));
     }
-    const round = await checkRound(
+    const ledgerState = await checkLedgerState(
       `pre-fork retained ${entry.key}`,
       entry,
       'preFork',
       providers,
       deployed.contractAddress
     );
-    return { ...deployed, calls, ...(round === undefined ? {} : { round: round.toString() }) };
+    return { ...deployed, calls, ...(ledgerState ?? {}) };
   });
 }
 
@@ -844,7 +874,7 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     const outcome = await callRetained(entry.key, providers, deployed.contractAddress, entry.postFork, context);
     // The state written BEFORE the boundary, read back after it. Without this
     // the leg proves only that the address still answers.
-    const round = await checkRound(
+    const ledgerState = await checkLedgerState(
       `post-fork keep-state ${entry.key}`,
       entry,
       'postFork',
@@ -855,7 +885,7 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     return {
       contractAddress: deployed.contractAddress,
       call: outcome,
-      ...(round === undefined ? {} : { round: round.toString() }),
+      ...(ledgerState ?? {}),
       // The envelope after the call, so a keep-state write that re-versions the
       // state is distinguishable from one that leaves it in the retained shape.
       envelopeAfterCall: state === null ? 'absent' : envelopeTag(state.raw)
