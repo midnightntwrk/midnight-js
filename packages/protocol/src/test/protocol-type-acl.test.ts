@@ -88,11 +88,16 @@ describe('Protocol type ACL', () => {
       'EraPartitionCallOptions',
       'ExecuteCircuitOptions',
       'ExecuteConstructorOptions',
+      // Named by the state handles the results carry: `DownConvertedState.data`
+      // is a `Ledger8ChargedState` and `.data.state` a `Ledger8StateValue`, and
+      // neither was nameable outside the package that declares them.
+      'Ledger8ChargedState',
       // Named by `ConstructorResultPojo.contractState`, which this barrel
       // publishes: the state a retained constructor built, as the handle it is.
       'Ledger8DeployableContractState',
       'Ledger8Engine',
       'Ledger8InstanceAxis',
+      'Ledger8StateValue',
       'LedgerEra',
       'LedgerParametersOption',
       'LedgerVersion',
@@ -121,8 +126,10 @@ describe('Protocol type ACL', () => {
       'EncodedStateValue',
       'ExecuteCircuitOptions',
       'ExecuteConstructorOptions',
+      'Ledger8ChargedState',
       'Ledger8DeployableContractState',
       'Ledger8Engine',
+      'Ledger8StateValue',
       'TranscriptPojo',
       'WrapKeepStateCallOptions'
     ]);

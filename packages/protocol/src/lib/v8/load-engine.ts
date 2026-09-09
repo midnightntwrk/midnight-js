@@ -24,8 +24,10 @@ export type {
   EncodedStateValue,
   ExecuteCircuitOptions,
   ExecuteConstructorOptions,
+  Ledger8ChargedState,
   Ledger8DeployableContractState,
   Ledger8Engine,
+  Ledger8StateValue,
   TranscriptPojo,
   WrapKeepStateCallOptions
 } from './engine.js';

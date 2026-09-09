@@ -28,7 +28,9 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { CURRENT_PIPELINE_ERA } from '../era';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from '../errors';
+import { pipelineEraOf } from '../internal/era';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
 import { submitTx, submitTxAsync } from '../submit-tx';
 import { withContractScopedTransaction } from '../transaction';
@@ -89,6 +91,7 @@ describe('submit-call-tx', () => {
   };
 
   const createFailedTxData = (): UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
+    era: CURRENT_PIPELINE_ERA,
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [],
@@ -124,6 +127,7 @@ describe('submit-call-tx', () => {
       circuitId: 'testCircuit'
     });
     expect(result).toEqual({
+      era: CURRENT_PIPELINE_ERA,
       calls: mockUnprovenCallTxData.calls,
       private: mockUnprovenCallTxData.private,
       public: {
@@ -170,6 +174,18 @@ describe('submit-call-tx', () => {
         });
 
         expect(nestedResult?.public.logEvents).toBe(mockUnprovenCallTxData.public.logEvents);
+      });
+
+      it('tags the result with the era the ARTIFACT reports', async () => {
+        const options = createBasicCallOptions();
+        setupSuccessfulMocks();
+
+        const result = await submitCallTx(mockProviders, options);
+
+        // The same fact `pipelineEraOf` resolves from the artifact when the
+        // entry point routes the call, published so a caller can read it too.
+        expect(result.era).toBe(pipelineEraOf(mockCompiledContract));
+        expect(result.era).toBe('ledger9');
       });
 
       it('forwards calls through the nested scoped CallResult rebuild', async () => {
@@ -263,6 +279,7 @@ describe('submit-call-tx', () => {
         expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, nextPrivateState_2);
         expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options, expect.anything());
         expect(result).toEqual({
+          era: CURRENT_PIPELINE_ERA,
           calls: mockUnprovenCallTxData_2.calls,
           private: mockUnprovenCallTxData_2.private,
           public: {
@@ -497,6 +514,7 @@ describe('submit-call-tx', () => {
           circuitId: 'testCircuit'
         });
         expect(result).toEqual({
+          era: CURRENT_PIPELINE_ERA,
           calls: mockUnprovenCallTxData.calls,
           private: mockUnprovenCallTxData.private,
           public: { ...mockUnprovenCallTxData.public, ...mockFinalizedTxData }
@@ -555,6 +573,7 @@ describe('submit-call-tx', () => {
           circuitId: 'testCircuit'
         });
         expect(result).toEqual({
+          era: CURRENT_PIPELINE_ERA,
           txId: mockTxId,
           callTxData: mockUnprovenCallTxData
         });

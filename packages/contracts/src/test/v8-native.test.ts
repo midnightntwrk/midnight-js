@@ -78,6 +78,7 @@ import {
   VerifierKeyMismatchError
 } from '../errors';
 import { findDeployedContract } from '../find-deployed-contract';
+import { pipelineEraOf } from '../internal/era';
 import { findLedger8Contract, runLedger8Deploy, submitLedger8CallTx } from '../internal/ledger8-entry';
 import {
   assertSnapshotVerifierKey,
@@ -925,6 +926,19 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(providers.publicDataProvider.queryRawContractState).toHaveBeenCalledTimes(1);
   });
 
+  it('tags the result with the era the ARTIFACT reports, not the era the record carries', async () => {
+    const providers = preForkProviders(v6Envelope);
+
+    const finalized = await submitCallTx(providers, callOptions());
+
+    // The two facts, side by side. `pipelineEraOf` reads the artifact; the
+    // record says which ledger recorded the transaction. Pre-fork they happen
+    // to agree on the era being retained -- post-fork the record reads `'v9'`
+    // for this same call, and the tag must still say `'ledger8'`.
+    expect(finalized.era).toBe(pipelineEraOf(contract));
+    expect(finalized.era).toBe('ledger8');
+  });
+
   it('publishes the POST-call contract state as the retained runtime own handle', async () => {
     const providers = preForkProviders(v6Envelope);
 
@@ -935,6 +949,22 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // call bound to is a different object, published on `calls[0].public`.
     expect(finalized.public.nextContractState).toEqual({ replayedCircuitId: `${CIRCUIT_ID}:post` });
     expect(finalized.calls[0]?.public.contractState).toEqual({ replayedCircuitId: CIRCUIT_ID });
+  });
+
+  it('publishes every state handle with its ENCODED form beside it', async () => {
+    const providers = preForkProviders(v6Envelope);
+
+    const finalized = await submitCallTx(providers, callOptions());
+
+    // The pair, at both places a state appears. The handle is usable in this
+    // process; the encoded form is the one that survives it, and is identical
+    // across the three runtimes, so era-agnostic code reads THAT.
+    expect(finalized.public.nextContractStateEncoded).toStrictEqual(
+      recording.transcript.postContractStateEncoded
+    );
+    // The call bound to the state as it was read off chain, so its encoded form
+    // is that same primary state -- not a second decode of it.
+    expect(finalized.calls[0]?.public.contractStateEncoded).toStrictEqual(recording.preState);
   });
 
   it('publishes the execution Zswap state and the caller coin list on the private half', async () => {

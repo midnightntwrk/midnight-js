@@ -466,7 +466,12 @@ describe('executeCircuit against the ported spike counter-016 fixture (real comp
     // movements are asserted directly above rather than through the fixture.
     const serializable: Omit<
       TranscriptPojo,
-      'preContractState' | 'postContractState' | 'privateStateAfter' | 'zswapLocalState' | 'partitionContext'
+      | 'preContractState'
+      | 'postContractState'
+      | 'postContractStateEncoded'
+      | 'privateStateAfter'
+      | 'zswapLocalState'
+      | 'partitionContext'
     > = {
       circuitId: transcript.circuitId,
       result: transcript.result,

@@ -567,6 +567,79 @@
         ]
       }
     },
+    "postContractStateEncoded": {
+      "tag": "array",
+      "content": [
+        {
+          "tag": "cell",
+          "content": {
+            "value": [
+              {
+                "__bytes": "0707070707070707070707070707070707070707070707070707070707070707"
+              },
+              {
+                "__bytes": ""
+              },
+              {
+                "__bytes": "2a"
+              },
+              {
+                "__bytes": ""
+              }
+            ],
+            "alignment": [
+              {
+                "tag": "atom",
+                "value": {
+                  "tag": "bytes",
+                  "length": 32
+                }
+              },
+              {
+                "tag": "atom",
+                "value": {
+                  "tag": "bytes",
+                  "length": 32
+                }
+              },
+              {
+                "tag": "atom",
+                "value": {
+                  "tag": "bytes",
+                  "length": 16
+                }
+              },
+              {
+                "tag": "atom",
+                "value": {
+                  "tag": "bytes",
+                  "length": 8
+                }
+              }
+            ]
+          }
+        },
+        {
+          "tag": "cell",
+          "content": {
+            "value": [
+              {
+                "__bytes": "01"
+              }
+            ],
+            "alignment": [
+              {
+                "tag": "atom",
+                "value": {
+                  "tag": "bytes",
+                  "length": 1
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
     "privateStateAfter": {},
     "zswapLocalState": {
       "coinPublicKey": "cacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacaca",

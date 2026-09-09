@@ -53,6 +53,7 @@ import {
   ttlOneHour
 } from '@midnight-ntwrk/midnight-js-utils';
 
+import { RETAINED_PIPELINE_ERA } from '../era';
 import {
   type EraSeam,
   IncompleteCallTxPrivateStateConfig,
@@ -897,7 +898,8 @@ const toLedger8CallTxData = (
   public: {
     publicTranscript: call.publicTranscript,
     partitionedTranscript: call.partitionedTranscript,
-    nextContractState: call.nextContractState
+    nextContractState: call.nextContractState,
+    nextContractStateEncoded: call.nextContractStateEncoded
   },
   private: {
     input: call.input,
@@ -967,6 +969,7 @@ export const submitLedger8CallTxAsync = async (
   });
 
   return {
+    era: RETAINED_PIPELINE_ERA,
     txId,
     circuitId: call.circuitId,
     nextPrivateState: call.nextPrivateState,
@@ -1007,6 +1010,7 @@ export const submitLedger8CallTx = async (
   // with the record merged onto its public half. Built from one place so the
   // two surfaces cannot report different executions of the same call.
   return {
+    era: RETAINED_PIPELINE_ERA,
     circuitId,
     public: { ...txData, ...callTxData.public },
     private: callTxData.private,

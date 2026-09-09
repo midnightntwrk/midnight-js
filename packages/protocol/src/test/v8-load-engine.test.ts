@@ -102,6 +102,7 @@ describe('createLedger8Engine', () => {
         zswapLocalState: emptyZswapLocalState(),
         preContractState: { data: state },
         postContractState: { data: state },
+        postContractStateEncoded: state.state.encode(),
         privateStateAfter: {}
       },
       contractAddress: sampleContractAddress(),

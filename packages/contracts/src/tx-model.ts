@@ -23,6 +23,7 @@ import type {
 } from '@midnight-ntwrk/midnight-js-types';
 
 import type { CallResult, CallResultPrivate, CallResultPublic } from './call';
+import type { CurrentPipelineEra } from './era';
 
 /**
  * Data relevant to any unsubmitted transaction.
@@ -98,6 +99,14 @@ export interface UnsubmittedDeployTxPrivateData<C extends Contract.Any> {
  * — never spread or stringify the whole object.
  */
 export interface UnsubmittedDeployTxDataBase<C extends Contract.Any> {
+  /**
+   * The pipeline that produced this result: always the current era here.
+   *
+   * Read off the compiled artifact, NEVER off a transaction record — the two
+   * facts disagree after the fork, and only this one says which module the
+   * objects in this result came from.
+   */
+  readonly era: CurrentPipelineEra;
   /**
    * The public data (data that will be revealed upon tx submission) relevant to the deployment transaction.
    */
@@ -263,5 +272,14 @@ export interface FinalizedCallTxData<C extends Contract.Any, PCK extends Contrac
  * non-sensitive fields rather than spreading or stringifying the whole
  * object.
  */
-export type SubmittedCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
-  SubmittedCallTxBase<UnsubmittedCallTxData<C, PCK>>;
+export interface SubmittedCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
+  extends SubmittedCallTxBase<UnsubmittedCallTxData<C, PCK>> {
+  /**
+   * The pipeline that produced this result: always the current era here.
+   *
+   * Read off the compiled artifact, NEVER off a transaction record — the two
+   * facts disagree after the fork, and only this one says which module the
+   * objects in this result came from.
+   */
+  readonly era: CurrentPipelineEra;
+}

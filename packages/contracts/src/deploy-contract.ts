@@ -20,6 +20,7 @@ import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
+import { CURRENT_PIPELINE_ERA } from './era';
 import { Ledger8DeployUnmaintainableError } from './errors';
 import type { FoundContract } from './find-deployed-contract';
 import {
@@ -186,6 +187,7 @@ export async function deployContract<C extends Contract.Any>(
   }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
   return {
+    era: CURRENT_PIPELINE_ERA,
     deployTxData,
     callTx: createCircuitCallTxInterface(
       providers,

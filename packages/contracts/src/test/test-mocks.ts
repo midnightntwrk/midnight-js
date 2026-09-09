@@ -70,6 +70,7 @@ import { Option } from 'effect';
 import { type CallOptions, type CallOptionsWithPrivateState } from '../call';
 import { type ContractConstructorResult } from '../call-constructor';
 import type { ContractProviders } from '../contract-providers';
+import { CURRENT_PIPELINE_ERA } from '../era';
 import { type UnsubmittedCallTxData, type UnsubmittedDeployTxData } from '../tx-model';
 
 export const createMockContractAddress = () => sampleContractAddress();
@@ -337,6 +338,7 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
 });
 
 export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDeployTxData<Contract.Any>> = {}): UnsubmittedDeployTxData<Contract.Any> => ({
+  era: CURRENT_PIPELINE_ERA,
   public: {
     contractAddress: createMockContractAddress(),
     initialContractState: createMockContractState()
@@ -373,6 +375,7 @@ export const createMockContractCall = (
 });
 
 export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>> = {}): UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
+    era: CURRENT_PIPELINE_ERA,
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [
@@ -415,6 +418,7 @@ export const createMockCallOptionsWithPrivateState = (overrides: Partial<CallOpt
 });
 
 export const createMockConstructorResult = (): ContractConstructorResult<Contract.Any> => ({
+  era: CURRENT_PIPELINE_ERA,
   nextContractState: createMockContractState(),
   nextPrivateState: { test: 'next-private-state' },
   nextZswapLocalState: createMockZswapLocalState(),

@@ -34,7 +34,11 @@
  * @see {@link EraDispatch} for the runtime predicate and what it may not use.
  */
 
-import type { DownConvertedState, Ledger8DeployableContractState } from '@midnight-ntwrk/midnight-js-protocol';
+import type {
+  DownConvertedState,
+  EncodedStateValue,
+  Ledger8DeployableContractState
+} from '@midnight-ntwrk/midnight-js-protocol';
 import type {
   CommunicationCommitmentData,
   ContractAddress,
@@ -52,6 +56,8 @@ import type {
   VersionedFinalizedTxData
 } from '@midnight-ntwrk/midnight-js-types';
 import type { Option } from 'effect';
+
+import type { RetainedPipelineEra } from './era';
 
 /**
  * The context a retained-era circuit receives as its first argument.
@@ -275,6 +281,16 @@ export interface Ledger8CallResultPublic extends CallResultPublicBase {
    * keep it; see ADR-0011.
    */
   readonly nextContractState: DownConvertedState;
+  /**
+   * The same state as an {@link EncodedStateValue}: the form that survives this
+   * process, a `structuredClone`, a worker transfer and storage.
+   *
+   * `EncodedStateValue` is pinned identical across `onchain-runtime-v3`,
+   * `ledger-v8` and `ledger-v9`, so this is the member era-agnostic code reads
+   * and the one to persist. The handle above is for use in the process that
+   * produced it.
+   */
+  readonly nextContractStateEncoded: EncodedStateValue;
 }
 
 /**
@@ -326,6 +342,13 @@ export type Ledger8FinalizedCallTxPublicData = Ledger8CallResultPublic & Version
  * they are, what stands in for them, and why.
  */
 export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> {
+  /**
+   * The pipeline that produced this result: always the retained era here, even
+   * when the transaction that recorded it is a keep-state transaction tagged
+   * `'v9'`. Those are different facts, and only this one says which module
+   * produced the objects below.
+   */
+  readonly era: RetainedPipelineEra;
   readonly circuitId: K;
   readonly public: Ledger8FinalizedCallTxPublicData;
   readonly private: Ledger8CallResultPrivate<C, K>;
@@ -348,6 +371,12 @@ export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, K extends
  */
 export interface Ledger8ContractCallPublic<TState = DownConvertedState> extends CallResultPublicBase {
   readonly contractState: TState;
+  /**
+   * The same state as an {@link EncodedStateValue} — see
+   * {@link Ledger8CallResultPublic.nextContractStateEncoded} for which of the
+   * two to reach for.
+   */
+  readonly contractStateEncoded: EncodedStateValue;
 }
 
 /**
@@ -401,6 +430,13 @@ export interface Ledger8UnsubmittedCallTxData<C extends Ledger8Contract, K exten
  */
 export interface Ledger8SubmittedCallTx<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>
   extends SubmittedCallTxBase<Ledger8UnsubmittedCallTxData<C, K>> {
+  /**
+   * The pipeline that produced this result: always the retained era here, even
+   * when the transaction that recorded it is a keep-state transaction tagged
+   * `'v9'`. Those are different facts, and only this one says which module
+   * produced the objects below.
+   */
+  readonly era: RetainedPipelineEra;
   readonly circuitId: K;
   readonly nextPrivateState: Ledger8PrivateState<C>;
 }
@@ -498,6 +534,13 @@ export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
  * for them to reach.
  */
 export interface Ledger8FoundContract<C extends Ledger8Contract> {
+  /**
+   * The pipeline that produced this result: always the retained era here, even
+   * when the transaction that recorded it is a keep-state transaction tagged
+   * `'v9'`. Those are different facts, and only this one says which module
+   * produced the objects below.
+   */
+  readonly era: RetainedPipelineEra;
   readonly compiledContract: C;
   readonly contractAddress: ContractAddress;
   readonly deployTxData: VersionedFinalizedTxData;
