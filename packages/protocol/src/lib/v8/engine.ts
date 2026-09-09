@@ -23,7 +23,8 @@ import {
   type ConstructorResultPojo,
   executeConstructor,
   type ExecuteConstructorOptions,
-  type Ledger8ConstructorRuntime
+  type Ledger8ConstructorRuntime,
+  type Ledger8DeployableContractState
 } from './deploy';
 import { type DownConvertedState, downConvertForExecution, type Ledger8CompactRuntime } from './down-convert';
 import { executeCircuit, type ExecuteCircuitOptions, type Ledger8ExecutionRuntime, type TranscriptPojo } from './execute';
@@ -31,10 +32,12 @@ import { assertSharedLedger8Instance } from './instance-guard';
 
 export type {
   ConstructorResultPojo,
+  ContractEntryPointPojo,
   DownConvertedState,
   EncodedStateValue,
   ExecuteCircuitOptions,
   ExecuteConstructorOptions,
+  Ledger8DeployableContractState,
   TranscriptPojo,
   WrapKeepStateCallOptions
 };
@@ -107,7 +110,8 @@ export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
     CostModel: glue.CostModel
   };
   const ledger8ConstructorRuntime: Ledger8ConstructorRuntime = {
-    createConstructorContext: glue.createConstructorContext
+    createConstructorContext: glue.createConstructorContext,
+    decodeZswapLocalState: glue.decodeZswapLocalState
   };
 
   return {

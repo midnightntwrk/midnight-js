@@ -15,9 +15,11 @@
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { type ShieldedCoinInfo, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
-  FinalizedTxData
+  FinalizedTxData,
+  SubmittedCallTxBase,
+  UnsubmittedTxDataBase
 } from '@midnight-ntwrk/midnight-js-types';
 
 import type { CallResult, CallResultPrivate, CallResultPublic } from './call';
@@ -38,15 +40,11 @@ import type { CallResult, CallResultPrivate, CallResultPublic } from './call';
  * observability platforms (log shippers, error reporters, analytics) is
  * not an intended use.
  */
-export interface UnsubmittedTxData {
+export interface UnsubmittedTxData extends UnsubmittedTxDataBase {
   /**
    * The unproven ledger transaction produced.
    */
   readonly unprovenTx: UnprovenTransaction;
-  /**
-   * New coins created during the construction of the transaction.
-   */
-  readonly newCoins: ShieldedCoinInfo[];
 }
 
 /**
@@ -265,13 +263,5 @@ export interface FinalizedCallTxData<C extends Contract.Any, PCK extends Contrac
  * non-sensitive fields rather than spreading or stringifying the whole
  * object.
  */
-export interface SubmittedCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> {
-  /**
-   * The transaction ID returned from submission.
-   */
-  readonly txId: string;
-  /**
-   * The unproven call transaction data including private state.
-   */
-  readonly callTxData: UnsubmittedCallTxData<C, PCK>;
-}
+export type SubmittedCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
+  SubmittedCallTxBase<UnsubmittedCallTxData<C, PCK>>;

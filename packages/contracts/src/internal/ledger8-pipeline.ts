@@ -30,15 +30,17 @@
 import type {
   ContractStatePojo,
   DeployResultPojo,
+  DownConvertedState,
   EncodedStateValue,
   LedgerEra,
   LedgerVersion,
   TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
-import type { AlignedValue, Op } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { PartitionedTranscript } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { AlignedValue, Op, ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PublicDataProvider, RawContractState } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
+import { Option } from 'effect';
 
 import {
   Ledger8AmbiguousEntryPointError,
@@ -46,10 +48,13 @@ import {
   Ledger8ShieldedSpendUnsupportedError,
   LedgerParametersUnservedError
 } from '../errors';
+import type { Ledger8ContractCall } from '../ledger8-contract';
 import {
   type EncryptionPublicKeyResolver,
   serializeCoinInfo,
   serializeQualifiedShieldedCoinInfo,
+  zswapStateToNewCoins,
+  zswapStateToOffer,
   zswapStateToSegmentedOffer
 } from '../utils/zswap-utils';
 import type { BreadcrumbSink } from './breadcrumbs';
@@ -66,14 +71,20 @@ import { assertVerifierKeyMatches } from './verifier-key';
  * replay harness requires the fixture to carry it, which is what makes a
  * recording's own claim about which circuit it recorded checkable.
  *
- * Two members of the engine's result are deliberately left out. `result` USED to
- * be a third: it was narrowed away here and so could not reach a caller, even
- * though the recording carried it and the current era answers with it.
+ * ONE member of the engine's result is deliberately left out:
+ * `preContractState`, which is the same state this pipeline handed the engine
+ * in the first place. `result` USED to be another: it was narrowed away here
+ * and so could not reach a caller, even though the recording carried it and the
+ * current era answers with it.
  *
- * @see {@link KeepStatePipeline} for which two, and why nothing is lost by
- *      dropping them.
+ * `postContractState` is generic rather than picked off `TranscriptPojo`: it is
+ * a live retained-runtime handle, which the replay double cannot mint, so the
+ * double fills the parameter with its own marker while the real engine fills it
+ * with `DownConvertedState`.
+ *
+ * @see {@link KeepStatePipeline} for what is left out and why nothing is lost.
  */
-export type Ledger8Transcript = Pick<
+export type Ledger8Transcript<TState = DownConvertedState> = Pick<
   TranscriptPojo,
   | 'circuitId'
   | 'result'
@@ -84,7 +95,10 @@ export type Ledger8Transcript = Pick<
   | 'partitionContext'
   | 'privateStateAfter'
   | 'zswapLocalState'
->;
+> & {
+  /** The state the execution ENDED on, as a live handle. See ADR-0011. */
+  readonly postContractState: TState;
+};
 
 /**
  * Everything either arm needs off a caller's retained-era contract: the UNION of
@@ -148,6 +162,12 @@ export interface Ledger8ExecuteRequest<TState> {
 export interface Ledger8ConstructedState {
   readonly contractState: { serialize(): Uint8Array };
   readonly privateState: unknown;
+  /**
+   * The Zswap local state the constructor ended on, decoded. A constructor that
+   * mints a coin records it here; dropping it composes a deploy the ledger
+   * cannot balance.
+   */
+  readonly zswapLocalState: ZswapLocalState;
 }
 
 /** What {@link Ledger8ExecutionEngine.executeConstructor} is asked to run. */
@@ -171,7 +191,7 @@ export interface Ledger8ConstructRequest {
  */
 export interface Ledger8ExecutionEngine<TState> {
   downConvertForExecution(state: EncodedStateValue): TState;
-  executeCircuit(options: Ledger8ExecuteRequest<TState>): Ledger8Transcript;
+  executeCircuit(options: Ledger8ExecuteRequest<TState>): Ledger8Transcript<TState>;
   executeConstructor(options: Ledger8ConstructRequest): Ledger8ConstructedState;
   /**
    * Re-expresses the entry points a retained-era state declared as a CURRENT-era contract state.
@@ -380,12 +400,19 @@ export interface Ledger8CallPipelineRequest<TState> {
   readonly encryptionPublicKey: EncryptionPublicKeyResolver;
 }
 
-/** What one retained-era call produced. */
-export interface Ledger8CallPipelineResult {
+/**
+ * What one retained-era call produced.
+ *
+ * @typeParam TState - The down-converted state type the engine works in. The
+ * framework's own engine fills it with `DownConvertedState`; the replay double
+ * fills it with its own marker.
+ */
+export interface Ledger8CallPipelineResult<TState> {
   /**
    * The UNPROVEN transaction, serialized. Bytes rather than a handle because
-   * `LedgerEra.composeCallTx` returns bytes and nothing in this module may hold
-   * a live ledger handle.
+   * `LedgerEra.composeCallTx` answers with bytes — the era-agnostic facade
+   * trades plain data whatever ADR-0011 allows one layer up, so there is no
+   * handle here to hold in the first place.
    *
    * Which form it crosses the PROVIDER SEAMS in is a separate question decided
    * by the network head, not by this field — a post-fork head deserializes
@@ -417,6 +444,33 @@ export interface Ledger8CallPipelineResult {
    * the Zswap offer was routed with, resolved once above.
    */
   readonly partitionedTranscript: PartitionedTranscript;
+  /**
+   * The post-call Zswap local state, DECODED. Plain data in both runtimes --
+   * the two `ZswapLocalState` interfaces are member-for-member identical -- so
+   * this member survives a clone. Not to be confused with
+   * `Ledger8CircuitContext.currentZswapLocalState`, which is the runtime's
+   * byte-encoded form.
+   */
+  readonly nextZswapLocalState: ZswapLocalState;
+  /**
+   * The state the execution ENDED on, as the retained runtime's own live
+   * handle. Published under ADR-0011 rather than dropped: the pipeline held the
+   * decoded state and a caller would otherwise re-read and re-decode the same
+   * bytes to get it back.
+   */
+  readonly nextContractState: TState;
+  /**
+   * Proof data for every contract call this circuit made: always exactly one
+   * entry, the root call, because a pre-fork contract cannot make a
+   * cross-contract call.
+   */
+  readonly calls: readonly Ledger8ContractCall<TState>[];
+  /**
+   * The coins this call minted to the CALLER's own key, filtered out of the
+   * post-call Zswap state by the same era-independent helper the current era
+   * uses. Empty when the call minted nothing to that key.
+   */
+  readonly newCoins: ShieldedCoinInfo[];
   /** Present exactly when the call moved shielded coins. */
   readonly guaranteedZswapOffer: Uint8Array | undefined;
   /**
@@ -446,7 +500,7 @@ export interface Ledger8CallPipelineResult {
  */
 export const runLedger8CallPipeline = async <TState>(
   request: Ledger8CallPipelineRequest<TState>
-): Promise<Ledger8CallPipelineResult> => {
+): Promise<Ledger8CallPipelineResult<TState>> => {
   const { era, retainedEra, engine, publicDataProvider, head, contract, contractAddress, circuitId } = request;
 
   const snapshot = await readLedger8Snapshot(
@@ -592,6 +646,28 @@ export const runLedger8CallPipeline = async <TState>(
     privateTranscriptOutputs: transcript.privateTranscriptOutputs,
     publicTranscript: transcript.publicTranscript,
     partitionedTranscript,
+    nextContractState: transcript.postContractState,
+    calls: [
+      {
+        contractAddress,
+        circuitId,
+        public: {
+          // The state this call BOUND to: the very handle the circuit executed
+          // against, not a second decode of the same bytes.
+          contractState: downConverted,
+          publicTranscript: transcript.publicTranscript,
+          partitionedTranscript
+        },
+        private: {
+          input: transcript.input,
+          output: transcript.output,
+          privateTranscriptOutputs: transcript.privateTranscriptOutputs
+        },
+        communicationCommitment: Option.none()
+      }
+    ],
+    nextZswapLocalState: transcript.zswapLocalState,
+    newCoins: zswapStateToNewCoins(request.coinPublicKey, transcript.zswapLocalState),
     guaranteedZswapOffer,
     fallibleZswapOffer
   };
@@ -615,6 +691,12 @@ export interface Ledger8DeployPipelineRequest {
   readonly verifierKeys: ReadonlyMap<string, Uint8Array>;
   readonly networkId: string;
   readonly ttl: Date;
+  /**
+   * REQUIRED for the same reason the call arm requires it: a constructor may
+   * mint a coin, and encrypting that output to its recipient needs a key this
+   * pipeline cannot derive on its own.
+   */
+  readonly encryptionPublicKey: EncryptionPublicKeyResolver;
 }
 
 /** What one retained-era deploy produced. */
@@ -627,7 +709,21 @@ export interface Ledger8DeployPipelineResult {
   readonly contractAddress: string;
   /** The state that address was derived from — what a caller later calls against. */
   readonly initialState: Uint8Array;
+  /**
+   * The same state as a LIVE handle, as the constructor built it. Published
+   * under ADR-0011 next to the bytes rather than instead of them: the handle is
+   * valid only while the retained runtime that produced it is loaded, and only
+   * the bytes survive a clone, a worker transfer or storage.
+   */
+  readonly initialContractState: Ledger8ConstructedState['contractState'];
   readonly nextPrivateState: unknown;
+  /** The Zswap local state the constructor ended on. */
+  readonly initialZswapState: ZswapLocalState;
+  /**
+   * Present exactly when the constructor minted a coin. Absent — not an empty
+   * offer — when it minted none.
+   */
+  readonly guaranteedZswapOffer: Uint8Array | undefined;
 }
 
 /**
@@ -655,17 +751,35 @@ export const runLedger8DeployPipeline = (request: Ledger8DeployPipelineRequest):
     coinPk: request.coinPublicKey
   });
 
+  // Refused by name here rather than by a bare assertion inside the offer
+  // builder, exactly as the call arm refuses it. A constructor cannot SPEND --
+  // a contract that does not exist yet holds nothing -- so the recipient check
+  // is the only one this arm needs.
+  assertRecipientsResolvable(constructed.zswapLocalState, request.encryptionPublicKey, 'initialState');
+
+  // A deploy has no transcript to partition against, and `composeDeployTx`
+  // takes a guaranteed offer only, so the whole of the constructor's output
+  // list belongs to the guaranteed segment.
+  const guaranteedZswapOffer = zswapStateToOffer(
+    constructed.zswapLocalState,
+    request.encryptionPublicKey
+  )?.serialize();
+
   const deployed: DeployResultPojo = request.era.composeDeployTx({
     contractState: constructed.contractState.serialize(),
     verifierKeys: request.verifierKeys,
     networkId: request.networkId,
-    ttl: request.ttl
+    ttl: request.ttl,
+    guaranteedZswapOffer
   });
 
   return {
     txBytes: deployed.transaction,
     contractAddress: deployed.contractAddress,
     initialState: deployed.initialState,
-    nextPrivateState: constructed.privateState
+    initialContractState: constructed.contractState,
+    nextPrivateState: constructed.privateState,
+    initialZswapState: constructed.zswapLocalState,
+    guaranteedZswapOffer
   };
 };
