@@ -25,7 +25,12 @@ import type {
 } from '@midnightntwrk/ledger-v9';
 
 import { ComposeFailedError, ComposeOptionError, type ComposeStage } from '../../errors';
-import type { CallTranscriptSource, PartitionContext } from './compose-types';
+import {
+  type CallTranscriptSource,
+  INITIAL_LEDGER_PARAMETERS,
+  type LedgerParametersOption,
+  type PartitionContext
+} from './compose-types';
 import type { LedgerVersion } from './ledger-version';
 
 /**
@@ -147,11 +152,11 @@ export interface AssembleCallOptions<TOperation> {
    * the boundary in the wrong place, and the node then refuses the guaranteed segment with
    * `Transcript(Execution(OutOfGas))`.
    *
-   * Optional only so a caller that has no read surface can still compose. Omitting it falls back to
-   * `initialParameters()`, which is a COMPATIBILITY PATH AND NOT A CORRECT ONE -- pass the chain's
-   * own parameters wherever they are reachable.
+   * Required. A caller with no read surface passes {@link INITIAL_LEDGER_PARAMETERS} to select the
+   * compatibility path explicitly -- there is no way to reach it by omission, because that made a
+   * cost model the chain does not run the default for anyone who forgot.
    */
-  readonly ledgerParameters?: Uint8Array;
+  readonly ledgerParameters: LedgerParametersOption;
   readonly stage: CallResolutionStage;
   // The era every failure raised here names -- see ComposeRefusalOrder.
   readonly version: LedgerVersion;
@@ -229,12 +234,13 @@ const resolvePartition = <
   let parameters: TParams;
   try {
     parameters =
-      options.ledgerParameters === undefined
+      options.ledgerParameters === INITIAL_LEDGER_PARAMETERS
         ? // The ledger's INITIAL parameters: a compatibility path for a caller with no read
           // surface, and not a correct substitute. They are the model the chain started with, not
           // the one it is running -- prices adjust per block -- so partitioning against them draws
           // the guaranteed/fallible boundary in the wrong place and the node refuses the guaranteed
-          // segment for running out of gas.
+          // segment for running out of gas. Reachable only by naming the sentinel, never by
+          // omission -- see LedgerParametersOption.
           ledger.LedgerParameters.initialParameters()
         : // Deserialized with THIS era's reader, which is right because the bytes came from a block
           // this era's call is being built against.

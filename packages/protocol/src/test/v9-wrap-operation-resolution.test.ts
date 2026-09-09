@@ -137,7 +137,7 @@ describe('wrapKeepStateCall call-prototype assembly', () => {
     const { wrapKeepStateCall } = await import('../lib/v9/wrap');
     const contractState = registeredContractState();
 
-    wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: LedgerV9.sampleContractAddress(), contractState });
+    wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: LedgerV9.sampleContractAddress(), contractState, ledgerParameters: 'initial' });
 
     // `ContractState.operation()` is a WASM-bound getter: it returns a fresh
     // JS wrapper object each call (confirmed empirically — two calls never
@@ -155,7 +155,7 @@ describe('wrapKeepStateCall call-prototype assembly', () => {
     const transcript = buildTranscript();
     const contractAddress = LedgerV9.sampleContractAddress();
 
-    wrapKeepStateCall({ transcript, contractAddress, contractState: registeredContractState() });
+    wrapKeepStateCall({ transcript, contractAddress, contractState: registeredContractState(), ledgerParameters: 'initial' });
 
     // input/output/privateTranscriptOutputs carry distinct fixture bytes, so a
     // transposition of any pair fails here rather than composing a valid-looking
@@ -174,7 +174,7 @@ describe('wrapKeepStateCall call-prototype assembly', () => {
     const { wrapKeepStateCall } = await import('../lib/v9/wrap');
     const contractAddress = LedgerV9.sampleContractAddress();
 
-    wrapKeepStateCall({ transcript: buildTranscript(), contractAddress, contractState: registeredContractState() });
+    wrapKeepStateCall({ transcript: buildTranscript(), contractAddress, contractState: registeredContractState(), ledgerParameters: 'initial' });
 
     // A bare circuit id is ambiguous across contracts and is rejected by
     // parseContractKeyLocation, so a prover resolving through ZKConfigRegistry
@@ -195,8 +195,8 @@ describe('wrapKeepStateCall call-prototype assembly', () => {
     const contractAddress = LedgerV9.sampleContractAddress();
     const contractState = registeredContractState();
 
-    wrapKeepStateCall({ transcript: buildTranscript(), contractAddress, contractState });
-    wrapKeepStateCall({ transcript: buildTranscript(), contractAddress, contractState });
+    wrapKeepStateCall({ transcript: buildTranscript(), contractAddress, contractState, ledgerParameters: 'initial' });
+    wrapKeepStateCall({ transcript: buildTranscript(), contractAddress, contractState, ledgerParameters: 'initial' });
 
     // Reusing one commitment across calls is a privacy regression that nothing
     // downstream would surface, so it has to be pinned here.
@@ -232,7 +232,8 @@ describe('wrapKeepStateCall call-prototype assembly', () => {
     wrapKeepStateCall({
       transcript,
       contractAddress: LedgerV9.sampleContractAddress(),
-      contractState: registeredContractState()
+      contractState: registeredContractState(),
+      ledgerParameters: 'initial'
     });
 
     expect(decoded).toHaveLength(1);
@@ -261,7 +262,7 @@ describe('wrapKeepStateCall call-prototype assembly', () => {
       throw new Error(`fixture invariant violated: ${FOREIGN_KEY_STATE_FIXTURE} has no keyed 'increment' operation`);
     }
 
-    wrapKeepStateCall({ transcript: buildTranscript(), contractAddress, contractState });
+    wrapKeepStateCall({ transcript: buildTranscript(), contractAddress, contractState, ledgerParameters: 'initial' });
 
     // Guards the fixture itself: if a re-mint ever made this key equal to the
     // twin contract's, the two assertions below would agree for the wrong
@@ -307,7 +308,8 @@ describe('wrapKeepStateCall call-prototype assembly', () => {
     wrapKeepStateCall({
       transcript: buildTranscript(),
       contractAddress: LedgerV9.sampleContractAddress(),
-      contractState: registeredContractState()
+      contractState: registeredContractState(),
+      ledgerParameters: 'initial'
     });
 
     // Transposing these two composes a structurally valid prototype that
