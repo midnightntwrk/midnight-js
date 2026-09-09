@@ -1,0 +1,142 @@
+# 0010. Share era-neutral result bases from the types package
+
+- Status: Accepted
+- Date: 2026-09-09
+- Deciders: Szymon Paluchowski
+
+## Context
+
+The framework answers a circuit call with two result shapes, one per era:
+`CallResult` / `FinalizedCallTxData` for the current era and
+`Ledger8CallResultPublic` / `Ledger8CallResultPrivate` /
+`Ledger8FinalizedCallTxData` for the retained pre-fork one. A caller is meant
+to read `private.result`, `public.txId` and `public.status` the same way in
+both eras — that uniformity is the reason the retained arms were given the same
+two-level structure in the first place.
+
+They were written as hand-copied mirrors. Nothing declared the members the two
+eras must share, so the copy could be incomplete and stay incomplete: four
+members were on one era's surface and not the other, and three docblocks
+described a correspondence that no longer held. Two of the four —
+`nextZswapLocalState` and `newCoins` — are plain data in both runtimes and were
+simply unobtainable in the retained era, with no way to recover them after
+submission short of re-running the circuit and composing a second transaction.
+
+The gate that should have caught this could not. The era-parity assertions in
+`packages/contracts/src/test/typecheck/overloads.test-d.ts` were written with
+`toHaveProperty`, which confirms a named member is PRESENT and can never
+observe one that is ABSENT — the one-directional assertion this repo's own
+contributor guide lists as a common mistake.
+
+There is a precedent for the fix inside the repo. `FinalizedTxData` and
+`FinalizedTxDataV8` both extend `FinalizedTxRecord`
+(`packages/types/src/midnight-types.ts`), so the two arms differ in exactly the
+`version` discriminant and the type of `tx`, and cannot drift apart as members
+are added to the record. Nothing equivalent existed for the execution half.
+
+Two constraints shape where such a base can live:
+
+- `packages/types` depends on `midnight-js-protocol`, `effect`, `pino` and
+  `rxjs`. It does **not** depend on `packages/contracts`, and must not start:
+  the dependency runs the other way.
+- The eras' result members are not all the same type. The circuit's return
+  value and the contract's private state are era-specific by construction
+  (`Contract.CircuitReturnType` versus `Ledger8CircuitReturnType`,
+  `Contract.PrivateState` versus `Ledger8PrivateState`).
+
+## Decision
+
+We will declare the members both eras must carry as shared bases in
+`packages/types/src/call-result-base.ts`, and have each era's arm extend them:
+
+- `CallResultPublicBase` — `publicTranscript`, `partitionedTranscript`.
+- `CallResultPrivateBase<Result, PrivateState>` — the six execution members,
+  generic over exactly the two whose types are era-specific.
+- `UnsubmittedTxDataBase` — `newCoins`, the one member both eras carry
+  alongside the transaction they composed.
+
+**The invariant: an era MAY add members to a base; an era may NOT drop one.**
+That is what makes the whole class of defect unrepresentable rather than merely
+detectable. Where an era genuinely cannot carry a member, the absence is named
+in the allow-list of the era key-set parity gate, with its reason, rather than
+being silently absent.
+
+We will split base placement by what a base names:
+
+- **Data-shape bases go to `packages/types`.** They name only declarations that
+  package already reaches.
+- **Behaviour-bearing bases stay in `packages/contracts`.** A base for
+  `FoundContract` or `DeployedContract` names `CircuitCallTxInterface` and the
+  maintenance interfaces, which reach `submitCallTx`. Moving those to `types`
+  would require `types` to depend on `contracts`.
+
+Two members of the base set are deliberately NOT generic:
+
+- `nextZswapLocalState` is declared once, as the current era's
+  `ZswapLocalState`. The two runtimes' declarations are member-for-member
+  identical and mutually assignable — verified with the compiler, in both
+  directions — so a third type parameter would only ever be filled with
+  structurally equal arguments. This is the *decoded* post-call state, not
+  `Ledger8CircuitContext.currentZswapLocalState`, which is the runtime's
+  byte-encoded form and does fall under ADR-0007.
+- `newCoins` is `ShieldedCoinInfo[]`, on the same grounds.
+
+Moving a member from an era's own declaration into a base it extends is not a
+breaking change: TypeScript is structural, so an interface with an unchanged
+total member set is indistinguishable from the flat one it replaced. Every name
+`packages/contracts` exported before is still exported from it.
+
+We will NOT create `packages/types/src/v8/`. The rule stands — a retained-era
+declaration that lands in `types` belongs in that directory — but the bases are
+era-neutral and each era's arm stays with its own era's other declarations, so
+nothing retained-specific moves into `types` and an empty directory would be
+symmetry for its own sake. The same reasoning excludes a speculative `v9/`.
+
+We will NOT introduce a top-level `FinalizedCallTxDataBase`. The current era's
+`FinalizedCallTxData` already reaches `public` and `private` through
+`UnsubmittedCallTxData` and narrows `public` on the way; a second base
+declaring the same two members with different types is an
+"cannot simultaneously extend" error rather than a guarantee. Top-level parity
+is what the key-set gate asserts directly.
+
+## Consequences
+
+- **Positive:** a member added to a base reaches both eras at once. The retained
+  era gained `nextZswapLocalState` and `newCoins` as a consequence of extending
+  the bases, not as two separate fixes.
+- **Positive:** the bases are where the guarantee is written down, so a reader
+  of either era's arm can see what is shared and what that arm adds.
+- **Positive:** `packages/types` keeps its direction of dependency; the rule
+  that separates a data-shape base from a behaviour-bearing one says where the
+  next base goes without re-deciding.
+- **Negative:** the declaration of an era's result is now split across two
+  packages. Reading `Ledger8CallResultPrivate` alone no longer shows every
+  member it has.
+- **Negative:** `packages/types` grows more declarations. The package is
+  documented as declarations-only and is not — it already ships around 29
+  runtime values — but these bases are consistent with the rule as stated for
+  new code, and add no runtime value.
+- **Follow-ups:** the retained era still has no `calls`. The current era's
+  `ContractCall.public.contractState` is a live `StateValue`, so ADR-0007
+  reaches the type as it stands; carrying it would need a plain-data retained
+  variant whose only content duplicates the root call already published on
+  `public` and `private`. It is named in the gate's allow-list with that
+  reason, and is a decision to take on its own.
+
+## Alternatives considered
+
+- **Bases in `packages/contracts`.** Rejected: `packages/types` is where the
+  provider interfaces and `FinalizedTxRecord` already live, and the same bases
+  are wanted by declarations on both sides of that package boundary.
+- **A third type parameter for the Zswap local state.** Rejected: the two
+  runtimes' declarations are mutually assignable, so the parameter would carry
+  no information and every reader would pay for it.
+- **Generating the retained arms from the current ones with mapped types.**
+  Rejected: the eras differ by decision as well as by type — `nextContractState`
+  and `logEvents` are absent for reasons a mapped type cannot express — and a
+  derivation would hide exactly the differences that need to be stated.
+- **Leaving the mirrors and relying on a stronger test alone.** The key-set
+  parity gate does catch the drift, and was written first. It stays. But a gate
+  reports drift after it is written, while a shared base prevents it; the two
+  are worth having together, and the bases are what make the gate's allow-list
+  the only place an era-specific absence can be recorded.
