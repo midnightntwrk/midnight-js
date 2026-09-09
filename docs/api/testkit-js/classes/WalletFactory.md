@@ -16,13 +16,13 @@
 
 ### createDustWallet()
 
-> `static` **createDustWallet**(`config`, `seed`, `dustOptions?`): `DustWalletAPI`
+> `static` **createDustWallet**(`config`, `seed`, `dustOptions?`): `Promise`\<`DustWalletAPI`\>
 
 #### Parameters
 
 ##### config
 
-`DefaultV1Configuration`
+`DefaultDustConfiguration`
 
 ##### seed
 
@@ -34,19 +34,19 @@
 
 #### Returns
 
-`DustWalletAPI`
+`Promise`\<`DustWalletAPI`\>
 
 ***
 
 ### createShieldedWallet()
 
-> `static` **createShieldedWallet**(`config`, `seed`): `ShieldedWalletAPI`
+> `static` **createShieldedWallet**(`config`, `seed`): `Promise`\<`ShieldedWalletAPI`\>
 
 #### Parameters
 
 ##### config
 
-`DefaultV1Configuration`
+`DefaultShieldedConfiguration`
 
 ##### seed
 
@@ -54,19 +54,19 @@
 
 #### Returns
 
-`ShieldedWalletAPI`
+`Promise`\<`ShieldedWalletAPI`\>
 
 ***
 
 ### createUnshieldedWallet()
 
-> `static` **createUnshieldedWallet**(`config`, `unshieldedKeystore`): `UnshieldedWalletAPI`
+> `static` **createUnshieldedWallet**(`config`, `unshieldedKeystore`): `Promise`\<`UnshieldedWalletAPI`\>
 
 #### Parameters
 
 ##### config
 
-`DefaultV1Configuration`
+`DefaultUnshieldedConfiguration`
 
 ##### unshieldedKeystore
 
@@ -74,7 +74,7 @@
 
 #### Returns
 
-`UnshieldedWalletAPI`
+`Promise`\<`UnshieldedWalletAPI`\>
 
 ***
 
@@ -114,7 +114,7 @@
 
 ##### config
 
-`DefaultV1Configuration`
+`DefaultShieldedConfiguration`
 
 ##### serializedState
 
@@ -128,7 +128,7 @@
 
 ### startWalletFacade()
 
-> `static` **startWalletFacade**(`wallet`, `shieldedSeed`, `dustSeed`): `Promise`\<`WalletFacade`\>
+> `static` **startWalletFacade**(`wallet`, `seeds`): `Promise`\<`WalletFacade`\>
 
 #### Parameters
 
@@ -136,13 +136,9 @@
 
 `WalletFacade`
 
-##### shieldedSeed
+##### seeds
 
-`Uint8Array`
-
-##### dustSeed
-
-`Uint8Array`
+`WalletSeeds`
 
 #### Returns
 

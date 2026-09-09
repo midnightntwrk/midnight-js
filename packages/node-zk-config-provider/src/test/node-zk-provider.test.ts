@@ -240,6 +240,39 @@ describe('Node ZK config Provider', () => {
       );
     });
 
+    it('warns and resolves when the manifest is absent in require-if-present mode', async () => {
+      const onWarn = vi.fn();
+      const key = await new NodeZkConfigProvider(resourceDir, { verify: 'require-if-present', onWarn }).getProverKey(
+        'set_topic'
+      );
+      expect(key.length).toBeGreaterThan(0);
+      expect(onWarn).toHaveBeenCalledOnce();
+      expect(onWarn.mock.calls[0][0]).toMatch(/^midnight-js:.*set_topic\.prover/);
+    });
+
+    it('rejects in require-if-present mode when a present manifest has no entry for the artifact', async () => {
+      const onWarn = vi.fn();
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'node-zk-partial-rip-'));
+      await fs.mkdir(path.join(dir, 'keys'));
+      await fs.mkdir(path.join(dir, 'compiler'));
+      await fs.writeFile(
+        path.join(dir, 'keys', 'set_topic.prover'),
+        await fs.readFile(`${resourceDir}/keys/set_topic.prover`)
+      );
+      await fs.writeFile(
+        path.join(dir, 'compiler', 'contract-manifest.json'),
+        JSON.stringify({
+          'manifest-version': '1',
+          keys: { type: 'directory', 'other.prover': { type: 'file', size: 1, hash: 'f'.repeat(64) } }
+        })
+      );
+
+      await expect(
+        new NodeZkConfigProvider(dir, { verify: 'require-if-present', onWarn }).getProverKey('set_topic')
+      ).rejects.toThrow(ZkArtifactIntegrityError);
+      expect(onWarn).not.toHaveBeenCalled();
+    });
+
     it('warns and resolves when the manifest is absent in warn mode', async () => {
       const onWarn = vi.fn();
       const key = await new NodeZkConfigProvider(resourceDir, { verify: 'warn', onWarn }).getProverKey('set_topic');

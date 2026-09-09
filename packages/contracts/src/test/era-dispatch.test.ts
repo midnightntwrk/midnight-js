@@ -26,11 +26,11 @@ import {
   EraArtifactMismatchError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
-  Ledger8DeployOnV9Error
-} from '../errors';
+  Ledger8DeployOnV9Error,
+  RetainedArtifactOnCurrentEraStateError} from '../errors';
 import {
   assertEraCompatible,
-  assertHeadStateEraAgreement,
+  assertRetainedStateEnvelope,
   type PipelineEra,
   pipelineEraOf,
   resolveOperationEra
@@ -88,13 +88,13 @@ const V8_HEAD = 1_000_000;
 const V9_HEAD = 2_000_000;
 
 describe('pipelineEraOf: which execution pipeline an artifact belongs to', () => {
-  it('routes the current-era CompiledContract container to the v9-native pipeline', () => {
+  it('routes the current-era CompiledContract container to the ledger9 pipeline', () => {
     // Arrange: the container this repo's own mocks build, which is what every current-era
     // caller passes.
     const container = createMockCompiledContract();
 
     // Act + Assert
-    expect(pipelineEraOf(container)).toBe<PipelineEra>('v9native');
+    expect(pipelineEraOf(container)).toBe<PipelineEra>('ledger9');
   });
 
   it('routes an object with the retained-era shape to the retained-era pipeline', () => {
@@ -205,7 +205,7 @@ describe('pipelineEraOf: which execution pipeline an artifact belongs to', () =>
     // `pipe` is dropped by the same spread, which is the vendor half of the same defect.
     expect('pipe' in container).toBe(false);
     // And the predicate still places it correctly, because it does not consult the brand.
-    expect(pipelineEraOf(container)).toBe<PipelineEra>('v9native');
+    expect(pipelineEraOf(container)).toBe<PipelineEra>('ledger9');
   });
 });
 
@@ -222,11 +222,11 @@ const cellKey = ({ pipeline, head, kind }: DispatchCell): string => `${pipeline}
 
 // Every cell the dispatch accepts, and which pipeline it routes to.
 const ACCEPTED_CELLS: readonly (DispatchCell & { readonly route: string })[] = [
-  { artifact: 'current-era (0.18)', pipeline: 'v9native', head: 'v9', kind: 'call', route: 'v9-native' },
-  { artifact: 'current-era (0.18)', pipeline: 'v9native', head: 'v9', kind: 'deploy', route: 'v9-native' },
+  { artifact: 'current-era (0.18)', pipeline: 'ledger9', head: 'v9', kind: 'call', route: 'ledger9' },
+  { artifact: 'current-era (0.18)', pipeline: 'ledger9', head: 'v9', kind: 'deploy', route: 'ledger9' },
   { artifact: 'retained-era (0.16)', pipeline: 'ledger8', head: 'v9', kind: 'call', route: 'keep-state' },
-  { artifact: 'retained-era (0.16)', pipeline: 'ledger8', head: 'v8', kind: 'call', route: 'v8-native' },
-  { artifact: 'retained-era (0.16)', pipeline: 'ledger8', head: 'v8', kind: 'deploy', route: 'v8-native' }
+  { artifact: 'retained-era (0.16)', pipeline: 'ledger8', head: 'v8', kind: 'call', route: 'ledger8' },
+  { artifact: 'retained-era (0.16)', pipeline: 'ledger8', head: 'v8', kind: 'deploy', route: 'ledger8' }
 ];
 
 // Every cell it refuses, with the class and the registered code each refusal must carry.
@@ -236,7 +236,7 @@ const REFUSED_CELLS: readonly (DispatchCell & {
 })[] = [
   {
     artifact: 'current-era (0.18)',
-    pipeline: 'v9native',
+    pipeline: 'ledger9',
     head: 'v8',
     kind: 'call',
     errorClass: EraArtifactMismatchError,
@@ -244,7 +244,7 @@ const REFUSED_CELLS: readonly (DispatchCell & {
   },
   {
     artifact: 'current-era (0.18)',
-    pipeline: 'v9native',
+    pipeline: 'ledger9',
     head: 'v8',
     kind: 'deploy',
     errorClass: EraArtifactMismatchError,
@@ -280,10 +280,10 @@ describe('the era dispatch table: artifact era x network head era x operation ki
   it('covers every artifact-era x head-era x kind cell, so no cell is silently unruled', () => {
     // Strictness gate on the table itself. `assertEraCompatible` takes THREE arguments and rules
     // differently on `kind`, so the cross product has to include it -- omitting it left
-    // `v9native/v9/deploy`, the most common post-fork operation there is, untested while this gate
+    // `ledger9/v9/deploy`, the most common post-fork operation there is, untested while this gate
     // claimed completeness.
     const covered = [...ACCEPTED_CELLS.map(cellKey), ...REFUSED_CELLS.map(cellKey)];
-    const pipelines: readonly PipelineEra[] = ['ledger8', 'v9native'];
+    const pipelines: readonly PipelineEra[] = ['ledger8', 'ledger9'];
     const heads: readonly LedgerVersion[] = ['v8', 'v9'];
     const kinds: readonly OperationKind[] = ['call', 'deploy'];
     const wholeCrossProduct = pipelines.flatMap((pipeline) =>
@@ -297,7 +297,7 @@ describe('the era dispatch table: artifact era x network head era x operation ki
 
   it('names the reason on a current-era artifact refused by a pre-fork head', () => {
     try {
-      assertEraCompatible('v9native', 'v8', 'call');
+      assertEraCompatible('ledger9', 'v8', 'call');
       expect.unreachable('a current-era artifact was accepted on a pre-fork head');
     } catch (error) {
       expect(error).toBeInstanceOf(EraArtifactMismatchError);
@@ -362,28 +362,43 @@ describe('resolveOperationEra: the head is read ONCE per operation and threaded 
   });
 });
 
-describe('assertHeadStateEraAgreement: the head and the fetched state must be the same era', () => {
+describe('assertRetainedStateEnvelope: the retained pipeline reads only what the retained ledger wrote', () => {
   const v8Envelope = readHexFixture('state-v8.hex');
   const v9Envelope = readHexFixture('state-migrated-v9.hex');
   // A real v9 envelope whose BODY is corrupt (one payload byte XORed past the header). Any decode
   // of these bytes throws; this fixture is how the "tag check happens before any decode" claim is
   // made observable rather than asserted.
   const v9EnvelopeCorruptBody = readHexFixture('state-tampered-bytes.hex');
+  const ADDRESS = '0'.repeat(64);
 
-  it('accepts an agreeing v8 head and v8 envelope without re-reading the head', async () => {
-    const pdp = headSource();
-
-    await expect(assertHeadStateEraAgreement('v8', rawState(v8Envelope, V8_HEAD, 'v8'), pdp)).resolves.toBeUndefined();
-
-    expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
-  });
-
-  it('compares ERAS, so a same-era minor node bump is not a disagreement', async () => {
+  // THE RULE: the envelope decides, the block bounds. A retained envelope is accepted under EITHER
+  // head, because the fork does not rewrite a contract's stored state -- so a contract deployed
+  // before it is served with retained bytes under a post-fork head, indefinitely. Only an envelope
+  // NEWER than the block dating it is impossible, and only that is investigated.
+  it.each([
+    ['a pre-fork head, which is a native retained call', 'v8' as LedgerVersion, V8_HEAD],
+    ['a post-fork head, which is keep-state', 'v9' as LedgerVersion, V9_HEAD]
+  ])('accepts a retained envelope under %s, without re-reading the head', async (_name, head, headInt) => {
     const pdp = headSource();
 
     await expect(
-      assertHeadStateEraAgreement('v9', rawState(v9Envelope, 2_001_000, 'v9'), pdp)
+      assertRetainedStateEnvelope(head, rawState(v8Envelope, headInt, head), ADDRESS, pdp)
     ).resolves.toBeUndefined();
+
+    // No re-read at all: the head plays no part in accepting a retained envelope, so there is
+    // nothing to disambiguate.
+    expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
+  });
+
+  it('accepts a retained envelope whatever the head INTEGER is, since the head is not compared', async () => {
+    const pdp = headSource();
+
+    // A same-era minor node bump, and a different era entirely, reach the same answer.
+    for (const headInt of [V8_HEAD, 1_000_001, V9_HEAD, 2_001_000]) {
+      await expect(
+        assertRetainedStateEnvelope('v9', rawState(v8Envelope, headInt, 'v9'), ADDRESS, pdp)
+      ).resolves.toBeUndefined();
+    }
 
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
   });
@@ -391,91 +406,83 @@ describe('assertHeadStateEraAgreement: the head and the fetched state must be th
   it('reads the envelope tag BEFORE any decode, so a corrupt body never reaches a decoder', async () => {
     const pdp = headSource();
 
-    // These bytes cannot be decoded by either era. If agreement were established by decoding, this
-    // would throw; it resolves because only the tag in front of the body was read.
+    // These bytes cannot be decoded by either era. The refusal names the era of the TAG, which is
+    // only possible if the tag was read and the body was not: a decode would have raised a decode
+    // failure instead.
     await expect(
-      assertHeadStateEraAgreement('v9', rawState(v9EnvelopeCorruptBody, V9_HEAD, 'v9'), pdp)
-    ).resolves.toBeUndefined();
+      assertRetainedStateEnvelope('v9', rawState(v9EnvelopeCorruptBody, V9_HEAD, 'v9'), ADDRESS, pdp)
+    ).rejects.toThrow(RetainedArtifactOnCurrentEraStateError);
+  });
 
+  it('refuses a current-era state under a post-fork head as an ARTIFACT problem, not a read-surface one', async () => {
+    // The contract has been deployed with current-toolchain artifacts, so the retained ones no
+    // longer describe it. Nothing is stale and nothing is inconsistent -- a retry cannot help, and
+    // blaming the indexer would send a reader after the wrong thing.
+    const pdp = headSource();
+
+    try {
+      await assertRetainedStateEnvelope('v9', rawState(v9Envelope, V9_HEAD, 'v9'), ADDRESS, pdp);
+      expect.unreachable('a current-era state was accepted by the retained pipeline');
+    } catch (error) {
+      expect(error).toBeInstanceOf(RetainedArtifactOnCurrentEraStateError);
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE)).toBe(true);
+      expect((error as RetainedArtifactOnCurrentEraStateError).contractAddress).toBe(ADDRESS);
+      // Explicitly NOT retry advice, and explicitly not the indexer's fault.
+      expect((error as RetainedArtifactOnCurrentEraStateError).message).toMatch(/cannot succeed/i);
+      expect((error as RetainedArtifactOnCurrentEraStateError).message).not.toMatch(/indexer/i);
+    }
+    // No re-read: the head is not in question here.
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
   });
 
-  it('reports a head/state era mismatch when a FRESH head confirms the disagreement', async () => {
-    // Head says v9, the state's envelope is v8, and re-reading the head still says v8 -- so the
-    // head reading this operation started from was the stale value, and re-running is the fix.
-    const pdp = headSource(V8_HEAD);
-
-    await expect(
-      assertHeadStateEraAgreement('v9', rawState(v8Envelope, V8_HEAD, 'v8'), pdp)
-    ).rejects.toThrow(HeadStateEraMismatchError);
-
-    expect(pdp.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
-  });
-
-  it('gives the head/state mismatch a two-step re-run remediation', async () => {
-    const pdp = headSource(V8_HEAD);
-
-    try {
-      await assertHeadStateEraAgreement('v9', rawState(v8Envelope, V8_HEAD, 'v8'), pdp);
-      expect.unreachable('a head/state era disagreement was accepted');
-    } catch (error) {
-      expect(error).toBeInstanceOf(HeadStateEraMismatchError);
-      expect((error as HeadStateEraMismatchError).head).toBe<LedgerVersion>('v9');
-      expect((error as HeadStateEraMismatchError).stateEra).toBe<LedgerVersion>('v8');
-      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH)).toBe(true);
-      expect((error as HeadStateEraMismatchError).message).toMatch(/re-read|re-run/i);
-      // Direction-neutral on purpose: the check establishes that the two readings disagree, not
-      // which of them moved, and both directions arrive here.
-      expect((error as HeadStateEraMismatchError).message).not.toMatch(/was behind|was ahead/i);
-    }
-  });
-
-  it('reports indexer inconsistency, with retry-later text, when the FRESH head still disagrees', async () => {
-    // Head says v9, the envelope says v8, and a fresh read still says v9. The head was not stale,
-    // so the two answers cannot both describe one chain: the served state and the served head
-    // disagree, which is the indexer's problem and not something the caller can fix by re-running.
+  it('reports a head/state mismatch when the envelope is NEWER than the block dating it', async () => {
+    // The impossible direction, and the realistic fork-window one: the operation started from a
+    // pre-fork head reading, the state it fetched is a current-era one, and a fresh read confirms
+    // the network has crossed the fork. The head reading was the stale half.
     const pdp = headSource(V9_HEAD);
 
     try {
-      await assertHeadStateEraAgreement('v9', rawState(v8Envelope, V8_HEAD, 'v8'), pdp);
-      expect.unreachable('an inconsistent indexer response was accepted');
-    } catch (error) {
-      expect(error).toBeInstanceOf(IndexerInconsistencyError);
-      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY)).toBe(true);
-      expect((error as IndexerInconsistencyError).message).toMatch(/retry/i);
-      // Never the fork-in-progress wording: nothing here establishes that a fork is under way,
-      // and telling a user to wait out a fork that is not happening is worse than saying retry.
-      expect((error as IndexerInconsistencyError).message).not.toMatch(/fork in progress|fork is in progress/i);
-    }
-    expect(pdp.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
-  });
-
-  it('reports a head/state mismatch in the REALISTIC fork-window direction: stale pre-fork head, migrated state', async () => {
-    // The direction users will actually hit, and the one that was untested: the operation started
-    // from a pre-fork head reading, the contract state it fetched is a migrated post-fork one, and
-    // a fresh read confirms the network has crossed the fork.
-    const pdp = headSource(V9_HEAD);
-
-    try {
-      await assertHeadStateEraAgreement('v8', rawState(v9Envelope, V8_HEAD, 'v8'), pdp);
-      expect.unreachable('a stale pre-fork head was accepted against a migrated post-fork state');
+      await assertRetainedStateEnvelope('v8', rawState(v9Envelope, V8_HEAD, 'v8'), ADDRESS, pdp);
+      expect.unreachable('a stale pre-fork head was accepted against a current-era state');
     } catch (error) {
       expect(error).toBeInstanceOf(HeadStateEraMismatchError);
       expect((error as HeadStateEraMismatchError).head).toBe<LedgerVersion>('v8');
       expect((error as HeadStateEraMismatchError).stateEra).toBe<LedgerVersion>('v9');
       expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH)).toBe(true);
+      expect((error as HeadStateEraMismatchError).message).toMatch(/re-read|re-run/i);
+      // Direction-neutral on purpose: the check establishes that the two readings disagree, not
+      // which of them moved.
+      expect((error as HeadStateEraMismatchError).message).not.toMatch(/was behind|was ahead/i);
+    }
+    expect(pdp.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports indexer inconsistency, with retry-later text, when the FRESH head still disagrees', async () => {
+    // The head is confirmed pre-fork while the state is current-era, so the two answers cannot both
+    // describe one chain. The indexer's problem, not something re-running fixes.
+    const pdp = headSource(V8_HEAD);
+
+    try {
+      await assertRetainedStateEnvelope('v8', rawState(v9Envelope, V8_HEAD, 'v8'), ADDRESS, pdp);
+      expect.unreachable('an inconsistent indexer response was accepted');
+    } catch (error) {
+      expect(error).toBeInstanceOf(IndexerInconsistencyError);
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY)).toBe(true);
+      expect((error as IndexerInconsistencyError).message).toMatch(/retry/i);
+      // Never the fork-in-progress wording: nothing here establishes that a fork is under way.
+      expect((error as IndexerInconsistencyError).message).not.toMatch(/fork in progress|fork is in progress/i);
     }
     expect(pdp.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
   });
 
   it('does not lose the era disagreement when the fresh head read itself fails', async () => {
     // A bare transport error here would erase the most diagnostic fact available in the fork
-    // window: that a head/state era disagreement was being investigated when the read failed.
+    // window: that an era disagreement was being investigated when the read failed.
     const transportFailure = new Error('indexer unreachable');
     const pdp = rejectingHeadSource(transportFailure);
 
     try {
-      await assertHeadStateEraAgreement('v9', rawState(v8Envelope, V8_HEAD, 'v8'), pdp);
+      await assertRetainedStateEnvelope('v8', rawState(v9Envelope, V8_HEAD, 'v8'), ADDRESS, pdp);
       expect.unreachable('a failed fresh head read was treated as agreement');
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
@@ -483,8 +490,8 @@ describe('assertHeadStateEraAgreement: the head and the fetched state must be th
       expect((error as Error).cause).toBe(transportFailure);
       expect((error as Error).message).toMatch(/re-read the network head/i);
       // Both eras survive into the message, so the unresolved question is still legible.
-      expect((error as Error).message).toContain("'v9'");
       expect((error as Error).message).toContain("'v8'");
+      expect((error as Error).message).toContain("'v9'");
     }
   });
 
@@ -497,8 +504,8 @@ describe('assertHeadStateEraAgreement: the head and the fetched state must be th
     );
     const pdp = headSource();
 
-    await expect(assertHeadStateEraAgreement('v9', rawState(verifierKey, V9_HEAD, 'v9'), pdp)).rejects.toThrow(
-      TagParseError
-    );
+    await expect(
+      assertRetainedStateEnvelope('v9', rawState(verifierKey, V9_HEAD, 'v9'), ADDRESS, pdp)
+    ).rejects.toThrow(TagParseError);
   });
 });

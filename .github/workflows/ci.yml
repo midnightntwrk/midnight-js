@@ -47,6 +47,8 @@ jobs:
           filters: |
             shared:
               - '.github/workflows/**'
+              - '.github/actions/**'
+              - '.github/scripts/**'
               - 'yarn.lock'
               - 'package.json'
             midnight-js:
@@ -69,6 +71,26 @@ jobs:
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
         }}
+    secrets: inherit
+
+  # The only lane that exercises the framework as a consumer installs it: packed
+  # tarballs, isolated linker, outside the workspace.
+  packaging:
+    needs: ci
+    name: Packaging
+    with:
+      should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
+    uses: ./.github/workflows/ci-packaging.yml
+    secrets: inherit
+
+  # The fork-crossing gate. Red on purpose until the keep-state partitioning is
+  # fixed -- see the comment on its own run step for why it is not hidden.
+  hardfork:
+    needs: ci
+    name: Hard fork
+    with:
+      should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
+    uses: ./.github/workflows/ci-hardfork.yml
     secrets: inherit
 
   ci-testkit:

@@ -40,7 +40,8 @@ import { inspect } from 'node:util';
 
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import { type LedgerVersion, loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type RawContractState,
   V8PayloadUnsupportedError,
@@ -127,11 +128,27 @@ type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeo
   readonly seen: SeenPayloads;
 };
 
-const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState => ({
-  version: protocolVersion === PRE_FORK_PROTOCOL_VERSION ? 'v8' : 'v9',
-  protocolVersion,
-  raw
+// Minted per era, because a block's parameters are era-tagged and the arm that composes reads them
+// with its OWN era: a pre-fork block's go to the retained composer, a post-fork block's to the
+// current one. Handing either the other's bytes is refused on the header tag.
+let retainedLedgerParameters: Uint8Array;
+let currentLedgerParameters: Uint8Array;
+
+beforeAll(async () => {
+  retainedLedgerParameters = (await loadLedger8()).LedgerParameters.initialParameters().serialize();
+  currentLedgerParameters = LedgerParameters.initialParameters().serialize();
 });
+
+const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState => {
+  const preFork = protocolVersion === PRE_FORK_PROTOCOL_VERSION;
+  return {
+    version: preFork ? 'v8' : 'v9',
+    protocolVersion,
+    raw,
+    // Served from the same read as `raw`, and dated by the same block, as a real provider does.
+    ledgerParameters: preFork ? retainedLedgerParameters : currentLedgerParameters
+  };
+};
 
 /**
  * A submission provider that RECORDS what it was handed and then rejects.
@@ -333,6 +350,20 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
   });
 
+  it('makes NO fork claim about a rejection carrying no registered code at all', async () => {
+    // Nothing uncoded is evidence of a fork. The sanitizing wrapper normally
+    // guarantees a code, so this arm fires when the sanitizer ITSELF failed --
+    // and it fires during a fork window, the only time the head moves at all.
+    // Diagnosing it would attach a confident "the network crossed the fork"
+    // verdict, and a two-step on-chain reconciliation, to a failure that has
+    // nothing to do with the fork.
+    const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
+    const uncoded = new Error('sanitizing the provider rejection threw');
+
+    await expect(handleSubmitRejection(pdp, callOperation(), uncoded)).rejects.toBe(uncoded);
+    expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
+  });
+
   it('loses NEITHER failure when the fresh head read itself rejects', async () => {
     const transportFailure = new Error('indexer unreachable');
     const pdp = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(transportFailure) };
@@ -398,12 +429,10 @@ describe('the fork-crossing failure through the retained-era entry points', () =
   let recording: CoinReceiverRecording;
   let contract: CoinReceiver016Contract;
   let v6Envelope: Uint8Array;
-  let v9Envelope: Uint8Array;
 
   beforeAll(async () => {
     recording = loadCoinReceiverRecording();
     v6Envelope = readHfHexFixture('coin-receiver-016', 'state-v6-envelope.hex');
-    v9Envelope = readHfHexFixture('coin-receiver-016', 'state-v9.hex');
     const module: CoinReceiver016Module = await import(
       /* @vite-ignore */ hfFixturePath('coin-receiver-016', 'compiled', 'contract', 'index.js')
     );
@@ -591,11 +620,19 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     const preForkBytes = preForkPayload?.version === 'v8' ? preForkPayload.txBytes : undefined;
     expect(txTagPrefix(preForkBytes!, RETAINED_ERA_TX_TAG)).toBe(RETAINED_ERA_TX_TAG);
 
-    // THE RE-RUN. The network is now post-fork and serves the migrated state;
-    // nothing in the caller's code changes.
+    // THE RE-RUN. The contract's STORED STATE is untouched -- the fork does not rewrite it, and
+    // nothing has called this contract since -- so `raw` is still the very same retained-era
+    // envelope, which is precisely what sends the re-run down the keep-state arm.
+    //
+    // What does move is the BLOCK the read is dated by. `queryRawContractState` answers as of the
+    // chain tip, so once the head has crossed, the record it returns carries a post-fork
+    // `protocolVersion` and that block's post-fork ledger parameters. Re-dating it here rather than
+    // re-serving the pre-fork record is not a convenience: a record dated before the fork, served
+    // after it, is a shape no chain produces, and keeping it would have this test assert against
+    // parameters the current-era composer cannot read. Nothing in the caller's code changes.
     providers.publicDataProvider.queryRawContractState = vi
       .fn()
-      .mockResolvedValue(rawState(v9Envelope, POST_FORK_PROTOCOL_VERSION));
+      .mockResolvedValue(rawState(v6Envelope, POST_FORK_PROTOCOL_VERSION));
     providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: VersionedFinalizedTransaction) => {
       providers.seen.submitTx = tx;
       return Promise.resolve('keep-state-tx-id');

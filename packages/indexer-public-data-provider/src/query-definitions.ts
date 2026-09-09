@@ -307,6 +307,7 @@ export const RAW_CONTRACT_STATE_QUERY = gql(
   query RAW_CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: BlockOffset) {
     block(offset: $offset) {
       protocolVersion
+      ledgerParameters
     }
     contract(address: $address, offset: $offset) {
       state

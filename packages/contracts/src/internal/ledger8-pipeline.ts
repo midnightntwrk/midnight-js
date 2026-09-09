@@ -38,7 +38,12 @@ import type {
 import type { PublicDataProvider, RawContractState } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 
-import { Ledger8ShieldedSpendUnsupportedError } from '../errors';
+import {
+  Ledger8AmbiguousEntryPointError,
+  Ledger8RecipientUnmappableError,
+  Ledger8ShieldedSpendUnsupportedError,
+  LedgerParametersUnservedError
+} from '../errors';
 import {
   type EncryptionPublicKeyResolver,
   serializeCoinInfo,
@@ -46,12 +51,18 @@ import {
   zswapStateToSegmentedOffer
 } from '../utils/zswap-utils';
 import type { BreadcrumbSink } from './breadcrumbs';
-import { assertHeadStateEraAgreement } from './era';
+import { assertRetainedStateEnvelope } from './era';
 import { assertVerifierKeyMatches } from './verifier-key';
 
 /**
- * The transcript members this pipeline reads, narrowed off the engine's own
- * result type so the two cannot drift.
+ * The transcript members this pipeline is entitled to read, narrowed off the
+ * engine's own result type so the two cannot drift.
+ *
+ * `circuitId` is in the set but is not read: the pipeline names the circuit
+ * from its own request, so reading it back off the transcript would let a
+ * mismatched recording rename the call. It stays in the `Pick` because the
+ * replay harness requires the fixture to carry it, which is what makes a
+ * recording's own claim about which circuit it recorded checkable.
  *
  * Three members of the engine's result are deliberately left out.
  *
@@ -71,8 +82,17 @@ export type Ledger8Transcript = Pick<
 >;
 
 /**
- * The one member the pipeline needs off a caller's retained-era contract: the
- * circuit collection, passed through to the engine untouched.
+ * Everything either arm needs off a caller's retained-era contract: the UNION of
+ * the two arms' slices, so one entry point can accept a contract it will route
+ * to whichever arm applies.
+ *
+ * Each arm passes on only its own member — see {@link Ledger8CallableContract}
+ * and {@link Ledger8ConstructibleContract}, and why they stay separate.
+ */
+export interface Ledger8ContractSlice extends Ledger8CallableContract, Ledger8ConstructibleContract {}
+
+/**
+ * The circuit collection alone, which is all the call arm passes on.
  *
  * Widened to `unknown` values on purpose. The circuits are the previous
  * runtime's own functions and nothing here calls them — only the engine does —
@@ -80,9 +100,6 @@ export type Ledger8Transcript = Pick<
  * and would stop the real engine's own narrower contract type from satisfying
  * this slice.
  */
-export interface Ledger8ContractSlice extends Ledger8CallableContract, Ledger8ConstructibleContract {}
-
-/** The circuit collection alone, which is all the call arm passes on. */
 export interface Ledger8CallableContract {
   readonly impureCircuits: Readonly<Record<string, unknown>>;
 }
@@ -151,6 +168,13 @@ export interface Ledger8ExecutionEngine<TState> {
   downConvertForExecution(state: EncodedStateValue): TState;
   executeCircuit(options: Ledger8ExecuteRequest<TState>): Ledger8Transcript;
   executeConstructor(options: Ledger8ConstructRequest): Ledger8ConstructedState;
+  /**
+   * Re-expresses the entry points a retained-era state declared as a CURRENT-era contract state.
+   *
+   * Needed only when the two eras differ, i.e. keep-state. See the call below for why the chain's
+   * own bytes cannot be passed through in that case.
+   */
+  reexpressOperationsForCurrentEra(entryPoints: ContractStatePojo['entryPoints']): Uint8Array;
 }
 
 /**
@@ -194,8 +218,9 @@ export interface Ledger8Snapshot {
  * The verifier-key check is NOT here — see {@link assertSnapshotVerifierKey},
  * which runs against the snapshot this returns.
  *
- * @param era The era facade bound to the head this operation resolved.
- * @param head The era the network head is on.
+ * @param retainedEra The RETAINED era facade, which is the only one that can read a retained-era
+ * envelope. Deliberately not the head's facade -- see the read below.
+ * @param head The era the network head is on, for the envelope check's impossible-case branch.
  * @param pdp The read surface.
  * @param contractAddress The contract being operated on.
  * @param logger The optional logger the dating step's breadcrumbs are written to.
@@ -207,7 +232,7 @@ export interface Ledger8Snapshot {
  * @see {@link KeepStatePipeline} for why the two reads stay separate.
  */
 export const readLedger8Snapshot = async (
-  era: LedgerEra,
+  retainedEra: LedgerEra,
   head: LedgerVersion,
   pdp: Ledger8PipelineReadSurface,
   contractAddress: string,
@@ -216,10 +241,15 @@ export const readLedger8Snapshot = async (
   const state = await pdp.queryRawContractState(contractAddress);
   assertDefined(state, `No contract deployed at contract address '${contractAddress}'`);
 
-  await assertHeadStateEraAgreement(head, state, pdp, logger);
+  await assertRetainedStateEnvelope(head, state, contractAddress, pdp, logger);
 
-  const encoded = era.extractState(state.raw);
-  const decoded = era.decodeContractState(state.raw);
+  // Read with the RETAINED era, never with the head's. The check above has just
+  // established that the retained ledger wrote these bytes, and it is the only
+  // ledger that can read them -- post-fork included, because the fork does not
+  // rewrite a contract's stored state. Handing them to the head's era is what
+  // made keep-state impossible.
+  const encoded = retainedEra.extractState(state.raw);
+  const decoded = retainedEra.decodeContractState(state.raw);
 
   return { state, encoded, decoded };
 };
@@ -229,12 +259,17 @@ export const readLedger8Snapshot = async (
  * snapshot says the chain holds.
  *
  * `entryPoints` is an ARRAY and two byte entry points can decode to the same
- * name, so this takes the first match by name and lets the byte comparison
- * refuse a slot that does not hold this artifact's key.
+ * name. AMBIGUITY IS REFUSED rather than resolved by taking the first match:
+ * the chain dispatches on the raw bytes, not on the decoded name, so checking
+ * one slot's key would not establish that the proof is verified against that
+ * same slot — and a proof verified against another slot is paid for and then
+ * rejected at submission, which is the late failure this check exists to
+ * prevent.
  *
  * @param snapshot The one snapshot this operation read.
  * @param circuitId The entry point to check.
  * @param localVerifierKey The key compiled beside the local artifact.
+ * @throws Ledger8AmbiguousEntryPointError if the state declares the name twice.
  * @throws BlankVerifierKeySlotError if the chain declares no key for it.
  * @throws VerifierKeyMismatchError if the two keys differ byte for byte.
  * @see {@link VerificationPath} for what this check buys.
@@ -244,8 +279,11 @@ export const assertSnapshotVerifierKey = (
   circuitId: string,
   localVerifierKey: Uint8Array
 ): void => {
-  const entryPoint = snapshot.decoded.entryPoints.find((candidate) => candidate.circuitId === circuitId);
-  assertVerifierKeyMatches(localVerifierKey, entryPoint?.verifierKey, circuitId);
+  const matches = snapshot.decoded.entryPoints.filter((candidate) => candidate.circuitId === circuitId);
+  if (matches.length > 1) {
+    throw new Ledger8AmbiguousEntryPointError(circuitId, matches.length);
+  }
+  assertVerifierKeyMatches(localVerifierKey, matches[0]?.verifierKey, circuitId);
 };
 
 /**
@@ -254,8 +292,10 @@ export const assertSnapshotVerifierKey = (
  *
  * The distinction decides whether the offer can be built at all: a held coin
  * has to be located in the chain's Merkle tree, and this pipeline reads no
- * Zswap chain state. The pairing test is the offer builder's OWN one, reused
- * rather than restated so the two cannot disagree.
+ * Zswap chain state. This shares the offer builder's own SERIALIZERS, so the
+ * two agree on coin identity; the pairing itself is not shared — the builder
+ * consumes a matched candidate and this does not, so two inputs serializing
+ * identically would pass here and reach the builder's own assertion.
  *
  * @param zswapLocalState The call's post-execution Zswap local state.
  * @returns `true` if any input needs a chain state to be spent.
@@ -268,9 +308,48 @@ const spendsHeldCoin = (zswapLocalState: Ledger8Transcript['zswapLocalState']): 
   );
 };
 
+/**
+ * Refuses a call whose shielded outputs pay a recipient the resolver cannot
+ * answer for, BEFORE the offer is built.
+ *
+ * Without this the condition surfaces from inside `createZswapOutput` as a bare
+ * `Error` naming neither the era nor the circuit, and advising a resolver
+ * mapping the retained-era options carry no field for.
+ *
+ * Only USER-owned outputs are checked. A contract-owned output takes
+ * `ZswapOutput.newContractOwned`, which is given an address and never consults
+ * the resolver at all.
+ *
+ * @param zswapLocalState The call's post-execution Zswap local state.
+ * @param resolve The resolver this call will build its offer with.
+ * @param circuitId The circuit this flow is running, for the refusal.
+ * @throws Ledger8RecipientUnmappableError for the first unresolvable recipient.
+ */
+const assertRecipientsResolvable = (
+  zswapLocalState: Ledger8Transcript['zswapLocalState'],
+  resolve: EncryptionPublicKeyResolver,
+  circuitId: string
+): void => {
+  for (const { recipient } of zswapLocalState.outputs) {
+    if (recipient.is_left && resolve(recipient.left) === undefined) {
+      throw new Ledger8RecipientUnmappableError(circuitId, recipient.left);
+    }
+  }
+};
+
 /** Everything one retained-era call needs. */
 export interface Ledger8CallPipelineRequest<TState> {
+  /**
+   * The era facade the composed transaction is built on, bound to the network head.
+   *
+   * Distinct from {@link Ledger8CallPipelineRequest.retainedEra}, and the distinction is the whole
+   * of keep-state: the call is composed on the ledger the network is running NOW, over a state the
+   * RETAINED ledger wrote and still owns. Collapsing the two back into one facade is what refused
+   * every post-fork call against a pre-fork contract.
+   */
   readonly era: LedgerEra;
+  /** The retained era facade, which reads the contract's on-chain state. Always the pre-fork one. */
+  readonly retainedEra: LedgerEra;
   readonly engine: Ledger8ExecutionEngine<TState>;
   readonly publicDataProvider: Ledger8PipelineReadSurface;
   readonly head: LedgerVersion;
@@ -299,9 +378,14 @@ export interface Ledger8CallPipelineRequest<TState> {
 /** What one retained-era call produced. */
 export interface Ledger8CallPipelineResult {
   /**
-   * The UNPROVEN transaction, serialized. Bytes rather than a handle: the two
-   * eras' ledgers are separate runtimes, so the transaction crosses the
-   * provider seams in its serialized form.
+   * The UNPROVEN transaction, serialized. Bytes rather than a handle because
+   * `LedgerEra.composeCallTx` returns bytes and nothing in this module may hold
+   * a live ledger handle.
+   *
+   * Which form it crosses the PROVIDER SEAMS in is a separate question decided
+   * by the network head, not by this field — a post-fork head deserializes
+   * these bytes and crosses as a live current-era handle. See
+   * `submitLedger8Tx`.
    */
   readonly txBytes: Uint8Array;
   readonly circuitId: string;
@@ -309,16 +393,19 @@ export interface Ledger8CallPipelineResult {
   /** Present exactly when the call moved shielded coins. */
   readonly guaranteedZswapOffer: Uint8Array | undefined;
   /**
-   * Always `undefined` today, and the reason is structural rather than a
-   * simplification — see the comment at the offer build below.
+   * Present exactly when the call's own partition places a shielded movement in
+   * the fallible half. The pipeline resolves that partition before it builds
+   * the offer, so a movement the transcript places there is routed there rather
+   * than falling into the guaranteed segment.
    */
   readonly fallibleZswapOffer: Uint8Array | undefined;
 }
 
 /**
  * Runs one call against a retained-era contract, in the order this module
- * exists to fix: fetch the one snapshot, date it, check the key, extract the
- * state, down-convert it, execute the circuit, compose the transaction.
+ * exists to fix: fetch the one snapshot, date it, read the state and the key
+ * set off it, check the key, down-convert, execute the circuit, compose the
+ * transaction.
  *
  * @param request The era and engine to run against, the read surface, and the
  * call's own inputs.
@@ -333,9 +420,25 @@ export interface Ledger8CallPipelineResult {
 export const runLedger8CallPipeline = async <TState>(
   request: Ledger8CallPipelineRequest<TState>
 ): Promise<Ledger8CallPipelineResult> => {
-  const { era, engine, publicDataProvider, head, contract, contractAddress, circuitId } = request;
+  const { era, retainedEra, engine, publicDataProvider, head, contract, contractAddress, circuitId } = request;
 
-  const snapshot = await readLedger8Snapshot(era, head, publicDataProvider, contractAddress, request.logger);
+  const snapshot = await readLedger8Snapshot(
+    retainedEra,
+    head,
+    publicDataProvider,
+    contractAddress,
+    request.logger
+  );
+  // Checked HERE and not inside `readLedger8Snapshot`, which is also the attach path's reader:
+  // attaching only checks verifier keys and composes nothing, so it has no use for the block's
+  // parameters and must not be refused for their absence. This path composes, so it does.
+  //
+  // Checked before the circuit runs and before anything is proved: the alternative to refusing is
+  // partitioning against a cost model the chain does not run, which the node rejects only after the
+  // proof has been paid for.
+  if (snapshot.state.ledgerParameters === undefined) {
+    throw new LedgerParametersUnservedError(contractAddress);
+  }
   // BEFORE proving, and before the circuit runs: a proof generated against a
   // key the chain does not hold is rejected on submission, so checking here
   // turns a paid-for, late failure into a free, immediate one.
@@ -363,32 +466,83 @@ export const runLedger8CallPipeline = async <TState>(
     throw new Ledger8ShieldedSpendUnsupportedError(circuitId);
   }
 
-  // Built with NO partition information, and that is the only thing available
-  // here: the retained execution leg emits one unpartitioned op sequence, and
-  // the guaranteed/fallible split is computed inside the composition below,
-  // after this offer has to be an option on it. So every movement this call
-  // makes lands in the GUARANTEED segment. Do not "tighten" this into a
-  // two-segment expectation -- there is no partition to route against at this
-  // point in the order, and a call whose coins are placed in the wrong segment
-  // is refused by the ledger rather than silently mis-split.
-  const offers = zswapStateToSegmentedOffer(transcript.zswapLocalState, request.encryptionPublicKey);
+  // Also before the offer is built, and for the same reason: a recipient this
+  // arm cannot resolve is refused by name here rather than by a bare assertion
+  // inside the offer builder.
+  assertRecipientsResolvable(transcript.zswapLocalState, request.encryptionPublicKey, circuitId);
+
+  // Resolved BEFORE the offer is built, which is what lets the offer be routed
+  // at all. Without it `zswapStateToSegmentedOffer`'s partition argument
+  // defaults to `[undefined, undefined]`, `segmentForMatch` takes its "no
+  // segment information" path, and every movement lands in the guaranteed
+  // segment -- unbalanceable for a circuit whose transcript is wholly fallible,
+  // which the wallet reports as `Wallet.InsufficientFunds`.
+  //
+  // Partitioned ONCE: the pair resolved here is handed to `composeCallTx` below
+  // as an already-partitioned transcript, so the composer does not repeat the
+  // work. Two partitions of the same transcript would have to agree, and
+  // nothing would notice if they stopped.
+  const partitionedTranscript = era.partitionCallTranscript({
+    circuitId,
+    contractAddress,
+    transcript: {
+      kind: 'unpartitioned',
+      preState: snapshot.encoded,
+      publicTranscript: transcript.publicTranscript,
+      partitionContext: transcript.partitionContext
+    },
+    ledgerParameters: snapshot.state.ledgerParameters
+  });
+
+  const offers = zswapStateToSegmentedOffer(
+    transcript.zswapLocalState,
+    request.encryptionPublicKey,
+    undefined,
+    partitionedTranscript
+  );
   const guaranteedZswapOffer = offers.guaranteed?.serialize();
   const fallibleZswapOffer = offers.fallible?.serialize();
+
+  // WHICH BYTES THE COMPOSER GETS, and why it is not always the chain's own.
+  //
+  // This entry is an OPERATION REGISTRY: the composer reads one thing out of it, the
+  // `ContractOperation` for this circuit, to get its verifier key. The state the call binds to
+  // travels separately, as the transcript's `preState` below.
+  //
+  // Pre-fork the chain's own bytes already are in the composer's era, so they pass through
+  // untouched -- and a constructor-built state will not do, because it declares its entry points
+  // with blank keys.
+  //
+  // Post-fork they are NOT: the fork does not rewrite a contract's stored state, so a contract
+  // deployed before it is still served carrying the retained envelope, which the current composer
+  // cannot deserialize at all. The registry is therefore re-expressed in the current era, carrying
+  // the same keys the chain holds -- the ones `assertSnapshotVerifierKey` above has just checked
+  // the local artifact against.
+  const registeredOperations =
+    head === 'v9' ? engine.reexpressOperationsForCurrentEra(snapshot.decoded.entryPoints) : snapshot.state.raw;
 
   const txBytes = era.composeCallTx({
     calls: [
       {
         contractAddress,
         circuitId,
-        // The raw state AS READ FROM CHAIN, which is what carries the
-        // registered operation and its verifier key; a constructor-built state
-        // declares its entry points with blank keys and will not do.
-        contractState: snapshot.state.raw,
+        contractState: registeredOperations,
+        // From the SAME read as the state above, which is the point: the parameters are dynamic
+        // and must date from the block the call is built against. Composing against the ledger's
+        // initial parameters partitions the transcript with a cost model the chain does not use,
+        // and the node refuses the guaranteed segment for running out of gas.
+        ledgerParameters: snapshot.state.ledgerParameters,
+        // Already split, above -- the same pair the offer was routed against, so
+        // the two cannot describe different partitions. Note what this does NOT
+        // claim: a caller-supplied pair is not passed through untouched, it is
+        // refused when it carries neither half. Why that refusal cannot reach
+        // the partitioner's own answer sent back through it is recorded under
+        // "Resolving a call's transcript pair" in
+        // `protocol/docs/compose-refusal-order.md`.
         transcript: {
-          kind: 'unpartitioned',
-          preState: snapshot.encoded,
-          publicTranscript: transcript.publicTranscript,
-          partitionContext: transcript.partitionContext
+          kind: 'partitioned',
+          guaranteed: partitionedTranscript[0],
+          fallible: partitionedTranscript[1]
         },
         privateTranscriptOutputs: transcript.privateTranscriptOutputs,
         input: transcript.input,

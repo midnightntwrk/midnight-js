@@ -303,6 +303,13 @@ describe('a retained-era call handed a scope', () => {
     initialState: (): Record<string, never> => ({})
   };
 
+  const retainedCallOptions = () => ({
+    compiledContract: retainedContract,
+    contractAddress: createMockContractAddress(),
+    circuitId: 'retainedCircuit',
+    args: []
+  });
+
   it('is the shape the era dispatch calls retained-era', () => {
     expect(pipelineEraOf(retainedContract)).toBe('ledger8');
   });
@@ -328,6 +335,34 @@ describe('a retained-era call handed a scope', () => {
 
   it('runs normally when it was handed no scope at all', () => {
     expect(() => assertScopeAdmitsRetainedEraCall('retainedCircuit', undefined)).not.toThrow();
+  });
+
+  it('DELIVERS that refusal with its code intact, through the scope that raised it', async () => {
+    // The only place this refusal can be raised is inside a scope callback, so
+    // surviving that delivery is the whole of its value. Asserted end-to-end
+    // rather than at the throw site: a scope that rebuilt the refusal as a bare
+    // Error would still pass the direct exercise above, while every reachable
+    // caller got something `hasErrorCode` cannot see.
+    const providers = createMockProviders();
+    providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(POST_FORK_PROTOCOL_VERSION);
+    eraLoadSlot.rejectFor = undefined;
+
+    let caught: unknown;
+    try {
+      await withContractScopedTransaction(providers, async (txCtx) => {
+        // @ts-expect-error -- no overload admits a scope on the retained-era
+        // arm, which is what makes this reachable from JavaScript only. The
+        // directive PINS that claim: an overload that started accepting a
+        // scope here would fail this line rather than silently widen the API.
+        await submitCallTx(providers, retainedCallOptions(), txCtx);
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(MixedEraScopeError);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE)).toBe(true);
+    expect((caught as MixedEraScopeError).circuitId).toBe('retainedCircuit');
   });
 
   it.each([

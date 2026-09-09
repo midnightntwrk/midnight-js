@@ -16,6 +16,11 @@ on:
   workflow_dispatch:
 
 permissions:
+  # Required by `ci-testkit-js-build.yml`. A reusable workflow cannot be granted more
+  # than its caller holds, and asking for more aborts the whole run at startup with
+  # zero jobs -- which on a schedule is silent. `workflow-permissions.yml` holds
+  # this now, on every PR.
+  actions: read
   contents: read
   issues: read
   id-token: write
@@ -48,6 +53,9 @@ jobs:
       test_files: ${{ needs.build.outputs.test-files }}
       testkit_docker_env: ${{ matrix.image_versions }}
       network: 'undeployed'
+      # The fork stack pins its own images and ignores testkit_docker_env, so all five legs would
+      # run byte-identical containers. Run it on one leg; the other four skip it.
+      run_fork_lane: ${{ matrix.image_versions == 'preview' }}
     secrets: inherit
 
   summary:

@@ -20,6 +20,7 @@
     "test": "turbo run test",
     "test:unit": "turbo run test --filter='!@midnight-ntwrk/testkit-*'",
     "it": "turbo run it",
+    "test:workflow-scripts": "vitest run --config .github/scripts/vitest.config.mjs",
     "e2e": "turbo run e2e",
     "e2e-single": "turbo run e2e-single",
     "check": "turbo run check && yarn lint && yarn constraints",
@@ -62,6 +63,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.7",
     "pinst": "^3.0.0",
+    "pnpm": "10.20.0",
     "prettier": "^3.9.4",
     "rollup": "^4.60.4",
     "rollup-plugin-dts": "^6.4.1",
@@ -71,13 +73,14 @@
     "typedoc-plugin-markdown": "4.12.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.63.0",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.7",
+    "yaml": "^2.9.0"
   },
   "lint-staged": {
     "*.ts": "eslint --cache"
   },
   "resolutions": {
-    "@midnight-ntwrk/onchain-runtime-v3": "3.1.0",
+    "@midnight-ntwrk/onchain-runtime-v3": "3.1.1",
     "@midnight-ntwrk/platform-js": "3.0.0",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.4",
     "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3",

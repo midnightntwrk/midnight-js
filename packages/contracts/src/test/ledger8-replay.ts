@@ -47,6 +47,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { ComposeCallOptions, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { expect } from 'vitest';
 
 import type {
@@ -292,6 +293,23 @@ export interface ReplayState {
 export type OrchestrationLog = string[];
 
 /**
+ * What a caller additionally requires the pipeline to have handed the engine.
+ *
+ * The four members the double checks unconditionally are the ones the recording
+ * itself pins. The PRIVATE STATE is not one of them — the recording carries no
+ * private state to compare against — so a test that cares about it says so
+ * here. Without this the engine answered on four of six inputs, and
+ * `privateState: request.privateState` could be replaced with
+ * `privateState: undefined` in the pipeline with the whole suite still green:
+ * the recording replays regardless, `privateStateAfter` still comes back, and
+ * the write-back still happens — against a DEFAULT state.
+ */
+export interface ReplayExpectations {
+  /** The private state the pipeline must have handed the engine. */
+  readonly privateState?: unknown;
+}
+
+/**
  * Builds the engine double: it replays {@link CoinReceiverRecording}, and
  * refuses to replay anything else.
  *
@@ -299,12 +317,14 @@ export type OrchestrationLog = string[];
  * @param log The orchestration log to append each call to.
  * @param constructedState The serialized state the constructor arm replays —
  * the committed retained-era envelope for this same contract.
+ * @param expectations What else the pipeline must have handed the engine.
  * @returns An engine satisfying the pipeline's slice at {@link ReplayState}.
  */
 export const createReplayEngine = (
   recording: CoinReceiverRecording,
   log: OrchestrationLog,
-  constructedState?: Uint8Array
+  constructedState?: Uint8Array,
+  expectations?: ReplayExpectations
 ): Ledger8ExecutionEngine<ReplayState> => ({
   downConvertForExecution: (state): ReplayState => {
     log.push('engine.downConvertForExecution');
@@ -323,7 +343,34 @@ export const createReplayEngine = (
     expect(options.args).toEqual([recording.receivedCoin]);
     expect(options.coinPk).toBe(recording.coinPublicKey);
     expect(options.state).toEqual({ replayedCircuitId: recording.circuitId });
+    // The CONTRACT the pipeline threaded through, not merely that one was
+    // passed: an engine handed some other object would otherwise replay
+    // happily, because the recording answers regardless of what it is given.
+    expect(Object.keys((options.contract as { readonly impureCircuits: object }).impureCircuits)).toContain(
+      recording.circuitId
+    );
+    if (expectations !== undefined && 'privateState' in expectations) {
+      expect(options.privateState).toEqual(expectations.privateState);
+    }
     return recording.transcript;
+  },
+  // Reimplemented rather than delegated, deliberately: these suites test the
+  // ORDER an operation touches the era and the engine in, and this package
+  // holds no retained-runtime dependency to delegate through. The real
+  // conversion is tested where it lives, in
+  // `packages/protocol/src/test/v9-operations.test.ts`.
+  reexpressOperationsForCurrentEra: (entryPoints): Uint8Array => {
+    log.push('engine.reexpressOperationsForCurrentEra');
+    const state = new ContractState();
+    for (const entryPoint of entryPoints) {
+      if (entryPoint.verifierKey === undefined) {
+        continue;
+      }
+      const operation = new ContractOperation();
+      operation.verifierKey = entryPoint.verifierKey;
+      state.setOperation(entryPoint.circuitId, operation);
+    }
+    return state.serialize();
   },
   executeConstructor: (): Ledger8ConstructedState => {
     log.push('engine.executeConstructor');
@@ -357,7 +404,9 @@ export const createReplayEngine = (
  * interface the pipeline consumes.
  *
  * @param era The real era facade.
- * @param log The orchestration log to append each call to.
+ * @param log The orchestration log to append each call to. Entries name the
+ * era that served the call (`era.v8.composeCallTx`), so a test spanning both
+ * eras can pin WHICH one ran each step and not merely the step order.
  * @param onComposeCall Optional inspection of the call options, run before the
  * era composes them.
  * @returns A facade that logs and delegates.
@@ -369,20 +418,27 @@ export const recordEraCalls = (
 ): LedgerEra => ({
   version: era.version,
   extractState: (raw) => {
-    log.push('era.extractState');
+    log.push(`era.${era.version}.extractState`);
     return era.extractState(raw);
   },
   decodeContractState: (raw) => {
-    log.push('era.decodeContractState');
+    log.push(`era.${era.version}.decodeContractState`);
     return era.decodeContractState(raw);
   },
   composeCallTx: (options) => {
-    log.push('era.composeCallTx');
+    log.push(`era.${era.version}.composeCallTx`);
     onComposeCall?.(options);
     return era.composeCallTx(options);
   },
+  // Logged like every other seam, so a test can count partitions: the pipeline
+  // resolves the split once and hands the composer the result, and a second
+  // entry here would mean that stopped being true.
+  partitionCallTranscript: (options) => {
+    log.push(`era.${era.version}.partitionCallTranscript`);
+    return era.partitionCallTranscript(options);
+  },
   composeDeployTx: (options) => {
-    log.push('era.composeDeployTx');
+    log.push(`era.${era.version}.composeDeployTx`);
     return era.composeDeployTx(options);
   }
 });

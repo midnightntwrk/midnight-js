@@ -58,4 +58,23 @@ export interface RawContractState {
    * these bytes to that era's deserializer.
    */
   readonly raw: Uint8Array;
+
+  /**
+   * The ledger parameters the chain held at the block that dated this state, exactly as served —
+   * no envelope reading, no decode.
+   *
+   * WHY THEY TRAVEL WITH THE STATE. They are needed to build a transaction against this state, and
+   * they must come from the SAME block: they are dynamic (prices adjust per block) and they are
+   * era-tagged (`ledger-parameters[v5]` before the fork, `[v8]` after it). Reading them separately
+   * would let the two answers come from different blocks, and a caller that substitutes the
+   * ledger's own `initialParameters()` is using a cost model the chain does not use — which is
+   * wrong on any chain that has been running, not only across a fork.
+   *
+   * Bytes rather than a decoded object, for the same reason {@link RawContractState.raw} is: only
+   * the era that wrote them can read them, and this record is deliberately era-agnostic.
+   *
+   * Optional because a provider that cannot serve them is still a usable provider; a consumer that
+   * needs them has to say what it does without them.
+   */
+  readonly ledgerParameters?: Uint8Array;
 }

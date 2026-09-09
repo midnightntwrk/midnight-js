@@ -40,10 +40,10 @@ bound old and there is nothing for a caller to opt out of. That is why the
 module simply asks again — see ADR 0008 and the method's own documentation in
 `packages/types/src/public-data-provider.ts`.
 
-`readHeadEra` is used rather than `networkHeadVersion`: the same one round trip
-and the same `'construct'` era mapping, but it also yields the raw head integer,
-which is the value an operator acting on the verdict actually needs and which
-the breadcrumb reports.
+`networkHeadVersion` is what the module calls: one round trip, the same
+`'construct'` era mapping, and only the era back. The raw head integer is
+deliberately not carried past the read, because the verdict is an era
+comparison and nothing downstream of it compares integers.
 
 ## The four outcomes
 
@@ -88,14 +88,6 @@ provider's failure redacted onto `cause` by the seam wrapper in
 `ledger8-entry.ts` — one sanitizer, at the boundary the external failure
 crosses, rather than a second one here that could redact differently. See
 [KeepStatePipeline](./keep-state-pipeline.md) for what that redaction removes.
-
-### The fresh read is breadcrumbed
-
-It carries its own `'post-rejection-re-read'` provenance. It is the only head
-reading taken after bytes were already on the wire, and it is the reading the
-verdict rests on, so an operator asked to act on a `StaleHeadError` needs the
-integer it returned. It is reported BEFORE the verdict, so the reading is in the
-log whichever arm is taken.
 
 ## What a caller is told to do
 
@@ -195,8 +187,3 @@ The three outcomes are kept apart on purpose:
   than a registered code, because a registered code is a published consumer
   surface for a condition worth branching on, and "you passed the wrong thing"
   is a mistake to fix, not a state to handle.
-
-The retained-era pipeline runs OUTSIDE the scoped-transaction machinery
-entirely: that machinery merges several current-era calls into one transaction,
-and the retained era composes exactly one call, so there is nothing for it to
-merge with.

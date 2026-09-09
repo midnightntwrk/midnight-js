@@ -6,7 +6,7 @@
 
 # Interface: ZkConfigIntegrityOptions
 
-Defined in: packages/utils/dist/index.d.ts:422
+Defined in: packages/utils/dist/index.d.ts:432
 
 Integrity options shared by both ZK config providers' constructor option bags.
 
@@ -20,7 +20,7 @@ Integrity options shared by both ZK config providers' constructor option bags.
 
 > `readonly` `optional` **expectedManifestHash?**: `string`
 
-Defined in: packages/utils/dist/index.d.ts:437
+Defined in: packages/utils/dist/index.d.ts:447
 
 SHA-256 hex of the manifest file's bytes, pinned by the application at build time. This is the
 only mode that resists a coordinated swap of the artifacts and their co-located manifest: it
@@ -33,7 +33,7 @@ artifacts it certifies.
 
 > `readonly` `optional` **onWarn?**: (`message`) => `void`
 
-Defined in: packages/utils/dist/index.d.ts:439
+Defined in: packages/utils/dist/index.d.ts:449
 
 Warning sink for `warn` mode. Default: `console.warn`.
 
@@ -53,10 +53,10 @@ Warning sink for `warn` mode. Default: `console.warn`.
 
 > `readonly` `optional` **verify?**: [`ZkArtifactIntegrityMode`](../type-aliases/ZkArtifactIntegrityMode.md)
 
-Defined in: packages/utils/dist/index.d.ts:430
+Defined in: packages/utils/dist/index.d.ts:440
 
 Default `'require'` (fail-closed). Trust boundary: without [expectedManifestHash](#expectedmanifesthash) the
-manifest is loaded from the same base location as the artifacts, so `require`/`warn` detect
+manifest is loaded from the same base location as the artifacts, so every verifying mode detects
 corruption (partial deploy, truncation, a stale or wrong artifact set) but NOT an adversary who
 can rewrite both the artifacts and the co-located manifest. Set [expectedManifestHash](#expectedmanifesthash) to
 defend against that coordinated substitution.

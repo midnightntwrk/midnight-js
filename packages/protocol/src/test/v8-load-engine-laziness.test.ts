@@ -82,6 +82,7 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
       'downConvertForExecution',
       'executeCircuit',
       'executeConstructor',
+      'reexpressOperationsForCurrentEra',
       'wrapKeepStateCall'
     ]);
   });
