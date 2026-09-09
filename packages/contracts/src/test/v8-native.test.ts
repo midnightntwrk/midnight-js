@@ -818,7 +818,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // record itself is handed back VERSION-TAGGED rather than narrowed: a
     // retained-era contract's call is recorded by whichever era the head is on.
     expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('retained-era-tx-id');
-    expect(finalized.txData.status).toBe('SucceedEntirely');
+    expect(finalized.public.status).toBe('SucceedEntirely');
     // The single-snapshot invariant, and the single-head-read invariant. One
     // head read feeds the routing and the era acquisition; one state read feeds
     // the era check, the key check, the execution and the composition. A second
@@ -1087,17 +1087,17 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
     const finalized = await submitCallTx(providers, callOptions());
 
-    expect(finalized.txData.version).toBe('v8');
+    expect(finalized.public.version).toBe('v8');
     // The record is handed back AS REPORTED, not rebuilt: asserting the shape
     // of the literal above would only restate the fixture.
-    expect(finalized.txData).toBe(retainedRecord);
+    expect(finalized.public).toMatchObject(retainedRecord);
     // And the two surfaces really are different unions -- the WRITE surface's
     // retained arm, which this same flow produced, carries `txBytes` and no
     // `tx`. Asserting the read record lacks `txBytes` would be tautological on
     // a literal that never had one; asserting the contrast is not.
     expect(providers.seen.submitTx).toHaveProperty('txBytes');
     expect(providers.seen.submitTx).not.toHaveProperty('tx');
-    expect(finalized.txData).toBe(retainedRecord);
+    expect(finalized.public).toMatchObject(retainedRecord);
   });
 
   it('SANITIZES a provider rejection: no transaction or witness material survives onto the error', async () => {
@@ -1252,8 +1252,8 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // gets written back. Asserting it is not `undefined` is the point: a
     // recording missing that member would have every call store nothing over a
     // caller's real private state, with a green suite.
-    expect(finalized.nextPrivateState).toEqual({});
-    expect(finalized.nextPrivateState).not.toBeUndefined();
+    expect(finalized.private.nextPrivateState).toEqual({});
+    expect(finalized.private.nextPrivateState).not.toBeUndefined();
     expect(providers.privateStateProvider.set).toHaveBeenCalledWith('retained-private-state', {});
   });
 

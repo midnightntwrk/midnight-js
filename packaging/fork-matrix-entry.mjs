@@ -573,14 +573,22 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
     circuitId: call.circuitId,
     ...(call.args === undefined ? {} : { args: call.args(context) })
   });
-  // The retained arm resolves `{ circuitId, nextPrivateState, txData }`; both
-  // arms of `txData` extend `FinalizedTxRecord`, so status and version are there.
+  // Read through the SAME shape the current-era arm answers with -- `public` for
+  // the finalized record, `private` for the circuit's own return value. The
+  // retained arm used to answer a thin `{ circuitId, nextPrivateState, txData }`
+  // and `result` was unreachable from here.
   //
   // `status` is recorded, not asserted. Both arms of `submitCallTx` throw before
   // resolving if the chain reported anything but `SucceedEntirely`
   // (`internal/transaction.ts`, `internal/ledger8-entry.ts`), so a resolved call
   // has already cleared that check and a rejected one arrives in `leg`'s catch.
-  return { circuitId: call.circuitId, status: submitted.txData.status, version: submitted.txData.version, txId: submitted.txData.txId };
+  return {
+    circuitId: call.circuitId,
+    status: submitted.public.status,
+    version: submitted.public.version,
+    txId: submitted.public.txId,
+    result: submitted.private.result
+  };
 };
 
 /**
@@ -595,11 +603,15 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
  * has `round: Counter` and `shielded-fallible` has `counters: Map`, and the two
  * cover different things -- state across a trivial circuit, and state across the
  * heaviest one in the set. Contracts declaring no ledger block at all
- * (`unshielded`, `shielded`, `block-time`) cannot be read this way: what
+ * (`unshielded`, `shielded`, `block-time`) cannot be read THIS way: what
  * survives for them is the contract's BALANCE, which `decodeContractState`
- * deliberately omits and the retained arm of `submitCallTx` does not return
- * either, since it answers `{ circuitId, nextPrivateState, txData }` with no
- * circuit result on it.
+ * deliberately omits.
+ *
+ * They are reachable another way now that the retained arm answers with
+ * `private.result`: a post-fork call to `getUnshieldedBalanceTest` with the
+ * colour minted before the boundary returns the surviving balance directly.
+ * That needs `capture` and `expect` on the retained legs, which the current-era
+ * matrix has and this one does not yet.
  */
 const readRetainedLedger = async (key, providers, contractAddress, read) => {
   const [{ ledger }, runtime, { utils }] = await Promise.all([
@@ -742,11 +754,10 @@ await leg('pre-fork retained call', async () => {
     circuitId: CIRCUIT_ID
   });
   // The RETAINED arm resolves a `Ledger8FinalizedCallTxData` -- `{ circuitId,
-  // nextPrivateState, txData }` -- so the id is on the finalized record it carries.
-  // Neither `submitted.txId` nor `submitted.public.txId` exists here: `.public` is the
-  // CURRENT era's `FinalizedCallTxData` shape, and reaching for it on this arm throws a
-  // TypeError inside the reporting rather than reporting what the call did.
-  return { txId: submitted.txData.txId };
+  // public, private }` -- which now carries the finalized record on `public`
+  // exactly as the current era does, so the id is read the same way on both arms.
+  // `submitted.txId` is NOT it: neither arm puts the id at the top level.
+  return { txId: submitted.public.txId };
 });
 
 // (a) continued: the rest of the retained-era contracts, deployed and called on
@@ -851,11 +862,10 @@ await leg('post-fork keep-state call through the same call site', async () => {
     circuitId: CIRCUIT_ID
   });
   // The RETAINED arm resolves a `Ledger8FinalizedCallTxData` -- `{ circuitId,
-  // nextPrivateState, txData }` -- so the id is on the finalized record it carries.
-  // Neither `submitted.txId` nor `submitted.public.txId` exists here: `.public` is the
-  // CURRENT era's `FinalizedCallTxData` shape, and reaching for it on this arm throws a
-  // TypeError inside the reporting rather than reporting what the call did.
-  return { txId: submitted.txData.txId };
+  // public, private }` -- which now carries the finalized record on `public`
+  // exactly as the current era does, so the id is read the same way on both arms.
+  // `submitted.txId` is NOT it: neither arm puts the id at the top level.
+  return { txId: submitted.public.txId };
 });
 
 // (c) continued: the same keep-state call for every other retained twin. These
