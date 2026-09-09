@@ -197,6 +197,14 @@ export const buildPersona = (name, linkerName, manifest, entryOverride, extraCon
       `${JSON.stringify(contractPackageManifest(contract), null, 2)}\n`,
       'utf8'
     );
+    // Backs the `./runtime` export. A bare re-export rather than a copy, so the
+    // module identity is the wrapper's own resolution of the runtime and not a
+    // second instance of it.
+    writeFileSync(
+      path.join(contractDir, 'runtime.js'),
+      "export * from '@midnight-ntwrk/compact-runtime';\n",
+      'utf8'
+    );
     cpSync(path.join(REPOSITORY_ROOT, contract.source), contractDir, { recursive: true });
   }
 

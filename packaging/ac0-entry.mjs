@@ -561,12 +561,28 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
  * that is monotone, cheap to decode, and advanced by the very call the leg makes.
  */
 const readRetainedRound = async (key, providers, contractAddress) => {
-  const { ledger } = await import(`@midnight-ntwrk/ac0-retained-${key}`);
-  const state = await providers.publicDataProvider.queryContractState(contractAddress);
+  const [{ ledger }, runtime, era] = await Promise.all([
+    import(`@midnight-ntwrk/ac0-retained-${key}`),
+    import(`@midnight-ntwrk/ac0-retained-${key}/runtime`),
+    loadLedgerEra('v8')
+  ]);
+
+  // RAW, and read with the RETAINED era -- the shape `readLedger8Snapshot` uses
+  // in `contracts`. `queryContractState` decodes with the head's era, which
+  // refuses a v8 envelope by design and says so; and the fork does not rewrite
+  // stored state, so these bytes stay retained-era after the boundary too.
+  const state = await providers.publicDataProvider.queryRawContractState(contractAddress);
   if (state === null) {
     throw new Error(`the indexer served no contract state for '${key}' at ${contractAddress}`);
   }
-  return ledger(state.data).round;
+
+  // ADR-0007: the era boundary is crossed with plain data only. `extractState`
+  // answers with an `EncodedStateValue`, and the twin's OWN runtime turns that
+  // back into a handle. Handing over a handle minted anywhere else -- the
+  // provider's module included -- is what `ledger()` refuses with
+  // `expected instance of ChargedState`.
+  const encoded = era.extractState(state.raw);
+  return ledger(runtime.StateValue.decode(encoded)).round;
 };
 
 /**
