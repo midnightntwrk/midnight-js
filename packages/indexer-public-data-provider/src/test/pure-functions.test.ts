@@ -592,21 +592,17 @@ describe('deserialization adapter wiring (issue-816)', () => {
   });
 
   /**
-   * The parameters twin of {@link envelopedGarbageHex}, and it exists for the same reason: since the
-   * parameters path dates the envelope before decoding, plain garbage is refused by era and no
-   * longer reaches the deserializer, so it can no longer prove this wiring. The tag is measured off
-   * the minted bytes rather than assumed to be a fixed width -- the two families' tags differ in
-   * length.
+   * The parameters twin of {@link envelopedGarbageHex}, and it exists for the same reason: since
+   * the parameters path dates the envelope before decoding, plain garbage is refused by the TAG
+   * PARSER for carrying no envelope at all -- before any era decision -- and so no longer reaches
+   * the deserializer to prove this wiring. The tag is measured off the minted bytes rather than
+   * assumed to be a fixed width; the two families' tags differ in length.
    */
   const envelopedGarbageParametersHex = (): string => {
     const bytes = mintV9LedgerParametersBytes();
-    const tagChars = (parseSerializedTag(bytes).tag.length + 1) * 2;
-    const hex = toHex(bytes);
-    const bodyBytes = hex.length / 2 - tagChars / 2;
-    if (bodyBytes <= 0) {
-      throw new Error('test setup: the minted parameters are too short to keep an envelope and corrupt a body');
-    }
-    return hex.slice(0, tagChars) + 'ff'.repeat(bodyBytes);
+    // `+ 1` for the colon the tag is terminated by, which belongs to the envelope, not the body.
+    const tagBytes = parseSerializedTag(bytes).tag.length + 1;
+    return toHex(bytes).slice(0, tagBytes * 2) + 'ff'.repeat(bytes.length - tagBytes);
   };
 
   test('parseHexLedgerParameters throws DeserializationError tagged with the helper caller', async () => {

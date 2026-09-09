@@ -88,11 +88,14 @@ type ReadDetails = Readonly<Record<string, string | number>>;
 /**
  * The only ledger era {@link parseHexContractState} and {@link parseHexLedgerParameters} can read.
  *
- * Deliberately narrower than the transaction path above, which dispatches per
- * record across both eras. `queryRawContractState` serves the bytes together
- * with their era for a caller that needs the other runtime — the contract
- * state and, since both are era-tagged and dated the same way, the block's
- * ledger parameters as well.
+ * Deliberately narrower than {@link decodeVersionedTransaction}, which dispatches per record across
+ * both eras. `queryRawContractState` serves both era-tagged payloads undecoded for a caller that
+ * needs the other runtime: the contract state, dated by the block that only upper-bounds its
+ * envelope (see {@link parseHexContractState}), and the block's own ledger parameters, whose era the
+ * block states exactly because they are served per block.
+ *
+ * One constant for two decoders because one runtime import supplies both. A build that ever ships
+ * one era's parameters decoder alongside a different era's state decoder has to split it.
  */
 const DECODABLE_LEDGER_VERSION: LedgerVersion = 'v9';
 
@@ -120,22 +123,22 @@ export const parseHexTransaction = (
  * exactly as a contract state is (`ledger-parameters[v5]` from the retained runtime,
  * `[v8]` from the current one), each era's deserializer refuses the other's bytes on the header tag,
  * and the indexer serves them PER BLOCK — so every pre-fork block a caller reads carries parameters
- * this era cannot decode. Without the dating those bytes reached the deserializer and came back as
- * an unclassified failure that named neither the era nor the field.
+ * this era cannot decode.
  *
- * A retained-era block is an ordinary thing to read, not a fault, so it is reported as an era this
- * path cannot decode and pointed at `queryRawContractState`, which serves the parameter bytes
- * undecoded alongside the state.
+ * A retained-era block is an ordinary thing to read, not a fault; see
+ * {@link IndexerDataError.unsupportedParametersEra} for what a caller does about it, and
+ * `docs/architecture/era-tagged-payload-decoders.md` for why this defect class keeps recurring.
  *
  * @param s The hex-encoded serialized ledger parameters, as the indexer serves them.
  * @throws {IndexerDataError} When the payload is not hex-encoded, or its era is not decodable here.
  * @throws {TagParseError} When the payload carries no supported ledger-parameters envelope.
+ * @throws {DeserializationError} When the envelope is decodable but the body behind it is not.
  */
 export const parseHexLedgerParameters = (s: string): LedgerParameters => {
-  // Hex first, for the reason `stateBytesAndEnvelopeVersion` does it first: `Buffer.from(s, 'hex')`
-  // stops at the first character it cannot read, so an only-partly-hex payload would otherwise be
-  // silently truncated into a shorter, still plausible-looking byte string — and a truncated tag
-  // prefix would then be dated rather than refused.
+  // Hex first, for the reason `stateBytesAndEnvelopeVersion` does it first: `toByteArray` keeps only
+  // the leading run of whole hex bytes `parseHex` finds and discards the rest, so an only-partly-hex
+  // payload would otherwise be silently truncated into a shorter, still plausible-looking byte
+  // string — and a truncated tag prefix would then be dated rather than refused.
   if (!isHex(s)) {
     throw IndexerDataError.malformedParametersEncoding();
   }
@@ -270,9 +273,10 @@ export const decodeVersionedTransaction = async (
  * Decodes the indexer's hex-encoded contract state and reads the ledger era off
  * the envelope in front of the body, in that order.
  *
- * Hex first: `Buffer.from(s, 'hex')` stops at the first character it cannot
- * read, so an only-partly-hex payload would otherwise be silently truncated
- * into a shorter, still plausible-looking byte string.
+ * Hex first: `toByteArray` keeps only the leading run of whole hex bytes
+ * `parseHex` finds and discards the rest, so an only-partly-hex payload would
+ * otherwise be silently truncated into a shorter, still plausible-looking byte
+ * string.
  */
 const stateBytesAndEnvelopeVersion = (
   hexState: string
@@ -382,6 +386,8 @@ export type EnvelopeUpperBound = 'enforced' | 'withheld';
  *   or when its era is not decodable here.
  * @throws {TagParseError} When the payload carries no supported contract-state
  *   envelope.
+ * @throws {DeserializationError} When the envelope is decodable but the state
+ *   body behind it is not.
  */
 export const parseHexContractState = (
   hexState: string,
