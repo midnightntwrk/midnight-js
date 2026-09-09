@@ -10,7 +10,7 @@
 
 > **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:1228
+Defined in: packages/contracts/dist/index.d.ts:1275
 
 ### Type Parameters
 
@@ -40,7 +40,7 @@ Defined in: packages/contracts/dist/index.d.ts:1228
 
 > **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:1229
+Defined in: packages/contracts/dist/index.d.ts:1276
 
 ### Type Parameters
 
@@ -70,7 +70,7 @@ Defined in: packages/contracts/dist/index.d.ts:1229
 
 > **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../interfaces/CallResult.md)\<`C`, `PCK`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:1230
+Defined in: packages/contracts/dist/index.d.ts:1277
 
 ### Type Parameters
 
@@ -104,7 +104,7 @@ Defined in: packages/contracts/dist/index.d.ts:1230
 
 > **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../interfaces/CallResult.md)\<`C`, `PCK`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:1231
+Defined in: packages/contracts/dist/index.d.ts:1278
 
 ### Type Parameters
 

@@ -8,7 +8,7 @@
 
 > `const` **submitRemoveVerifierKeyTx**: \<`C`\>(`providers`, `compiledContract`, `contractAddress`, `circuitId`) => `Promise`\<[`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md)\>
 
-Defined in: packages/contracts/dist/index.d.ts:1183
+Defined in: packages/contracts/dist/index.d.ts:1230
 
 Constructs and submits a transaction that removes the current verifier key stored
 on the blockchain for the given circuit ID at the given contract address.

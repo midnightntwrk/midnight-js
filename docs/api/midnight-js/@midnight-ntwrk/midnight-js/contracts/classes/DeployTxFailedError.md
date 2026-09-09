@@ -6,7 +6,7 @@
 
 # Class: DeployTxFailedError
 
-Defined in: packages/contracts/dist/index.d.ts:1015
+Defined in: packages/contracts/dist/index.d.ts:1023
 
 An error indicating that a deploy transaction was not successfully applied by the consensus node.
 
@@ -20,7 +20,7 @@ An error indicating that a deploy transaction was not successfully applied by th
 
 > **new DeployTxFailedError**(`finalizedTxData`): `DeployTxFailedError`
 
-Defined in: packages/contracts/dist/index.d.ts:1019
+Defined in: packages/contracts/dist/index.d.ts:1027
 
 #### Parameters
 
@@ -56,7 +56,7 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:24
 
 > `readonly` `optional` **circuitId?**: `string` \| `string`[]
 
-Defined in: packages/contracts/dist/index.d.ts:1003
+Defined in: packages/contracts/dist/index.d.ts:1011
 
 #### Inherited from
 
@@ -68,7 +68,7 @@ Defined in: packages/contracts/dist/index.d.ts:1003
 
 > `readonly` **finalizedTxData**: [`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md)
 
-Defined in: packages/contracts/dist/index.d.ts:1002
+Defined in: packages/contracts/dist/index.d.ts:1010
 
 #### Inherited from
 

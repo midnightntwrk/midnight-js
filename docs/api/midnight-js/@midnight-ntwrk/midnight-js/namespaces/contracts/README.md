@@ -176,6 +176,12 @@ Re-exports [ContractTypeError](../../contracts/classes/ContractTypeError.md)
 
 ***
 
+### ContractTypeMismatch
+
+Re-exports [ContractTypeMismatch](../../contracts/interfaces/ContractTypeMismatch.md)
+
+***
+
 ### createCallTxOptions
 
 Re-exports [createCallTxOptions](../../contracts/variables/createCallTxOptions.md)

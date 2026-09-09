@@ -6,7 +6,7 @@
 
 # Class: CallTxFailedError
 
-Defined in: packages/contracts/dist/index.d.ts:1024
+Defined in: packages/contracts/dist/index.d.ts:1032
 
 An error indicating that a call transaction was not successfully applied by the consensus node.
 
@@ -20,7 +20,7 @@ An error indicating that a call transaction was not successfully applied by the 
 
 > **new CallTxFailedError**(`finalizedTxData`, `circuitId`): `CallTxFailedError`
 
-Defined in: packages/contracts/dist/index.d.ts:1029
+Defined in: packages/contracts/dist/index.d.ts:1037
 
 #### Parameters
 
@@ -62,7 +62,7 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:24
 
 > `readonly` `optional` **circuitId?**: `string` \| `string`[]
 
-Defined in: packages/contracts/dist/index.d.ts:1003
+Defined in: packages/contracts/dist/index.d.ts:1011
 
 #### Inherited from
 
@@ -74,7 +74,7 @@ Defined in: packages/contracts/dist/index.d.ts:1003
 
 > `readonly` **finalizedTxData**: [`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md)
 
-Defined in: packages/contracts/dist/index.d.ts:1002
+Defined in: packages/contracts/dist/index.d.ts:1010
 
 #### Inherited from
 

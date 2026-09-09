@@ -6,7 +6,7 @@
 
 # Class: ContractTypeError
 
-Defined in: packages/contracts/dist/index.d.ts:1039
+Defined in: packages/contracts/dist/index.d.ts:1069
 
 The error that is thrown when there is a contract type mismatch between a given contract type,
 and the initial state that is deployed at a given contract address.
@@ -16,6 +16,10 @@ and the initial state that is deployed at a given contract address.
 This error is typically thrown during calls to [findDeployedContract](../functions/findDeployedContract.md) where the supplied contract
 address represents a different type of contract to the contract type given.
 
+The three conditions are reported separately because they call for different responses: a
+mismatched key means the local artifacts are wrong, while a keyless slot means the deployed state
+itself is incomplete and rebuilding locally cannot help.
+
 ## Extends
 
 - `TypeError`
@@ -24,9 +28,9 @@ address represents a different type of contract to the contract type given.
 
 ### Constructor
 
-> **new ContractTypeError**(`contractState`, `circuitIds`): `ContractTypeError`
+> **new ContractTypeError**(`contractState`, `mismatch`, `contractAddress?`): `ContractTypeError`
 
-Defined in: packages/contracts/dist/index.d.ts:1049
+Defined in: packages/contracts/dist/index.d.ts:1096
 
 Initializes a new ContractTypeError.
 
@@ -38,12 +42,17 @@ Initializes a new ContractTypeError.
 
 The initial deployed contract state.
 
-##### circuitIds
+##### mismatch
 
-`string`[]
+[`ContractTypeMismatch`](../interfaces/ContractTypeMismatch.md)
 
-The circuits that are undefined, or have a verifier key mismatch with the
-                  key present in `contractState`.
+The circuits that failed to match, grouped by the condition that applied.
+
+##### contractAddress?
+
+`string`
+
+The address the state was read from, when known.
 
 #### Returns
 
@@ -71,7 +80,18 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:24
 
 > `readonly` **circuitIds**: `string`[]
 
-Defined in: packages/contracts/dist/index.d.ts:1041
+Defined in: packages/contracts/dist/index.d.ts:1088
+
+Every circuit that failed to match, whatever the reason, grouped by condition: missing first,
+then keyless, then mismatched.
+
+***
+
+### contractAddress?
+
+> `readonly` `optional` **contractAddress?**: `string`
+
+Defined in: packages/contracts/dist/index.d.ts:1071
 
 ***
 
@@ -79,7 +99,17 @@ Defined in: packages/contracts/dist/index.d.ts:1041
 
 > `readonly` **contractState**: [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/contracts/dist/index.d.ts:1040
+Defined in: packages/contracts/dist/index.d.ts:1070
+
+***
+
+### keylessCircuitIds
+
+> `readonly` **keylessCircuitIds**: `string`[]
+
+Defined in: packages/contracts/dist/index.d.ts:1079
+
+The circuits whose deployed operation carries no verifier key.
 
 ***
 
@@ -92,6 +122,26 @@ Defined in: node\_modules/typescript/lib/lib.es5.d.ts:1075
 #### Inherited from
 
 `TypeError.message`
+
+***
+
+### mismatchedCircuitIds
+
+> `readonly` **mismatchedCircuitIds**: `string`[]
+
+Defined in: packages/contracts/dist/index.d.ts:1083
+
+The circuits whose deployed verifier key differs from the local one.
+
+***
+
+### missingCircuitIds
+
+> `readonly` **missingCircuitIds**: `string`[]
+
+Defined in: packages/contracts/dist/index.d.ts:1075
+
+The circuits that the deployed state registers no operation for.
 
 ***
 

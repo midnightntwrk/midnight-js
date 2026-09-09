@@ -10,7 +10,7 @@
 
 > **createUnprovenDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:1351
+Defined in: packages/contracts/dist/index.d.ts:1398
 
 ### Type Parameters
 
@@ -36,7 +36,7 @@ Defined in: packages/contracts/dist/index.d.ts:1351
 
 > **createUnprovenDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:1352
+Defined in: packages/contracts/dist/index.d.ts:1399
 
 ### Type Parameters
 

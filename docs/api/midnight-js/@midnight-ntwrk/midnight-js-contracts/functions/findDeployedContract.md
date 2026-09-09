@@ -38,7 +38,8 @@ TypeError Thrown if `contractAddress` is not correctly formatted as a contract a
 ## Throws
 
 ContractTypeError One or more circuits defined on `contract` are undefined on the contract
-                          state found at `contractAddress`, or have mis-matched verifier keys.
+                          state found at `contractAddress`, carry no deployed verifier key, or
+                          have mis-matched verifier keys.
 
 ## Throws
 

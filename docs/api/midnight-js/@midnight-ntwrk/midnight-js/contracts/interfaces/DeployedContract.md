@@ -6,7 +6,7 @@
 
 # Interface: DeployedContract\<C\>
 
-Defined in: packages/contracts/dist/index.d.ts:986
+Defined in: packages/contracts/dist/index.d.ts:994
 
 Interface for a contract that has been deployed to the blockchain.
 
@@ -26,7 +26,7 @@ Interface for a contract that has been deployed to the blockchain.
 
 > `readonly` **callTx**: [`CircuitCallTxInterface`](../type-aliases/CircuitCallTxInterface.md)\<`C`\>
 
-Defined in: packages/contracts/dist/index.d.ts:927
+Defined in: packages/contracts/dist/index.d.ts:935
 
 Interface for creating call transactions for a contract.
 
@@ -40,7 +40,7 @@ Interface for creating call transactions for a contract.
 
 > `readonly` **circuitMaintenanceTx**: [`CircuitMaintenanceTxInterfaces`](../type-aliases/CircuitMaintenanceTxInterfaces.md)\<`C`\>
 
-Defined in: packages/contracts/dist/index.d.ts:932
+Defined in: packages/contracts/dist/index.d.ts:940
 
 An interface for creating maintenance transactions for circuits defined in the
 contract that was deployed.
@@ -55,7 +55,7 @@ contract that was deployed.
 
 > `readonly` **contractMaintenanceTx**: [`ContractMaintenanceTxInterface`](ContractMaintenanceTxInterface.md)
 
-Defined in: packages/contracts/dist/index.d.ts:937
+Defined in: packages/contracts/dist/index.d.ts:945
 
 Interface for creating maintenance transactions for the contract that was
 deployed.
@@ -70,7 +70,7 @@ deployed.
 
 > `readonly` **deployTxData**: [`FinalizedDeployTxData`](FinalizedDeployTxData.md)\<`C`\>
 
-Defined in: packages/contracts/dist/index.d.ts:993
+Defined in: packages/contracts/dist/index.d.ts:1001
 
 Data resulting from the deployment transaction that created this contract. The information in a
 [deployTxData](#deploytxdata) contains additional private information that does not

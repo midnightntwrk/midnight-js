@@ -8,7 +8,7 @@
 
 > **submitCallTxAsync**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`SubmittedCallTx`](../interfaces/SubmittedCallTx.md)\<`C`, `PCK`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:1299
+Defined in: packages/contracts/dist/index.d.ts:1346
 
 Creates and submits a transaction for the invocation of a circuit on a given contract,
 returning immediately after submission without waiting for finalization.

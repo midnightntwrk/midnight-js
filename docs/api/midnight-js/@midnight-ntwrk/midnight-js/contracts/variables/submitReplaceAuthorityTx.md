@@ -8,7 +8,7 @@
 
 > `const` **submitReplaceAuthorityTx**: \<`C`\>(`providers`, `compiledContract`, `contractAddress`) => (`newAuthority`) => `Promise`\<[`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md)\>
 
-Defined in: packages/contracts/dist/index.d.ts:1224
+Defined in: packages/contracts/dist/index.d.ts:1271
 
 Constructs and submits a transaction that replaces the maintenance
 authority stored on the blockchain for this contract. After the transaction is

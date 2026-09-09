@@ -8,7 +8,7 @@
 
 > **DeployTxOptionsBase**\<`C`\> = [`ContractConstructorOptionsWithArguments`](ContractConstructorOptionsWithArguments.md)\<`C`\> & `object`
 
-Defined in: packages/contracts/dist/index.d.ts:1304
+Defined in: packages/contracts/dist/index.d.ts:1351
 
 Base type for deploy transaction configuration.
 

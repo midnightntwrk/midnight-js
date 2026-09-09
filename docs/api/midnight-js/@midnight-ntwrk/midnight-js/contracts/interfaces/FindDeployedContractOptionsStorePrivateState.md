@@ -6,7 +6,7 @@
 
 # Interface: FindDeployedContractOptionsStorePrivateState\<C\>
 
-Defined in: packages/contracts/dist/index.d.ts:904
+Defined in: packages/contracts/dist/index.d.ts:912
 
 [findDeployedContract](../functions/findDeployedContract.md) configuration that includes an initial private
 state to store and the private state ID at which to store it. Only used if
@@ -29,7 +29,7 @@ private state ID.
 
 > `readonly` **compiledContract**: [`CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
 
-Defined in: packages/contracts/dist/index.d.ts:870
+Defined in: packages/contracts/dist/index.d.ts:878
 
 The compiled contract to use to execute circuits.
 
@@ -43,7 +43,7 @@ The compiled contract to use to execute circuits.
 
 > `readonly` **contractAddress**: `string`
 
-Defined in: packages/contracts/dist/index.d.ts:874
+Defined in: packages/contracts/dist/index.d.ts:882
 
 The address of a previously deployed contract.
 
@@ -57,7 +57,7 @@ The address of a previously deployed contract.
 
 > `readonly` **initialPrivateState**: [`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
-Defined in: packages/contracts/dist/index.d.ts:910
+Defined in: packages/contracts/dist/index.d.ts:918
 
 For types of contract that make no use of private state and or witnesses that operate upon it, this
 property may be `undefined`. Otherwise, the value provided via this property should be same initial
@@ -69,7 +69,7 @@ state that was used when calling [deployContract](../functions/deployContract.md
 
 > `readonly` **privateStateId**: `string`
 
-Defined in: packages/contracts/dist/index.d.ts:896
+Defined in: packages/contracts/dist/index.d.ts:904
 
 An identifier for the private state of the contract being found.
 
@@ -83,7 +83,7 @@ An identifier for the private state of the contract being found.
 
 > `readonly` `optional` **signingKey?**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/contracts/dist/index.d.ts:884
+Defined in: packages/contracts/dist/index.d.ts:892
 
 The signing key to use to perform contract maintenance updates. If defined, the given signing
 key is stored for this contract address. This is useful when someone has already added the given signing

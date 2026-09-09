@@ -6,7 +6,7 @@
 
 # Interface: FindDeployedContractOptionsExistingPrivateState\<C\>
 
-Defined in: packages/contracts/dist/index.d.ts:892
+Defined in: packages/contracts/dist/index.d.ts:900
 
 [findDeployedContract](../functions/findDeployedContract.md) base configuration that includes an initial private
 state to store and the private state ID at which to store it. Only used if
@@ -33,7 +33,7 @@ private state ID.
 
 > `readonly` **compiledContract**: [`CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
 
-Defined in: packages/contracts/dist/index.d.ts:870
+Defined in: packages/contracts/dist/index.d.ts:878
 
 The compiled contract to use to execute circuits.
 
@@ -47,7 +47,7 @@ The compiled contract to use to execute circuits.
 
 > `readonly` **contractAddress**: `string`
 
-Defined in: packages/contracts/dist/index.d.ts:874
+Defined in: packages/contracts/dist/index.d.ts:882
 
 The address of a previously deployed contract.
 
@@ -61,7 +61,7 @@ The address of a previously deployed contract.
 
 > `readonly` **privateStateId**: `string`
 
-Defined in: packages/contracts/dist/index.d.ts:896
+Defined in: packages/contracts/dist/index.d.ts:904
 
 An identifier for the private state of the contract being found.
 
@@ -71,7 +71,7 @@ An identifier for the private state of the contract being found.
 
 > `readonly` `optional` **signingKey?**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/contracts/dist/index.d.ts:884
+Defined in: packages/contracts/dist/index.d.ts:892
 
 The signing key to use to perform contract maintenance updates. If defined, the given signing
 key is stored for this contract address. This is useful when someone has already added the given signing

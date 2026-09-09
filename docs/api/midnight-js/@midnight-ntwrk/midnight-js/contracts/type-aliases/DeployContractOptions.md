@@ -8,7 +8,7 @@
 
 > **DeployContractOptions**\<`C`\> = [`DeployContractOptionsBase`](DeployContractOptionsBase.md)\<`C`\> \| [`DeployContractOptionsWithPrivateState`](DeployContractOptionsWithPrivateState.md)\<`C`\>
 
-Defined in: packages/contracts/dist/index.d.ts:982
+Defined in: packages/contracts/dist/index.d.ts:990
 
 Configuration for [deployContract](../functions/deployContract.md).
 

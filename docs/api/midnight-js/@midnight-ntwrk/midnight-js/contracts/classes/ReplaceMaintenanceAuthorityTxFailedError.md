@@ -6,7 +6,7 @@
 
 # Class: ReplaceMaintenanceAuthorityTxFailedError
 
-Defined in: packages/contracts/dist/index.d.ts:1079
+Defined in: packages/contracts/dist/index.d.ts:1126
 
 An error indicating that a contract maintenance authority replacement transaction failed.
 
@@ -20,7 +20,7 @@ An error indicating that a contract maintenance authority replacement transactio
 
 > **new ReplaceMaintenanceAuthorityTxFailedError**(`finalizedTxData`): `ReplaceMaintenanceAuthorityTxFailedError`
 
-Defined in: packages/contracts/dist/index.d.ts:1080
+Defined in: packages/contracts/dist/index.d.ts:1127
 
 #### Parameters
 
@@ -54,7 +54,7 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:24
 
 > `readonly` `optional` **circuitId?**: `string` \| `string`[]
 
-Defined in: packages/contracts/dist/index.d.ts:1003
+Defined in: packages/contracts/dist/index.d.ts:1011
 
 #### Inherited from
 
@@ -66,7 +66,7 @@ Defined in: packages/contracts/dist/index.d.ts:1003
 
 > `readonly` **finalizedTxData**: [`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md)
 
-Defined in: packages/contracts/dist/index.d.ts:1002
+Defined in: packages/contracts/dist/index.d.ts:1010
 
 #### Inherited from
 

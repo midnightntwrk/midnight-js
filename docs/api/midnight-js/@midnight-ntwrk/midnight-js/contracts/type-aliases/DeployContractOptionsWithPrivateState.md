@@ -8,7 +8,7 @@
 
 > **DeployContractOptionsWithPrivateState**\<`C`\> = [`DeployContractOptionsBase`](DeployContractOptionsBase.md)\<`C`\> & `object`
 
-Defined in: packages/contracts/dist/index.d.ts:969
+Defined in: packages/contracts/dist/index.d.ts:977
 
 [deployContract](../functions/deployContract.md) base options with information needed to store private states;
 only used if the contract being deployed has a private state.

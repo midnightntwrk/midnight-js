@@ -10,7 +10,7 @@
 
 > **findDeployedContract**\<`C`\>(`providers`, `options`): `Promise`\<[`FoundContract`](../interfaces/FoundContract.md)\<`C`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:939
+Defined in: packages/contracts/dist/index.d.ts:947
 
 ### Type Parameters
 
@@ -36,7 +36,7 @@ Defined in: packages/contracts/dist/index.d.ts:939
 
 > **findDeployedContract**\<`C`\>(`providers`, `options`): `Promise`\<[`FoundContract`](../interfaces/FoundContract.md)\<`C`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:940
+Defined in: packages/contracts/dist/index.d.ts:948
 
 ### Type Parameters
 
@@ -62,7 +62,7 @@ Defined in: packages/contracts/dist/index.d.ts:940
 
 > **findDeployedContract**\<`C`\>(`providers`, `options`): `Promise`\<[`FoundContract`](../interfaces/FoundContract.md)\<`C`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:941
+Defined in: packages/contracts/dist/index.d.ts:949
 
 ### Type Parameters
 

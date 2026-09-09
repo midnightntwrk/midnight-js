@@ -8,7 +8,7 @@
 
 > `const` **getUnshieldedBalances**: (`publicDataProvider`, `contractAddress`) => `Promise`\<[`UnshieldedBalances`](../../types/type-aliases/UnshieldedBalances.md)\>
 
-Defined in: packages/contracts/dist/index.d.ts:1074
+Defined in: packages/contracts/dist/index.d.ts:1121
 
 Fetches the unshielded balances associated with a specific contract address.
 

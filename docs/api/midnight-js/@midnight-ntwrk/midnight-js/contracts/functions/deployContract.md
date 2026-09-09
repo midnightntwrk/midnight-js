@@ -10,7 +10,7 @@
 
 > **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`DeployedContract`](../interfaces/DeployedContract.md)\<`C`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:995
+Defined in: packages/contracts/dist/index.d.ts:1003
 
 ### Type Parameters
 
@@ -36,7 +36,7 @@ Defined in: packages/contracts/dist/index.d.ts:995
 
 > **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`DeployedContract`](../interfaces/DeployedContract.md)\<`C`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:996
+Defined in: packages/contracts/dist/index.d.ts:1004
 
 ### Type Parameters
 

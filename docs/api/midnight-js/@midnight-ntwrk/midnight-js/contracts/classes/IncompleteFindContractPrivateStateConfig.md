@@ -6,7 +6,7 @@
 
 # Class: IncompleteFindContractPrivateStateConfig
 
-Defined in: packages/contracts/dist/index.d.ts:1064
+Defined in: packages/contracts/dist/index.d.ts:1111
 
 An error indicating that an initial private state was specified for a contract find while a
 private state ID was not. We can't store the initial private state if we don't have a private state ID,
@@ -22,7 +22,7 @@ and we need to let the user know that.
 
 > **new IncompleteFindContractPrivateStateConfig**(): `IncompleteFindContractPrivateStateConfig`
 
-Defined in: packages/contracts/dist/index.d.ts:1065
+Defined in: packages/contracts/dist/index.d.ts:1112
 
 #### Returns
 

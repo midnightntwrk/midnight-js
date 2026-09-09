@@ -14,6 +14,10 @@ and the initial state that is deployed at a given contract address.
 This error is typically thrown during calls to [findDeployedContract](../functions/findDeployedContract.md) where the supplied contract
 address represents a different type of contract to the contract type given.
 
+The three conditions are reported separately because they call for different responses: a
+mismatched key means the local artifacts are wrong, while a keyless slot means the deployed state
+itself is incomplete and rebuilding locally cannot help.
+
 ## Extends
 
 - `TypeError`
@@ -22,7 +26,7 @@ address represents a different type of contract to the contract type given.
 
 ### Constructor
 
-> **new ContractTypeError**(`contractState`, `circuitIds`): `ContractTypeError`
+> **new ContractTypeError**(`contractState`, `mismatch`, `contractAddress?`): `ContractTypeError`
 
 Initializes a new ContractTypeError.
 
@@ -34,12 +38,17 @@ Initializes a new ContractTypeError.
 
 The initial deployed contract state.
 
-##### circuitIds
+##### mismatch
 
-`string`[]
+[`ContractTypeMismatch`](../interfaces/ContractTypeMismatch.md)
 
-The circuits that are undefined, or have a verifier key mismatch with the
-                  key present in `contractState`.
+The circuits that failed to match, grouped by the condition that applied.
+
+##### contractAddress?
+
+`string`
+
+The address the state was read from, when known.
 
 #### Returns
 
@@ -55,8 +64,16 @@ The circuits that are undefined, or have a verifier key mismatch with the
 
 > `readonly` **circuitIds**: `string`[]
 
-The circuits that are undefined, or have a verifier key mismatch with the
-                  key present in `contractState`.
+Every circuit that failed to match, whatever the reason, grouped by condition: missing first,
+then keyless, then mismatched.
+
+***
+
+### contractAddress?
+
+> `readonly` `optional` **contractAddress?**: `string`
+
+The address the state was read from, when known.
 
 ***
 
@@ -65,3 +82,27 @@ The circuits that are undefined, or have a verifier key mismatch with the
 > `readonly` **contractState**: [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
 The initial deployed contract state.
+
+***
+
+### keylessCircuitIds
+
+> `readonly` **keylessCircuitIds**: `string`[]
+
+The circuits whose deployed operation carries no verifier key.
+
+***
+
+### mismatchedCircuitIds
+
+> `readonly` **mismatchedCircuitIds**: `string`[]
+
+The circuits whose deployed verifier key differs from the local one.
+
+***
+
+### missingCircuitIds
+
+> `readonly` **missingCircuitIds**: `string`[]
+
+The circuits that the deployed state registers no operation for.

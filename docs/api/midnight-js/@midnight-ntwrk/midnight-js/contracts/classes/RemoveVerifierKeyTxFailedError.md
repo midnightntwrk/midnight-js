@@ -6,7 +6,7 @@
 
 # Class: RemoveVerifierKeyTxFailedError
 
-Defined in: packages/contracts/dist/index.d.ts:1085
+Defined in: packages/contracts/dist/index.d.ts:1132
 
 An error indicating that a verifier key removal transaction failed.
 
@@ -20,7 +20,7 @@ An error indicating that a verifier key removal transaction failed.
 
 > **new RemoveVerifierKeyTxFailedError**(`finalizedTxData`): `RemoveVerifierKeyTxFailedError`
 
-Defined in: packages/contracts/dist/index.d.ts:1086
+Defined in: packages/contracts/dist/index.d.ts:1133
 
 #### Parameters
 
@@ -54,7 +54,7 @@ Defined in: node\_modules/typescript/lib/lib.es2022.error.d.ts:24
 
 > `readonly` `optional` **circuitId?**: `string` \| `string`[]
 
-Defined in: packages/contracts/dist/index.d.ts:1003
+Defined in: packages/contracts/dist/index.d.ts:1011
 
 #### Inherited from
 
@@ -66,7 +66,7 @@ Defined in: packages/contracts/dist/index.d.ts:1003
 
 > `readonly` **finalizedTxData**: [`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md)
 
-Defined in: packages/contracts/dist/index.d.ts:1002
+Defined in: packages/contracts/dist/index.d.ts:1010
 
 #### Inherited from
 

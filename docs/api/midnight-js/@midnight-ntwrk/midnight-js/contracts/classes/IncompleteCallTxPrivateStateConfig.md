@@ -6,7 +6,7 @@
 
 # Class: IncompleteCallTxPrivateStateConfig
 
-Defined in: packages/contracts/dist/index.d.ts:1056
+Defined in: packages/contracts/dist/index.d.ts:1103
 
 An error indicating that a private state ID was specified for a call transaction while a private
 state provider was not. We want to let the user know so that they aren't under the impression the
@@ -22,7 +22,7 @@ private state of a contract was updated when it wasn't.
 
 > **new IncompleteCallTxPrivateStateConfig**(): `IncompleteCallTxPrivateStateConfig`
 
-Defined in: packages/contracts/dist/index.d.ts:1057
+Defined in: packages/contracts/dist/index.d.ts:1104
 
 #### Returns
 

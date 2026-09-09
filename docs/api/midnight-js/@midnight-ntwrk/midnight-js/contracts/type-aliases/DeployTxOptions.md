@@ -8,7 +8,7 @@
 
 > **DeployTxOptions**\<`C`\> = [`DeployTxOptionsBase`](DeployTxOptionsBase.md)\<`C`\> \| [`DeployTxOptionsWithPrivateStateId`](DeployTxOptionsWithPrivateStateId.md)\<`C`\>
 
-Defined in: packages/contracts/dist/index.d.ts:1357
+Defined in: packages/contracts/dist/index.d.ts:1404
 
 Configuration for creating deploy transactions.
 

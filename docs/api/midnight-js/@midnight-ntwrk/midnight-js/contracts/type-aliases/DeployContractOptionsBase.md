@@ -8,7 +8,7 @@
 
 > **DeployContractOptionsBase**\<`C`\> = [`ContractConstructorOptionsWithArguments`](ContractConstructorOptionsWithArguments.md)\<`C`\> & `object`
 
-Defined in: packages/contracts/dist/index.d.ts:949
+Defined in: packages/contracts/dist/index.d.ts:957
 
 Base type for configuration for [deployContract](../functions/deployContract.md); identical to
 [ContractConstructorOptionsWithArguments](ContractConstructorOptionsWithArguments.md) except the `signingKey` is

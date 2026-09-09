@@ -31,6 +31,7 @@
 - [ContractConstructorResult](interfaces/ContractConstructorResult.md)
 - [ContractMaintenanceTxInterface](interfaces/ContractMaintenanceTxInterface.md)
 - [ContractStates](interfaces/ContractStates.md)
+- [ContractTypeMismatch](interfaces/ContractTypeMismatch.md)
 - [DeployedContract](interfaces/DeployedContract.md)
 - [FinalizedCallTxData](interfaces/FinalizedCallTxData.md)
 - [FinalizedCallTxPublicData](interfaces/FinalizedCallTxPublicData.md)
