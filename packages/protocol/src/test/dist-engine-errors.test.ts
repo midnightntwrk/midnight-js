@@ -100,7 +100,8 @@ describe('dist engine error gate', () => {
       engine.wrapKeepStateCall({
         transcript: transcriptForUnregisteredCircuit(),
         contractAddress: ledgerV9.sampleContractAddress(),
-        contractState: new ledgerV9.ContractState()
+        contractState: new ledgerV9.ContractState(),
+        ledgerParameters: 'initial'
       });
     } catch (error) {
       caught = error;
@@ -134,6 +135,8 @@ describe('dist engine error gate', () => {
             // A blank state: it declares no operation for the circuit, which is
             // the shortest real path to a failure raised inside the era arm.
             contractState: new ocrt3.ContractState().serialize(),
+            // Named explicitly: the failure under test is raised before the partitioner runs.
+            ledgerParameters: 'initial',
             transcript: {
               kind: 'unpartitioned',
               preState: ocrt3.StateValue.newCell(fieldValue(0x01)).encode(),
