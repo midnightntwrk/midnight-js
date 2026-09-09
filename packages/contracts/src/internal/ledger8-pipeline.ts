@@ -95,6 +95,7 @@ export type Ledger8Transcript<TState = DownConvertedState> = Pick<
   | 'partitionContext'
   | 'privateStateAfter'
   | 'zswapLocalState'
+  | 'postContractStateEncoded'
 > & {
   /** The state the execution ENDED on, as a live handle. See ADR-0011. */
   readonly postContractState: TState;
@@ -460,6 +461,13 @@ export interface Ledger8CallPipelineResult<TState> {
    */
   readonly nextContractState: TState;
   /**
+   * The same post-call state as an {@link EncodedStateValue} -- the form that
+   * outlives the runtime instance, and the one that is identical across
+   * `onchain-runtime-v3`, `ledger-v8` and `ledger-v9`. Era-agnostic code reads
+   * this; code that stays in this process can use the handle above.
+   */
+  readonly nextContractStateEncoded: EncodedStateValue;
+  /**
    * Proof data for every contract call this circuit made: always exactly one
    * entry, the root call, because a pre-fork contract cannot make a
    * cross-contract call.
@@ -647,6 +655,7 @@ export const runLedger8CallPipeline = async <TState>(
     publicTranscript: transcript.publicTranscript,
     partitionedTranscript,
     nextContractState: transcript.postContractState,
+    nextContractStateEncoded: transcript.postContractStateEncoded,
     calls: [
       {
         contractAddress,
@@ -655,6 +664,10 @@ export const runLedger8CallPipeline = async <TState>(
           // The state this call BOUND to: the very handle the circuit executed
           // against, not a second decode of the same bytes.
           contractState: downConverted,
+          // The same state, encoded. This one IS the snapshot's own primary
+          // state -- the value the handle was down-converted from -- so it is
+          // forwarded rather than re-encoded.
+          contractStateEncoded: snapshot.encoded,
           publicTranscript: transcript.publicTranscript,
           partitionedTranscript
         },

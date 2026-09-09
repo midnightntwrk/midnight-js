@@ -138,6 +138,13 @@ export {
 // The `AnyLedger8*` aliases stay internal -- they exist to widen the
 // era-dispatching IMPLEMENTATION signatures and are never a signature a caller
 // sees.
+export {
+  CURRENT_PIPELINE_ERA,
+  type CurrentPipelineEra,
+  type PipelineEra,
+  RETAINED_PIPELINE_ERA,
+  type RetainedPipelineEra
+} from './era';
 export type {
   Ledger8CallResultPrivate,
   Ledger8CallResultPublic,

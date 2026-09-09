@@ -26,7 +26,13 @@ import {
   type Ledger8ConstructorRuntime,
   type Ledger8DeployableContractState
 } from './deploy';
-import { type DownConvertedState, downConvertForExecution, type Ledger8CompactRuntime } from './down-convert';
+import {
+  type DownConvertedState,
+  downConvertForExecution,
+  type Ledger8ChargedState,
+  type Ledger8CompactRuntime,
+  type Ledger8StateValue
+} from './down-convert';
 import { executeCircuit, type ExecuteCircuitOptions, type Ledger8ExecutionRuntime, type TranscriptPojo } from './execute';
 import { assertSharedLedger8Instance } from './instance-guard';
 
@@ -37,7 +43,9 @@ export type {
   EncodedStateValue,
   ExecuteCircuitOptions,
   ExecuteConstructorOptions,
+  Ledger8ChargedState,
   Ledger8DeployableContractState,
+  Ledger8StateValue,
   TranscriptPojo,
   WrapKeepStateCallOptions
 };

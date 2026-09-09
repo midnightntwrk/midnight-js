@@ -37,6 +37,7 @@ import {
   type DeployContractOptionsWithPrivateState,
   type DeployedContract
 } from '../../deploy-contract';
+import type { CurrentPipelineEra, PipelineEra, RetainedPipelineEra } from '../../era';
 import {
   findDeployedContract,
   type FindDeployedContractOptionsStorePrivateState,
@@ -230,6 +231,49 @@ describe('an argument-taking retained-era contract works, not just a zero-argume
   });
 });
 
+describe('every result names the pipeline that produced it', () => {
+  // The fact a caller cannot get anywhere else. `public.version` and
+  // `deployTxData.version` answer a DIFFERENT question -- which ledger recorded
+  // the transaction -- and after the fork they disagree with this one: a
+  // retained-era call is recorded as a keep-state transaction tagged `'v9'`
+  // while every object in its result comes from `onchain-runtime-v3`. A caller
+  // branching on the record reaches for the wrong module.
+
+  type EitherEraCall =
+    | FinalizedCallTxData<Twin018, 'increment'>
+    | Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>;
+
+  it('tags both eras at the same path, with that era own literal', () => {
+    expectTypeOf<FinalizedCallTxData<Twin018, 'increment'>['era']>().toEqualTypeOf<CurrentPipelineEra>();
+    expectTypeOf<
+      Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['era']
+    >().toEqualTypeOf<RetainedPipelineEra>();
+    // Both literals belong to the ONE vocabulary the dispatch already resolves.
+    expectTypeOf<CurrentPipelineEra | RetainedPipelineEra>().toEqualTypeOf<PipelineEra>();
+  });
+
+  it('DISCRIMINATES: a union of the two eras narrows on `era` alone', () => {
+    // The property under test. Declaring `era: PipelineEra` on both arms would
+    // satisfy every assertion above and narrow nothing.
+    const narrow = (result: EitherEraCall): Uint8Array | undefined =>
+      result.era === 'ledger8' ? result.private.txBytes : undefined;
+
+    expectTypeOf(narrow).parameter(0).toEqualTypeOf<EitherEraCall>();
+    expectTypeOf(narrow).returns.toEqualTypeOf<Uint8Array | undefined>();
+  });
+
+  it('tags the asynchronous submit and the contract handles too', () => {
+    expectTypeOf<SubmittedCallTx<Twin018, 'increment'>['era']>().toEqualTypeOf<CurrentPipelineEra>();
+    expectTypeOf<
+      Ledger8SubmittedCallTx<Counter016Contract, 'increment'>['era']
+    >().toEqualTypeOf<RetainedPipelineEra>();
+    expectTypeOf<FoundContract<Twin018>['era']>().toEqualTypeOf<CurrentPipelineEra>();
+    expectTypeOf<Ledger8FoundContract<Counter016Contract>['era']>().toEqualTypeOf<RetainedPipelineEra>();
+    expectTypeOf<DeployedContract<Twin018>['era']>().toEqualTypeOf<CurrentPipelineEra>();
+    expectTypeOf<Ledger8DeployedContract<Counter016Contract>['era']>().toEqualTypeOf<RetainedPipelineEra>();
+  });
+});
+
 describe('the retained-era deploy publishes what it produced, and takes what a constructor needs', () => {
   // NOT OBSERVABLE END TO END: `deployContract`'s retained arm refuses with
   // `Ledger8DeployUnmaintainableError`, so nothing constructs a value of these
@@ -255,6 +299,7 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
 
   it('publishes the constructor result, as a handle AND as the bytes the address came from', () => {
     expectTypeOf<keyof Ledger8DeployedContract<Counter016Contract>>().toEqualTypeOf<
+      | 'era'
       | 'compiledContract'
       | 'contractAddress'
       | 'deployTxData'
@@ -312,6 +357,13 @@ describe('both eras resolve a call to the SAME result structure', () => {
   /** Private members the retained era adds. An era may add; it may not drop. */
   type RetainedEraOnlyPrivateMembers = 'txBytes';
 
+  /**
+   * Public members the retained era adds: the encoded form of the state handle
+   * it publishes. The current era publishes its post-state as a handle only,
+   * so there is nothing on that side for this to pair with.
+   */
+  type RetainedEraOnlyPublicMembers = 'nextContractStateEncoded';
+
   /** Top-level members the retained era adds. */
   type RetainedEraOnlyMembers = 'circuitId';
 
@@ -324,7 +376,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
 
   it('carries the same public members in BOTH eras, apart from the two excused above', () => {
     expectTypeOf<Exclude<keyof CurrentEraResult['public'], CurrentEraOnlyPublicMembers>>().toEqualTypeOf<
-      keyof RetainedEraResult['public']
+      Exclude<keyof RetainedEraResult['public'], RetainedEraOnlyPublicMembers>
     >();
   });
 
@@ -343,7 +395,11 @@ describe('both eras resolve a call to the SAME result structure', () => {
     type CurrentEraCall = ContractExecutable.ContractExecutable.ContractCall;
 
     expectTypeOf<keyof CurrentEraCall>().toEqualTypeOf<keyof Ledger8ContractCall>();
-    expectTypeOf<keyof CurrentEraCall['public']>().toEqualTypeOf<keyof Ledger8ContractCall['public']>();
+    // The one addition: the encoded form of the state this entry's handle
+    // holds. Nothing is dropped.
+    expectTypeOf<keyof CurrentEraCall['public']>().toEqualTypeOf<
+      Exclude<keyof Ledger8ContractCall['public'], 'contractStateEncoded'>
+    >();
     expectTypeOf<keyof CurrentEraCall['private']>().toEqualTypeOf<keyof Ledger8ContractCall['private']>();
   });
 

@@ -21,6 +21,7 @@ type ChargedState = OnchainRuntimeV3.ChargedState;
 type CostModel = OnchainRuntimeV3.CostModel;
 type Op<T> = OnchainRuntimeV3.Op<T>;
 
+import type { EncodedStateValue } from '../era/envelope';
 import type { PartitionContext } from '../shared/compose-types';
 import type { DownConvertedState } from './down-convert';
 
@@ -141,7 +142,12 @@ export interface Ledger8ExecutionRuntime {
  * v9-native `ContractCallPrototype`.
  *
  * `preContractState`/`postContractState` are {@link DownConvertedState}s, not
- * full pre-fork `ContractState`s: they carry only `.data`.
+ * full pre-fork `ContractState`s: they carry only `.data`. They are also the
+ * only members here that are LIVE HANDLES -- every other member of this type is
+ * plain data. `postContractStateEncoded` is the post-state's encoded form,
+ * carried beside the handle so a caller has a value that outlives the runtime
+ * instance; the pre-state's encoded form is the caller's own input, which
+ * `downConvertForExecution` already proves round-trips to it.
  *
  * `partitionContext` is the query-context state the call ran with, which the
  * carried state bytes do not hold — see {@link PartitionContext}. A composition
@@ -164,6 +170,17 @@ export interface TranscriptPojo {
   readonly privateTranscriptOutputs: AlignedValue[];
   readonly preContractState: DownConvertedState;
   readonly postContractState: DownConvertedState;
+  /**
+   * The post-call state as an {@link EncodedStateValue}: the same value
+   * {@link postContractState} holds, in the form that survives this process.
+   *
+   * `EncodedStateValue` is pinned identical across `onchain-runtime-v3`,
+   * `ledger-v8` and `ledger-v9` -- see this package's README and the
+   * cross-runtime assertions in `src/test/v8-down-convert.test.ts` -- so this is
+   * the member era-agnostic code reads, and the one that can be persisted,
+   * cloned or sent to a worker.
+   */
+  readonly postContractStateEncoded: EncodedStateValue;
   readonly privateStateAfter: unknown;
   readonly partitionContext: PartitionContext;
   readonly zswapLocalState: ZswapLocalState;
@@ -232,6 +249,11 @@ export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: L
     privateTranscriptOutputs: res.proofData.privateTranscriptOutputs,
     preContractState: state,
     postContractState: { data: res.context.currentQueryContext.state },
+    // Encoded HERE, where the retained runtime is in scope, rather than by the
+    // caller: `.encode()` is on the pre-fork `StateValue` this module already
+    // holds, and a caller reaching for it would be reaching through a handle
+    // whose type it cannot name.
+    postContractStateEncoded: res.context.currentQueryContext.state.state.encode(),
     privateStateAfter: res.context.currentPrivateState,
     partitionContext: {
       block: preCallBlock,

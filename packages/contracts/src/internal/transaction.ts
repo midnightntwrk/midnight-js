@@ -21,6 +21,7 @@ import { hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';
+import { CURRENT_PIPELINE_ERA } from '../era';
 import {
   CallTxFailedError,
   MixedEraScopeError,
@@ -213,6 +214,7 @@ export class TransactionContextImpl<
       await this.providers.privateStateProvider!.set(privateStateId, unprovenCallTxData.private.nextPrivateState);
     }
     return {
+      era: CURRENT_PIPELINE_ERA,
       private: unprovenCallTxData.private,
       public: {
         ...unprovenCallTxData.public,
@@ -374,6 +376,7 @@ const runScope = async <
     // returns `any`, which on its own would let a member fall off this rebuild
     // and reach a caller as `undefined` at a non-optional member.
     const nestedCallResult: CallResult<C, PCK> = {
+      era: CURRENT_PIPELINE_ERA,
       public: {
         nextContractState: unprovenCallTxData.public.nextContractState,
         partitionedTranscript: unprovenCallTxData.public.partitionedTranscript,

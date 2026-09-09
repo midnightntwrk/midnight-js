@@ -30,6 +30,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
 
+import type { PipelineEra } from '../era';
 import {
   EraArtifactMismatchError,
   EraInvariantViolationError,
@@ -155,19 +156,11 @@ export function requireV9Record(
   }
 }
 
-/**
- * Which execution pipeline an operation takes.
- *
- * Each member names the LEDGER ERA the pipeline executes against — `'ledger8'` runs against
- * ledger 8, `'ledger9'` against ledger 9 — never a toolchain version, and never which era is the
- * newest. A further ledger era ADDS a member instead of renaming one.
- *
- * Not a statement about the network — see {@link assertEraCompatible} for the pairing with the
- * head era, which is what decides whether the operation can run at all.
- *
- * @see {@link EraDispatch} for why the names are keyed to the ledger era.
- */
-export type PipelineEra = 'ledger8' | 'ledger9';
+// Declared on the PUBLIC surface, in `../era`, because results now publish it:
+// `src/internal` is hidden from consumers, and a published member whose type a
+// consumer cannot name is one they cannot write a signature against. Re-exported
+// here so this module's own callers keep importing it from where they always did.
+export type { PipelineEra } from '../era';
 
 /**
  * The era facts one operation resolves ONCE, at its asynchronous start, and then threads down as

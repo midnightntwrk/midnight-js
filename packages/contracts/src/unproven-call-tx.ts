@@ -29,6 +29,7 @@ import type {
   CallOptionsWithProviderDataDependencies
 } from './call';
 import { type ContractProviders } from './contract-providers';
+import { CURRENT_PIPELINE_ERA } from './era';
 import { IncompleteCallTxPrivateStateConfig, isEffectContractError } from './errors';
 import { type ContractStates, getPublicStates, getStates, type PublicContractStates } from './get-states';
 import * as Transaction from './internal/transaction';
@@ -148,6 +149,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
         : calleeResolver?.resolvedStates.get(String(address));
 
     return {
+      era: CURRENT_PIPELINE_ERA,
       public: {
         nextContractState: rootCall.public.contractState,
         partitionedTranscript: rootCall.public.partitionedTranscript,

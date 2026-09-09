@@ -214,7 +214,8 @@ const TRANSCRIPT_MEMBERS = [
   'privateTranscriptOutputs',
   'partitionContext',
   'privateStateAfter',
-  'zswapLocalState'
+  'zswapLocalState',
+  'postContractStateEncoded'
 ] as const;
 
 /**

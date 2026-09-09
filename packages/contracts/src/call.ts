@@ -29,6 +29,8 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { CallResultPrivateBase, CallResultPublicBase } from '@midnight-ntwrk/midnight-js-types';
 
+import type { CurrentPipelineEra } from './era';
+
 /**
  * Describes the target of a circuit invocation.
  */
@@ -193,4 +195,12 @@ export interface CallResult<C extends Contract.Any, PCK extends Contract.Provabl
    * for a call in the tree. Treat as confidential alongside {@link private}.
    */
   readonly calls: readonly ContractExecutable.ContractExecutable.ContractCall[];
+  /**
+   * The pipeline that produced this result: always the current era here.
+   *
+   * Read off the compiled artifact, NEVER off a transaction record — the two
+   * facts disagree after the fork, and only this one says which module the
+   * objects in this result came from.
+   */
+  readonly era: CurrentPipelineEra;
 }
