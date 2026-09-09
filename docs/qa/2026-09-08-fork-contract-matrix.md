@@ -1,18 +1,18 @@
-# AC0 across the rest of the contract surface — run report
+# The fork crossing across the rest of the contract surface — run report
 
 **Date:** 2026-09-08 / 2026-09-09
 **Branch:** `test/1006-ac0-contract-matrix`, stacked on `fix/1006-retained-segment-routing` at `c893bbb0`
 (runs 1-4 below predate that base and were measured at `5bc06ee9`, two commits behind it)
-**Harness:** `node packaging/ac0-smoke.mjs pnp`
+**Harness:** `node packaging/fork-matrix-smoke.mjs pnp`
 **Host:** macOS, Apple silicon, Docker Desktop; every image served from the local cache
 
 ## What was run
 
-The AC0 scenario on this branch is `packaging/ac0-smoke.mjs`: it stands up the
+The fork-crossing scenario on this branch is `packaging/fork-matrix-smoke.mjs`: it stands up the
 fork stack, installs the `fork-crossing` dApp persona from packed tarballs under
-Yarn PnP, and drives `packaging/ac0-entry.mjs` as a separate process, enacting
+Yarn PnP, and drives `packaging/fork-matrix-entry.mjs` as a separate process, enacting
 the fork mid-session. Its only contract was `counter-016` — the single pre-fork
-fixture this repository ships — so AC0's question had never been asked of
+fixture this repository ships — so the fork-crossing question had never been asked of
 anything but a counter.
 
 It is now asked of six more. `packaging/build-retained-twins.mjs` fetches
@@ -22,7 +22,7 @@ artifacts (language 0.23, Compact runtime 0.16.0, `checkRuntimeVersion('0.16.0')
 in the codegen). Those are wrapped as persona packages beside their current-era
 namesakes, so one install holds both toolchains' output for the same contract.
 
-Each retained twin is therefore put through the real AC0 shape:
+Each retained twin is therefore put through the real fork-crossing shape:
 
 > deployed on the ledger-8 chain → called there → **called again after the fork,
 > through the same call site**, which is the keep-state path.
@@ -63,7 +63,7 @@ Finding 1 carries a prototype that flips all four to passing; run 5's numbers ar
 kept there rather than folded in here, so the measured defect and the proposed
 fix stay separable.
 
-### Retained era — the real AC0 legs
+### Retained era — the real fork-crossing legs
 
 | Contract | pre-fork deploy | pre-fork call | post-fork keep-state call | envelope after that call |
 |---|---|---|---|---|
@@ -229,7 +229,7 @@ read. That is a materially different statement from "the envelope does not
 migrate", and it matters for anyone reasoning about how long the retained
 envelope survives on a live chain: as long as nobody calls the contract.
 
-### 3. AC0 is now 7/7 for the counter; `packaging/README.md` still says 6/7
+### 3. The fork crossing is now 7/7 for the counter; `packaging/README.md` still says 6/7
 
 The post-fork keep-state call the README records as **refused** by
 `assertHeadStateEraAgreement` — "the one remaining failure … a framework defect"

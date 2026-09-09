@@ -14,7 +14,7 @@
 //
 // Retained-era twins of the e2e suite's contracts.
 //
-// AC0's question -- deployed below the boundary, called above it -- can only be
+// The fork-crossing question -- deployed below the boundary, called above it -- can only be
 // asked of a contract the PRE-fork toolchain emitted. This repository ships one
 // such fixture, `counter-016`, so until now the question was asked of a counter
 // and of nothing else. These are the same `.compact` sources the e2e suite uses,
