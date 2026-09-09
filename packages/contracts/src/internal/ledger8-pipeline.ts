@@ -393,13 +393,10 @@ export interface Ledger8CallPipelineResult {
   /** Present exactly when the call moved shielded coins. */
   readonly guaranteedZswapOffer: Uint8Array | undefined;
   /**
-   * Always `undefined` today, and the reason is structural rather than a
-   * simplification: the retained execution leg emits one UNPARTITIONED
-   * operation sequence, so there is no partition to route a movement against
-   * and every movement lands in the guaranteed segment.
-   *
-   * @see {@link KeepStatePipeline} for why tightening this into a two-segment
-   *      expectation would be wrong.
+   * Present exactly when the call's own partition places a shielded movement in
+   * the fallible half. The pipeline resolves that partition before it builds
+   * the offer, so a movement the transcript places there is routed there rather
+   * than falling into the guaranteed segment.
    */
   readonly fallibleZswapOffer: Uint8Array | undefined;
 }
@@ -469,20 +466,40 @@ export const runLedger8CallPipeline = async <TState>(
     throw new Ledger8ShieldedSpendUnsupportedError(circuitId);
   }
 
-  // Built with NO partition information, and that is the only thing available
-  // here: the retained execution leg emits one unpartitioned op sequence, and
-  // the guaranteed/fallible split is computed inside the composition below,
-  // after this offer has to be an option on it. So every movement this call
-  // makes lands in the GUARANTEED segment. Do not "tighten" this into a
-  // two-segment expectation -- there is no partition to route against at this
-  // point in the order, and a call whose coins are placed in the wrong segment
-  // is refused by the ledger rather than silently mis-split.
   // Also before the offer is built, and for the same reason: a recipient this
   // arm cannot resolve is refused by name here rather than by a bare assertion
   // inside the offer builder.
   assertRecipientsResolvable(transcript.zswapLocalState, request.encryptionPublicKey, circuitId);
 
-  const offers = zswapStateToSegmentedOffer(transcript.zswapLocalState, request.encryptionPublicKey);
+  // Resolved BEFORE the offer is built, which is what lets the offer be routed
+  // at all. Without it `zswapStateToSegmentedOffer`'s partition argument
+  // defaults to `[undefined, undefined]`, `segmentForMatch` takes its "no
+  // segment information" path, and every movement lands in the guaranteed
+  // segment -- unbalanceable for a circuit whose transcript is wholly fallible,
+  // which the wallet reports as `Wallet.InsufficientFunds`.
+  //
+  // Partitioned ONCE: the pair resolved here is handed to `composeCallTx` below
+  // as an already-partitioned transcript, so the composer does not repeat the
+  // work. Two partitions of the same transcript would have to agree, and
+  // nothing would notice if they stopped.
+  const partitionedTranscript = era.partitionCallTranscript({
+    circuitId,
+    contractAddress,
+    transcript: {
+      kind: 'unpartitioned',
+      preState: snapshot.encoded,
+      publicTranscript: transcript.publicTranscript,
+      partitionContext: transcript.partitionContext
+    },
+    ledgerParameters: snapshot.state.ledgerParameters
+  });
+
+  const offers = zswapStateToSegmentedOffer(
+    transcript.zswapLocalState,
+    request.encryptionPublicKey,
+    undefined,
+    partitionedTranscript
+  );
   const guaranteedZswapOffer = offers.guaranteed?.serialize();
   const fallibleZswapOffer = offers.fallible?.serialize();
 
@@ -515,11 +532,17 @@ export const runLedger8CallPipeline = async <TState>(
         // initial parameters partitions the transcript with a cost model the chain does not use,
         // and the node refuses the guaranteed segment for running out of gas.
         ledgerParameters: snapshot.state.ledgerParameters,
+        // Already split, above -- the same pair the offer was routed against, so
+        // the two cannot describe different partitions. Note what this does NOT
+        // claim: a caller-supplied pair is not passed through untouched, it is
+        // refused when it carries neither half. Why that refusal cannot reach
+        // the partitioner's own answer sent back through it is recorded under
+        // "Resolving a call's transcript pair" in
+        // `protocol/docs/compose-refusal-order.md`.
         transcript: {
-          kind: 'unpartitioned',
-          preState: snapshot.encoded,
-          publicTranscript: transcript.publicTranscript,
-          partitionContext: transcript.partitionContext
+          kind: 'partitioned',
+          guaranteed: partitionedTranscript[0],
+          fallible: partitionedTranscript[1]
         },
         privateTranscriptOutputs: transcript.privateTranscriptOutputs,
         input: transcript.input,

@@ -105,6 +105,37 @@ export const INITIAL_LEDGER_PARAMETERS = 'initial';
 export type LedgerParametersOption = Uint8Array | typeof INITIAL_LEDGER_PARAMETERS;
 
 /**
+ * A call's guaranteed/fallible transcript pair, as the ledger's partitioner
+ * answers it. Either member is absent when that segment carries nothing.
+ */
+export type PartitionedCallTranscript = [
+  Transcript<AlignedValue> | undefined,
+  Transcript<AlignedValue> | undefined
+];
+
+/**
+ * What an era needs to partition one call's transcript, which is strictly less
+ * than composing the call: no operation registry, no private outputs, no
+ * transaction envelope. The era supplies its own version.
+ */
+export interface EraPartitionCallOptions {
+  readonly circuitId: string;
+  readonly contractAddress: string;
+  readonly transcript: CallTranscriptSource;
+  /**
+   * The chain's own serialized ledger parameters at the block this call is
+   * built against, or {@link INITIAL_LEDGER_PARAMETERS} to partition against
+   * the era's initial cost model instead.
+   *
+   * Required, exactly as on `ComposeCallEntry`. The partitioner runs on this
+   * path too, so an optional field here would reopen the silent
+   * wrong-cost-model fallback that {@link LedgerParametersOption} exists to
+   * close.
+   */
+  readonly ledgerParameters: LedgerParametersOption;
+}
+
+/**
  * One contract call in a call transaction.
  *
  * `contractState` is the raw, serialized state the call is dispatched against,

@@ -236,23 +236,30 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
 
     // IDENTICAL to the retained arm's order, which is the claim: the two arms
     // differ only in which era object they are handed. `wrapKeepStateCall` is
-    // not in it -- see this file's own header for why, and note that the
-    // transcript still crosses as `'unpartitioned'`, which is what makes the
-    // era's composition perform the very binding that method performs.
+    // not in it -- see this file's own header for why. The transcript crosses
+    // ALREADY partitioned: the pipeline resolves the split to route the Zswap
+    // offer, so the composition receives the pair rather than redrawing it.
     // The order is the retained arm's, plus the one step that only keep-state
-    // needs. Read the ERAS in it, not just the names: the first two calls are
-    // the RETAINED era's -- it is the only one that can read these bytes -- and
-    // the last is the CURRENT era's. That split IS keep-state.
+    // needs. Read the ERAS in it, not just the names: the two reads are the
+    // RETAINED era's -- it is the only one that can read these bytes -- and
+    // everything after execution is the CURRENT era's. That split IS
+    // keep-state, and the log NAMES the era for each step, so this pins which
+    // one served it rather than only the order they ran in.
     expect(log).toEqual([
-      'era.extractState',
-      'era.decodeContractState',
+      'era.v8.extractState',
+      'era.v8.decodeContractState',
       'engine.downConvertForExecution',
       'engine.executeCircuit',
+      // The CURRENT era's, like the composition below it: the pipeline
+      // partitions with the era it composes with, so the offer is routed
+      // against the same split the composer is handed. Pre-fork that is the
+      // retained era; here the two differ, which is why the era is pinned.
+      'era.v9.partitionCallTranscript',
       'engine.reexpressOperationsForCurrentEra',
-      'era.composeCallTx'
+      'era.v9.composeCallTx'
     ]);
     expect(composed?.calls).toHaveLength(1);
-    expect(composed?.calls[0]?.transcript.kind).toBe('unpartitioned');
+    expect(composed?.calls[0]?.transcript.kind).toBe('partitioned');
 
     // NOT the chain's own bytes: the current composer cannot deserialize a
     // retained envelope at all. What it gets is the operation registry
@@ -299,9 +306,10 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       )
     });
 
-    // Unreachable as a two-segment split on this arm as well, and for the same
-    // structural reason: the partition is computed inside the composition,
-    // after the offer must already be an option on it.
+    // GUARANTEED because this recording's ops PARTITION that way, not because
+    // the arm cannot route: this arm resolves the split before it builds the
+    // offer too. See the retained arm's 'routes a coin the partition places in
+    // the fallible half' for the other direction.
     expect(result.guaranteedZswapOffer).toBeInstanceOf(Uint8Array);
     expect(result.fallibleZswapOffer).toBeUndefined();
   });
