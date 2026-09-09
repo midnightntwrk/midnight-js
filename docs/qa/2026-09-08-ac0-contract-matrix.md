@@ -156,7 +156,7 @@ pipeline's own comment at `ledger8-pipeline.ts:460` describes.
 
 #### Fixed and verified: routing the offer fixes both, on both sides
 
-Landed as `f290e05b`:
+Landed on `fix/1006-retained-segment-routing`, which this branch stacks on:
 
 - `shared/assemble-call.ts` — export `partitionCallTranscript`, a thin wrapper on
   the existing `resolvePartition`. No new logic; `assembleCallPrototype`
