@@ -114,8 +114,15 @@ Do not report these as defects; do note where they apply:
 - **Version tagging.** A retained-era finalized record is deliberately
   `VersionedFinalizedTxData` rather than being narrowed to one era; see the
   comment on `submitLedger8CallTx`. Narrowing it would be the defect.
-- **`packages/types` is declarations-only.** Runtime helpers live in
-  `packages/utils`. A missing helper in `types` is not a shape inconsistency.
+- **`packages/types` is mostly, but NOT only, declarations.** It ships around
+  29 runtime values today: the provider factories (`createProofProvider`,
+  `createWalletProvider`, `createMidnightProvider`), the key-material helpers,
+  `unwrapV9`, the export limits, the status and segment constants, `LogLevel`,
+  nine error classes and `ZKConfigRegistry`. Keeping new runtime helpers in
+  `packages/utils` is a real convention and still holds for new code, so a
+  missing *helper* in `types` is not a shape inconsistency — but do not excuse
+  a missing *declaration* there on the grounds that the package cannot hold
+  one. See `2026-09-09-public-api-result-shape-audit.md` §6 for the inventory.
 - **Privacy split.** `public` versus `private` nesting is intentional and
   load-bearing. Report a value on the WRONG side; do not report the split
   itself.
