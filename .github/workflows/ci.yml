@@ -34,6 +34,7 @@ jobs:
       build_shared: ${{ steps.build-targets.outputs.shared }}
       build_mn_js: ${{ steps.build-targets.outputs.midnight-js }}
       build_t_js: ${{ steps.build-targets.outputs.testkit-js }}
+      build_consumer_e2e: ${{ steps.build-targets.outputs.consumer-e2e }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
@@ -60,6 +61,8 @@ jobs:
             testkit-js:
               - 'packages/**'
               - 'testkit-js/**'
+            consumer-e2e:
+              - 'consumer-e2e/**'
 
   ci-midnightjs:
     needs: ci
@@ -75,12 +78,12 @@ jobs:
 
   # The only lane that exercises the framework as a consumer installs it: packed
   # tarballs, isolated linker, outside the workspace.
-  packaging:
+  consumer-e2e:
     needs: ci
-    name: Packaging
+    name: Consumer E2E
     with:
-      should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
-    uses: ./.github/workflows/ci-packaging.yml
+      should_run: ${{ needs.ci.outputs.build_consumer_e2e == 'true' || needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
+    uses: ./.github/workflows/ci-consumer-e2e.yml
     secrets: inherit
 
   # The fork-crossing gate. Red on purpose until the keep-state partitioning is
@@ -89,7 +92,7 @@ jobs:
     needs: ci
     name: Hard fork
     with:
-      should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
+      should_run: ${{ needs.ci.outputs.build_consumer_e2e == 'true' || needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
     uses: ./.github/workflows/ci-hardfork.yml
     secrets: inherit
 

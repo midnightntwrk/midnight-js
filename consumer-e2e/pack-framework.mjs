@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Packs every publishable workspace into `packaging/.tarballs/` and writes a
+// Packs every publishable workspace into `consumer-e2e/.tarballs/` and writes a
 // manifest of name -> tarball path.
 //
 // This is what makes the personas *consumers* rather than workspace members.
@@ -27,9 +27,9 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-const PACKAGING_DIR = path.dirname(fileURLToPath(import.meta.url));
-const REPOSITORY_ROOT = path.resolve(PACKAGING_DIR, '..');
-const TARBALL_DIR = path.join(PACKAGING_DIR, '.tarballs');
+const CONSUMER_E2E_DIR = path.dirname(fileURLToPath(import.meta.url));
+const REPOSITORY_ROOT = path.resolve(CONSUMER_E2E_DIR, '..');
+const TARBALL_DIR = path.join(CONSUMER_E2E_DIR, '.tarballs');
 const MANIFEST_PATH = path.join(TARBALL_DIR, 'manifest.json');
 
 /** Workspaces that ship to a registry. `private: true` ones are not consumable. */
@@ -72,7 +72,7 @@ const main = () => {
       cwd: REPOSITORY_ROOT,
       stdio: 'inherit'
     });
-    manifest[name] = path.relative(PACKAGING_DIR, target);
+    manifest[name] = path.relative(CONSUMER_E2E_DIR, target);
   }
 
   writeFileSync(MANIFEST_PATH, `${JSON.stringify({ packages: manifest }, null, 2)}\n`, 'utf8');

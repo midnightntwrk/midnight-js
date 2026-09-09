@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Drives the AC0 fork-crossing scenario (spec AC0/FR0).
+// Drives the fork-crossing scenario.
 //
 // It owns the chain and the dApp owns the session: this script stands up the fork
 // stack, installs the dApp persona from packed tarballs, then hands control to
@@ -35,15 +35,33 @@ import {
   setContainersConfiguration
 } from '@midnight-ntwrk/testkit-js';
 
+import { buildRetainedTwins } from './build-retained-twins.mjs';
 import { buildPersona, stageTarballs } from './linker-smoke.mjs';
-import { readManifest, REPOSITORY_ROOT } from './personas.mjs';
+import { readManifest, REPOSITORY_ROOT, resolveContractSelection } from './personas.mjs';
 
 const PERSONA = 'fork-crossing';
-const LINKER = process.argv[2] ?? 'pnp';
+const argv = process.argv.slice(2);
+const LINKER = argv.find((argument) => !argument.startsWith('--')) ?? 'pnp';
+
+/**
+ * The contracts this run covers, defaulting to the whole matrix.
+ *
+ * Sharded one contract per CI job: the legs are strictly sequential and the
+ * proving in them is what the run costs, so splitting the matrix is what shortens
+ * it. A shard also builds only its OWN retained twin, which is why the 146 MB of
+ * `fee-mint` prover keys stop being everyone's bill.
+ *
+ *   node consumer-e2e/fork-matrix-smoke.mjs pnp --contracts=simple
+ */
+const CONTRACTS_FLAG = '--contracts=';
+const requestedContracts = argv
+  .filter((argument) => argument.startsWith(CONTRACTS_FLAG))
+  .flatMap((argument) => argument.slice(CONTRACTS_FLAG.length).split(','));
+const SELECTION = resolveContractSelection(requestedContracts.length === 0 ? undefined : requestedContracts);
 /** The genesis mint seed the dev preset funds; the same one the local environment uses. */
 const WALLET_SEED = '0000000000000000000000000000000000000000000000000000000000000001';
 
-const logger = createLogger(path.join(REPOSITORY_ROOT, 'packaging', 'ac0.log'));
+const logger = createLogger(path.join(REPOSITORY_ROOT, 'consumer-e2e', 'fork-matrix.log'));
 
 // The compose files live in `testkit-js/`, and the default configuration resolves
 // them against `process.cwd()` -- which for this script is the repository root.
@@ -58,7 +76,7 @@ setContainersConfiguration({
 /**
  * Runs the dApp, enacting the fork when it asks.
  *
- * The handshake is two lines: the dApp prints `AC0_AWAIT_FORK` when its pre-fork
+ * The handshake is two lines: the dApp prints `FORK_AWAIT` when its pre-fork
  * legs are done, and this script answers `FORK_ENACTED` once the chain has
  * finalized past the boundary. That is what keeps the fork *inside* one session.
  */
@@ -70,13 +88,28 @@ const runScenario = (cwd, linker, environment, contractDir, enactFork) =>
       proofServerV9: environment.postForkProofServer,
       walletSeed: WALLET_SEED,
       retainedZkConfigPath: contractDir,
+      // The ZK artifacts each matrix contract proves against. Handed over as
+      // paths rather than derived in the dApp: the persona's layout is this
+      // script's doing, and a second copy of that knowledge would go stale on
+      // the first change to it.
+      matrixZkConfigPaths: Object.fromEntries(
+        SELECTION.current.map((key) => [key, path.join(cwd, 'contracts', key)])
+      ),
+      // Which contracts this shard is answerable for. The dApp narrows both its
+      // matrices to these, so a shard cannot report on a leg it never ran.
+      contracts: SELECTION,
+      // The retained twins, under the same keys their current-era namesakes use,
+      // so the dApp can pair the two eras of one contract without a second table.
+      retainedMatrixZkConfigPaths: Object.fromEntries(
+        SELECTION.retained.map((key) => [key, path.join(cwd, 'contracts', `retained-${key}`)])
+      ),
       logPath: path.join(cwd, 'dapp.log')
     };
 
     const [command, argv] = linker.runCommand(['entry.mjs']);
     const child = spawn(command, argv, {
       cwd,
-      env: { ...process.env, AC0_CONFIG: JSON.stringify(config) },
+      env: { ...process.env, FORK_CONFIG: JSON.stringify(config) },
       stdio: ['pipe', 'pipe', 'inherit']
     });
 
@@ -93,14 +126,14 @@ const runScenario = (cwd, linker, environment, contractDir, enactFork) =>
         buffered = buffered.slice(newline + 1);
         process.stdout.write(`[dapp] ${line}\n`);
 
-        if (line.trim() === 'AC0_AWAIT_FORK') {
+        if (line.trim() === 'FORK_AWAIT') {
           enactFork(contractAddress)
             .then(() => child.stdin.write('FORK_ENACTED\n'))
             .catch(reject);
-        } else if (line.startsWith('AC0_CONTRACT ')) {
-          contractAddress = line.slice('AC0_CONTRACT '.length).trim();
-        } else if (line.startsWith('AC0_RESULT ')) {
-          result = line.slice('AC0_RESULT '.length);
+        } else if (line.startsWith('FORK_CONTRACT ')) {
+          contractAddress = line.slice('FORK_CONTRACT '.length).trim();
+        } else if (line.startsWith('FORK_RESULT ')) {
+          result = line.slice('FORK_RESULT '.length);
         }
         newline = buffered.indexOf('\n');
       }
@@ -127,10 +160,23 @@ const main = async () => {
     process.stdout.write('Standing up the fork stack...\n');
     const preFork = await environment.start();
 
+    // Before the install, because the persona copies these directories into
+    // itself: a twin built afterwards would not be in the tree that gets linked.
+    process.stdout.write(
+      `Building the retained-era contract twins (compactc 0.31.1): ${SELECTION.retained.join(', ') || '(none)'}...\n`
+    );
+    const built = buildRetainedTwins(SELECTION.retained);
+    process.stdout.write(
+      built.length === 0 ? 'Retained twins already built.\n' : `Built retained twins: ${built.join(', ')}\n`
+    );
+
     process.stdout.write('Installing the dApp persona from packed tarballs...\n');
     const manifest = readManifest();
     stageTarballs(manifest);
-    const { cwd, linker } = buildPersona(PERSONA, LINKER, manifest, 'ac0-entry');
+    const { cwd, linker } = buildPersona(PERSONA, LINKER, manifest, 'fork-matrix-entry', [
+      ...SELECTION.current,
+      ...SELECTION.retained.map((key) => `retained-${key}`)
+    ]);
     linker.install(cwd);
 
     outcome = await runScenario(
@@ -167,10 +213,10 @@ const main = async () => {
 
   process.stdout.write(`${JSON.stringify(outcome.result, null, 2)}\n`);
   if (outcome.code !== 0) {
-    process.stderr.write('::error::the AC0 scenario did not complete\n');
+    process.stderr.write('::error::the fork-crossing scenario did not complete\n');
     process.exit(1);
   }
-  process.stdout.write('AC0 scenario passed.\n');
+  process.stdout.write('Fork-crossing scenario passed.\n');
 };
 
 await main();

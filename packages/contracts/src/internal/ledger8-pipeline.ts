@@ -35,6 +35,8 @@ import type {
   LedgerVersion,
   TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
+import type { AlignedValue, Op } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { PartitionedTranscript } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PublicDataProvider, RawContractState } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -64,14 +66,17 @@ import { assertVerifierKeyMatches } from './verifier-key';
  * replay harness requires the fixture to carry it, which is what makes a
  * recording's own claim about which circuit it recorded checkable.
  *
- * Three members of the engine's result are deliberately left out.
+ * Two members of the engine's result are deliberately left out. `result` USED to
+ * be a third: it was narrowed away here and so could not reach a caller, even
+ * though the recording carried it and the current era answers with it.
  *
- * @see {@link KeepStatePipeline} for which three, and why nothing is lost by
+ * @see {@link KeepStatePipeline} for which two, and why nothing is lost by
  *      dropping them.
  */
 export type Ledger8Transcript = Pick<
   TranscriptPojo,
   | 'circuitId'
+  | 'result'
   | 'input'
   | 'output'
   | 'publicTranscript'
@@ -390,6 +395,28 @@ export interface Ledger8CallPipelineResult {
   readonly txBytes: Uint8Array;
   readonly circuitId: string;
   readonly nextPrivateState: unknown;
+  /**
+   * The circuit's own return value.
+   *
+   * Carried rather than dropped: the retained execution leg computes it -- it
+   * has to, it ran the circuit -- and answers with it on
+   * `TranscriptPojo.result`. Stopping it here made it reachable in the current
+   * era only, and by omission rather than by any decision.
+   */
+  readonly result: unknown;
+  /** The ZK input the circuit was executed against. */
+  readonly input: AlignedValue;
+  /** The circuit's ZK output. */
+  readonly output: AlignedValue;
+  /** The private transcript outputs the execution produced. */
+  readonly privateTranscriptOutputs: AlignedValue[];
+  /** The public transcript the execution produced, unpartitioned. */
+  readonly publicTranscript: Op<AlignedValue>[];
+  /**
+   * The guaranteed/fallible pair this call was composed against -- the same one
+   * the Zswap offer was routed with, resolved once above.
+   */
+  readonly partitionedTranscript: PartitionedTranscript;
   /** Present exactly when the call moved shielded coins. */
   readonly guaranteedZswapOffer: Uint8Array | undefined;
   /**
@@ -559,6 +586,12 @@ export const runLedger8CallPipeline = async <TState>(
     txBytes,
     circuitId,
     nextPrivateState: transcript.privateStateAfter,
+    result: transcript.result,
+    input: transcript.input,
+    output: transcript.output,
+    privateTranscriptOutputs: transcript.privateTranscriptOutputs,
+    publicTranscript: transcript.publicTranscript,
+    partitionedTranscript,
     guaranteedZswapOffer,
     fallibleZswapOffer
   };

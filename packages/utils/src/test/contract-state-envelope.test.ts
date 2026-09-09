@@ -56,6 +56,10 @@ describe('contractStateEnvelopeVersion', () => {
     ['a verifier key rather than a contract state', 'midnight:verifier-key[v6]'],
     // The transaction envelope, whose own `[vN]` is unrelated to either era above.
     ['a transaction rather than a contract state', 'midnight:transaction[v9]'],
+    // The tightest cross-family case: `[v8]` is a live, SUPPORTED number in both this family and
+    // the ledger-parameters one, so keying on the bracketed number instead of the whole tag would
+    // date these bytes as a v9 contract state and hand them to a state decoder.
+    ['ledger parameters rather than a contract state', 'midnight:ledger-parameters[v8]'],
     ['a foreign namespace', 'notmidnight:contract-state[v8]']
   ])('refuses %s', (_label, tag) => {
     expect(() => contractStateEnvelopeVersion(envelope(tag))).toThrow(TagParseError);
