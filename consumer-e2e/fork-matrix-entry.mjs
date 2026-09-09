@@ -422,14 +422,18 @@ const RETAINED_MATRIX = [
     // The second call is what a silently reset state would fail: minting again
     // would still succeed and still report `SucceedEntirely`, and the balance of
     // a colour minted before the boundary would read 0 instead of the amount.
-    postFork: [
-      { circuitId: 'mintUnshieldedToSelfTest', args: () => [new Uint8Array(32).fill(8), MINT_AMOUNT] },
-      {
-        circuitId: 'getUnshieldedBalanceTest',
-        args: (context) => [context.preForkColor],
-        expect: MINT_AMOUNT
-      }
-    ]
+    // ONE call, and it is the balance read rather than a second mint. Two calls
+    // is what this leg tried first, and it established why it cannot: the first
+    // post-fork call migrates the state envelope, and the retained pipeline then
+    // refuses the second with `RetainedArtifactOnCurrentEraStateError`. So a
+    // retained contract admits exactly one call through retained artifacts after
+    // the boundary, and this spends it on the measurement rather than on a mint
+    // that proves nothing about surviving state.
+    postFork: {
+      circuitId: 'getUnshieldedBalanceTest',
+      args: (context) => [context.preForkColor],
+      expect: MINT_AMOUNT
+    }
   },
   {
     key: 'shielded',
@@ -861,7 +865,12 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
 await probe('pre-fork deploy of a current-era contract', async () => {
   const zkConfigPath = config.matrixZkConfigPaths?.simple;
   if (zkConfigPath === undefined) {
-    throw new Error("the driver passed no ZK artifact path for 'simple'");
+    // SKIPPED, not refused. This question needs `simple`'s artifacts and the
+    // matrix is sharded one contract per job, so six of the seven shards do not
+    // install them. Recording `refused` there answered a question about the fork
+    // with a message about a missing file -- noise wearing a measurement's
+    // clothes.
+    return 'skipped: this shard does not install the current-era `simple` artifacts';
   }
   const { Contract } = await import('@midnight-ntwrk/fork-current-simple');
   const compiledContract = CompiledContract.withCompiledFileAssets(
@@ -988,6 +997,63 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
       // state is distinguishable from one that leaves it in the retained shape.
       envelopeAfterCall: state === null ? 'absent' : envelopeTag(state.raw)
     };
+  });
+}
+
+// ── (c2) a migrated contract, called a SECOND time ────────────────────────────
+//
+// A probe, not an assertion: the answer decides a product question about the
+// fork window and is not something the framework has committed to.
+//
+// The keep-state leg above establishes that the FIRST post-fork call succeeds
+// and migrates the state envelope from the retained schema to the current one.
+// What nothing had asked until now is whether the contract is callable after
+// that. This asks it, once per contract, with the same artifacts the successful
+// call used.
+//
+// What makes the answer matter rather than merely interesting: migration keeps
+// the RETAINED verifier keys. `reexpressOperationsForCurrentEra` copies
+// `entryPoint.verifierKey` unchanged into a ledger-v9 `ContractState`, so after
+// the boundary the contract holds current-era state over old keys. If the
+// retained arm refuses on the envelope and the current-era arm cannot be handed
+// a retained contract at all -- the two eras' contract shapes are deliberately
+// not interchangeable -- then a pre-fork contract is callable exactly once after
+// the fork, and that is a fork-window limit a consumer has to be told about
+// rather than discover.
+for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retained, candidate.key))) {
+  await probe(`a migrated ${entry.key}, called a second time`, async () => {
+    const deployed = retainedDeployments.get(entry.key);
+    if (deployed === undefined) {
+      return 'skipped: its pre-fork deploy did not complete';
+    }
+    const providers = retainedProvidersFor('v9', session.wallet, entry.key);
+
+    // Recorded before the attempt, so a refusal can be read against what the
+    // chain actually held rather than against an assumption about it.
+    const before = await providers.publicDataProvider.queryRawContractState(deployed.contractAddress);
+    const envelopeBefore = before === null ? 'absent' : envelopeTag(before.raw);
+
+    // The first post-fork call's own circuit and arguments, stripped of
+    // `capture` and `expect`: this probe is about whether the call is ADMITTED,
+    // and an assertion on its return value would turn an answer into a failure.
+    const [{ circuitId, args }] = [entry.postFork].flat();
+    const context = { ...(retainedCaptures.get(entry.key) ?? {}), ...(await walletContext(session.wallet)) };
+
+    try {
+      const outcome = await callRetained(
+        `a migrated ${entry.key}, called a second time`,
+        entry.key,
+        providers,
+        deployed.contractAddress,
+        { circuitId, args },
+        context
+      );
+      return { envelopeBefore, retainedArm: 'accepted', ...outcome };
+    } catch (error) {
+      // The refusal IS the finding, so it is returned rather than rethrown --
+      // `probe` would otherwise colour the run's exit code with an answer.
+      return { envelopeBefore, retainedArm: `refused: ${describeError(error)}` };
+    }
   });
 }
 
