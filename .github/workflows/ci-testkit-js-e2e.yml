@@ -36,6 +36,19 @@ on:
         description: Midnight network to use (testnet/devnet/undeployed)
         required: true
         default: 'undeployed'
+    # Declared so a caller can hand over these four credentials instead of the
+    # whole repository's secrets. Only the packages token is required; the
+    # Docker Hub pair and the reporting token are absent in some repositories,
+    # and every step that uses them tolerates an empty value.
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE:
+        required: true
+      DOCKERHUB_USERNAME:
+        required: false
+      DOCKERHUB_TOKEN:
+        required: false
+      GH_TOKEN:
+        required: false
 
 concurrency:
   group: TK-JS-e2e-${{ github.workflow }}-${{ inputs.testkit_docker_env || 'default' }}-${{ github.event.pull_request.number || github.ref }}

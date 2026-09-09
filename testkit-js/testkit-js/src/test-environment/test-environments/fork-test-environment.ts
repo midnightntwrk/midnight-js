@@ -55,7 +55,12 @@ const NODE_PORT = 9944;
 const INDEXER_PORT = 8088;
 const PROOF_SERVER_PORT = 6300;
 
-/** The node's address on the compose project network, which is how the toolkit container reaches it. */
+/**
+ * The node's address on the compose project network, which is how the toolkit container reaches it.
+ *
+ * Plain `ws`: the node serves no TLS and there is no terminator in front of it on that network.
+ */
+// nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
 const NODE_INTERNAL_WS_URL = `ws://node:${NODE_PORT}`;
 
 /**
