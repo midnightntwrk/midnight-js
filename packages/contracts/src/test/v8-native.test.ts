@@ -39,10 +39,12 @@ import {
   ComposeFailedError,
   ComposeOptionError,
   type LedgerEra,
+  loadLedger8,
   loadLedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
 import { type Recipient } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
+  LedgerParameters,
   type ProvingProvider,
   sampleCoinPublicKey,
   sampleEncryptionPublicKey
@@ -165,11 +167,29 @@ type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeo
   readonly seen: SeenPayloads;
 };
 
-const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState => ({
-  version: protocolVersion === PRE_FORK_PROTOCOL_VERSION ? 'v8' : 'v9',
-  protocolVersion,
-  raw
+// Minted per era, because a block's parameters are era-tagged and the arm that composes reads them
+// with its OWN era: a pre-fork block's parameters go to the retained composer and a post-fork
+// block's to the current one. Handing either the other's bytes is refused on the header tag, which
+// is the whole reason this option exists.
+let retainedLedgerParameters: Uint8Array;
+let currentLedgerParameters: Uint8Array;
+
+beforeAll(async () => {
+  retainedLedgerParameters = (await loadLedger8()).LedgerParameters.initialParameters().serialize();
+  currentLedgerParameters = LedgerParameters.initialParameters().serialize();
 });
+
+const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState => {
+  const preFork = protocolVersion === PRE_FORK_PROTOCOL_VERSION;
+  return {
+    version: preFork ? 'v8' : 'v9',
+    protocolVersion,
+    raw,
+    // Served from the same read as `raw`, which is what a real provider does and what the pipeline
+    // now requires rather than silently substituting the initial cost model.
+    ledgerParameters: preFork ? retainedLedgerParameters : currentLedgerParameters
+  };
+};
 
 /**
  * The committed recording with its single shielded output re-pointed at a
@@ -383,11 +403,16 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     // composition performs exactly the binding that method performs, and its
     // result is a live ledger handle that may not cross this package boundary.
     expect(log).toEqual([
-      'era.extractState',
-      'era.decodeContractState',
+      'era.v8.extractState',
+      'era.v8.decodeContractState',
       'engine.downConvertForExecution',
       'engine.executeCircuit',
-      'era.composeCallTx'
+      // Between execution and composition, and it has to be: the Zswap offer is
+      // routed against this split, and it becomes an option on the composition.
+      // The RETAINED era draws it here because on this arm it is also the one
+      // that composes -- the log names the era so that stays checked.
+      'era.v8.partitionCallTranscript',
+      'era.v8.composeCallTx'
     ]);
     expect(result.txBytes).toBeInstanceOf(Uint8Array);
     // Exactly ONE call: the retained era has no call tree to express, and a
@@ -396,7 +421,10 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     // The state handed to the composition is the RAW envelope as read from
     // chain, which is what carries the registered operation and its key.
     expect(composed?.calls[0]?.contractState).toBe(v6Envelope);
-    expect(composed?.calls[0]?.transcript.kind).toBe('unpartitioned');
+    // ALREADY partitioned: the pipeline resolved the split above to route the
+    // offer, and hands the composer that pair rather than making it repeat the
+    // work on the raw op sequence.
+    expect(composed?.calls[0]?.transcript.kind).toBe('partitioned');
   });
 
   it('emits a transaction the RETAINED ledger tagged, and the two eras tag differently', async () => {
@@ -471,15 +499,123 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     // The recorded circuit really does move a coin -- one contract-owned output
     // -- so there is an offer to place at all.
     expect(recording.transcript.zswapLocalState.outputs).toHaveLength(1);
-    // GUARANTEED only, and a two-segment split is UNREACHABLE on this arm
-    // rather than merely unimplemented: the retained execution leg emits one
-    // unpartitioned op sequence, and the guaranteed/fallible split is computed
-    // inside the composition, after the offer has to be an option on it. Do not
-    // tighten this into a both-segments expectation.
+    // GUARANTEED because this recording's ops PARTITION that way, not because
+    // the arm cannot route: the pipeline now resolves the split before it builds
+    // the offer, so a fallible transcript places its movements in the fallible
+    // offer. See 'routes a coin the partition places in the fallible half'.
     expect(result.guaranteedZswapOffer).toBeInstanceOf(Uint8Array);
     expect(result.fallibleZswapOffer).toBeUndefined();
     expect(composed?.guaranteedZswapOffer).toBe(result.guaranteedZswapOffer);
     expect(composed?.fallibleZswapOffer).toBeUndefined();
+  });
+
+  // The regression #731/#877 named, on the arm that did not have it. Before the
+  // pipeline resolved the partition ahead of building the offer, the routing
+  // helper's fourth argument defaulted to `[undefined, undefined]` and EVERY
+  // movement went to the guaranteed segment however the transcript partitioned.
+  // A circuit whose effects are wholly fallible then produced an offer the
+  // wallet could not match, which it reports as `Wallet.InsufficientFunds` —
+  // measured end to end against a live pre-fork chain, not hypothesised.
+  //
+  // Simulated by presenting the recording's real transcript as the FALLIBLE
+  // half: the commitment then matches that half and nothing else, which is
+  // exactly the shape a checkpointed mint produces. Faking the partition rather
+  // than the offer keeps the routing decision under test the pipeline's own.
+  it('routes a coin the partition places in the fallible half into the fallible offer', async () => {
+    const log: OrchestrationLog = [];
+    let composed: ComposeCallOptions | undefined;
+    const providers = createMockProviders();
+    providers.publicDataProvider.queryRawContractState = vi
+      .fn()
+      .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
+
+    const recorded = recordEraCalls(retainedEra, log, (options) => {
+      composed = options;
+    });
+    const fallibleOnlyEra: LedgerEra = {
+      ...recorded,
+      partitionCallTranscript: (options) => {
+        const [guaranteed, fallible] = recorded.partitionCallTranscript(options);
+        // The real halves, swapped into the fallible slot. Asserted rather than
+        // assumed: if the recording ever stops partitioning into a guaranteed
+        // transcript this test would silently stop exercising the route.
+        if (guaranteed === undefined || fallible !== undefined) {
+          throw new Error('expected the recording to partition into a guaranteed transcript only');
+        }
+        return [undefined, guaranteed];
+      }
+    };
+
+    const result = await runLedger8CallPipeline<ReplayState>({
+      retainedEra,
+      era: fallibleOnlyEra,
+      engine: createReplayEngine(recording, log),
+      publicDataProvider: providers.publicDataProvider,
+      head: 'v8',
+      contract,
+      contractAddress: recording.contractAddress,
+      circuitId: CIRCUIT_ID,
+      args: [recording.receivedCoin],
+      coinPublicKey: recording.coinPublicKey,
+      privateState: {},
+      localVerifierKey: STAND_IN_VERIFIER_KEY,
+      networkId: NETWORK_ID,
+      ttl: new Date(Date.now() + 3_600_000),
+      encryptionPublicKey: createEncryptionPublicKeyResolver(
+        recording.coinPublicKey,
+        providers.walletProvider.getEncryptionPublicKey()
+      )
+    });
+
+    // Both directions. `fallible` alone would pass on a pipeline that put the
+    // coin in both segments, and `guaranteed` alone on one that dropped it.
+    expect(result.fallibleZswapOffer).toBeInstanceOf(Uint8Array);
+    expect(result.guaranteedZswapOffer).toBeUndefined();
+    // The offer the composer received is the one the pipeline reports, so the
+    // routing survives the hand-off rather than being re-decided.
+    expect(composed?.fallibleZswapOffer).toBe(result.fallibleZswapOffer);
+    expect(composed?.guaranteedZswapOffer).toBeUndefined();
+  });
+
+  it('partitions the transcript once and hands the composer the pair it already resolved', async () => {
+    const log: OrchestrationLog = [];
+    let composed: ComposeCallOptions | undefined;
+    const providers = createMockProviders();
+    providers.publicDataProvider.queryRawContractState = vi
+      .fn()
+      .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
+
+    await runLedger8CallPipeline<ReplayState>({
+      retainedEra,
+      era: recordEraCalls(retainedEra, log, (options) => {
+        composed = options;
+      }),
+      engine: createReplayEngine(recording, log),
+      publicDataProvider: providers.publicDataProvider,
+      head: 'v8',
+      contract,
+      contractAddress: recording.contractAddress,
+      circuitId: CIRCUIT_ID,
+      args: [recording.receivedCoin],
+      coinPublicKey: recording.coinPublicKey,
+      privateState: {},
+      localVerifierKey: STAND_IN_VERIFIER_KEY,
+      networkId: NETWORK_ID,
+      ttl: new Date(Date.now() + 3_600_000),
+      encryptionPublicKey: createEncryptionPublicKeyResolver(
+        recording.coinPublicKey,
+        providers.walletProvider.getEncryptionPublicKey()
+      )
+    });
+
+    // Exactly one. The offer has to be routed against the split, and the
+    // composer needs the split too; resolving it twice would leave two answers
+    // that must agree with nothing checking that they do.
+    expect(log.filter((entry) => entry === 'era.v8.partitionCallTranscript')).toHaveLength(1);
+    // And this is what makes one enough: the composer is handed the resolved
+    // pair, not the raw op sequence. `resolvePartition` returns a caller-supplied
+    // pair untouched, so it cannot partition again.
+    expect(composed?.calls[0]?.transcript.kind).toBe('partitioned');
   });
 
   it("encrypts a user-owned output to the RECIPIENT's key, asking the resolver for that recipient", async () => {
