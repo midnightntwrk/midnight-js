@@ -72,6 +72,15 @@ MidnightProviders
 - `FailFallible` - Guaranteed portion succeeded, fallible failed
 - `FailEntirely` - Transaction invalid
 
+### Ledger Eras and the Fork Window
+- **Ledger era**: which ledger runtime produced a payload — `'v8'` (retained, pre-fork) or `'v9'` (current). `LedgerVersion` is the union; `LEDGER_VERSIONS` is the tuple.
+- **`versionOfRecord(record)`**: the era a record was produced in, from its own `protocolVersion` (read path).
+- **`networkHeadVersion(source)`**: the era the network head is in, read fresh on every call — never cached, never latched (ADR 0008). This is the construct path.
+- **Version-tagged payloads**: the `proveTx` / `balanceTx` / `submitTx` seams carry `VersionedTx<T>` = `{ version: 'v9', tx }` | `{ version: 'v8', txBytes }`. Narrow with `unwrapV9(payload, seam)`.
+- **Version-tagged records**: `watchForTxData` / `watchForDeployTxData` return `VersionedFinalizedTxData`. Its v8 arm carries `tx`, not `txBytes`, so `unwrapV9` does not apply — narrow with a `switch` on `version` closed by `assertNever(record, '<call site>')`. The context argument is required; the message never renders the value. Reaching it raises `MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER`.
+- **Keep-state**: calling a contract deployed before the fork, after the fork, through the same unchanged call site.
+- Migration: [docs/releases/v5.0.0/migration-guide.md](docs/releases/v5.0.0/migration-guide.md). Error codes: [TROUBLESHOOTING.md](TROUBLESHOOTING.md#midnightjs-error-codes).
+
 ### Private State Security
 - Encryption: AES-256-GCM
 - Key derivation: PBKDF2-SHA256 (V2: 600,000 iterations; V1: 100,000 for legacy data)
@@ -502,4 +511,6 @@ midnight-js/
 ## Links
 
 - Repository: https://github.com/midnightntwrk/midnight-js
+- Fork-window migration guide: docs/releases/v5.0.0/migration-guide.md
+- Error-code reference: TROUBLESHOOTING.md#midnightjs-error-codes
 - License: Apache 2.0
