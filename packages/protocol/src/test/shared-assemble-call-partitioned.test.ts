@@ -21,7 +21,7 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
-import { assembleCallPrototype } from '../lib/shared/assemble-call';
+import { assembleCallPrototype, partitionCallTranscript } from '../lib/shared/assemble-call';
 import type { CallTranscriptSource, LedgerParametersOption } from '../lib/shared/compose-types';
 import { emptyPartitionContext } from './fixtures';
 
@@ -218,6 +218,77 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
     const render = (prototype: ledgerV9.ContractCallPrototype): string =>
       callIn(ledgerV9.Intent.new(ttl).addCall(prototype)).toString();
     expect(render(fromPartitioned)).toBe(render(fromUnpartitioned));
+  });
+
+  // The claim the retained call pipeline rests on. It resolves the partition up
+  // front — it has to, because it routes a Zswap coin against the split before
+  // the offer becomes an option on the composition — and then hands the pair
+  // straight to the composer so the work is done ONCE. That is only safe if the
+  // standalone seam and the assembler's internal step are the same answer.
+  it('resolves the same pair the assembler resolves internally, so one partition serves both', () => {
+    const address = ledgerV9.sampleContractAddress();
+    const randomness = ledgerV9.communicationCommitmentRandomness();
+    const ttl = new Date(Date.now() + 3_600_000);
+    const unpartitioned: CallTranscriptSource = {
+      kind: 'unpartitioned',
+      preState: PRE_STATE,
+      publicTranscript: PUBLIC_TRANSCRIPT,
+      partitionContext: emptyPartitionContext()
+    };
+
+    const [guaranteed, fallible] = partitionCallTranscript(ledgerV9, {
+      circuitId: 'increment',
+      contractAddress: address,
+      transcript: unpartitioned,
+      // The same cost model `assembleWith` names, because that is what the two
+      // sides of this equality are being compared under.
+      ledgerParameters: 'initial',
+      version: 'v9'
+    });
+
+    // Not vacuous: an all-`undefined` pair would make the comparison below hold
+    // for a seam that returned nothing at all.
+    expect(guaranteed).toBeDefined();
+    expect(fallible).toBeUndefined();
+
+    const render = (prototype: ledgerV9.ContractCallPrototype): string =>
+      callIn(ledgerV9.Intent.new(ttl).addCall(prototype)).toString();
+
+    expect(
+      render(assembleWith(address, { kind: 'partitioned', guaranteed, fallible }, contractStateWithOperation(), randomness))
+    ).toBe(render(assembleWith(address, unpartitioned, contractStateWithOperation(), randomness)));
+  });
+
+  // The seam reports the ledger's refusal as the composition would, rather than
+  // letting a raw wasm error out: a caller that partitions up front must be able
+  // to diagnose a bad parameter blob the same way it would from `composeCallTx`.
+  it('refuses a parameter blob this era cannot read, naming the option rather than the partition', () => {
+    let caught: unknown;
+    try {
+      partitionCallTranscript(ledgerV9, {
+        circuitId: 'increment',
+        contractAddress: ledgerV9.sampleContractAddress(),
+        transcript: {
+          kind: 'unpartitioned',
+          preState: PRE_STATE,
+          publicTranscript: PUBLIC_TRANSCRIPT,
+          partitionContext: emptyPartitionContext()
+        },
+        ledgerParameters: new Uint8Array([0x00, 0x01, 0x02]),
+        version: 'v9'
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    // Reported as a bad OPTION, exactly as the composition reports it, so a
+    // caller that partitions up front is sent to the bytes it passed rather
+    // than to the transcript -- and the ledger's own diagnosis survives on
+    // `cause`.
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    expect((caught as ComposeOptionError).option).toBe('ledgerParameters');
+    expect((caught as ComposeOptionError).version).toBe('v9');
+    expect((caught as ComposeOptionError).cause).toBeDefined();
   });
 
   // Proof the branch really is a branch: a ledger whose partitioner throws

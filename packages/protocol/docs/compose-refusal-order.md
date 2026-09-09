@@ -165,6 +165,29 @@ with nothing to compose, and a prototype built from it would claim a circuit ran
 while recording no operations, the same silent no-op `'call-empty'` refuses one
 level up.
 
+That distinction acquired a second producer when the retained call pipeline
+began resolving its own split: it needs the pair BEFORE it builds a Zswap offer,
+because the offer has to be routed against it, and it then hands the composer
+that same pair as a partitioned source. So a pair the module's own partitioner
+produced now arrives dressed as a caller-supplied one, and the emptiness refusal
+above would apply to it.
+
+It cannot fire, and the reason is a property of the compiler rather than a
+convention. Only a circuit carrying a verifier key can be a registered entry
+point, and the retained pipeline checks that key before it partitions anything.
+`compactc` emits a key only for a circuit it marks `proof: true`, which it does
+only for a circuit that interacts with ledger state or the kernel — measured on
+0.31.1: a pure circuit, and an impure one whose only effect is a witness read,
+both compile to `proof: false` with no keys at all, and that holds per circuit
+even in a contract whose siblings are provable. A circuit reaching the partition
+step therefore has transcript operations by construction, and its pair carries at
+least one half.
+
+Should that ever stop holding — a runtime that partitions a provable circuit into
+an empty pair — the failure is not silent: composition refuses with
+`'call-transcript-empty'`, whose message blames a caller that did nothing wrong.
+Treat such a refusal as a signal about this argument, not about the call site.
+
 An unpartitioned source is bridged into the module's own `QueryContext` and
 split there, in two steps: the state crosses as an envelope, then the context
 the call recorded is written onto it. Constructing a `QueryContext` restores the

@@ -404,7 +404,9 @@ export const createReplayEngine = (
  * interface the pipeline consumes.
  *
  * @param era The real era facade.
- * @param log The orchestration log to append each call to.
+ * @param log The orchestration log to append each call to. Entries name the
+ * era that served the call (`era.v8.composeCallTx`), so a test spanning both
+ * eras can pin WHICH one ran each step and not merely the step order.
  * @param onComposeCall Optional inspection of the call options, run before the
  * era composes them.
  * @returns A facade that logs and delegates.
@@ -416,20 +418,27 @@ export const recordEraCalls = (
 ): LedgerEra => ({
   version: era.version,
   extractState: (raw) => {
-    log.push('era.extractState');
+    log.push(`era.${era.version}.extractState`);
     return era.extractState(raw);
   },
   decodeContractState: (raw) => {
-    log.push('era.decodeContractState');
+    log.push(`era.${era.version}.decodeContractState`);
     return era.decodeContractState(raw);
   },
   composeCallTx: (options) => {
-    log.push('era.composeCallTx');
+    log.push(`era.${era.version}.composeCallTx`);
     onComposeCall?.(options);
     return era.composeCallTx(options);
   },
+  // Logged like every other seam, so a test can count partitions: the pipeline
+  // resolves the split once and hands the composer the result, and a second
+  // entry here would mean that stopped being true.
+  partitionCallTranscript: (options) => {
+    log.push(`era.${era.version}.partitionCallTranscript`);
+    return era.partitionCallTranscript(options);
+  },
   composeDeployTx: (options) => {
-    log.push('era.composeDeployTx');
+    log.push(`era.${era.version}.composeDeployTx`);
     return era.composeDeployTx(options);
   }
 });
