@@ -16,7 +16,7 @@
 import { resolve } from 'node:path';
 
 import ts from 'typescript';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 const PACKAGE_ROOT = resolve(__dirname, '../..');
 
@@ -40,9 +40,8 @@ const compilerOptions = (): ts.CompilerOptions => {
  * so a type dropped from an entry changes nothing any runtime assertion can
  * see. This is the other half of that pin.
  */
-const typeOnlyExportNames = (entryName: string): string[] => {
+const typeOnlyExportNames = (program: ts.Program, entryName: string): string[] => {
   const entry = entryPath(entryName);
-  const program = ts.createProgram([entry], compilerOptions());
   const checker = program.getTypeChecker();
   const source = program.getSourceFile(entry);
   if (!source) {
@@ -64,8 +63,23 @@ const typeOnlyExportNames = (entryName: string): string[] => {
 };
 
 describe('Protocol type ACL', () => {
+  let barrelTypeNames: string[];
+  let engineTypeNames: string[];
+
+  // Both entries are read from one program: building a second one over the
+  // same source graph doubles the cost and answers the same. Asking the
+  // checker for every export of that graph is a multi-second compiler run —
+  // seconds locally, and several times that on a CI runner under v8 coverage
+  // — so the timeout belongs here, on the one compiler run, rather than on
+  // the assertions or on the whole package.
+  beforeAll(() => {
+    const program = ts.createProgram([entryPath('index'), entryPath('engine')], compilerOptions());
+    barrelTypeNames = typeOnlyExportNames(program, 'index');
+    engineTypeNames = typeOnlyExportNames(program, 'engine');
+  }, 60_000);
+
   it('publishes exactly this type surface from the barrel', () => {
-    expect(typeOnlyExportNames('index')).toEqual([
+    expect(barrelTypeNames).toEqual([
       'CallTranscriptSource',
       'ComposeCallEntry',
       'ComposeCallOptions',
@@ -119,7 +133,7 @@ describe('Protocol type ACL', () => {
     // `Ledger8Engine.reexpressOperationsForCurrentEra` takes
     // `ContractEntryPointPojo[]`, so this entry has to publish that name to be
     // callable by a consumer that imports the engine through its own subpath.
-    expect(typeOnlyExportNames('engine')).toEqual([
+    expect(engineTypeNames).toEqual([
       'ConstructorResultPojo',
       'ContractEntryPointPojo',
       'DownConvertedState',
