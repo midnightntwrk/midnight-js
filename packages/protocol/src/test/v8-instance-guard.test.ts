@@ -18,7 +18,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
 import * as onchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
-// The `-alt` package is an npm alias resolved under a different package name, so
+// The `-test-only` package is an npm alias resolved under a different package name, so
 // Node gives it its own physical module instance — a real second copy, not a test
 // double, of the exact dual-WASM failure mode this guard exists to catch.
 //
@@ -29,7 +29,7 @@ import * as onchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
 // consumer that does not pin this package gets `compact-runtime@0.16`'s `^3.0.0`
 // alongside protocol's exact pin, which is how 3.1.0 and 3.1.1 ended up loaded
 // side by side in the packaged-consumer harness.
-import * as onchainRuntimeV3Alt from 'onchain-runtime-v3-alt';
+import * as onchainRuntimeV3TestOnly from 'onchain-runtime-v3-test-only';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -68,15 +68,15 @@ const installedVersion = (specifier: string): string => {
 // its own directory whatever version it carries -- so the copies stayed distinct
 // by the linker's choice rather than by the manifest's instruction. These two
 // assertions are that instruction, stated where it can fail.
-describe('the -alt install fixture the dual-instantiation negative rests on', () => {
+describe('the -test-only install fixture the dual-instantiation negative rests on', () => {
   it('resolves to a different physical copy than the package this repository pins', () => {
-    expect(require.resolve('onchain-runtime-v3-alt')).not.toBe(
+    expect(require.resolve('onchain-runtime-v3-test-only')).not.toBe(
       require.resolve('@midnight-ntwrk/onchain-runtime-v3')
     );
   });
 
   it('carries a different version, so no resolver can satisfy both descriptors from one copy', () => {
-    expect(installedVersion('onchain-runtime-v3-alt')).not.toBe(
+    expect(installedVersion('onchain-runtime-v3-test-only')).not.toBe(
       installedVersion('@midnight-ntwrk/onchain-runtime-v3')
     );
   });
@@ -111,7 +111,7 @@ describe('assertSharedLedger8Instance', () => {
 
   it('throws Ledger8InstanceMismatchError naming the axis when the probes come from two physical copies', () => {
     try {
-      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3.ChargedState, onchainRuntimeV3Alt.ChargedState);
+      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3.ChargedState, onchainRuntimeV3TestOnly.ChargedState);
       expect.unreachable('two physical copies must be rejected');
     } catch (error) {
       expect(error).toBeInstanceOf(Ledger8InstanceMismatchError);
@@ -129,7 +129,7 @@ describe('assertSharedLedger8Instance', () => {
   // `AXIS_BARE_PACKAGE_NAMES`.
   it('names every published npm package, not the axis label, in the remediation hint', () => {
     try {
-      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3.ChargedState, onchainRuntimeV3Alt.ChargedState);
+      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3.ChargedState, onchainRuntimeV3TestOnly.ChargedState);
       expect.unreachable('two physical copies must be rejected');
     } catch (error) {
       expect(error).toBeInstanceOf(Ledger8InstanceMismatchError);
@@ -170,7 +170,7 @@ describe('assertSharedLedger8Instance', () => {
     (axis) => {
       try {
         // @ts-expect-error - reaching the axis guard that exists for untyped JS callers
-        assertSharedLedger8Instance(axis, onchainRuntimeV3.ChargedState, onchainRuntimeV3Alt.ChargedState);
+        assertSharedLedger8Instance(axis, onchainRuntimeV3.ChargedState, onchainRuntimeV3TestOnly.ChargedState);
         expect.unreachable('a non-axis must be rejected');
       } catch (error) {
         expect(error).toBeInstanceOf(UnknownLedger8AxisError);
@@ -186,7 +186,7 @@ describe('assertSharedLedger8Instance', () => {
   it('rejects a non-string axis, which cannot index the package-name table at all', () => {
     expect(() =>
       // @ts-expect-error - reaching the axis guard that exists for untyped JS callers
-      assertSharedLedger8Instance(42, onchainRuntimeV3.ChargedState, onchainRuntimeV3Alt.ChargedState)
+      assertSharedLedger8Instance(42, onchainRuntimeV3.ChargedState, onchainRuntimeV3TestOnly.ChargedState)
     ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS }));
   });
 });
@@ -201,7 +201,7 @@ describe('a dual-instantiation reaching the down-convert', () => {
     const mixedRuntime: Ledger8CompactRuntime = {
       ContractState: onchainRuntimeV3.ContractState,
       StateValue: onchainRuntimeV3.StateValue,
-      ChargedState: onchainRuntimeV3Alt.ChargedState
+      ChargedState: onchainRuntimeV3TestOnly.ChargedState
     };
 
     expect(() => downConvertForExecution(cell(0x11).encode(), mixedRuntime)).toThrowError(
