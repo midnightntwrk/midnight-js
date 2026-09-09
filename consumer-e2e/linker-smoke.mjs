@@ -17,7 +17,7 @@
 // Builds each dApp persona outside the workspace, installs it from the packed
 // framework tarballs with an isolated linker, and runs its entry. Usage:
 //
-//   node packaging/linker-smoke.mjs [pnpm|pnp] [retained|current] ...
+//   node consumer-e2e/linker-smoke.mjs [pnpm|pnp] [retained|current] ...
 //
 // Defaults to every linker and every persona.
 
@@ -33,7 +33,7 @@ import {
   CONTRACT_PACKAGES,
   contractPackageManifest,
   CURRENT_RUNTIME,
-  PACKAGING_DIR,
+  CONSUMER_E2E_DIR,
   PERSONAS,
   personaManifest,
   readManifest,
@@ -56,7 +56,7 @@ import {
  * the encoded path short regardless of where the checkout lives.
  */
 const SHORT_ROOT = process.platform === 'win32' ? os.tmpdir() : '/tmp';
-const WORK_DIR = path.join(SHORT_ROOT, 'mjs-packaging');
+const WORK_DIR = path.join(SHORT_ROOT, 'mjs-consumer-e2e');
 export const STAGED_TARBALL_DIR = path.join(WORK_DIR, 'tgz');
 const PNPM_STORE_DIR = path.join(WORK_DIR, 'pnpm-store');
 
@@ -177,7 +177,7 @@ export const buildPersona = (name, linkerName, manifest, entryOverride, extraCon
     )}\n`,
     'utf8'
   );
-  cpSync(path.join(PACKAGING_DIR, `${entryOverride ?? persona.entry ?? 'persona-entry'}.mjs`), path.join(cwd, 'entry.mjs'));
+  cpSync(path.join(CONSUMER_E2E_DIR, `${entryOverride ?? persona.entry ?? 'persona-entry'}.mjs`), path.join(cwd, 'entry.mjs'));
 
   if (persona.contractSource !== undefined) {
     cpSync(path.join(REPOSITORY_ROOT, persona.contractSource, 'contract'), path.join(cwd, 'contract'), {
@@ -221,7 +221,7 @@ export const stageTarballs = (manifest) => {
   rmSync(STAGED_TARBALL_DIR, { recursive: true, force: true });
   mkdirSync(STAGED_TARBALL_DIR, { recursive: true });
   for (const relative of Object.values(manifest.packages)) {
-    const source = path.join(PACKAGING_DIR, relative);
+    const source = path.join(CONSUMER_E2E_DIR, relative);
     cpSync(source, path.join(STAGED_TARBALL_DIR, path.basename(source)));
   }
 };

@@ -24,9 +24,9 @@
 // the set -- `fee-mint` alone is 146 MB -- which is why `counter-016`, at 27 KB,
 // could be a checked-in fixture and these cannot be.
 //
-//   node packaging/build-retained-twins.mjs            # build what is missing
-//   node packaging/build-retained-twins.mjs --force    # rebuild everything
-//   node packaging/build-retained-twins.mjs unshielded # one contract
+//   node consumer-e2e/build-retained-twins.mjs            # build what is missing
+//   node consumer-e2e/build-retained-twins.mjs --force    # rebuild everything
+//   node consumer-e2e/build-retained-twins.mjs unshielded # one contract
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';

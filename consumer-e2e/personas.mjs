@@ -27,9 +27,9 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const PACKAGING_DIR = path.dirname(fileURLToPath(import.meta.url));
-export const REPOSITORY_ROOT = path.resolve(PACKAGING_DIR, '..');
-export const TARBALL_DIR = path.join(PACKAGING_DIR, '.tarballs');
+export const CONSUMER_E2E_DIR = path.dirname(fileURLToPath(import.meta.url));
+export const REPOSITORY_ROOT = path.resolve(CONSUMER_E2E_DIR, '..');
+export const TARBALL_DIR = path.join(CONSUMER_E2E_DIR, '.tarballs');
 
 /** Where each persona's contract module comes from, relative to the repository root. */
 const RETAINED_CONTRACT = 'testkit-js/testkit-js/src/fixtures/hf/counter-016/compiled';
@@ -68,7 +68,7 @@ export const MATRIX_CONTRACTS = [
 export const RETAINED_COMPILER = '0.31.1';
 
 /** Where `build-retained-twins.mjs` puts what it compiles. Gitignored -- the set is about 262 MB. */
-export const RETAINED_TWIN_DIR = path.join(PACKAGING_DIR, '.retained');
+export const RETAINED_TWIN_DIR = path.join(CONSUMER_E2E_DIR, '.retained');
 
 /** One twin's artifact directory, which is also the ZK artifact root a provider is pointed at. */
 export const retainedTwinPath = (key) => path.join(RETAINED_TWIN_DIR, key);
@@ -285,7 +285,7 @@ export const readManifest = () => {
   try {
     return JSON.parse(readFileSync(manifestPath, 'utf8'));
   } catch (error) {
-    throw new Error(`No tarball manifest at ${manifestPath}; run \`node packaging/pack-framework.mjs\` first`, {
+    throw new Error(`No tarball manifest at ${manifestPath}; run \`node consumer-e2e/pack-framework.mjs\` first`, {
       cause: error
     });
   }
@@ -332,7 +332,7 @@ export const personaManifest = (name, persona, manifest, packageManager, tarball
   }
 
   return {
-    name: `@midnight-ntwrk/packaging-persona-${name}`,
+    name: `@midnight-ntwrk/consumer-e2e-persona-${name}`,
     version: '0.0.0',
     private: true,
     type: 'module',

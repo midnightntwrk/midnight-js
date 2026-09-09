@@ -3,19 +3,19 @@
 **Date:** 2026-09-08 / 2026-09-09
 **Branch:** `test/1006-ac0-contract-matrix`, stacked on `fix/1006-retained-segment-routing` at `c893bbb0`
 (runs 1-4 below predate that base and were measured at `5bc06ee9`, two commits behind it)
-**Harness:** `node packaging/fork-matrix-smoke.mjs pnp`
+**Harness:** `node consumer-e2e/fork-matrix-smoke.mjs pnp`
 **Host:** macOS, Apple silicon, Docker Desktop; every image served from the local cache
 
 ## What was run
 
-The fork-crossing scenario on this branch is `packaging/fork-matrix-smoke.mjs`: it stands up the
+The fork-crossing scenario on this branch is `consumer-e2e/fork-matrix-smoke.mjs`: it stands up the
 fork stack, installs the `fork-crossing` dApp persona from packed tarballs under
-Yarn PnP, and drives `packaging/fork-matrix-entry.mjs` as a separate process, enacting
+Yarn PnP, and drives `consumer-e2e/fork-matrix-entry.mjs` as a separate process, enacting
 the fork mid-session. Its only contract was `counter-016` — the single pre-fork
 fixture this repository ships — so the fork-crossing question had never been asked of
 anything but a counter.
 
-It is now asked of six more. `packaging/build-retained-twins.mjs` fetches
+It is now asked of six more. `consumer-e2e/build-retained-twins.mjs` fetches
 `compactc` 0.31.1 through the repository's own fetcher and recompiles the e2e
 suite's **unmodified** `.compact` sources with it, producing genuine retained-era
 artifacts (language 0.23, Compact runtime 0.16.0, `checkRuntimeVersion('0.16.0')`
@@ -32,7 +32,7 @@ contracts deployed *after* the boundary, which is a different question (does the
 surface work on a chain with pre-fork history) and answers it separately.
 
 Generated, not committed: the retained set is ~262 MB of prover keys, against
-`counter-016`'s 27 KB. `packaging/.retained/` is gitignored and rebuilt on
+`counter-016`'s 27 KB. `consumer-e2e/.retained/` is gitignored and rebuilt on
 demand.
 
 Image set (compose defaults, unchanged): genesis node 1.0.1, running node
@@ -216,7 +216,7 @@ contracts unit tests pass, both coverage gates satisfied.
 
 ### 2. The state envelope migrates on WRITE, not on the fork
 
-This corrects the picture `packaging/README.md` records. The sampling leg still
+This corrects the picture `consumer-e2e/README.md` records. The sampling leg still
 shows what it showed before: `midnight:contract-state[v6]:` at all six samples
 over 50 seconds after the boundary, with the head at `protocolVersion` 2001000.
 So nothing migrates just because the fork happened.
@@ -244,7 +244,7 @@ NOT from `RawContractState.version`, which is documented as derived from
 that cannot tolerate those two disagreeing has to inspect the envelope, and this
 is exactly such a caller: the disagreement IS the measurement.
 
-### 3. The fork crossing is now 7/7 for the counter; `packaging/README.md` still says 6/7
+### 3. The fork crossing is now 7/7 for the counter; `consumer-e2e/README.md` still says 6/7
 
 The post-fork keep-state call the README records as **refused** by
 `assertHeadStateEraAgreement` — "the one remaining failure … a framework defect"
@@ -295,7 +295,7 @@ Confirmed for all seven retained contracts, not just the counter: `compactc`
 harness runs on `{ verify: 'warn' }`. `require` is unsatisfiable for any pre-fork
 artifact however intact it is.
 
-Already in `packaging/README.md`; now measured across the whole retained set
+Already in `consumer-e2e/README.md`; now measured across the whole retained set
 rather than one fixture. The current-era twins ship a manifest and verify
 normally, so the gap is specifically retained artifacts, and it is a question for
 the migration guide.

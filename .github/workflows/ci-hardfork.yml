@@ -4,12 +4,12 @@ name: CI - Hard fork
 # fork, operating on a ledger-8 head, crossing the boundary mid-session, and
 # operating again afterwards through the same call sites.
 #
-# Deliberately separate from `ci-packaging.yml`. That workflow's subject is "the
+# Deliberately separate from `ci-consumer-e2e.yml`. That workflow's subject is "the
 # framework installs the way a consumer installs it", which outlives the fork and
 # stays after the retained era is dropped. THIS workflow is deleted whole at that
 # point, which is the test of whether the split is drawn in the right place.
 #
-# It repeats the pack rather than consuming an artifact from `ci-packaging.yml`.
+# It repeats the pack rather than consuming an artifact from `ci-consumer-e2e.yml`.
 # Two extra minutes buys independence: a gate whose result depends on another
 # job's artifact is a gate that goes red for reasons that are not about the fork.
 # Sharding below keeps that property -- each shard is self-contained and packs
@@ -89,7 +89,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Pack the framework
-        run: node packaging/pack-framework.mjs
+        run: node consumer-e2e/pack-framework.mjs
 
       # `compactc` 0.31.1 is fetched at run time and is the same download for every
       # shard, so it is cached on the version alone.
@@ -109,7 +109,7 @@ jobs:
         if: matrix.contract != 'events'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v4.4.0
         with:
-          path: packaging/.retained/${{ matrix.contract }}
+          path: consumer-e2e/.retained/${{ matrix.contract }}
           key: >-
             fork-twin-${{ matrix.contract }}-0.31.1-${{
               hashFiles(format('testkit-js/testkit-js-e2e/src/contract/{0}.compact', matrix.contract))
@@ -157,7 +157,7 @@ jobs:
       # while the scenario it guards cannot run is worse than no gate -- this
       # test was kept out of CI once already for exactly that reason.
       - name: Run the fork-crossing scenario
-        run: node packaging/fork-matrix-smoke.mjs pnp --contracts=${{ matrix.contract }}
+        run: node consumer-e2e/fork-matrix-smoke.mjs pnp --contracts=${{ matrix.contract }}
         env:
           YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
