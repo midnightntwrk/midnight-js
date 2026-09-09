@@ -154,9 +154,9 @@ been handed over as an option. The `LedgerEra` facade exposed no way to partitio
 on its own, so the pipeline had nothing to pass. That ordering is what the
 pipeline's own comment at `ledger8-pipeline.ts:460` describes.
 
-#### Verified by prototype: routing the offer fixes both, on both sides
+#### Fixed and verified: routing the offer fixes both, on both sides
 
-Built and run to confirm the diagnosis rather than argue it:
+Landed as `f290e05b`:
 
 - `shared/assemble-call.ts` — export `partitionCallTranscript`, a thin wrapper on
   the existing `resolvePartition`. No new logic; `assembleCallPrototype`
@@ -167,7 +167,7 @@ Built and run to confirm the diagnosis rather than argue it:
 - `internal/ledger8-pipeline.ts` — resolve the partition **before** building the
   offer and pass it as the fourth argument, exactly as `ledger-utils.ts:198` does.
 
-Result (run 5), against runs 3 and 4, which differ only in the framework:
+Result, against runs 3 and 4, which differ only in the framework:
 
 | Leg | runs 3–4 | run 5 (prototype) |
 |---|---|---|
@@ -181,20 +181,36 @@ Result (run 5), against runs 3 and 4, which differ only in the framework:
 `midnight:contract-state[v8]:` after their keep-state call, like the four that
 already worked. No regression anywhere else; 532 protocol unit tests pass.
 
-**What the prototype is not.** Three things a shipping fix still owes:
+**Partitioned once.** The first cut resolved the split in the pipeline and let
+`composeCallTx` resolve it again from the same inputs — correct only because the
+operation is deterministic, and a divergence between the two would have gone
+unnoticed. The pipeline now hands the composer that same pair as an
+already-partitioned transcript, so the work happens once.
+`resolvePartition` returns a caller-supplied pair untouched, which is what makes
+one enough.
 
-1. **It partitions twice.** The pipeline partitions, then `composeCallTx`
-   partitions the same transcript again from the same inputs. Correct only
-   because the operation is deterministic; wasteful, and it makes divergence
-   between the two a silent hazard rather than an error. Moving offer
-   construction inside composition would avoid it.
-2. **No unit test.** The 100% coverage gate fails on the new seam — correctly.
-3. **Three surface-pinning tests needed updating** (`era-load-era`,
-   `era-parity`, `dist-laziness`), which is the era facade's export discipline
-   working as intended, not collateral damage.
+**Tests, each verified red against its own regression:**
 
-**Action:** MJS-02. The diagnosis is settled and the fix is small; the remaining
-design question is only whether to pass the partition down or move the offer up.
+| Test | Pins | Without the fix |
+|---|---|---|
+| `routes a coin the partition places in the fallible half…` (contracts) | the coin reaches the fallible offer, asserted both ways so neither a both-segments nor a dropped-coin implementation passes | fails |
+| `partitions the transcript once and hands the composer the pair…` (contracts) | one `partitionCallTranscript` entry in the orchestration log, and `transcript.kind === 'partitioned'` | fails |
+| `resolves the same pair the assembler resolves internally…` (protocol) | the standalone seam and the assembler's internal step agree — the assumption "partition once" rests on | — |
+
+Plus an era-parity case covering both facade arms, and a negative: a parameter
+blob the era cannot read is reported as a bad **option**, the way the
+composition reports it, not as a failed partition.
+
+**Two things the toolchain caught that a green build did not.** Rollup reported a
+real type error — `readonly` versus the mutable tuple `PartitionedTranscript` —
+as a plugin *warning*, so `yarn build` exited 0; vitest's typecheck surfaced it
+as an unhandled source error, which is why the contracts task failed at exit 1
+while printing `497 passed`. And three surface-pinning tests plus two
+orchestration-order tests needed updating — the era facade's export discipline
+and the pipeline's step-order pin both working as intended.
+
+**Status:** fixed, not merely diagnosed. Lint clean, 536 protocol and 497
+contracts unit tests pass, both coverage gates satisfied.
 
 ### 2. The state envelope migrates on WRITE, not on the fork
 
@@ -289,16 +305,17 @@ the migration guide.
 
 ## Repeatability
 
-| | Run 1 | Run 2 | Run 3 | Run 4 | Run 5 |
-|---|---|---|---|---|---|
-| Scope | current-era matrix | current-era matrix | + retained twins | + cause chains | + routing prototype |
-| Fork applied at | #41 | #40 | #78 | #77 | #83 |
-| Failures | 0 | 0 | **4** | **4** | 0 |
-| Exit code | 0 | 0 | 1 | 1 | 0 |
-| Wall clock | ~15 min | ~15 min | ~25 min | ~25 min | ~25 min |
+| | Run 1 | Run 2 | Run 3 | Run 4 | Run 5 | Run 6 |
+|---|---|---|---|---|---|---|
+| Scope | current-era matrix | current-era matrix | + retained twins | + cause chains | + routing fix | + partition once |
+| Fork applied at | #41 | #40 | #78 | #77 | #83 | #82 |
+| Failures | 0 | 0 | **4** | **4** | 0 | 0 |
+| Exit code | 0 | 0 | 1 | 1 | 0 | 0 |
+| Wall clock | ~15 min | ~15 min | ~25 min | ~25 min | ~25 min | ~25 min |
 
 Runs 1 and 2 were identical to each other; runs 3 and 4 were identical to each
 other in every verdict, including which two contracts fail and where. Run 5 is
-runs 3-4 with the framework prototype from finding 1 and nothing else changed,
-which is what makes the four flipped verdicts attributable. No flakiness
+runs 3-4 with the finding-1 fix and nothing else changed, which is what makes
+the four flipped verdicts attributable; run 6 repeats it with the partition
+resolved once instead of twice, and is the shape that shipped. No flakiness
 observed, and no leg hit the eight-minute per-leg deadline.
