@@ -83,14 +83,6 @@ const STACK_SHUTDOWN_TIMEOUT = 30_000;
  */
 const LOGGED_SERVICES = ['node', 'indexer', 'proof-server', 'proof-server-v8'] as const;
 
-/**
- * How long one service's log is drained before the capture moves on.
- *
- * A ceiling, not a target: the stream follows a running container and will not
- * end on its own, so this is what makes the capture terminate at all.
- */
-const LOG_CAPTURE_TIMEOUT = 10_000;
-
 /** A single RPC round trip's ceiling, so a node that accepts a connection and never answers cannot outlive a poll deadline. */
 const RPC_TIMEOUT = 10_000;
 
@@ -573,26 +565,10 @@ export class ForkTestEnvironment extends TestEnvironment {
       try {
         const stream = await this.dockerEnv.getContainer(`${service}_${this.uid}`).logs();
         const chunks: Buffer[] = [];
-        // BOUNDED, and the bound is the load-bearing part. `logs()` FOLLOWS the
-        // container, so `'end'` does not arrive while the container is running
-        // -- waiting for it hangs the process until the event loop empties and
-        // Node exits 13 on an unsettled await, taking `shutdown()` and the
-        // run's own failure report with it. Measured that way once.
-        await new Promise<void>((resolve) => {
-          const finish = (): void => {
-            stream.destroy();
-            resolve();
-          };
-          const deadline = setTimeout(finish, LOG_CAPTURE_TIMEOUT);
-          // `unref`, so a capture that is still draining cannot be the thing
-          // keeping the process alive either.
-          deadline.unref();
+        await new Promise<void>((resolve, reject) => {
           stream.on('data', (chunk: Buffer | string) => chunks.push(Buffer.from(chunk)));
-          stream.on('error', finish);
-          stream.on('end', () => {
-            clearTimeout(deadline);
-            finish();
-          });
+          stream.on('err', reject);
+          stream.on('end', resolve);
         });
         await writeFile(destination, Buffer.concat(chunks));
         written.push(destination);
