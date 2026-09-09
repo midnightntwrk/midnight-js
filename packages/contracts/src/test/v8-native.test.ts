@@ -39,10 +39,12 @@ import {
   ComposeFailedError,
   ComposeOptionError,
   type LedgerEra,
+  loadLedger8,
   loadLedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
 import { type Recipient } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
+  LedgerParameters,
   type ProvingProvider,
   sampleCoinPublicKey,
   sampleEncryptionPublicKey
@@ -165,11 +167,29 @@ type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeo
   readonly seen: SeenPayloads;
 };
 
-const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState => ({
-  version: protocolVersion === PRE_FORK_PROTOCOL_VERSION ? 'v8' : 'v9',
-  protocolVersion,
-  raw
+// Minted per era, because a block's parameters are era-tagged and the arm that composes reads them
+// with its OWN era: a pre-fork block's parameters go to the retained composer and a post-fork
+// block's to the current one. Handing either the other's bytes is refused on the header tag, which
+// is the whole reason this option exists.
+let retainedLedgerParameters: Uint8Array;
+let currentLedgerParameters: Uint8Array;
+
+beforeAll(async () => {
+  retainedLedgerParameters = (await loadLedger8()).LedgerParameters.initialParameters().serialize();
+  currentLedgerParameters = LedgerParameters.initialParameters().serialize();
 });
+
+const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState => {
+  const preFork = protocolVersion === PRE_FORK_PROTOCOL_VERSION;
+  return {
+    version: preFork ? 'v8' : 'v9',
+    protocolVersion,
+    raw,
+    // Served from the same read as `raw`, which is what a real provider does and what the pipeline
+    // now requires rather than silently substituting the initial cost model.
+    ledgerParameters: preFork ? retainedLedgerParameters : currentLedgerParameters
+  };
+};
 
 /**
  * The committed recording with its single shielded output re-pointed at a

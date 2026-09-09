@@ -16,6 +16,7 @@
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 
 import { assembleCallPrototype } from '../shared/assemble-call';
+import type { LedgerParametersOption } from '../shared/compose-types';
 import type { TranscriptPojo } from '../v8/execute';
 
 /**
@@ -30,6 +31,16 @@ export interface WrapKeepStateCallOptions {
   readonly transcript: TranscriptPojo;
   readonly contractAddress: string;
   readonly contractState: ledgerV9.ContractState;
+  /**
+   * The ledger parameters of the block this call is built against, or
+   * {@link INITIAL_LEDGER_PARAMETERS} to accept the initial cost model.
+   *
+   * Required rather than defaulted, and not hard-coded to the initial parameters here: the
+   * transcript crosses as `'unpartitioned'`, so the partitioner DOES run and the cost model it uses
+   * is whatever this supplies. Defaulting it would make this function the silent
+   * wrong-cost-model path the option exists to close. See {@link LedgerParametersOption}.
+   */
+  readonly ledgerParameters: LedgerParametersOption;
 }
 
 /**
@@ -53,7 +64,7 @@ export interface WrapKeepStateCallOptions {
  * @see {@link RetainedEraExecution}
  */
 export const wrapKeepStateCall = (options: WrapKeepStateCallOptions): ledgerV9.ContractCallPrototype => {
-  const { transcript, contractAddress, contractState } = options;
+  const { transcript, contractAddress, contractState, ledgerParameters } = options;
   return assembleCallPrototype(ledgerV9, {
     circuitId: transcript.circuitId,
     contractAddress,
@@ -69,6 +80,7 @@ export const wrapKeepStateCall = (options: WrapKeepStateCallOptions): ledgerV9.C
     input: transcript.input,
     output: transcript.output,
     operations: contractState,
+    ledgerParameters,
     stage: 'wrap-call',
     version: 'v9'
   });

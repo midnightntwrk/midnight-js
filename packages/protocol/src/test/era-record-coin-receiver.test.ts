@@ -301,6 +301,8 @@ const ARMS: Readonly<
     return assembleCallPrototype(LedgerV8, {
       circuitId: CIRCUIT_ID,
       contractAddress: ocrt3.dummyContractAddress(),
+      // Named explicitly: these arms compare era ASSEMBLY, not cost models.
+      ledgerParameters: 'initial',
       transcript: { kind: 'unpartitioned', preState, publicTranscript: transcript.publicTranscript, partitionContext },
       privateTranscriptOutputs: transcript.privateTranscriptOutputs,
       input: transcript.input,
@@ -315,6 +317,8 @@ const ARMS: Readonly<
     return assembleCallPrototype(ledgerV9, {
       circuitId: CIRCUIT_ID,
       contractAddress: ocrt3.dummyContractAddress(),
+      // Named explicitly: these arms compare era ASSEMBLY, not cost models.
+      ledgerParameters: 'initial',
       transcript: { kind: 'unpartitioned', preState, publicTranscript: transcript.publicTranscript, partitionContext },
       privateTranscriptOutputs: transcript.privateTranscriptOutputs,
       input: transcript.input,

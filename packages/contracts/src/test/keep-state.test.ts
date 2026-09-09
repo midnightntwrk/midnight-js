@@ -38,7 +38,7 @@ import { readFileSync } from 'node:fs';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import { type ComposeCallOptions, type LedgerEra, loadLedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
-import { ContractState, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { ContractState, LedgerParameters, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type RawContractState,
   type VersionedFinalizedTransaction,
@@ -51,6 +51,7 @@ import {
   EraInvariantViolationError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
+  LedgerParametersUnservedError,
   RetainedArtifactOnCurrentEraStateError
 } from '../errors';
 import { runLedger8CallPipeline } from '../internal/ledger8-pipeline';
@@ -119,8 +120,22 @@ type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeo
 const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState => ({
   version: protocolVersion === PRE_FORK_PROTOCOL_VERSION ? 'v8' : 'v9',
   protocolVersion,
-  raw
+  raw,
+  // Served from the SAME read as `raw`, which is what a real provider does and what the pipeline
+  // now requires. The initial parameters stand in for the content -- a chain serves different
+  // numbers -- but they are the CURRENT era's bytes, which is what dates them to this block.
+  ledgerParameters: LedgerParameters.initialParameters().serialize()
 });
+
+/**
+ * The same record with the block's parameters missing, which is what a `PublicDataProvider` that
+ * does not serve them produces. `RawContractState.ledgerParameters` is optional, so such a provider
+ * is type-correct and the omission cannot be caught at the seam.
+ */
+const rawStateWithoutParameters = (raw: Uint8Array, protocolVersion: number): RawContractState => {
+  const { ledgerParameters: _omitted, ...withoutParameters } = rawState(raw, protocolVersion);
+  return withoutParameters;
+};
 
 describe('the keep-state pipeline (previous-toolchain contract, post-fork head)', () => {
   let recording: CoinReceiverRecording;
@@ -420,6 +435,53 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     const finalized = await submitCallTx(providers, callOptions());
 
     expect(finalized.circuitId).toBe(CIRCUIT_ID);
+  });
+
+  it('refuses to compose when the read surface served no ledger parameters, before proving', async () => {
+    // The pipeline HAS a read surface -- it just read the state -- so absent parameters are a
+    // provider that did not serve them, not a caller that cannot read the chain. Substituting the
+    // ledger's initial parameters here would partition the transcript against a cost model the
+    // chain does not run, and the node would refuse the guaranteed segment for running out of gas
+    // AFTER the caller had paid for proving. The sentinel exists for callers with no read surface;
+    // this caller must not reach it by accident.
+    const providers = postForkProviders(v6Envelope);
+    providers.publicDataProvider.queryRawContractState = vi
+      .fn()
+      .mockResolvedValue(rawStateWithoutParameters(v6Envelope, POST_FORK_PROTOCOL_VERSION));
+
+    const log: OrchestrationLog = [];
+    let caught: unknown;
+    try {
+      await runLedger8CallPipeline<ReplayState>({
+        era: recordEraCalls(currentEra, log),
+        retainedEra: recordEraCalls(retainedEra, log),
+        engine: createReplayEngine(recording, log),
+        publicDataProvider: providers.publicDataProvider,
+        head: 'v9',
+        contract,
+        contractAddress: recording.contractAddress,
+        circuitId: CIRCUIT_ID,
+        args: [recording.receivedCoin],
+        coinPublicKey: recording.coinPublicKey,
+        privateState: {},
+        localVerifierKey: STAND_IN_VERIFIER_KEY,
+        networkId: NETWORK_ID,
+        ttl: new Date(Date.now() + 3_600_000),
+        encryptionPublicKey: createEncryptionPublicKeyResolver(
+          recording.coinPublicKey,
+          providers.walletProvider.getEncryptionPublicKey()
+        )
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(LedgerParametersUnservedError);
+    expect((caught as LedgerParametersUnservedError).contractAddress).toBe(recording.contractAddress);
+    // Refused before the era was ever asked to compose, which is what makes this cheap rather than
+    // a wasted proof.
+    expect(log).not.toContain('era.composeCallTx');
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });
 
   it('refuses a current-era state even when the record mislabels itself as retained', async () => {

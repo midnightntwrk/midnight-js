@@ -41,7 +41,8 @@ import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 import {
   Ledger8AmbiguousEntryPointError,
   Ledger8RecipientUnmappableError,
-  Ledger8ShieldedSpendUnsupportedError
+  Ledger8ShieldedSpendUnsupportedError,
+  LedgerParametersUnservedError
 } from '../errors';
 import {
   type EncryptionPublicKeyResolver,
@@ -428,6 +429,16 @@ export const runLedger8CallPipeline = async <TState>(
     contractAddress,
     request.logger
   );
+  // Checked HERE and not inside `readLedger8Snapshot`, which is also the attach path's reader:
+  // attaching only checks verifier keys and composes nothing, so it has no use for the block's
+  // parameters and must not be refused for their absence. This path composes, so it does.
+  //
+  // Checked before the circuit runs and before anything is proved: the alternative to refusing is
+  // partitioning against a cost model the chain does not run, which the node rejects only after the
+  // proof has been paid for.
+  if (snapshot.state.ledgerParameters === undefined) {
+    throw new LedgerParametersUnservedError(contractAddress);
+  }
   // BEFORE proving, and before the circuit runs: a proof generated against a
   // key the chain does not hold is rejected on submission, so checking here
   // turns a paid-for, late failure into a free, immediate one.
