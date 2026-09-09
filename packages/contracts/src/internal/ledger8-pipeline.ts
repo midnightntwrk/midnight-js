@@ -471,7 +471,35 @@ export const runLedger8CallPipeline = async <TState>(
   // inside the offer builder.
   assertRecipientsResolvable(transcript.zswapLocalState, request.encryptionPublicKey, circuitId);
 
-  const offers = zswapStateToSegmentedOffer(transcript.zswapLocalState, request.encryptionPublicKey);
+  // Resolved BEFORE the offer is built, which is what lets the offer be routed
+  // at all. Without it `zswapStateToSegmentedOffer`'s partition argument
+  // defaults to `[undefined, undefined]`, `segmentForMatch` takes its "no
+  // segment information" path, and every movement lands in the guaranteed
+  // segment -- unbalanceable for a circuit whose transcript is wholly fallible,
+  // which the wallet reports as `Wallet.InsufficientFunds`.
+  //
+  // Partitioned ONCE: the pair resolved here is handed to `composeCallTx` below
+  // as an already-partitioned transcript, so the composer does not repeat the
+  // work. Two partitions of the same transcript would have to agree, and
+  // nothing would notice if they stopped.
+  const partitionedTranscript = era.partitionCallTranscript({
+    circuitId,
+    contractAddress,
+    transcript: {
+      kind: 'unpartitioned',
+      preState: snapshot.encoded,
+      publicTranscript: transcript.publicTranscript,
+      partitionContext: transcript.partitionContext
+    },
+    ledgerParameters: snapshot.state.ledgerParameters
+  });
+
+  const offers = zswapStateToSegmentedOffer(
+    transcript.zswapLocalState,
+    request.encryptionPublicKey,
+    undefined,
+    partitionedTranscript
+  );
   const guaranteedZswapOffer = offers.guaranteed?.serialize();
   const fallibleZswapOffer = offers.fallible?.serialize();
 
@@ -504,11 +532,13 @@ export const runLedger8CallPipeline = async <TState>(
         // initial parameters partitions the transcript with a cost model the chain does not use,
         // and the node refuses the guaranteed segment for running out of gas.
         ledgerParameters: snapshot.state.ledgerParameters,
+        // Already split, above. `resolvePartition` returns a caller-supplied pair
+        // untouched, so this is the same pair the offer was routed against --
+        // the two cannot drift, because there is only one.
         transcript: {
-          kind: 'unpartitioned',
-          preState: snapshot.encoded,
-          publicTranscript: transcript.publicTranscript,
-          partitionContext: transcript.partitionContext
+          kind: 'partitioned',
+          guaranteed: partitionedTranscript[0],
+          fallible: partitionedTranscript[1]
         },
         privateTranscriptOutputs: transcript.privateTranscriptOutputs,
         input: transcript.input,

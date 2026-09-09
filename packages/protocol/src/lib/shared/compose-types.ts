@@ -77,6 +77,33 @@ export type CallTranscriptSource =
     };
 
 /**
+ * A call's guaranteed/fallible transcript pair, as the ledger's partitioner
+ * answers it. Either member is absent when that segment carries nothing.
+ */
+export type PartitionedCallTranscript = [
+  Transcript<AlignedValue> | undefined,
+  Transcript<AlignedValue> | undefined
+];
+
+/**
+ * What an era needs to partition one call's transcript, which is strictly less
+ * than composing the call: no operation registry, no private outputs, no
+ * transaction envelope. The era supplies its own version.
+ */
+export interface EraPartitionCallOptions {
+  readonly circuitId: string;
+  readonly contractAddress: string;
+  readonly transcript: CallTranscriptSource;
+  /**
+   * The chain's own serialized ledger parameters at the block this call is
+   * built against. Omitting them partitions against the era's INITIAL
+   * parameters, which draws the boundary in the wrong place — the same
+   * compatibility path, and the same hazard, as on `ComposeCallEntry`.
+   */
+  readonly ledgerParameters?: Uint8Array;
+}
+
+/**
  * One contract call in a call transaction.
  *
  * `contractState` is the raw, serialized state the call is dispatched against,
