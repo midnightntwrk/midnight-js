@@ -428,6 +428,13 @@ export const recordEraCalls = (
     onComposeCall?.(options);
     return era.composeCallTx(options);
   },
+  // Logged like every other seam, so a test can count partitions: the pipeline
+  // resolves the split once and hands the composer the result, and a second
+  // entry here would mean that stopped being true.
+  partitionCallTranscript: (options) => {
+    log.push('era.partitionCallTranscript');
+    return era.partitionCallTranscript(options);
+  },
   composeDeployTx: (options) => {
     log.push('era.composeDeployTx');
     return era.composeDeployTx(options);

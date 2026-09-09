@@ -221,9 +221,9 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
 
     // IDENTICAL to the retained arm's order, which is the claim: the two arms
     // differ only in which era object they are handed. `wrapKeepStateCall` is
-    // not in it -- see this file's own header for why, and note that the
-    // transcript still crosses as `'unpartitioned'`, which is what makes the
-    // era's composition perform the very binding that method performs.
+    // not in it -- see this file's own header for why. The transcript crosses
+    // ALREADY partitioned: the pipeline resolves the split to route the Zswap
+    // offer, so the composition receives the pair rather than redrawing it.
     // The order is the retained arm's, plus the one step that only keep-state
     // needs. Read the ERAS in it, not just the names: the first two calls are
     // the RETAINED era's -- it is the only one that can read these bytes -- and
@@ -233,11 +233,14 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       'era.decodeContractState',
       'engine.downConvertForExecution',
       'engine.executeCircuit',
+      // The RETAINED era's, like the two reads above: the split the offer is
+      // routed against has to be the one the era that executed the call draws.
+      'era.partitionCallTranscript',
       'engine.reexpressOperationsForCurrentEra',
       'era.composeCallTx'
     ]);
     expect(composed?.calls).toHaveLength(1);
-    expect(composed?.calls[0]?.transcript.kind).toBe('unpartitioned');
+    expect(composed?.calls[0]?.transcript.kind).toBe('partitioned');
 
     // NOT the chain's own bytes: the current composer cannot deserialize a
     // retained envelope at all. What it gets is the operation registry
