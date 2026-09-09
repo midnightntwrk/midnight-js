@@ -121,12 +121,21 @@ services:
       - '8088'
     environment:
       RUST_LOG: 'indexer=debug,chain_indexer=debug,indexer_api=debug,wallet_indexer=debug,indexer_common=debug,fastrace_opentelemetry=off,info'
+      # Plain `ws` is the only option on this network: the node serves no TLS and
+      # there is no terminator in front of it. Same for SPO_NODE__URL below, which
+      # dials the same node.
+      # nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
       APP__INFRA__NODE__URL: 'ws://node:9944'
       APP__APPLICATION__NETWORK_ID: 'undeployed'
       APP__INFRA__STORAGE__PASSWORD: 'indexer'
       APP__INFRA__PUB_SUB__PASSWORD: 'indexer'
       APP__INFRA__LEDGER_STATE_STORAGE__PASSWORD: 'indexer'
+      # A fixed test constant, the same value `compose.yml` carries: the indexer
+      # requires the variable to be set, and the chain it protects is created and
+      # destroyed inside one test run.
+      # nosemgrep: generic.secrets.security.detected-generic-secret.detected-generic-secret
       APP__INFRA__SECRET: '303132333435363738393031323334353637383930313233343536373839303132'
+      # nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
       APP__INFRA__SPO_NODE__URL: 'ws://node:9944'
       APP__INFRA__SPO_NODE__BLOCKFROST_ID: 'dummy-not-using-spo'
       # There is no real SPO node here: SPO_NODE__URL above points spo-indexer at the ordinary node
@@ -175,7 +184,8 @@ services:
 
   # Never started by `up` -- `ForkTestEnvironment.enactFork()` drives it with
   # `docker compose ... --profile tools run --rm toolkit runtime-upgrade ...`, which joins the
-  # project network so `ws://node:9944` resolves. No `container_name`: `compose run` names its own.
+  # project network so the node's `node:9944` address resolves. No `container_name`: `compose run`
+  # names its own.
   #
   # This is the one image on Docker Hub rather than ghcr: as of 2026-09 ghcr carried no toolkit at
   # the pinned tag. So a ghcr login does not authorize this pull -- the CI lane logs in to Docker Hub
