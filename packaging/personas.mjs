@@ -154,6 +154,39 @@ export const CONTRACT_PACKAGES = {
   )
 };
 
+/**
+ * Narrows the AC0 matrices to a requested subset of contracts.
+ *
+ * The scenario is sharded one contract per CI job, and a shard that silently ran
+ * the wrong set -- or nothing -- would report green for work it never did. So an
+ * unknown key is refused by name rather than filtered away, and an empty
+ * selection is refused too.
+ *
+ * `retained` is the intersection with {@link RETAINED_TWINS}, not the whole
+ * request: `events` is a legitimate current-era key with no retained twin that
+ * can exist, so asking for it must narrow the retained half to nothing without
+ * failing.
+ *
+ * @param requested Contract keys, or `undefined` for the whole matrix.
+ * @returns The current-era and retained-era keys this run covers.
+ */
+export const resolveContractSelection = (requested) => {
+  if (requested === undefined) {
+    return { current: [...MATRIX_CONTRACTS], retained: [...RETAINED_TWINS] };
+  }
+  const keys = requested.filter((key) => key !== '');
+  const unknown = keys.filter((key) => !MATRIX_CONTRACTS.includes(key));
+  if (unknown.length > 0) {
+    throw new Error(
+      `Not an AC0 matrix contract: ${unknown.join(', ')}. Known: ${MATRIX_CONTRACTS.join(', ')}`
+    );
+  }
+  if (keys.length === 0) {
+    throw new Error('An AC0 contract selection cannot be empty; omit it to run the whole matrix');
+  }
+  return { current: keys, retained: keys.filter((key) => RETAINED_TWINS.includes(key)) };
+};
+
 /** The retained twins as persona contract keys. */
 export const RETAINED_MATRIX_CONTRACTS = RETAINED_TWINS.map((key) => `retained-${key}`);
 

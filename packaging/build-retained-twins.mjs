@@ -98,6 +98,11 @@ const buildTwin = (key, force) => {
  * @returns The keys that were compiled, which is empty on a warm run.
  */
 export const buildRetainedTwins = (keys = RETAINED_TWINS, force = false) => {
+  // Before `ensureCompiler`, so a shard with no twin to build -- `events`, whose
+  // retained half cannot exist -- does not download a compiler it will not run.
+  if (keys.length === 0) {
+    return [];
+  }
   ensureCompiler();
   mkdirSync(RETAINED_TWIN_DIR, { recursive: true });
   const built = [];

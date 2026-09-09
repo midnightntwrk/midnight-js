@@ -12,6 +12,17 @@ name: CI - Hard fork
 # It repeats the pack rather than consuming an artifact from `ci-packaging.yml`.
 # Two extra minutes buys independence: a gate whose result depends on another
 # job's artifact is a gate that goes red for reasons that are not about the fork.
+# Sharding below keeps that property -- each shard is self-contained and packs
+# its own framework, so no shard can fail for another job's reasons either.
+#
+# SHARDED ONE CONTRACT PER JOB. Whole, the scenario ran 36 minutes, and 20 of
+# those were nineteen contract legs executed strictly one after another -- the
+# proving in them is what the run costs. A shard also compiles only its own
+# retained twin, so `fee-mint`'s 146 MB of prover keys stop being every job's
+# bill. What does NOT shard is the floor: ~2m of setup, a fork stack per shard,
+# and `enactFork` itself, which is a real governance upgrade on a real chain and
+# measured 3m41s. That floor is why a shard lands near 13 minutes rather than
+# near the leg time.
 
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
@@ -34,12 +45,29 @@ concurrency:
 
 jobs:
   ac0-fork-crossing:
-    name: AC0 fork-crossing scenario
+    name: AC0 ${{ matrix.contract }}
     if: inputs.should_run == 'true'
     runs-on: ubuntu-latest
-    # Measured locally: 5m45s for the scenario itself, plus install, build, pack
-    # and six uncached image pulls on a cold runner.
-    timeout-minutes: 45
+    # One contract's legs plus the unshardable floor. Generous against a cold
+    # runner and against `enactFork`'s own deadlines, which sum to 12 minutes.
+    timeout-minutes: 30
+    strategy:
+      # Every shard runs. A contract's legs are the answer for THAT contract, so
+      # cancelling the rest on one failure would turn one red row into fifteen
+      # unknowns -- which is the report shape this scenario exists to avoid.
+      fail-fast: false
+      matrix:
+        # `events` is current-era only: `emit` is not a language-0.23 form, so a
+        # pre-fork events contract cannot exist. Its shard poses the current-era
+        # half alone, which `resolveContractSelection` narrows to for it.
+        contract:
+          - simple
+          - unshielded
+          - shielded
+          - shielded-fallible
+          - fee-mint
+          - events
+          - block-time
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -62,6 +90,30 @@ jobs:
 
       - name: Pack the framework
         run: node packaging/pack-framework.mjs
+
+      # `compactc` 0.31.1 is fetched at run time and is the same download for every
+      # shard, so it is cached on the version alone.
+      - name: Cache the retained-era compiler
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v4.4.0
+        with:
+          path: packages/compact/managed/0.31.1
+          key: ac0-compactc-0.31.1
+
+      # Keyed on the `.compact` source and the compiler, which is exactly what
+      # decides the artifacts: a source edit or a compiler bump misses and
+      # recompiles, anything else hits. Per contract rather than for the set, so
+      # one contract's edit does not invalidate the other six.
+      #
+      # Skipped for `events`, which has no retained twin to cache.
+      - name: Cache this shard's retained twin
+        if: matrix.contract != 'events'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v4.4.0
+        with:
+          path: packaging/.retained/${{ matrix.contract }}
+          key: >-
+            ac0-twin-${{ matrix.contract }}-0.31.1-${{
+              hashFiles(format('testkit-js/testkit-js-e2e/src/contract/{0}.compact', matrix.contract))
+            }}
 
       # The personas resolve `@midnight-ntwrk/compact-runtime` from GitHub
       # Packages, and neither pnpm nor a PnP install inherits Yarn's own scope
@@ -105,7 +157,7 @@ jobs:
       # while the scenario it guards cannot run is worse than no gate -- this
       # test was kept out of CI once already for exactly that reason.
       - name: Run the AC0 fork-crossing scenario
-        run: node packaging/ac0-smoke.mjs pnp
+        run: node packaging/ac0-smoke.mjs pnp --contracts=${{ matrix.contract }}
         env:
           YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
