@@ -78,6 +78,8 @@ const buildCallOptions = (contractState: LedgerV8.ContractState): ComposeV8CallO
     circuitId: transcript.circuitId,
     contractAddress: LedgerV8.sampleContractAddress(),
     contractState,
+    // Named explicitly: this helper's cases are about the compose leg, not the cost model.
+    ledgerParameters: 'initial',
     transcript: {
       kind: 'unpartitioned',
       preState: transcript.preContractState.data.state.encode(),

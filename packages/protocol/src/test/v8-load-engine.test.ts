@@ -105,7 +105,8 @@ describe('createLedger8Engine', () => {
         privateStateAfter: {}
       },
       contractAddress: sampleContractAddress(),
-      contractState
+      contractState,
+      ledgerParameters: 'initial'
     });
 
     expect(prototype).toBeInstanceOf(ContractCallPrototype);
@@ -183,7 +184,7 @@ describe('createLedger8Engine', () => {
     );
     contractState.setOperation('increment', op);
 
-    const prototype = engine.wrapKeepStateCall({ transcript, contractAddress: address, contractState });
+    const prototype = engine.wrapKeepStateCall({ transcript, contractAddress: address, contractState, ledgerParameters: 'initial' });
     const ttl = new Date(Date.now() + 3_600_000);
 
     expect(prototype).toBeInstanceOf(ContractCallPrototype);

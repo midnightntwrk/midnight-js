@@ -77,6 +77,34 @@ export type CallTranscriptSource =
     };
 
 /**
+ * The sentinel that asks for the ledger's own INITIAL cost model instead of the chain's.
+ *
+ * Spelled out as a value a caller has to name, because the thing it selects is wrong for any chain
+ * that has been running: the initial parameters are the model the chain started with, and prices
+ * adjust per block. Partitioning against them draws the guaranteed/fallible boundary in the wrong
+ * place and the node then refuses the guaranteed segment with `Transcript(Execution(OutOfGas))` --
+ * after the caller has already paid to prove it.
+ */
+export const INITIAL_LEDGER_PARAMETERS = 'initial';
+
+/**
+ * What a composer accepts for the block's ledger parameters: the chain's own serialized parameters,
+ * or {@link INITIAL_LEDGER_PARAMETERS}.
+ *
+ * There is deliberately no third option. This used to be optional, and omitting it fell back to the
+ * initial parameters silently -- so a caller that simply forgot got the wrong cost model with no
+ * signal, and a `PublicDataProvider` that does not serve `ledgerParameters` (the field is optional)
+ * degraded every call built through it. Requiring the option keeps the compatibility path reachable
+ * only as a decision, never as an oversight.
+ *
+ * A caller that reads the chain must pass the bytes from the SAME read as the contract state: the
+ * parameters are era-tagged and dated per block, so a second read could answer for another block.
+ *
+ * @see {@link EraSeam}
+ */
+export type LedgerParametersOption = Uint8Array | typeof INITIAL_LEDGER_PARAMETERS;
+
+/**
  * One contract call in a call transaction.
  *
  * `contractState` is the raw, serialized state the call is dispatched against,
@@ -97,12 +125,12 @@ export interface ComposeCallEntry {
   readonly contractState: Uint8Array;
   /**
    * The ledger parameters the chain held at the block this call is built against, serialized —
-   * `RawContractState.ledgerParameters`, passed through untouched.
+   * `RawContractState.ledgerParameters`, passed through untouched — or
+   * {@link INITIAL_LEDGER_PARAMETERS} to partition against the ledger's initial cost model instead.
    *
-   * Omitting them falls back to the ledger's initial parameters, which is a compatibility path and
-   * not a correct one. See `AssembleCallOptions.ledgerParameters`.
+   * Required, and deliberately so. See {@link LedgerParametersOption}.
    */
-  readonly ledgerParameters?: Uint8Array;
+  readonly ledgerParameters: LedgerParametersOption;
   readonly transcript: CallTranscriptSource;
   readonly privateTranscriptOutputs: AlignedValue[];
   readonly input: AlignedValue;
