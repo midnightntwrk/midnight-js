@@ -9,9 +9,6 @@ name: CI - Consumer E2E
 # `@midnight-ntwrk/compact-runtime@0.16` alongside the framework's own 0.19 cannot
 # be represented at all.
 
-env:
-  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
 permissions:
   contents: read
   packages: write
@@ -23,6 +20,11 @@ on:
       should_run:
         required: true
         type: string
+    # Declared rather than inherited, so a caller hands over this one credential
+    # instead of the whole repository's secrets.
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE:
+        required: true
 
 concurrency:
   group: consumer-e2e-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
