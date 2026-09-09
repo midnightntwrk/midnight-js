@@ -38,6 +38,7 @@ import {
   createMockCoinInfo,
   createMockCompiledContract,
   createMockContractAddress,
+  createMockContractCall,
   createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
@@ -169,6 +170,26 @@ describe('submit-call-tx', () => {
         });
 
         expect(nestedResult?.public.logEvents).toBe(mockUnprovenCallTxData.public.logEvents);
+      });
+
+      it('forwards calls through the nested scoped CallResult rebuild', async () => {
+        const options = createBasicCallOptions();
+        const rootCall = createMockContractCall({ circuitId: 'testCircuit' });
+        const mockUnprovenCallTxData = createMockUnprovenCallTxData({ calls: [rootCall] });
+        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        vi.mocked(submitTx).mockResolvedValue(createMockFinalizedTxData());
+
+        // `calls` is a caller's only route to callee proof data for a cross-contract circuit, and
+        // the nested arm rebuilds `CallResult` member by member rather than spreading the
+        // executor's data. Reference identity proves the rebuild forwards the executor's own array
+        // instead of a fresh or defaulted one.
+        let nestedResult: Awaited<ReturnType<typeof submitCallTx>> | undefined;
+        await withContractScopedTransaction(mockProviders, async (txCtx) => {
+          nestedResult = await submitCallTx(mockProviders, options, txCtx);
+        });
+
+        expect(nestedResult?.calls).toBe(mockUnprovenCallTxData.calls);
+        expect(nestedResult?.calls).toEqual([rootCall]);
       });
     });
 
