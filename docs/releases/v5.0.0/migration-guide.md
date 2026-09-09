@@ -182,7 +182,8 @@ If you need on-chain contract events, the `PublicDataProvider` now exposes them 
 
 - **Preferred:** recompile with `compactc 0.33.0-rc.1` so the `contract-manifest.json` is emitted alongside the artifacts, and ship the whole `compiler/` directory with your artifacts.
 - **Harden further:** pin `expectedManifestHash` (SHA-256 of the manifest bytes) at build time to resist a coordinated swap of both the artifacts and their co-located manifest.
-- **Temporary escape hatch:** set `verify: 'warn'` (or `'off'`) while you regenerate artifacts — but a digest mismatch still throws except in `'off'` mode.
+- **If you cannot recompile yet:** set `verify: 'require-if-present'`. `compactc` only began emitting the manifest in 0.33, so artifacts from an earlier toolchain can never satisfy `require`. This mode tolerates a wholly absent manifest (it warns) but still requires a manifest that *does* exist to cover the artifact, and it begins verifying in full as soon as you recompile — no further code change.
+- **Last resort:** `verify: 'warn'` (or `'off'`) while you regenerate artifacts. Unlike `require-if-present`, `warn` also lets through an artifact missing from a manifest that is present. A digest mismatch still throws except in `'off'` mode.
 
 ```diff
 - new NodeZkConfigProvider(baseDir);

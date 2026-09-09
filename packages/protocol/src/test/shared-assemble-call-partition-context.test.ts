@@ -82,6 +82,8 @@ const optionsFor = (
   output: fieldValue(0x20),
   communicationCommitmentRandomness: ledgerV9.communicationCommitmentRandomness(),
   operations: contractStateWithOperation(),
+  // Named explicitly: what this test pins is the partition CONTEXT, not the cost model.
+  ledgerParameters: 'initial',
   stage: 'call-operation',
   version: 'v9'
 });

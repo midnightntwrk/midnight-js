@@ -46,7 +46,10 @@ export const initializeMidnightProviders = <PCK extends string, PS>(
   environmentConfiguration: EnvironmentConfiguration,
   contractConfiguration: ContractConfiguration
 ): MidnightProviders<PCK, PrivateStateId, PS> => {
-  const zkConfigProvider = new NodeZkConfigProvider<PCK>(contractConfiguration.zkConfigPath);
+  const zkConfigProvider = new NodeZkConfigProvider<PCK>(
+    contractConfiguration.zkConfigPath,
+    contractConfiguration.zkConfigIntegrity
+  );
 
   const coinPublicKey = midnightWalletProvider.getCoinPublicKey();
   const accountId = Buffer.from(coinPublicKey).toString('hex');

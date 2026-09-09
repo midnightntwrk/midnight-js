@@ -20,13 +20,13 @@ import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
+import { Ledger8DeployUnmaintainableError } from './errors';
 import type { FoundContract } from './find-deployed-contract';
 import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
 import { isLedger8Request } from './internal/era';
-import { LEDGER8_DEPLOY_UNMAINTAINABLE } from './internal/ledger8-entry';
 import {
   type AnyLedger8DeployContractOptions,
   type AnyLedger8DeployedContract,
@@ -126,16 +126,19 @@ const createDeployTxOptions = <C extends Contract.Any>(
  * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
- * REFUSED, for a MEASURED reason about the maintenance authority rather than about the era
- * pairing: the retained constructor leaves an empty committee with a threshold of one, so the
- * deployed contract could never be maintained by anyone. The deploy TRANSACTION path itself
- * composes and submits correctly — this refusal is about the result, not an unfinished pipeline.
+ * ALWAYS REFUSED, with `Ledger8DeployUnmaintainableError`, for a MEASURED reason about the
+ * maintenance authority rather than about the era pairing: nothing on this path sets one, and the
+ * authority a retained constructor leaves behind is an empty committee with a threshold of one, so
+ * the deployed contract could never be maintained by anyone. The deploy TRANSACTION path itself
+ * composes and submits correctly — this refusal is about the result.
  *
- * The refusal above is the ONLY one this arm makes, and it is unconditional — thrown before any
- * head is read. Do NOT branch on `Ledger8DeployOnV9Error` from this entry point: through
- * `deployContract` that branch is never taken.
+ * The refusal is unconditional and comes BEFORE the network head is read, so `Ledger8DeployOnV9Error`
+ * — the era pairing table's refusal for a retained-era deploy against a post-fork head — is not
+ * reachable through this entry point today. Do NOT branch on it here: through `deployContract` that
+ * branch is never taken.
  *
- * @see {@link KeepStatePipeline} for the measurement and the test that pins it.
+ * @see {@link KeepStatePipeline} for the measurement, what it would take to lift the refusal, and
+ *      the test that pins it.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
@@ -179,7 +182,7 @@ export async function deployContract<C extends Contract.Any>(
   options: DeployContractOptions<C> | AnyLedger8DeployContractOptions
 ): Promise<DeployedContract<C> | AnyLedger8DeployedContract> {
   if (isLedger8Request<AnyLedger8DeployContractOptions>(options)) {
-    throw new Error(LEDGER8_DEPLOY_UNMAINTAINABLE);
+    throw new Ledger8DeployUnmaintainableError();
   }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
   return {

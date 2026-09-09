@@ -6,7 +6,7 @@
 
 # Class: ZkArtifactIntegrityError
 
-Defined in: packages/utils/dist/index.d.ts:442
+Defined in: packages/utils/dist/index.d.ts:452
 
 Thrown when a ZK artifact (or the manifest itself) fails integrity verification.
 
@@ -20,7 +20,7 @@ Thrown when a ZK artifact (or the manifest itself) fails integrity verification.
 
 > **new ZkArtifactIntegrityError**(`message`, `options?`): `ZkArtifactIntegrityError`
 
-Defined in: packages/utils/dist/index.d.ts:443
+Defined in: packages/utils/dist/index.d.ts:453
 
 #### Parameters
 

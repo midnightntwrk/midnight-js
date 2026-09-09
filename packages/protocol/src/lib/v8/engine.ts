@@ -16,6 +16,8 @@
 import type { ContractCallPrototype } from '@midnightntwrk/ledger-v9';
 
 import type { EncodedStateValue } from '../era/envelope';
+import type { ContractEntryPointPojo } from '../shared/contract-state';
+import { reexpressOperationsForCurrentEra } from '../v9/operations';
 import { wrapKeepStateCall, type WrapKeepStateCallOptions } from '../v9/wrap';
 import {
   type ConstructorResultPojo,
@@ -52,6 +54,14 @@ export interface Ledger8Engine {
   executeCircuit(options: ExecuteCircuitOptions): TranscriptPojo;
   wrapKeepStateCall(options: WrapKeepStateCallOptions): ContractCallPrototype;
   executeConstructor(options: ExecuteConstructorOptions): ConstructorResultPojo;
+  /**
+   * Re-expresses a retained-era contract's entry points as a current-era contract state, so a
+   * keep-state call has an operation registry the current composer can read.
+   *
+   * Fork-crossing work, which is why it sits here rather than on either era facade: the input is
+   * what the retained decoder read off the chain, and the output is for the current ledger.
+   */
+  reexpressOperationsForCurrentEra(entryPoints: readonly ContractEntryPointPojo[]): Uint8Array;
 }
 
 /**
@@ -104,6 +114,7 @@ export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
     downConvertForExecution: (state) => downConvertForExecution(state, ledger8CompactRuntime),
     executeCircuit: (options) => executeCircuit(options, ledger8ExecutionRuntime),
     wrapKeepStateCall,
+    reexpressOperationsForCurrentEra,
     executeConstructor: (options) => executeConstructor(options, ledger8ConstructorRuntime)
   };
 };

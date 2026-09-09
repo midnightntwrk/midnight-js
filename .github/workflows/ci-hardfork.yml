@@ -1,0 +1,112 @@
+name: CI - Hard fork
+
+# The fork-crossing gate (spec AC0): one build of one dApp, no code change at the
+# fork, operating on a ledger-8 head, crossing the boundary mid-session, and
+# operating again afterwards through the same call sites.
+#
+# Deliberately separate from `ci-packaging.yml`. That workflow's subject is "the
+# framework installs the way a consumer installs it", which outlives the fork and
+# stays after the retained era is dropped. THIS workflow is deleted whole at that
+# point, which is the test of whether the split is drawn in the right place.
+#
+# It repeats the pack rather than consuming an artifact from `ci-packaging.yml`.
+# Two extra minutes buys independence: a gate whose result depends on another
+# job's artifact is a gate that goes red for reasons that are not about the fork.
+
+env:
+  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+permissions:
+  contents: read
+  packages: write
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      should_run:
+        required: true
+        type: string
+
+concurrency:
+  group: hardfork-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ac0-fork-crossing:
+    name: AC0 fork-crossing scenario
+    if: inputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    # Measured locally: 5m45s for the scenario itself, plus install, build, pack
+    # and six uncached image pulls on a cold runner.
+    timeout-minutes: 45
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          cache-key-prefix: 'turbo-hardfork'
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build
+        run: yarn build --cache-dir ./turbo
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Pack the framework
+        run: node packaging/pack-framework.mjs
+
+      # The personas resolve `@midnight-ntwrk/compact-runtime` from GitHub
+      # Packages, and neither pnpm nor a PnP install inherits Yarn's own scope
+      # configuration, so each needs the credential written where it looks.
+      - name: Authorize the persona installs
+        run: |
+          {
+            echo "@midnight-ntwrk:registry=https://npm.pkg.github.com"
+            echo "//npm.pkg.github.com/:_authToken=${MIDNIGHTCI_PACKAGES_WRITE}"
+          } >> "$HOME/.npmrc"
+        env:
+          MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      # Every image in `compose-fork.yml` comes from ghcr except the toolkit, and
+      # none of them are in the image cache the e2e lane restores, so this login
+      # is unconditional here.
+      - name: Log in to GitHub Container registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
+        with:
+          registry: 'https://ghcr.io'
+          username: MidnightCI
+          password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      # The node toolkit is published on Docker Hub, not ghcr, so the login above
+      # does not authorize it. No Docker Hub credentials are configured for this
+      # repository, and an empty login is a hard failure in the action, so this
+      # step is inert until someone adds them. The anonymous pull it falls back on
+      # is rate-limited from shared runner IPs, and it fails inside `enactFork()`
+      # where it reads as a governance failure rather than a registry one.
+      # Mirroring the toolkit to ghcr would remove this hazard entirely.
+      - name: Log in to Docker Hub
+        if: env.DOCKERHUB_USERNAME != ''
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      # The release gate for the fork window: this scenario passing is what
+      # "production-ready for the window" means, so it is a blocking job and is
+      # deliberately not marked `continue-on-error`. A gate that reports green
+      # while the scenario it guards cannot run is worse than no gate -- this
+      # test was kept out of CI once already for exactly that reason.
+      - name: Run the AC0 fork-crossing scenario
+        run: node packaging/ac0-smoke.mjs pnp
+        env:
+          YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

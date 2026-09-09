@@ -189,10 +189,9 @@ The message is a runtime `const` rather than a bare literal inside
 `NeitherContractShape` so the text is written ONCE and can be read by a runtime
 consumer — the error above, and any test asserting on one — while `typeof` still
 gives the type a string LITERAL member. It is not re-exported from the package
-index, and that is a decision about THIS CONSTANT rather than about its
-reachability: `EraArtifactMismatchError` IS exported and IS thrown on every
-era-dispatching entry point. A consumer catches the error and reads `message`;
-publishing the string too would pin the wording as API. `overloads.test-d.ts` pins the wording
+index: the error that carries it, `EraArtifactMismatchError`, is the consumer
+surface, and that error IS exported — so a consumer narrows on the error rather
+than comparing against the message. `overloads.test-d.ts` pins the wording
 verbatim, and pins that a neither-era object really is refused by
 `NeitherEraContractOptions` — the assignability fact the overloads rely on,
 whether or not any arm spells it out.

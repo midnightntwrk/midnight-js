@@ -16,6 +16,7 @@
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 
 import { UnknownLedgerVersionError } from '../../errors';
+import { partitionCallTranscript } from '../shared/assemble-call';
 import { decodeContractStateWith, extractStateWith } from '../shared/contract-state';
 import type { LedgerVersion } from '../shared/ledger-version';
 import { composeEraV8CallTx, composeEraV8DeployTx } from '../v8/adapt';
@@ -47,7 +48,12 @@ const createV9Era = (): LedgerEra => {
     extractState: (raw) => extractStateWith(raw, 'v9', extractV9EncodedStateValue),
     decodeContractState: (raw) => decodeContractStateWith(raw, 'v9', ledgerV9),
     composeCallTx: composeV9CallTx,
-    composeDeployTx: composeV9DeployTx
+    composeDeployTx: composeV9DeployTx,
+    partitionCallTranscript: (options) => {
+      // See the v8 arm: the assembler's tuple is readonly, the ledger's is not.
+      const [guaranteed, fallible] = partitionCallTranscript(ledgerV9, { ...options, version: 'v9' });
+      return [guaranteed, fallible];
+    }
   };
 
   return Object.freeze(era);
@@ -66,7 +72,14 @@ const createV8Era = async (): Promise<LedgerEra> => {
     extractState: (raw) => extractStateWith(raw, 'v8', (bytes) => extractEncodedStateValue(bytes, 'v8', v8.ContractState)),
     decodeContractState: (raw) => decodeContractStateWith(raw, 'v8', v8),
     composeCallTx: (options) => composeEraV8CallTx(options, v8),
-    composeDeployTx: (options) => composeEraV8DeployTx(options, v8)
+    composeDeployTx: (options) => composeEraV8DeployTx(options, v8),
+    partitionCallTranscript: (options) => {
+      // Copied into a mutable pair rather than handed on: the assembler answers
+      // with a readonly tuple, and the ledger's own `PartitionedTranscript` --
+      // which is what every consumer of this pair is typed against -- is not.
+      const [guaranteed, fallible] = partitionCallTranscript(v8, { ...options, version: 'v8' });
+      return [guaranteed, fallible];
+    }
   };
 
   return Object.freeze(era);

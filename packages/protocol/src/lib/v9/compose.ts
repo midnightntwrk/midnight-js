@@ -88,6 +88,7 @@ export const composeV9CallTx = (options: ComposeCallOptions): Uint8Array => {
         input: call.input,
         output: call.output,
         communicationCommitmentRandomness: call.communicationCommitmentRandomness,
+        ledgerParameters: call.ledgerParameters,
         operations: readContractState(call.contractState),
         stage: 'call-operation',
         version: 'v9'
