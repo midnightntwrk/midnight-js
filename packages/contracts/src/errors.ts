@@ -275,6 +275,44 @@ export class IndexerInconsistencyError extends Error {
 }
 
 /**
+ * An error indicating that the read surface served a contract state without the block's ledger
+ * parameters, so a call cannot be composed against the cost model the chain is running.
+ *
+ * `RawContractState.ledgerParameters` is optional — a provider that cannot serve them is still a
+ * usable provider, and the bundled indexer provider always does serve them. This pipeline, though,
+ * has just read the chain, so an absent parameter set here is a provider that did not serve them
+ * rather than a caller with no read surface.
+ *
+ * Raised instead of substituting the ledger's initial parameters, which is what happened before and
+ * is the failure this error exists to replace: the partitioner drew the guaranteed/fallible boundary
+ * from a cost model the chain does not run, the caller paid to prove the result, and the node then
+ * refused the guaranteed segment with `Transcript(Execution(OutOfGas))`. Nothing in that path named
+ * the cost model, so the diagnosis was unreachable from the error.
+ *
+ * The compatibility path still exists for a caller that genuinely cannot read the chain, but it has
+ * to be selected by name — see `INITIAL_LEDGER_PARAMETERS` in `midnight-js-protocol`.
+ */
+export class LedgerParametersUnservedError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED;
+
+  /**
+   * @param contractAddress The contract whose state was read without its block's parameters.
+   */
+  constructor(readonly contractAddress: string) {
+    super(
+      `The read surface served the state of the contract at '${contractAddress}' without the ledger ` +
+        `parameters of the block that dates it, so this call cannot be partitioned against the cost model ` +
+        `the chain is running. Substituting the ledger's initial parameters would draw the guaranteed and ` +
+        `fallible segment boundary from a model the chain does not use, and the node would refuse the ` +
+        `guaranteed segment for running out of gas after you had already paid to prove it. Use a ` +
+        `PublicDataProvider that serves 'ledgerParameters' on 'queryRawContractState' — the bundled indexer ` +
+        `provider does.`
+    );
+    this.name = 'LedgerParametersUnservedError';
+  }
+}
+
+/**
  * An error indicating that a retained-era call would spend a shielded coin the
  * contract already holds on chain, which this pipeline structurally cannot
  * compose.

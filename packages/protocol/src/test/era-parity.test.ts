@@ -315,6 +315,8 @@ const callOptionsFor = (version: LedgerVersion): ComposeCallOptions => ({
       contractAddress: ocrt3.dummyContractAddress(),
       circuitId: 'increment',
       contractState: FIXTURES[version].keyedContractState(),
+      // Named explicitly: this test compares the two eras' assembly, not their cost models.
+      ledgerParameters: 'initial',
       transcript: {
         kind: 'unpartitioned',
         preState: PRE_STATE,
