@@ -1,8 +1,16 @@
 # 0007. Cross the era boundary with plain data only
 
-- Status: Accepted
+- Status: Superseded by ADR-0011
 - Date: 2026-09-04
 - Deciders: Szymon Paluchowski
+
+> **Superseded by [ADR-0011](./0011-publish-era-handles-alongside-their-plain-data.md).**
+> Era handles are now published on the framework's era-specific result types,
+> ALONGSIDE the plain-data members this ADR introduced — which all stay. Two
+> parts of this ADR still hold and are the reason ADR-0011 is additive rather
+> than a deletion: the analysis of what a WASM handle is, below, and the rule
+> that `LedgerEra` trades only plain data, still mechanised by the
+> `structuredClone` gate.
 
 ## Context
 
