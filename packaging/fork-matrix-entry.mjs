@@ -573,20 +573,31 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
  * that is monotone, cheap to decode, and advanced by the very call the leg makes.
  */
 const readRetainedRound = async (key, providers, contractAddress) => {
-  const [{ ledger }, runtime, era] = await Promise.all([
+  const [{ ledger }, runtime, { utils }] = await Promise.all([
     import(`@midnight-ntwrk/fork-retained-${key}`),
     import(`@midnight-ntwrk/fork-retained-${key}/runtime`),
-    loadLedgerEra('v8')
+    import('@midnight-ntwrk/midnight-js')
   ]);
 
-  // RAW, and read with the RETAINED era -- the shape `readLedger8Snapshot` uses
-  // in `contracts`. `queryContractState` decodes with the head's era, which
-  // refuses a v8 envelope by design and says so; and the fork does not rewrite
-  // stored state, so these bytes stay retained-era after the boundary too.
+  // RAW, not `queryContractState`: that path decodes with the head's era and
+  // refuses a v8 envelope by design -- the shape `readLedger8Snapshot` uses in
+  // `contracts` for the same reason.
   const state = await providers.publicDataProvider.queryRawContractState(contractAddress);
   if (state === null) {
     throw new Error(`the indexer served no contract state for '${key}' at ${contractAddress}`);
   }
+
+  // The era comes off the envelope's OWN tag. Not assumed, and deliberately not
+  // `state.version`, which `RawContractState` documents as derived from
+  // `protocolVersion` alone and explicitly NOT a statement about the bytes.
+  //
+  // The two disagree exactly here. A retained contract keeps its pre-fork
+  // envelope on a v9 chain until something writes to it, and the post-fork leg
+  // CALLS the contract before this read -- which is that write. So one read
+  // answers `v8` below the boundary and `v9` above it, and pinning either era
+  // fails on the other half. Pinning v8 is what made this leg report
+  // `StateDecodeFailedError` for a tag mismatch.
+  const era = await loadLedgerEra(utils.contractStateEnvelopeVersion(state.raw));
 
   // ADR-0007: the era boundary is crossed with plain data only. `extractState`
   // answers with an `EncodedStateValue`, and the twin's OWN runtime turns that
