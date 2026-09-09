@@ -1,4 +1,4 @@
-name: CI - Packaging
+name: CI - Consumer E2E
 
 # The isolated-linker install smoke (spec AC6, split-topology milestone).
 #
@@ -25,7 +25,7 @@ on:
         type: string
 
 concurrency:
-  group: packaging-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: consumer-e2e-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -41,7 +41,7 @@ jobs:
         uses: ./.github/actions/setup-build-env
         with:
           node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          cache-key-prefix: 'turbo-packaging'
+          cache-key-prefix: 'turbo-consumer-e2e'
 
       - name: Install dependencies
         run: yarn install --immutable
@@ -54,7 +54,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Pack the framework
-        run: node packaging/pack-framework.mjs
+        run: node consumer-e2e/pack-framework.mjs
 
       # The personas resolve `@midnight-ntwrk/compact-runtime` from GitHub
       # Packages, and neither pnpm nor a PnP install inherits Yarn's own scope
@@ -69,7 +69,7 @@ jobs:
           MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Run the linker smoke
-        run: node packaging/linker-smoke.mjs
+        run: node consumer-e2e/linker-smoke.mjs
         env:
           YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

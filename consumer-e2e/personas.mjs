@@ -27,13 +27,63 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const PACKAGING_DIR = path.dirname(fileURLToPath(import.meta.url));
-export const REPOSITORY_ROOT = path.resolve(PACKAGING_DIR, '..');
-export const TARBALL_DIR = path.join(PACKAGING_DIR, '.tarballs');
+export const CONSUMER_E2E_DIR = path.dirname(fileURLToPath(import.meta.url));
+export const REPOSITORY_ROOT = path.resolve(CONSUMER_E2E_DIR, '..');
+export const TARBALL_DIR = path.join(CONSUMER_E2E_DIR, '.tarballs');
 
 /** Where each persona's contract module comes from, relative to the repository root. */
 const RETAINED_CONTRACT = 'testkit-js/testkit-js/src/fixtures/hf/counter-016/compiled';
 const CURRENT_CONTRACT = 'testkit-js/testkit-js-e2e/src/contract/compiled/counter';
+
+/** Where the e2e suite's compiled contracts live, relative to the repository root. */
+const E2E_COMPILED = 'testkit-js/testkit-js-e2e/src/contract/compiled';
+
+/**
+ * The current-era contracts the fork matrix drives after the boundary.
+ *
+ * The retained toolchain (`compactc` 0.31.1) left exactly one COMMITTED fixture
+ * in this repository, `counter-016`; retained-era twins of these are built on
+ * demand instead -- see {@link RETAINED_TWINS}, which covers six of the seven.
+ * `events` is the one for which the retained half of the fork crossing cannot be posed at all.
+ *
+ * What this current-era set covers is the other half of the same question:
+ * whether the framework's full contract surface works on a chain that carries
+ * pre-fork history, which is where every consumer is on day one after the fork.
+ */
+export const MATRIX_CONTRACTS = [
+  'simple',
+  'unshielded',
+  'shielded',
+  'shielded-fallible',
+  'fee-mint',
+  'events',
+  'block-time'
+];
+
+/**
+ * The last compiler of the previous era, and the one `counter-016` was built
+ * with. A constant in the same sense {@link RETAINED_RUNTIME} is: 0.31.1 is what
+ * the pre-fork toolchain was, and it does not move.
+ */
+export const RETAINED_COMPILER = '0.31.1';
+
+/** Where `build-retained-twins.mjs` puts what it compiles. Gitignored -- the set is about 262 MB. */
+export const RETAINED_TWIN_DIR = path.join(CONSUMER_E2E_DIR, '.retained');
+
+/** One twin's artifact directory, which is also the ZK artifact root a provider is pointed at. */
+export const retainedTwinPath = (key) => path.join(RETAINED_TWIN_DIR, key);
+
+/**
+ * The e2e contracts a RETAINED-era twin can be built for, so that the fork crossing's actual
+ * question -- deployed below the boundary, called above it -- can be asked of
+ * something other than a counter.
+ *
+ * `events` is absent and cannot be added: contract events are a MIP-0002 feature
+ * and `emit` is not a language-0.23 form, so `events.compact` fails to compile
+ * against this toolchain with `unbound identifier emit`. Everything else builds
+ * from the same unmodified source the current-era suite compiles.
+ */
+export const RETAINED_TWINS = ['simple', 'unshielded', 'shielded', 'shielded-fallible', 'fee-mint', 'block-time'];
 
 /**
  * The Compact runtime each persona declares. These two numbers are the experiment:
@@ -73,12 +123,72 @@ export const CURRENT_RUNTIME = (() => {
  * a real consumer's tree looks like once a retained contract is packaged rather
  * than pasted in. Under an isolated linker the two runtimes coexist; that is the
  * only arrangement in which one process can execute a pre-fork contract and a
- * current one, and therefore the only arrangement in which AC0 can be written.
+ * current one, and therefore the only arrangement in which the fork crossing can be written.
  */
 export const CONTRACT_PACKAGES = {
-  retained: { name: '@midnight-ntwrk/ac0-contract-retained', runtime: RETAINED_RUNTIME, source: RETAINED_CONTRACT },
-  current: { name: '@midnight-ntwrk/ac0-contract-current', runtime: CURRENT_RUNTIME, source: CURRENT_CONTRACT }
+  retained: { name: '@midnight-ntwrk/fork-retained-baseline', runtime: RETAINED_RUNTIME, source: RETAINED_CONTRACT },
+  current: { name: '@midnight-ntwrk/fork-current-baseline', runtime: CURRENT_RUNTIME, source: CURRENT_CONTRACT },
+  // Wrapped the same way as the two above rather than reached for through the
+  // e2e workspace: the point of this tier is what an installed consumer can
+  // resolve, and a package that came from the monorepo's own tree would answer a
+  // different question.
+  ...Object.fromEntries(
+    MATRIX_CONTRACTS.map((key) => [
+      key,
+      { name: `@midnight-ntwrk/fork-current-${key}`, runtime: CURRENT_RUNTIME, source: `${E2E_COMPILED}/${key}` }
+    ])
+  ),
+  // The retained twins, keyed apart from their current-era namesakes because a
+  // persona holds BOTH: `unshielded` and `retained-unshielded` are the same
+  // source through two toolchains, and the whole point is that they resolve
+  // different Compact runtimes in one install.
+  ...Object.fromEntries(
+    RETAINED_TWINS.map((key) => [
+      `retained-${key}`,
+      {
+        name: `@midnight-ntwrk/fork-retained-${key}`,
+        runtime: RETAINED_RUNTIME,
+        source: path.relative(REPOSITORY_ROOT, retainedTwinPath(key))
+      }
+    ])
+  )
 };
+
+/**
+ * Narrows the fork matrices to a requested subset of contracts.
+ *
+ * The scenario is sharded one contract per CI job, and a shard that silently ran
+ * the wrong set -- or nothing -- would report green for work it never did. So an
+ * unknown key is refused by name rather than filtered away, and an empty
+ * selection is refused too.
+ *
+ * `retained` is the intersection with {@link RETAINED_TWINS}, not the whole
+ * request: `events` is a legitimate current-era key with no retained twin that
+ * can exist, so asking for it must narrow the retained half to nothing without
+ * failing.
+ *
+ * @param requested Contract keys, or `undefined` for the whole matrix.
+ * @returns The current-era and retained-era keys this run covers.
+ */
+export const resolveContractSelection = (requested) => {
+  if (requested === undefined) {
+    return { current: [...MATRIX_CONTRACTS], retained: [...RETAINED_TWINS] };
+  }
+  const keys = requested.filter((key) => key !== '');
+  const unknown = keys.filter((key) => !MATRIX_CONTRACTS.includes(key));
+  if (unknown.length > 0) {
+    throw new Error(
+      `Not a fork-matrix contract: ${unknown.join(', ')}. Known: ${MATRIX_CONTRACTS.join(', ')}`
+    );
+  }
+  if (keys.length === 0) {
+    throw new Error('A fork-matrix contract selection cannot be empty; omit it to run the whole matrix');
+  }
+  return { current: keys, retained: keys.filter((key) => RETAINED_TWINS.includes(key)) };
+};
+
+/** The retained twins as persona contract keys. */
+export const RETAINED_MATRIX_CONTRACTS = RETAINED_TWINS.map((key) => `retained-${key}`);
 
 /** The `package.json` of one wrapped contract. */
 export const contractPackageManifest = (contract) => ({
@@ -89,7 +199,20 @@ export const contractPackageManifest = (contract) => ({
   // `./package.json` is exported deliberately: the smoke reads it to report which
   // Compact runtime this wrapper resolved, and a package that hides its manifest
   // cannot be interrogated that way.
-  exports: { '.': './contract/index.js', './contract/*': './contract/*', './package.json': './package.json' },
+  //
+  // `./runtime` re-exports the very `@midnight-ntwrk/compact-runtime` instance
+  // this wrapper's codegen imports. A caller that has to hand the contract a
+  // state value must mint it in THAT instance: `ledger()` checks its argument
+  // with `instanceof`, and a handle from any other copy is refused. Resolving
+  // the runtime from outside cannot answer which copy the wrapper got, so the
+  // wrapper hands it over instead -- the same injection `protocol` does with
+  // `Ledger8CompactRuntime`.
+  exports: {
+    '.': './contract/index.js',
+    './contract/*': './contract/*',
+    './runtime': './runtime.js',
+    './package.json': './package.json'
+  },
   dependencies: { '@midnight-ntwrk/compact-runtime': contract.runtime }
 });
 
@@ -162,7 +285,7 @@ export const readManifest = () => {
   try {
     return JSON.parse(readFileSync(manifestPath, 'utf8'));
   } catch (error) {
-    throw new Error(`No tarball manifest at ${manifestPath}; run \`node packaging/pack-framework.mjs\` first`, {
+    throw new Error(`No tarball manifest at ${manifestPath}; run \`node consumer-e2e/pack-framework.mjs\` first`, {
       cause: error
     });
   }
@@ -176,7 +299,7 @@ export const readManifest = () => {
  * versions that are not published yet, so without pinning the whole set the
  * install reaches for versions that do not exist.
  */
-export const personaManifest = (name, persona, manifest, packageManager, tarballDir) => {
+export const personaManifest = (name, persona, manifest, packageManager, tarballDir, extraContracts = []) => {
   // Absolute, and pointing at the staged copy: the persona is installed outside
   // the repository, and pnpm encodes a tarball's path into a store filename, so
   // the path has to be both absolute and short.
@@ -186,7 +309,10 @@ export const personaManifest = (name, persona, manifest, packageManager, tarball
   const dependencies = {
     ...(persona.runtime === undefined ? {} : { '@midnight-ntwrk/compact-runtime': persona.runtime }),
     ...Object.fromEntries(
-      (persona.contracts ?? []).map((key) => [CONTRACT_PACKAGES[key].name, `file:./contracts/${key}`])
+      [...(persona.contracts ?? []), ...extraContracts].map((key) => [
+        CONTRACT_PACKAGES[key].name,
+        `file:./contracts/${key}`
+      ])
     ),
     ...Object.fromEntries(persona.framework.map((packageName) => [packageName, tarballSpecifier(packageName)]))
   };
@@ -206,7 +332,7 @@ export const personaManifest = (name, persona, manifest, packageManager, tarball
   }
 
   return {
-    name: `@midnight-ntwrk/packaging-persona-${name}`,
+    name: `@midnight-ntwrk/consumer-e2e-persona-${name}`,
     version: '0.0.0',
     private: true,
     type: 'module',
