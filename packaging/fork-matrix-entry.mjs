@@ -401,8 +401,35 @@ const RETAINED_MATRIX = [
   },
   {
     key: 'unshielded',
-    preFork: [{ circuitId: 'mintUnshieldedToSelfTest', args: () => [DOMAIN_SEPARATOR, MINT_AMOUNT] }],
-    postFork: { circuitId: 'mintUnshieldedToSelfTest', args: () => [new Uint8Array(32).fill(8), MINT_AMOUNT] }
+    // The pre-fork mint's colour is captured, because the post-fork assertion is
+    // about THAT colour's balance and nothing else identifies it: the colour is
+    // derived from the domain separator inside the circuit and returned, not
+    // supplied.
+    preFork: [
+      {
+        circuitId: 'mintUnshieldedToSelfTest',
+        args: () => [DOMAIN_SEPARATOR, MINT_AMOUNT],
+        capture: 'preForkColor'
+      }
+    ],
+    // Two calls: mint a DIFFERENT colour, then read the PRE-fork colour's
+    // balance back. This is the state-continuity assertion for a contract that
+    // declares no ledger block -- what survives for `unshielded` is the
+    // contract's balance, which `decodeContractState` deliberately omits, so it
+    // is unreachable through {@link readRetainedLedger} and reachable through a
+    // circuit.
+    //
+    // The second call is what a silently reset state would fail: minting again
+    // would still succeed and still report `SucceedEntirely`, and the balance of
+    // a colour minted before the boundary would read 0 instead of the amount.
+    postFork: [
+      { circuitId: 'mintUnshieldedToSelfTest', args: () => [new Uint8Array(32).fill(8), MINT_AMOUNT] },
+      {
+        circuitId: 'getUnshieldedBalanceTest',
+        args: (context) => [context.preForkColor],
+        expect: MINT_AMOUNT
+      }
+    ]
   },
   {
     key: 'shielded',
@@ -473,6 +500,16 @@ const RETAINED_MATRIX = [
         { bytes: context.coinPublicKey },
         FEE_AMOUNT
       ]
+    },
+    // The same shape as `shielded-fallible`: `counters` keyed by
+    // `persistentHash([mintNonce, domainSep])`, and the nonce already differs
+    // across the boundary (123 before, 122 after), so a surviving pre-fork write
+    // leaves two entries where a reset leaves one.
+    state: {
+      label: 'counters.size',
+      read: (ledgerState) => BigInt(ledgerState.counters.size()),
+      preFork: 1n,
+      postFork: 2n
     }
   },
   {
@@ -484,6 +521,15 @@ const RETAINED_MATRIX = [
 
 /** What each retained twin's deploy and calls produced, carried from the pre-fork legs to the post-fork ones. */
 const retainedDeployments = new Map();
+/**
+ * What a twin's PRE-fork calls captured, keyed by contract.
+ *
+ * Separate from the per-leg wallet context because it has to survive the fork:
+ * the post-fork leg asserts against a value the pre-fork leg produced -- the
+ * minted colour, for `unshielded` -- and a context rebuilt per leg cannot carry
+ * one.
+ */
+const retainedCaptures = new Map();
 
 const retainedZkConfigPath = (key) => {
   const zkConfigPath = config.retainedMatrixZkConfigPaths?.[key];
@@ -565,7 +611,7 @@ const deployRetained = async (key, providers, wallet) => {
  * `CompiledContract` container -- and a nullary circuit's options carry no
  * `args` member at all.
  */
-const callRetained = async (key, providers, contractAddress, call, context) => {
+const callRetained = async (label, key, providers, contractAddress, call, context) => {
   const { Contract } = await import(`@midnight-ntwrk/fork-retained-${key}`);
   const submitted = await submitCallTx(providers, {
     compiledContract: new Contract({}),
@@ -573,6 +619,18 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
     circuitId: call.circuitId,
     ...(call.args === undefined ? {} : { args: call.args(context) })
   });
+
+  // `capture` and `expect` are the current-era matrix's vocabulary, available on
+  // this arm only since it started answering with `private.result`. Before that
+  // the circuit's return value stopped inside the framework, which is why the
+  // retained legs could assert that a call SUCCEEDED and nothing about what it
+  // computed.
+  if (call.capture !== undefined) {
+    context[call.capture] = submitted.private.result;
+  }
+  if (call.expect !== undefined && submitted.private.result !== call.expect) {
+    failures.push(`${label}/${call.circuitId}: returned ${submitted.private.result}, expected ${call.expect}`);
+  }
   // Read through the SAME shape the current-era arm answers with -- `public` for
   // the finalized record, `private` for the circuit's own return value. The
   // retained arm used to answer a thin `{ circuitId, nextPrivateState, txData }`
@@ -587,7 +645,7 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
     status: submitted.public.status,
     version: submitted.public.version,
     txId: submitted.public.txId,
-    result: submitted.private.result
+    ...(submitted.private.result === undefined ? {} : { result: String(submitted.private.result) })
   };
 };
 
@@ -607,11 +665,19 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
  * survives for them is the contract's BALANCE, which `decodeContractState`
  * deliberately omits.
  *
- * They are reachable another way now that the retained arm answers with
- * `private.result`: a post-fork call to `getUnshieldedBalanceTest` with the
- * colour minted before the boundary returns the surviving balance directly.
- * That needs `capture` and `expect` on the retained legs, which the current-era
- * matrix has and this one does not yet.
+ * `unshielded` asserts its surviving state the OTHER way, now that the retained
+ * arm answers with `private.result`: a post-fork call to
+ * `getUnshieldedBalanceTest`, naming the colour its pre-fork mint captured,
+ * returns the surviving balance directly. So the two mechanisms cover different
+ * contract shapes: this one reads a declared ledger field (`simple`,
+ * `shielded-fallible`, `fee-mint`), that one asks a circuit (`unshielded`).
+ *
+ * `shielded` and `block-time` still assert nothing about surviving state, and
+ * neither mechanism reaches them: both declare no ledger block, and neither has
+ * a circuit that reads earlier state back -- `mintShieldedTokens` returns a new
+ * coin and `testBlockTimeGte` answers about the block, not the contract. Closing
+ * those two needs a circuit that does not exist in the source yet, so it is a
+ * fixture change rather than a harness one.
  */
 const readRetainedLedger = async (key, providers, contractAddress, read) => {
   const [{ ledger }, runtime, { utils }] = await Promise.all([
@@ -772,8 +838,11 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     const context = await walletContext(session.wallet);
     const calls = [];
     for (const call of entry.preFork) {
-      calls.push(await callRetained(entry.key, providers, deployed.contractAddress, call, context));
+      calls.push(
+        await callRetained(`pre-fork retained ${entry.key}`, entry.key, providers, deployed.contractAddress, call, context)
+      );
     }
+    retainedCaptures.set(entry.key, context);
     const ledgerState = await checkLedgerState(
       `pre-fork retained ${entry.key}`,
       entry,
@@ -880,8 +949,27 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
       throw new Error(`its pre-fork deploy did not complete, so there is nothing here to call`);
     }
     const providers = retainedProvidersFor('v9', session.wallet, entry.key);
-    const context = await walletContext(session.wallet);
-    const outcome = await callRetained(entry.key, providers, deployed.contractAddress, entry.postFork, context);
+    // Seeded with what the pre-fork calls captured, so a post-fork assertion can
+    // name a value from the other side of the boundary. The wallet members are
+    // re-read rather than reused: the wallet was rebuilt at the `post-fork head
+    // era` gate, and a key read off the stopped one would be stale.
+    const context = { ...(retainedCaptures.get(entry.key) ?? {}), ...(await walletContext(session.wallet)) };
+    // A LIST, so a contract can mint on one call and assert on the next. Written
+    // as one-or-many rather than always-many to leave the five single-call
+    // entries untouched.
+    const outcome = [];
+    for (const call of [entry.postFork].flat()) {
+      outcome.push(
+        await callRetained(
+          `post-fork keep-state ${entry.key}`,
+          entry.key,
+          providers,
+          deployed.contractAddress,
+          call,
+          context
+        )
+      );
+    }
     // The state written BEFORE the boundary, read back after it. Without this
     // the leg proves only that the address still answers.
     const ledgerState = await checkLedgerState(
@@ -894,7 +982,7 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     const state = await providers.publicDataProvider.queryRawContractState(deployed.contractAddress);
     return {
       contractAddress: deployed.contractAddress,
-      call: outcome,
+      calls: outcome,
       ...(ledgerState ?? {}),
       // The envelope after the call, so a keep-state write that re-versions the
       // state is distinguishable from one that leaves it in the retained shape.
