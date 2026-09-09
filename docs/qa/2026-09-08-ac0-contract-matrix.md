@@ -1,7 +1,8 @@
 # AC0 across the rest of the contract surface — run report
 
 **Date:** 2026-09-08 / 2026-09-09
-**Branch:** `test/1006-ac0-contract-matrix`, off `feat/1006-hardening` at `5bc06ee9`
+**Branch:** `test/1006-ac0-contract-matrix`, stacked on `fix/1006-retained-segment-routing` at `c893bbb0`
+(runs 1-4 below predate that base and were measured at `5bc06ee9`, two commits behind it)
 **Harness:** `node packaging/ac0-smoke.mjs pnp`
 **Host:** macOS, Apple silicon, Docker Desktop; every image served from the local cache
 
@@ -31,7 +32,7 @@ contracts deployed *after* the boundary, which is a different question (does the
 surface work on a chain with pre-fork history) and answers it separately.
 
 Generated, not committed: the retained set is ~262 MB of prover keys, against
-`counter-016`'s 128 KB. `packaging/.retained/` is gitignored and rebuilt on
+`counter-016`'s 27 KB. `packaging/.retained/` is gitignored and rebuilt on
 demand.
 
 Image set (compose defaults, unchanged): genesis node 1.0.1, running node
@@ -53,9 +54,10 @@ question that can be posed for it. The other six compile from unmodified source.
 
 ## Result
 
-Everything in this section is **the branch as it stands** (`5bc06ee9`), from runs
-3 and 4, which were identical: **4 failures**, exit 1. Run 4 differs only in that
-the harness now prints the `cause` chain.
+Everything in this section is the branch **before the finding-1 fix** (`5bc06ee9`),
+from runs 3 and 4, which were identical: **4 failures**, exit 1. Run 4 differs only
+in that the harness now prints the `cause` chain. That fix has since landed on the
+base branch, so the branch *as it stands* is runs 5-6: 0 failures, exit 0.
 
 Finding 1 carries a prototype that flips all four to passing; run 5's numbers are
 kept there rather than folded in here, so the measured defect and the proposed
@@ -296,6 +298,24 @@ the migration guide.
 ## What this still does not cover
 
 - **`events` in any pre-fork form.** Not a gap that can be closed; see above.
+- **Witnesses and private state, on either era.** The three e2e contracts that
+  declare a witness -- `counter`, `counter-clone`, `double-counter` -- are all
+  out of the matrix, so no leg here writes private state. `privateStateProvider`
+  is one of the seven providers and the security-critical one, and nothing in
+  this run exercises it across the boundary.
+- **`mintWithShieldedFee`.** The other half of the regression `fee-mint` exists
+  to cover, and finding 1 is a segment-routing defect, so this is the sharpest
+  omission in the set. It is not addable as a submitting leg: `receiveShielded`
+  needs a `ShieldedCoinInfo` the wallet actually holds, and the freshly-minted
+  colour exists in no wallet coin -- which is the very thing the circuit was
+  written to demonstrate. `fee-mint.segment-routing.it.test.ts:162` covers it at
+  transcript level, and closing it here needs a funded shielded coin first.
+- **Per-circuit depth on the retained arm.** `unshielded` and `shielded` cross
+  the boundary on one circuit each; their current-era namesakes drive three and
+  two. An era difference confined to the circuits left out would not show.
+- **Ledger state beyond `simple`'s counter.** `simple` is read back after the
+  boundary and asserted to be 2; every other keep-state leg establishes that the
+  address still answers, not that the state written before the fork survived.
 - **How common the finding-1 contract shape is in real retained dApps.** That
   decides its severity and this run does not measure it.
 - **Wallet-to-wallet transfers across the boundary.** The matrix drives contract

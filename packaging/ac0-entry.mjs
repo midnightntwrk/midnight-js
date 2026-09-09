@@ -102,15 +102,28 @@ const describeError = (error, depth = 0) => {
   return `${head}\nCaused by: ${describeError(error.cause, depth + 1)}`;
 };
 
+/** A deadline breach, marked so `leg` can tell it apart from an ordinary failure. */
+class LegTimeoutError extends Error {
+  constructor(name, ms) {
+    super(`${name} did not finish within ${ms}ms`);
+    this.name = 'LegTimeoutError';
+  }
+}
+
 /**
  * Fails `run` at a deadline instead of waiting on it forever.
  *
- * The matrix drives seven contracts through one process, and several of them
+ * The run drives thirteen contracts through one process, and several of them
  * prove against artifacts in the hundreds of megabytes. A prover that never
  * answers, or a wallet subscription that stops delivering, would otherwise take
  * the remaining contracts down with it and the report would say nothing about
- * any of them. The stray promise is left running: `report()` exits the process,
- * so nothing outlives it.
+ * any of them.
+ *
+ * `Promise.race` cannot cancel the loser, and every leg draws on ONE wallet, so
+ * the abandoned operation may still balance and submit after its leg was written
+ * off -- spending coins a later leg has already selected, which would be reported
+ * under that later contract's name. `leg` therefore ends the run on a breach
+ * rather than stepping over it; this function only raises it.
  */
 const withDeadline = (name, ms, run) =>
   Promise.race([
@@ -118,11 +131,17 @@ const withDeadline = (name, ms, run) =>
     // `ref: false`, so the deadline of a leg that already finished cannot be the
     // thing keeping the process alive after the report is written.
     delay(ms, undefined, { ref: false }).then(() => {
-      throw new Error(`${name} did not finish within ${ms}ms`);
+      throw new LegTimeoutError(name, ms);
     })
   ]);
 
 const leg = async (name, run, ms = LEG_TIMEOUT) => {
+  // `report` exits from a write callback, so the process is still alive for a
+  // tick or two after a fatal leg. Without this the next leg's body would start
+  // -- and a half-run leg is exactly the kind of thing the report cannot explain.
+  if (reported) {
+    return undefined;
+  }
   try {
     const result = await withDeadline(name, ms, run);
     observed[name] = result === undefined ? 'ok' : result;
@@ -134,8 +153,28 @@ const leg = async (name, run, ms = LEG_TIMEOUT) => {
     const message = describeError(error);
     observed[name] = `FAILED: ${message}`;
     failures.push(`${name}: ${message}`);
+    if (error instanceof LegTimeoutError) {
+      // The abandoned operation still holds the wallet, so anything measured
+      // after this point could be its doing. Stopping here costs the remaining
+      // legs; continuing would cost the attribution of every one of them.
+      report(1);
+    }
     return undefined;
   }
+};
+
+/**
+ * Runs a leg and answers whether it passed.
+ *
+ * By whether it recorded a failure, NOT by its return value: `leg` returns
+ * whatever the body did, and a body that asserts rather than reports -- like
+ * `awaitFork` -- returns `undefined` on success. Reading that as a failure would
+ * abort every healthy run.
+ */
+const legSucceeded = async (name, run, ms = LEG_TIMEOUT) => {
+  const before = failures.length;
+  await leg(name, run, ms);
+  return failures.length === before;
 };
 
 /**
@@ -147,10 +186,22 @@ const leg = async (name, run, ms = LEG_TIMEOUT) => {
  * exit code; `leg` is for the things AC0 asserts.
  */
 const probe = async (name, run) => {
+  if (reported) {
+    return;
+  }
   try {
     const result = await withDeadline(name, LEG_TIMEOUT, run);
     observed[name] = result === undefined ? 'ok' : result;
   } catch (error) {
+    if (error instanceof LegTimeoutError) {
+      // NOT `refused`: a hung prover is not an answer to the question, and
+      // recording it as one would have a reader conclude the pre-fork chain
+      // rejects current-era deploys. Fatal for the same reason it is in `leg`.
+      observed[name] = `INCONCLUSIVE: ${describeError(error)}`;
+      failures.push(`${name}: ${error.message}`);
+      report(1);
+      return;
+    }
     // With the stack and the cause chain, for the same reason `leg` keeps them:
     // the answer to one of these probes was `expected instance of
     // LedgerParameters`, which names neither the copies involved nor the call
@@ -260,7 +311,7 @@ const environmentFor = (era) => ({
  * Providers for one contract on one side of the boundary.
  *
  * Per contract rather than per session, because each carries its own ZK
- * artifacts and its own private-state store: the matrix drives eight contracts
+ * artifacts and its own private-state store: the run drives thirteen contracts
  * through one wallet, and a shared `zkConfigPath` would serve every one of them
  * the first contract's keys.
  */
@@ -310,12 +361,24 @@ const tenMinutesAgo = () => BigInt(Math.floor(Date.now() / 1000)) - 600n;
  * The post-fork call varies its domain separator or nonce where the circuit
  * mints, so a keep-state call cannot pass by re-minting the identical coin the
  * pre-fork call already made.
+ *
+ * `roundAfter`, where present, is the ledger counter each side of the boundary
+ * should leave behind. It is what separates "the address is still callable" from
+ * "the state written before the fork is still there" -- see {@link checkRound}.
+ *
+ * `unshielded` and `shielded` drive ONE of their circuits here against the
+ * several their current-era namesakes drive in `MATRIX`: a retained twin exists
+ * to answer the crossing question, and the per-circuit surface is covered on the
+ * current era. An era difference confined to the circuits left out would not show.
  */
 const RETAINED_MATRIX = [
   {
     key: 'simple',
     preFork: [{ circuitId: 'noop' }],
-    postFork: { circuitId: 'noop' }
+    postFork: { circuitId: 'noop' },
+    // Deploy leaves 0, each `noop` increments. The only state-continuity
+    // assertion in the run.
+    roundAfter: { preFork: 1n, postFork: 2n }
   },
   {
     key: 'unshielded',
@@ -477,15 +540,52 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
   });
   // The retained arm resolves `{ circuitId, nextPrivateState, txData }`; both
   // arms of `txData` extend `FinalizedTxRecord`, so status and version are there.
+  //
+  // `status` is recorded, not asserted. Both arms of `submitCallTx` throw before
+  // resolving if the chain reported anything but `SucceedEntirely`
+  // (`internal/transaction.ts`, `internal/ledger8-entry.ts`), so a resolved call
+  // has already cleared that check and a rejected one arrives in `leg`'s catch.
   return { circuitId: call.circuitId, status: submitted.txData.status, version: submitted.txData.version, txId: submitted.txData.txId };
 };
 
-/** Records a chain-level rejection as a failure: an included transaction is not a passing one. */
-const recordCallOutcome = (label, outcome) => {
-  if (outcome.status !== 'SucceedEntirely') {
-    failures.push(`${label}: chain reported ${outcome.status}`);
+/**
+ * The `round` counter a retained twin's ledger reports, decoded with the twin's
+ * OWN codegen.
+ *
+ * This is the only measurement in the run that reads state written before the
+ * boundary. Every other post-fork leg establishes that the address is still
+ * callable, which a framework that silently reset the contract's state -- or
+ * resolved the address to a fresh one -- would pass just as happily.
+ *
+ * Only `simple` is read: `round: Counter` is the one ledger field in the matrix
+ * that is monotone, cheap to decode, and advanced by the very call the leg makes.
+ */
+const readRetainedRound = async (key, providers, contractAddress) => {
+  const { ledger } = await import(`@midnight-ntwrk/ac0-retained-${key}`);
+  const state = await providers.publicDataProvider.queryContractState(contractAddress);
+  if (state === null) {
+    throw new Error(`the indexer served no contract state for '${key}' at ${contractAddress}`);
   }
-  return outcome;
+  return ledger(state.data).round;
+};
+
+/**
+ * Checks a twin's ledger counter against what the calls so far should have left.
+ *
+ * A mismatch is recorded rather than thrown: the call itself succeeded, and "the
+ * call worked but the state did not carry" is a different and far more
+ * interesting row than a failed call. Twins with no `roundAfter` are skipped.
+ */
+const checkRound = async (label, entry, phase, providers, contractAddress) => {
+  const expected = entry.roundAfter?.[phase];
+  if (expected === undefined) {
+    return undefined;
+  }
+  const round = await readRetainedRound(entry.key, providers, contractAddress);
+  if (round !== expected) {
+    failures.push(`${label}: ledger round is ${round}, expected ${expected}`);
+  }
+  return round;
 };
 
 const walletContext = async (wallet) => ({
@@ -592,14 +692,16 @@ for (const entry of RETAINED_MATRIX) {
     const context = await walletContext(session.wallet);
     const calls = [];
     for (const call of entry.preFork) {
-      calls.push(
-        recordCallOutcome(
-          `pre-fork retained ${entry.key}/${call.circuitId}`,
-          await callRetained(entry.key, providers, deployed.contractAddress, call, context)
-        )
-      );
+      calls.push(await callRetained(entry.key, providers, deployed.contractAddress, call, context));
     }
-    return { ...deployed, calls };
+    const round = await checkRound(
+      `pre-fork retained ${entry.key}`,
+      entry,
+      'preFork',
+      providers,
+      deployed.contractAddress
+    );
+    return { ...deployed, calls, ...(round === undefined ? {} : { round: round.toString() }) };
   });
 }
 
@@ -633,14 +735,30 @@ await probe('pre-fork deploy of a current-era contract', async () => {
 
 // ── (b) the fork moment ───────────────────────────────────────────────────────
 
-await leg('fork enacted', () => awaitFork(), FORK_WAIT_TIMEOUT);
+// These two gate everything below them, so they are the one place `leg`'s
+// record-and-continue is wrong. Without the gate a chain that never forked, or a
+// session still pointed at the v8 proof server, produces ~15 individually
+// plausible contract failures for one root cause -- and the retained keep-state
+// rows read FAILED for calls that were never attempted after the boundary.
+const forked = await legSucceeded('fork enacted', () => awaitFork(), FORK_WAIT_TIMEOUT);
 
-await leg('post-fork head era', async () => {
-  const era = await waitForHead(session.providers.publicDataProvider, 'v9', 5 * 60_000);
-  await session.wallet.stop().catch(() => undefined);
-  session = await buildProviders('v9', testkit, logger);
-  return era;
-});
+const crossed =
+  forked &&
+  (await legSucceeded('post-fork head era', async () => {
+    const era = await waitForHead(session.providers.publicDataProvider, 'v9', 5 * 60_000);
+    // Stop first, so the two wallets never hold the same seed at once. If the
+    // rebuild then throws, `session` is left holding a stopped wallet -- which
+    // is why the gate below makes that fatal rather than letting fifteen legs
+    // fail against it one at a time.
+    await session.wallet.stop().catch(() => undefined);
+    session = await buildProviders('v9', testkit, logger);
+    return era;
+  }));
+
+if (!crossed) {
+  failures.push('the run never reached a post-fork head, so nothing below the boundary was measured');
+  report(1);
+}
 
 // Diagnostic, not an acceptance criterion: does the migration re-version the
 // contract-state envelope, and if not, does it do so later? The framework refuses
@@ -684,14 +802,21 @@ for (const entry of RETAINED_MATRIX) {
     }
     const providers = retainedProvidersFor('v9', session.wallet, entry.key);
     const context = await walletContext(session.wallet);
-    const outcome = recordCallOutcome(
-      `post-fork keep-state ${entry.key}/${entry.postFork.circuitId}`,
-      await callRetained(entry.key, providers, deployed.contractAddress, entry.postFork, context)
+    const outcome = await callRetained(entry.key, providers, deployed.contractAddress, entry.postFork, context);
+    // The state written BEFORE the boundary, read back after it. Without this
+    // the leg proves only that the address still answers.
+    const round = await checkRound(
+      `post-fork keep-state ${entry.key}`,
+      entry,
+      'postFork',
+      providers,
+      deployed.contractAddress
     );
     const state = await providers.publicDataProvider.queryRawContractState(deployed.contractAddress);
     return {
       contractAddress: deployed.contractAddress,
       call: outcome,
+      ...(round === undefined ? {} : { round: round.toString() }),
       // The envelope after the call, so a keep-state write that re-versions the
       // state is distinguishable from one that leaves it in the retained shape.
       envelopeAfterCall: state === null ? 'absent' : envelopeTag(state.raw)
@@ -711,12 +836,14 @@ await leg('reads its own pre-fork history', async () => {
 
 // ── (e) the rest of the contract surface, on a chain that carries v8 history ──
 //
-// Not AC0's retained story, and deliberately not dressed up as one: these
-// contracts exist only in current-era form, so there is no version of them that
-// could have been deployed below the boundary. What they answer is the question
-// AC0 leaves open -- whether a dApp doing ordinary work (tokens, minting, events,
-// block time) is affected by the chain having a pre-fork past. Every leg runs in
-// the same process and against the same wallet that just crossed the fork.
+// Not AC0's retained story, and deliberately not dressed up as one: these are
+// the CURRENT-era builds, deployed fresh after the boundary. Six of the seven
+// were also deployed below it as retained twins in (a); `events` is the one that
+// has no retained form at all. What this section answers is the separate
+// question AC0 leaves open -- whether a dApp doing ordinary work (tokens,
+// minting, events, block time) is affected by the chain having a pre-fork past.
+// Every leg runs in the same process and against the same wallet that just
+// crossed the fork.
 
 /**
  * The contracts and the circuits driven against each.
@@ -734,7 +861,8 @@ const MATRIX = [
     tag: 'Unshielded',
     calls: [
       { circuitId: 'mintUnshieldedToSelfTest', args: () => [DOMAIN_SEPARATOR, MINT_AMOUNT], capture: 'color' },
-      { circuitId: 'getUnshieldedBalanceTest', args: (context) => [context.color] },
+      // `unshielded.balance.it.test.ts:136` asserts this equals what was minted.
+      { circuitId: 'getUnshieldedBalanceTest', args: (context) => [context.color], expect: MINT_AMOUNT },
       {
         circuitId: 'mintUnshieldedToUserTest',
         args: (context) => [new Uint8Array(32).fill(2), { bytes: context.unshieldedAddress }, MINT_AMOUNT]
@@ -800,8 +928,12 @@ const MATRIX = [
     key: 'events',
     tag: 'Events',
     calls: [
+      // Both exercised by the suite: `contracts.events.provider.it.test.ts:78`
+      // and `contracts.events.unshielded.it.test.ts:75`. The sibling
+      // `emitUnshieldedMint` has the same shape but no test anywhere in the
+      // repo, so it would have been this file guessing rather than borrowing.
       { circuitId: 'emitLifecycle' },
-      { circuitId: 'emitUnshieldedMint', args: () => [TOKEN_TYPE, MINT_AMOUNT] }
+      { circuitId: 'emitUnshieldedReceive', args: () => [TOKEN_TYPE, MINT_AMOUNT] }
     ]
   },
   {
@@ -869,14 +1001,20 @@ const runMatrixContract = async (entry) => {
       if (call.capture !== undefined) {
         context[call.capture] = submitted.private.result;
       }
-      calls.push({ circuitId: call.circuitId, status: submitted.public.status, txId: submitted.public.txId });
-      // An included transaction is not a passing one: `FailEntirely` and
-      // `FailFallible` both arrive here as ordinary resolutions, and recording
-      // them without failing the run would report a green matrix over a chain
-      // that rejected the effects.
-      if (submitted.public.status !== 'SucceedEntirely') {
-        failures.push(`post-fork ${entry.key}/${call.circuitId}: chain reported ${submitted.public.status}`);
+      // The circuit's own return value, where the e2e test this was taken from
+      // asserts one. Submitting successfully is not the same as computing the
+      // right answer: `getUnshieldedBalanceTest` returning 0n means the mint
+      // credited nothing, and every status in sight would still be green.
+      if (call.expect !== undefined) {
+        const actual = submitted.private.result;
+        if (actual !== call.expect) {
+          failures.push(`post-fork ${entry.key}/${call.circuitId}: returned ${actual}, expected ${call.expect}`);
+        }
       }
+      // `status` is recorded, not asserted: `submitCallTx` throws before
+      // resolving on anything but `SucceedEntirely` (`internal/transaction.ts`),
+      // so a rejected call lands in the catch below rather than here.
+      calls.push({ circuitId: call.circuitId, status: submitted.public.status, txId: submitted.public.txId });
     } catch (error) {
       const message = describeError(error);
       calls.push({ circuitId: call.circuitId, status: `FAILED: ${message}` });

@@ -51,6 +51,14 @@ supported consumer linker — any PnP consumer of the wallet SDK hits these.
 
 ## How far AC0 gets, and where it stops
 
+> **Superseded.** This section records a run from before `43b9b0b7` and
+> `736d45b4` (#1276). The keep-state call it reports as refused now succeeds, so
+> AC0 is 7/7 for the counter, and the matrix has since been widened to six more
+> contracts on both eras. See
+> [`docs/qa/2026-09-08-ac0-contract-matrix.md`](../docs/qa/2026-09-08-ac0-contract-matrix.md)
+> for the current picture; the table and the diagnosis below are kept only as a
+> record of what the failure looked like.
+
 Six of seven legs pass. Latest run:
 
 | Leg | Result |
