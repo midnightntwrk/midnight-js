@@ -9,20 +9,20 @@ demanding its own Compact runtime.
 |---|---|
 | `pack-framework.mjs` | Packs every publishable workspace into `.tarballs/` and writes a manifest |
 | `linker-smoke.mjs` | Installs each persona from those tarballs under an isolated linker and runs it |
-| `ac0-smoke.mjs` | Drives the AC0 fork-crossing scenario against a live fork chain |
+| `fork-matrix-smoke.mjs` | Drives the fork-crossing scenario against a live fork chain |
 
 ```bash
 yarn build
 node packaging/pack-framework.mjs
 node packaging/linker-smoke.mjs            # every persona x linker
 node packaging/linker-smoke.mjs pnp retained
-node packaging/ac0-smoke.mjs pnp           # needs Docker
+node packaging/fork-matrix-smoke.mjs pnp           # needs Docker
 ```
 
 ## The personas
 
 `retained` and `current` each pin one Compact runtime and prove the framework
-installs and resolves correctly beside it. `fork-crossing` is the dApp AC0
+installs and resolves correctly beside it. `fork-crossing` is the dApp the fork crossing
 describes: it pins **no** runtime of its own, and instead depends on two little
 generated packages that each wrap one contract and declare the runtime its
 codegen demands. That is what a consumer's tree looks like once a retained
@@ -49,13 +49,13 @@ Both are defects in those packages, not in this repo, and both should be dropped
 here once upstream declares them. They matter because AC6 names Yarn PnP as a
 supported consumer linker — any PnP consumer of the wallet SDK hits these.
 
-## How far AC0 gets, and where it stops
+## How far the fork crossing gets, and where it stops
 
 > **Superseded.** This section records a run from before `43b9b0b7` and
 > `736d45b4` (#1276). The keep-state call it reports as refused now succeeds, so
-> AC0 is 7/7 for the counter, and the matrix has since been widened to six more
+> the fork crossing is 7/7 for the counter, and the matrix has since been widened to six more
 > contracts on both eras. See
-> [`docs/qa/2026-09-08-ac0-contract-matrix.md`](../docs/qa/2026-09-08-ac0-contract-matrix.md)
+> [`docs/qa/2026-09-08-fork-contract-matrix.md`](../docs/qa/2026-09-08-fork-contract-matrix.md)
 > for the current picture; the table and the diagnosis below are kept only as a
 > record of what the failure looked like.
 
@@ -179,7 +179,7 @@ way. This repository pins it in root `resolutions`; a consumer installing the
 framework beside a retained contract has to do the same, and the migration guide
 should say so.
 
-Two AC0 legs are additionally out of reach at this tier, by design of the shipped
+Two fork-crossing legs are additionally out of reach at this tier, by design of the shipped
 code rather than by anything here: `deployContract`'s retained arm refuses
 unconditionally before any head is read, and the working pipeline lives in
 `contracts/src/internal` where a consumer cannot reach it. So the retained

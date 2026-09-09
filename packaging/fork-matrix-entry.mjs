@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// The AC0 scenario, run from inside an installed dApp.
+// The fork-crossing scenario, run from inside an installed dApp.
 //
 // One process, one build, holding a contract from each ledger era and
 // transacting across the fork. It is a separate process from the test that
@@ -33,7 +33,7 @@ import { deployContract, submitCallTx } from '@midnight-ntwrk/midnight-js-contra
 import { loadLedger8Engine, loadLedgerEra, networkHeadVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 
-const config = JSON.parse(process.env.AC0_CONFIG ?? '{}');
+const config = JSON.parse(process.env.FORK_CONFIG ?? '{}');
 
 /**
  * The contracts this process is answerable for, as the driver narrowed them.
@@ -81,7 +81,7 @@ const report = (code) => {
   reported = true;
   // One line, deliberately: the driver reads this off stdout line by line, and a
   // pretty-printed object would arrive as many lines it cannot reassemble.
-  process.stdout.write(`AC0_RESULT ${JSON.stringify({ observed, failures })}\n`, () => process.exit(code));
+  process.stdout.write(`FORK_RESULT ${JSON.stringify({ observed, failures })}\n`, () => process.exit(code));
 };
 
 // Without these the process can die between legs -- an unhandled rejection from a
@@ -195,7 +195,7 @@ const legSucceeded = async (name, run, ms = LEG_TIMEOUT) => {
  * For questions whose answer is not known in advance -- what a consumer sees if
  * they try a current-era contract on a chain that has not forked yet, say. A
  * refusal there is information, not a defect, so it must not colour the run's
- * exit code; `leg` is for the things AC0 asserts.
+ * exit code; `leg` is for the things the fork crossing asserts.
  */
 const probe = async (name, run) => {
   if (reported) {
@@ -227,7 +227,7 @@ const awaitFork = () =>
   new Promise((resolve, reject) => {
     const lines = createInterface({ input: process.stdin });
     let seen = false;
-    process.stdout.write('AC0_AWAIT_FORK\n');
+    process.stdout.write('FORK_AWAIT\n');
     lines.on('line', (line) => {
       if (line.trim() === 'FORK_ENACTED') {
         seen = true;
@@ -337,7 +337,7 @@ const buildProviders = async (era, testkit, logger) => {
     wallet,
     providers: providersFor(testkit, era, wallet, {
       zkConfigPath: config.retainedZkConfigPath,
-      privateStateStoreName: `ac0-${era}`,
+      privateStateStoreName: `fork-${era}`,
       // The retained toolchain emits no `compiler/contract-manifest.json` --
       // `compactc` 0.31.1 predates it -- and integrity verification reads exactly
       // that file. `require` is therefore unsatisfiable for ANY pre-fork artifact,
@@ -359,7 +359,7 @@ const tenMinutesAgo = () => BigInt(Math.floor(Date.now() / 1000)) - 600n;
 /**
  * The retained-era twins, and what is asked of each on either side of the fork.
  *
- * This is AC0's actual question, finally asked of something other than a
+ * This is the fork crossing's actual question, finally asked of something other than a
  * counter: the contract is deployed on a ledger-8 chain, called there, and then
  * called AGAIN after the boundary through the same call site, which is the
  * keep-state path. Each twin is `testkit-js-e2e`'s own `.compact` source
@@ -480,7 +480,7 @@ const retainedZkConfigPath = (key) => {
 const retainedProvidersFor = (era, wallet, key) =>
   providersFor(testkit, era, wallet, {
     zkConfigPath: retainedZkConfigPath(key),
-    privateStateStoreName: `ac0-retained-${key}-${era}`,
+    privateStateStoreName: `fork-retained-${key}-${era}`,
     zkConfigIntegrity: { verify: 'warn' }
   });
 
@@ -505,7 +505,7 @@ const verifierKeysFor = (zkConfigPath) => {
  */
 const deployRetained = async (key, providers, wallet) => {
   const zkConfigPath = retainedZkConfigPath(key);
-  const { Contract } = await import(`@midnight-ntwrk/ac0-retained-${key}`);
+  const { Contract } = await import(`@midnight-ntwrk/fork-retained-${key}`);
   const [engine, era] = await Promise.all([loadLedger8Engine(), loadLedgerEra('v8')]);
 
   const constructed = engine.executeConstructor({
@@ -543,7 +543,7 @@ const deployRetained = async (key, providers, wallet) => {
  * `args` member at all.
  */
 const callRetained = async (key, providers, contractAddress, call, context) => {
-  const { Contract } = await import(`@midnight-ntwrk/ac0-retained-${key}`);
+  const { Contract } = await import(`@midnight-ntwrk/fork-retained-${key}`);
   const submitted = await submitCallTx(providers, {
     compiledContract: new Contract({}),
     contractAddress,
@@ -574,8 +574,8 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
  */
 const readRetainedRound = async (key, providers, contractAddress) => {
   const [{ ledger }, runtime, era] = await Promise.all([
-    import(`@midnight-ntwrk/ac0-retained-${key}`),
-    import(`@midnight-ntwrk/ac0-retained-${key}/runtime`),
+    import(`@midnight-ntwrk/fork-retained-${key}`),
+    import(`@midnight-ntwrk/fork-retained-${key}/runtime`),
     loadLedgerEra('v8')
   ]);
 
@@ -645,7 +645,7 @@ await leg('pre-fork head era', () => networkHeadVersion(session.providers.public
 // would already have deployed the contract on the previous framework major. It is
 // NOT a claim that a consumer can deploy a retained contract today.
 await leg('pre-fork retained deploy', async () => {
-  const { Contract } = await import('@midnight-ntwrk/ac0-contract-retained');
+  const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
   const [engine, era] = await Promise.all([loadLedger8Engine(), loadLedgerEra('v8')]);
 
   const constructed = engine.executeConstructor({
@@ -677,7 +677,7 @@ await leg('pre-fork retained deploy', async () => {
   // Announced so the driver can ask the NODE about the same contract. The
   // indexer's answer alone cannot separate "the ledger did not migrate" from
   // "the indexer serves the bytes of the last pre-fork action".
-  process.stdout.write(`AC0_CONTRACT ${composed.contractAddress}\n`);
+  process.stdout.write(`FORK_CONTRACT ${composed.contractAddress}\n`);
   const state = await waitForContract(session.providers.publicDataProvider, composed.contractAddress, 5 * 60_000);
   return {
     txId,
@@ -689,7 +689,7 @@ await leg('pre-fork retained deploy', async () => {
 
 // (a) continued: a CALL through the unified entry, which is the reachable half.
 await leg('pre-fork retained call', async () => {
-  const { Contract } = await import('@midnight-ntwrk/ac0-contract-retained');
+  const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
   const submitted = await submitCallTx(session.providers, {
     // `compiledContract`, not `contract`: the retained era has no CompiledContract
     // container, so the instance is passed raw. And a nullary circuit's options
@@ -742,7 +742,7 @@ await probe('pre-fork deploy of a current-era contract', async () => {
   if (zkConfigPath === undefined) {
     throw new Error("the driver passed no ZK artifact path for 'simple'");
   }
-  const { Contract } = await import('@midnight-ntwrk/ac0-contract-simple');
+  const { Contract } = await import('@midnight-ntwrk/fork-current-simple');
   const compiledContract = CompiledContract.withCompiledFileAssets(
     CompiledContract.withVacantWitnesses(CompiledContract.make('Simple', Contract)),
     zkConfigPath
@@ -750,7 +750,7 @@ await probe('pre-fork deploy of a current-era contract', async () => {
   const deployed = await deployContract(
     providersFor(testkit, 'v8', session.wallet, {
       zkConfigPath,
-      privateStateStoreName: 'ac0-prefork-current'
+      privateStateStoreName: 'fork-prefork-current'
     }),
     { compiledContract }
   );
@@ -798,7 +798,7 @@ await leg('envelope tag across the boundary', () =>
 // ── (c) post-fork: the SAME call site, now on keep-state ──────────────────────
 
 await leg('post-fork keep-state call through the same call site', async () => {
-  const { Contract } = await import('@midnight-ntwrk/ac0-contract-retained');
+  const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
   const submitted = await submitCallTx(session.providers, {
     // `compiledContract`, not `contract`: the retained era has no CompiledContract
     // container, so the instance is passed raw. And a nullary circuit's options
@@ -818,7 +818,7 @@ await leg('post-fork keep-state call through the same call site', async () => {
 });
 
 // (c) continued: the same keep-state call for every other retained twin. These
-// are the legs AC0 could not previously pose — a pre-fork contract that is not a
+// are the legs the fork crossing could not previously pose — a pre-fork contract that is not a
 // counter, called after the boundary through the call site that deployed it.
 for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retained, candidate.key))) {
   await leg(`post-fork keep-state ${entry.key}`, async () => {
@@ -864,11 +864,11 @@ await leg('reads its own pre-fork history', async () => {
 
 // ── (e) the rest of the contract surface, on a chain that carries v8 history ──
 //
-// Not AC0's retained story, and deliberately not dressed up as one: these are
+// Not the fork crossing's retained story, and deliberately not dressed up as one: these are
 // the CURRENT-era builds, deployed fresh after the boundary. Six of the seven
 // were also deployed below it as retained twins in (a); `events` is the one that
 // has no retained form at all. What this section answers is the separate
-// question AC0 leaves open -- whether a dApp doing ordinary work (tokens,
+// question the fork crossing leaves open -- whether a dApp doing ordinary work (tokens,
 // minting, events, block time) is affected by the chain having a pre-fork past.
 // Every leg runs in the same process and against the same wallet that just
 // crossed the fork.
@@ -981,10 +981,10 @@ const MATRIX = [
  * the provider's own base path.
  */
 const compiledContractFor = async (entry, zkConfigPath) => {
-  const module = await import(`@midnight-ntwrk/ac0-contract-${entry.key}`);
+  const module = await import(`@midnight-ntwrk/fork-current-${entry.key}`);
   const contract = module.Contract ?? module.default?.Contract;
   if (typeof contract !== 'function') {
-    throw new Error(`@midnight-ntwrk/ac0-contract-${entry.key} exports no Contract`);
+    throw new Error(`@midnight-ntwrk/fork-current-${entry.key} exports no Contract`);
   }
   return CompiledContract.withCompiledFileAssets(
     CompiledContract.withVacantWitnesses(CompiledContract.make(entry.tag, contract)),
@@ -1000,7 +1000,7 @@ const runMatrixContract = async (entry) => {
   const compiledContract = await compiledContractFor(entry, zkConfigPath);
   const providers = providersFor(testkit, 'v9', session.wallet, {
     zkConfigPath,
-    privateStateStoreName: `ac0-matrix-${entry.key}`
+    privateStateStoreName: `fork-matrix-${entry.key}`
   });
 
   const deployed = await deployContract(providers, { compiledContract });

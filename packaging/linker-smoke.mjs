@@ -154,7 +154,7 @@ export const LINKERS = {
 /**
  * @param extraContracts Contract keys to wrap in addition to the persona's own.
  *
- * The AC0 matrix needs thirteen more contracts than the install smoke does --
+ * The fork matrix needs thirteen more contracts than the install smoke does --
  * seven current-era and six retained twins -- and their prover keys run to a few
  * hundred megabytes. Declaring them on the persona would make every AC6 install
  * pay for artifacts it never proves against, so the caller that wants them asks
@@ -214,7 +214,7 @@ export const buildPersona = (name, linkerName, manifest, entryOverride, extraCon
 /**
  * Copies the packed tarballs beside the personas.
  *
- * Exported because the AC0 driver installs a persona too, and both have to stage
+ * Exported because the fork-matrix driver installs a persona too, and both have to stage
  * the same way: pnpm encodes a tarball's path into a store filename.
  */
 export const stageTarballs = (manifest) => {

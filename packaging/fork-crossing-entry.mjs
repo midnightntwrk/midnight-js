@@ -11,10 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// The dApp AC0 describes: one build, holding a contract from each ledger era at
+// The dApp the fork crossing describes: one build, holding a contract from each ledger era at
 // once, installed the way a consumer installs it.
 //
-// This entry asserts the property everything else in AC0 rests on -- that both
+// This entry asserts the property everything else in the fork crossing rests on -- that both
 // contract modules can be *executed* in one process. Each was emitted by a
 // different Compact toolchain and opens by asserting its own runtime version, so
 // a single hoisted copy makes one of them throw on import. Nothing about the
@@ -57,15 +57,15 @@ const runtimeSeenBy = (packageName) => {
 if (!expectedRetainedRuntime || !expectedCurrentRuntime) {
   throw new Error('the harness did not pass both expected runtime versions');
 }
-check('retained contract sees runtime', runtimeSeenBy('@midnight-ntwrk/ac0-contract-retained'), expectedRetainedRuntime);
-check('current contract sees runtime', runtimeSeenBy('@midnight-ntwrk/ac0-contract-current'), expectedCurrentRuntime);
+check('retained contract sees runtime', runtimeSeenBy('@midnight-ntwrk/fork-retained-baseline'), expectedRetainedRuntime);
+check('current contract sees runtime', runtimeSeenBy('@midnight-ntwrk/fork-current-baseline'), expectedCurrentRuntime);
 
 // 2. Both modules import. `checkRuntimeVersion` runs at import time and throws on a
 //    mismatch, so a successful import of BOTH is the assertion -- and it is the one
 //    that fails the moment the two copies above collapse into one.
 for (const [label, specifier] of [
-  ['retained contract module', '@midnight-ntwrk/ac0-contract-retained'],
-  ['current contract module', '@midnight-ntwrk/ac0-contract-current']
+  ['retained contract module', '@midnight-ntwrk/fork-retained-baseline'],
+  ['current contract module', '@midnight-ntwrk/fork-current-baseline']
 ]) {
   try {
     const module = await import(specifier);

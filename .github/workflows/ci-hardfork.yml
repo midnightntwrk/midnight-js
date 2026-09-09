@@ -1,6 +1,6 @@
 name: CI - Hard fork
 
-# The fork-crossing gate (spec AC0): one build of one dApp, no code change at the
+# The fork-crossing gate: one build of one dApp, no code change at the
 # fork, operating on a ledger-8 head, crossing the boundary mid-session, and
 # operating again afterwards through the same call sites.
 #
@@ -44,8 +44,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  ac0-fork-crossing:
-    name: AC0 ${{ matrix.contract }}
+  fork-crossing:
+    name: ${{ matrix.contract }}
     if: inputs.should_run == 'true'
     runs-on: ubuntu-latest
     # One contract's legs plus the unshardable floor. Generous against a cold
@@ -97,7 +97,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v4.4.0
         with:
           path: packages/compact/managed/0.31.1
-          key: ac0-compactc-0.31.1
+          key: fork-compactc-0.31.1
 
       # Keyed on the `.compact` source and the compiler, which is exactly what
       # decides the artifacts: a source edit or a compiler bump misses and
@@ -111,7 +111,7 @@ jobs:
         with:
           path: packaging/.retained/${{ matrix.contract }}
           key: >-
-            ac0-twin-${{ matrix.contract }}-0.31.1-${{
+            fork-twin-${{ matrix.contract }}-0.31.1-${{
               hashFiles(format('testkit-js/testkit-js-e2e/src/contract/{0}.compact', matrix.contract))
             }}
 
@@ -156,8 +156,8 @@ jobs:
       # deliberately not marked `continue-on-error`. A gate that reports green
       # while the scenario it guards cannot run is worse than no gate -- this
       # test was kept out of CI once already for exactly that reason.
-      - name: Run the AC0 fork-crossing scenario
-        run: node packaging/ac0-smoke.mjs pnp --contracts=${{ matrix.contract }}
+      - name: Run the fork-crossing scenario
+        run: node packaging/fork-matrix-smoke.mjs pnp --contracts=${{ matrix.contract }}
         env:
           YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

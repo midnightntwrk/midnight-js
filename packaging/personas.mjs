@@ -39,12 +39,12 @@ const CURRENT_CONTRACT = 'testkit-js/testkit-js-e2e/src/contract/compiled/counte
 const E2E_COMPILED = 'testkit-js/testkit-js-e2e/src/contract/compiled';
 
 /**
- * The current-era contracts the AC0 matrix drives after the boundary.
+ * The current-era contracts the fork matrix drives after the boundary.
  *
  * The retained toolchain (`compactc` 0.31.1) left exactly one COMMITTED fixture
  * in this repository, `counter-016`; retained-era twins of these are built on
  * demand instead -- see {@link RETAINED_TWINS}, which covers six of the seven.
- * `events` is the one for which the retained half of AC0 cannot be posed at all.
+ * `events` is the one for which the retained half of the fork crossing cannot be posed at all.
  *
  * What this current-era set covers is the other half of the same question:
  * whether the framework's full contract surface works on a chain that carries
@@ -74,7 +74,7 @@ export const RETAINED_TWIN_DIR = path.join(PACKAGING_DIR, '.retained');
 export const retainedTwinPath = (key) => path.join(RETAINED_TWIN_DIR, key);
 
 /**
- * The e2e contracts a RETAINED-era twin can be built for, so that AC0's actual
+ * The e2e contracts a RETAINED-era twin can be built for, so that the fork crossing's actual
  * question -- deployed below the boundary, called above it -- can be asked of
  * something other than a counter.
  *
@@ -123,11 +123,11 @@ export const CURRENT_RUNTIME = (() => {
  * a real consumer's tree looks like once a retained contract is packaged rather
  * than pasted in. Under an isolated linker the two runtimes coexist; that is the
  * only arrangement in which one process can execute a pre-fork contract and a
- * current one, and therefore the only arrangement in which AC0 can be written.
+ * current one, and therefore the only arrangement in which the fork crossing can be written.
  */
 export const CONTRACT_PACKAGES = {
-  retained: { name: '@midnight-ntwrk/ac0-contract-retained', runtime: RETAINED_RUNTIME, source: RETAINED_CONTRACT },
-  current: { name: '@midnight-ntwrk/ac0-contract-current', runtime: CURRENT_RUNTIME, source: CURRENT_CONTRACT },
+  retained: { name: '@midnight-ntwrk/fork-retained-baseline', runtime: RETAINED_RUNTIME, source: RETAINED_CONTRACT },
+  current: { name: '@midnight-ntwrk/fork-current-baseline', runtime: CURRENT_RUNTIME, source: CURRENT_CONTRACT },
   // Wrapped the same way as the two above rather than reached for through the
   // e2e workspace: the point of this tier is what an installed consumer can
   // resolve, and a package that came from the monorepo's own tree would answer a
@@ -135,7 +135,7 @@ export const CONTRACT_PACKAGES = {
   ...Object.fromEntries(
     MATRIX_CONTRACTS.map((key) => [
       key,
-      { name: `@midnight-ntwrk/ac0-contract-${key}`, runtime: CURRENT_RUNTIME, source: `${E2E_COMPILED}/${key}` }
+      { name: `@midnight-ntwrk/fork-current-${key}`, runtime: CURRENT_RUNTIME, source: `${E2E_COMPILED}/${key}` }
     ])
   ),
   // The retained twins, keyed apart from their current-era namesakes because a
@@ -146,7 +146,7 @@ export const CONTRACT_PACKAGES = {
     RETAINED_TWINS.map((key) => [
       `retained-${key}`,
       {
-        name: `@midnight-ntwrk/ac0-retained-${key}`,
+        name: `@midnight-ntwrk/fork-retained-${key}`,
         runtime: RETAINED_RUNTIME,
         source: path.relative(REPOSITORY_ROOT, retainedTwinPath(key))
       }
@@ -155,7 +155,7 @@ export const CONTRACT_PACKAGES = {
 };
 
 /**
- * Narrows the AC0 matrices to a requested subset of contracts.
+ * Narrows the fork matrices to a requested subset of contracts.
  *
  * The scenario is sharded one contract per CI job, and a shard that silently ran
  * the wrong set -- or nothing -- would report green for work it never did. So an
@@ -178,11 +178,11 @@ export const resolveContractSelection = (requested) => {
   const unknown = keys.filter((key) => !MATRIX_CONTRACTS.includes(key));
   if (unknown.length > 0) {
     throw new Error(
-      `Not an AC0 matrix contract: ${unknown.join(', ')}. Known: ${MATRIX_CONTRACTS.join(', ')}`
+      `Not a fork-matrix contract: ${unknown.join(', ')}. Known: ${MATRIX_CONTRACTS.join(', ')}`
     );
   }
   if (keys.length === 0) {
-    throw new Error('An AC0 contract selection cannot be empty; omit it to run the whole matrix');
+    throw new Error('A fork-matrix contract selection cannot be empty; omit it to run the whole matrix');
   }
   return { current: keys, retained: keys.filter((key) => RETAINED_TWINS.includes(key)) };
 };
