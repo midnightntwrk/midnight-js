@@ -297,17 +297,14 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           return null;
         }
         // TWO of the three carry an era envelope, not one: the contract state and the block's
-        // ledger parameters. Each is dated by its own reader immediately before that reader
-        // decodes it, so neither depends on the order they appear in below. The zswap chain state
-        // is the exception and it is a MEASURED one, not an assumption: both runtimes write
-        // `zswap-ledger-state[v5]` and each reads the other's bytes unchanged, so there is no era
-        // in that payload to read — pinned by `test/ledger-parameters.test.ts`, which mints it
-        // with both runtimes.
+        // ledger parameters. Each is dated inside its own reader, immediately before that reader
+        // decodes it, so correctness does not depend on the order of the two calls — only which
+        // error surfaces first when both fields are un-decodable does, and the state's wins.
         //
-        // The state's check is about the state and the block that dates it; it says nothing about
-        // the other two fields. On an unpinned read the state can legitimately be NEWER than the
-        // block, and then the block's parameters can be from the retained era while the state is
-        // not — an ordinary pre-fork block, refused by era rather than by decoder failure.
+        // The zswap chain state carries no era to date: both runtimes write
+        // `zswap-ledger-state[v5]` and each reads the other's bytes back unchanged. That is
+        // measured, not assumed — see `test/ledger-parameters.test.ts` and
+        // `docs/architecture/era-tagged-payload-decoders.md`.
         const parsedContractState = parseHexContractState(contractState, block.protocolVersion, {
           upperBound: offset === null ? 'withheld' : 'enforced'
         });

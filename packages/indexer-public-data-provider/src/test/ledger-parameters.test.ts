@@ -18,6 +18,7 @@ import {
   DeserializationError,
   ledgerParametersEnvelopeVersion,
   parseSerializedTag,
+  TagParseError,
   toHex
 } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, test } from 'vitest';
@@ -61,10 +62,13 @@ describe('the ledger parameters each runtime writes', () => {
     const v8Bytes = await mintV8LedgerParametersBytes();
     const v9Bytes = mintV9LedgerParametersBytes();
 
-    // Both directions. The refusal is on the header tag, so it happens before any body is read --
-    // which is why dating the bytes first turns an unclassified decoder failure into a decision.
-    expect(() => ledger.LedgerParameters.deserialize(v8Bytes)).toThrow();
-    expect(() => v8.LedgerParameters.deserialize(v9Bytes)).toThrow();
+    // Both directions, and matched on the message rather than a class: the runtimes throw a plain
+    // `Error`, so `.toThrow(Error)` would also pass for a fixture mistake that never reached a
+    // deserializer at all. The message is the only evidence that the refusal is on the HEADER TAG,
+    // before any body is read -- which is why dating the bytes first turns an unclassified decoder
+    // failure into a decision.
+    expect(() => ledger.LedgerParameters.deserialize(v8Bytes)).toThrow(/expected header tag/);
+    expect(() => v8.LedgerParameters.deserialize(v9Bytes)).toThrow(/expected header tag/);
   });
 });
 
@@ -131,18 +135,41 @@ describe('parseHexLedgerParameters', () => {
     expect(rejection).not.toBeInstanceOf(DeserializationError);
   });
 
-  test('refuses a payload that is not a parameter set at all', () => {
-    // A contract state is a well-formed envelope of the WRONG family. It parses as a tag, so only
-    // the table rejects it -- and it must, because `[v6]` names a supported era in the state family.
-    expect(() => parseHexLedgerParameters(toHex(new ledger.ContractState().serialize()))).toThrow();
+  test('refuses a payload that is not a parameter set at all, by tag rather than by decode', () => {
+    // A contract state is a well-formed envelope of the WRONG family, so the tag parses and only
+    // the era table can reject it. The v9 runtime writes `contract-state[v8]`, and `[v8]` is a
+    // SUPPORTED number in the parameters family too -- so this passes only because the table keys
+    // on the whole tag rather than on the bracketed number.
+    let rejection: unknown;
+    try {
+      parseHexLedgerParameters(toHex(new ledger.ContractState().serialize()));
+      expect.unreachable('a contract state must be refused as ledger parameters');
+    } catch (error) {
+      rejection = error;
+    }
+
+    expect(rejection).toBeInstanceOf(TagParseError);
+    // Not converted to an `IndexerError`, and not reaching the deserializer either.
+    expect(rejection).not.toBeInstanceOf(IndexerDataError);
+    expect(rejection).not.toBeInstanceOf(DeserializationError);
   });
 
   test('refuses a payload that is not whole hex, rather than decoding a truncated prefix', () => {
-    // `Buffer.from(s, 'hex')` stops at the first character it cannot read and returns a SHORTER
-    // buffer without complaining, so the guard has to run before the bytes are taken.
+    // `toByteArray` keeps only the leading run of whole hex bytes and discards the rest without
+    // complaining, so the guard has to run before the bytes are taken.
     const truncated = `${mintV9LedgerParametersHex().slice(0, 20)}zz`;
 
-    expect(() => parseHexLedgerParameters(truncated)).toThrow(IndexerDataError);
+    let rejection: unknown;
+    try {
+      parseHexLedgerParameters(truncated);
+      expect.unreachable('a partly-hex payload must be refused');
+    } catch (error) {
+      rejection = error;
+    }
+
+    expect(rejection).toBeInstanceOf(IndexerDataError);
+    // The kind matters: refused for its ENCODING, before any era decision was reachable.
+    expect((rejection as IndexerDataError).context).toEqual({ kind: 'malformed-parameters-encoding' });
   });
 });
 

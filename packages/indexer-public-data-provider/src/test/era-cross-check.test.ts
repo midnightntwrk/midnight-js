@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { ledger } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { DeserializationError, deserializeCompactContractState, TagParseError } from '@midnight-ntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
@@ -32,6 +31,7 @@ import {
   mintV9ContractStateHex,
   mintV9LedgerParametersHex,
   mintV9TransactionHex,
+  mintV9ZswapChainStateHex,
   UNRESOLVABLE_PROTOCOL_VERSION,
   V8_ERA_PROTOCOL_VERSION,
   V9_ERA_PROTOCOL_VERSION
@@ -329,7 +329,7 @@ describe('queryZSwapAndContractState dates the triple it decodes', () => {
           protocolVersion === V8_ERA_PROTOCOL_VERSION
             ? await mintV8LedgerParametersHex()
             : mintV9LedgerParametersHex(),
-        contractZswapState: Buffer.from(new ledger.ZswapChainState().serialize()).toString('hex')
+        contractZswapState: mintV9ZswapChainStateHex()
       },
       contract: { state }
     }

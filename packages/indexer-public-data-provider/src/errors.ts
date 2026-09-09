@@ -268,7 +268,8 @@ export class IndexerDataError extends IndexerError {
           'path cannot decode. Ledger parameters are era-tagged and served per block, so a block from before ' +
           'the fork carries parameters only the retained runtime can read — this is an ordinary pre-fork block, ' +
           'not a faulty indexer. Use `queryRawContractState`, which serves the parameter bytes together with ' +
-          'their block, and decode them with the matching runtime.'
+          'their block, and decode them with the matching runtime. It serves the contract state undecoded too, ' +
+          'but not the zswap chain state — fetch that separately if you need all three.'
         );
     }
   }

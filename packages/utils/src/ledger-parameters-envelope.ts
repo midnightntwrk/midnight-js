@@ -15,7 +15,7 @@
 
 // The `./version` leaf subpath, not the package root: the root barrel re-exports the
 // ledger/compact-js/onchain-runtime namespaces, which every `utils` consumer would then pull in.
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { parseSerializedTag, TagParseError } from './serialized-tag';
 
@@ -30,13 +30,18 @@ import { parseSerializedTag, TagParseError } from './serialized-tag';
 // copy that drifts is a security-relevant divergence -- see
 // `packages/protocol/docs/shared-table-discipline.md`.
 //
-// Both entries are pinned against what the runtimes actually WRITE, by
-// `packages/indexer-public-data-provider/src/test/ledger-parameters.test.ts`, which mints real
-// parameters with each runtime through `midnight-js-protocol` rather than checking byte blobs in.
-const LEDGER_PARAMETERS_TAG_TO_LEDGER_VERSION: Readonly<Partial<Record<string, LedgerVersion>>> = Object.freeze({
-  'midnight:ledger-parameters[v5]': 'v8',
-  'midnight:ledger-parameters[v8]': 'v9'
-});
+// The runtimes' actual output is pinned by an era-crossing test rather than assumed here; see
+// `docs/architecture/era-tagged-payload-decoders.md`, which names the file.
+//
+// Keyed by ERA and searched, rather than keyed by tag and indexed, for the reason its
+// contract-state sibling is: the lookup key is network-supplied, and a tag-keyed object literal
+// resolves an unexpected key through `Object.prototype`. Turning the lookup around removes that
+// reachability rather than guarding it, and `satisfies` then makes a new `LedgerVersion` with no
+// tag here a BUILD failure instead of a refusal at the fork.
+const LEDGER_PARAMETERS_TAG_BY_ERA = {
+  v8: 'midnight:ledger-parameters[v5]',
+  v9: 'midnight:ledger-parameters[v8]'
+} as const satisfies Record<LedgerVersion, string>;
 
 /**
  * Reads which ledger runtime wrote a serialized set of ledger parameters, from the envelope tag in
@@ -53,6 +58,9 @@ const LEDGER_PARAMETERS_TAG_TO_LEDGER_VERSION: Readonly<Partial<Record<string, L
  * anything that is not a parameter set from a supported runtime, before those bytes reach a
  * decoder — and, for a caller that holds two runtimes, the answer to which one to hand them to.
  *
+ * Supported public API, deliberately: a caller refused a pre-fork block's parameters by an era-fixed
+ * read path has to decode them itself, and needs this to pick the runtime to decode them with.
+ *
  * @param raw The serialized ledger-parameters envelope, as the network returned it.
  * @returns The ledger era whose runtime wrote `raw`.
  * @throws TagParseError when there is no well-formed `namespace:version:` tag prefix in the first
@@ -60,7 +68,7 @@ const LEDGER_PARAMETERS_TAG_TO_LEDGER_VERSION: Readonly<Partial<Record<string, L
  */
 export const ledgerParametersEnvelopeVersion = (raw: Uint8Array): LedgerVersion => {
   const { tag } = parseSerializedTag(raw);
-  const ledgerVersion = LEDGER_PARAMETERS_TAG_TO_LEDGER_VERSION[tag];
+  const ledgerVersion = LEDGER_VERSIONS.find((era) => LEDGER_PARAMETERS_TAG_BY_ERA[era] === tag);
   if (ledgerVersion === undefined) {
     // Never echo the observed tag: it is network-supplied and validated only against a character
     // set, so embedding it verbatim puts arbitrary text into this message.
