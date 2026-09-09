@@ -34,7 +34,13 @@
  * @see {@link EraDispatch} for the runtime predicate and what it may not use.
  */
 
-import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type {
+  AlignedValue,
+  ContractAddress,
+  Op,
+  SigningKey
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { PartitionedTranscript } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { MidnightProviders, PrivateStateId, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 
 /**
@@ -224,10 +230,79 @@ export type Ledger8CallTxOptions<C extends Ledger8Contract, K extends Ledger8Cir
  *
  * @see {@link OverloadTyping} for the seam that rule follows from.
  */
+/**
+ * What a retained-era circuit's own return value narrows to.
+ *
+ * Derived through `infer` with a fallback rather than read off
+ * {@link Ledger8CircuitResult}, whose `result` is `unknown` because that type is
+ * the ERA DISCRIMINATOR and has to stay wide enough to match any retained
+ * codegen. A concrete contract type narrows it here; anything that does not
+ * falls to `unknown` rather than to `never`, so a caller is handed a value it
+ * has to check instead of one it cannot use.
+ */
+export type Ledger8CircuitReturnType<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
+  ReturnType<C['impureCircuits'][K]> extends { readonly result: infer R } ? R : unknown;
+
+/**
+ * The public, non-sensitive half of a retained-era circuit execution.
+ *
+ * Mirrors {@link CallResultPublic} except for `nextContractState`, which is
+ * absent by decision and not by omission: the retained pipeline's post-state is
+ * an `onchain-runtime-v3` handle, and ADR-0007 lets no live WASM handle cross an
+ * era boundary. There is no plain-data substitute for it on this surface.
+ */
+export interface Ledger8CallResultPublic {
+  readonly publicTranscript: Op<AlignedValue>[];
+  readonly partitionedTranscript: PartitionedTranscript;
+}
+
+/**
+ * The private, ZK-confidential half of a retained-era circuit execution.
+ *
+ * Mirrors {@link CallResultPrivate} plus `txBytes`, which stands in for
+ * `unprovenTx`: the retained composer answers with serialized bytes rather than
+ * an `UnprovenTransaction`, and handing over the object would be the same
+ * era-crossing handle ADR-0007 forbids.
+ *
+ * @remarks **Privacy-sensitive.** Carries the ZK input and output, the private
+ * transcript outputs and the next private state. Treat as confidential when
+ * logging, serializing or transmitting.
+ */
+export interface Ledger8CallResultPrivate<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> {
+  readonly input: AlignedValue;
+  readonly output: AlignedValue;
+  readonly privateTranscriptOutputs: AlignedValue[];
+  readonly result: Ledger8CircuitReturnType<C, K>;
+  readonly nextPrivateState: Ledger8PrivateState<C>;
+  readonly txBytes: Uint8Array;
+}
+
+/**
+ * The public data of a finalized retained-era call: the execution's public half
+ * combined with the finalized record.
+ *
+ * The record stays {@link VersionedFinalizedTxData} rather than being narrowed
+ * to the current era's `FinalizedTxData`. A retained-era call is recorded by
+ * whichever era the network head is on, so `version` is a union here where the
+ * current era pins `'v9'` -- narrowing it would refuse the very records this
+ * pipeline exists to produce.
+ */
+export type Ledger8FinalizedCallTxPublicData = Ledger8CallResultPublic & VersionedFinalizedTxData;
+
+/**
+ * What a retained-era call transaction resolves with once finalized.
+ *
+ * The SAME two-level structure the current era answers with -- `public` for the
+ * non-sensitive half, `private` for the confidential one -- so a caller reads
+ * `private.result`, `public.txId` and `public.status` identically in both eras.
+ * The members that differ are the two the current era expresses as live WASM
+ * handles; see {@link Ledger8CallResultPublic} and
+ * {@link Ledger8CallResultPrivate} for what stands in for them and why.
+ */
 export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> {
   readonly circuitId: K;
-  readonly nextPrivateState: Ledger8PrivateState<C>;
-  readonly txData: VersionedFinalizedTxData;
+  readonly public: Ledger8FinalizedCallTxPublicData;
+  readonly private: Ledger8CallResultPrivate<C, K>;
 }
 
 /**
