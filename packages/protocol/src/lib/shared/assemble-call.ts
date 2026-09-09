@@ -25,7 +25,12 @@ import type {
 } from '@midnightntwrk/ledger-v9';
 
 import { ComposeFailedError, ComposeOptionError, type ComposeStage } from '../../errors';
-import type { CallTranscriptSource, PartitionContext } from './compose-types';
+import {
+  type CallTranscriptSource,
+  INITIAL_LEDGER_PARAMETERS,
+  type LedgerParametersOption,
+  type PartitionContext
+} from './compose-types';
 import type { LedgerVersion } from './ledger-version';
 
 /**
@@ -90,6 +95,20 @@ export interface CallAssemblyLedger<
 }
 
 /**
+ * The inputs partitioning a call's transcript needs, which are a subset of what
+ * assembling the whole call does.
+ *
+ * Spelled as its own type so the partition can be resolved WITHOUT the rest of
+ * a call's inputs -- a caller that has to know the guaranteed/fallible split
+ * before it builds something else (a Zswap offer, say) has no operation
+ * registry to offer yet, and should not have to invent one.
+ */
+export type PartitionCallOptions = Pick<
+  AssembleCallOptions<never>,
+  'circuitId' | 'contractAddress' | 'transcript' | 'ledgerParameters' | 'version'
+>;
+
+/**
  * The slice of a ledger `ContractState` {@link assembleCallPrototype} reads.
  *
  * @typeParam TOperation The resolved operation, constrained to the one
@@ -147,11 +166,11 @@ export interface AssembleCallOptions<TOperation> {
    * the boundary in the wrong place, and the node then refuses the guaranteed segment with
    * `Transcript(Execution(OutOfGas))`.
    *
-   * Optional only so a caller that has no read surface can still compose. Omitting it falls back to
-   * `initialParameters()`, which is a COMPATIBILITY PATH AND NOT A CORRECT ONE -- pass the chain's
-   * own parameters wherever they are reachable.
+   * Required. A caller with no read surface passes {@link INITIAL_LEDGER_PARAMETERS} to select the
+   * compatibility path explicitly -- there is no way to reach it by omission, because that made a
+   * cost model the chain does not run the default for anyone who forgot.
    */
-  readonly ledgerParameters?: Uint8Array;
+  readonly ledgerParameters: LedgerParametersOption;
   readonly stage: CallResolutionStage;
   // The era every failure raised here names -- see ComposeRefusalOrder.
   readonly version: LedgerVersion;
@@ -194,7 +213,7 @@ const resolvePartition = <
   TPrototype
 >(
   ledger: CallAssemblyLedger<TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TOperation, TPrototype>,
-  options: AssembleCallOptions<TOperation>
+  options: PartitionCallOptions
 ): readonly [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined] => {
   const { transcript, contractAddress, circuitId, version } = options;
   if (transcript.kind === 'partitioned') {
@@ -229,12 +248,13 @@ const resolvePartition = <
   let parameters: TParams;
   try {
     parameters =
-      options.ledgerParameters === undefined
+      options.ledgerParameters === INITIAL_LEDGER_PARAMETERS
         ? // The ledger's INITIAL parameters: a compatibility path for a caller with no read
           // surface, and not a correct substitute. They are the model the chain started with, not
           // the one it is running -- prices adjust per block -- so partitioning against them draws
           // the guaranteed/fallible boundary in the wrong place and the node refuses the guaranteed
-          // segment for running out of gas.
+          // segment for running out of gas. Reachable only by naming the sentinel, never by
+          // omission -- see LedgerParametersOption.
           ledger.LedgerParameters.initialParameters()
         : // Deserialized with THIS era's reader, which is right because the bytes came from a block
           // this era's call is being built against.
@@ -335,3 +355,42 @@ export const assembleCallPrototype = <
     throw new ComposeFailedError(version, 'call-prototype', circuitId, cause);
   }
 };
+
+/**
+ * Resolves a call's guaranteed/fallible transcript pair against a ledger
+ * module, without assembling the call.
+ *
+ * PROTOTYPE SEAM. It exists because the retained-era pipeline has to know the
+ * partition BEFORE it builds the call's Zswap offer, and until now the only way
+ * to obtain one was to compose the whole transaction -- by which point the
+ * offer has already been handed over as an option. Routing a coin against a
+ * partition that does not exist yet places every movement in the guaranteed
+ * segment, which the wallet then cannot balance.
+ *
+ * Same inputs, same failures and same order as the partition step inside
+ * {@link assembleCallPrototype}; that function now delegates here rather than
+ * keeping a second copy.
+ *
+ * @param ledger The ledger module (ledger-v8 or ledger-v9) to partition against.
+ * @param options The call's transcript source, address, circuit and the
+ * chain's own serialized ledger parameters.
+ * @returns The `[guaranteed, fallible]` pair, either member possibly absent.
+ * @throws ComposeFailedError at `'call-transcript-empty'`,
+ * `'call-contract-state'`, `'call-partition-context'` or `'call-partition'`.
+ * @throws ComposeOptionError at `'ledgerParameters'` for a parameter blob this
+ * era cannot read.
+ * @see {@link ComposeRefusalOrder}
+ */
+export const partitionCallTranscript = <
+  TStateValue,
+  TChargedState,
+  TQueryContext extends PartitionableQueryContext<TQueryContext>,
+  TPreTranscript,
+  TParams,
+  TOperation,
+  TPrototype
+>(
+  ledger: CallAssemblyLedger<TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TOperation, TPrototype>,
+  options: PartitionCallOptions
+): readonly [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined] =>
+  resolvePartition(ledger, options);
