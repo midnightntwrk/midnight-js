@@ -22,7 +22,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
 import { assembleCallPrototype, partitionCallTranscript } from '../lib/shared/assemble-call';
-import type { CallTranscriptSource } from '../lib/shared/compose-types';
+import type { CallTranscriptSource, LedgerParametersOption } from '../lib/shared/compose-types';
 import { emptyPartitionContext } from './fixtures';
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
@@ -88,7 +88,7 @@ const assembleWithParameters = (
   address: string,
   transcript: CallTranscriptSource,
   operations: ledgerV9.ContractState,
-  ledgerParameters: Uint8Array | undefined
+  ledgerParameters: LedgerParametersOption
 ): ledgerV9.ContractCallPrototype =>
   assembleCallPrototype(ledgerV9, {
     circuitId: 'increment',
@@ -118,6 +118,8 @@ const assembleWith = (
     output: fieldValue(0x20),
     communicationCommitmentRandomness,
     operations,
+    // Named explicitly: this helper's cases are about assembly, not the cost model.
+    ledgerParameters: 'initial',
     stage: 'call-operation',
     version: 'v9'
   });
@@ -238,6 +240,9 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
       circuitId: 'increment',
       contractAddress: address,
       transcript: unpartitioned,
+      // The same cost model `assembleWith` names, because that is what the two
+      // sides of this equality are being compared under.
+      ledgerParameters: 'initial',
       version: 'v9'
     });
 
@@ -307,6 +312,9 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
       input: fieldValue(0x10),
       output: fieldValue(0x20),
       operations: contractStateWithOperation(),
+      // Supplied but never read: this transcript arrives already partitioned, so the partitioner --
+      // poisoned here to prove it does not run -- never asks for a cost model.
+      ledgerParameters: 'initial',
       stage: 'call-operation',
       version: 'v9'
     });
@@ -465,13 +473,30 @@ describe('the transcript partitioner and the chain\'s own ledger parameters', ()
     expect(act).not.toThrow();
   });
 
-  it('falls back to the initial parameters when none are supplied, which is the compatibility path', () => {
-    // Arrange / Act.
+  it('uses the initial parameters only when the caller names them, never by omission', () => {
+    // Arrange / Act: the sentinel is the ONLY way to reach the initial cost model. A caller with no
+    // read surface can still compose, but it has to say so -- omitting the option no longer means
+    // "use whatever", because that made a wrong cost model the default for anyone who forgot.
     const act = (): ledgerV9.ContractCallPrototype =>
-      assembleWithParameters(address, unpartitioned, contractStateWithOperation(), undefined);
+      assembleWithParameters(address, unpartitioned, contractStateWithOperation(), 'initial');
 
-    // Assert: still composes, so a caller with no read surface is not broken by the new option.
+    // Assert.
     expect(act).not.toThrow();
+  });
+
+  it('refuses a parameter set it cannot read rather than substituting the initial one', () => {
+    // The sentinel is a NAMED value, not "anything that is not bytes": a string the caller made up
+    // is refused exactly as malformed bytes are. This is what makes the option's contract binary --
+    // the chain's parameters, or an explicit request for the initial ones, and nothing in between.
+    let caught: unknown;
+    try {
+      assembleWithParameters(address, unpartitioned, contractStateWithOperation(), Uint8Array.of());
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    expect((caught as ComposeOptionError).option).toBe('ledgerParameters');
   });
 
   it('refuses parameters this era cannot read, naming the option rather than the partition', () => {
