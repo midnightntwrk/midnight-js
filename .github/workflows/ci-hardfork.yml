@@ -158,19 +158,6 @@ jobs:
       # test was kept out of CI once already for exactly that reason.
       - name: Run the fork-crossing scenario
         run: node consumer-e2e/fork-matrix-smoke.mjs pnp --contracts=${{ matrix.contract }}
-
-      # The scenario writes these itself, before it tears the stack down, and only
-      # when it failed. They are the only account of WHY the chain refused a
-      # submission: the framework's seam error redacts the provider's message by
-      # design, and the provider's own error carries no reason.
-      - name: Upload the stack's container logs
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # ratchet:actions/upload-artifact@v4.6.2
-        with:
-          name: fork-stack-logs-${{ matrix.contract }}
-          path: consumer-e2e/.logs/
-          if-no-files-found: warn
-          retention-days: 7
         env:
           YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

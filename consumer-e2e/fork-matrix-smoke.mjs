@@ -208,23 +208,6 @@ const main = async () => {
       }
     );
   } finally {
-    // BEFORE shutdown, which removes the containers. Only on a failure, because
-    // a green run's logs are large and answer nothing -- and only then does the
-    // question they answer exist: a submission the chain refused reports
-    // `SubmissionError` with no reason, and the reason is in the node's log.
-    if (outcome === undefined || outcome.code !== 0) {
-      const captured = await environment
-        .captureContainerLogs(path.join(REPOSITORY_ROOT, 'consumer-e2e', '.logs'))
-        .catch((error) => {
-          process.stdout.write(`Could not capture container logs: ${String(error)}\n`);
-          return [];
-        });
-      process.stdout.write(
-        captured.length === 0
-          ? 'No container logs captured.\n'
-          : `Captured container logs: ${captured.join(', ')}\n`
-      );
-    }
     await environment.shutdown().catch(() => undefined);
   }
 
