@@ -204,6 +204,7 @@ export interface CoinReceiverRecording {
  */
 const TRANSCRIPT_MEMBERS = [
   'circuitId',
+  'result',
   'input',
   'output',
   'publicTranscript',

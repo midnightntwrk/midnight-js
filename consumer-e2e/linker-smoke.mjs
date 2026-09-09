@@ -17,7 +17,7 @@
 // Builds each dApp persona outside the workspace, installs it from the packed
 // framework tarballs with an isolated linker, and runs its entry. Usage:
 //
-//   node packaging/linker-smoke.mjs [pnpm|pnp] [retained|current] ...
+//   node consumer-e2e/linker-smoke.mjs [pnpm|pnp] [retained|current] ...
 //
 // Defaults to every linker and every persona.
 
@@ -33,7 +33,7 @@ import {
   CONTRACT_PACKAGES,
   contractPackageManifest,
   CURRENT_RUNTIME,
-  PACKAGING_DIR,
+  CONSUMER_E2E_DIR,
   PERSONAS,
   personaManifest,
   readManifest,
@@ -56,7 +56,7 @@ import {
  * the encoded path short regardless of where the checkout lives.
  */
 const SHORT_ROOT = process.platform === 'win32' ? os.tmpdir() : '/tmp';
-const WORK_DIR = path.join(SHORT_ROOT, 'mjs-packaging');
+const WORK_DIR = path.join(SHORT_ROOT, 'mjs-consumer-e2e');
 export const STAGED_TARBALL_DIR = path.join(WORK_DIR, 'tgz');
 const PNPM_STORE_DIR = path.join(WORK_DIR, 'pnpm-store');
 
@@ -151,7 +151,16 @@ export const LINKERS = {
   }
 };
 
-export const buildPersona = (name, linkerName, manifest, entryOverride) => {
+/**
+ * @param extraContracts Contract keys to wrap in addition to the persona's own.
+ *
+ * The fork matrix needs thirteen more contracts than the install smoke does --
+ * seven current-era and six retained twins -- and their prover keys run to a few
+ * hundred megabytes. Declaring them on the persona would make every AC6 install
+ * pay for artifacts it never proves against, so the caller that wants them asks
+ * for them.
+ */
+export const buildPersona = (name, linkerName, manifest, entryOverride, extraContracts = []) => {
   const persona = PERSONAS[name];
   const linker = LINKERS[linkerName];
   const cwd = path.join(WORK_DIR, `${name}-${linkerName}`);
@@ -161,10 +170,14 @@ export const buildPersona = (name, linkerName, manifest, entryOverride) => {
 
   writeFileSync(
     path.join(cwd, 'package.json'),
-    `${JSON.stringify(personaManifest(name, persona, manifest, linker.packageManager, STAGED_TARBALL_DIR), null, 2)}\n`,
+    `${JSON.stringify(
+      personaManifest(name, persona, manifest, linker.packageManager, STAGED_TARBALL_DIR, extraContracts),
+      null,
+      2
+    )}\n`,
     'utf8'
   );
-  cpSync(path.join(PACKAGING_DIR, `${entryOverride ?? persona.entry ?? 'persona-entry'}.mjs`), path.join(cwd, 'entry.mjs'));
+  cpSync(path.join(CONSUMER_E2E_DIR, `${entryOverride ?? persona.entry ?? 'persona-entry'}.mjs`), path.join(cwd, 'entry.mjs'));
 
   if (persona.contractSource !== undefined) {
     cpSync(path.join(REPOSITORY_ROOT, persona.contractSource, 'contract'), path.join(cwd, 'contract'), {
@@ -175,13 +188,21 @@ export const buildPersona = (name, linkerName, manifest, entryOverride) => {
   // Each contract is wrapped in its own package declaring the Compact runtime its
   // codegen demands, so the linker -- not a hoisting accident -- is what decides
   // whether both eras can be loaded at once.
-  for (const key of persona.contracts ?? []) {
+  for (const key of [...(persona.contracts ?? []), ...extraContracts]) {
     const contract = CONTRACT_PACKAGES[key];
     const contractDir = path.join(cwd, 'contracts', key);
     mkdirSync(contractDir, { recursive: true });
     writeFileSync(
       path.join(contractDir, 'package.json'),
       `${JSON.stringify(contractPackageManifest(contract), null, 2)}\n`,
+      'utf8'
+    );
+    // Backs the `./runtime` export. A bare re-export rather than a copy, so the
+    // module identity is the wrapper's own resolution of the runtime and not a
+    // second instance of it.
+    writeFileSync(
+      path.join(contractDir, 'runtime.js'),
+      "export * from '@midnight-ntwrk/compact-runtime';\n",
       'utf8'
     );
     cpSync(path.join(REPOSITORY_ROOT, contract.source), contractDir, { recursive: true });
@@ -193,14 +214,14 @@ export const buildPersona = (name, linkerName, manifest, entryOverride) => {
 /**
  * Copies the packed tarballs beside the personas.
  *
- * Exported because the AC0 driver installs a persona too, and both have to stage
+ * Exported because the fork-matrix driver installs a persona too, and both have to stage
  * the same way: pnpm encodes a tarball's path into a store filename.
  */
 export const stageTarballs = (manifest) => {
   rmSync(STAGED_TARBALL_DIR, { recursive: true, force: true });
   mkdirSync(STAGED_TARBALL_DIR, { recursive: true });
   for (const relative of Object.values(manifest.packages)) {
-    const source = path.join(PACKAGING_DIR, relative);
+    const source = path.join(CONSUMER_E2E_DIR, relative);
     cpSync(source, path.join(STAGED_TARBALL_DIR, path.basename(source)));
   }
 };

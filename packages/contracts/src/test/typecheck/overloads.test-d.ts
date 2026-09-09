@@ -228,6 +228,68 @@ describe('an argument-taking retained-era contract works, not just a zero-argume
   });
 });
 
+describe('both eras resolve a call to the SAME result structure', () => {
+  // The caller-facing property. The retained arm used to answer a thin
+  // `{ circuitId, nextPrivateState, txData }` while the current era answered
+  // `{ public, private }`, so the two eras' results were different objects and
+  // the circuit's own return value was reachable in one era only -- even though
+  // the retained pipeline computes it (`TranscriptPojo.result`) and then dropped
+  // it. Every assertion here is about SHAPE, not about identical types: two
+  // members of the current era's shape are live WASM handles
+  // (`public.nextContractState`, `private.unprovenTx`) and ADR-0007 forbids
+  // those crossing an era boundary, so the retained arm carries the plain-data
+  // equivalents instead.
+
+  it('puts the circuit return value on `private.result` in BOTH eras', () => {
+    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>>().toHaveProperty('private');
+    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']>().toHaveProperty('result');
+    expectTypeOf<FinalizedCallTxData<Twin018, 'increment'>['private']>().toHaveProperty('result');
+  });
+
+  it('puts the finalized record on `public` in BOTH eras, keeping the retained era tag', () => {
+    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>>().toHaveProperty('public');
+    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['public']>().toHaveProperty('txId');
+    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['public']>().toHaveProperty('status');
+    // The one member that must NOT be narrowed to the current era's: a retained
+    // call is recorded by whichever era the head is on, so the tag stays a union.
+    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['public']['version']>().toEqualTypeOf<
+      'v8' | 'v9'
+    >();
+  });
+
+  it('carries the transcript halves on the same sides as the current era', () => {
+    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']>().toHaveProperty('input');
+    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']>().toHaveProperty('output');
+    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']>().toHaveProperty(
+      'privateTranscriptOutputs'
+    );
+    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['public']>().toHaveProperty(
+      'publicTranscript'
+    );
+  });
+
+  it('does NOT carry either era-crossing handle, and says what stands in for them', () => {
+    // Not omissions to be filled in later: ADR-0007. `txBytes` is the retained
+    // analogue of `unprovenTx`, and there is deliberately no substitute for
+    // `nextContractState` -- the post-state is an onchain-runtime-v3 handle that
+    // cannot be re-expressed as a ledger-v9 `StateValue`.
+    expectTypeOf<
+      Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']
+    >().not.toHaveProperty('unprovenTx');
+    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']>().toHaveProperty('txBytes');
+    expectTypeOf<
+      Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['public']
+    >().not.toHaveProperty('nextContractState');
+  });
+
+  it('keeps `nextPrivateState` reachable, on the private side as the current era does', () => {
+    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']>().toHaveProperty(
+      'nextPrivateState'
+    );
+    expectTypeOf<FinalizedCallTxData<Twin018, 'increment'>['private']>().toHaveProperty('nextPrivateState');
+  });
+});
+
 describe('the two eras options types do not structurally match each other', () => {
   it('does not accept retained-era options where the current-era overload expects its own', () => {
     // @ts-expect-error - a raw retained-era contract instance is not a CompiledContract container
@@ -449,7 +511,9 @@ describe('adding era arms leaves the pre-existing entry points public surface un
 
 describe('the retained-era private state flows through the family', () => {
   it('reports the fixture private state on the retained-era result', () => {
-    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['nextPrivateState']>().toEqualTypeOf<Counter016PrivateState>();
+    expectTypeOf<
+      Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']['nextPrivateState']
+    >().toEqualTypeOf<Counter016PrivateState>();
   });
 
   it('refuses a witness declared over the WRONG private state', () => {

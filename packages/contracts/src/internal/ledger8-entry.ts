@@ -60,7 +60,7 @@ import {
   Ledger8SeamFailedError,
   type SubmittedOperation
 } from '../errors';
-import type { AnyLedger8CallTxOptions } from '../ledger8-contract';
+import type { AnyLedger8CallTxOptions, AnyLedger8FinalizedCallTxData } from '../ledger8-contract';
 import { createEncryptionPublicKeyResolver } from '../utils';
 import { type BreadcrumbSink, emitPipelineSelection } from './breadcrumbs';
 import {
@@ -897,7 +897,18 @@ export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Led
 export const submitLedger8CallTxAsync = async (
   providers: Ledger8CallEntryProviders,
   options: Ledger8CallEntryOptions
-): Promise<{ readonly txId: string; readonly circuitId: string; readonly nextPrivateState: unknown }> => {
+): Promise<{
+  readonly txId: string;
+  readonly circuitId: string;
+  readonly nextPrivateState: unknown;
+  /**
+   * The pipeline's own result, carried so the finalizing wrapper can answer with
+   * the execution data rather than re-running anything. Internal: the PUBLIC
+   * async surface stays {@link Ledger8SubmittedCallTx}, which does not wait for
+   * finalization and so has no record to pair this with.
+   */
+  readonly call: Ledger8CallPipelineResult;
+}> => {
   // The same two local refusals the current-era arm makes before any provider
   // is touched. A malformed address would otherwise cost a network round trip
   // to discover, and an unknown circuit id would surface as a blank
@@ -926,7 +937,7 @@ export const submitLedger8CallTxAsync = async (
     privateState
   });
 
-  return { txId, circuitId: call.circuitId, nextPrivateState: call.nextPrivateState };
+  return { txId, circuitId: call.circuitId, nextPrivateState: call.nextPrivateState, call };
 };
 
 /**
@@ -949,12 +960,8 @@ export const submitLedger8CallTxAsync = async (
 export const submitLedger8CallTx = async (
   providers: Ledger8CallEntryProviders,
   options: Ledger8CallEntryOptions
-): Promise<{
-  readonly circuitId: string;
-  readonly nextPrivateState: unknown;
-  readonly txData: VersionedFinalizedTxData;
-}> => {
-  const { txId, circuitId, nextPrivateState } = await submitLedger8CallTxAsync(providers, options);
+): Promise<AnyLedger8FinalizedCallTxData> => {
+  const { txId, circuitId, nextPrivateState, call } = await submitLedger8CallTxAsync(providers, options);
   const txData = await providers.publicDataProvider.watchForTxData(txId);
   assertLedger8TxSucceeded(txData, circuitId);
 
@@ -962,5 +969,25 @@ export const submitLedger8CallTx = async (
     await providers.privateStateProvider.set(options.privateStateId, nextPrivateState);
   }
 
-  return { circuitId, nextPrivateState, txData };
+  // The same two-level structure the current era answers with, so a caller reads
+  // `private.result` and `public.txId` without knowing which era ran. The split
+  // is by sensitivity, not by convenience: the ZK input, output and private
+  // transcript outputs sit beside the circuit's result on `private`, and only
+  // the finalized record and the public transcript are on `public`.
+  return {
+    circuitId,
+    public: {
+      ...txData,
+      publicTranscript: call.publicTranscript,
+      partitionedTranscript: call.partitionedTranscript
+    },
+    private: {
+      input: call.input,
+      output: call.output,
+      privateTranscriptOutputs: call.privateTranscriptOutputs,
+      result: call.result,
+      nextPrivateState,
+      txBytes: call.txBytes
+    }
+  };
 };
