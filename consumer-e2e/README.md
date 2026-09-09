@@ -1,9 +1,16 @@
-# Packaging: the framework as a consumer installs it
+# Consumer E2E: the framework as a consumer installs it
 
 Everything here runs **outside** the workspace. Inside the monorepo every package
 resolves through one hoisted tree, which cannot represent the situation these
 harnesses exist to test: a dApp holding contracts from two ledger eras, each
 demanding its own Compact runtime.
+
+**What belongs here** is decided by one criterion: it has to run outside the
+workspace, on packed tarballs. That is why the fork-crossing scenarios live
+here and not beside the other tests. They need a tree in which two Compact
+runtime majors resolve at once, and only a packed install produces one. A test
+that runs correctly inside the monorepo belongs under `packages/` or
+`testkit-js/` instead.
 
 | Script | What it does |
 |---|---|
@@ -13,10 +20,10 @@ demanding its own Compact runtime.
 
 ```bash
 yarn build
-node packaging/pack-framework.mjs
-node packaging/linker-smoke.mjs            # every persona x linker
-node packaging/linker-smoke.mjs pnp retained
-node packaging/fork-matrix-smoke.mjs pnp           # needs Docker
+node consumer-e2e/pack-framework.mjs
+node consumer-e2e/linker-smoke.mjs            # every persona x linker
+node consumer-e2e/linker-smoke.mjs pnp retained
+node consumer-e2e/fork-matrix-smoke.mjs pnp           # needs Docker
 ```
 
 ## The personas

@@ -368,7 +368,7 @@ const tenMinutesAgo = () => BigInt(Math.floor(Date.now() / 1000)) - 600n;
  * difference in the framework and not in the contract.
  *
  * `events` has no twin: `emit` is not a language-0.23 form. See
- * `packaging/build-retained-twins.mjs`.
+ * `consumer-e2e/build-retained-twins.mjs`.
  *
  * The post-fork call varies its domain separator or nonce where the circuit
  * mints, so a keep-state call cannot pass by re-minting the identical coin the

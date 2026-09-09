@@ -51,7 +51,7 @@ const LINKER = argv.find((argument) => !argument.startsWith('--')) ?? 'pnp';
  * it. A shard also builds only its OWN retained twin, which is why the 146 MB of
  * `fee-mint` prover keys stop being everyone's bill.
  *
- *   node packaging/fork-matrix-smoke.mjs pnp --contracts=simple
+ *   node consumer-e2e/fork-matrix-smoke.mjs pnp --contracts=simple
  */
 const CONTRACTS_FLAG = '--contracts=';
 const requestedContracts = argv
@@ -61,7 +61,7 @@ const SELECTION = resolveContractSelection(requestedContracts.length === 0 ? und
 /** The genesis mint seed the dev preset funds; the same one the local environment uses. */
 const WALLET_SEED = '0000000000000000000000000000000000000000000000000000000000000001';
 
-const logger = createLogger(path.join(REPOSITORY_ROOT, 'packaging', 'fork-matrix.log'));
+const logger = createLogger(path.join(REPOSITORY_ROOT, 'consumer-e2e', 'fork-matrix.log'));
 
 // The compose files live in `testkit-js/`, and the default configuration resolves
 // them against `process.cwd()` -- which for this script is the repository root.
