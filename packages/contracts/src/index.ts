@@ -139,6 +139,8 @@ export {
 // era-dispatching IMPLEMENTATION signatures and are never a signature a caller
 // sees.
 export type {
+  Ledger8CallResultPrivate,
+  Ledger8CallResultPublic,
   Ledger8CallTxOptions,
   Ledger8CallTxOptionsBase,
   Ledger8CallTxOptionsWithPrivateStateId,
@@ -148,12 +150,14 @@ export type {
   Ledger8CircuitId,
   Ledger8CircuitParameters,
   Ledger8CircuitResult,
+  Ledger8CircuitReturnType,
   Ledger8ConstructorResult,
   Ledger8Contract,
   Ledger8ContractProviders,
   Ledger8DeployContractOptions,
   Ledger8DeployedContract,
   Ledger8FinalizedCallTxData,
+  Ledger8FinalizedCallTxPublicData,
   Ledger8FindDeployedContractOptions,
   Ledger8FoundContract,
   Ledger8PrivateState,
