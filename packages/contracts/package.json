@@ -37,6 +37,7 @@
     "@fast-check/vitest": "^0.4.1",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "rollup": "^4.60.4",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.7"
   },
   "engines": {

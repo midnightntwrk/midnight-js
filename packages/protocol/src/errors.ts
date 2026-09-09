@@ -398,7 +398,7 @@ export type ComposeStage =
  * @see {@link VerifierKeys}
  */
 export class ComposeFailedError extends Error {
-  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.COMPOSE_FAILED;
+  readonly code = PROTOCOL_ERROR_CODES.COMPOSE_FAILED;
 
   constructor(
     readonly version: LedgerVersion,
@@ -562,7 +562,7 @@ export type ComposeOption =
  * @see {@link VerifierKeys}
  */
 export class ComposeOptionError extends Error {
-  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID;
+  readonly code = PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID;
 
   constructor(
     readonly version: LedgerVersion,
@@ -627,7 +627,7 @@ export class ComposeOptionError extends Error {
  * @see {@link FailClosedDecoding}
  */
 export class StateDecodeFailedError extends Error {
-  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED;
+  readonly code = PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED;
 
   constructor(
     readonly version: LedgerVersion,
