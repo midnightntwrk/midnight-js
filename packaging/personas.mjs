@@ -166,7 +166,20 @@ export const contractPackageManifest = (contract) => ({
   // `./package.json` is exported deliberately: the smoke reads it to report which
   // Compact runtime this wrapper resolved, and a package that hides its manifest
   // cannot be interrogated that way.
-  exports: { '.': './contract/index.js', './contract/*': './contract/*', './package.json': './package.json' },
+  //
+  // `./runtime` re-exports the very `@midnight-ntwrk/compact-runtime` instance
+  // this wrapper's codegen imports. A caller that has to hand the contract a
+  // state value must mint it in THAT instance: `ledger()` checks its argument
+  // with `instanceof`, and a handle from any other copy is refused. Resolving
+  // the runtime from outside cannot answer which copy the wrapper got, so the
+  // wrapper hands it over instead -- the same injection `protocol` does with
+  // `Ledger8CompactRuntime`.
+  exports: {
+    '.': './contract/index.js',
+    './contract/*': './contract/*',
+    './runtime': './runtime.js',
+    './package.json': './package.json'
+  },
   dependencies: { '@midnight-ntwrk/compact-runtime': contract.runtime }
 });
 
