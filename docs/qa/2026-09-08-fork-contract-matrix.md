@@ -229,6 +229,21 @@ read. That is a materially different statement from "the envelope does not
 migrate", and it matters for anyone reasoning about how long the retained
 envelope survives on a live chain: as long as nobody calls the contract.
 
+**Confirmed on CI, per contract** (run 7). `simple` records the tag on both
+sides of its own keep-state leg: `midnight:contract-state[v6]:` on the pre-fork
+read, and `envelopeAfterCall: midnight:contract-state[v8]:` after the post-fork
+call. Same contract address either side. The write is what moves it.
+
+This is also what made the first attempt at reading the state back fail, and the
+failure is worth recording because the fix is not obvious: a reader that pins the
+retained era is correct below the boundary and wrong above it, since the bytes it
+is handed have stopped being retained-era ones. The era has to come from the
+envelope's own tag -- `utils.contractStateEnvelopeVersion` -- and specifically
+NOT from `RawContractState.version`, which is documented as derived from
+`protocolVersion` alone and explicitly not a statement about the bytes. A caller
+that cannot tolerate those two disagreeing has to inspect the envelope, and this
+is exactly such a caller: the disagreement IS the measurement.
+
 ### 3. The fork crossing is now 7/7 for the counter; `packaging/README.md` still says 6/7
 
 The post-fork keep-state call the README records as **refused** by
@@ -321,17 +336,74 @@ the migration guide.
 - **Wallet-to-wallet transfers across the boundary.** The matrix drives contract
   circuits only. The wallet syncs the crossing chain fully on
   `wallet-sdk@2.0.0-beta.3`, so this is reachable and worth adding.
-- **CI hardware.** Everything here was local on a warm image cache.
+- ~~**CI hardware.**~~ Closed by run 7: the scenario now runs on
+  GitHub-hosted runners, sharded one contract per job, from a cold image cache.
+  Runs 1-6 were local on a warm cache.
+
+## Run 7 — first CI run, and the first complete keep-state measurement
+
+Run at `b994434d` on GitHub-hosted `ubuntu-latest`, one contract per job, cold
+image cache. **All seven shards green**, and the whole CI run green with them.
+
+`simple` is the contract that carries the only ledger-state assertion, and it now
+completes on both sides of the boundary:
+
+| | pre-fork leg | post-fork keep-state leg |
+|---|---|---|
+| contract address | `19c37029…c143` | `19c37029…c143` (same) |
+| circuit | `noop`, `SucceedEntirely` | `noop`, `SucceedEntirely` |
+| call era | v8 | **v9** |
+| envelope | `midnight:contract-state[v6]:` | `[v8]` after the call |
+| `round` | **1** | **2** |
+
+So a contract deployed below the fork is called above it through the same call
+site, and the ledger field written before the boundary is read back afterwards
+with the value the second call should have left. That is the property this
+scenario exists to establish, measured rather than inferred, for the first time.
+
+Two harness defects had to be fixed to get there, and both were reading retained
+state with the wrong era rather than anything about the framework:
+
+- `read a retained twin's ledger through its own runtime` (`921b842a`) — the read
+  used `queryContractState`, which decodes with the head's era and refuses a v8
+  envelope by design, and then handed the twin's `ledger()` a handle minted in the
+  provider's own WASM module, which it refuses by `instanceof`. Now: raw bytes,
+  and per ADR-0007 the boundary is crossed with plain data that the twin's own
+  runtime turns back into a handle.
+- `read a retained twin's era off the envelope, not the deploy` (`b994434d`) — see
+  finding 2 above.
+
+**One question this run closes.** Compact runtime 0.16 *does* accept an
+`EncodedStateValue` extracted by the **v9** era: `round: 2` was read through the
+twin's own 0.16 codegen from bytes the v9 decoder produced. The plain-data rule
+holds in both directions across the era boundary, which is the whole point of
+ADR-0007 and was an open risk before this run.
+
+**One gap this run makes precise.** "A retained circuit runs after the fork" and
+"state written before the fork survived it" are established by DISJOINT sets of
+contracts. `simple` proves the second with a `noop`; `unshielded`, `shielded`,
+`shielded-fallible`, `fee-mint` and `block-time` run substantive retained circuits
+after the boundary -- mints, a heavy checkpointed mint-and-send, a block-time read
+-- and assert nothing about their state. A framework that silently reset a
+contract's state would pass all five. `unshielded` is the cheapest place to close
+this: it already asserts a minted balance through `getUnshieldedBalanceTest`, so
+it needs only that read repeated after the boundary and compared with the pre-fork
+mint.
 
 ## Repeatability
 
-| | Run 1 | Run 2 | Run 3 | Run 4 | Run 5 | Run 6 |
-|---|---|---|---|---|---|---|
-| Scope | current-era matrix | current-era matrix | + retained twins | + cause chains | + routing fix | + partition once |
-| Fork applied at | #41 | #40 | #78 | #77 | #83 | #82 |
-| Failures | 0 | 0 | **4** | **4** | 0 | 0 |
-| Exit code | 0 | 0 | 1 | 1 | 0 | 0 |
-| Wall clock | ~15 min | ~15 min | ~25 min | ~25 min | ~25 min | ~25 min |
+| | Run 1 | Run 2 | Run 3 | Run 4 | Run 5 | Run 6 | Run 7 (CI) |
+|---|---|---|---|---|---|---|---|
+| Scope | current-era matrix | current-era matrix | + retained twins | + cause chains | + routing fix | + partition once | + state read, sharded |
+| Fork applied at | #41 | #40 | #78 | #77 | #83 | #82 | per shard |
+| Failures | 0 | 0 | **4** | **4** | 0 | 0 | 0 |
+| Exit code | 0 | 0 | 1 | 1 | 0 | 0 | 0 |
+| Wall clock | ~15 min | ~15 min | ~25 min | ~25 min | ~25 min | ~25 min | 11-16 min per shard |
+
+Run 7 is one job per contract rather than one run over the matrix, so its wall
+clock is per shard and the lane finishes with the slowest: `events` 11m,
+`block-time` 12m, `simple` 12m, `unshielded` 13m, `shielded` 14m, `fee-mint` 16m,
+`shielded-fallible` 16m. Whole, on one runner, the same work took 36 minutes.
 
 Runs 1 and 2 were identical to each other; runs 3 and 4 were identical to each
 other in every verdict, including which two contracts fail and where. Run 5 is
