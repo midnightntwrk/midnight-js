@@ -2,6 +2,8 @@
 
 **Migration complexity:** Significant. This is a protocol-level major release — expect to touch any code that constructs signing keys, persists exported signing keys, or imports ledger / onchain-runtime types directly.
 
+**This is also the release that carries a dApp across the ledger v8 to v9 hard fork.** The fork costs no further code change beyond the bump and the mechanical narrowing in [Step 13](#step-13--narrow-the-version-tagged-provider-payloads) — there is no new API to call at the boundary — but it does have timing and operational consequences, covered in [Step 14](#step-14--operating-across-the-ledger-fork). Adopt this major *before* the fork.
+
 The required changes fall into five buckets: (0) raise your Node and TypeScript floors, (1) bump the framework, (2) move signing keys to the structured `{ tag, value }` shape, (3) re-derive any state persisted under the old protocol, and (4) ship the `compactc` integrity manifest alongside your ZK artifacts (verification is now fail-closed). Contract-event APIs and cross-contract call support are additive — adopt them only if you need them.
 
 ---
@@ -251,15 +253,47 @@ The read surface is a *different* union — its v8 arm carries `tx`, not
 `txBytes` — so `unwrapV9` does not accept it. Both arms are records you will
 receive, so handle both:
 
-```typescript
-const record = await publicDataProvider.watchForTxData(txId);
-switch (record.version) {
-  case 'v9':
-    return record.tx;              // live v9 ledger object
-  case 'v8':
-    return toMyShape(record.tx);   // v8 ledger object, already decoded
-}
+```ts
+import { types, utils } from '@midnight-ntwrk/midnight-js';
+
+declare const describeNative: (tx: types.FinalizedTxData['tx']) => string;
+declare const describeRetained: (tx: types.FinalizedTxDataV8['tx']) => string;
+
+const summarize = (record: types.VersionedFinalizedTxData): string => {
+  switch (record.version) {
+    case 'v9':
+      return `native ${record.txId}: ${describeNative(record.tx)}`;
+    case 'v8':
+      return `retained ${record.txId}: ${describeRetained(record.tx)}`;
+    default:
+      return utils.assertNever(record, 'summarize');
+  }
+};
 ```
+
+`describeNative` and `describeRetained` stand in for your own code. They are two
+separate functions on purpose: `record.tx` is a different ledger type on each arm,
+which is the whole reason this union has to be narrowed rather than unwrapped. Swap
+the two calls over and the recipe stops compiling.
+
+Close the switch with `assertNever`. While your switch covers the union it
+compiles; the moment the union carries an arm your switch does not handle,
+**that line stops compiling and points at the switch that has to change**.
+
+Be clear about which direction that buys you, because it is not the one you
+might assume. When a later major *shrinks* `LedgerVersion` to drop the retained
+era, the now-stale `case 'v8':` label is already a compile error on its own —
+`assertNever` adds a second diagnostic beside it, it is not what makes the
+removal visible. What it uniquely catches is the other direction: a union that
+*grows* a further era. For a switch that returns a value, the compiler can
+sometimes catch that at the function signature instead; for a `void`,
+side-effecting switch it catches nothing at all, and the unhandled arm falls
+through in silence. That is the case `assertNever` closes.
+
+The second argument is required. `assertNever` never puts the unhandled value into
+its message, so the context string is the only thing that says where the throw came
+from. If one is ever reached, it raises `MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER`, and
+the context is on the error as `context`.
 
 Do not narrow this one by throwing on anything that is not `'v9'`. A v8-era
 record is a record the provider decodes and returns, not an error condition,
@@ -282,6 +316,206 @@ carrying the era, the `protocolVersion`, the seam and the record on
 
 ---
 
+## Step 14 — Operating across the ledger fork
+
+This release is the one that carries a dApp across the ledger v8 → v9 hard
+fork. Everything in this step is about *timing and operations*; **there is no
+further code change**. Steps 1 and 13 are the whole code migration — bump, then
+narrow where the compiler tells you to. Nothing below asks you to call a new
+API, branch on the network's era, or maintain a second code path.
+
+Adopt this major **before** the fork, with enough lead time to ship it to your
+users rather than merely to merge it. A build still on the previous major when
+the fork lands cannot read the network afterwards, and cannot call the
+contracts it deployed before it.
+
+### Track finalization, not submit success
+
+A transaction built against the pre-fork ledger and still in flight when the
+fork applies is **rejected**. Submission succeeding is not evidence that
+anything landed.
+
+Around the fork, treat a transaction as done only once you have observed it
+**finalized**. Code that treats a successful `submitTx` as completion will
+report success for transactions that were dropped at the boundary.
+
+### The stale-head error and its two-step remediation
+
+If an operation resolves the network era, builds against it, and the fork
+applies before it lands, the framework raises `StaleHeadError`
+(`MIDNIGHT_JS_C_STALE_HEAD`) rather than a decode failure. The error carries
+`kind` — `'call'` or `'deploy'`, which is what you branch on to pick between the
+two remediations below — along with `startEra`, `freshEra`, `circuitId` and
+`contractAddress`. Its message carries the matching remediation in full.
+
+**Only the `'call'` arm is reachable through the public API today.** `deployContract`
+refuses every retained-era deploy outright, before any head is read (see the
+runtime-deploy chapter), so no public entry point can produce `kind: 'deploy'`. The
+deploy remediation is documented because it becomes reachable the day the era seam
+carries a maintenance authority — not because you can provoke it now.
+
+For a **call**, the remediation is two steps, in order:
+
+1. **Confirm no finalization.** There is no transaction id to look up: the
+   submission was rejected, so nothing ever resolved to one, and `StaleHeadError`
+   carries none. Do it the way the error's own message prescribes — read the
+   contract state at `error.contractAddress` with `queryContractState`, and check
+   whether the call to `error.circuitId` is already reflected in it. Note that
+   `watchForTxData` is *not* the tool here: it needs an id this error does not
+   carry, and it waits indefinitely rather than ever reporting a transaction
+   absent. Do not skip this step — see the warning below.
+2. **Re-run.** Run the same call again, unchanged. It resolves the new era and
+   lands on the retained-era pipeline. Your code does not change.
+
+For a **deploy** the remediation is different, and it is also two steps:
+
+1. **Confirm no finalization**, the same way — but check the *address the deployment
+   composed*, `error.contractAddress`, rather than a circuit's effect. A deploy mints a
+   fresh nonce, so a second attempt lands at a *different* address and a skipped check
+   leaves two copies of the contract on chain.
+2. **Recompile with the current Compact toolchain and deploy that artifact.** Unlike the
+   call case, a plain re-run does not work: a contract produced by the retained toolchain
+   has no deployment path at all. See [the runtime-deploy chapter](#runtime-deploy-chapter-factory-patterns).
+
+> **Why step 1 is not optional.** The guidance above assumes in-flight pre-fork
+> transactions are hard-rejected at the boundary. If any grace window exists, a
+> bare re-run is precisely what causes double execution — both the original and
+> the re-run can finalize, and both funds legs with them. Confirming
+> non-finalization first is what makes the re-run safe under either behaviour.
+
+### Runtime-deploy chapter: factory patterns
+
+This section is linked from `Ledger8DeployOnV9Error`
+(`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9`). That code is **currently dormant** — do not
+write a `catch` for the class. The refusal you will actually meet is the uncoded
+`Error` described below, and it has the same remediation.
+
+If your dApp deploys contract instances **at runtime** — a factory that stands
+up a new contract per user, per market, per game — read this before the fork.
+
+The retained era stays supported for **calls against contracts deployed before
+the fork**. It does not support **new deployments at all** — not after the fork, and
+not today either. `deployContract` refuses a retained-toolchain artifact
+unconditionally, as its first act, before any network head is read.
+
+The reason is not the era pairing, and not an unfinished pipeline: the deploy
+transaction itself composes and submits correctly. It is the *result* that is
+unusable. Neither the retained constructor nor the era deploy composition accepts a
+maintenance authority, and the authority a retained constructor leaves behind is an
+empty committee with a threshold of one — which nothing can ever satisfy. The
+deployed contract could never have a verifier key inserted, removed or replaced, by
+anyone, including you.
+
+In practice:
+
+- **Obtain current-toolchain artifacts for every contract you deploy at
+  runtime.** Recompile and ship those artifacts with your build. This is not a
+  fork-day deadline — a retained artifact cannot be deployed now.
+- Contracts you deployed *before* the fork are unaffected — they keep working
+  through the same call sites.
+- A dApp that only calls already-deployed contracts is not affected by this
+  section at all.
+
+The failure this exists to prevent is a factory whose deploy path was never
+exercised against a retained artifact, discovering only at the fork that the
+artifacts it ships take a release cycle to replace.
+
+### The retained toolchain stays where it is
+
+You do not install a second Compact toolchain, and you do not add the retained
+ledger or runtime packages to your own dependencies. The framework carries what
+it needs for the retained era internally and loads it only when a retained-era
+operation actually happens.
+
+If the retained runtime is in your dependency tree because you put it there,
+remove it. Two copies of it in one process is what
+`MIDNIGHT_JS_P_LEDGER8_INSTANCE_MISMATCH` reports, and its message names the
+exact packages to trace with your package manager's `why` command. One
+duplicate is easy to create by accident: the package is published under **two
+npm scopes** during the scope migration, and depending on both names is itself
+a duplicate that no resolver can dedupe.
+
+### Bundlers
+
+Two things to know if you build for the browser.
+
+**The retained era is a lazy chunk.** The framework reaches its retained-era
+code through a dynamic `import()`, so a session that never touches a pre-fork
+contract never loads it. Bundlers can defeat that — an aggressive configuration
+may inline the dynamic import back into the main chunk, or emit a
+`modulepreload` for it, and you silently pay for the retained runtime on every
+page load. There are two such chunks, not one — the retained ledger and the
+down-convert engine are loaded separately — plus further dynamic imports inside
+the engine chunk. Check your build output for each of them and confirm none is
+inlined or preloaded. Do not assume the dynamic imports survived your bundler's
+defaults.
+
+**Do not let the retained runtime be instantiated twice.** Two copies in one
+bundle — usually through a duplicate transitive dependency — means objects
+minted by one are rejected by the other, because the WASM binding checks class
+identity. Deduplicate rather than working around it.
+
+See also [Vite WASM resolution](../../guides/vite-wasm-resolution.md).
+
+### ZKIR-v2 support is not sunsetting
+
+Contracts compiled with the retained toolchain remain transactable on the
+network indefinitely; upstream has not announced a sunset. The retained-era
+support in *this framework* is a separate question and is scheduled for removal
+in the next major after the window closes — announced from day one so it is
+something you can plan around rather than a surprise. When that removal lands,
+`LedgerVersion` shrinks and every switch over it stops compiling at its stale
+`case 'v8':` label, which is exactly the line that needs attention.
+
+### A security note on retrying
+
+If one contract produces repeated, unexplained failures — executions that pass
+their pre-checks and then fail, or submissions that are consistently doomed —
+**stop retrying it** and investigate.
+
+Retrying in that situation is not free. The framework reads contract state from
+the indexer, and the integrity of that read is bounded by the node's own
+rejection of a bad transaction rather than by an independent cross-check. A
+retry loop against one contract is the shape that turns that into a usable
+oracle. Back off and look at why, rather than looping.
+
+### Error codes
+
+Every coded error, with what happened and what to do, is listed in
+[TROUBLESHOOTING.md](../../../TROUBLESHOOTING.md#midnightjs-error-codes).
+Discriminate on one with `hasErrorCode(error, code)`; for the errors whose
+*payload* you need to read — `ComposeFailedError.stage`,
+`Ledger8RuntimeMissingError.subpath`, `UnknownLedgerVersionError.requestedVersion`
+— catch by class instead, since `hasErrorCode` narrows only to
+`Error & { code }`.
+
+### Still pending at the time of writing
+
+Named here rather than omitted, so the gaps are visible.
+
+**Operator requirements.** The proof server is fork-prepared: a dual-capable
+server is available before the fork, one configured endpoint serves the whole
+window, and the retained-era path reuses your existing proof-provider
+configuration unchanged. You do **not** configure a second endpoint. *Pending:*
+the exact minimum proof-server version with dual support, and the supported
+delivery API for retained pre-fork key material. If you operate your own proof
+server, treat this as incomplete and check for an updated guide before the
+fork rather than assuming the version you run today suffices.
+
+**Minimum wallet version.** Crossing the fork without a code change holds end to
+end only if the wallet your dApp connects to also crosses it. *Pending:* the
+minimum wallet version, gated on wallet-side state migration that is not yet
+delivered. Until it is stated, do not assume any particular wallet build
+carries a dApp across the boundary.
+
+**DApp-connector proving.** dApps that prove through the wallet connector
+rather than through a configured proof server do not yet have a stated
+fork-crossing story, and no section of this guide covers them. *Pending: a
+scope ruling.* If you prove through the connector, treat this as an open
+question to raise, not as an omission that implies "it just works".
+
+---
+
 ## Verification checklist
 
 - [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.
@@ -295,3 +529,10 @@ carrying the era, the `protocolVersion`, the seam and the record on
 - [ ] Every `proveTx` / `balanceTx` / `submitTx` call site sends a version-tagged payload and narrows the result.
 - [ ] Every `watchForTxData` / `watchForDeployTxData` call site narrows on `record.version`.
 - [ ] Any in-house `WalletProvider` / `MidnightProvider` implementation compiles against the tagged interfaces (or is wrapped with the `create*Provider` adapters).
+- [ ] Every `switch` on `record.version` is closed with `assertNever`, so a future era arm cannot fall through unhandled.
+- [ ] Released to users before the fork, not merely merged before it.
+- [ ] Completion is measured by finalization, not by submit success.
+- [ ] `StaleHeadError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then re-run.
+- [ ] Contracts deployed at runtime have current-toolchain artifacts shipped.
+- [ ] Bundle checked: retained-era chunk separate, not preloaded, retained runtime not duplicated.
+- [ ] Checked back for the pending operator, wallet and connector-proving sections.
