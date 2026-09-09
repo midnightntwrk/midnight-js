@@ -392,13 +392,10 @@ export interface Ledger8CallPipelineResult {
   /** Present exactly when the call moved shielded coins. */
   readonly guaranteedZswapOffer: Uint8Array | undefined;
   /**
-   * Always `undefined` today, and the reason is structural rather than a
-   * simplification: the retained execution leg emits one UNPARTITIONED
-   * operation sequence, so there is no partition to route a movement against
-   * and every movement lands in the guaranteed segment.
-   *
-   * @see {@link KeepStatePipeline} for why tightening this into a two-segment
-   *      expectation would be wrong.
+   * Present exactly when the call's own partition places a shielded movement in
+   * the fallible half. The pipeline resolves that partition before it builds
+   * the offer, so a movement the transcript places there is routed there rather
+   * than falling into the guaranteed segment.
    */
   readonly fallibleZswapOffer: Uint8Array | undefined;
 }
@@ -458,14 +455,6 @@ export const runLedger8CallPipeline = async <TState>(
     throw new Ledger8ShieldedSpendUnsupportedError(circuitId);
   }
 
-  // Built with NO partition information, and that is the only thing available
-  // here: the retained execution leg emits one unpartitioned op sequence, and
-  // the guaranteed/fallible split is computed inside the composition below,
-  // after this offer has to be an option on it. So every movement this call
-  // makes lands in the GUARANTEED segment. Do not "tighten" this into a
-  // two-segment expectation -- there is no partition to route against at this
-  // point in the order, and a call whose coins are placed in the wrong segment
-  // is refused by the ledger rather than silently mis-split.
   // Also before the offer is built, and for the same reason: a recipient this
   // arm cannot resolve is refused by name here rather than by a bare assertion
   // inside the offer builder.
