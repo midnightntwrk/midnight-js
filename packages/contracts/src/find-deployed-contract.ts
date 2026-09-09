@@ -48,7 +48,8 @@ import {
 } from './ledger8-contract';
 import {
   type CircuitCallTxInterface,
-  createCircuitCallTxInterface
+  createCircuitCallTxInterface,
+  createLedger8CircuitCallTxInterface
 } from './tx-interfaces';
 import type { FinalizedDeployTxDataBase } from './tx-model';
 
@@ -319,7 +320,10 @@ export async function findDeployedContract<C extends Contract.Any>(
     return {
       compiledContract: options.compiledContract,
       contractAddress: options.contractAddress,
-      deployTxData: found.deployTxData
+      deployTxData: found.deployTxData,
+      // Built AFTER the attach has checked every declared circuit's key, so a
+      // handle a caller receives is one whose circuits the chain can serve.
+      callTx: createLedger8CircuitCallTxInterface(providers, options.compiledContract, options.contractAddress)
     };
   }
   const { compiledContract, contractAddress } = options;

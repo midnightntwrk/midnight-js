@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { Ledger8DeployableContractState } from '@midnight-ntwrk/midnight-js-protocol';
+import type { CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { describe, expectTypeOf, it } from 'vitest';
@@ -51,6 +52,7 @@ import {
   type Ledger8CircuitResult,
   type Ledger8ConstructorResult,
   type Ledger8Contract,
+  type Ledger8ContractCall,
   type Ledger8ContractProviders,
   type Ledger8DeployContractOptions,
   type Ledger8DeployedContract,
@@ -228,17 +230,147 @@ describe('an argument-taking retained-era contract works, not just a zero-argume
   });
 });
 
+describe('the retained-era deploy publishes what it produced, and takes what a constructor needs', () => {
+  // NOT OBSERVABLE END TO END: `deployContract`'s retained arm refuses with
+  // `Ledger8DeployUnmaintainableError`, so nothing constructs a value of these
+  // types today. What they declare is what the arm will answer with when that
+  // refusal is lifted, and the pipeline under it already computes every member.
+  interface SeededPrivateState {
+    readonly seed: bigint;
+  }
+
+  /** A retained-era artifact whose CONSTRUCTOR takes an argument of its own. */
+  interface SeededContract extends Ledger8Contract<SeededPrivateState> {
+    initialState(context: unknown, seed: bigint): Ledger8ConstructorResult<SeededPrivateState>;
+  }
+
+  it('carries constructor args on its deploy options, and omits them for a zero-argument constructor', () => {
+    // `Ledger8Contract.initialState(...args: never[])` says a retained
+    // constructor may take arguments, and the pipeline has passed them through
+    // since it was written. The options type was the only place that denied it.
+    expectTypeOf<Ledger8DeployContractOptions<SeededContract>>().toHaveProperty('args');
+    expectTypeOf<Ledger8DeployContractOptions<SeededContract>['args']>().toEqualTypeOf<[seed: bigint]>();
+    expectTypeOf<Ledger8DeployContractOptions<Counter016Contract>>().not.toHaveProperty('args');
+  });
+
+  it('publishes the constructor result, as a handle AND as the bytes the address came from', () => {
+    expectTypeOf<keyof Ledger8DeployedContract<Counter016Contract>>().toEqualTypeOf<
+      | 'compiledContract'
+      | 'contractAddress'
+      | 'deployTxData'
+      | 'callTx'
+      | 'signingKey'
+      | 'initialContractState'
+      | 'initialState'
+      | 'initialPrivateState'
+      | 'initialZswapState'
+    >();
+    // ADR-0011: the handle and the bytes, not one instead of the other.
+    expectTypeOf<Ledger8DeployedContract<Counter016Contract>['initialState']>().toEqualTypeOf<Uint8Array>();
+    expectTypeOf<
+      Ledger8DeployedContract<Counter016Contract>['initialContractState']
+    >().toEqualTypeOf<Ledger8DeployableContractState>();
+  });
+});
+
 describe('both eras resolve a call to the SAME result structure', () => {
   // The caller-facing property. The retained arm used to answer a thin
   // `{ circuitId, nextPrivateState, txData }` while the current era answered
   // `{ public, private }`, so the two eras' results were different objects and
   // the circuit's own return value was reachable in one era only -- even though
   // the retained pipeline computes it (`TranscriptPojo.result`) and then dropped
-  // it. Every assertion here is about SHAPE, not about identical types: two
-  // members of the current era's shape are live WASM handles
-  // (`public.nextContractState`, `private.unprovenTx`) and ADR-0007 forbids
-  // those crossing an era boundary, so the retained arm carries the plain-data
-  // equivalents instead.
+  // it. Every assertion here is about SHAPE, not about identical types: the two
+  // eras' state and transaction members are handles from two different runtimes,
+  // so they can never be the same TYPE even where both eras carry them.
+
+  // KEY-SET EQUALITY, in both directions. `toHaveProperty` can only confirm that
+  // a named member is PRESENT, so a member that fell off one era's surface is
+  // invisible to it -- which is how four of them did. Everything one era carries
+  // and the other does not has to be named in an allow-list below, with the
+  // reason it is excused, or the assertion fails.
+
+  /**
+   * Public members the current era carries and the retained era does NOT, each
+   * excused on its own grounds rather than as a group.
+   */
+  type CurrentEraOnlyPublicMembers =
+    // The retained toolchain has no log-event concept at any layer -- neither
+    // `compact-runtime-ledger8` nor `onchain-runtime-v3` declares one -- so
+    // there is no value to carry rather than a value being dropped. The one
+    // absence left on this half, and the only one about the toolchain rather
+    // than about transport.
+    'logEvents';
+
+  /**
+   * Private members the current era carries and the retained era does NOT.
+   */
+  type CurrentEraOnlyPrivateMembers =
+    // The retained composer answers with bytes; `txBytes` below is the member
+    // that carries them. See ADR-0011 for why no live transaction is built.
+    'unprovenTx';
+
+  /** Private members the retained era adds. An era may add; it may not drop. */
+  type RetainedEraOnlyPrivateMembers = 'txBytes';
+
+  /** Top-level members the retained era adds. */
+  type RetainedEraOnlyMembers = 'circuitId';
+
+  type CurrentEraResult = FinalizedCallTxData<Twin018, 'increment'>;
+  type RetainedEraResult = Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>;
+
+  it('carries the same top-level members in BOTH eras', () => {
+    expectTypeOf<keyof CurrentEraResult>().toEqualTypeOf<Exclude<keyof RetainedEraResult, RetainedEraOnlyMembers>>();
+  });
+
+  it('carries the same public members in BOTH eras, apart from the two excused above', () => {
+    expectTypeOf<Exclude<keyof CurrentEraResult['public'], CurrentEraOnlyPublicMembers>>().toEqualTypeOf<
+      keyof RetainedEraResult['public']
+    >();
+  });
+
+  it('carries the same private members in BOTH eras, apart from the one excused above', () => {
+    expectTypeOf<Exclude<keyof CurrentEraResult['private'], CurrentEraOnlyPrivateMembers>>().toEqualTypeOf<
+      Exclude<keyof RetainedEraResult['private'], RetainedEraOnlyPrivateMembers>
+    >();
+  });
+
+  it('describes ONE call the same way in BOTH eras', () => {
+    // The element type of `calls`. The current era's comes from `compact-js`,
+    // so there is no shared base to inherit from and this equality is the only
+    // thing holding the two in step. Nothing is excused: the retained entry
+    // carries `communicationCommitment` too, always `Option.none()`, so that a
+    // caller reading a call entry never has to branch on the era.
+    type CurrentEraCall = ContractExecutable.ContractExecutable.ContractCall;
+
+    expectTypeOf<keyof CurrentEraCall>().toEqualTypeOf<keyof Ledger8ContractCall>();
+    expectTypeOf<keyof CurrentEraCall['public']>().toEqualTypeOf<keyof Ledger8ContractCall['public']>();
+    expectTypeOf<keyof CurrentEraCall['private']>().toEqualTypeOf<keyof Ledger8ContractCall['private']>();
+  });
+
+  it('lifts every declared circuit onto `callTx` in BOTH eras', () => {
+    // Key-set equality against the artifact's OWN circuit ids, so an interface
+    // that lifted a subset -- or nothing at all -- fails here rather than
+    // leaving a caller to discover it at the call site.
+    expectTypeOf<keyof Ledger8FoundContract<Counter016Contract>['callTx']>().toEqualTypeOf<
+      Ledger8CircuitId<Counter016Contract>
+    >();
+    expectTypeOf<keyof FoundContract<Twin018>['callTx']>().toEqualTypeOf<Contract.ProvableCircuitId<Twin018>>();
+    expectTypeOf<
+      ReturnType<Ledger8FoundContract<Counter016Contract>['callTx']['increment']>
+    >().toEqualTypeOf<Promise<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>>>();
+  });
+
+  it('hands back the execution data on `callTxData` in BOTH eras, before finalization', () => {
+    // The async surface answers before there is a record to pair execution data
+    // with -- which is a reason it cannot carry a FINALIZED record, and not a
+    // reason to drop the execution data itself. The retained era adds the two
+    // members it can answer straight away; it may not drop `callTxData`.
+    type RetainedEraOnlySubmittedMembers = 'circuitId' | 'nextPrivateState';
+
+    expectTypeOf<keyof SubmittedCallTx<Twin018, 'increment'>>().toEqualTypeOf<
+      Exclude<keyof Ledger8SubmittedCallTx<Counter016Contract, 'increment'>, RetainedEraOnlySubmittedMembers>
+    >();
+  });
 
   it('puts the circuit return value on `private.result` in BOTH eras', () => {
     expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>>().toHaveProperty('private');
@@ -257,29 +389,18 @@ describe('both eras resolve a call to the SAME result structure', () => {
     >();
   });
 
-  it('carries the transcript halves on the same sides as the current era', () => {
-    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']>().toHaveProperty('input');
-    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']>().toHaveProperty('output');
-    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']>().toHaveProperty(
-      'privateTranscriptOutputs'
-    );
+  it('carries the post-state as a HANDLE, and the composed transaction as bytes', () => {
+    // ADR-0011: the retained post-state is published as the runtime's own
+    // handle rather than withheld. The composed transaction stays bytes --
+    // `txBytes` is what the retained composer answers with, and deserializing
+    // one eagerly would pay for an object most callers never read.
     expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['public']>().toHaveProperty(
-      'publicTranscript'
+      'nextContractState'
     );
-  });
-
-  it('does NOT carry either era-crossing handle, and says what stands in for them', () => {
-    // Not omissions to be filled in later: ADR-0007. `txBytes` is the retained
-    // analogue of `unprovenTx`, and there is deliberately no substitute for
-    // `nextContractState` -- the post-state is an onchain-runtime-v3 handle that
-    // cannot be re-expressed as a ledger-v9 `StateValue`.
+    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']>().toHaveProperty('txBytes');
     expectTypeOf<
       Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']
     >().not.toHaveProperty('unprovenTx');
-    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']>().toHaveProperty('txBytes');
-    expectTypeOf<
-      Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['public']
-    >().not.toHaveProperty('nextContractState');
   });
 
   it('keeps `nextPrivateState` reachable, on the private side as the current era does', () => {
