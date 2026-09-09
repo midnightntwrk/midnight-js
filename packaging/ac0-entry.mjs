@@ -23,18 +23,29 @@
 // between two legs of ONE session rather than between two runs.
 
 import { Buffer } from 'node:buffer';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
 import { loadLedger8Engine, loadLedgerEra, networkHeadVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 
 const config = JSON.parse(process.env.AC0_CONFIG ?? '{}');
 const CIRCUIT_ID = 'increment';
 const NETWORK_ID = 'undeployed';
+
+/** A ceiling on one leg, so a wedged prover or a lost subscription costs one row rather than the run. */
+const LEG_TIMEOUT = 8 * 60_000;
+
+/**
+ * The wait for the driver's `FORK_ENACTED`, which is not a leg the dApp controls:
+ * `enactFork`'s own deadlines sum to twelve minutes, so a ceiling below that would
+ * fail a governance upgrade that was still in progress.
+ */
+const FORK_WAIT_TIMEOUT = 20 * 60_000;
 
 const observed = {};
 const failures = [];
@@ -66,24 +77,85 @@ const report = (code) => {
 // with no account of how far the scenario got.
 for (const event of ['uncaughtException', 'unhandledRejection']) {
   process.on(event, (error) => {
-    failures.push(`${event}: ${error instanceof Error ? error.message : String(error)}`);
+    failures.push(`${event}: ${describeError(error)}`);
     report(1);
   });
 }
 
-const leg = async (name, run) => {
+/**
+ * An error, its stack, and every `cause` beneath it.
+ *
+ * The chain is the point. `Ledger8SeamFailedError` says only that a seam
+ * rejected and puts the provider's own failure -- class name intact, message
+ * redacted -- on `cause`, so a report that prints `error.message` alone says a
+ * transaction was refused and never says by what. That is what happened on the
+ * first run of the retained matrix.
+ */
+const describeError = (error, depth = 0) => {
+  if (!(error instanceof Error)) {
+    return String(error);
+  }
+  const head = `${error.name}: ${error.message}\n${error.stack ?? ''}`.trim();
+  if (error.cause === undefined || depth >= 4) {
+    return head;
+  }
+  return `${head}\nCaused by: ${describeError(error.cause, depth + 1)}`;
+};
+
+/**
+ * Fails `run` at a deadline instead of waiting on it forever.
+ *
+ * The matrix drives seven contracts through one process, and several of them
+ * prove against artifacts in the hundreds of megabytes. A prover that never
+ * answers, or a wallet subscription that stops delivering, would otherwise take
+ * the remaining contracts down with it and the report would say nothing about
+ * any of them. The stray promise is left running: `report()` exits the process,
+ * so nothing outlives it.
+ */
+const withDeadline = (name, ms, run) =>
+  Promise.race([
+    run(),
+    // `ref: false`, so the deadline of a leg that already finished cannot be the
+    // thing keeping the process alive after the report is written.
+    delay(ms, undefined, { ref: false }).then(() => {
+      throw new Error(`${name} did not finish within ${ms}ms`);
+    })
+  ]);
+
+const leg = async (name, run, ms = LEG_TIMEOUT) => {
   try {
-    const result = await run();
+    const result = await withDeadline(name, ms, run);
     observed[name] = result === undefined ? 'ok' : result;
     return result;
   } catch (error) {
-    // The stack, not just the message: a WASM class-identity failure says only
-    // "expected instance of X" and is undiagnosable without the frame it came from.
-    const message = error instanceof Error ? `${error.message}
-${error.stack ?? ''}`.trim() : String(error);
+    // The stack and the cause chain, not just the message: a WASM class-identity
+    // failure says only "expected instance of X" and is undiagnosable without the
+    // frame it came from, and a seam refusal names the provider only on `cause`.
+    const message = describeError(error);
     observed[name] = `FAILED: ${message}`;
     failures.push(`${name}: ${message}`);
     return undefined;
+  }
+};
+
+/**
+ * Records an outcome without judging it.
+ *
+ * For questions whose answer is not known in advance -- what a consumer sees if
+ * they try a current-era contract on a chain that has not forked yet, say. A
+ * refusal there is information, not a defect, so it must not colour the run's
+ * exit code; `leg` is for the things AC0 asserts.
+ */
+const probe = async (name, run) => {
+  try {
+    const result = await withDeadline(name, LEG_TIMEOUT, run);
+    observed[name] = result === undefined ? 'ok' : result;
+  } catch (error) {
+    // With the stack and the cause chain, for the same reason `leg` keeps them:
+    // the answer to one of these probes was `expected instance of
+    // LedgerParameters`, which names neither the copies involved nor the call
+    // that minted the object. The message alone is not actionable.
+    observed[name] = `refused: ${describeError(error)}`;
   }
 };
 
@@ -179,16 +251,28 @@ const waitForHead = async (publicDataProvider, era, timeoutMs) => {
  * is a single fork-prepared endpoint, so this split is a property of the test
  * environment and not of the dApp.
  */
+const environmentFor = (era) => ({
+  ...config.environment,
+  proofServer: era === 'v8' ? config.proofServerV8 : config.proofServerV9
+});
+
+/**
+ * Providers for one contract on one side of the boundary.
+ *
+ * Per contract rather than per session, because each carries its own ZK
+ * artifacts and its own private-state store: the matrix drives eight contracts
+ * through one wallet, and a shared `zkConfigPath` would serve every one of them
+ * the first contract's keys.
+ */
+const providersFor = (testkit, era, wallet, contractConfiguration) =>
+  testkit.initializeMidnightProviders(wallet, environmentFor(era), contractConfiguration);
+
 const buildProviders = async (era, testkit, logger) => {
-  const environment = {
-    ...config.environment,
-    proofServer: era === 'v8' ? config.proofServerV8 : config.proofServerV9
-  };
-  const wallet = await testkit.MidnightWalletProvider.build(logger, environment, config.walletSeed);
+  const wallet = await testkit.MidnightWalletProvider.build(logger, environmentFor(era), config.walletSeed);
   await wallet.start();
   return {
     wallet,
-    providers: testkit.initializeMidnightProviders(wallet, environment, {
+    providers: providersFor(testkit, era, wallet, {
       zkConfigPath: config.retainedZkConfigPath,
       privateStateStoreName: `ac0-${era}`,
       // The retained toolchain emits no `compiler/contract-manifest.json` --
@@ -200,6 +284,214 @@ const buildProviders = async (era, testkit, logger) => {
     })
   };
 };
+
+const DOMAIN_SEPARATOR = new Uint8Array(32).fill(7);
+const MINT_AMOUNT = 1_000_000n;
+const FEE_AMOUNT = 1_000_000n;
+const TOKEN_TYPE = new Uint8Array(32).fill(3);
+
+/** Ten minutes back, so a `blockTimeGte` assertion holds however long the legs before it took. */
+const tenMinutesAgo = () => BigInt(Math.floor(Date.now() / 1000)) - 600n;
+
+/**
+ * The retained-era twins, and what is asked of each on either side of the fork.
+ *
+ * This is AC0's actual question, finally asked of something other than a
+ * counter: the contract is deployed on a ledger-8 chain, called there, and then
+ * called AGAIN after the boundary through the same call site, which is the
+ * keep-state path. Each twin is `testkit-js-e2e`'s own `.compact` source
+ * recompiled with `compactc` 0.31.1 — the same source its current-era namesake
+ * in `MATRIX` is built from, so a difference between the two eras is a
+ * difference in the framework and not in the contract.
+ *
+ * `events` has no twin: `emit` is not a language-0.23 form. See
+ * `packaging/build-retained-twins.mjs`.
+ *
+ * The post-fork call varies its domain separator or nonce where the circuit
+ * mints, so a keep-state call cannot pass by re-minting the identical coin the
+ * pre-fork call already made.
+ */
+const RETAINED_MATRIX = [
+  {
+    key: 'simple',
+    preFork: [{ circuitId: 'noop' }],
+    postFork: { circuitId: 'noop' }
+  },
+  {
+    key: 'unshielded',
+    preFork: [{ circuitId: 'mintUnshieldedToSelfTest', args: () => [DOMAIN_SEPARATOR, MINT_AMOUNT] }],
+    postFork: { circuitId: 'mintUnshieldedToSelfTest', args: () => [new Uint8Array(32).fill(8), MINT_AMOUNT] }
+  },
+  {
+    key: 'shielded',
+    preFork: [{ circuitId: 'mintShieldedTokens', args: () => [DOMAIN_SEPARATOR, MINT_AMOUNT] }],
+    postFork: { circuitId: 'mintShieldedTokens', args: () => [new Uint8Array(32).fill(8), MINT_AMOUNT] }
+  },
+  {
+    key: 'shielded-fallible',
+    preFork: [
+      {
+        circuitId: 'heavyCheckpointMintAndSend',
+        args: (context) => [
+          DOMAIN_SEPARATOR,
+          MINT_AMOUNT,
+          new Uint8Array(32).fill(99),
+          { bytes: context.coinPublicKey },
+          MINT_AMOUNT
+        ]
+      }
+    ],
+    postFork: {
+      circuitId: 'heavyCheckpointMintAndSend',
+      args: (context) => [
+        DOMAIN_SEPARATOR,
+        MINT_AMOUNT,
+        new Uint8Array(32).fill(98),
+        { bytes: context.coinPublicKey },
+        MINT_AMOUNT
+      ]
+    }
+  },
+  {
+    key: 'fee-mint',
+    preFork: [
+      {
+        circuitId: 'mintWithUnshieldedFee',
+        args: (context) => [
+          DOMAIN_SEPARATOR,
+          MINT_AMOUNT,
+          new Uint8Array(32).fill(123),
+          { bytes: context.coinPublicKey },
+          FEE_AMOUNT
+        ]
+      }
+    ],
+    postFork: {
+      circuitId: 'mintWithUnshieldedFee',
+      args: (context) => [
+        DOMAIN_SEPARATOR,
+        MINT_AMOUNT,
+        new Uint8Array(32).fill(122),
+        { bytes: context.coinPublicKey },
+        FEE_AMOUNT
+      ]
+    }
+  },
+  {
+    key: 'block-time',
+    preFork: [{ circuitId: 'testBlockTimeGte', args: () => [tenMinutesAgo()] }],
+    postFork: { circuitId: 'testBlockTimeGte', args: () => [tenMinutesAgo()] }
+  }
+];
+
+/** What each retained twin's deploy and calls produced, carried from the pre-fork legs to the post-fork ones. */
+const retainedDeployments = new Map();
+
+const retainedZkConfigPath = (key) => {
+  const zkConfigPath = config.retainedMatrixZkConfigPaths?.[key];
+  if (zkConfigPath === undefined) {
+    throw new Error(`the driver passed no retained ZK artifact path for '${key}'`);
+  }
+  return zkConfigPath;
+};
+
+/**
+ * Providers for one retained twin on one side of the boundary.
+ *
+ * `verify: 'warn'` for the same reason the counter's are: `compactc` 0.31.1
+ * emits no `compiler/contract-manifest.json`, so integrity verification has
+ * nothing to read for ANY pre-fork artifact.
+ */
+const retainedProvidersFor = (era, wallet, key) =>
+  providersFor(testkit, era, wallet, {
+    zkConfigPath: retainedZkConfigPath(key),
+    privateStateStoreName: `ac0-retained-${key}-${era}`,
+    zkConfigIntegrity: { verify: 'warn' }
+  });
+
+/** Every verifier key the twin ships, so the deployed contract can answer for any of its circuits. */
+const verifierKeysFor = (zkConfigPath) => {
+  const keyDir = path.join(zkConfigPath, 'keys');
+  const suffix = '.verifier';
+  return new Map(
+    readdirSync(keyDir)
+      .filter((file) => file.endsWith(suffix))
+      .map((file) => [file.slice(0, -suffix.length), new Uint8Array(readFileSync(path.join(keyDir, file)))])
+  );
+};
+
+/**
+ * Deploys one retained twin on the pre-fork chain, through protocol's era facade.
+ *
+ * The same route the counter takes, and for the same reason: `deployContract`'s
+ * retained arm refuses unconditionally before any head is read, and the working
+ * pipeline is in `contracts/src/internal` where a consumer cannot reach it. This
+ * stands in for the pre-fork dApp that would already have deployed the contract.
+ */
+const deployRetained = async (key, providers, wallet) => {
+  const zkConfigPath = retainedZkConfigPath(key);
+  const { Contract } = await import(`@midnight-ntwrk/ac0-retained-${key}`);
+  const [engine, era] = await Promise.all([loadLedger8Engine(), loadLedgerEra('v8')]);
+
+  const constructed = engine.executeConstructor({
+    contract: new Contract({}),
+    args: [],
+    privateState: {},
+    coinPk: wallet.getCoinPublicKey()
+  });
+
+  const composed = era.composeDeployTx({
+    contractState: constructed.contractState.serialize(),
+    verifierKeys: verifierKeysFor(zkConfigPath),
+    networkId: NETWORK_ID,
+    ttl: new Date(Date.now() + 60 * 60_000)
+  });
+
+  const proven = await providers.proofProvider.proveTx({ version: 'v8', txBytes: composed.transaction });
+  const balanced = await providers.walletProvider.balanceTx(proven);
+  const txId = await providers.midnightProvider.submitTx(balanced);
+  const state = await waitForContract(providers.publicDataProvider, composed.contractAddress, 5 * 60_000);
+
+  return {
+    txId,
+    contractAddress: composed.contractAddress,
+    indexedAs: state.version,
+    envelope: envelopeTag(state.raw)
+  };
+};
+
+/**
+ * Calls one circuit on a retained twin.
+ *
+ * `compiledContract` takes the raw instance -- the retained era has no
+ * `CompiledContract` container -- and a nullary circuit's options carry no
+ * `args` member at all.
+ */
+const callRetained = async (key, providers, contractAddress, call, context) => {
+  const { Contract } = await import(`@midnight-ntwrk/ac0-retained-${key}`);
+  const submitted = await submitCallTx(providers, {
+    compiledContract: new Contract({}),
+    contractAddress,
+    circuitId: call.circuitId,
+    ...(call.args === undefined ? {} : { args: call.args(context) })
+  });
+  // The retained arm resolves `{ circuitId, nextPrivateState, txData }`; both
+  // arms of `txData` extend `FinalizedTxRecord`, so status and version are there.
+  return { circuitId: call.circuitId, status: submitted.txData.status, version: submitted.txData.version, txId: submitted.txData.txId };
+};
+
+/** Records a chain-level rejection as a failure: an included transaction is not a passing one. */
+const recordCallOutcome = (label, outcome) => {
+  if (outcome.status !== 'SucceedEntirely') {
+    failures.push(`${label}: chain reported ${outcome.status}`);
+  }
+  return outcome;
+};
+
+const walletContext = async (wallet) => ({
+  coinPublicKey: new Uint8Array(Buffer.from(wallet.getCoinPublicKey(), 'hex')),
+  unshieldedAddress: new Uint8Array(Buffer.from((await wallet.wallet.unshielded.getAddress()).hexString, 'hex'))
+});
 
 const testkit = await import('@midnight-ntwrk/testkit-js');
 const logger = testkit.createLogger(config.logPath);
@@ -288,9 +580,60 @@ await leg('pre-fork retained call', async () => {
   return { txId: submitted.txData.txId };
 });
 
+// (a) continued: the rest of the retained-era contracts, deployed and called on
+// the pre-fork chain. Same source as the current-era matrix below, built with
+// `compactc` 0.31.1, so the pair differ only in the toolchain that emitted them.
+for (const entry of RETAINED_MATRIX) {
+  await leg(`pre-fork retained ${entry.key}`, async () => {
+    const providers = retainedProvidersFor('v8', session.wallet, entry.key);
+    const deployed = await deployRetained(entry.key, providers, session.wallet);
+    retainedDeployments.set(entry.key, deployed);
+
+    const context = await walletContext(session.wallet);
+    const calls = [];
+    for (const call of entry.preFork) {
+      calls.push(
+        recordCallOutcome(
+          `pre-fork retained ${entry.key}/${call.circuitId}`,
+          await callRetained(entry.key, providers, deployed.contractAddress, call, context)
+        )
+      );
+    }
+    return { ...deployed, calls };
+  });
+}
+
+// (a) continued, as a probe rather than an assertion: what a consumer sees if
+// they point a current-era contract at a chain that has not forked yet. Nothing
+// in the spec says which side refuses it, or with what -- and "the deploy just
+// worked" would be the largest finding of the run.
+await probe('pre-fork deploy of a current-era contract', async () => {
+  const zkConfigPath = config.matrixZkConfigPaths?.simple;
+  if (zkConfigPath === undefined) {
+    throw new Error("the driver passed no ZK artifact path for 'simple'");
+  }
+  const { Contract } = await import('@midnight-ntwrk/ac0-contract-simple');
+  const compiledContract = CompiledContract.withCompiledFileAssets(
+    CompiledContract.withVacantWitnesses(CompiledContract.make('Simple', Contract)),
+    zkConfigPath
+  );
+  const deployed = await deployContract(
+    providersFor(testkit, 'v8', session.wallet, {
+      zkConfigPath,
+      privateStateStoreName: 'ac0-prefork-current'
+    }),
+    { compiledContract }
+  );
+  return {
+    accepted: true,
+    contractAddress: deployed.deployTxData.public.contractAddress,
+    txId: deployed.deployTxData.public.txId
+  };
+});
+
 // ── (b) the fork moment ───────────────────────────────────────────────────────
 
-await leg('fork enacted', () => awaitFork());
+await leg('fork enacted', () => awaitFork(), FORK_WAIT_TIMEOUT);
 
 await leg('post-fork head era', async () => {
   const era = await waitForHead(session.providers.publicDataProvider, 'v9', 5 * 60_000);
@@ -328,6 +671,34 @@ await leg('post-fork keep-state call through the same call site', async () => {
   return { txId: submitted.txData.txId };
 });
 
+// (c) continued: the same keep-state call for every other retained twin. These
+// are the legs AC0 could not previously pose — a pre-fork contract that is not a
+// counter, called after the boundary through the call site that deployed it.
+for (const entry of RETAINED_MATRIX) {
+  await leg(`post-fork keep-state ${entry.key}`, async () => {
+    const deployed = retainedDeployments.get(entry.key);
+    if (deployed === undefined) {
+      // Named rather than left to a TypeError: this leg is UNTESTED, not failed,
+      // and the two read very differently in a report.
+      throw new Error(`its pre-fork deploy did not complete, so there is nothing here to call`);
+    }
+    const providers = retainedProvidersFor('v9', session.wallet, entry.key);
+    const context = await walletContext(session.wallet);
+    const outcome = recordCallOutcome(
+      `post-fork keep-state ${entry.key}/${entry.postFork.circuitId}`,
+      await callRetained(entry.key, providers, deployed.contractAddress, entry.postFork, context)
+    );
+    const state = await providers.publicDataProvider.queryRawContractState(deployed.contractAddress);
+    return {
+      contractAddress: deployed.contractAddress,
+      call: outcome,
+      // The envelope after the call, so a keep-state write that re-versions the
+      // state is distinguishable from one that leaves it in the retained shape.
+      envelopeAfterCall: state === null ? 'absent' : envelopeTag(state.raw)
+    };
+  });
+}
+
 // ── (d) reads its own pre-fork history ────────────────────────────────────────
 
 await leg('reads its own pre-fork history', async () => {
@@ -337,6 +708,190 @@ await leg('reads its own pre-fork history', async () => {
   }
   return { version: state.version, protocolVersion: state.protocolVersion };
 });
+
+// ── (e) the rest of the contract surface, on a chain that carries v8 history ──
+//
+// Not AC0's retained story, and deliberately not dressed up as one: these
+// contracts exist only in current-era form, so there is no version of them that
+// could have been deployed below the boundary. What they answer is the question
+// AC0 leaves open -- whether a dApp doing ordinary work (tokens, minting, events,
+// block time) is affected by the chain having a pre-fork past. Every leg runs in
+// the same process and against the same wallet that just crossed the fork.
+
+/**
+ * The contracts and the circuits driven against each.
+ *
+ * Circuit ids and argument shapes are taken from the e2e suite's own tests
+ * rather than re-derived from the `.compact` sources, so a leg that fails here
+ * fails for a reason the fork introduced and not because this file guessed an
+ * encoding. `capture` names where a circuit's return value is kept for a later
+ * call in the same contract's run.
+ */
+const MATRIX = [
+  { key: 'simple', tag: 'Simple', calls: [{ circuitId: 'noop' }] },
+  {
+    key: 'unshielded',
+    tag: 'Unshielded',
+    calls: [
+      { circuitId: 'mintUnshieldedToSelfTest', args: () => [DOMAIN_SEPARATOR, MINT_AMOUNT], capture: 'color' },
+      { circuitId: 'getUnshieldedBalanceTest', args: (context) => [context.color] },
+      {
+        circuitId: 'mintUnshieldedToUserTest',
+        args: (context) => [new Uint8Array(32).fill(2), { bytes: context.unshieldedAddress }, MINT_AMOUNT]
+      }
+    ]
+  },
+  {
+    key: 'shielded',
+    tag: 'Shielded',
+    calls: [
+      { circuitId: 'mintShieldedTokens', args: () => [DOMAIN_SEPARATOR, MINT_AMOUNT] },
+      {
+        circuitId: 'mintAndSendShielded',
+        args: (context) => [
+          DOMAIN_SEPARATOR,
+          MINT_AMOUNT,
+          new Uint8Array(32).fill(42),
+          { bytes: context.coinPublicKey },
+          MINT_AMOUNT
+        ]
+      }
+    ]
+  },
+  {
+    key: 'shielded-fallible',
+    tag: 'ShieldedFallible',
+    calls: [
+      {
+        // #876's regression: the user-bound shielded output has to land in the
+        // fallible offer. The e2e test stops at the transcript; this one submits,
+        // which is the stronger reading -- a misrouted output is refused by the
+        // balancer or by the chain rather than merely looking wrong.
+        circuitId: 'heavyCheckpointMintAndSend',
+        args: (context) => [
+          DOMAIN_SEPARATOR,
+          MINT_AMOUNT,
+          new Uint8Array(32).fill(99),
+          { bytes: context.coinPublicKey },
+          MINT_AMOUNT
+        ]
+      }
+    ]
+  },
+  {
+    key: 'fee-mint',
+    tag: 'FeeMint',
+    calls: [
+      {
+        // #731 / #877: a shielded mint and an unshielded fee receive in one
+        // circuit. Submitted here for the same reason as above.
+        circuitId: 'mintWithUnshieldedFee',
+        args: (context) => [
+          DOMAIN_SEPARATOR,
+          MINT_AMOUNT,
+          new Uint8Array(32).fill(123),
+          { bytes: context.coinPublicKey },
+          FEE_AMOUNT
+        ]
+      }
+    ]
+  },
+  {
+    key: 'events',
+    tag: 'Events',
+    calls: [
+      { circuitId: 'emitLifecycle' },
+      { circuitId: 'emitUnshieldedMint', args: () => [TOKEN_TYPE, MINT_AMOUNT] }
+    ]
+  },
+  {
+    key: 'block-time',
+    tag: 'BlockTime',
+    // Ten minutes back, so the assertion holds however long the legs above took.
+    calls: [{ circuitId: 'testBlockTimeGte', args: () => [BigInt(Math.floor(Date.now() / 1000)) - 600n] }]
+  }
+];
+
+/**
+ * Builds the `CompiledContract` container for one wrapped contract package.
+ *
+ * Every matrix contract declares no witnesses, so `withVacantWitnesses` is right
+ * for all of them -- the one that does (`counter`) is not in the matrix. The
+ * assets path is set for completeness; the ZK artifacts are actually served by
+ * the provider's own base path.
+ */
+const compiledContractFor = async (entry, zkConfigPath) => {
+  const module = await import(`@midnight-ntwrk/ac0-contract-${entry.key}`);
+  const contract = module.Contract ?? module.default?.Contract;
+  if (typeof contract !== 'function') {
+    throw new Error(`@midnight-ntwrk/ac0-contract-${entry.key} exports no Contract`);
+  }
+  return CompiledContract.withCompiledFileAssets(
+    CompiledContract.withVacantWitnesses(CompiledContract.make(entry.tag, contract)),
+    zkConfigPath
+  );
+};
+
+const runMatrixContract = async (entry) => {
+  const zkConfigPath = config.matrixZkConfigPaths?.[entry.key];
+  if (zkConfigPath === undefined) {
+    throw new Error(`the driver passed no ZK artifact path for '${entry.key}'`);
+  }
+  const compiledContract = await compiledContractFor(entry, zkConfigPath);
+  const providers = providersFor(testkit, 'v9', session.wallet, {
+    zkConfigPath,
+    privateStateStoreName: `ac0-matrix-${entry.key}`
+  });
+
+  const deployed = await deployContract(providers, { compiledContract });
+  const contractAddress = deployed.deployTxData.public.contractAddress;
+  await waitForContract(providers.publicDataProvider, contractAddress, 5 * 60_000);
+
+  const context = {
+    coinPublicKey: new Uint8Array(Buffer.from(session.wallet.getCoinPublicKey(), 'hex')),
+    unshieldedAddress: new Uint8Array(
+      Buffer.from((await session.wallet.wallet.unshielded.getAddress()).hexString, 'hex')
+    )
+  };
+
+  const calls = [];
+  for (const call of entry.calls) {
+    // Sequential, and each one recorded before the next runs: a later call may
+    // depend on an earlier one's return value, and stopping at the first failure
+    // would hide which of a contract's circuits still work.
+    try {
+      const submitted = await submitCallTx(providers, {
+        compiledContract,
+        contractAddress,
+        circuitId: call.circuitId,
+        ...(call.args === undefined ? {} : { args: call.args(context) })
+      });
+      if (call.capture !== undefined) {
+        context[call.capture] = submitted.private.result;
+      }
+      calls.push({ circuitId: call.circuitId, status: submitted.public.status, txId: submitted.public.txId });
+      // An included transaction is not a passing one: `FailEntirely` and
+      // `FailFallible` both arrive here as ordinary resolutions, and recording
+      // them without failing the run would report a green matrix over a chain
+      // that rejected the effects.
+      if (submitted.public.status !== 'SucceedEntirely') {
+        failures.push(`post-fork ${entry.key}/${call.circuitId}: chain reported ${submitted.public.status}`);
+      }
+    } catch (error) {
+      const message = describeError(error);
+      calls.push({ circuitId: call.circuitId, status: `FAILED: ${message}` });
+      failures.push(`post-fork ${entry.key}/${call.circuitId}: ${message}`);
+    }
+  }
+
+  return { contractAddress, deployTxId: deployed.deployTxData.public.txId, calls };
+};
+
+for (const entry of MATRIX) {
+  // One leg per contract, so the report names the contract that failed. A leg
+  // that throws does not stop the ones after it -- `leg` records and continues.
+  await leg(`post-fork ${entry.key}`, () => runMatrixContract(entry));
+}
 
 await session.wallet?.stop().catch(() => undefined);
 report(failures.length === 0 ? 0 : 1);

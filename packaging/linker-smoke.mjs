@@ -151,7 +151,15 @@ export const LINKERS = {
   }
 };
 
-export const buildPersona = (name, linkerName, manifest, entryOverride) => {
+/**
+ * @param extraContracts Contract keys to wrap in addition to the persona's own.
+ *
+ * The AC0 matrix needs seven more contracts than the install smoke does, and
+ * their prover keys run to a few hundred megabytes. Declaring them on the persona
+ * would make every AC6 install pay for artifacts it never proves against, so the
+ * caller that wants them asks for them.
+ */
+export const buildPersona = (name, linkerName, manifest, entryOverride, extraContracts = []) => {
   const persona = PERSONAS[name];
   const linker = LINKERS[linkerName];
   const cwd = path.join(WORK_DIR, `${name}-${linkerName}`);
@@ -161,7 +169,11 @@ export const buildPersona = (name, linkerName, manifest, entryOverride) => {
 
   writeFileSync(
     path.join(cwd, 'package.json'),
-    `${JSON.stringify(personaManifest(name, persona, manifest, linker.packageManager, STAGED_TARBALL_DIR), null, 2)}\n`,
+    `${JSON.stringify(
+      personaManifest(name, persona, manifest, linker.packageManager, STAGED_TARBALL_DIR, extraContracts),
+      null,
+      2
+    )}\n`,
     'utf8'
   );
   cpSync(path.join(PACKAGING_DIR, `${entryOverride ?? persona.entry ?? 'persona-entry'}.mjs`), path.join(cwd, 'entry.mjs'));
@@ -175,7 +187,7 @@ export const buildPersona = (name, linkerName, manifest, entryOverride) => {
   // Each contract is wrapped in its own package declaring the Compact runtime its
   // codegen demands, so the linker -- not a hoisting accident -- is what decides
   // whether both eras can be loaded at once.
-  for (const key of persona.contracts ?? []) {
+  for (const key of [...(persona.contracts ?? []), ...extraContracts]) {
     const contract = CONTRACT_PACKAGES[key];
     const contractDir = path.join(cwd, 'contracts', key);
     mkdirSync(contractDir, { recursive: true });

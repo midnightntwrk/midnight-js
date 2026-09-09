@@ -35,8 +35,15 @@ import {
   setContainersConfiguration
 } from '@midnight-ntwrk/testkit-js';
 
+import { buildRetainedTwins } from './build-retained-twins.mjs';
 import { buildPersona, stageTarballs } from './linker-smoke.mjs';
-import { readManifest, REPOSITORY_ROOT } from './personas.mjs';
+import {
+  MATRIX_CONTRACTS,
+  readManifest,
+  REPOSITORY_ROOT,
+  RETAINED_MATRIX_CONTRACTS,
+  RETAINED_TWINS
+} from './personas.mjs';
 
 const PERSONA = 'fork-crossing';
 const LINKER = process.argv[2] ?? 'pnp';
@@ -70,6 +77,18 @@ const runScenario = (cwd, linker, environment, contractDir, enactFork) =>
       proofServerV9: environment.postForkProofServer,
       walletSeed: WALLET_SEED,
       retainedZkConfigPath: contractDir,
+      // The ZK artifacts each matrix contract proves against. Handed over as
+      // paths rather than derived in the dApp: the persona's layout is this
+      // script's doing, and a second copy of that knowledge would go stale on
+      // the first change to it.
+      matrixZkConfigPaths: Object.fromEntries(
+        MATRIX_CONTRACTS.map((key) => [key, path.join(cwd, 'contracts', key)])
+      ),
+      // The retained twins, under the same keys their current-era namesakes use,
+      // so the dApp can pair the two eras of one contract without a second table.
+      retainedMatrixZkConfigPaths: Object.fromEntries(
+        RETAINED_TWINS.map((key) => [key, path.join(cwd, 'contracts', `retained-${key}`)])
+      ),
       logPath: path.join(cwd, 'dapp.log')
     };
 
@@ -127,10 +146,21 @@ const main = async () => {
     process.stdout.write('Standing up the fork stack...\n');
     const preFork = await environment.start();
 
+    // Before the install, because the persona copies these directories into
+    // itself: a twin built afterwards would not be in the tree that gets linked.
+    process.stdout.write('Building the retained-era contract twins (compactc 0.31.1)...\n');
+    const built = buildRetainedTwins();
+    process.stdout.write(
+      built.length === 0 ? 'Retained twins already built.\n' : `Built retained twins: ${built.join(', ')}\n`
+    );
+
     process.stdout.write('Installing the dApp persona from packed tarballs...\n');
     const manifest = readManifest();
     stageTarballs(manifest);
-    const { cwd, linker } = buildPersona(PERSONA, LINKER, manifest, 'ac0-entry');
+    const { cwd, linker } = buildPersona(PERSONA, LINKER, manifest, 'ac0-entry', [
+      ...MATRIX_CONTRACTS,
+      ...RETAINED_MATRIX_CONTRACTS
+    ]);
     linker.install(cwd);
 
     outcome = await runScenario(
