@@ -46,6 +46,22 @@ import {
   createUnprovenCallTx
 } from './unproven-call-tx';
 
+/**
+ * The provider set a call entry point accepts.
+ *
+ * Two arms because a call does not always need private state:
+ * `SubmitTxProviders` is `ContractProviders` without `privateStateProvider`,
+ * so a contract that declares no private state can be called with a set that
+ * has none. Naming only `ContractProviders` would demand a provider such a
+ * caller has no reason to build.
+ *
+ * The arm without the provider is valid only for options that name no
+ * `privateStateId`. Naming one without a `privateStateProvider` is refused
+ * before any provider is touched, with
+ * {@link IncompleteCallTxPrivateStateConfig} -- so the pairing the type cannot
+ * state is enforced at run time rather than left to go wrong. That refusal is
+ * what makes the narrowing inside these functions sound.
+ */
 export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
   | ContractProviders<C>
   | SubmitTxProviders<C, PCK>;
@@ -197,6 +213,11 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
     );
   };
 
+  // Narrowed, not widened: the `privateStateId`-without-provider pairing was
+  // already refused above, and `MidnightProviders` is invariant in `PCK`, so
+  // the declared `ContractProviders<C>` -- whose `PCK` defaults to the whole
+  // circuit-id union -- is not assignable to the one-circuit instantiation
+  // this scope needs. The value is the same object either way.
   return transactionContext
     ? Transaction.scoped(providers as ContractProviders<C, PCK>, callTxFn, transactionContext)
     : Transaction.scoped(providers as ContractProviders<C, PCK>, callTxFn)
