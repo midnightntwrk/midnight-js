@@ -94,6 +94,7 @@ describe('Contracts type ACL', () => {
       'ContractMaintenanceTxInterface',
       'ContractProviders',
       'ContractStates',
+      'ContractTypeMismatch',
       'CurrentPipelineEra',
       'DeployContractOptions',
       'DeployContractOptionsBase',
