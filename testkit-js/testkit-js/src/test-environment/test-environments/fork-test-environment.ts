@@ -15,6 +15,7 @@
 
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
@@ -78,6 +79,22 @@ const RUNTIME_APPLIED_TIMEOUT = 3 * MINUTE;
 const POST_FORK_FINALIZATION_TIMEOUT = 2 * MINUTE;
 const CHAIN_POLL_INTERVAL = 3_000;
 const STACK_SHUTDOWN_TIMEOUT = 30_000;
+
+/**
+ * The services {@link ForkTestEnvironment.captureContainerLogs} dumps.
+ *
+ * Both proof servers are included: which one served a call is decided by the head, and a rejection
+ * blamed on the chain has been a prover fault before.
+ */
+const LOGGED_SERVICES = ['node', 'indexer', 'proof-server', 'proof-server-v8'] as const;
+
+/**
+ * One service's log dump ceiling.
+ *
+ * A backstop rather than the mechanism: the command below terminates on its own, so reaching this
+ * means the docker CLI itself is wedged.
+ */
+const LOG_CAPTURE_TIMEOUT = 30_000;
 
 /** A single RPC round trip's ceiling, so a node that accepts a connection and never answers cannot outlive a poll deadline. */
 const RPC_TIMEOUT = 10_000;
@@ -534,6 +551,64 @@ export class ForkTestEnvironment extends TestEnvironment {
    *
    * @returns {Promise<void>} Resolves once the stack is down.
    */
+  /**
+   * Writes each stack container's logs into `directory`, one file per service, and answers with the
+   * paths written.
+   *
+   * For the failures the framework's own errors cannot explain. A submission the NODE rejects
+   * surfaces as `SubmissionError: Transaction submission error` with no reason on it, and the seam
+   * that wraps it redacts the provider's message deliberately -- so the only account of WHY the
+   * chain refused is in the node's log.
+   *
+   * `docker compose logs` WITHOUT `-f`, and that is the load-bearing detail. The obvious route --
+   * `getContainer(...).logs()` and drain the stream to `'end'` -- FOLLOWS a running container, so
+   * `'end'` never arrives; awaiting it leaves the process with a pending promise, and a pending
+   * promise under the driver's top-level `await` ends the run with `Detected unsettled top-level
+   * await` and exit 13, taking the failure report with it. That was measured twice, and bounding the
+   * drain with a timer only traded one hang for another. A command that terminates by itself removes
+   * the condition instead of racing it.
+   *
+   * Must be called BEFORE {@link shutdown}, which removes the containers and their logs with them.
+   * Never throws: it runs on a failure path, where losing the original error to a logging problem
+   * would be the worse outcome. A service whose log cannot be read is reported by its absence from
+   * the returned list.
+   *
+   * @param directory The directory the log files are written into; created if absent.
+   * @returns {Promise<string[]>} The paths written, one per service whose log could be read.
+   */
+  captureContainerLogs = async (directory: string): Promise<string[]> => {
+    if (this.dockerEnv === undefined) {
+      return [];
+    }
+    await mkdir(directory, { recursive: true });
+    const written: string[] = [];
+    for (const service of LOGGED_SERVICES) {
+      const destination = path.join(directory, `${service}.log`);
+      try {
+        const { stdout, stderr } = await execFileAsync(
+          'docker',
+          ['compose', '-f', this.composeFile, '-p', this.projectName, 'logs', '--no-color', service],
+          {
+            env: { ...process.env, ...this.composeEnvironment },
+            // Larger than `runToolkit`'s: a node that has been running through a fork enactment
+            // produces far more than one toolkit command does, and a truncated log is worth less
+            // than the round trip it costs to hold it.
+            maxBuffer: 64 * 1024 * 1024,
+            timeout: LOG_CAPTURE_TIMEOUT
+          }
+        );
+        // Both streams, in that order: compose writes the container's stdout and stderr to its own
+        // stdout, but its own diagnostics go to stderr, and a log that is missing because the
+        // service was never up is a fact worth keeping in the file.
+        await writeFile(destination, `${stdout}${stderr}`);
+        written.push(destination);
+      } catch (error) {
+        this.logger.warn(`Could not capture logs for '${service}': ${String(error)}`);
+      }
+    }
+    return written;
+  };
+
   shutdown = async (): Promise<void> => {
     this.logger.info('Shutting down fork test environment...');
     // Cleared before the await so a failing `down()` cannot leave this instance reporting URLs for
