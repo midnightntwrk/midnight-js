@@ -82,6 +82,7 @@ const RUNTIME_EXPORTS: readonly string[] = [
   'getPublicStates',
   'getStates',
   'getUnshieldedBalances',
+  'isLedger8Result',
   'isTransactionContext',
   'submitCallTx',
   'submitCallTxAsync',

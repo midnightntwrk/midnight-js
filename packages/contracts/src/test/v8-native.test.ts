@@ -68,6 +68,7 @@ import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js
 import { Option } from 'effect';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { isLedger8Result } from '../era-results';
 import {
   BlankVerifierKeySlotError,
   EraInvariantViolationError,
@@ -1391,6 +1392,22 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // `'v9'` default -- which is the whole difference from `requireV9Record`.
     expect((rejection as EraInvariantViolationError).expected).toBe('v8');
     expect((rejection as EraInvariantViolationError).circuitId).toBe(CIRCUIT_ID);
+  });
+
+  it('is recognised as a retained-era result by the published guard, and narrows to it', async () => {
+    const providers = preForkProviders(v6Envelope);
+
+    const finalized = await submitCallTx(providers, callOptions());
+
+    // `era` already discriminates a union on its own. The guard is the NAMED
+    // way to do it: it keeps the literal in one place, and it narrows any of
+    // the result shapes rather than one, so a caller does not write
+    // `=== 'ledger8'` against a string of its own spelling.
+    expect(isLedger8Result(finalized)).toBe(true);
+    // Narrowing, not just a boolean: `txBytes` is reachable only on this arm.
+    if (isLedger8Result(finalized)) {
+      expect(finalized.private.txBytes).toBeInstanceOf(Uint8Array);
+    }
   });
 
   it('reports the era fault AHEAD of the status, when a record is both mislabelled and failing', async () => {

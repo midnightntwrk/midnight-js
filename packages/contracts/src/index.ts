@@ -159,6 +159,10 @@ export {
   RETAINED_PIPELINE_ERA,
   type RetainedPipelineEra
 } from './era';
+// The receiving half of the era surface: the overloads hand a caller one era's
+// result by inference, and these let a caller who RECEIVES either one declare a
+// parameter for both and narrow it by name.
+export { type AnyEraFinalizedCallTxData, type AnyEraSubmittedCallTx, isLedger8Result } from './era-results';
 export type {
   Ledger8CallResultPrivate,
   Ledger8CallResultPublic,
