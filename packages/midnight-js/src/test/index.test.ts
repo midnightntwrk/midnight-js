@@ -55,6 +55,7 @@ const EXPECTED_BARREL_EXPORTS = [
   'contracts',
   'networkHeadVersion',
   'networkId',
+  'protocol',
   'types',
   'utils',
   'versionOfRecord'

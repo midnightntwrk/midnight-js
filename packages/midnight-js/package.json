@@ -17,6 +17,10 @@
       "types": "./dist/network-id.d.ts",
       "default": "./dist/network-id.js"
     },
+    "./protocol": {
+      "types": "./dist/protocol.d.ts",
+      "default": "./dist/protocol.js"
+    },
     "./types": {
       "types": "./dist/types.d.ts",
       "default": "./dist/types.js"
