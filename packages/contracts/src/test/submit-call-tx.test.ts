@@ -129,6 +129,7 @@ describe('submit-call-tx', () => {
     });
     expect(result).toEqual({
       era: CURRENT_PIPELINE_ERA,
+      circuitId: 'testCircuit',
       calls: mockUnprovenCallTxData.calls,
       private: mockUnprovenCallTxData.private,
       public: {
@@ -281,6 +282,7 @@ describe('submit-call-tx', () => {
         expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options, expect.anything());
         expect(result).toEqual({
           era: CURRENT_PIPELINE_ERA,
+          circuitId: 'testCircuit',
           calls: mockUnprovenCallTxData_2.calls,
           private: mockUnprovenCallTxData_2.private,
           public: {
@@ -516,6 +518,7 @@ describe('submit-call-tx', () => {
         });
         expect(result).toEqual({
           era: CURRENT_PIPELINE_ERA,
+          circuitId: 'testCircuit',
           calls: mockUnprovenCallTxData.calls,
           private: mockUnprovenCallTxData.private,
           public: { ...mockUnprovenCallTxData.public, ...mockFinalizedTxData }
@@ -575,6 +578,7 @@ describe('submit-call-tx', () => {
         });
         expect(result).toEqual({
           era: CURRENT_PIPELINE_ERA,
+          circuitId: 'testCircuit',
           txId: mockTxId,
           callTxData: mockUnprovenCallTxData
         });

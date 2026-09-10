@@ -1045,7 +1045,6 @@ const runLedger8CallEntry = async (
       era: RETAINED_PIPELINE_ERA,
       txId,
       circuitId: call.circuitId,
-      nextPrivateState: call.nextPrivateState,
       callTxData: toLedger8CallTxData(call)
     },
     head
@@ -1101,7 +1100,10 @@ export const submitLedger8CallTx = async (
   options: Ledger8CallEntryOptions
 ): Promise<AnyLedger8FinalizedCallTxData> => {
   const { submitted, head } = await runLedger8CallEntry(providers, options);
-  const { txId, circuitId, nextPrivateState, callTxData } = submitted;
+  const { txId, circuitId, callTxData } = submitted;
+  // The ONE path to the next private state, the same one the current era
+  // publishes and this arm's own asynchronous surface documents.
+  const nextPrivateState = callTxData.private.nextPrivateState;
   const txData = await providers.publicDataProvider.watchForTxData(txId);
   // Attribute the record BEFORE reading anything off it -- see the helper.
   assertLedger8RecordEra(txData, head, circuitId);

@@ -335,6 +335,15 @@ describe('both eras resolve a call to the SAME result structure', () => {
   // invisible to it -- which is how four of them did. Everything one era carries
   // and the other does not has to be named in an allow-list below, with the
   // reason it is excused, or the assertion fails.
+  //
+  // THE RULE THE ALLOW-LISTS ANSWER TO: an era may add only what the other era
+  // CANNOT answer, and every entry names why it cannot. "An era may add; it may
+  // not drop" is the ratchet, and it is not sufficient on its own -- it licensed
+  // `circuitId` and `nextPrivateState` on the retained arm alone, both of which
+  // the current era could answer and one of which it already answered by
+  // another path. What is left below is about the retained TOOLCHAIN (no
+  // log-event concept) and about TRANSPORT (bytes instead of a live
+  // transaction), which is the only kind of entry this rule admits.
 
   /**
    * Public members the current era carries and the retained era does NOT, each
@@ -369,8 +378,11 @@ describe('both eras resolve a call to the SAME result structure', () => {
    * read -- the point ADR-0011 argued for and applied to one era.
    */
 
-  /** Top-level members the retained era adds. */
-  type RetainedEraOnlyMembers = 'circuitId';
+  /*
+   * NO top-level retained-era-only members. `circuitId` was excused here with
+   * no reason written down at all, and the current era had it in hand at every
+   * construction site. It is on both results now.
+   */
 
   type CurrentEraResult = FinalizedCallTxData<Twin018, 'increment'>;
   type RetainedEraResult = Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>;
@@ -384,16 +396,13 @@ describe('both eras resolve a call to the SAME result structure', () => {
     expectTypeOf<CurrentEraResult['public']>().toHaveProperty('logEvents');
     expectTypeOf<CurrentEraResult['private']>().toHaveProperty('unprovenTx');
     expectTypeOf<RetainedEraResult['private']>().toHaveProperty('txBytes');
-    expectTypeOf<RetainedEraResult>().toHaveProperty('circuitId');
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('contractStateEncoded');
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('preContractState');
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('preContractStateEncoded');
-    expectTypeOf<Ledger8SubmittedCallTx<Counter016Contract, 'increment'>>().toHaveProperty('circuitId');
-    expectTypeOf<Ledger8SubmittedCallTx<Counter016Contract, 'increment'>>().toHaveProperty('nextPrivateState');
   });
 
   it('carries the same top-level members in BOTH eras', () => {
-    expectTypeOf<keyof CurrentEraResult>().toEqualTypeOf<Exclude<keyof RetainedEraResult, RetainedEraOnlyMembers>>();
+    expectTypeOf<keyof CurrentEraResult>().toEqualTypeOf<keyof RetainedEraResult>();
   });
 
   it('carries the same public members in BOTH eras, apart from the ONE excused above', () => {
@@ -473,12 +482,17 @@ describe('both eras resolve a call to the SAME result structure', () => {
   it('hands back the execution data on `callTxData` in BOTH eras, before finalization', () => {
     // The async surface answers before there is a record to pair execution data
     // with -- which is a reason it cannot carry a FINALIZED record, and not a
-    // reason to drop the execution data itself. The retained era adds the two
-    // members it can answer straight away; it may not drop `callTxData`.
-    type RetainedEraOnlySubmittedMembers = 'circuitId' | 'nextPrivateState';
-
+    // reason to drop the execution data itself.
+    //
+    // No allow-list: the retained arm used to add `circuitId`, which the
+    // current era can answer and now does, and `nextPrivateState`, which was
+    // reachable TWICE on that arm -- at the top level and at
+    // `callTxData.private.nextPrivateState`, the path the current era publishes
+    // and this arm's own TSDoc example tells the caller to read. Two paths to
+    // one value is a divergence waiting to happen, so the duplicate went rather
+    // than being mirrored onto the current era.
     expectTypeOf<keyof SubmittedCallTx<Twin018, 'increment'>>().toEqualTypeOf<
-      Exclude<keyof Ledger8SubmittedCallTx<Counter016Contract, 'increment'>, RetainedEraOnlySubmittedMembers>
+      keyof Ledger8SubmittedCallTx<Counter016Contract, 'increment'>
     >();
 
     // Descends into `callTxData` itself. The assertion above compares only the

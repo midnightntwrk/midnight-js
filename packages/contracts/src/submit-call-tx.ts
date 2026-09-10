@@ -352,6 +352,7 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
 
   return {
     era: CURRENT_PIPELINE_ERA,
+    circuitId: options.circuitId,
     txId,
     callTxData: unprovenCallTxData
   };
