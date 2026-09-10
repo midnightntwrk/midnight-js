@@ -261,8 +261,24 @@ export interface FinalizedCallTxData<C extends Contract.Any, PCK extends Contrac
    * handler that receives a finalized result -- from a queue, a retry, a
    * batch -- has the execution data and no way back to the options that
    * produced it. Both eras carry it.
+   *
+   * Typed as the contract's whole circuit-id union, NOT as `PCK`, and that is
+   * load-bearing. This type is reachable through `TransactionContext[Submit]`,
+   * so naming `PCK` in a property position makes the context invariant in
+   * `PCK`. A scope is legitimately typed with the union --
+   * `withContractScopedTransaction<C>` defaults it that way -- while the calls
+   * made inside it name one circuit each, and invariance refuses exactly that
+   * pairing. `SubmittedCallTx` has no scope on its path and names `PCK`
+   * precisely.
+   *
+   * What catches a regression here is `testkit-js-e2e`'s scoped-transaction
+   * test, through the repo-wide `typecheck:tests`. NOT an assertion in this
+   * package: reproducing the failure needs a contract whose circuits differ in
+   * arity, and every era-9 fixture here declares exactly one no-argument
+   * circuit, so an in-package assertion passes whichever way this member is
+   * typed. Do not add one and take it for a gate.
    */
-  readonly circuitId: PCK;
+  readonly circuitId: Contract.ProvableCircuitId<C>;
   /**
    * Public data relevant to this call transaction.
    */
