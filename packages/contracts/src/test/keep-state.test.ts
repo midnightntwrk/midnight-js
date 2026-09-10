@@ -45,6 +45,7 @@ import {
   type VersionedTx,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -312,6 +313,33 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // the fallible half' for the other direction.
     expect(result.guaranteedZswapOffer).toBeInstanceOf(Uint8Array);
     expect(result.fallibleZswapOffer).toBeUndefined();
+  });
+
+  it('REFUSES a finalized record from the era the head it composed on had already left', async () => {
+    const providers = postForkProviders(v6Envelope);
+    // The keep-state direction of the same guard. This flow ran the RETAINED
+    // pipeline against a POST-FORK head, so the transaction was composed and
+    // submitted as `'v9'` and can only have been recorded as `'v9'`. A `'v8'`
+    // record here is the read surface answering for an era the chain has left.
+    //
+    // Note what is NOT being asserted: that `era` and `version` must agree.
+    // They legitimately disagree on this arm -- `era: 'ledger8'` with
+    // `version: 'v9'` IS keep-state, and the happy path below relies on it.
+    // What must agree is the record and the HEAD the operation resolved.
+    providers.publicDataProvider.watchForTxData = vi
+      .fn()
+      .mockResolvedValue({ ...createMockFinalizedTxData(), version: 'v8', tx: undefined as never });
+
+    const rejection = await submitCallTx(providers, callOptions()).then(
+      () => undefined,
+      (error: unknown) => error
+    );
+
+    expect(rejection).toBeInstanceOf(EraInvariantViolationError);
+    expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
+    expect((rejection as EraInvariantViolationError).seam).toBe('watchForTxData');
+    expect((rejection as EraInvariantViolationError).expected).toBe('v9');
+    expect((rejection as EraInvariantViolationError).circuitId).toBe(CIRCUIT_ID);
   });
 
   it('completes a call through the unchanged submitCallTx, reading the head ONCE and the state ONCE', async () => {

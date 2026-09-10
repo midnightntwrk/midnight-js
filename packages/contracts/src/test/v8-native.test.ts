@@ -56,9 +56,11 @@ import {
   FailEntirely,
   FailFallible,
   type RawContractState,
+  type TxStatus,
   UntaggedPayloadError,
   V8PayloadUnsupportedError,
   type VersionedFinalizedTransaction,
+  type VersionedFinalizedTxData,
   type VersionedTx,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
@@ -286,6 +288,27 @@ const endsWithMarkers = (bytes: Uint8Array | undefined, markers: readonly Uint8A
  * Module scope rather than a closure inside one `describe`, because the attach
  * suite below needs the same set and a second copy would drift from this one.
  */
+/**
+ * The finalized record a PRE-FORK head can actually have produced: tagged for
+ * the era that recorded it, with a `protocolVersion` that agrees with the tag.
+ *
+ * The shared fixture is `'v9'`-tagged with a node 2.x `protocolVersion`, which
+ * on a pre-fork head describes a transaction the operation cannot have
+ * produced -- and the finalizing arm now refuses exactly that. Every pre-fork
+ * expectation in this file has to start from a record the head could have
+ * recorded, or it asserts against a record the framework rightly rejects.
+ *
+ * `tx` is `undefined` for the same reason the read-surface retained arm is
+ * supplied by hand below: no provider builds that arm yet, and a v9 handle is
+ * not assignable to it.
+ */
+const retainedEraRecord = (status?: TxStatus): VersionedFinalizedTxData => ({
+  ...createMockFinalizedTxData(status),
+  version: 'v8',
+  protocolVersion: PRE_FORK_PROTOCOL_VERSION,
+  tx: undefined as never
+});
+
 const retainedProviders = (recording: CoinReceiverRecording, envelope: Uint8Array): RetainedProviders => {
   // The retained overload's own provider type, keyed by the fixture's own
   // circuit id. `createMockProviders`'s `zkConfigProvider` is keyed by `string`
@@ -309,7 +332,7 @@ const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
   providers.publicDataProvider.queryRawContractState = vi
     .fn()
     .mockResolvedValue(rawState(envelope, PRE_FORK_PROTOCOL_VERSION));
-  providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
+  providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(retainedEraRecord());
   providers.zkConfigProvider.getVerifierKey = vi.fn().mockResolvedValue(STAND_IN_VERIFIER_KEY);
   // The recording was made against this coin public key, and the replay
   // engine refuses to replay for any other one.
@@ -1317,9 +1340,10 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // The READ surface's retained arm is a DIFFERENT union from the write
     // surface's: it carries `tx`, never `txBytes`. No provider produces this
     // arm yet -- the read path decodes with the current-era deserializer -- so
-    // it is supplied here to prove this flow does not narrow it away. Refusing
-    // it would refuse exactly the records the retained pipelines exist to
-    // produce, which is why the retained result type is version-tagged.
+    // it is spelled out here rather than taken from `retainedEraRecord`, to
+    // prove this flow does not narrow it away against a literal this test owns.
+    // Refusing it would refuse exactly the records the retained pipelines exist
+    // to produce, which is why the retained result type is version-tagged.
     const retainedRecord = { ...createMockFinalizedTxData(), version: 'v8', tx: undefined as never };
     providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(retainedRecord);
 
@@ -1336,6 +1360,58 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(providers.seen.submitTx).toHaveProperty('txBytes');
     expect(providers.seen.submitTx).not.toHaveProperty('tx');
     expect(finalized.public).toMatchObject(retainedRecord);
+  });
+
+  it('REFUSES a finalized record from an era the head it composed on cannot have recorded', async () => {
+    const providers = preForkProviders(v6Envelope);
+    // `version` on the record SELECTS the runtime of the live `tx` handle beside
+    // it, so a mislabelled record is not a cosmetic disagreement: a caller that
+    // narrows on it reaches into the other ledger module and gets a plausible
+    // wrong value rather than a throw. This flow resolved a PRE-FORK head and
+    // submitted retained-era bytes, so a `'v9'` record describes a transaction
+    // this operation cannot have produced.
+    //
+    // The current era already refuses the mirror of this at the same seam, via
+    // `requireV9Record`. This is the retained arm's half, and it compares the
+    // record against the HEAD rather than against a fixed era, because a
+    // retained-era call is legitimately recorded by EITHER era.
+    providers.publicDataProvider.watchForTxData = vi
+      .fn()
+      .mockResolvedValue({ ...createMockFinalizedTxData(), version: 'v9' });
+
+    const rejection = await submitCallTx(providers, callOptions()).then(
+      () => undefined,
+      (error: unknown) => error
+    );
+
+    expect(rejection).toBeInstanceOf(EraInvariantViolationError);
+    expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
+    expect((rejection as EraInvariantViolationError).seam).toBe('watchForTxData');
+    // The era this operation could accept is the HEAD's own, NOT the class's
+    // `'v9'` default -- which is the whole difference from `requireV9Record`.
+    expect((rejection as EraInvariantViolationError).expected).toBe('v8');
+    expect((rejection as EraInvariantViolationError).circuitId).toBe(CIRCUIT_ID);
+  });
+
+  it('reports the era fault AHEAD of the status, when a record is both mislabelled and failing', async () => {
+    const providers = preForkProviders(v6Envelope);
+    // The guard's ordering, asserted rather than only described. `status` is a
+    // field of the very record whose provenance is in doubt, so a record this
+    // operation cannot have produced is refused before anything is read off
+    // it -- including a failing status, which on an attributable record
+    // produces the typed `Ledger8CallTxFailedError` asserted further down.
+    providers.publicDataProvider.watchForTxData = vi
+      .fn()
+      .mockResolvedValue({ ...createMockFinalizedTxData(FailEntirely), version: 'v9' });
+
+    const rejection = await submitCallTx(providers, callOptions()).then(
+      () => undefined,
+      (error: unknown) => error
+    );
+
+    expect(rejection).toBeInstanceOf(EraInvariantViolationError);
+    // The point of the test: the status fault is NOT what surfaced.
+    expect(rejection).not.toBeInstanceOf(Ledger8CallTxFailedError);
   });
 
   it('SANITIZES a provider rejection: no transaction or witness material survives onto the error', async () => {
@@ -1726,7 +1802,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     const withStatus = (providers: RetainedProviders, status: typeof FailEntirely | typeof FailFallible): void => {
       providers.publicDataProvider.watchForTxData = vi
         .fn()
-        .mockResolvedValue({ ...createMockFinalizedTxData(status), txId: 'retained-era-tx-id' });
+        .mockResolvedValue({ ...retainedEraRecord(status), txId: 'retained-era-tx-id' });
     };
 
     const callAndCatch = async (providers: RetainedProviders): Promise<unknown> => {
