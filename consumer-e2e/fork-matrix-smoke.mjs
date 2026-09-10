@@ -316,11 +316,7 @@ const main = async () => {
     // answer nothing, and only a failure poses the question they answer -- a
     // submission the chain refused reports no reason, and the reason is in the
     // node's log.
-    // DIAGNOSTIC BRANCH: unconditional, where the merged shape captures only on a
-    // failure. The refusal under investigation is recorded by a PROBE, which by
-    // construction leaves the run green, so the failure gate would take the logs
-    // with it. Revert this hunk with the probe.
-    {
+    if (outcome === undefined || outcome.code !== 0) {
       const captured = await environment
         .captureContainerLogs(path.join(REPOSITORY_ROOT, 'consumer-e2e', 'stack-logs'))
         .catch((error) => {

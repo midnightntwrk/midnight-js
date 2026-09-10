@@ -187,9 +187,7 @@ jobs:
       # which reads as a working capture and is not one. Measured: "No files were
       # found with the provided path: consumer-e2e/.logs/".
       - name: Upload the stack's container logs
-        # DIAGNOSTIC BRANCH: `always()`, where the merged shape is `failure()`. The
-        # probe under investigation keeps the run green on purpose.
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # ratchet:actions/upload-artifact@v4.6.2
         with:
           name: fork-stack-logs-${{ matrix.contract }}

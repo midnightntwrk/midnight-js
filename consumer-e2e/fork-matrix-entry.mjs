@@ -402,7 +402,21 @@ const RETAINED_MATRIX = [
   {
     key: 'unshielded',
     preFork: [{ circuitId: 'mintUnshieldedToSelfTest', args: () => [DOMAIN_SEPARATOR, MINT_AMOUNT] }],
-    postFork: { circuitId: 'mintUnshieldedToSelfTest', args: () => [new Uint8Array(32).fill(8), MINT_AMOUNT] }
+    // DIAGNOSTIC BRANCH: the balance READ, restored as the FIRST post-fork call,
+    // which is the condition the original measurement was taken under. The probe
+    // this replaces ran after the keep-state leg had already minted -- and that
+    // write migrates the envelope, so the read was refused LOCALLY by
+    // `assertRetainedStateEnvelope` and never reached the chain. Measured that
+    // way once; the mint I put first to "prove the contract is callable" was
+    // what destroyed the condition under test.
+    //
+    // An ARBITRARY colour, and that is sound: the e2e suite pins
+    // `getUnshieldedBalanceTest` on an unheld colour at `SucceedEntirely` with
+    // `0n`, so the colour is not what decides admission. Which is just as well --
+    // #1284 removed the `capture` machinery that could have named the pre-fork
+    // one. If the circuit is refused, the refusal is the finding; if it answers
+    // `0n`, the question dissolves.
+    postFork: { circuitId: 'getUnshieldedBalanceTest', args: () => [new Uint8Array(32).fill(11)] }
     // NO state assertion here, and the reason is measured rather than assumed.
     //
     // What survives for `unshielded` is the contract's BALANCE: it declares no
@@ -955,64 +969,6 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
       // state is distinguishable from one that leaves it in the retained shape.
       envelopeAfterCall: state === null ? 'absent' : envelopeTag(state.raw)
     };
-  });
-}
-
-// ── (c1d) DIAGNOSTIC: why is a retained balance READ refused post-fork? ───────
-//
-// THROWAWAY. This probe exists to make open question 1 reproduce inside a run
-// whose container logs are captured, so the NODE's own reason for the refusal
-// can be read. It is not a gate and asserts nothing; delete it once the reason
-// is recorded.
-//
-// Self-contained on purpose: it mints its own colour in the same probe rather
-// than carrying one across the fork boundary, because #1284 removed the
-// `capture` machinery that would have carried it. The colour's provenance does
-// not matter to the question -- the hypothesis is about the circuit being
-// read-only, not about which colour it names.
-//
-// `submitCallTx` directly rather than `callRetained`, because that helper
-// stringifies the circuit's return value for the report and this needs the raw
-// `Bytes<32>` to feed the read.
-if (covers(SELECTED.retained, 'unshielded')) {
-  await probe('DIAGNOSTIC: a retained getUnshieldedBalanceTest, post-fork', async () => {
-    const deployed = retainedDeployments.get('unshielded');
-    if (deployed === undefined) {
-      return 'skipped: its pre-fork deploy did not complete';
-    }
-    const providers = retainedProvidersFor('v9', session.wallet, 'unshielded');
-    const { Contract } = await import('@midnight-ntwrk/fork-retained-unshielded');
-
-    // A WRITE first, which the run has already shown is admitted on this arm, so
-    // a refusal below cannot be blamed on the contract being uncallable.
-    const minted = await submitCallTx(providers, {
-      compiledContract: new Contract({}),
-      contractAddress: deployed.contractAddress,
-      circuitId: 'mintUnshieldedToSelfTest',
-      args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
-    });
-    const color = minted.private.result;
-
-    try {
-      const read = await submitCallTx(providers, {
-        compiledContract: new Contract({}),
-        contractAddress: deployed.contractAddress,
-        circuitId: 'getUnshieldedBalanceTest',
-        args: [color]
-      });
-      // If this happens the question dissolves and the answer is worth as much
-      // as a refusal would have been.
-      return { mint: minted.public.status, read: 'ADMITTED', balance: String(read.private.result) };
-    } catch (error) {
-      // The whole chain, which is the point: the seam names only itself, and the
-      // provider's class is on `cause`. The node's reason is in the captured log
-      // and this row is what tells a reader which submission to look for.
-      return {
-        mint: minted.public.status,
-        mintTxId: minted.public.txId,
-        read: `refused: ${describeError(error)}`
-      };
-    }
   });
 }
 
