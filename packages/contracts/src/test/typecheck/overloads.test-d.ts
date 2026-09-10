@@ -52,7 +52,6 @@ import {
   type Ledger8CircuitId,
   type Ledger8CircuitParameters,
   type Ledger8CircuitResult,
-  type Ledger8ConstructorResult,
   type Ledger8Contract,
   type Ledger8ContractCall,
   type Ledger8ContractProviders,
@@ -61,6 +60,7 @@ import {
   type Ledger8FinalizedCallTxData,
   type Ledger8FindDeployedContractOptions,
   type Ledger8FoundContract,
+  type Ledger8InitialStateResult,
   type Ledger8SubmittedCallTx,
   type Ledger8Witness,
   type NEITHER_ERA_CONTRACT_MESSAGE,
@@ -181,12 +181,12 @@ describe('the retained-era contract type family pins the real 0.16 artifact shap
     // The sync/async discriminator on its own, read off the REAL current-era declaration file: a
     // `Promise` has none of the members the retained-era result types declare, in either position.
     expectTypeOf<ReturnType<Twin018['impureCircuits']['increment']>>().not.toMatchTypeOf<Ledger8CircuitResult>();
-    expectTypeOf<ReturnType<Twin018['initialState']>>().not.toMatchTypeOf<Ledger8ConstructorResult>();
+    expectTypeOf<ReturnType<Twin018['initialState']>>().not.toMatchTypeOf<Ledger8InitialStateResult>();
 
     // ...and the mirror, so the split is pinned in BOTH directions rather than only the one the
     // near-miss guard happens to exercise: a plain retained-era result is not a `Promise` either.
     expectTypeOf<Ledger8CircuitResult>().not.toMatchTypeOf<ReturnType<Twin018['impureCircuits']['increment']>>();
-    expectTypeOf<Ledger8ConstructorResult>().not.toMatchTypeOf<ReturnType<Twin018['initialState']>>();
+    expectTypeOf<Ledger8InitialStateResult>().not.toMatchTypeOf<ReturnType<Twin018['initialState']>>();
   });
 
   it('is rejected BY the current era in turn, so neither shape is a subtype of the other', () => {
@@ -287,7 +287,7 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
 
   /** A retained-era artifact whose CONSTRUCTOR takes an argument of its own. */
   interface SeededContract extends Ledger8Contract<SeededPrivateState> {
-    initialState(context: unknown, seed: bigint): Ledger8ConstructorResult<SeededPrivateState>;
+    initialState(context: unknown, seed: bigint): Ledger8InitialStateResult<SeededPrivateState>;
   }
 
   it('carries constructor args on its deploy options, and omits them for a zero-argument constructor', () => {
