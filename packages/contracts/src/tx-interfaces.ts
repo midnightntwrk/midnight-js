@@ -117,28 +117,41 @@ const createLedger8CallTxOptions = <C extends Ledger8Contract, K extends Ledger8
   compiledContract: C,
   contractAddress: ContractAddress,
   circuitId: K,
-  args: Ledger8CircuitParameters<C, K>
+  args: Ledger8CircuitParameters<C, K>,
+  privateStateId: PrivateStateId | undefined
 ): Ledger8CallTxOptions<C, K> => {
-  const target = { compiledContract, contractAddress, circuitId };
+  const target = {
+    compiledContract,
+    contractAddress,
+    circuitId,
+    // Omitted rather than passed as `undefined`: a named id the provider holds
+    // nothing under is refused downstream, and that refusal has to keep telling
+    // a caller who named one apart from a caller who named none.
+    ...(privateStateId === undefined ? {} : { privateStateId })
+  };
   return (args.length === 0 ? target : { ...target, args }) as Ledger8CallTxOptions<C, K>;
 };
 
 /**
  * Creates a circuit call transaction interface for a RETAINED-ERA contract.
  *
- * The retained arm of `findDeployedContract` stores no private state and takes
- * no private-state id, so the calls this interface makes carry none either —
- * the same refusal the attach options record, rather than a second place to
- * decide it.
+ * `privateStateId` is carried on every call this interface makes, exactly as
+ * the current era's {@link createCircuitCallTxInterface} carries it. A handle
+ * that could not carry one would execute against a DEFAULT private state and
+ * then discard the state each call produced, with nothing erroring at any
+ * stage — see the private-state section of `docs/keep-state-pipeline.md`.
  *
  * @param providers The providers to use to build transactions.
  * @param compiledContract The retained-era contract instance to execute circuits on.
  * @param contractAddress The ledger address of the contract.
+ * @param privateStateId Where to read and store the contract's private state,
+ * or `undefined` for a contract that carries none.
  */
 export const createLedger8CircuitCallTxInterface = <C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
   compiledContract: C,
-  contractAddress: ContractAddress
+  contractAddress: ContractAddress,
+  privateStateId?: PrivateStateId
 ): Ledger8CircuitCallTxInterface<C> => {
   assertIsContractAddress(contractAddress);
   const circuitIds = Object.keys(compiledContract.impureCircuits) as Ledger8CircuitId<C>[];
@@ -146,7 +159,10 @@ export const createLedger8CircuitCallTxInterface = <C extends Ledger8Contract>(
     (acc, circuitId) => ({
       ...acc,
       [circuitId]: (...args: Ledger8CircuitParameters<C, typeof circuitId>) =>
-        submitCallTx(providers, createLedger8CallTxOptions(compiledContract, contractAddress, circuitId, args))
+        submitCallTx(
+          providers,
+          createLedger8CallTxOptions(compiledContract, contractAddress, circuitId, args, privateStateId)
+        )
     }),
     {}
   ) as Ledger8CircuitCallTxInterface<C>;
