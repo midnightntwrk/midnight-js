@@ -36,6 +36,7 @@ const DIST_INDEX_PATH = 'dist/index.js';
  * compiler's own resolution.
  */
 const RUNTIME_EXPORTS: readonly string[] = [
+  'AnyEraTxFailedError',
   'BlankVerifierKeySlotError',
   'CURRENT_PIPELINE_ERA',
   'CallTxFailedError',

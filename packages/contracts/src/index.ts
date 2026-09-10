@@ -65,6 +65,7 @@ export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // Deliberately no test-file names here: which suite exercises what is the kind of claim that rots
 // the first time a test moves.
 export {
+  AnyEraTxFailedError,
   BlankVerifierKeySlotError,
   CallTxFailedError,
   ContractTypeError,
