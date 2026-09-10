@@ -304,14 +304,29 @@ const main = async () => {
       }
     );
   } catch (error) {
-    // REPORTED BEFORE THE TEARDOWN IS ATTEMPTED. The teardown runs in the
-    // `finally` below, and a teardown that hangs or fails must not be able to
-    // take the diagnosis down with it -- which is exactly what happened to the
-    // persona install's own error.
+    // REPORTED BEFORE ANYTHING ELSE IS ATTEMPTED. The capture and the teardown
+    // both run below, and neither must be able to take the diagnosis down with
+    // it -- which is exactly what happened to the persona install's own error.
     process.stderr.write(`::error::the fork-crossing run failed while ${stage}\n`);
     process.stderr.write(`${describeError(error)}\n`);
     throw error;
   } finally {
+    // BEFORE the teardown, which removes the containers and their logs with
+    // them, and only when something went wrong: a green run's logs are large and
+    // answer nothing, and only a failure poses the question they answer -- a
+    // submission the chain refused reports no reason, and the reason is in the
+    // node's log.
+    if (outcome === undefined || outcome.code !== 0) {
+      const captured = await environment
+        .captureContainerLogs(path.join(REPOSITORY_ROOT, 'consumer-e2e', '.logs'))
+        .catch((error) => {
+          process.stdout.write(`Could not capture container logs: ${describeError(error)}\n`);
+          return [];
+        });
+      process.stdout.write(
+        captured.length === 0 ? 'No container logs captured.\n' : `Captured container logs: ${captured.join(', ')}\n`
+      );
+    }
     await shutdownWithin(environment);
   }
 
