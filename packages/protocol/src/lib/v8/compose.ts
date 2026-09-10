@@ -18,7 +18,7 @@ import type { AlignedValue } from '@midnightntwrk/ledger-v9';
 import type { UnprovenOffer } from '../../v8.js';
 import { assembleCallPrototype } from '../shared/assemble-call';
 import { assertComposeEnvelope } from '../shared/compose-options';
-import type { CallTranscriptSource } from '../shared/compose-types';
+import type { CallTranscriptSource, LedgerParametersOption } from '../shared/compose-types';
 import { aggregateUnshieldedOffers } from '../shared/unshielded';
 import { entryPointName } from '../shared/verifier-keys';
 import type { ProtocolV8 } from './load';
@@ -53,6 +53,14 @@ export interface ComposeV8CallOptions {
   readonly input: AlignedValue;
   readonly output: AlignedValue;
   readonly communicationCommitmentRandomness?: string;
+  /**
+   * The ledger parameters the chain held at the block this call is built against, serialized.
+   *
+   * Read by the partitioner. Required: a caller with no read surface names
+   * {@link INITIAL_LEDGER_PARAMETERS} to select this era's initial parameters, which is a
+   * compatibility path and not a correct one -- see `AssembleCallOptions.ledgerParameters`.
+   */
+  readonly ledgerParameters: LedgerParametersOption;
   readonly networkId: string;
   readonly ttl: Date;
   readonly guaranteedZswapOffer?: UnprovenOffer;
@@ -92,6 +100,7 @@ export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): 
     input: options.input,
     output: options.output,
     communicationCommitmentRandomness: options.communicationCommitmentRandomness,
+    ledgerParameters: options.ledgerParameters,
     operations: contractState,
     stage: 'call-operation',
     version: 'v8'

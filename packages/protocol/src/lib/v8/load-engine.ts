@@ -19,10 +19,15 @@ import type * as Engine from './engine.js';
 // Type-only: a value re-export here would link the engine chunk into the root
 // barrel -- see ModuleGraphAndLazyLoading.
 export type {
+  ConstructorResultPojo,
   DownConvertedState,
   EncodedStateValue,
   ExecuteCircuitOptions,
+  ExecuteConstructorOptions,
+  Ledger8ChargedState,
+  Ledger8DeployableContractState,
   Ledger8Engine,
+  Ledger8StateValue,
   TranscriptPojo,
   WrapKeepStateCallOptions
 } from './engine.js';

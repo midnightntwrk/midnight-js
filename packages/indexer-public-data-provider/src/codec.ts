@@ -56,6 +56,7 @@ import {
   deserializeLedgerTransaction,
   deserializeZswapChainState,
   isHex,
+  ledgerParametersEnvelopeVersion,
   parseHex,
   withDeserializationContext
 } from '@midnight-ntwrk/midnight-js-utils';
@@ -85,6 +86,20 @@ const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 type ReadDetails = Readonly<Record<string, string | number>>;
 
 /**
+ * The only ledger era {@link parseHexContractState} and {@link parseHexLedgerParameters} can read.
+ *
+ * Deliberately narrower than {@link decodeVersionedTransaction}, which dispatches per record across
+ * both eras. `queryRawContractState` serves both era-tagged payloads undecoded for a caller that
+ * needs the other runtime: the contract state, dated by the block that only upper-bounds its
+ * envelope (see {@link parseHexContractState}), and the block's own ledger parameters, whose era the
+ * block states exactly because they are served per block.
+ *
+ * One constant for two decoders because one runtime import supplies both. A build that ever ships
+ * one era's parameters decoder alongside a different era's state decoder has to split it.
+ */
+const DECODABLE_LEDGER_VERSION: LedgerVersion = 'v9';
+
+/**
  * Adapters that take hex-encoded indexer payloads, decode to bytes, and
  * dispatch to the typed deserialization wrappers from `@midnight-ntwrk/midnight-js-utils`.
  * They exist (rather than inlining) so the `caller` string is centralized and
@@ -100,8 +115,40 @@ export const parseHexTransaction = (
 ): LedgerTransaction<SignatureEnabled, Proof, Binding> =>
   deserializeLedgerTransaction(toByteArray(s), { caller: `${PKG}:parseHexTransaction`, details });
 
-export const parseHexLedgerParameters = (s: string): LedgerParameters =>
-  deserializeLedgerParameters(toByteArray(s), { caller: `${PKG}:parseHexLedgerParameters` });
+/**
+ * Decodes the ledger parameters of one block, after establishing which ledger runtime wrote them —
+ * and only if that runtime is one this path can decode.
+ *
+ * The dating step is not defence in depth here, it is the whole function: parameters are era-tagged
+ * exactly as a contract state is (`ledger-parameters[v5]` from the retained runtime,
+ * `[v8]` from the current one), each era's deserializer refuses the other's bytes on the header tag,
+ * and the indexer serves them PER BLOCK — so every pre-fork block a caller reads carries parameters
+ * this era cannot decode.
+ *
+ * A retained-era block is an ordinary thing to read, not a fault; see
+ * {@link IndexerDataError.unsupportedParametersEra} for what a caller does about it, and
+ * `docs/architecture/era-tagged-payload-decoders.md` for why this defect class keeps recurring.
+ *
+ * @param s The hex-encoded serialized ledger parameters, as the indexer serves them.
+ * @throws {IndexerDataError} When the payload is not hex-encoded, or its era is not decodable here.
+ * @throws {TagParseError} When the payload carries no supported ledger-parameters envelope.
+ * @throws {DeserializationError} When the envelope is decodable but the body behind it is not.
+ */
+export const parseHexLedgerParameters = (s: string): LedgerParameters => {
+  // Hex first, for the reason `stateBytesAndEnvelopeVersion` does it first: `toByteArray` keeps only
+  // the leading run of whole hex bytes `parseHex` finds and discards the rest, so an only-partly-hex
+  // payload would otherwise be silently truncated into a shorter, still plausible-looking byte
+  // string — and a truncated tag prefix would then be dated rather than refused.
+  if (!isHex(s)) {
+    throw IndexerDataError.malformedParametersEncoding();
+  }
+  const raw = new Uint8Array(toByteArray(s));
+  const envelopeVersion = ledgerParametersEnvelopeVersion(raw);
+  if (envelopeVersion !== DECODABLE_LEDGER_VERSION) {
+    throw IndexerDataError.unsupportedParametersEra(envelopeVersion);
+  }
+  return deserializeLedgerParameters(raw, { caller: `${PKG}:parseHexLedgerParameters` });
+};
 
 /**
  * The v8-era sibling of {@link parseHexTransaction}. Acquires the v8 ledger
@@ -226,9 +273,10 @@ export const decodeVersionedTransaction = async (
  * Decodes the indexer's hex-encoded contract state and reads the ledger era off
  * the envelope in front of the body, in that order.
  *
- * Hex first: `Buffer.from(s, 'hex')` stops at the first character it cannot
- * read, so an only-partly-hex payload would otherwise be silently truncated
- * into a shorter, still plausible-looking byte string.
+ * Hex first: `toByteArray` keeps only the leading run of whole hex bytes
+ * `parseHex` finds and discards the rest, so an only-partly-hex payload would
+ * otherwise be silently truncated into a shorter, still plausible-looking byte
+ * string.
  */
 const stateBytesAndEnvelopeVersion = (
   hexState: string
@@ -239,15 +287,6 @@ const stateBytesAndEnvelopeVersion = (
   const raw = new Uint8Array(toByteArray(hexState));
   return { raw, envelopeVersion: contractStateEnvelopeVersion(raw) };
 };
-
-/**
- * The only ledger era {@link parseHexContractState} can read.
- *
- * Deliberately narrower than the transaction path above, which dispatches per
- * record across both eras. `queryRawContractState` serves the bytes together
- * with their era for a caller that needs the other runtime.
- */
-const DECODABLE_LEDGER_VERSION: LedgerVersion = 'v9';
 
 /**
  * Whether `left` is a strictly newer ledger era than `right`.
@@ -347,6 +386,8 @@ export type EnvelopeUpperBound = 'enforced' | 'withheld';
  *   or when its era is not decodable here.
  * @throws {TagParseError} When the payload carries no supported contract-state
  *   envelope.
+ * @throws {DeserializationError} When the envelope is decodable but the state
+ *   body behind it is not.
  */
 export const parseHexContractState = (
   hexState: string,
@@ -381,7 +422,11 @@ export const parseHexContractState = (
  * @param protocolVersion The protocol-version integer the network reported for
  *                        that state.
  */
-export const toRawContractState = (hexState: string, protocolVersion: number): RawContractState => {
+export const toRawContractState = (
+  hexState: string,
+  protocolVersion: number,
+  hexLedgerParameters?: string
+): RawContractState => {
   // Validates the encoding and rejects anything that is not a contract state
   // from a supported runtime. The envelope reading is deliberately not compared
   // against `protocolVersion` here: this record's contract is that `version`
@@ -391,7 +436,10 @@ export const toRawContractState = (hexState: string, protocolVersion: number): R
   return {
     version: protocolVersionToLedger(protocolVersion, 'read'),
     protocolVersion,
-    raw
+    raw,
+    // Passed through as bytes, undecoded and unexamined. They are era-tagged, and this function
+    // has no business choosing an era for them -- see the field's own documentation.
+    ledgerParameters: hexLedgerParameters === undefined ? undefined : toByteArray(hexLedgerParameters)
   };
 };
 

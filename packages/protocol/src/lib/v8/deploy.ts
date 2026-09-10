@@ -14,6 +14,7 @@
  */
 
 import type * as OnchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
+import type { EncodedZswapLocalState, ZswapLocalState } from 'compact-runtime-ledger8';
 
 import { ComposeFailedError, ComposeOptionError } from '../../errors';
 import type { UnprovenOffer } from '../../v8.js';
@@ -40,6 +41,12 @@ export type Ledger8DeployableContractState = Pick<OnchainRuntimeV3.ContractState
 export interface Ledger8ConstructorResult {
   readonly currentContractState: Ledger8DeployableContractState;
   readonly currentPrivateState: unknown;
+  /**
+   * The Zswap local state the constructor ended on, still ENCODED. A
+   * constructor that mints a coin records it here, and a deploy that drops it
+   * composes a transaction the ledger cannot balance.
+   */
+  readonly currentZswapLocalState: EncodedZswapLocalState;
 }
 
 /**
@@ -64,6 +71,11 @@ export interface Ledger8ConstructorContractLike {
  */
 export interface Ledger8ConstructorRuntime {
   readonly createConstructorContext: (privateState: unknown, coinPk: string) => unknown;
+  /**
+   * The same decoder the execution leg uses. A constructor answers with the
+   * encoded form, and only the decoded one can be turned into an offer.
+   */
+  readonly decodeZswapLocalState: (state: EncodedZswapLocalState) => ZswapLocalState;
 }
 
 /** Everything {@link executeConstructor} needs to run one contract constructor. */
@@ -82,6 +94,12 @@ export interface ExecuteConstructorOptions {
 export interface ConstructorResultPojo {
   readonly contractState: Ledger8DeployableContractState;
   readonly privateState: unknown;
+  /**
+   * The constructor's own Zswap local state, DECODED — plain data in both
+   * runtimes. Empty for the ordinary constructor that mints nothing; carries
+   * the outputs for one that does, which is what lets the deploy be balanced.
+   */
+  readonly zswapLocalState: ZswapLocalState;
 }
 
 /**
@@ -106,7 +124,8 @@ export const executeConstructor = (options: ExecuteConstructorOptions, runtime: 
 
   return {
     contractState: result.currentContractState,
-    privateState: result.currentPrivateState
+    privateState: result.currentPrivateState,
+    zswapLocalState: runtime.decodeZswapLocalState(result.currentZswapLocalState)
   };
 };
 

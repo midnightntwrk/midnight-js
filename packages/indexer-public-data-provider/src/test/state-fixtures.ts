@@ -43,6 +43,57 @@ export const mintV9ContractStateHex = (): string => toHex(mintV9ContractStateByt
 export const mintV8ContractStateHex = async (): Promise<string> => toHex(await mintV8ContractStateBytes());
 
 /**
+ * Ledger parameters as each runtime writes them.
+ *
+ * `initialParameters()` is the only parameter set constructible without a chain, and it is enough
+ * for what these fixtures are for: the ENVELOPE. A running chain serves different CONTENT -- prices
+ * adjust per block -- but the same envelope tag, which is the thing the era dating reads.
+ */
+export const mintV9LedgerParametersBytes = (): Uint8Array => ledger.LedgerParameters.initialParameters().serialize();
+
+/** The v8-era twin of {@link mintV9LedgerParametersBytes}, reached through `loadLedger8()`. */
+export const mintV8LedgerParametersBytes = async (): Promise<Uint8Array> => {
+  const v8 = await loadLedger8();
+  return v8.LedgerParameters.initialParameters().serialize();
+};
+
+/** The v9 parameter fixture in the indexer's wire encoding: lowercase hex, no prefix. */
+export const mintV9LedgerParametersHex = (): string => toHex(mintV9LedgerParametersBytes());
+
+/** The v8 parameter fixture in the indexer's wire encoding: lowercase hex, no prefix. */
+export const mintV8LedgerParametersHex = async (): Promise<string> => toHex(await mintV8LedgerParametersBytes());
+
+// A fixed timestamp, so the bytes a block update produces are the same on every run. The value is
+// arbitrary; what matters is that both eras are handed the identical one.
+const ZSWAP_BLOCK_TIME = new Date(1_000_000);
+const ZSWAP_ROOT_RETENTION_SECONDS = 3_600n;
+
+/**
+ * A zswap chain state serialized by the v9 runtime, optionally carrying retained past roots.
+ *
+ * The populated variant exists because an EMPTY state is weak evidence for a claim about a wire
+ * format: two eras could agree on nothing and still emit identical bytes for it.
+ */
+export const mintV9ZswapChainStateBytes = (populated = false): Uint8Array =>
+  (populated
+    ? new ledger.ZswapChainState().postBlockUpdate(ZSWAP_BLOCK_TIME, ZSWAP_ROOT_RETENTION_SECONDS)
+    : new ledger.ZswapChainState()
+  ).serialize();
+
+/** The v8-era twin of {@link mintV9ZswapChainStateBytes}, reached through `loadLedger8()`. */
+export const mintV8ZswapChainStateBytes = async (populated = false): Promise<Uint8Array> => {
+  const v8 = await loadLedger8();
+  return (
+    populated
+      ? new v8.ZswapChainState().postBlockUpdate(ZSWAP_BLOCK_TIME, ZSWAP_ROOT_RETENTION_SECONDS)
+      : new v8.ZswapChainState()
+  ).serialize();
+};
+
+/** The v9 zswap fixture in the indexer's wire encoding: lowercase hex, no prefix. */
+export const mintV9ZswapChainStateHex = (populated = false): string => toHex(mintV9ZswapChainStateBytes(populated));
+
+/**
  * A minimal, real v9 transaction in the indexer's wire encoding. Built from
  * the v9 runtime itself so it deserializes for real — no stubbing of the
  * transaction decoder is needed anywhere.

@@ -94,6 +94,9 @@ const callEntry = (overrides: Partial<ComposeCallEntry> = {}): ComposeCallEntry 
   contractAddress: ADDRESS,
   circuitId: 'increment',
   contractState: serializedStateWith(keyedOperation()),
+  // These tests are about assembly, not about the cost model, so the initial parameters are named
+  // explicitly. The option is required precisely so that this choice is visible rather than assumed.
+  ledgerParameters: 'initial',
   transcript: {
     kind: 'unpartitioned',
     preState: PRE_STATE,

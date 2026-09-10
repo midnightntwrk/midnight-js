@@ -18,6 +18,7 @@ import { resolve } from 'node:path';
 
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
+import type { EncodedZswapLocalState } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
@@ -52,6 +53,9 @@ interface CompiledCounterContract extends Ledger8ContractLike {
   initialState(constructorContext: unknown): {
     currentContractState: { data: ocrt3.ChargedState; serialize: () => Uint8Array };
     currentPrivateState: unknown;
+    // The third member the artifact really returns, read since a constructor
+    // that mints a coin needs it to compose a balanceable deploy.
+    currentZswapLocalState: EncodedZswapLocalState;
   };
 }
 
@@ -95,6 +99,8 @@ const callEntryFromTranscript = (
   contractAddress,
   circuitId: transcript.circuitId,
   contractState: serializedV8StateWithOperation(),
+  // Named explicitly: these entries exercise the v8 arm's assembly, not the cost model.
+  ledgerParameters: 'initial',
   transcript: {
     kind: 'unpartitioned',
     preState: transcript.preContractState.data.state.encode(),
@@ -165,6 +171,8 @@ const payingCallEntry = (owner: string, token: string): ComposeCallEntry => ({
   contractAddress: ocrt3.dummyContractAddress(),
   circuitId: 'increment',
   contractState: serializedV8StateWithOperation(),
+  // Named explicitly: these entries exercise the v8 arm's assembly, not the cost model.
+  ledgerParameters: 'initial',
   transcript: {
     kind: 'partitioned',
     guaranteed: payingTranscript(owner, token, 42n),

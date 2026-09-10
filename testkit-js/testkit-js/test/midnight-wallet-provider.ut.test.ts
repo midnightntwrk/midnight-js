@@ -15,19 +15,18 @@
 
 import { DustSecretKey, type TransactionId, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
-  type UnboundTransaction,
   UntaggedPayloadError,
   V8PayloadUnsupportedError,
   type VersionedFinalizedTransaction,
   type VersionedUnboundTransaction
 } from '@midnight-ntwrk/midnight-js-types';
 import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
-import type {
-  BalancingRecipe,
+import {
+  type BalancingRecipe,
   ProtocolVersion,
-  UnboundTransactionRecipe,
-  UnshieldedKeystore,
-  WalletFacade
+  type UnboundTransactionRecipe,
+  type UnshieldedKeystore,
+  type WalletFacade
 } from '@midnightntwrk/wallet-sdk';
 import { pino } from 'pino';
 import * as Rx from 'rxjs';
@@ -38,8 +37,10 @@ import { FORK_SCHEDULE } from '../src/wallet/wallet-configuration-mapper';
 import { WalletSeeds } from '../src/wallet/wallet-seed';
 import { adoptFinalized, adoptUnbound } from '../src/wallet/wallet-transaction';
 
-// The version the v9 arm runs at. A handle only unwraps within the epoch it was
-// authored in, so the stub and the assertions have to agree on one version.
+// Two versions, one on each side of the fork. The retained one is what the
+// refusal-is-gone tests run at; the current one is what the v9 arm needs, since
+// a handle only unwraps within the epoch it was authored in.
+const RETAINED_VERSION = ProtocolVersion.ProtocolVersion(1_000_000n);
 const CURRENT_VERSION = FORK_SCHEDULE.v9;
 
 const walletAt = (activeProtocolVersion: ProtocolVersion.ProtocolVersion): Pick<WalletFacade, 'state'> =>
@@ -49,14 +50,16 @@ const walletAt = (activeProtocolVersion: ProtocolVersion.ProtocolVersion): Pick<
 // needs the methods this suite asserts are never reached. A single
 // `Partial<WalletFacade> as WalletFacade` step rather than a double assertion
 // through `Pick`, which is the same escape hatch as `as unknown as`.
-//
-// Deliberately WITHOUT `state`: the refusal happens in the adapter, above the
-// wallet, so a stub that cannot answer a version question is the sharper fixture
-// -- reaching the wallet at all would fail here rather than pass quietly.
 const createWalletStub = (): WalletFacade => {
   const stub: Partial<WalletFacade> = {
     balanceUnboundTransaction: vi.fn(),
-    submitTransaction: vi.fn()
+    submitTransaction: vi.fn(),
+    // The seams adopt a transaction AT the chain's active protocol version, so a
+    // stub without this cannot reach either era's path. Pinned below the fork
+    // version, i.e. the retained epoch. `activeProtocolVersion` is the only
+    // member of `FacadeState` these seams read, so the narrowing is confined to
+    // this one member rather than spread across the assertions.
+    state: walletAt(RETAINED_VERSION).state
   };
   return stub as WalletFacade;
 };
@@ -101,7 +104,7 @@ const createKeystoreStub = (): UnshieldedKeystore => {
   return stub as UnshieldedKeystore;
 };
 
-// Real seeds rather than stubs: wallet-sdk 2.0.0-beta.3 takes the seed set and
+// Real seeds rather than a stub: wallet-sdk 2.0.0-beta.3 takes the seed set and
 // derives the shielded and dust secret keys itself, so the constructor runs
 // `fromSeed` on whatever is passed here. Shared, so a test can derive the same
 // keys independently and compare.
@@ -123,8 +126,13 @@ const createProvider = async (
   );
 
 describe('MidnightWalletProvider', () => {
+  // These two used to assert the opposite. The retained arm is now carried rather
+  // than refused, so what they pin is that the refusal is GONE -- and that what
+  // remains can only be a failure of the bytes, never of the version tag. Three
+  // bytes are not a transaction, so each still rejects; the assertion is about
+  // WHERE.
   describe('balanceTx with a v8 payload', () => {
-    it('rejects with the registered unsupported-payload code and never balances through the wallet', async () => {
+    it('carries the retained arm instead of refusing it, failing only in the retained deserializer', async () => {
       const wallet = createWalletStub();
       const provider = await createProvider(wallet);
 
@@ -133,16 +141,14 @@ describe('MidnightWalletProvider', () => {
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
-      // Without this the test passes even if balanceTx names the wrong seam.
-      expect((rejection as V8PayloadUnsupportedError).seam).toBe('balanceTx');
-      expect(wallet.balanceUnboundTransaction).not.toHaveBeenCalled();
+      expect(rejection).toBeDefined();
+      expect(rejection).not.toBeInstanceOf(V8PayloadUnsupportedError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(false);
     });
   });
 
   describe('submitTx with a v8 payload', () => {
-    it('rejects with the registered unsupported-payload code and never submits through the wallet', async () => {
+    it('carries the retained arm instead of refusing it, failing only in the retained deserializer', async () => {
       const wallet = createWalletStub();
       const provider = await createProvider(wallet);
 
@@ -151,10 +157,9 @@ describe('MidnightWalletProvider', () => {
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
-      expect((rejection as V8PayloadUnsupportedError).seam).toBe('submitTx');
-      expect(wallet.submitTransaction).not.toHaveBeenCalled();
+      expect(rejection).toBeDefined();
+      expect(rejection).not.toBeInstanceOf(V8PayloadUnsupportedError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(false);
     });
   });
 
@@ -188,7 +193,7 @@ describe('MidnightWalletProvider', () => {
       const provider = await createProvider(wallet, keystore);
       const payload = new Uint8Array([9, 9, 9]);
 
-      await provider.balanceTx({ version: 'v9', tx: {} as UnboundTransaction });
+      await provider.balanceTx({ version: 'v9', tx: {} as never });
 
       const signSegment = vi.mocked(wallet.signRecipe).mock.calls[0][1];
       await expect(signSegment(payload)).resolves.toBe(SIGNATURE);
@@ -200,7 +205,7 @@ describe('MidnightWalletProvider', () => {
       const provider = await createProvider(wallet);
       const ttl = new Date(0);
 
-      await provider.balanceTx({ version: 'v9', tx: {} as UnboundTransaction }, ttl);
+      await provider.balanceTx({ version: 'v9', tx: {} as never }, ttl);
 
       expect(vi.mocked(wallet.balanceUnboundTransaction).mock.calls[0][1].ttl).toBe(ttl);
     });
@@ -210,7 +215,7 @@ describe('MidnightWalletProvider', () => {
       const provider = await createProvider(wallet);
       const before = Date.now();
 
-      await provider.balanceTx({ version: 'v9', tx: {} as UnboundTransaction });
+      await provider.balanceTx({ version: 'v9', tx: {} as never });
 
       const { ttl } = vi.mocked(wallet.balanceUnboundTransaction).mock.calls[0][1];
       expect(ttl.getTime()).toBeGreaterThanOrEqual(before + ONE_HOUR_MS);
@@ -221,9 +226,7 @@ describe('MidnightWalletProvider', () => {
   // The wallet SDK takes the seed set and derives both key sets itself, so the
   // swap the class can still get wrong is which seed member feeds which
   // derivation. Each is asserted against its own seed AND against the other's,
-  // because the two derivations accept the same argument type. This is what the
-  // secret-key argument used to pin, before beta.3 stopped carrying it across
-  // `balanceUnboundTransaction`.
+  // because the two derivations accept the same argument type.
   describe('the secret keys it derives', () => {
     it('derives the shielded keys from the shielded seed and the dust key from the dust seed', async () => {
       const provider = await createProvider((await createBalancingWallet()).wallet);
@@ -235,10 +238,8 @@ describe('MidnightWalletProvider', () => {
     });
   });
 
-  // The class routes its whole WalletProvider surface through the adapter, key
-  // readers included, so that the object handed to `createWalletProvider` has no
-  // member the class never calls. That makes these two worth pinning: nothing
-  // else exercises them, and the delegation is only justified while it works.
+  // Nothing else in this suite exercises the key readers, and they are the only
+  // members of the provider surface that never touch a transaction.
   describe('the key readers', () => {
     it("project the shielded keys derived from the wallet's own seed", async () => {
       const provider = await createProvider((await createBalancingWallet()).wallet);

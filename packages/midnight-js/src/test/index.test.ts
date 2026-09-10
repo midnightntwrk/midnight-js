@@ -28,6 +28,7 @@ import type {
 } from '../index';
 import * as midnightJs from '../index';
 import * as networkId from '../network-id';
+import * as protocol from '../protocol';
 import * as types from '../types';
 import * as utils from '../utils';
 
@@ -46,6 +47,7 @@ const EXPECTED_BARREL_EXPORTS = [
   'ComposeOptionError',
   'LEDGER_VERSIONS',
   'Ledger8RuntimeMissingError',
+  'NO_CIRCUIT',
   'PROTOCOL_ERROR_CODES',
   'PayloadNotATransactionError',
   'StateDecodeFailedError',
@@ -54,6 +56,7 @@ const EXPECTED_BARREL_EXPORTS = [
   'contracts',
   'networkHeadVersion',
   'networkId',
+  'protocol',
   'types',
   'utils',
   'versionOfRecord'
@@ -264,5 +267,22 @@ describe('sub-path exports', () => {
     const namespaceKeys = Object.keys(midnightJs.utils).sort();
     const subpathKeys = Object.keys(utils).sort();
     expect(subpathKeys).toEqual(namespaceKeys);
+  });
+
+  it('should export protocol sub-path with same members as namespace', () => {
+    expect(protocol).toBeDefined();
+    const namespaceKeys = Object.keys(midnightJs.protocol).sort();
+    const subpathKeys = Object.keys(protocol).sort();
+    expect(subpathKeys).toEqual(namespaceKeys);
+  });
+
+  // The names the protocol sub-path carries AT RUNTIME, asserted by strict
+  // equality. `Contract` is deliberately absent: it is an interface merged
+  // with a types-only namespace, so it has no runtime binding to re-export.
+  // Listing it here is what fails when it is re-exported in value position --
+  // which emits a name into `dist/protocol.d.ts` that `dist/protocol.js` does
+  // not have, and breaks a consumer under any transpile-only pipeline.
+  it('should carry only the protocol names that exist at runtime', () => {
+    expect(Object.keys(protocol).sort()).toEqual(['CompiledContract', 'ContractExecutable']);
   });
 });

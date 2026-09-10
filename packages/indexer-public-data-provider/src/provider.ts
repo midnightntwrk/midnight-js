@@ -217,7 +217,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       // caller a wrong answer that reads exactly like a correct one.
       throw IndexerDataError.undatedState();
     }
-    return toRawContractState(state, block.protocolVersion);
+    return toRawContractState(state, block.protocolVersion, block.ledgerParameters);
   }
 
   queryContractState(
@@ -296,12 +296,15 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         if (!block || contractState == null || contractZswapState == null) {
           return null;
         }
-        // The contract state is decoded first, and it is the only one of the
-        // three carrying an envelope this client can read the era from. Its
-        // check therefore dates the whole triple: all three fields come from
-        // the one block, so a state the block's era contradicts means the
-        // zswap state and ledger parameters cannot be trusted either — and
-        // neither is decoded.
+        // TWO of the three carry an era envelope, not one: the contract state and the block's
+        // ledger parameters. Each is dated inside its own reader, immediately before that reader
+        // decodes it, so correctness does not depend on the order of the two calls — only which
+        // error surfaces first when both fields are un-decodable does, and the state's wins.
+        //
+        // The zswap chain state carries no era to date: both runtimes write
+        // `zswap-ledger-state[v5]` and each reads the other's bytes back unchanged. That is
+        // measured, not assumed — see `test/ledger-parameters.test.ts` and
+        // `docs/architecture/era-tagged-payload-decoders.md`.
         const parsedContractState = parseHexContractState(contractState, block.protocolVersion, {
           upperBound: offset === null ? 'withheld' : 'enforced'
         });

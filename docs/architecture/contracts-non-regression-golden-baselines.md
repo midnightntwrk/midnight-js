@@ -6,7 +6,7 @@ Covers `packages/contracts/src/test/non-regression-golden.test.ts` and its fixtu
 ## Purpose
 
 Capture the v9-native call-tx composition output of
-`packages/contracts/src/utils/ledger-utils.ts` (`createUnprovenLedgerCallTx`, `toLedgerContractState`)
+`packages/contracts/src/internal/utils/ledger-utils.ts` (`createUnprovenLedgerCallTx`, `toLedgerContractState`)
 *before* ledger-era dispatch is added to this package, so that later era work can be shown not to
 have changed the v9 path. The suite calls `createUnprovenLedgerCallTx` directly;
 `unproven-call-tx.ts`, which delegates to it, is covered by `unproven-call-tx.test.ts` and is **not**

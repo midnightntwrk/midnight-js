@@ -21,6 +21,7 @@ import { hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';
+import { CURRENT_PIPELINE_ERA } from '../era';
 import {
   CallTxFailedError,
   MixedEraScopeError,
@@ -154,7 +155,19 @@ export class TransactionContextImpl<
   readonly resolvedEra?: ResolvedOperationEra;
 
   cachedStates: CachedStatesWithIdentity<Contract.PrivateState<C>> | undefined = undefined;
-  currentUnsubmittedCall: [callTxData: UnsubmittedCallTxData<C, PCK>, privateStateId?: PrivateStateId] | undefined;
+  /**
+   * The call this scope will transact, with the circuit that made it.
+   *
+   * One field rather than a call and a circuit id side by side: the two must
+   * be set together or the result names a circuit from a different call, and
+   * holding them in one object is what makes the existing "no calls were
+   * submitted" guard prove both. The circuit is kept here rather than read
+   * back off `submitTxOptions`, whose own `circuitId` accumulates EVERY
+   * circuit merged into the scope and becomes an array.
+   */
+  currentUnsubmittedCall:
+    | { readonly callTxData: UnsubmittedCallTxData<C, PCK>; readonly privateStateId?: PrivateStateId; readonly circuitId: PCK }
+    | undefined;
   submitTxOptions: SubmitTxOptions<PCK> | undefined = undefined;
 
   constructor(
@@ -197,14 +210,17 @@ export class TransactionContextImpl<
   }
 
   getLastUnsubmittedCallTxDataToTransact(): [UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined {
-    return this.currentUnsubmittedCall;
+    return this.currentUnsubmittedCall === undefined
+      ? undefined
+      : [this.currentUnsubmittedCall.callTxData, this.currentUnsubmittedCall.privateStateId];
   }
 
   async [Submit](): Promise<FinalizedCallTxData<C, PCK>> {
-    const [unprovenCallTxData, privateStateId] = this.getLastUnsubmittedCallTxDataToTransact() ?? [];
-    if (!unprovenCallTxData) {
+    const current = this.currentUnsubmittedCall;
+    if (current === undefined) {
       throw new Error('No calls were submitted.');
     }
+    const { callTxData: unprovenCallTxData, privateStateId, circuitId } = current;
     const finalizedTxData = await submitTx(this.providers, this.submitTxOptions!);
     if (finalizedTxData.status !== SucceedEntirely) {
       throw new CallTxFailedError(finalizedTxData, this.submitTxOptions!.circuitId!);
@@ -213,6 +229,8 @@ export class TransactionContextImpl<
       await this.providers.privateStateProvider!.set(privateStateId, unprovenCallTxData.private.nextPrivateState);
     }
     return {
+      era: CURRENT_PIPELINE_ERA,
+      circuitId,
       private: unprovenCallTxData.private,
       public: {
         ...unprovenCallTxData.public,
@@ -231,7 +249,7 @@ export class TransactionContextImpl<
   }
 
   [MergeUnsubmittedCallTxData](circuitId: PCK, callData: UnsubmittedCallTxData<C, PCK>, privateStateId?: PrivateStateId): void {
-    this.currentUnsubmittedCall = [callData, privateStateId];
+    this.currentUnsubmittedCall = { callTxData: callData, privateStateId, circuitId };
     this.submitTxOptions = mergeSubmitTxOptions(
       this.submitTxOptions,
       {
@@ -274,9 +292,25 @@ export const mergeUnsubmittedCallTxData = <
   txCtx[MergeUnsubmittedCallTxData](circuitId, callData, privateStateId);
 };
 
-/** @internal */
-export const isTransactionContext = (u: unknown): u is Transaction.TransactionContext<Contract.Any> =>
-  typeof u === "object" && u != null && TypeId in u;
+/**
+ * Whether `u` is a scope context: the ONE runtime check, against the branded
+ * `TypeId` the implementation stamps.
+ *
+ * Type-parameterised so a caller can narrow to ITS OWN context type instead of
+ * the widest one. Both parameters default to the widest, so a caller that
+ * supplies none behaves exactly as before. The internal call sites supply them
+ * because their parameter union already names one concrete context type, and
+ * narrowing to the widest there would hand the widest onward -- which stopped
+ * type-checking as soon as `FinalizedCallTxData` named its circuit.
+ *
+ * @internal
+ */
+export const isTransactionContext = <
+  C extends Contract.Any = Contract.Any,
+  PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
+>(
+  u: unknown
+): u is Transaction.TransactionContext<C, PCK> => typeof u === "object" && u != null && TypeId in u;
 
 /**
  * Refuses a retained-era call that was handed a scope to join.
@@ -370,9 +404,14 @@ const runScope = async <
       //disable-next-line: no-throw-literal
       throw new Error('No calls were submitted.');
     }
-    return {
+    // ANNOTATED, not asserted: this function answers both scope arms and so
+    // returns `any`, which on its own would let a member fall off this rebuild
+    // and reach a caller as `undefined` at a non-optional member.
+    const nestedCallResult: CallResult<C, PCK> = {
+      era: CURRENT_PIPELINE_ERA,
       public: {
         nextContractState: unprovenCallTxData.public.nextContractState,
+        nextContractStateEncoded: unprovenCallTxData.public.nextContractStateEncoded,
         partitionedTranscript: unprovenCallTxData.public.partitionedTranscript,
         publicTranscript: unprovenCallTxData.public.publicTranscript,
         logEvents: unprovenCallTxData.public.logEvents
@@ -384,8 +423,10 @@ const runScope = async <
         result: unprovenCallTxData.private.result,
         nextPrivateState: unprovenCallTxData.private.nextPrivateState,
         nextZswapLocalState: unprovenCallTxData.private.nextZswapLocalState
-      }
-    } as CallResult<C, PCK>;
+      },
+      calls: unprovenCallTxData.calls
+    };
+    return nestedCallResult;
   } catch (err: unknown) {
     // Rethrow known call transaction failures and errors occurring within an outer transaction context...
     if (err instanceof CallTxFailedError || outerTxCtx) {
@@ -437,12 +478,12 @@ export const scoped: {
   txCtxOrOptions?: Transaction.TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
   options?: Transaction.ScopedTransactionOptions
 ): Promise<any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
-  const outerTxCtx = isTransactionContext(txCtxOrOptions) ? txCtxOrOptions : undefined;
-  const txOptions = isTransactionContext(txCtxOrOptions)
+  const outerTxCtx = isTransactionContext<C, PCK>(txCtxOrOptions) ? txCtxOrOptions : undefined;
+  const txOptions = isTransactionContext<C, PCK>(txCtxOrOptions)
     ? options
     : txCtxOrOptions as Transaction.ScopedTransactionOptions | undefined;
 
-  return runScope(providers, fn, outerTxCtx, txOptions, undefined);
+  return runScope<C, PCK>(providers, fn, outerTxCtx, txOptions, undefined);
 };
 
 /**
@@ -473,17 +514,17 @@ export const scopedTransaction = async <
   // would be created and the transaction the caller believed was nested would
   // be submitted on its own. That is the same "silently ran outside the scope
   // it was handed" failure `MixedEraScopeError` exists to stop, one arm over.
-  const outerTxCtx = isTransactionContext(txCtxOrOptions) ? txCtxOrOptions : undefined;
+  const outerTxCtx = isTransactionContext<C, PCK>(txCtxOrOptions) ? txCtxOrOptions : undefined;
   if (outerTxCtx !== undefined) {
     // Nested: no head read of its own. The scope this joins already made one,
     // which is what keeps it at one read per scope, and the outer scope is the
     // one that submits -- so this returns that scope's `CallResult`, exactly as
     // it did before.
-    return runScope(providers, fn, outerTxCtx, undefined, undefined);
+    return runScope<C, PCK>(providers, fn, outerTxCtx, undefined, undefined);
   }
 
   const options = txCtxOrOptions as Transaction.ScopedTransactionOptions | undefined;
   const scopeEra = await resolveScopeEra(providers.publicDataProvider, providers.loggerProvider);
 
-  return runScope(providers, fn, undefined, options, scopeEra);
+  return runScope<C, PCK>(providers, fn, undefined, options, scopeEra);
 };

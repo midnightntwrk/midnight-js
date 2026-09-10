@@ -50,6 +50,8 @@ const buildTranscript = (): TranscriptPojo => ({
   privateTranscriptOutputs: [],
   preContractState: buildState(0x01),
   postContractState: buildState(0x02),
+  // The same state the handle holds, in the form that outlives the runtime.
+  postContractStateEncoded: buildState(0x02).data.state.encode(),
   privateStateAfter: {},
   partitionContext: emptyPartitionContext(),
   zswapLocalState: emptyZswapLocalState()
@@ -79,7 +81,7 @@ describe('wrapKeepStateCall', () => {
     const address = sampleContractAddress();
     const contractState = buildContractStateWithOperation('increment');
 
-    const prototype = wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState });
+    const prototype = wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState, ledgerParameters: 'initial' });
 
     expect(prototype).toBeInstanceOf(ContractCallPrototype);
   });
@@ -87,7 +89,7 @@ describe('wrapKeepStateCall', () => {
   it('produces a ContractCallPrototype (carrying the real registered operation) accepted by Intent.new(ttl).addCall(...)', () => {
     const address = sampleContractAddress();
     const contractState = buildContractStateWithOperation('increment');
-    const prototype = wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState });
+    const prototype = wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState, ledgerParameters: 'initial' });
     const ttl = new Date(Date.now() + 3_600_000);
 
     expect(() => Intent.new(ttl).addCall(prototype)).not.toThrow();
@@ -117,7 +119,8 @@ describe('wrapKeepStateCall', () => {
     const prototype = wrapKeepStateCall({
       transcript,
       contractAddress: address,
-      contractState: buildContractStateWithOperation('increment')
+      contractState: buildContractStateWithOperation('increment'),
+      ledgerParameters: 'initial'
     });
 
     const intent = Intent.new(new Date(Date.now() + 3_600_000)).addCall(prototype);
@@ -132,7 +135,7 @@ describe('wrapKeepStateCall', () => {
 
     let caught: unknown;
     try {
-      wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState: blankContractState });
+      wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState: blankContractState, ledgerParameters: 'initial' });
     } catch (error) {
       caught = error;
     }
@@ -153,7 +156,7 @@ describe('wrapKeepStateCall', () => {
 
     let caught: unknown;
     try {
-      wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState });
+      wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState, ledgerParameters: 'initial' });
     } catch (error) {
       caught = error;
     }

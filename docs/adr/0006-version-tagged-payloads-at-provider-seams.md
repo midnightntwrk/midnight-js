@@ -147,12 +147,28 @@ asserting it.
     constructor. Free while nothing produces the arm; breaking for every
     producer once v8 support ships.
   - Migration notes in `docs/releases/v5.0.0/breaking-changes.md`.
-  - `assertNever` is not exported from `midnight-js-utils`: the seam
-    narrowings go through `unwrapV9` and the exhaustiveness guards are inline
-    `never` assignments, so it has no thrower. It was added and removed inside
-    this unreleased feature stack, so no released version ever carried it and
-    there is nothing for a consumer to migrate. It arrives with the change that
-    first needs it.
+  - ~~`assertNever` is not exported from `midnight-js-utils`.~~ **Resolved.**
+    Exported in #1254, which is the change that first needed it: the migration
+    guide publishes a narrowing recipe that closes its `switch` with it, so the
+    helper is consumer-facing. The framework's own seam narrowings still go
+    through `unwrapV9`, and its internal exhaustiveness guards remain inline
+    `never` assignments that throw coded errors — `assertNever` is deliberately
+    for consumer code, not a replacement for those.
+
+    Two shape decisions came with it. Its `context` parameter is **required**,
+    matching `unwrapV9`'s required `seam` rather than the optional `message` of
+    its file-neighbours `assertDefined`/`assertUndefined`: the guide instructs
+    readers to always pass it, and a required argument is enforced by `tsc` at
+    the call site where a documented convention is not. It throws a coded
+    `UnhandledUnionMemberError` (`MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER`) rather
+    than a bare `Error`, so a consumer can discriminate it with `hasErrorCode`
+    like the rest of the published surface, and so the TROUBLESHOOTING coverage
+    gate covers it.
+
+    The thrown message never renders the unhandled value. The arms of these
+    unions carry transaction bytes and decoded contract state, so serializing
+    the member would copy payloads into every log that catches the error. The
+    `context` string carries the diagnostic instead.
 
 ## Alternatives considered
 
