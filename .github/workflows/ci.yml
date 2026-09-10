@@ -69,7 +69,12 @@ jobs:
     name: Build Midnight.js
     uses: ./.github/workflows/ci-midnight-js.yml
     with:
-      should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
+      # `build_consumer_e2e` too, because this is the only leg that lints and
+      # `consumer-e2e/` is in its lint paths. Without it a PR whose whole range
+      # stays inside that directory skips the lint it is the sole subject of,
+      # while still spending 13 minutes per Hard fork shard discovering the same
+      # defect at runtime.
+      should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_consumer_e2e == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
