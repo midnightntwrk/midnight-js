@@ -74,6 +74,20 @@ describe('createApolloClient — handle shape', () => {
     // Wrapper is a subclass of the user-supplied class:
     expect(Object.getPrototypeOf(passed)).toBe(CustomWS);
   });
+
+  test('creates client with custom fetch function if provided', async () => {
+    const { validateConfig } = await import('../config');
+    const { createApolloClient } = await import('../transport');
+    const customFetch = vi.fn() as unknown as typeof fetch;
+    const validated = validateConfig({
+      queryURL: 'http://localhost:4000/graphql',
+      subscriptionURL: 'ws://localhost:4000/graphql/ws',
+      fetch: customFetch
+    });
+
+    const handle = createApolloClient(validated);
+    expect(handle.client).toBeDefined();
+  });
 });
 
 describe('createApolloClient — dispose lifecycle', () => {
