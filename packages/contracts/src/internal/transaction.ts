@@ -155,15 +155,19 @@ export class TransactionContextImpl<
   readonly resolvedEra?: ResolvedOperationEra;
 
   cachedStates: CachedStatesWithIdentity<Contract.PrivateState<C>> | undefined = undefined;
-  currentUnsubmittedCall: [callTxData: UnsubmittedCallTxData<C, PCK>, privateStateId?: PrivateStateId] | undefined;
   /**
-   * The circuit of the call this scope will transact.
+   * The call this scope will transact, with the circuit that made it.
    *
-   * Kept beside the call rather than read back off `submitTxOptions`, whose own
-   * `circuitId` accumulates EVERY circuit merged into the scope and becomes an
-   * array. The finalized result describes one call, so it names one circuit.
+   * One field rather than a call and a circuit id side by side: the two must
+   * be set together or the result names a circuit from a different call, and
+   * holding them in one object is what makes the existing "no calls were
+   * submitted" guard prove both. The circuit is kept here rather than read
+   * back off `submitTxOptions`, whose own `circuitId` accumulates EVERY
+   * circuit merged into the scope and becomes an array.
    */
-  currentCircuitId: PCK | undefined;
+  currentUnsubmittedCall:
+    | { readonly callTxData: UnsubmittedCallTxData<C, PCK>; readonly privateStateId?: PrivateStateId; readonly circuitId: PCK }
+    | undefined;
   submitTxOptions: SubmitTxOptions<PCK> | undefined = undefined;
 
   constructor(
@@ -206,14 +210,17 @@ export class TransactionContextImpl<
   }
 
   getLastUnsubmittedCallTxDataToTransact(): [UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined {
-    return this.currentUnsubmittedCall;
+    return this.currentUnsubmittedCall === undefined
+      ? undefined
+      : [this.currentUnsubmittedCall.callTxData, this.currentUnsubmittedCall.privateStateId];
   }
 
   async [Submit](): Promise<FinalizedCallTxData<C, PCK>> {
-    const [unprovenCallTxData, privateStateId] = this.getLastUnsubmittedCallTxDataToTransact() ?? [];
-    if (!unprovenCallTxData) {
+    const current = this.currentUnsubmittedCall;
+    if (current === undefined) {
       throw new Error('No calls were submitted.');
     }
+    const { callTxData: unprovenCallTxData, privateStateId, circuitId } = current;
     const finalizedTxData = await submitTx(this.providers, this.submitTxOptions!);
     if (finalizedTxData.status !== SucceedEntirely) {
       throw new CallTxFailedError(finalizedTxData, this.submitTxOptions!.circuitId!);
@@ -223,7 +230,7 @@ export class TransactionContextImpl<
     }
     return {
       era: CURRENT_PIPELINE_ERA,
-      circuitId: this.currentCircuitId!,
+      circuitId,
       private: unprovenCallTxData.private,
       public: {
         ...unprovenCallTxData.public,
@@ -242,8 +249,7 @@ export class TransactionContextImpl<
   }
 
   [MergeUnsubmittedCallTxData](circuitId: PCK, callData: UnsubmittedCallTxData<C, PCK>, privateStateId?: PrivateStateId): void {
-    this.currentUnsubmittedCall = [callData, privateStateId];
-    this.currentCircuitId = circuitId;
+    this.currentUnsubmittedCall = { callTxData: callData, privateStateId, circuitId };
     this.submitTxOptions = mergeSubmitTxOptions(
       this.submitTxOptions,
       {

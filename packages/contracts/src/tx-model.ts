@@ -255,12 +255,19 @@ export interface FinalizedCallTxPublicData extends CallResultPublic, FinalizedTx
 export interface FinalizedCallTxData<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
   extends UnsubmittedCallTxData<C, PCK> {
   /**
-   * The circuit this transaction called.
+   * The circuit whose call this result describes.
    *
    * On the result itself rather than only in the caller's own variables: a
    * handler that receives a finalized result -- from a queue, a retry, a
    * batch -- has the execution data and no way back to the options that
    * produced it. Both eras carry it.
+   *
+   * In a scope that made several calls this names the LAST one, which is the
+   * call `public`, `private` and `calls` also describe: this type is one
+   * call's result, not the transaction's. The transaction may carry more, and
+   * a failure reports all of them -- `CallTxFailedError`'s `circuitId` is the
+   * accumulated list. The two are answering different questions, and a caller
+   * routing on this one is routing on the call, not the transaction.
    *
    * Typed as the contract's whole circuit-id union, NOT as `PCK`, and that is
    * load-bearing. This type is reachable through `TransactionContext[Submit]`,
