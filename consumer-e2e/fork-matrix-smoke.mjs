@@ -61,6 +61,14 @@ const SELECTION = resolveContractSelection(requestedContracts.length === 0 ? und
 /** The genesis mint seed the dev preset funds; the same one the local environment uses. */
 const WALLET_SEED = '0000000000000000000000000000000000000000000000000000000000000001';
 
+/**
+ * The node's address on the compose project network, which is how the toolkit container reaches it.
+ *
+ * Plain `ws`: the node serves no TLS and there is no terminator in front of it on that network.
+ */
+// nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
+const NODE_INTERNAL_WS_URL = 'ws://node:9944';
+
 const logger = createLogger(path.join(REPOSITORY_ROOT, 'consumer-e2e', 'fork-matrix.log'));
 
 // The compose files live in `testkit-js/`, and the default configuration resolves
@@ -199,7 +207,13 @@ const main = async () => {
         // ledger that did not migrate from an indexer that serves stale bytes.
         if (contractAddress !== undefined) {
           const outcome = await environment
-            .runToolkit(['contract-state', '--contract-address', contractAddress, '--src-url', 'ws://node:9944'])
+            .runToolkit([
+              'contract-state',
+              '--contract-address',
+              contractAddress,
+              '--src-url',
+              NODE_INTERNAL_WS_URL
+            ])
             .catch((error) => `toolkit failed: ${error instanceof Error ? error.message : String(error)}`);
           const tag = /midnight:[a-z-]+\[v\d+\]:/.exec(outcome);
           process.stdout.write(`NODE contract-state envelope: ${tag?.[0] ?? '(no tag found)'}\n`);

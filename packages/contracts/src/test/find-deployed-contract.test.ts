@@ -14,12 +14,13 @@
  */
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
 import { UntaggedPayloadError } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { EraInvariantViolationError } from '../errors';
+import { ContractTypeError, EraInvariantViolationError } from '../errors';
 import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
 import {
   createMockCompiledContract,
@@ -239,5 +240,35 @@ describe('findDeployedContract', () => {
     expect(providers.publicDataProvider.queryDeployContractState).toHaveBeenCalledWith(contractAddress);
     expect(providers.publicDataProvider.queryContractState).not.toHaveBeenCalled();
     expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
+  });
+
+  it('should throw when the deployed state registers no operation for a circuit', async () => {
+    vi.mocked(contractState.operation).mockReturnValue(undefined);
+
+    await expect(findDeployedContract(providers, { compiledContract, contractAddress })).rejects.toThrow(
+      ContractTypeError
+    );
+
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  // A default-constructed operation is exactly the keyless shape: registered on the state, but
+  // carrying no verifier key.
+  it('should throw when the deployed operation carries no verifier key', async () => {
+    vi.mocked(contractState.operation).mockReturnValue(new ContractOperation());
+
+    let thrown: unknown;
+    try {
+      await findDeployedContract(providers, { compiledContract, contractAddress });
+    } catch (error) {
+      thrown = error;
+    }
+
+    assert(thrown instanceof ContractTypeError);
+    expect(thrown.keylessCircuitIds).toEqual(['testCircuit']);
+    expect(thrown.contractAddress).toBe(contractAddress);
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
 });

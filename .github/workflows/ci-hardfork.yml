@@ -24,9 +24,6 @@ name: CI - Hard fork
 # measured 3m41s. That floor is why a shard lands near 13 minutes rather than
 # near the leg time.
 
-env:
-  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
 permissions:
   contents: read
   packages: write
@@ -38,6 +35,17 @@ on:
       should_run:
         required: true
         type: string
+    # Declared rather than inherited, so a caller hands over these three
+    # credentials instead of the whole repository's secrets. The Docker Hub pair
+    # is optional because this repository has none configured -- the toolkit
+    # login step is guarded on the username being non-empty.
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE:
+        required: true
+      DOCKERHUB_USERNAME:
+        required: false
+      DOCKERHUB_TOKEN:
+        required: false
 
 concurrency:
   group: hardfork-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

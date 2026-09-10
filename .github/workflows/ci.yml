@@ -54,6 +54,10 @@ jobs:
               - 'package.json'
             midnight-js:
               - 'packages/**'
+              # Subjects of the doc gates in packages/*/src/test: without these
+              # a doc-only commit skips the job that enforces them entirely.
+              - 'TROUBLESHOOTING.md'
+              - 'docs/releases/v5.0.0/migration-guide.md'
             testkit-js:
               - 'packages/**'
               - 'testkit-js/**'
@@ -80,7 +84,8 @@ jobs:
     with:
       should_run: ${{ needs.ci.outputs.build_consumer_e2e == 'true' || needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
     uses: ./.github/workflows/ci-consumer-e2e.yml
-    secrets: inherit
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
   # The fork-crossing gate. Red on purpose until the keep-state partitioning is
   # fixed -- see the comment on its own run step for why it is not hidden.
@@ -90,7 +95,10 @@ jobs:
     with:
       should_run: ${{ needs.ci.outputs.build_consumer_e2e == 'true' || needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
     uses: ./.github/workflows/ci-hardfork.yml
-    secrets: inherit
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
   ci-testkit:
     needs: ci

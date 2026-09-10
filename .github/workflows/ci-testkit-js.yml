@@ -98,4 +98,8 @@ jobs:
       testkit_docker_env: 'v8era'
       build_timeout: ${{ inputs.build_timeout }}
       network: 'undeployed'
-    secrets: inherit
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
