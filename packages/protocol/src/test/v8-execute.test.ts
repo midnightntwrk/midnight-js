@@ -16,6 +16,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import type { ZswapLocalState as CurrentZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import {
   type ConstructorContext,
@@ -74,6 +75,27 @@ const buildState = (byte: number): DownConvertedState => ({
       alignment: [{ tag: 'atom', value: { tag: 'field' } }]
     })
   )
+});
+
+/**
+ * True only when `A` and `B` are assignable to each other. Wrapped in tuples so
+ * a union on either side is compared whole rather than distributed.
+ */
+type MutuallyAssignable<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+
+describe('the two runtimes decode a Zswap local state to the SAME declaration', () => {
+  it('is mutually assignable, in BOTH directions', () => {
+    // ADR-0010 declares `nextZswapLocalState` once, as the CURRENT era's
+    // `ZswapLocalState`, rather than behind a third type parameter -- and rests
+    // that on the two runtimes' declarations being interchangeable. This is the
+    // check that claim names. The annotation is the assertion: if either
+    // direction stopped holding, the type resolves to `false` and `tsc` refuses
+    // the file. `packages/types` cannot host this -- it may not reach the
+    // retained runtime -- so it lives here, where both are in scope.
+    const bothDirections: MutuallyAssignable<ZswapLocalState, CurrentZswapLocalState> = true;
+
+    expect(bothDirections).toBe(true);
+  });
 });
 
 describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execution)', () => {
@@ -439,6 +461,16 @@ describe('executeCircuit against the ported spike counter-016 fixture (real comp
 
     expect(ledger(preState.data.state).round).toBe(0n);
     expect(ledger(transcript.postContractState.data.state).round).toBe(1n);
+
+    // The encoded twin, pinned to the state it CLAIMS to encode. This is the
+    // member ADR-0011 tells a consumer to persist, and nothing else in either
+    // package checks it against a real execution: the golden below omits it,
+    // and every other test synthesizes the value it then asserts on. Encoding
+    // the PRE-state at the production site instead would leave the whole suite
+    // green, which is what the second assertion exists to stop -- the two
+    // states genuinely differ here, as the two rounds above show.
+    expect(transcript.postContractStateEncoded).toEqual(transcript.postContractState.data.state.encode());
+    expect(transcript.postContractStateEncoded).not.toEqual(preState.data.state.encode());
     // Against the REAL 0.16 glue, not a fake: increment moves no coins, so the
     // carried state is empty — but it is the runtime's own decoded shape, which
     // is what pins the injected decoder to the glue's own function.
