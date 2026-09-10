@@ -43,6 +43,7 @@ export {
 export {
   CallTxFailedError,
   ContractTypeError,
+  ContractTypeMismatch,
   DeployTxFailedError,
   EraInvariantViolationError,
   type EraSeam,

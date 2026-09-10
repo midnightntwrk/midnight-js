@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { AnyProvableCircuitId, FinalizedTxData, PrivateStateId, Seam } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -158,30 +158,109 @@ export class CallTxFailedError extends TxFailedError {
 }
 
 /**
+ * The ways in which a circuit the client holds a verifier key for can fail to line up with the
+ * contract state deployed on chain. Each circuit falls into exactly one of these.
+ */
+export interface ContractTypeMismatch {
+  /**
+   * Circuits for which the deployed state registers no operation at all.
+   */
+  readonly missing: AnyProvableCircuitId[];
+  /**
+   * Circuits whose operation is registered on the deployed state but carries no verifier key.
+   */
+  readonly keyless: AnyProvableCircuitId[];
+  /**
+   * Circuits whose deployed verifier key differs from the one the client holds.
+   */
+  readonly mismatched: AnyProvableCircuitId[];
+}
+
+const MAX_STATE_DESCRIPTION_CHARS = 2_000;
+
+const describeContractState = (contractState: ContractState): string => {
+  try {
+    const description = contractState.toString(true);
+    return description.length > MAX_STATE_DESCRIPTION_CHARS
+      ? `${description.slice(0, MAX_STATE_DESCRIPTION_CHARS)}… (truncated from ${description.length} characters; the full state is on 'error.contractState')`
+      : description;
+  } catch (error) {
+    // Deliberately narrow: this runs inside the error constructor, so letting a failure escape
+    // would destroy the ContractTypeError and take 'circuitIds' with it. The state itself stays
+    // reachable on 'error.contractState' for a caller that wants to inspect it.
+    return `<the deployed state could not be rendered: ${error instanceof Error ? error.message : String(error)}>`;
+  }
+};
+
+const describeMismatch = (mismatch: ContractTypeMismatch, contractAddress?: ContractAddress): string => {
+  const subject = contractAddress === undefined ? 'The deployed contract' : `The contract at '${contractAddress}'`;
+  const lines = [`${subject} is not the expected contract type.`];
+  if (mismatch.missing.length > 0) {
+    lines.push(`  Not registered on the deployed state: ${mismatch.missing.join(', ')}`);
+  }
+  if (mismatch.keyless.length > 0) {
+    lines.push(
+      `  Registered on the deployed state but carrying no verifier key: ${mismatch.keyless.join(', ')}. ` +
+        'The deployed state is incomplete, so recompiling the local contract will not resolve this.'
+    );
+  }
+  if (mismatch.mismatched.length > 0) {
+    lines.push(
+      `  Deployed verifier key differs from the local one: ${mismatch.mismatched.join(', ')}. ` +
+        'The local artifacts were built from a different contract or a different version of it.'
+    );
+  }
+  return lines.join('\n');
+};
+
+/**
  * The error that is thrown when there is a contract type mismatch between a given contract type,
  * and the initial state that is deployed at a given contract address.
  *
  * @remarks
  * This error is typically thrown during calls to {@link findDeployedContract} where the supplied contract
  * address represents a different type of contract to the contract type given.
+ *
+ * The three conditions are reported separately because they call for different responses: a
+ * mismatched key means the local artifacts are wrong, while a keyless slot means the deployed state
+ * itself is incomplete and rebuilding locally cannot help.
  */
 export class ContractTypeError extends TypeError {
+  /**
+   * The circuits that the deployed state registers no operation for.
+   */
+  readonly missingCircuitIds: AnyProvableCircuitId[];
+  /**
+   * The circuits whose deployed operation carries no verifier key.
+   */
+  readonly keylessCircuitIds: AnyProvableCircuitId[];
+  /**
+   * The circuits whose deployed verifier key differs from the local one.
+   */
+  readonly mismatchedCircuitIds: AnyProvableCircuitId[];
+  /**
+   * Every circuit that failed to match, whatever the reason, grouped by condition: missing first,
+   * then keyless, then mismatched.
+   */
+  readonly circuitIds: AnyProvableCircuitId[];
+
   /**
    * Initializes a new {@link ContractTypeError}.
    *
    * @param contractState The initial deployed contract state.
-   * @param circuitIds The circuits that are undefined, or have a verifier key mismatch with the
-   *                   key present in `contractState`.
+   * @param mismatch The circuits that failed to match, grouped by the condition that applied.
+   * @param contractAddress The address the state was read from, when known.
    */
   constructor(
     readonly contractState: ContractState,
-    readonly circuitIds: AnyProvableCircuitId[]
+    mismatch: ContractTypeMismatch,
+    readonly contractAddress?: ContractAddress
   ) {
-    super(
-      `Following operations: ${circuitIds.join(
-        ', '
-      )}, are undefined or have mismatched verifier keys for contract state ${contractState.toString(false)}`
-    );
+    super(`${describeMismatch(mismatch, contractAddress)}\nDeployed state: ${describeContractState(contractState)}`);
+    this.missingCircuitIds = mismatch.missing;
+    this.keylessCircuitIds = mismatch.keyless;
+    this.mismatchedCircuitIds = mismatch.mismatched;
+    this.circuitIds = [...mismatch.missing, ...mismatch.keyless, ...mismatch.mismatched];
   }
 }
 
