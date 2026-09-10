@@ -359,32 +359,56 @@ export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, K extends
 /**
  * The public half of ONE retained-era contract call.
  *
- * `contractState` is a LIVE `onchain-runtime-v3` handle — the down-converted
- * state this call executed against, forwarded rather than re-encoded. It is
- * valid only while the retained runtime instance that produced it is loaded,
- * does not survive `structuredClone`, a worker transfer or serialization, and
- * is published under ADR-0011 for callers that want the object rather than
- * another decode of the same bytes.
+ * Both state members are LIVE `onchain-runtime-v3` handles, valid only while
+ * the retained runtime instance that produced them is loaded. Neither survives
+ * `structuredClone`, a worker transfer or serialization; both are published
+ * under ADR-0011 for callers that want the object rather than another decode of
+ * the same bytes, and both carry an {@link EncodedStateValue} twin for
+ * everything else.
  *
  * @typeParam TState - The down-converted state type; the framework's own
  * retained runtime fills it with {@link DownConvertedState}.
  */
 export interface Ledger8ContractCallPublic<TState = DownConvertedState> extends CallResultPublicBase {
+  /**
+   * The state this call ENDED on.
+   *
+   * The current era's member of this name is filled from `compact-js`'s FINAL
+   * query context, so the two eras answer the same question here. For the state
+   * the call started from, read {@link Ledger8ContractCallPublic.preContractState}
+   * — a different fact, under a different name.
+   */
   readonly contractState: TState;
   /**
-   * The same state as an {@link EncodedStateValue} — see
+   * The same post-call state as an {@link EncodedStateValue} — see
    * {@link Ledger8CallResultPublic.nextContractStateEncoded} for which of the
    * two to reach for.
    */
   readonly contractStateEncoded: EncodedStateValue;
+  /**
+   * The state this call BOUND to: the down-converted handle the pipeline
+   * executed against, forwarded rather than re-derived.
+   *
+   * Retained-era only. The current era publishes no pre-call state on a call
+   * entry, so era-agnostic code must not reach for this member.
+   */
+  readonly preContractState: TState;
+  /**
+   * The same pre-call state as an {@link EncodedStateValue} — this one IS the
+   * snapshot's own primary state, the value the handle was down-converted from,
+   * so it is forwarded rather than re-encoded.
+   */
+  readonly preContractStateEncoded: EncodedStateValue;
 }
 
 /**
  * Proof data for ONE retained-era contract call.
  *
- * The retained era's counterpart of `compact-js`'s `ContractCall`, member for
- * member. Only `public.contractState` has a different type — each era's state
- * handle comes from its own runtime.
+ * The retained era's counterpart of `compact-js`'s `ContractCall`: it carries
+ * every member that one does, under the same name and meaning, and adds three.
+ * `public.contractState` differs only in TYPE — each era's state handle comes
+ * from its own runtime. The additions are `public.contractStateEncoded` and the
+ * pre-call pair, which the current era has no counterpart for.
  *
  * @typeParam TState - See {@link Ledger8ContractCallPublic}.
  */
@@ -410,6 +434,13 @@ export interface Ledger8ContractCall<TState = DownConvertedState> {
  * for finalization cannot answer with.
  */
 export interface Ledger8UnsubmittedCallTxData<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> {
+  /**
+   * The pipeline that produced this result: always the retained era here, even
+   * when the transaction that recorded it is a keep-state transaction tagged
+   * `'v9'`. Those are different facts, and only this one says which module
+   * produced the objects below.
+   */
+  readonly era: RetainedPipelineEra;
   readonly public: Ledger8CallResultPublic;
   readonly private: Ledger8CallResultPrivate<C, K>;
   /**
@@ -487,6 +518,16 @@ export type Ledger8DeployContractOptions<C extends Ledger8Contract> =
 export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
   readonly compiledContract: C;
   readonly contractAddress: ContractAddress;
+  /**
+   * Where the calls made through {@link Ledger8FoundContract.callTx} read and
+   * store this contract's private state.
+   *
+   * Optional because a retained-era contract may genuinely carry none: naming
+   * no id means nothing is read and nothing is written. Naming one the provider
+   * holds nothing under is a caller error and is refused, rather than executing
+   * against a default state.
+   */
+  readonly privateStateId?: PrivateStateId;
   /**
    * NOT HONOURED on this arm: a key supplied here is DISCARDED.
    *

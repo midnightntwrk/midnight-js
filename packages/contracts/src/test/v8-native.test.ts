@@ -512,11 +512,16 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     const [rootCall] = result.calls;
     expect(rootCall?.circuitId).toBe(CIRCUIT_ID);
     expect(rootCall?.contractAddress).toBe(recording.contractAddress);
-    // The state the call BOUND to -- the down-converted handle the pipeline
-    // executed against, forwarded rather than re-derived. Here that is the
-    // replay marker, which is what proves it is the executed-against value and
-    // not a second decode of the same bytes.
-    expect(rootCall?.public.contractState).toEqual({ replayedCircuitId: CIRCUIT_ID });
+    // The state the call ENDED on. `compact-js` fills the current era's
+    // `contractState` from the FINAL query context, so this member means the
+    // post-call state in BOTH eras. The double mints a distinct `:post` marker,
+    // so a value re-derived from the bound state cannot pass here.
+    expect(rootCall?.public.contractState).toEqual({ replayedCircuitId: `${CIRCUIT_ID}:post` });
+    // The state the call BOUND to, under its OWN name because it is not what
+    // the current era's `contractState` means. Forwarded rather than
+    // re-derived: the marker proves it is the executed-against handle and not a
+    // second decode of the same bytes.
+    expect(rootCall?.public.preContractState).toEqual({ replayedCircuitId: CIRCUIT_ID });
     expect(rootCall?.public.publicTranscript).toStrictEqual(recording.transcript.publicTranscript);
     expect(rootCall?.private.input).toStrictEqual(recording.transcript.input);
     expect(rootCall?.private.output).toStrictEqual(recording.transcript.output);
@@ -948,7 +953,8 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // dropped. The marker proves it is the POST state -- the pre-call state the
     // call bound to is a different object, published on `calls[0].public`.
     expect(finalized.public.nextContractState).toEqual({ replayedCircuitId: `${CIRCUIT_ID}:post` });
-    expect(finalized.calls[0]?.public.contractState).toEqual({ replayedCircuitId: CIRCUIT_ID });
+    expect(finalized.calls[0]?.public.contractState).toEqual({ replayedCircuitId: `${CIRCUIT_ID}:post` });
+    expect(finalized.calls[0]?.public.preContractState).toEqual({ replayedCircuitId: CIRCUIT_ID });
   });
 
   it('publishes every state handle with its ENCODED form beside it', async () => {
@@ -962,9 +968,13 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(finalized.public.nextContractStateEncoded).toStrictEqual(
       recording.transcript.postContractStateEncoded
     );
-    // The call bound to the state as it was read off chain, so its encoded form
-    // is that same primary state -- not a second decode of it.
-    expect(finalized.calls[0]?.public.contractStateEncoded).toStrictEqual(recording.preState);
+    // The call entry's own pair. `contractStateEncoded` is the post-call state,
+    // matching the member beside it; the bound state's encoded form is the
+    // primary state the snapshot carried -- not a second decode of it.
+    expect(finalized.calls[0]?.public.contractStateEncoded).toStrictEqual(
+      recording.transcript.postContractStateEncoded
+    );
+    expect(finalized.calls[0]?.public.preContractStateEncoded).toStrictEqual(recording.preState);
   });
 
   it('publishes the execution Zswap state and the caller coin list on the private half', async () => {
@@ -2009,6 +2019,44 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(finalized.circuitId).toBe(CIRCUIT_ID);
     expect(finalized.private.result).toStrictEqual(recording.transcript.result);
     expect(finalized.public.txId).toBe(createMockFinalizedTxData().txId);
+  });
+
+  it('runs a call made through the handle against the STORED private state, and writes the result back', async () => {
+    const providers = attachProviders(v6Envelope);
+    // The provider actually holds a state under the named id, which is what
+    // makes the read observable at all -- the default mock answers `undefined`.
+    providers.privateStateProvider.get = vi.fn().mockResolvedValue({ storedBefore: true });
+    // The engine is told what the pipeline MUST have handed it. Asserting only
+    // that `get` ran leaves `privateState: undefined` fully green, because the
+    // recording replays regardless -- and that is the failure this test names:
+    // a handle that cannot carry the id proves against a default state and then
+    // discards the next one, with nothing erroring at any stage.
+    engineSlot.engine = createReplayEngine(recording, [], v6Envelope, {
+      privateState: { storedBefore: true }
+    });
+
+    const found = await findDeployedContract(providers, {
+      ...attachOptions(),
+      privateStateId: 'retained-private-state'
+    });
+    const finalized = await found.callTx[CIRCUIT_ID](recording.receivedCoin);
+
+    expect(providers.privateStateProvider.get).toHaveBeenCalledWith('retained-private-state');
+    expect(finalized.private.nextPrivateState).toEqual({});
+    expect(providers.privateStateProvider.set).toHaveBeenCalledWith('retained-private-state', {});
+  });
+
+  it('leaves the private state untouched when the caller named no id', async () => {
+    const providers = attachProviders(v6Envelope);
+    engineSlot.engine = createReplayEngine(recording, [], v6Envelope);
+
+    const found = await findDeployedContract(providers, attachOptions());
+    await found.callTx[CIRCUIT_ID](recording.receivedCoin);
+
+    // A retained-era contract may genuinely carry no private state, so naming
+    // no id stays legal -- but then NOTHING is read and nothing is written.
+    expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
 
   it('refuses a mis-dispatched artifact BEFORE waiting on the deploy record', async () => {
