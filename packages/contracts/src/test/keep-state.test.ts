@@ -484,17 +484,51 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });
 
-  it('refuses a current-era state even when the record mislabels itself as retained', async () => {
+  it('reads a current-era envelope with the CURRENT decoder even when the record mislabels itself as retained', async () => {
     // The mirror, and the one a label-based route would get wrong in the
     // dangerous direction: the label AGREES with the retained pipeline while
     // the bytes are current-era. Routing on the label would hand current-era
-    // bytes to the retained decoder.
+    // bytes to the retained decoder, which refuses them on the envelope tag.
+    // The envelope decides which decoder may read the bytes; it does not decide
+    // whether the caller's artifacts fit the contract.
     const providers = postForkProviders(v6Envelope);
-    providers.publicDataProvider.queryRawContractState = vi.fn().mockResolvedValue({
-      version: 'v8',
-      protocolVersion: POST_FORK_PROTOCOL_VERSION,
-      raw: v9Envelope
-    });
+    providers.publicDataProvider.queryRawContractState = vi
+      .fn()
+      .mockResolvedValue({ ...rawState(v9Envelope, POST_FORK_PROTOCOL_VERSION), version: 'v8' });
+
+    await expect(submitCallTx(providers, callOptions())).resolves.toBeDefined();
+  });
+
+  it('calls a MIGRATED contract again, whose state is current-era but whose keys are still retained', async () => {
+    // The second post-fork call, which is the whole point of keep-state being
+    // more than one shot. The first call migrated the envelope from retained to
+    // current-era; the ledger copies the retained verifier keys across
+    // unchanged, so the caller's retained artifacts are still the right ones
+    // for this contract. Measured on the committed goldens: a real migrated
+    // 8-to-9 state carries the SAME `midnight:verifier-key[v6]:` bytes its
+    // pre-migration form did, and the current-era decoder reads them.
+    const providers = postForkProviders(v9Envelope);
+
+    const finalized = await submitCallTx(providers, callOptions());
+
+    expect(finalized.circuitId).toBe(CIRCUIT_ID);
+    // Proved and submitted, not merely accepted by the reader: the point is that the call
+    // COMPLETES, not that one check stopped refusing.
+    expect(providers.proofProvider.proveTx).toHaveBeenCalledTimes(1);
+    expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('keep-state-tx-id');
+    // Read with the CURRENT decoder, which is the only way these bytes decode at all: the retained
+    // decoder refuses a `contract-state[v8]` envelope on the tag.
+    expect(providers.publicDataProvider.queryRawContractState).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses a current-era state whose key is not the one the local artifact carries', async () => {
+    // The negative the envelope check used to stand in for, now asked of the
+    // signal that actually answers it. A contract deployed with current-toolchain
+    // artifacts holds a key these retained artifacts cannot match, and the
+    // refusal has to name that rather than the envelope -- which, after a
+    // migration, says nothing about which artifacts the contract was built from.
+    const providers = postForkProviders(v9Envelope);
+    providers.zkConfigProvider.getVerifierKey = vi.fn().mockResolvedValue(Uint8Array.from([0x01, 0x02, 0x03]));
 
     let caught: unknown;
     try {
@@ -503,10 +537,11 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       caught = error;
     }
 
-    // Named for what it is -- the contract has current-era artifacts on chain --
-    // rather than blamed on the read surface, and refused before any decoder
-    // sees the bytes.
     expect(caught).toBeInstanceOf(RetainedArtifactOnCurrentEraStateError);
+    expect((caught as RetainedArtifactOnCurrentEraStateError).contractAddress).toBe(recording.contractAddress);
+    // Refused before anything is paid for: a proof against a key the chain does
+    // not hold is rejected on submission, which is the late failure this
+    // ordering exists to prevent.
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });
 

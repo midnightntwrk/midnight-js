@@ -15,12 +15,15 @@
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { type ShieldedCoinInfo, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
-  FinalizedTxData
+  FinalizedTxData,
+  SubmittedCallTxBase,
+  UnsubmittedTxDataBase
 } from '@midnight-ntwrk/midnight-js-types';
 
 import type { CallResult, CallResultPrivate, CallResultPublic } from './call';
+import type { CurrentPipelineEra } from './era';
 
 /**
  * Data relevant to any unsubmitted transaction.
@@ -38,15 +41,11 @@ import type { CallResult, CallResultPrivate, CallResultPublic } from './call';
  * observability platforms (log shippers, error reporters, analytics) is
  * not an intended use.
  */
-export interface UnsubmittedTxData {
+export interface UnsubmittedTxData extends UnsubmittedTxDataBase {
   /**
    * The unproven ledger transaction produced.
    */
   readonly unprovenTx: UnprovenTransaction;
-  /**
-   * New coins created during the construction of the transaction.
-   */
-  readonly newCoins: ShieldedCoinInfo[];
 }
 
 /**
@@ -100,6 +99,14 @@ export interface UnsubmittedDeployTxPrivateData<C extends Contract.Any> {
  * — never spread or stringify the whole object.
  */
 export interface UnsubmittedDeployTxDataBase<C extends Contract.Any> {
+  /**
+   * The pipeline that produced this result: always the current era here.
+   *
+   * Read off the compiled artifact, NEVER off a transaction record — the two
+   * facts disagree after the fork, and only this one says which module the
+   * objects in this result came from.
+   */
+  readonly era: CurrentPipelineEra;
   /**
    * The public data (data that will be revealed upon tx submission) relevant to the deployment transaction.
    */
@@ -265,13 +272,14 @@ export interface FinalizedCallTxData<C extends Contract.Any, PCK extends Contrac
  * non-sensitive fields rather than spreading or stringifying the whole
  * object.
  */
-export interface SubmittedCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> {
+export interface SubmittedCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
+  extends SubmittedCallTxBase<UnsubmittedCallTxData<C, PCK>> {
   /**
-   * The transaction ID returned from submission.
+   * The pipeline that produced this result: always the current era here.
+   *
+   * Read off the compiled artifact, NEVER off a transaction record — the two
+   * facts disagree after the fork, and only this one says which module the
+   * objects in this result came from.
    */
-  readonly txId: string;
-  /**
-   * The unproven call transaction data including private state.
-   */
-  readonly callTxData: UnsubmittedCallTxData<C, PCK>;
+  readonly era: CurrentPipelineEra;
 }

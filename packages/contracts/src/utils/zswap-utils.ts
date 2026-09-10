@@ -181,7 +181,13 @@ export const unprovenOfferFromMap = <U extends UnprovenInput | UnprovenOutput | 
 
 export const zswapStateToNewCoins = (receiverCoinPublicKey: CoinPublicKey, zswapState: ZswapLocalState): ShieldedCoinInfo[] =>
   zswapState.outputs
-    .filter((output) => output.recipient.left === receiverCoinPublicKey)
+    // `is_left` FIRST: `Recipient` is a tagged union written as a flat struct,
+    // and the runtime's `decodeRecipient` populates `left` and `right` on every
+    // output whatever the tag says. Matching on `left` alone therefore reads a
+    // slot that is meaningless on a contract-owned output, and reports a coin
+    // the caller cannot spend. The same order the two other readers of this
+    // structure use -- `createZswapOutput` and `zswapStateToSegmentedOffer`.
+    .filter((output) => output.recipient.is_left && output.recipient.left === receiverCoinPublicKey)
     .map(({ coinInfo }) => coinInfo);
 
 export const encryptionPublicKeyForZswapState = (

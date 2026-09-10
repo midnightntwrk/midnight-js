@@ -139,6 +139,13 @@ export {
 // The `AnyLedger8*` aliases stay internal -- they exist to widen the
 // era-dispatching IMPLEMENTATION signatures and are never a signature a caller
 // sees.
+export {
+  CURRENT_PIPELINE_ERA,
+  type CurrentPipelineEra,
+  type PipelineEra,
+  RETAINED_PIPELINE_ERA,
+  type RetainedPipelineEra
+} from './era';
 export type {
   Ledger8CallResultPrivate,
   Ledger8CallResultPublic,
@@ -147,15 +154,20 @@ export type {
   Ledger8CallTxOptionsWithPrivateStateId,
   Ledger8CallTxTarget,
   Ledger8Circuit,
+  Ledger8CircuitCallTxInterface,
   Ledger8CircuitContext,
   Ledger8CircuitId,
   Ledger8CircuitParameters,
   Ledger8CircuitResult,
   Ledger8CircuitReturnType,
+  Ledger8ConstructorParameters,
   Ledger8ConstructorResult,
   Ledger8Contract,
+  Ledger8ContractCall,
+  Ledger8ContractCallPublic,
   Ledger8ContractProviders,
   Ledger8DeployContractOptions,
+  Ledger8DeployContractOptionsBase,
   Ledger8DeployedContract,
   Ledger8FinalizedCallTxData,
   Ledger8FinalizedCallTxPublicData,
@@ -163,6 +175,7 @@ export type {
   Ledger8FoundContract,
   Ledger8PrivateState,
   Ledger8SubmittedCallTx,
+  Ledger8UnsubmittedCallTxData,
   Ledger8Witness
 } from './ledger8-contract';
 export { submitCallTx, submitCallTxAsync } from './submit-call-tx';
@@ -172,7 +185,8 @@ export { ScopedTransactionOptions, TransactionContext, withContractScopedTransac
 export {
   CircuitCallTxInterface,
   createCallTxOptions,
-  createCircuitCallTxInterface} from './tx-interfaces';
+  createCircuitCallTxInterface,
+  createLedger8CircuitCallTxInterface} from './tx-interfaces';
 export {
   FinalizedCallTxData,
   FinalizedCallTxPublicData,

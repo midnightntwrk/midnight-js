@@ -643,6 +643,31 @@ describe('UnknownLedger8AxisError', () => {
   });
 });
 
+describe('the code every published class carries', () => {
+  it('narrows to that class own literal, so a caller switch discriminates on it', () => {
+    // The ANNOTATIONS are the assertion: a class whose `code` is declared as the
+    // wide `ProtocolErrorCode` alias fails to compile here, and would leave a
+    // caller's `switch (error.code)` unable to narrow on it. Checked by
+    // `yarn typecheck:tests`; the runtime half below only pins the values.
+    const composeFailed: typeof PROTOCOL_ERROR_CODES.COMPOSE_FAILED = new ComposeFailedError(
+      'v9',
+      'call-empty',
+      'increment'
+    ).code;
+    const composeOption: typeof PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID = new ComposeOptionError('v8', 'ttl').code;
+    const stateDecode: typeof PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED = new StateDecodeFailedError(
+      'v8',
+      new Error('boom')
+    ).code;
+
+    expect([composeFailed, composeOption, stateDecode]).toEqual([
+      PROTOCOL_ERROR_CODES.COMPOSE_FAILED,
+      PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID,
+      PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED
+    ]);
+  });
+});
+
 // The axis is interpolated into the remediation hint via a lookup table. A
 // plain object literal resolves `constructor` through Object.prototype and
 // renders `@scope/function Object() { [native code] }` as a package name to

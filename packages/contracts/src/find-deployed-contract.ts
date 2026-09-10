@@ -28,6 +28,7 @@ import {
 import { assertDefined, assertIsContractAddress, toHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
+import { CURRENT_PIPELINE_ERA, type CurrentPipelineEra, RETAINED_PIPELINE_ERA } from './era';
 import { ContractTypeError, IncompleteFindContractPrivateStateConfig } from './errors';
 import {
   type CircuitMaintenanceTxInterfaces,
@@ -48,7 +49,8 @@ import {
 } from './ledger8-contract';
 import {
   type CircuitCallTxInterface,
-  createCircuitCallTxInterface
+  createCircuitCallTxInterface,
+  createLedger8CircuitCallTxInterface
 } from './tx-interfaces';
 import type { FinalizedDeployTxDataBase } from './tx-model';
 
@@ -233,6 +235,14 @@ export type FindDeployedContractOptions<C extends Contract.Any> =
  */
 export interface FoundContract<C extends Contract.Any> {
   /**
+   * The pipeline that produced this result: always the current era here.
+   *
+   * Read off the compiled artifact, NEVER off a transaction record — the two
+   * facts disagree after the fork, and only this one says which module the
+   * objects in this result came from.
+   */
+  readonly era: CurrentPipelineEra;
+  /**
    * Data for the finalized deploy transaction corresponding to this contract.
    */
   readonly deployTxData: FinalizedDeployTxDataBase<C>;
@@ -338,9 +348,18 @@ export async function findDeployedContract<C extends Contract.Any>(
       circuitIds: Object.keys(options.compiledContract.impureCircuits)
     });
     return {
+      era: RETAINED_PIPELINE_ERA,
       compiledContract: options.compiledContract,
       contractAddress: options.contractAddress,
-      deployTxData: found.deployTxData
+      deployTxData: found.deployTxData,
+      // Built AFTER the attach has checked every declared circuit's key, so a
+      // handle a caller receives is one whose circuits the chain can serve.
+      callTx: createLedger8CircuitCallTxInterface(
+        providers,
+        options.compiledContract,
+        options.contractAddress,
+        options.privateStateId
+      )
     };
   }
   const { compiledContract, contractAddress } = options;
@@ -367,7 +386,9 @@ export async function findDeployedContract<C extends Contract.Any>(
   const initialPrivateState = await setOrGetInitialPrivateState(providers.privateStateProvider, options);
 
   return {
+    era: CURRENT_PIPELINE_ERA,
     deployTxData: {
+      era: CURRENT_PIPELINE_ERA,
       private: {
         signingKey,
         initialPrivateState

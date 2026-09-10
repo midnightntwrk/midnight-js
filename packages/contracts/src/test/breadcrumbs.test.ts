@@ -57,7 +57,7 @@ import {
 } from '../errors';
 import type { DispatchBreadcrumb, HeadReadingProvenance } from '../internal/breadcrumbs';
 import { DISPATCH_BREADCRUMB_MESSAGE, emitEncoding, emitHeadResolution, emitPipelineSelection } from '../internal/breadcrumbs';
-import { assertRetainedStateEnvelope, type PipelineEra, resolveOperationEra } from '../internal/era';
+import { type PipelineEra, resolveContractStateEra, resolveOperationEra } from '../internal/era';
 import { acquireLedger8Runtime, findLedger8Contract } from '../internal/ledger8-entry';
 import { handleSubmitRejection } from '../internal/stale-head';
 import { resolveScopeEra } from '../internal/transaction';
@@ -500,7 +500,6 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
   });
 });
 
-const ADDRESS = '0'.repeat(64);
 
 describe('the encoding breadcrumb dates the fetched state from its envelope tag', () => {
   const v8Envelope = readHexFixture('state-v8.hex');
@@ -509,7 +508,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
   it('reports the envelope era on an agreeing head, carrying none of the state bytes', async () => {
     const sink = createSink();
 
-    await assertRetainedStateEnvelope('v8', rawState(v8Envelope, V8_HEAD, 'v8'), ADDRESS, headSource(), sink);
+    await resolveContractStateEra('v8', rawState(v8Envelope, V8_HEAD, 'v8'), headSource(), sink);
 
     const [breadcrumb] = emitted(sink);
     expect(breadcrumb).toBeDefined();
@@ -532,7 +531,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     // is what tells an operator which decoder the bytes went to.
     const sink = createSink();
 
-    await assertRetainedStateEnvelope('v9', rawState(v8Envelope, V9_HEAD, 'v9'), ADDRESS, headSource(), sink);
+    await resolveContractStateEra('v9', rawState(v8Envelope, V9_HEAD, 'v9'), headSource(), sink);
 
     expect(emitted(sink)[0]).toStrictEqual({
       decision: 'encoding',
@@ -549,7 +548,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     const sink = createSink();
 
     await expect(
-      assertRetainedStateEnvelope('v8', rawState(v9Envelope, V8_HEAD, 'v8'), ADDRESS, headSource(V9_HEAD), sink)
+      resolveContractStateEra('v8', rawState(v9Envelope, V8_HEAD, 'v8'), headSource(V9_HEAD), sink)
     ).rejects.toThrow(HeadStateEraMismatchError);
 
     expect(emitted(sink)).toStrictEqual([
@@ -568,7 +567,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     const sink = createSink();
 
     await expect(
-      assertRetainedStateEnvelope('v8', rawState(v9Envelope, V9_HEAD, 'v9'), ADDRESS, headSource(V8_HEAD), sink)
+      resolveContractStateEra('v8', rawState(v9Envelope, V9_HEAD, 'v9'), headSource(V8_HEAD), sink)
     ).rejects.toThrow(IndexerInconsistencyError);
 
     expect(emitted(sink)).toStrictEqual([
@@ -587,7 +586,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     const sink = createSink();
     const pdp = headSource();
 
-    await assertRetainedStateEnvelope('v9', rawState(v8Envelope, V9_HEAD_MINOR_BUMP, 'v9'), ADDRESS, pdp, sink);
+    await resolveContractStateEra('v9', rawState(v8Envelope, V9_HEAD_MINOR_BUMP, 'v9'), pdp, sink);
 
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
     expect(emitted(sink).map((breadcrumb) => breadcrumb.decision)).toEqual(['encoding']);
@@ -608,7 +607,7 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
     // One breadcrumb of every kind, produced by real code paths rather than
     // hand-built, so this gate is over what actually ships.
     await acquireLedger8Runtime(headSource(V8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
-    await assertRetainedStateEnvelope('v8', rawState(v8Envelope, V8_HEAD, 'v8'), ADDRESS, headSource(), sink);
+    await resolveContractStateEra('v8', rawState(v8Envelope, V8_HEAD, 'v8'), headSource(), sink);
     breadcrumbs = emitted(sink);
   });
 
@@ -841,7 +840,7 @@ describe('a faulty logger cannot fail an operation that otherwise succeeds', () 
     const v9Envelope = readHexFixture('state-migrated-v9.hex');
 
     await expect(
-      assertRetainedStateEnvelope('v8', rawState(v9Envelope, V8_HEAD, 'v8'), ADDRESS, headSource(V9_HEAD), sink)
+      resolveContractStateEra('v8', rawState(v9Envelope, V8_HEAD, 'v8'), headSource(V9_HEAD), sink)
     ).rejects.toThrow(HeadStateEraMismatchError);
   });
 });
