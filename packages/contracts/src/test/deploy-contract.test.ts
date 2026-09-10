@@ -74,8 +74,17 @@ describe('deployContract', () => {
     }
   });
 
-  const assertDeployResult = (result: DeployedContract<Contract.Any>, deployTxData: UnsubmittedDeployTxData<Contract.Any>) => {
+  const assertDeployResult = (
+    result: DeployedContract<Contract.Any>,
+    deployTxData: UnsubmittedDeployTxData<Contract.Any>,
+    options: DeployContractOptionsBase<Contract.Any> = baseOptions
+  ) => {
     expect(result).toBeDefined();
+    // IDENTITY, not shape: see the same pair in find-deployed-contract.test.ts.
+    // `contractAddress` in particular is read off the deploy record, so a
+    // shape assertion cannot tell it from any other address on that record.
+    expect(result.compiledContract).toBe(options.compiledContract);
+    expect(result.contractAddress).toBe(deployTxData.public.contractAddress);
     expect(result.deployTxData).toBe(deployTxData);
     expect(result.callTx).toBeDefined();
     expect(result.circuitMaintenanceTx).toBeDefined();
