@@ -46,7 +46,9 @@ import {
   Ledger8AmbiguousEntryPointError,
   Ledger8RecipientUnmappableError,
   Ledger8ShieldedSpendUnsupportedError,
-  LedgerParametersUnservedError
+  LedgerParametersUnservedError,
+  RetainedArtifactOnCurrentEraStateError,
+  VerifierKeyMismatchError
 } from '../errors';
 import type { Ledger8ContractCall } from '../ledger8-contract';
 import {
@@ -58,7 +60,7 @@ import {
   zswapStateToSegmentedOffer
 } from '../utils/zswap-utils';
 import type { BreadcrumbSink } from './breadcrumbs';
-import { assertRetainedStateEnvelope } from './era';
+import { resolveContractStateEra } from './era';
 import { assertVerifierKeyMatches } from './verifier-key';
 
 /**
@@ -231,6 +233,15 @@ export interface Ledger8Snapshot {
   readonly encoded: EncodedStateValue;
   /** The entry points the state declares, with the key registered against each. */
   readonly decoded: ContractStatePojo;
+  /**
+   * The era whose decoder read {@link Ledger8Snapshot.state}, decided by its envelope.
+   *
+   * `'v9'` means the contract has already been migrated by an earlier post-fork call, which is what
+   * lets the key check tell a migrated contract apart from one deployed with current-toolchain
+   * artifacts. Both carry a current-era envelope; only the second carries keys these artifacts
+   * cannot match.
+   */
+  readonly stateEra: LedgerVersion;
 }
 
 /**
@@ -259,6 +270,7 @@ export interface Ledger8Snapshot {
  */
 export const readLedger8Snapshot = async (
   retainedEra: LedgerEra,
+  headEra: LedgerEra,
   head: LedgerVersion,
   pdp: Ledger8PipelineReadSurface,
   contractAddress: string,
@@ -267,17 +279,23 @@ export const readLedger8Snapshot = async (
   const state = await pdp.queryRawContractState(contractAddress);
   assertDefined(state, `No contract deployed at contract address '${contractAddress}'`);
 
-  await assertRetainedStateEnvelope(head, state, contractAddress, pdp, logger);
+  const stateEra = await resolveContractStateEra(head, state, pdp, logger);
 
-  // Read with the RETAINED era, never with the head's. The check above has just
-  // established that the retained ledger wrote these bytes, and it is the only
-  // ledger that can read them -- post-fork included, because the fork does not
-  // rewrite a contract's stored state. Handing them to the head's era is what
-  // made keep-state impossible.
-  const encoded = retainedEra.extractState(state.raw);
-  const decoded = retainedEra.decodeContractState(state.raw);
+  // Read with the era the ENVELOPE names, never with the head's and never with
+  // a fixed one. A retained envelope is the retained ledger's to read -- pre-
+  // fork natively, post-fork as keep-state, because the fork does not rewrite a
+  // contract's stored state. A current-era envelope belongs to the head's era,
+  // and post-fork it is what a contract looks like once an earlier call has
+  // migrated it; its retained verifier keys survive that migration unchanged,
+  // so this pipeline is still the right one to run it.
+  //
+  // Pinning this to the retained era is what made a migrated contract callable
+  // exactly once.
+  const reader = stateEra === 'v8' ? retainedEra : headEra;
+  const encoded = reader.extractState(state.raw);
+  const decoded = reader.decodeContractState(state.raw);
 
-  return { state, encoded, decoded };
+  return { state, encoded, decoded, stateEra };
 };
 
 /**
@@ -295,21 +313,40 @@ export const readLedger8Snapshot = async (
  * @param snapshot The one snapshot this operation read.
  * @param circuitId The entry point to check.
  * @param localVerifierKey The key compiled beside the local artifact.
+ * @param contractAddress The contract being operated on, named in the era-level refusal.
  * @throws Ledger8AmbiguousEntryPointError if the state declares the name twice.
  * @throws BlankVerifierKeySlotError if the chain declares no key for it.
- * @throws VerifierKeyMismatchError if the two keys differ byte for byte.
+ * @throws RetainedArtifactOnCurrentEraStateError if the keys differ byte for byte AND the state
+ * carries a current-era envelope, which together mean the contract was built with current-toolchain
+ * artifacts — carrying the byte-level mismatch on `cause`.
+ * @throws VerifierKeyMismatchError if the two keys differ byte for byte on a retained-era state.
  * @see {@link VerificationPath} for what this check buys.
  */
 export const assertSnapshotVerifierKey = (
   snapshot: Ledger8Snapshot,
   circuitId: string,
-  localVerifierKey: Uint8Array
+  localVerifierKey: Uint8Array,
+  contractAddress: string
 ): void => {
   const matches = snapshot.decoded.entryPoints.filter((candidate) => candidate.circuitId === circuitId);
   if (matches.length > 1) {
     throw new Ledger8AmbiguousEntryPointError(circuitId, matches.length);
   }
-  assertVerifierKeyMatches(localVerifierKey, matches[0]?.verifierKey, circuitId);
+  try {
+    assertVerifierKeyMatches(localVerifierKey, matches[0]?.verifierKey, circuitId);
+  } catch (cause) {
+    // A key mismatch on a CURRENT-era state has one likely cause worth naming: the contract was
+    // deployed with current-toolchain artifacts, so no retained artifact can ever match it and a
+    // retry is pointless. On a retained-era state the same mismatch means something else entirely
+    // -- the wrong build of the right contract -- so the generic refusal is the accurate one there.
+    //
+    // Only the MISMATCH is re-reported. A blank slot is left alone: it says the chain declares no
+    // key for this circuit at all, which is not an era statement.
+    if (snapshot.stateEra === 'v9' && cause instanceof VerifierKeyMismatchError) {
+      throw new RetainedArtifactOnCurrentEraStateError(contractAddress, { cause });
+    }
+    throw cause;
+  }
 };
 
 /**
@@ -513,6 +550,7 @@ export const runLedger8CallPipeline = async <TState>(
 
   const snapshot = await readLedger8Snapshot(
     retainedEra,
+    era,
     head,
     publicDataProvider,
     contractAddress,
@@ -531,7 +569,7 @@ export const runLedger8CallPipeline = async <TState>(
   // BEFORE proving, and before the circuit runs: a proof generated against a
   // key the chain does not hold is rejected on submission, so checking here
   // turns a paid-for, late failure into a free, immediate one.
-  assertSnapshotVerifierKey(snapshot, circuitId, request.localVerifierKey);
+  assertSnapshotVerifierKey(snapshot, circuitId, request.localVerifierKey, contractAddress);
 
   const downConverted = engine.downConvertForExecution(snapshot.encoded);
   const transcript = engine.executeCircuit({
