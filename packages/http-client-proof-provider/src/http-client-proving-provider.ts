@@ -19,7 +19,7 @@ import {
   parseCheckResult,
   type ProvingKeyMaterial,
   type ProvingProvider} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { InvalidProtocolSchemeError, type ZKConfigProvider, ZKConfigRegistry, zkConfigToProvingKeyMaterial } from '@midnight-ntwrk/midnight-js-types';
+import { InvalidProtocolSchemeError, TIMEOUT_AWARE_BRAND, type ZKConfigProvider, ZKConfigRegistry, zkConfigToProvingKeyMaterial } from '@midnight-ntwrk/midnight-js-types';
 import { warnIfInsecureRemoteUrl, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
@@ -108,8 +108,13 @@ export interface ProvingProviderConfig {
  * `ProvingProvider`; callers that don't need per-request control can ignore it. Used by
  * `httpClientProofProvider` to honor a per-`proveTx` timeout without rebuilding the underlying
  * provider — see https://github.com/midnightntwrk/midnight-js/issues/974.
+ *
+ * The interface is also re-exported from `@midnight-ntwrk/midnight-js-types` as the canonical
+ * definition. This local copy extends `ProvingProvider` from the protocol package; consumers
+ * that import either will see the same shape.
  */
 export interface TimeoutAwareProvingProvider extends ProvingProvider {
+  readonly [TIMEOUT_AWARE_BRAND]: true;
   check(
     serializedPreimage: Uint8Array,
     keyLocation: string,
@@ -146,6 +151,7 @@ export const httpClientProvingProvider = <K extends string>(
   const headers = config?.headers ?? {};
 
   return  {
+    [TIMEOUT_AWARE_BRAND]: true,
     async check(
       serializedPreimage: Uint8Array,
       keyLocation: string,

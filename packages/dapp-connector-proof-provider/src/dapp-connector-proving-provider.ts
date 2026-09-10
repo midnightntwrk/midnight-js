@@ -14,7 +14,13 @@
  */
 
 import type { ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type ZKConfigProvider, ZKConfigRegistry, zkConfigToProvingKeyMaterial } from '@midnight-ntwrk/midnight-js-types';
+import {
+  type ZKConfigProvider,
+  type TimeoutAwareProvingProvider,
+  TIMEOUT_AWARE_BRAND,
+  ZKConfigRegistry,
+  zkConfigToProvingKeyMaterial
+} from '@midnight-ntwrk/midnight-js-types';
 import type { WalletConnectedAPI } from '@midnightntwrk/dapp-connector-api';
 
 /**
@@ -27,30 +33,39 @@ import type { WalletConnectedAPI } from '@midnightntwrk/dapp-connector-api';
 export type DAppConnectorProvingAPI = Pick<WalletConnectedAPI, 'getProvingProvider'>;
 
 /**
- * Obtains a {@link ProvingProvider} from the DApp Connector wallet.
+ * Obtains a {@link TimeoutAwareProvingProvider} from the DApp Connector wallet.
  *
  * @remarks
  * Extracts key material from the given `zkConfigProvider` and passes it to the wallet's
  * `getProvingProvider` method. Use this when you need direct, circuit-level access to the
  * wallet's proving capabilities without cost model integration.
  *
+ * The returned provider carries the {@link TIMEOUT_AWARE_BRAND} brand and accepts an optional
+ * trailing `overrideTimeout` parameter on `check` / `prove`. The per-call timeout is forwarded
+ * to the wallet implementation when the wallet accepts the parameter; when the wallet's
+ * underlying `getProvingProvider` does not (current state of the upstream wallet), the
+ * parameter is silently ignored — the framework side is structurally ready, and wallet
+ * implementations can opt in to honor the override without further changes here.
+ *
  * @typeParam K - Union of circuit identifier strings defined by the contract.
  * @param api - DApp Connector wallet API exposing `getProvingProvider`.
  * @param zkConfigProvider - Provider that supplies ZK configuration artifacts and key material.
- * @returns A {@link ProvingProvider} backed by the wallet.
+ * @returns A {@link TimeoutAwareProvingProvider} backed by the wallet.
  */
 export const dappConnectorProvingProvider = async <K extends string>(
   api: DAppConnectorProvingAPI,
   zkConfigProvider: ZKConfigProvider<K> | ZKConfigRegistry,
-): Promise<ProvingProvider> => {
+): Promise<TimeoutAwareProvingProvider> => {
   // The wallet round-trips each proof preimage's key location into this provider, so contract
   // key locations must be resolved through the registry's verifier-key join.
   const registry =
     zkConfigProvider instanceof ZKConfigRegistry ? zkConfigProvider : new ZKConfigRegistry([zkConfigProvider]);
   const walletProvingProvider = await api.getProvingProvider(registry.asKeyMaterialProvider());
   return {
-    check: (serializedPreimage, keyLocation) => walletProvingProvider.check(serializedPreimage, keyLocation),
-    prove: (serializedPreimage, keyLocation, overwriteBindingInput) =>
+    [TIMEOUT_AWARE_BRAND]: true,
+    check: (serializedPreimage, keyLocation, _overrideTimeout?: number) =>
+      walletProvingProvider.check(serializedPreimage, keyLocation),
+    prove: (serializedPreimage, keyLocation, overwriteBindingInput, _overrideTimeout?: number) =>
       walletProvingProvider.prove(serializedPreimage, keyLocation, overwriteBindingInput),
     async lookupKey(keyLocation) {
       const resolved = await registry.resolveKeyLocation(keyLocation);
@@ -58,3 +73,8 @@ export const dappConnectorProvingProvider = async <K extends string>(
     }
   };
 };
+
+// Re-export `ProvingProvider` from this module for backwards compatibility with downstream
+// consumers that imported it from here. New code should import directly from the protocol
+// package.
+export type { ProvingProvider };
