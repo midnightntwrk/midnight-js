@@ -51,6 +51,8 @@ import {
   VerifierKeyMismatchError
 } from '../errors';
 import type { Ledger8ContractCall } from '../ledger8-contract';
+import type { BreadcrumbSink } from './breadcrumbs';
+import { resolveContractStateEra } from './era';
 import {
   type EncryptionPublicKeyResolver,
   serializeCoinInfo,
@@ -58,9 +60,7 @@ import {
   zswapStateToNewCoins,
   zswapStateToOffer,
   zswapStateToSegmentedOffer
-} from '../utils/zswap-utils';
-import type { BreadcrumbSink } from './breadcrumbs';
-import { resolveContractStateEra } from './era';
+} from './utils/zswap-utils';
 import { assertVerifierKeyMatches } from './verifier-key';
 
 /**

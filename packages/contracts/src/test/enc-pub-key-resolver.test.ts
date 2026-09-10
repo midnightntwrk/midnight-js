@@ -19,8 +19,8 @@ import { sampleCoinPublicKey, sampleEncryptionPublicKey, type UnprovenTransactio
 import { parseCoinPublicKeyToHex,parseEncPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { deployContract } from '../deploy-contract';
+import { createEncryptionPublicKeyResolver, encryptionPublicKeyResolverForZswapState } from '../internal/utils';
 import { createCircuitCallTxInterface } from '../tx-interfaces';
-import { createEncryptionPublicKeyResolver, encryptionPublicKeyResolverForZswapState } from '../utils';
 import {
   createMockCoinPublicKey,
   createMockCompiledContract,

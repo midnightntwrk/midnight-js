@@ -22,7 +22,7 @@
  * offer the other era rejects.
  *
  * The consumer that depends on it is `zswapStateToSegmentedOffer`
- * (`packages/contracts/src/utils/zswap-utils.ts`), which builds its offers out
+ * (`packages/contracts/src/internal/utils/zswap-utils.ts`), which builds its offers out
  * of the CURRENT era's ledger classes — that is the ledger the `contracts`
  * package links — and then hands the serialized bytes to whichever era the
  * retained-era pipelines are composing against. Were the two eras' offer

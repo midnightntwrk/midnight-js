@@ -106,7 +106,7 @@ inferred (ADR 0006, ADR 0007).
 
 - `packages/contracts/src/internal/ledger8-entry.ts` — reads back bytes the current era has just
   composed, inside the current-era arm
-- `packages/contracts/src/utils/ledger-utils.ts` — round-trips a live in-memory object through its
+- `packages/contracts/src/internal/utils/ledger-utils.ts` — round-trips a live in-memory object through its
   own `serialize()`, via the `utils` wrappers below
 
 ### The typed wrappers themselves

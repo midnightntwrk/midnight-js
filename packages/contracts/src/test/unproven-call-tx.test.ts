@@ -40,7 +40,7 @@ vi.mock('../get-states', () => ({
   getPublicStates: vi.fn()
 }));
 
-vi.mock('../utils', () => ({
+vi.mock('../internal/utils', () => ({
     createUnprovenLedgerDeployTx: vi.fn().mockReturnValue([
       'mock-contract-address',
       StateValue.newNull(),

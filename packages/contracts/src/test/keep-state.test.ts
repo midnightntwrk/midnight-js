@@ -55,9 +55,9 @@ import {
   RetainedArtifactOnCurrentEraStateError
 } from '../errors';
 import { runLedger8CallPipeline } from '../internal/ledger8-pipeline';
+import { createEncryptionPublicKeyResolver } from '../internal/utils';
 import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx } from '../submit-call-tx';
-import { createEncryptionPublicKeyResolver } from '../utils';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
 import {
   type CoinReceiverRecording,
