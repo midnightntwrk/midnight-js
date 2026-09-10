@@ -2240,4 +2240,49 @@ describe('attaching to a retained-era contract already on chain', () => {
     await expect(findDeployedContract(providers, attachOptions())).resolves.toBeDefined();
     expect(providers.publicDataProvider.watchForDeployTxData).toHaveBeenCalled();
   });
+
+  // Both tags are legitimate on this path -- the test above pins that -- so
+  // there is no era to compare the record against. What IS refusable is a
+  // record carrying no usable tag at all. `version` selects the runtime of the
+  // live `tx` handle beside it, so an unreadable tag hands a caller a handle it
+  // cannot attribute, which is the failure the current era's arm refuses
+  // through `requireV9Record`'s own default branch.
+  it.each([
+    ['absent', undefined],
+    ['unrecognised', 'v10'],
+    ['mis-cased', 'V8']
+  ])('refuses a deploy record whose version tag is %s', async (_label, version) => {
+    const providers = attachProviders(v6Envelope);
+    providers.publicDataProvider.watchForDeployTxData = vi
+      .fn()
+      .mockResolvedValue({ ...createMockFinalizedTxData(), version });
+
+    await expect(findDeployedContract(providers, attachOptions())).rejects.toBeInstanceOf(UntaggedPayloadError);
+  });
+
+  it('names the seam and the tag it actually received when it refuses one', async () => {
+    const providers = attachProviders(v6Envelope);
+    providers.publicDataProvider.watchForDeployTxData = vi
+      .fn()
+      .mockResolvedValue({ ...createMockFinalizedTxData(), version: 'v10' });
+
+    const caught = await findDeployedContract(providers, attachOptions()).catch((error: unknown) => error);
+
+    expect(caught).toBeInstanceOf(UntaggedPayloadError);
+    expect((caught as UntaggedPayloadError).seam).toBe('watchForDeployTxData');
+    expect((caught as UntaggedPayloadError).received).toContain('v10');
+  });
+
+  it('still accepts BOTH legitimate tags, which is what makes the refusal above about the shape', async () => {
+    for (const version of ['v8', 'v9'] as const) {
+      const providers = attachProviders(v6Envelope);
+      providers.publicDataProvider.watchForDeployTxData = vi
+        .fn()
+        .mockResolvedValue({ ...createMockFinalizedTxData(), version });
+
+      const found = await findDeployedContract(providers, attachOptions());
+
+      expect(found.deployTxData.version).toBe(version);
+    }
+  });
 });
