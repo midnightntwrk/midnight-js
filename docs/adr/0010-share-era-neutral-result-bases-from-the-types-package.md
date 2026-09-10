@@ -78,6 +78,28 @@ We will split base placement by what a base names:
   maintenance interfaces, which reach `submitCallTx`. Moving those to `types`
   would require `types` to depend on `contracts`.
 
+### The contract HANDLES get the gate and no base
+
+`FoundContract` / `Ledger8FoundContract` and `DeployedContract` /
+`Ledger8DeployedContract` are held in step by the key-set parity gate ALONE.
+There is no base for them and there will not be one.
+
+Every member the two arms share has an era-specific type: `era` is
+`CurrentPipelineEra` against `RetainedPipelineEra`, `callTx` is
+`CircuitCallTxInterface<C>` against `Ledger8CircuitCallTxInterface<C>`, and
+`deployTxData` is `FinalizedDeployTxDataBase<C>` against
+`VersionedFinalizedTxData`. A base over those three declares a key set and
+nothing else — the same shape this ADR already rejected for a top-level
+`FinalizedCallTxDataBase`, and for the same reason: two arms narrowing one
+base's member to different types is a "cannot simultaneously extend" error
+rather than a guarantee. Where the shared members carry no shared type, the
+gate is not the weaker of the two tools; it is the only one.
+
+The gate for these types lives beside the result-shape one in
+`packages/contracts/src/test/typecheck/overloads.test-d.ts`, with the same
+allow-list discipline and the same backstop asserting an excused member still
+EXISTS.
+
 Two members of the base set are deliberately NOT generic:
 
 - `nextZswapLocalState` is declared once, as the current era's
@@ -125,10 +147,19 @@ is what the key-set gate asserts directly.
   documented as declarations-only and is not — it already ships around 29
   runtime values — but these bases are consistent with the rule as stated for
   new code, and add no runtime value.
-- **Follow-ups:** none outstanding. The retained era's missing `calls` was
+- **Positive:** the handle surfaces are gated too, and the drift the gate found
+  on its first run is closed: `compiledContract` and `contractAddress` were on
+  the retained arm alone, for no reason anyone had written down, and are now on
+  both.
+- **Follow-ups:** the retained era's missing `calls` was
   listed here while ADR-0007 still barred a live `StateValue` from the type;
   ADR-0011 lifted that bar, so `Ledger8ContractCall` is published with a full
   call-entry parity assertion rather than an allow-list entry.
+  One handle divergence is excused rather than closed: both eras hold the
+  deployer's `signingKey`, `initialPrivateState`, `initialZswapState` and
+  `initialContractState`, but the current era nests them under `deployTxData`
+  and the retained era publishes them flat. Which path wins is a breaking
+  change to a published surface either way, so it is its own decision.
 
 ## Alternatives considered
 

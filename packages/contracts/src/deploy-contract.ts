@@ -188,6 +188,8 @@ export async function deployContract<C extends Contract.Any>(
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
   return {
     era: CURRENT_PIPELINE_ERA,
+    compiledContract: options.compiledContract,
+    contractAddress: deployTxData.public.contractAddress,
     deployTxData,
     callTx: createCircuitCallTxInterface(
       providers,
