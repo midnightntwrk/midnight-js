@@ -67,7 +67,7 @@ export function requireV9<T>(
     case 'v9':
       return payload.tx;
     case 'v8':
-      throw new EraInvariantViolationError(seam, circuitId);
+      throw new EraInvariantViolationError(seam, circuitId, 'v9', 'v8');
     default: {
       const unhandled: never = payload;
       throw new UntaggedPayloadError(seam, unhandled);
@@ -113,9 +113,41 @@ export function requireV8<T>(
     case 'v8':
       return payload.txBytes;
     case 'v9':
-      throw new EraInvariantViolationError(seam, circuitId, 'v8');
+      throw new EraInvariantViolationError(seam, circuitId, 'v8', 'v9');
     default: {
       const unhandled: never = payload;
+      throw new UntaggedPayloadError(seam, unhandled);
+    }
+  }
+}
+
+/**
+ * Refuses a finalized-transaction record that carries no readable era tag,
+ * accepting either arm.
+ *
+ * The retained arm's counterpart to {@link requireV9Record}, for the paths
+ * where BOTH tags are legitimate answers and there is therefore no era to
+ * refuse. A contract found on chain was deployed in whichever era was current
+ * then, so its deploy record is genuinely either arm. What is still refusable
+ * is a tag that names no era at all: `version` selects the runtime of the live
+ * `tx` handle beside it, so an unreadable tag hands a caller a handle it cannot
+ * attribute.
+ *
+ * @param record The record the read surface returned.
+ * @param seam The read-surface method that returned it.
+ * @returns The record, tagged with a recognised era.
+ * @throws UntaggedPayloadError if `version` is missing or unrecognised.
+ */
+export function requireTaggedRecord(record: VersionedFinalizedTxData, seam: EraSeam): VersionedFinalizedTxData {
+  if (typeof record !== 'object' || record === null) {
+    throw new UntaggedPayloadError(seam, record);
+  }
+  switch (record.version) {
+    case 'v8':
+    case 'v9':
+      return record;
+    default: {
+      const unhandled: never = record;
       throw new UntaggedPayloadError(seam, unhandled);
     }
   }

@@ -77,6 +77,7 @@ import { type BreadcrumbSink, emitPipelineSelection } from './breadcrumbs';
 import {
   assertEraCompatible,
   type HeadVersionSource,
+  requireTaggedRecord,
   requireV8,
   requireV9,
   type ResolvedOperationEra,
@@ -799,7 +800,16 @@ export const findLedger8Contract = async (
     );
   }
 
-  return { deployTxData: await providers.publicDataProvider.watchForDeployTxData(request.contractAddress) };
+  // Tagged, not attributed to the head: a contract found on chain was deployed
+  // in whichever era was current THEN, so either arm is a legitimate answer
+  // here and there is no era to compare against. The current era's arm narrows
+  // to v9 at this same seam because v9 is its only legitimate answer.
+  return {
+    deployTxData: requireTaggedRecord(
+      await providers.publicDataProvider.watchForDeployTxData(request.contractAddress),
+      'watchForDeployTxData'
+    )
+  };
 };
 
 /**
@@ -860,10 +870,16 @@ const assertLedger8RecordEra = (
   head: LedgerVersion,
   circuitId: string
 ): void => {
-  if (record.version === head) {
+  // Shape before era: a tag that names no era is a DIFFERENT fault from one
+  // naming the wrong era, and it wants a different remediation. Telling a
+  // caller whose provider emitted no tag to check that nothing "re-tags" the
+  // payload points them away from the fault. This is the same split the
+  // current era's `requireV9Record` makes in its own default branch.
+  const tagged = requireTaggedRecord(record, 'watchForTxData');
+  if (tagged.version === head) {
     return;
   }
-  throw new EraInvariantViolationError('watchForTxData', circuitId, head);
+  throw new EraInvariantViolationError('watchForTxData', circuitId, head, tagged.version);
 };
 
 /** The private-state members a retained-era call reads and writes. */
