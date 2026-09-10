@@ -94,6 +94,7 @@ describe('submit-call-tx', () => {
     era: CURRENT_PIPELINE_ERA,
     public: {
       nextContractState: StateValue.newNull(),
+      nextContractStateEncoded: StateValue.newNull().encode(),
       publicTranscript: [],
       partitionedTranscript: {} as PartitionedTranscript,
       logEvents: []
