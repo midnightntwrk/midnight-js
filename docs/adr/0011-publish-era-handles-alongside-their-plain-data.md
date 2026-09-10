@@ -76,6 +76,18 @@ Three rules bound this:
   the current era's for reasons the caller cannot see; the era key-set parity
   gate's allow-list shrinks to absences that are about the retained toolchain
   itself rather than about transport.
+- **Positive:** the encoded pair is published in BOTH eras. Rule 1 was first
+  applied to the retained era alone, which left `nextContractStateEncoded` in
+  the parity gate's allow-list under the claim that the current era "publishes
+  its post-state as a handle only, so there is nothing on that side for this to
+  pair with". `StateValue.encode()` exists, so the pair was available and had
+  simply not been built. The current-era result carries it too and the
+  allow-list entry is gone, which is what makes the encoded form the member
+  era-agnostic code can read without branching -- the point of rule 1, and one
+  that did not hold while a single era obeyed it.
+- **Negative:** one encode per current-era call, paid whether or not the caller
+  reads the member. The retained era already paid its equivalent, and the cost
+  buys the branch-free read above.
 - **Negative:** a result object is no longer uniformly cloneable. Calling
   `structuredClone`, `postMessage` or a JSON/superjson serializer on a whole
   retained result now throws or, worse, records a meaningless `__wbg_ptr`.

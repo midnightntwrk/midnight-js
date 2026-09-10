@@ -65,6 +65,7 @@ export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // Deliberately no test-file names here: which suite exercises what is the kind of claim that rots
 // the first time a test moves.
 export {
+  AnyEraTxFailedError,
   BlankVerifierKeySlotError,
   CallTxFailedError,
   ContractTypeError,
@@ -86,6 +87,7 @@ export {
   Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
   MixedEraScopeError,
+  ScopedTransactionIdentityMismatchError,
   ScopedTxEraUnsupportedError,
   StaleHeadError,
   type StaleHeadOperationKind,
@@ -93,6 +95,7 @@ export {
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation,
   TxFailedError,
+  UnrecognisedResultEraError,
   VerifierKeyMismatchError} from './errors';
 export {
   findDeployedContract,
@@ -139,6 +142,18 @@ export {
 // The `AnyLedger8*` aliases stay internal -- they exist to widen the
 // era-dispatching IMPLEMENTATION signatures and are never a signature a caller
 // sees.
+//
+// ONE member is held back: `Ledger8DeployedContract`. The argument above is
+// that a caller who can obtain a value needs to be able to name its type --
+// and no caller can obtain this one. `deployContract`'s retained arm refuses
+// every retained-toolchain artifact with `Ledger8DeployUnmaintainableError`
+// before it touches a provider, so nothing constructs the type. Exporting it
+// would publish a documented five-member type nobody can hold, and, because it
+// extends `Ledger8FoundContract`, would make every later repair of the handle
+// surface a breaking change to a published type with no users. The two refusal
+// ERRORS are exported, because those a caller does receive and must be able to
+// catch by class. Export the type in the commit that makes the deploy arm
+// produce one.
 export {
   CURRENT_PIPELINE_ERA,
   type CurrentPipelineEra,
@@ -146,6 +161,10 @@ export {
   RETAINED_PIPELINE_ERA,
   type RetainedPipelineEra
 } from './era';
+// The receiving half of the era surface: the overloads hand a caller one era's
+// result by inference, and these let a caller who RECEIVES either one declare a
+// parameter for both and narrow it by name.
+export { type AnyEraFinalizedCallTxData, type AnyEraSubmittedCallTx, isLedger8Result } from './era-results';
 export type {
   Ledger8CallResultPrivate,
   Ledger8CallResultPublic,
@@ -161,27 +180,31 @@ export type {
   Ledger8CircuitResult,
   Ledger8CircuitReturnType,
   Ledger8ConstructorParameters,
-  Ledger8ConstructorResult,
   Ledger8Contract,
   Ledger8ContractCall,
   Ledger8ContractCallPublic,
   Ledger8ContractProviders,
   Ledger8DeployContractOptions,
   Ledger8DeployContractOptionsBase,
-  Ledger8DeployedContract,
   Ledger8FinalizedCallTxData,
   Ledger8FinalizedCallTxPublicData,
   Ledger8FindDeployedContractOptions,
   Ledger8FoundContract,
+  Ledger8InitialStateResult,
   Ledger8PrivateState,
   Ledger8SubmittedCallTx,
   Ledger8UnsubmittedCallTxData,
   Ledger8Witness
 } from './ledger8-contract';
-export { submitCallTx, submitCallTxAsync } from './submit-call-tx';
+export { submitCallTx, submitCallTxAsync, type SubmitCallTxProviders } from './submit-call-tx';
 export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
 export { submitTx, submitTxAsync, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
-export { ScopedTransactionOptions, TransactionContext, withContractScopedTransaction } from './transaction';
+export {
+  isTransactionContext,
+  ScopedTransactionOptions,
+  TransactionContext,
+  withContractScopedTransaction
+} from './transaction';
 export {
   CircuitCallTxInterface,
   createCallTxOptions,
@@ -208,6 +231,7 @@ export {
   CallTxOptionsWithPrivateStateId,
   createUnprovenCallTx,
   createUnprovenCallTxFromInitialStates,
+  type CrossContractConfig,
   UnprovenCallTxProvidersBase,
   UnprovenCallTxProvidersWithPrivateState
 } from './unproven-call-tx';

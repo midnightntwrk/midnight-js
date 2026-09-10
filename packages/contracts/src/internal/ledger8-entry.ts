@@ -33,7 +33,12 @@
 
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { DownConvertedState, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
-import { loadLedger8Engine, loadLedgerEra, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
+import {
+  type LedgerVersion,
+  loadLedger8Engine,
+  loadLedgerEra,
+  UnknownLedgerVersionError
+} from '@midnight-ntwrk/midnight-js-protocol';
 import { Transaction, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type MidnightProvider,
@@ -55,6 +60,7 @@ import {
 
 import { RETAINED_PIPELINE_ERA } from '../era';
 import {
+  EraInvariantViolationError,
   type EraSeam,
   IncompleteCallTxPrivateStateConfig,
   Ledger8CallTxFailedError,
@@ -67,11 +73,11 @@ import type {
   AnyLedger8SubmittedCallTx,
   AnyLedger8UnsubmittedCallTxData
 } from '../ledger8-contract';
-import { createEncryptionPublicKeyResolver } from '../utils';
 import { type BreadcrumbSink, emitPipelineSelection } from './breadcrumbs';
 import {
   assertEraCompatible,
   type HeadVersionSource,
+  requireTaggedRecord,
   requireV8,
   requireV9,
   type ResolvedOperationEra,
@@ -88,6 +94,7 @@ import {
   runLedger8DeployPipeline
 } from './ledger8-pipeline';
 import { handleSubmitRejection } from './stale-head';
+import { createEncryptionPublicKeyResolver } from './utils';
 
 /**
  * Reads the current era's own freshly composed bytes back into the live
@@ -521,6 +528,16 @@ export interface Ledger8CallRequest {
 export interface Ledger8SubmittedCall {
   readonly txId: string;
   readonly call: Ledger8CallPipelineResult<DownConvertedState>;
+  /**
+   * The era the network head was on when this call started.
+   *
+   * Deliberately NOT on the published `Ledger8SubmittedCallTx`: that type names
+   * the era of the PIPELINE, and this is the era of the NETWORK. The two are
+   * different facts and they disagree on this arm every time a retained-era
+   * call is recorded post-fork. The finalizing arm needs this one to attribute
+   * the record it fetches, so it travels on this internal shape instead.
+   */
+  readonly head: LedgerVersion;
 }
 
 /**
@@ -609,7 +626,7 @@ export const runLedger8Call = async (
     contractAddress: request.contractAddress
   });
 
-  return { txId, call };
+  return { txId, call, head: resolved.head };
 };
 
 /** What a retained-era deploy arrived with. */
@@ -783,7 +800,16 @@ export const findLedger8Contract = async (
     );
   }
 
-  return { deployTxData: await providers.publicDataProvider.watchForDeployTxData(request.contractAddress) };
+  // Tagged, not attributed to the head: a contract found on chain was deployed
+  // in whichever era was current THEN, so either arm is a legitimate answer
+  // here and there is no era to compare against. The current era's arm narrows
+  // to v9 at this same seam because v9 is its only legitimate answer.
+  return {
+    deployTxData: requireTaggedRecord(
+      await providers.publicDataProvider.watchForDeployTxData(request.contractAddress),
+      'watchForDeployTxData'
+    )
+  };
 };
 
 /**
@@ -809,6 +835,51 @@ const assertLedger8TxSucceeded = (record: VersionedFinalizedTxData, circuitId: s
     return;
   }
   throw new Ledger8CallTxFailedError(record, circuitId);
+};
+
+/**
+ * Refuses a finalized record the head this operation resolved cannot have
+ * recorded.
+ *
+ * `version` on the record SELECTS the runtime of the live `tx` handle beside
+ * it, so a mislabelled record does not fail loudly: a caller that narrows on
+ * it reaches into the other ledger module and is handed a plausible wrong
+ * value. The current era refuses the mirror of this at the same seam, through
+ * `requireV9Record`. This is the retained arm's half, and it compares the
+ * record against the HEAD rather than against a fixed era, because a
+ * retained-era call is legitimately recorded by EITHER era -- which is why the
+ * result type keeps `version` a union in the first place.
+ *
+ * What this does NOT assert is that the result's `era` and the record's
+ * `version` agree. They legitimately disagree: `era: 'ledger8'` with
+ * `version: 'v9'` IS a keep-state transaction. The agreement that has to hold
+ * is between the record and the head the operation started on.
+ *
+ * Checked BEFORE the status, because `status` is a field of the very record
+ * whose provenance is in doubt. A call that both failed and came back
+ * mislabelled therefore reports the era fault, which is the one naming a cause
+ * a caller can act on.
+ *
+ * @param record The finalized record the read surface returned.
+ * @param head The era the network head was on when this operation started.
+ * @param circuitId The circuit this flow ran, named in the refusal.
+ * @throws EraInvariantViolationError if the record's era is not the head's.
+ */
+const assertLedger8RecordEra = (
+  record: VersionedFinalizedTxData,
+  head: LedgerVersion,
+  circuitId: string
+): void => {
+  // Shape before era: a tag that names no era is a DIFFERENT fault from one
+  // naming the wrong era, and it wants a different remediation. Telling a
+  // caller whose provider emitted no tag to check that nothing "re-tags" the
+  // payload points them away from the fault. This is the same split the
+  // current era's `requireV9Record` makes in its own default branch.
+  const tagged = requireTaggedRecord(record, 'watchForTxData');
+  if (tagged.version === head) {
+    return;
+  }
+  throw new EraInvariantViolationError('watchForTxData', circuitId, head, tagged.version);
 };
 
 /** The private-state members a retained-era call reads and writes. */
@@ -924,6 +995,79 @@ const toLedger8CallTxData = (
 });
 
 /**
+ * What one retained-era call entry produced: the submitted-call result the
+ * public arms answer with, and the era the network head was on.
+ *
+ * The head is here rather than on `Ledger8SubmittedCallTx` for the reason
+ * given on {@link Ledger8SubmittedCall.head}: that type names the era of the
+ * PIPELINE, this is the era of the NETWORK, and on this arm they routinely
+ * differ. The finalizing arm needs the network's to attribute the record it
+ * fetches, and no caller needs it at all.
+ */
+interface Ledger8CallEntryOutcome {
+  readonly submitted: AnyLedger8SubmittedCallTx;
+  readonly head: LedgerVersion;
+}
+
+/**
+ * Runs one retained-era call: the local refusals, the private-state read, the
+ * pipeline, and the submission -- everything both public arms share.
+ *
+ * Extracted so the finalizing arm can reach the head this call resolved
+ * WITHOUT a second head read. Re-reading it would break the single-head-read
+ * invariant the entry points are asserted against, and worse, a second reading
+ * could answer differently and attribute the record against an era the
+ * transaction was never built for.
+ *
+ * @param providers The provider set.
+ * @param options The call the entry point received.
+ * @returns The submitted-call result and the head era it resolved.
+ * @throws Every error the public arms document.
+ */
+const runLedger8CallEntry = async (
+  providers: Ledger8CallEntryProviders,
+  options: Ledger8CallEntryOptions
+): Promise<Ledger8CallEntryOutcome> => {
+  // The same two local refusals the current-era arm makes before any provider
+  // is touched. A malformed address would otherwise cost a network round trip
+  // to discover, and an unknown circuit id would surface as a blank
+  // verifier-key slot -- a diagnosis pointing at the chain when the fault is a
+  // typo in the caller's own call.
+  assertIsContractAddress(options.contractAddress);
+  assertDefined(
+    Object.hasOwn(options.compiledContract.impureCircuits, options.circuitId) ? options.circuitId : undefined,
+    `Circuit '${options.circuitId}' is undefined`
+  );
+
+  if (options.privateStateId !== undefined && providers.privateStateProvider === undefined) {
+    throw new IncompleteCallTxPrivateStateConfig();
+  }
+  providers.privateStateProvider?.setContractAddress(options.contractAddress);
+  const privateState =
+    providers.privateStateProvider === undefined
+      ? undefined
+      : await readLedger8PrivateState(providers.privateStateProvider, options.privateStateId);
+
+  const { txId, call, head } = await runLedger8Call(providers, {
+    contract: options.compiledContract,
+    contractAddress: options.contractAddress,
+    circuitId: options.circuitId,
+    args: options.args ?? [],
+    privateState
+  });
+
+  return {
+    submitted: {
+      era: RETAINED_PIPELINE_ERA,
+      txId,
+      circuitId: call.circuitId,
+      callTxData: toLedger8CallTxData(call)
+    },
+    head
+  };
+};
+
+/**
  * Runs a retained-era call and returns immediately after submission.
  *
  * Stores nothing: without waiting for finalization there is no evidence the
@@ -948,43 +1092,7 @@ const toLedger8CallTxData = (
 export const submitLedger8CallTxAsync = async (
   providers: Ledger8CallEntryProviders,
   options: Ledger8CallEntryOptions
-): Promise<AnyLedger8SubmittedCallTx> => {
-  // The same two local refusals the current-era arm makes before any provider
-  // is touched. A malformed address would otherwise cost a network round trip
-  // to discover, and an unknown circuit id would surface as a blank
-  // verifier-key slot -- a diagnosis pointing at the chain when the fault is a
-  // typo in the caller's own call.
-  assertIsContractAddress(options.contractAddress);
-  assertDefined(
-    Object.hasOwn(options.compiledContract.impureCircuits, options.circuitId) ? options.circuitId : undefined,
-    `Circuit '${options.circuitId}' is undefined`
-  );
-
-  if (options.privateStateId !== undefined && providers.privateStateProvider === undefined) {
-    throw new IncompleteCallTxPrivateStateConfig();
-  }
-  providers.privateStateProvider?.setContractAddress(options.contractAddress);
-  const privateState =
-    providers.privateStateProvider === undefined
-      ? undefined
-      : await readLedger8PrivateState(providers.privateStateProvider, options.privateStateId);
-
-  const { txId, call } = await runLedger8Call(providers, {
-    contract: options.compiledContract,
-    contractAddress: options.contractAddress,
-    circuitId: options.circuitId,
-    args: options.args ?? [],
-    privateState
-  });
-
-  return {
-    era: RETAINED_PIPELINE_ERA,
-    txId,
-    circuitId: call.circuitId,
-    nextPrivateState: call.nextPrivateState,
-    callTxData: toLedger8CallTxData(call)
-  };
-};
+): Promise<AnyLedger8SubmittedCallTx> => (await runLedger8CallEntry(providers, options)).submitted;
 
 /**
  * Runs a retained-era call and waits for the chain to record it, storing the
@@ -1007,8 +1115,14 @@ export const submitLedger8CallTx = async (
   providers: Ledger8CallEntryProviders,
   options: Ledger8CallEntryOptions
 ): Promise<AnyLedger8FinalizedCallTxData> => {
-  const { txId, circuitId, nextPrivateState, callTxData } = await submitLedger8CallTxAsync(providers, options);
+  const { submitted, head } = await runLedger8CallEntry(providers, options);
+  const { txId, circuitId, callTxData } = submitted;
+  // The ONE path to the next private state, the same one the current era
+  // publishes and this arm's own asynchronous surface documents.
+  const nextPrivateState = callTxData.private.nextPrivateState;
   const txData = await providers.publicDataProvider.watchForTxData(txId);
+  // Attribute the record BEFORE reading anything off it -- see the helper.
+  assertLedger8RecordEra(txData, head, circuitId);
   assertLedger8TxSucceeded(txData, circuitId);
 
   if (options.privateStateId !== undefined && providers.privateStateProvider !== undefined) {

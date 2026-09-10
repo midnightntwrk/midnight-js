@@ -34,8 +34,7 @@ import {
   type Ledger8CircuitId,
   type Ledger8Contract,
   type Ledger8ContractProviders,
-  type Ledger8DeployContractOptions,
-  type Ledger8DeployedContract
+  type Ledger8DeployContractOptions
 } from './ledger8-contract';
 import { type DeployTxOptions, submitDeployTx } from './submit-deploy-tx';
 import { createCircuitCallTxInterface } from './tx-interfaces';
@@ -133,6 +132,10 @@ const createDeployTxOptions = <C extends Contract.Any>(
  * the deployed contract could never be maintained by anyone. The deploy TRANSACTION path itself
  * composes and submits correctly — this refusal is about the result.
  *
+ * Typed `Promise<never>` because that is what an arm that only ever throws returns. It also keeps
+ * the signature free of `Ledger8DeployedContract`, which is deliberately NOT exported: naming an
+ * unexported type in a published signature gives a caller a value they cannot annotate.
+ *
  * The refusal is unconditional and comes BEFORE the network head is read, so `Ledger8DeployOnV9Error`
  * — the era pairing table's refusal for a retained-era deploy against a post-fork head — is not
  * reachable through this entry point today. Do NOT branch on it here: through `deployContract` that
@@ -146,7 +149,7 @@ const createDeployTxOptions = <C extends Contract.Any>(
 export async function deployContract<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
   options: Ledger8DeployContractOptions<C>
-): Promise<Ledger8DeployedContract<C>>;
+): Promise<never>;
 
 /**
  * Deploys a contract that declares no private state, so no private state id is required.
@@ -188,6 +191,8 @@ export async function deployContract<C extends Contract.Any>(
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
   return {
     era: CURRENT_PIPELINE_ERA,
+    compiledContract: options.compiledContract,
+    contractAddress: deployTxData.public.contractAddress,
     deployTxData,
     callTx: createCircuitCallTxInterface(
       providers,

@@ -235,7 +235,7 @@ this seam returns as `postContractState` rather than on this type.)
 `zswapLocalState` is the post-call Zswap local state, DECODED into the
 runtime's public shape: the coins the circuit spent and produced. A caller turns
 it into the transaction's segmented Zswap offer (`zswapStateToSegmentedOffer`,
-`packages/contracts/src/utils/zswap-utils.ts`) and hands that offer to whichever
+`packages/contracts/src/internal/utils/zswap-utils.ts`) and hands that offer to whichever
 composition leg it targets. Carrying it is what makes a coin-moving circuit
 composable on the retained era at all — omitting it would leave the caller
 composing a transaction that is missing the coin movements the circuit recorded,

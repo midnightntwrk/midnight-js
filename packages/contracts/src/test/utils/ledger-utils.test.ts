@@ -68,7 +68,7 @@ import {
   fromLedgerContractState,
   toLedgerContractState,
   toLedgerQueryContext,
-  ZSWAP_MERKLE_ROOT_RETENTION_SECONDS} from '../../utils';
+  ZSWAP_MERKLE_ROOT_RETENTION_SECONDS} from '../../internal/utils';
 const emptyTranscript: PartitionedTranscript = [undefined, undefined];
 
 /**

@@ -2,7 +2,7 @@
 
 **Migration complexity:** Significant. This is a protocol-level major release — expect to touch any code that constructs signing keys, persists exported signing keys, or imports ledger / onchain-runtime types directly.
 
-**This is also the release that carries a dApp across the ledger v8 to v9 hard fork.** The fork costs no further code change beyond the bump and the mechanical narrowing in [Step 13](#step-13--narrow-the-version-tagged-provider-payloads) — there is no new API to call at the boundary — but it does have timing and operational consequences, covered in [Step 14](#step-14--operating-across-the-ledger-fork). Adopt this major *before* the fork.
+**This is also the release that carries a dApp across the ledger v8 to v9 hard fork.** If you recompile your contracts with the current Compact toolchain, the fork costs no further code change beyond the bump and the mechanical narrowing in [Step 13](#step-13--narrow-the-version-tagged-provider-payloads) — there is no new API to call at the boundary. If you keep pre-fork artifacts callable, those calls answer with the retained era's own result types and fail with a different error class; both are covered in [Step 14](#step-14--operating-across-the-ledger-fork), which also carries the timing and operational consequences that apply either way. Adopt this major *before* the fork.
 
 The required changes fall into five buckets: (0) raise your Node and TypeScript floors, (1) bump the framework, (2) move signing keys to the structured `{ tag, value }` shape, (3) re-derive any state persisted under the old protocol, and (4) ship the `compactc` integrity manifest alongside your ZK artifacts (verification is now fail-closed). Contract-event APIs and cross-contract call support are additive — adopt them only if you need them.
 
@@ -319,10 +319,21 @@ carrying the era, the `protocolVersion`, the seam and the record on
 ## Step 14 — Operating across the ledger fork
 
 This release is the one that carries a dApp across the ledger v8 → v9 hard
-fork. Everything in this step is about *timing and operations*; **there is no
-further code change**. Steps 1 and 13 are the whole code migration — bump, then
-narrow where the compiler tells you to. Nothing below asks you to call a new
-API, branch on the network's era, or maintain a second code path.
+fork. Steps 1 and 13 are the whole code migration — bump, then narrow where the
+compiler tells you to.
+
+**If you recompile your contracts with the current Compact toolchain, there is
+no further code change**, and most of this step is about timing and operations
+rather than code. Nothing in that path asks you to call a new API, branch on
+the network's era, or maintain a second code path.
+
+**If you keep pre-fork artifacts callable instead**, there is more to it, and it
+is not optional reading: those calls run the retained pipeline and answer with
+the retained era's result types, which differ from the current era's in six
+places, and they fail with a different error class. Both are described under
+[What a retained-era call answers with](#what-a-retained-era-call-answers-with)
+below. Recompiling remains the preferred path — a retained artifact cannot be
+deployed at all, only called.
 
 Adopt this major **before** the fork, with enough lead time to ship it to your
 users rather than merely to merge it. A build still on the previous major when
@@ -419,6 +430,80 @@ In practice:
 The failure this exists to prevent is a factory whose deploy path was never
 exercised against a retained artifact, discovering only at the fork that the
 artifacts it ships take a release cycle to replace.
+
+### What a retained-era call answers with
+
+A call against a contract you compiled with the previous toolchain still goes
+through `submitCallTx` / `submitCallTxAsync` / `findDeployedContract`
+unchanged — you pass the raw contract instance instead of a `CompiledContract`
+container, and an additive overload picks the retained arm. What comes BACK is
+the same two-level shape (`public` / `private`), built from the same shared
+bases, so `private.result`, `public.txId` and `public.status` read identically
+in both eras.
+
+Six differences are worth knowing before you write a handler that has to accept
+either era.
+
+- **Every result names its era.** `result.era` is `'ledger8'` or `'ledger9'`,
+  read off the compiled artifact. Narrow with `isLedger8Result(result)`, and
+  declare a parameter that accepts both with `AnyEraFinalizedCallTxData` or
+  `AnyEraSubmittedCallTx`.
+- **`era` is not `public.version`.** `era` names the pipeline that produced the
+  objects; `public.version` names the ledger that recorded the transaction.
+  After the fork they disagree for every retained-era call: `era: 'ledger8'`
+  with `version: 'v9'` is a keep-state transaction, and that is correct. Branch
+  on `era` to decide which module an object came from, on `version` before
+  touching `public.tx`.
+- **`public.version` is a union on the retained arm.** A retained-era call is
+  recorded by whichever era the head is on, so narrow it. The current era's is
+  pinned `'v9'`.
+- **`public.nextContractState` is a different KIND of object per era.** The
+  current era gives a `StateValue`; the retained era gives
+  `{ data: ChargedState }` — one wrapper level up. Both eras also publish
+  `public.nextContractStateEncoded`, which is pinned identical across the
+  ledger runtimes. That is the member to read, persist, `structuredClone` or
+  post to a worker; the handles are valid only inside the process that built
+  them.
+- **No `logEvents` on the retained arm.** The previous toolchain has no
+  log-event concept at any layer, so there is no value to read rather than an
+  empty list to read.
+- **`private.txBytes` instead of `private.unprovenTx`.** The retained composer
+  answers with serialized bytes. Build a transaction object from them through
+  the same public loader if you need one.
+
+Two limits to plan around. Both eras now name the circuit on the result, and
+both handles carry `compiledContract` and `contractAddress`, so the contract
+HANDLES differ in only two places: the retained handle has no maintenance
+interfaces (the retained era has no governance arm), and its `deployTxData` is
+the flat record where the current era's is `{ era, public, private }`. And `getStates` / `getPublicStates` have no retained
+arm: they decode with the current-era deserializer and refuse anything else, so
+for a contract whose state envelope is still pre-fork, read the state through
+`queryRawContractState` and narrow on its `version`, or read
+`public.nextContractStateEncoded` off a call result.
+
+### Catching a failure in either era
+
+A call the chain recorded with a non-success status throws by class, and the
+class differs per era: `CallTxFailedError` on the current era,
+`Ledger8CallTxFailedError` on the retained one. The retained class is NOT a
+`CallTxFailedError` — it cannot be, because that class carries a v9-only
+record.
+
+Catch `AnyEraTxFailedError` to get both, and read the record through `.record`,
+which is version-tagged. Each class also keeps its own historical member
+(`finalizedTxData`, `txData`), so existing code does not change.
+
+```typescript
+try {
+  await submitCallTx(providers, options);
+} catch (error) {
+  if (error instanceof AnyEraTxFailedError) {
+    // Narrow before reading `tx`: the handle belongs to the era the tag names.
+    console.error(error.record.status, error.record.version);
+  }
+  throw error;
+}
+```
 
 ### The retained toolchain stays where it is
 

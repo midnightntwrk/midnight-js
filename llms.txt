@@ -291,7 +291,7 @@ const provingProvider = await dappConnectorProvingProvider(
 
 ```typescript
 // Single import for all core modules
-import { contracts, networkId, types, utils } from '@midnight-ntwrk/midnight-js';
+import { contracts, networkId, protocol, types, utils } from '@midnight-ntwrk/midnight-js';
 
 networkId.setNetworkId('testnet');
 const deployed = await contracts.deployContract(providers, options);
@@ -300,6 +300,34 @@ const deployed = await contracts.deployContract(providers, options);
 import { deployContract } from '@midnight-ntwrk/midnight-js/contracts';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
 ```
+
+### Annotating the Contract APIs
+
+The contract APIs are generic over a compiled contract, and several of their
+options carry a `compiledContract` field. The types needed to write those
+annotations ship from `@midnight-ntwrk/midnight-js/protocol`, so naming them
+does not require installing a second package:
+
+```typescript
+import type { CompiledContract, Contract } from '@midnight-ntwrk/midnight-js/protocol';
+import type { CallOptions, FoundContract } from '@midnight-ntwrk/midnight-js/contracts';
+
+type MyCompiled = CompiledContract.CompiledContract<Contract.Any, unknown>;
+type MyHandle = FoundContract<Contract.Any>;
+
+declare const findContract: (compiled: MyCompiled) => Promise<MyHandle>;
+declare const optionsFor: (handle: MyHandle) => CallOptions<Contract.Any, string>;
+
+const circuitCalledOn = async (compiled: MyCompiled): Promise<string> =>
+  optionsFor(await findContract(compiled)).circuitId;
+```
+
+`ContractExecutable` is exported alongside them; `CallResult.calls` is typed
+with its nested `ContractExecutable.ContractExecutable.ContractCall`.
+`CompiledContract` and `ContractExecutable` are also reachable as values
+through the barrel, as `protocol.CompiledContract` and
+`protocol.ContractExecutable`. `Contract` is a type, so it is importable only
+in type position -- there is no `protocol.Contract` value to read at runtime.
 
 The barrel also publishes the ledger era vocabulary as named exports, so a
 consumer can say which era produced a payload or a record without depending on
