@@ -64,6 +64,7 @@ const transcriptForUnregisteredCircuit = () => ({
   privateTranscriptOutputs: [],
   preContractState: downConvertedState(0x01),
   postContractState: downConvertedState(0x02),
+  postContractStateEncoded: downConvertedState(0x02).data.state.encode(),
   privateStateAfter: {},
   partitionContext: emptyPartitionContext(),
   zswapLocalState: emptyZswapLocalState()

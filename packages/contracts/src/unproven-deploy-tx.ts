@@ -28,6 +28,7 @@ import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
+import { CURRENT_PIPELINE_ERA } from './era';
 import { isEffectContractError } from './errors';
 import type { UnsubmittedDeployTxData } from './tx-model';
 import { createEncryptionPublicKeyResolver, createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
@@ -142,6 +143,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
     );
 
     return {
+      era: CURRENT_PIPELINE_ERA,
       public: {
         contractAddress,
         initialContractState

@@ -50,6 +50,8 @@ const buildTranscript = (): TranscriptPojo => ({
   privateTranscriptOutputs: [],
   preContractState: buildState(0x01),
   postContractState: buildState(0x02),
+  // The same state the handle holds, in the form that outlives the runtime.
+  postContractStateEncoded: buildState(0x02).data.state.encode(),
   privateStateAfter: {},
   partitionContext: emptyPartitionContext(),
   zswapLocalState: emptyZswapLocalState()
