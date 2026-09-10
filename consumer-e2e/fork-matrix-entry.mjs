@@ -582,6 +582,39 @@ const RETAINED_MATRIX = [
 
 /** What each retained twin's deploy and calls produced, carried from the pre-fork legs to the post-fork ones. */
 const retainedDeployments = new Map();
+
+/**
+ * What each retained twin's circuits RETURNED, by twin key, for the legs that
+ * come after.
+ *
+ * Separate from the per-leg context and from `retainedDeployments` because it
+ * is the one thing that has to cross the fork: a context is rebuilt on every
+ * leg -- it has to be, since the wallet is replaced at the `post-fork head era`
+ * gate -- so a value produced before the boundary has nowhere else to live.
+ * `unshielded` is the only twin that needs it today: the colour it minted
+ * pre-fork is what the post-fork send must name, and a colour cannot be
+ * recomputed from anything this file holds.
+ */
+const retainedCaptures = new Map();
+
+/**
+ * The wallet's current keys, plus whatever this twin captured on an earlier leg.
+ *
+ * A function rather than three call sites building the object, and that is the
+ * whole point: when the post-fork leg built its context from `walletContext`
+ * alone, `sendUnshieldedToUserTest` was handed `undefined` for the colour and
+ * died inside the twin's own codegen on `reading 'buffer'`. Every retained leg
+ * now reaches its context the same way, so a twin that adds a `capture` cannot
+ * be read correctly on one leg and not on the next.
+ *
+ * Captures FIRST: the wallet's keys are re-read on every call and must win over
+ * anything a circuit happened to return under the same name.
+ */
+const retainedContext = async (key) => ({
+  ...retainedCaptures.get(key),
+  ...(await walletContext(session.wallet))
+});
+
 const retainedZkConfigPath = (key) => {
   const zkConfigPath = config.retainedMatrixZkConfigPaths?.[key];
   if (zkConfigPath === undefined) {
@@ -680,6 +713,14 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
   // resolving if the chain reported anything but `SucceedEntirely`
   // (`internal/transaction.ts`, `internal/ledger8-entry.ts`), so a resolved call
   // has already cleared that check and a rejected one arrives in `leg`'s catch.
+
+  // The RAW return value, not the `String(...)` the report carries below: a
+  // later leg passes this back into a circuit as an argument, and the twin's
+  // codegen wants the value, not a rendering of it.
+  if (call.capture !== undefined) {
+    retainedCaptures.set(key, { ...retainedCaptures.get(key), [call.capture]: submitted.private.result });
+  }
+
   return {
     circuitId: call.circuitId,
     status: submitted.public.status,
@@ -881,7 +922,7 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     const deployed = await deployRetained(entry.key, providers, session.wallet);
     retainedDeployments.set(entry.key, deployed);
 
-    const context = await walletContext(session.wallet);
+    const context = await retainedContext(entry.key);
     const calls = [];
     for (const call of entry.preFork) {
       calls.push(
@@ -1000,8 +1041,10 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     }
     const providers = retainedProvidersFor('v9', session.wallet, entry.key);
     // Re-read rather than reused: the wallet was rebuilt at the `post-fork head
-    // era` gate, and a key read off the stopped one would be stale.
-    const context = await walletContext(session.wallet);
+    // era` gate, and a key read off the stopped one would be stale. Through
+    // `retainedContext`, so the colour minted before the boundary is in scope
+    // here -- naming it is the whole of the surviving-balance assertion.
+    const context = await retainedContext(entry.key);
     // A LIST, so a contract can mint on one call and assert on the next. Written
     // as one-or-many rather than always-many to leave the five single-call
     // entries untouched.
@@ -1063,10 +1106,16 @@ if (covers(SELECTED.retained, 'unshielded')) {
       );
     }
     const providers = retainedProvidersFor('v9', session.wallet, 'unshielded');
-    const context = { ...captured, ...(await walletContext(session.wallet)) };
+    const context = await retainedContext('unshielded');
 
     try {
-      await callRetained(NEGATIVE_CONTROL, 'unshielded', providers, deployed.contractAddress, {
+      // `'unshielded'` is the TWIN KEY, and it is the first argument because
+      // `callRetained` resolves `@midnight-ntwrk/fork-retained-${key}` from it.
+      // This call site used to pass `NEGATIVE_CONTROL` ahead of it, which made
+      // the import specifier a whole English sentence -- unreachable, but never
+      // reached, because the leg died on the undeclared capture map four lines
+      // above and the arity was never exercised.
+      await callRetained('unshielded', providers, deployed.contractAddress, {
         circuitId: 'sendUnshieldedToUserTest',
         // FOUR TIMES what the contract can be holding: one `MINT_AMOUNT` was
         // minted to this colour pre-fork and half of it has just been sent away,
@@ -1136,8 +1185,11 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     // for it by accident.
     const [call] = [entry.secondCall ?? entry.postFork].flat();
     // Re-read rather than reused: the wallet was rebuilt at the `post-fork head
-    // era` gate, and a key read off the stopped one would be stale.
-    const context = await walletContext(session.wallet);
+    // era` gate, and a key read off the stopped one would be stale. Through
+    // `retainedContext` like every other retained leg -- no twin's `secondCall`
+    // names a capture today, and this is what keeps the next one that does from
+    // being the third leg to find out the hard way.
+    const context = await retainedContext(entry.key);
 
     // NOT caught. A refusal here is a defect now, not a finding, so it must
     // colour the run's exit code -- which is the whole difference between this
