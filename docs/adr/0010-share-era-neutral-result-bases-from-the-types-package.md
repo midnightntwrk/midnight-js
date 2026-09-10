@@ -52,8 +52,16 @@ We will declare the members both eras must carry as shared bases in
 - `CallResultPublicBase` — `publicTranscript`, `partitionedTranscript`.
 - `CallResultPrivateBase<Result, PrivateState>` — the six execution members,
   generic over exactly the two whose types are era-specific.
+- `ContractCallPrivateBase` — the private half of ONE call entry. Unlike the
+  others this base has a single implementor: the current era's call entry comes
+  from `compact-js`, which this repo does not own and cannot make extend a base.
+  It therefore records the shared shape rather than enforcing it, and the
+  call-entry key-set assertion in the parity gate is what holds the two in step.
 - `UnsubmittedTxDataBase` — `newCoins`, the one member both eras carry
   alongside the transaction they composed.
+- `SubmittedCallTxBase<CallTxData>` — `txId` and `callTxData`, the two members
+  an asynchronous submission answers with before there is a record to pair the
+  execution data against.
 
 **The invariant: an era MAY add members to a base; an era may NOT drop one.**
 That is what makes the whole class of defect unrepresentable rather than merely
@@ -73,10 +81,11 @@ We will split base placement by what a base names:
 Two members of the base set are deliberately NOT generic:
 
 - `nextZswapLocalState` is declared once, as the current era's
-  `ZswapLocalState`. The two runtimes' declarations are member-for-member
-  identical and mutually assignable — verified with the compiler, in both
-  directions — so a third type parameter would only ever be filled with
-  structurally equal arguments. This is the *decoded* post-call state, not
+  `ZswapLocalState`. The two runtimes' declarations are mutually assignable, so
+  a third type parameter would only ever be filled with structurally equal
+  arguments. That is asserted with the compiler in BOTH directions, in
+  `packages/protocol/src/test/v8-execute.test.ts` — `packages/types` cannot host
+  the check because it may not reach the retained runtime. This is the *decoded* post-call state, not
   `Ledger8CircuitContext.currentZswapLocalState`, which is the runtime's
   byte-encoded form and does fall under ADR-0007.
 - `newCoins` is `ShieldedCoinInfo[]`, on the same grounds.
@@ -116,12 +125,10 @@ is what the key-set gate asserts directly.
   documented as declarations-only and is not — it already ships around 29
   runtime values — but these bases are consistent with the rule as stated for
   new code, and add no runtime value.
-- **Follow-ups:** the retained era still has no `calls`. The current era's
-  `ContractCall.public.contractState` is a live `StateValue`, so ADR-0007
-  reaches the type as it stands; carrying it would need a plain-data retained
-  variant whose only content duplicates the root call already published on
-  `public` and `private`. It is named in the gate's allow-list with that
-  reason, and is a decision to take on its own.
+- **Follow-ups:** none outstanding. The retained era's missing `calls` was
+  listed here while ADR-0007 still barred a live `StateValue` from the type;
+  ADR-0011 lifted that bar, so `Ledger8ContractCall` is published with a full
+  call-entry parity assertion rather than an allow-list entry.
 
 ## Alternatives considered
 

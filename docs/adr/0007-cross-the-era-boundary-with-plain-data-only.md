@@ -9,8 +9,8 @@
 > ALONGSIDE the plain-data members this ADR introduced — which all stay. Two
 > parts of this ADR still hold and are the reason ADR-0011 is additive rather
 > than a deletion: the analysis of what a WASM handle is, below, and the rule
-> that `LedgerEra` trades only plain data, still mechanised by the
-> `structuredClone` gate.
+> that `LedgerEra` trades only plain data. That second rule stands; the
+> `structuredClone` gate named below does NOT enforce it, and says so.
 
 ## Context
 
@@ -73,10 +73,17 @@ inconsistent until the rule is in view:
   so the pre-fork handle never reaches the ledger-v9 module, only the plain
   value it encoded to.
 
-The `LedgerEra` half is mechanised rather than left to convention:
+The `LedgerEra` half is DOCUMENTED by a gate rather than mechanised by one:
 `era-parity.test.ts` (`packages/protocol/src/test/`) calls `structuredClone`
-over the result of all four methods, on both eras. A live WASM handle in any of
-them makes that clone throw, so the gate fails instead of the handle shipping.
+over the result of four methods, on both eras.
+
+That gate does not do what it was written to do, and this correction is part of
+the record. A `wasm-bindgen` instance is an ordinary object whose only own
+property is a `__wbg_ptr` number, so `structuredClone` copies it happily and
+produces a detached record carrying a stale pointer. The clone does not throw,
+the gate does not fail, and a handle would ship. Closing the hole means testing
+for the handle shape directly; until that is done, the rule on this seam rests
+on review.
 
 This is a transport rule, not an immutability rule. `readonly` on a result's
 members freezes each reference, not the bytes behind it, so a value that

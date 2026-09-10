@@ -41,8 +41,11 @@ which to use. Concretely, on the retained-era surfaces:
 
 - `Ledger8CallResultPublic.nextContractState` carries the post-call state as
   the retained runtime's own handle.
-- Each entry of the retained `calls` list carries the state that call bound to,
-  as the same kind of handle.
+- Each entry of the retained `calls` list carries BOTH states as handles, under
+  names that mean the same thing in both eras. `contractState` is the state the
+  call ENDED on, because that is what `compact-js` fills the current era's
+  member of that name from; the state the call BOUND to is published beside it
+  as `preContractState`, which the current era has no counterpart for.
 - The retained deploy publishes the constructor's state handle next to the
   serialized bytes it composes from.
 
@@ -57,8 +60,11 @@ Three rules bound this:
    era-agnostic by construction — it holds whichever era the network answered
    with — so a handle there would be a value the caller cannot type, compare or
    safely pass on. The `structuredClone` gate in
-   `packages/protocol/src/test/era-parity.test.ts` stays, and stays the
-   mechanism.
+   `packages/protocol/src/test/era-parity.test.ts` stays, but it DOCUMENTS the
+   rule rather than mechanising it: a `wasm-bindgen` instance is a plain object
+   with an own `__wbg_ptr` number, so it clones without throwing and the gate
+   records a meaningless value instead of failing. Closing that is its own
+   change; until then the rule rests on review, not on the gate.
 3. **A handle is named as one.** The declaring member says which runtime
    produced it and that it is a live handle, so a reader learns the lifetime
    rule from the type rather than from this document.
