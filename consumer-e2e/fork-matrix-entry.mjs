@@ -402,27 +402,67 @@ const RETAINED_MATRIX = [
   },
   {
     key: 'unshielded',
-    preFork: [{ circuitId: 'mintUnshieldedToSelfTest', args: () => [DOMAIN_SEPARATOR, MINT_AMOUNT] }],
-    postFork: { circuitId: 'mintUnshieldedToSelfTest', args: () => [new Uint8Array(32).fill(8), MINT_AMOUNT] }
-    // NO state assertion here, and the reason is measured rather than assumed.
+    // WHY THIS TWIN ASSERTS THROUGH A CIRCUIT AND NOT THROUGH `state`.
     //
     // What survives for `unshielded` is the contract's BALANCE: it declares no
     // ledger block, and `decodeContractState` deliberately omits balance, so
-    // `readRetainedLedger` cannot reach it. The circuit that can read it is
-    // `getUnshieldedBalanceTest`, and a post-fork retained call to it is REFUSED
-    // BY THE CHAIN -- `submitTx rejected a retained-era transaction`, with the
-    // provider's reason redacted at the seam.
+    // `readRetainedLedger` cannot reach it at all. The circuit that reads it
+    // back, `getUnshieldedBalanceTest`, is REFUSED post-fork on the retained arm
+    // -- `submitTx rejected a retained-era transaction`, with the provider's own
+    // reason redacted at the seam by design.
     //
-    // The likely mechanism, not yet confirmed: it is a read-only circuit, so its
-    // transcript partitions wholly fallible, and the retained arm cannot balance
-    // that. The comparison that suggests it -- a retained `noop` succeeds
-    // post-fork, and a CURRENT-era `getUnshieldedBalanceTest` succeeds too. Only
-    // the retained arm refuses.
+    // READ THAT REFUSAL CAREFULLY BEFORE THEORISING ABOUT IT. It names the
+    // `submitTx` seam, and the three seams are separate and sequential
+    // (`ledger8-entry.ts`): proving and BALANCING both completed, and the node
+    // rejected what they produced. So "the retained arm cannot balance a wholly
+    // fallible transcript" -- the explanation this entry used to carry -- is
+    // contradicted by the measurement it was attached to. A balancing failure
+    // reads `balanceTx rejected` and surfaces `Wallet.InsufficientFunds`; this
+    // does neither. The partitioning half may still be the cause of the NODE's
+    // rejection; the balancing half is not. Diagnosing it needs the node's own
+    // reason, which is what the redaction withholds.
     //
-    // A write-based assertion should get past it, since a write has a guaranteed
-    // segment: `sendUnshieldedToSelfTest(preForkColor, MINT_AMOUNT)` can only
-    // succeed if the contract still holds that colour, so its success IS the
-    // assertion. Untried.
+    // The send below is therefore COVERAGE, not a diagnosis. It does not test
+    // that hypothesis and a green result must not be read as confirming one.
+    preFork: [
+      {
+        circuitId: 'mintUnshieldedToSelfTest',
+        args: () => [DOMAIN_SEPARATOR, MINT_AMOUNT],
+        // The minted colour, which is what the post-fork send has to name. Kept
+        // across the boundary by `retainedCaptures`, since a context rebuilt per
+        // leg cannot carry one.
+        capture: 'preForkColor'
+      }
+    ],
+    postFork: [
+      // THE SURVIVING-BALANCE ASSERTION. A send out of the contract can only move
+      // a colour it still holds, so its success is the assertion -- and unlike a
+      // read it has a guaranteed segment.
+      //
+      // TO THE USER, not to `kernel.self()`, and the difference is measured
+      // rather than assumed. `unshielded.mint-and-send.it.test.ts` pins a
+      // self-send at `spent.length === 0` AND `created.length === 0`: it moves
+      // nothing, so it cannot be evidence that anything was there to move.
+      // `unshielded.transfer.it.test.ts` pins the user-send at
+      // `created.length === 1` -- a real output leaves the contract. Only the
+      // second can carry an assertion. The handoff prompt proposed the first.
+      //
+      // HALF the balance, so the negative control below can ask for more than
+      // the contract holds without that being true for trivial reasons.
+      {
+        circuitId: 'sendUnshieldedToUserTest',
+        args: (context) => [context.preForkColor, MINT_AMOUNT / 2n, { bytes: context.unshieldedAddress }]
+      },
+      // A mint as well, and not for the assertion: the send moves a colour to
+      // the contract itself, so it may net to nothing in the stored state, and
+      // this leg is also what migrates the envelope for the second-call leg
+      // below. A write that definitely writes keeps that guarantee explicit.
+      { circuitId: 'mintUnshieldedToSelfTest', args: () => [new Uint8Array(32).fill(8), MINT_AMOUNT] }
+    ],
+    // Named rather than defaulted to `postFork`, which is a LIST here: the
+    // second-call leg drives one call, and a third domain separator keeps this
+    // from colliding with either mint above.
+    secondCall: { circuitId: 'mintUnshieldedToSelfTest', args: () => [new Uint8Array(32).fill(6), MINT_AMOUNT] }
   },
   {
   
@@ -992,6 +1032,63 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
   });
 }
 
+// ── (c1b) the negative control for the surviving-balance assertion ────────────
+//
+// WITHOUT THIS LEG THE ASSERTION ABOVE IS DECORATIVE. "The send succeeded,
+// therefore the balance survived" holds only if the send is refused when the
+// balance is NOT there. Nothing in this repo pinned that: every existing
+// unshielded send test moves an amount the contract demonstrably holds, so the
+// refusing branch has never been observed.
+//
+// So this asks for MORE than the contract can hold and requires a refusal. The
+// two legs together are the assertion: one shows the send passes on the colour
+// that survived, this shows it does not pass on an amount that did not. If this
+// leg reports the send ADMITTED, the row above is worthless and says so.
+const NEGATIVE_CONTROL = 'unshielded refuses a send larger than the balance that survived';
+if (covers(SELECTED.retained, 'unshielded')) {
+  await leg(NEGATIVE_CONTROL, async () => {
+    const deployed = retainedDeployments.get('unshielded');
+    if (deployed === undefined) {
+      return 'skipped: its pre-fork deploy did not complete';
+    }
+    const captured = retainedCaptures.get('unshielded');
+    // NOT skipped, and deliberately: a missing capture means the pre-fork mint
+    // returned nothing this leg could name, which is the same thing as the
+    // assertion above having run against `undefined`. Reporting that as a skip
+    // would hide it behind a row that reads as "not applicable".
+    if (captured?.preForkColor === undefined) {
+      throw new Error(
+        'the pre-fork mint captured no colour, so the surviving-balance send above named `undefined` ' +
+          'and asserted nothing'
+      );
+    }
+    const providers = retainedProvidersFor('v9', session.wallet, 'unshielded');
+    const context = { ...captured, ...(await walletContext(session.wallet)) };
+
+    try {
+      await callRetained(NEGATIVE_CONTROL, 'unshielded', providers, deployed.contractAddress, {
+        circuitId: 'sendUnshieldedToUserTest',
+        // FOUR TIMES what the contract can be holding: one `MINT_AMOUNT` was
+        // minted to this colour pre-fork and half of it has just been sent away,
+        // so a ledger that checks the balance at all cannot serve this.
+        args: (ctx) => [ctx.preForkColor, MINT_AMOUNT * 2n, { bytes: ctx.unshieldedAddress }]
+      }, context);
+    } catch (error) {
+      // The refusal is the PASS. Recorded rather than swallowed so the run
+      // carries which failure shape answered -- a node rejection and a
+      // balancing refusal are different findings and this row is where they
+      // would first show apart.
+      return { refusedAs: describeError(error).split('\n')[0] };
+    }
+    // Reached only when the call was ADMITTED, which is the failure this leg
+    // exists to catch -- thrown rather than returned so it colours the run.
+    throw new Error(
+      'a send of four times the surviving balance was ADMITTED, so `sendUnshieldedToUserTest` does ' +
+        'not check the balance and the surviving-balance assertion on the post-fork leg proves nothing'
+    );
+  });
+}
+
 // ── (c2) a migrated contract, called a SECOND time ────────────────────────────
 //
 // A LEG, not a probe, and it was a probe until the framework committed to an
@@ -1033,7 +1130,11 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     // circuit otherwise. A twin needs its own third call only when reusing the
     // post-fork arguments would write to the same place twice and leave the
     // ledger unable to tell a second write from none -- see `shielded-fallible`.
-    const call = entry.secondCall ?? entry.postFork;
+    // Flattened, because `postFork` is one-or-many and `unshielded`'s is a list.
+    // This leg drives ONE call, so a twin whose post-fork leg needs several must
+    // name its own `secondCall` rather than have the first of the list picked
+    // for it by accident.
+    const [call] = [entry.secondCall ?? entry.postFork].flat();
     // Re-read rather than reused: the wallet was rebuilt at the `post-fork head
     // era` gate, and a key read off the stopped one would be stale.
     const context = await walletContext(session.wallet);
