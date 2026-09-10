@@ -111,3 +111,18 @@ export class ImportConflictError extends PrivateStateImportError {
     this.name = 'ImportConflictError';
   }
 }
+
+/**
+ * An error thrown when a data provider polling query times out.
+ */
+export class WatchTimeoutError extends Error {
+  constructor(
+    public readonly operation: string,
+    public readonly subject: string,
+    public readonly maxWaitMs: number,
+    options?: ErrorOptions
+  ) {
+    super(`${operation}: timed out after ${maxWaitMs}ms waiting for ${subject}`, options);
+    this.name = 'WatchTimeoutError';
+  }
+}
