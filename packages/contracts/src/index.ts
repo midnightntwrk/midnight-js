@@ -68,6 +68,7 @@ export {
   BlankVerifierKeySlotError,
   CallTxFailedError,
   ContractTypeError,
+  ContractTypeMismatch,
   DeployTxFailedError,
   EraArtifactMismatchError,
   type EraArtifactMismatchReason,
