@@ -30,15 +30,14 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
 
+import type { PipelineEra } from '../era';
 import {
   EraArtifactMismatchError,
   EraInvariantViolationError,
   type EraSeam,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
-  Ledger8DeployOnV9Error,
-  RetainedArtifactOnCurrentEraStateError
-} from '../errors';
+  Ledger8DeployOnV9Error} from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
 import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcrumbs';
 
@@ -155,19 +154,11 @@ export function requireV9Record(
   }
 }
 
-/**
- * Which execution pipeline an operation takes.
- *
- * Each member names the LEDGER ERA the pipeline executes against — `'ledger8'` runs against
- * ledger 8, `'ledger9'` against ledger 9 — never a toolchain version, and never which era is the
- * newest. A further ledger era ADDS a member instead of renaming one.
- *
- * Not a statement about the network — see {@link assertEraCompatible} for the pairing with the
- * head era, which is what decides whether the operation can run at all.
- *
- * @see {@link EraDispatch} for why the names are keyed to the ledger era.
- */
-export type PipelineEra = 'ledger8' | 'ledger9';
+// Declared on the PUBLIC surface, in `../era`, because results now publish it:
+// `src/internal` is hidden from consumers, and a published member whose type a
+// consumer cannot name is one they cannot write a signature against. Re-exported
+// here so this module's own callers keep importing it from where they always did.
+export type { PipelineEra } from '../era';
 
 /**
  * The era facts one operation resolves ONCE, at its asynchronous start, and then threads down as
@@ -207,7 +198,7 @@ export interface HeadEraReading {
 }
 
 /**
- * The one read {@link resolveOperationEra} and {@link assertRetainedStateEnvelope} make on the
+ * The one read {@link resolveOperationEra} and {@link resolveContractStateEra} make on the
  * public data provider.
  *
  * Declared as a `Pick` of the real provider rather than as the whole interface: a full
@@ -434,8 +425,8 @@ export const assertEraCompatible = (pipeline: PipelineEra, head: LedgerVersion, 
 };
 
 /**
- * Refuses a retained-era operation whose fetched contract state is not one the retained ledger
- * wrote.
+ * Resolves WHICH era's decoder may be handed a fetched contract state, refusing only the
+ * combination that cannot describe one chain.
  *
  * THE RULE THIS ENFORCES: the envelope decides, the block bounds. The two signals are not
  * symmetric and must not be compared for equality.
@@ -470,24 +461,22 @@ export const assertEraCompatible = (pipeline: PipelineEra, head: LedgerVersion, 
  *
  * @param head The era the operation resolved from the network head.
  * @param state The raw contract state the operation fetched, envelope included.
- * @param contractAddress The contract the state was read for, named in the graduation error.
  * @param pdp The read surface, for the fresh head read the impossible case needs.
  * @param logger The optional logger the encoding and re-read breadcrumbs are written to.
+ * @returns The era whose decoder owns these bytes: `'v8'` for a retained envelope, `'v9'` for a
+ * current-era one.
  * @throws TagParseError if `state.raw` carries no supported contract-state envelope.
- * @throws RetainedArtifactOnCurrentEraStateError if the chain holds this contract in a current-era
- * state, which retained artifacts cannot read.
  * @throws Error, carrying the transport failure on `cause`, if the fresh head read rejects — so the
  * disagreement that was under investigation is not lost behind a bare transport error.
  * @throws HeadStateEraMismatchError if a fresh head read agrees with the state's era.
  * @throws IndexerInconsistencyError if a fresh head read still disagrees with it.
  */
-export const assertRetainedStateEnvelope = async (
+export const resolveContractStateEra = async (
   head: LedgerVersion,
   state: RawContractState,
-  contractAddress: string,
   pdp: HeadVersionSource,
   logger?: BreadcrumbSink
-): Promise<void> => {
+): Promise<LedgerVersion> => {
   // NOT breadcrumbed when this THROWS. `contractStateEnvelopeVersion` refuses
   // an envelope it cannot parse, and the encoding breadcrumb's only field is
   // the era the tag declared -- so on that path there is no era to report and
@@ -503,18 +492,25 @@ export const assertRetainedStateEnvelope = async (
   // read -- under EITHER head. Pre-fork this is a native call; post-fork it is
   // keep-state. Both are ordinary, and neither involves the head.
   if (stateEra === 'v8') {
-    return;
+    return stateEra;
   }
 
-  // From here the state carries a CURRENT-era envelope, which the retained
-  // pipeline cannot read whatever the head says.
+  // From here the state carries a CURRENT-era envelope.
   //
-  // Under a post-fork head that is not a disagreement at all: the chain simply
-  // holds this contract in a current-era state, so the caller brought the wrong
-  // artifacts. Reporting it as a head/state conflict would send a reader after
-  // the read surface for a fault that is entirely in the request.
+  // Under a post-fork head that is ORDINARY, and it is what makes keep-state
+  // more than a single call: the first post-fork call migrates the contract's
+  // envelope from retained to current-era, and the ledger carries the retained
+  // VERIFIER KEYS across unchanged. So the bytes are the current decoder's to
+  // read while the artifacts that fit the contract are still the retained ones.
+  //
+  // The envelope answers ONE question -- which decoder may read these bytes --
+  // and it is not the question of whether the caller's artifacts fit this
+  // contract. Refusing here answered the second question with the first, and
+  // cost every call after a contract's first post-fork one. The key check does
+  // answer it, against the keys this state actually declares; see
+  // `assertSnapshotVerifierKey`.
   if (head === 'v9') {
-    throw new RetainedArtifactOnCurrentEraStateError(contractAddress);
+    return stateEra;
   }
 
   // Under a PRE-fork head a current-era envelope is impossible: the envelope is

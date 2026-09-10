@@ -19,6 +19,7 @@ import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight
 
 import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
+import { CURRENT_PIPELINE_ERA } from './era';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
 import { isLedger8Request } from './internal/era';
 import { submitLedger8CallTx, submitLedger8CallTxAsync, toLedger8CallEntryOptions } from './internal/ledger8-entry';
@@ -350,6 +351,7 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
   });
 
   return {
+    era: CURRENT_PIPELINE_ERA,
     txId,
     callTxData: unprovenCallTxData
   };

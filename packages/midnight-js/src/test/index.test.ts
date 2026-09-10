@@ -46,6 +46,7 @@ const EXPECTED_BARREL_EXPORTS = [
   'ComposeOptionError',
   'LEDGER_VERSIONS',
   'Ledger8RuntimeMissingError',
+  'NO_CIRCUIT',
   'PROTOCOL_ERROR_CODES',
   'PayloadNotATransactionError',
   'StateDecodeFailedError',

@@ -537,9 +537,12 @@ describe('the two ledger eras run the same scenario', () => {
     expect(shape.deployedVerifierKeyHashes).toEqual([hashVerifierKey(VERIFIER_KEY)]);
   });
 
-  // The boundary rule, mechanised across the whole surface: only plain data
-  // crosses the facade. A live WASM handle in any of these results would make
-  // structuredClone throw, so this fails rather than shipping one.
+  // The boundary rule, DOCUMENTED across the surface: only plain data crosses
+  // the facade. Read what this does and does not catch before relying on it --
+  // a `wasm-bindgen` handle is a plain object whose only own property is a
+  // `__wbg_ptr` number, so it clones WITHOUT throwing and these assertions
+  // would pass one through. What they do catch is a value that genuinely
+  // refuses to clone, such as a function or a live proxy. See ADR-0007.
   // Parity of the happy path is the easy half. A caller writing era-agnostic
   // code also has to be able to handle a refusal the same way on both arms, so
   // the coded refusals for a malformed envelope are pinned per era too.

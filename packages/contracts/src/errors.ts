@@ -158,10 +158,16 @@ export class EraArtifactMismatchError extends Error {
  * An error indicating that the contract at this address is held on chain in a CURRENT-era state,
  * while the artifacts handed to this operation came from the retained Compact toolchain.
  *
- * The retained era stays supported for a contract whose state the retained ledger wrote — that
- * state keeps its own envelope across the fork, and reading it is the whole of keep-state. A
- * current-era envelope means this contract has been deployed, or re-deployed, with current-toolchain
- * artifacts, so the retained ones no longer describe it.
+ * The retained era stays supported for a contract whose state the retained ledger wrote, and it
+ * stays supported after that state has been MIGRATED: a contract's first post-fork call rewrites
+ * its envelope to the current era, and the ledger carries the retained verifier keys across
+ * unchanged. So a current-era envelope on its own says nothing about which toolchain built the
+ * contract, and this error is not raised for one.
+ *
+ * What raises it is the pair: a current-era envelope AND a key these artifacts cannot match. A
+ * migrated pre-fork contract still declares the keys the retained toolchain produced, so it does not
+ * reach here; a contract deployed with current-toolchain artifacts declares keys no retained
+ * artifact can match, and that is the case named here.
  *
  * Distinct from the era disagreements either side of it: nothing here is stale or inconsistent, and
  * a retry cannot change it. What has to change is which artifacts the caller passes.
@@ -171,14 +177,21 @@ export class RetainedArtifactOnCurrentEraStateError extends Error {
 
   /**
    * @param contractAddress The contract whose on-chain state was read.
+   * @param options Carries the key-mismatch this refusal re-reports on `cause`, so the byte-level
+   * diagnosis is not lost behind the era-level one.
    */
-  constructor(readonly contractAddress: string) {
+  constructor(
+    readonly contractAddress: string,
+    options?: ErrorOptions
+  ) {
     super(
-      `The contract at '${contractAddress}' is held on chain in a current-era state, but this operation ` +
-        `was given artifacts produced by the retained Compact toolchain, which cannot read it. A contract ` +
-        `deployed before the fork keeps its retained-era state across it, so a current-era state means this ` +
-        `contract was deployed with current-toolchain artifacts. Re-run the operation with the artifacts the ` +
-        `current toolchain produced for it. Retrying with the same artifacts cannot succeed.`
+      `The contract at '${contractAddress}' is held on chain in a current-era state whose verifier key ` +
+        `for this circuit is not the one the supplied artifacts carry, so those artifacts do not describe ` +
+        `this contract. A contract deployed before the fork keeps its retained keys even after a post-fork ` +
+        `call migrates its state, so this is not that case: it is a contract built with current-toolchain ` +
+        `artifacts. Re-run the operation with the artifacts the current toolchain produced for it. Retrying ` +
+        `with the same artifacts cannot succeed.`,
+      options
     );
     this.name = 'RetainedArtifactOnCurrentEraStateError';
   }

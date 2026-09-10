@@ -18,6 +18,7 @@ import { resolve } from 'node:path';
 
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
+import type { EncodedZswapLocalState } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
@@ -52,6 +53,9 @@ interface CompiledCounterContract extends Ledger8ContractLike {
   initialState(constructorContext: unknown): {
     currentContractState: { data: ocrt3.ChargedState; serialize: () => Uint8Array };
     currentPrivateState: unknown;
+    // The third member the artifact really returns, read since a constructor
+    // that mints a coin needs it to compose a balanceable deploy.
+    currentZswapLocalState: EncodedZswapLocalState;
   };
 }
 

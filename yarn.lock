@@ -1878,10 +1878,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/ledger-v8@npm:^8.1.0":
+"@midnight-ntwrk/ledger-v8@npm:@midnightntwrk/ledger-v8@8.1.2, @midnightntwrk/ledger-v8@npm:8.1.2":
   version: 8.1.2
-  resolution: "@midnight-ntwrk/ledger-v8@npm:8.1.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v8%2F8.1.2%2F1cb93e168dc220b073eb22e060e16a692d705541"
-  checksum: 10/f27243ebce72d2e8177245ee0aade6430fdb2bdfd51c4f43394e174f935c655efc4850c76bf1eb015303f366257c0c902da58a94621fde04109e6d03a84970d2
+  resolution: "@midnightntwrk/ledger-v8@npm:8.1.2"
+  checksum: 10/733dc1f5eca1a2f310d9b35e32b602704c23639fc4c174448187a2610ab1ffb8250f1aaecc68fe8ca4feb1a89e2905b77bafdcc343a6fd3d92b8c740948c07d1
   languageName: node
   linkType: hard
 
@@ -1912,6 +1912,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     effect: "npm:^3.22.1"
     rollup: "npm:^4.60.4"
+    typescript: "npm:^6.0.3"
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft
@@ -2254,13 +2255,6 @@ __metadata:
   version: 4.1.0-beta.1
   resolution: "@midnightntwrk/dapp-connector-api@npm:4.1.0-beta.1"
   checksum: 10/dc4ca4a201f98a2e078d3546fb0a60760dc6f2c8784ca2fdbed275009383dfc763a3007dfabd6d7d23faf5dcb93e28b24ae09f519692b33eefe149841cc767ee
-  languageName: node
-  linkType: hard
-
-"@midnightntwrk/ledger-v8@npm:8.1.2":
-  version: 8.1.2
-  resolution: "@midnightntwrk/ledger-v8@npm:8.1.2"
-  checksum: 10/733dc1f5eca1a2f310d9b35e32b602704c23639fc4c174448187a2610ab1ffb8250f1aaecc68fe8ca4feb1a89e2905b77bafdcc343a6fd3d92b8c740948c07d1
   languageName: node
   linkType: hard
 

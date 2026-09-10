@@ -25,14 +25,24 @@ import { composeV9CallTx, composeV9DeployTx } from '../v9/compose';
 import { extractEncodedStateValue, extractV9EncodedStateValue } from './envelope';
 import type { LedgerEra } from './era';
 
+// The option, parameter and return vocabulary of the facade's
+// `partitionCallTranscript` travels with the method: publishing the method
+// without them leaves a caller unable to name what it takes or answers with,
+// and `INITIAL_LEDGER_PARAMETERS` unreachable except as a hand-written literal.
+// The constant is a plain string and its module imports nothing at run time, so
+// this re-export adds no eager graph -- see the dist-laziness gate.
 export type {
   CallTranscriptSource,
   ComposeCallEntry,
   ComposeCallOptions,
   ComposeDeployOptions,
   DeployResultPojo,
-  PartitionContext
+  EraPartitionCallOptions,
+  LedgerParametersOption,
+  PartitionContext,
+  PartitionedCallTranscript
 } from '../shared/compose-types';
+export { INITIAL_LEDGER_PARAMETERS } from '../shared/compose-types';
 export type { ContractEntryPointPojo, ContractStatePojo } from '../shared/contract-state';
 export type { LedgerEra } from './era';
 
