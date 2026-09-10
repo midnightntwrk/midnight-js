@@ -34,6 +34,7 @@ import type {
   PublicDataProvider,
   UnshieldedBalances
 } from '@midnight-ntwrk/midnight-js-types';
+import { WatchTimeoutError } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 
@@ -102,6 +103,25 @@ import type { ApolloHandle } from './transport';
  */
 const toBlockOffset = (config?: BlockHeightConfig | BlockHashConfig): InputMaybe<BlockOffset> =>
   config ? (config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }) : null;
+
+function validateMaxWaitMs(maxWaitMs?: number): void {
+  if (
+    maxWaitMs !== undefined &&
+    (typeof maxWaitMs !== 'number' || !Number.isFinite(maxWaitMs) || maxWaitMs <= 0 || maxWaitMs > 2147483647)
+  ) {
+    throw new RangeError(`maxWaitMs must be a positive integer <= 2147483647, got ${maxWaitMs}`);
+  }
+}
+
+function applyTimeout<T>(maxWaitMs: number | undefined, operation: string, subject: string): Rx.OperatorFunction<T, T> {
+  if (maxWaitMs === undefined) {
+    return Rx.identity;
+  }
+  return Rx.timeout({
+    first: maxWaitMs,
+    with: () => Rx.throwError(() => new WatchTimeoutError(operation, subject, maxWaitMs))
+  });
+}
 
 export class IndexerPublicDataProvider implements PublicDataProvider {
   private readonly handle: ApolloHandle;
@@ -270,22 +290,31 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       .then((maybeContractState) => (maybeContractState ? parseHexContractState(maybeContractState) : null));
   }
 
-  watchForContractState(contractAddress: ContractAddress): Promise<ContractState> {
+  watchForContractState(contractAddress: ContractAddress, opts?: { maxWaitMs?: number }): Promise<ContractState> {
     assertIsContractAddress(contractAddress);
+    validateMaxWaitMs(opts?.maxWaitMs);
     return Rx.firstValueFrom(
-      waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(Rx.map(parseHexContractState))
+      waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(
+        Rx.map(parseHexContractState),
+        applyTimeout(opts?.maxWaitMs, 'watchForContractState', contractAddress)
+      )
     );
   }
 
-  watchForUnshieldedBalances(contractAddress: ContractAddress): Promise<UnshieldedBalances> {
+  watchForUnshieldedBalances(contractAddress: ContractAddress, opts?: { maxWaitMs?: number }): Promise<UnshieldedBalances> {
     assertIsContractAddress(contractAddress);
+    validateMaxWaitMs(opts?.maxWaitMs);
     return Rx.firstValueFrom(
-      waitForUnshieldedBalancesToAppear(this.client, this.pollInterval)(contractAddress).pipe(Rx.map(toUnshieldedBalances))
+      waitForUnshieldedBalancesToAppear(this.client, this.pollInterval)(contractAddress).pipe(
+        Rx.map(toUnshieldedBalances),
+        applyTimeout(opts?.maxWaitMs, 'watchForUnshieldedBalances', contractAddress)
+      )
     );
   }
 
-  watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
+  watchForDeployTxData(contractAddress: ContractAddress, opts?: { maxWaitMs?: number }): Promise<FinalizedTxData> {
     assertIsContractAddress(contractAddress);
+    validateMaxWaitMs(opts?.maxWaitMs);
     return Rx.firstValueFrom(
       pollUntilPresent(
         this.client,
@@ -302,11 +331,14 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           return toFinalizedDeployTxData(contractAddress, transaction);
         },
         this.pollInterval
+      ).pipe(
+        applyTimeout(opts?.maxWaitMs, 'watchForDeployTxData', contractAddress)
       )
     );
   }
 
-  watchForTxData(txId: TransactionId): Promise<FinalizedTxData> {
+  watchForTxData(txId: TransactionId, opts?: { maxWaitMs?: number }): Promise<FinalizedTxData> {
+    validateMaxWaitMs(opts?.maxWaitMs);
     return Rx.firstValueFrom(
       pollUntilPresent(
         this.client,
@@ -345,6 +377,8 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           };
         },
         this.pollInterval
+      ).pipe(
+        applyTimeout(opts?.maxWaitMs, 'watchForTxData', txId)
       )
     );
   }
