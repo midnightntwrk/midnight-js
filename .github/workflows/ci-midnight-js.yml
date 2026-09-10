@@ -34,9 +34,14 @@ jobs:
     uses: ./.github/workflows/ci-base.yml
     with:
       yarn_filter: --filter="./packages/*"
-      # `.github/scripts` rides along here because this is the only leg that lints;
-      # the workflow-permissions gate lives there and had no lint of its own.
-      yarn_lint_paths: ./packages .github/scripts
+      # `.github/scripts` and `consumer-e2e` ride along here because this is the
+      # only leg that lints, and neither had a lint of its own: the
+      # workflow-permissions gate lives in the first, and the second is the code
+      # the Consumer E2E and Hard fork lanes EXECUTE. `consumer-e2e/*.mjs` never
+      # sees `tsc` either, so ESLint is the only static gate it has -- and until
+      # this list named it, an undeclared binding shipped and cost a 13-minute
+      # shard to find (#1288, fixed in `1d9d0ebc`).
+      yarn_lint_paths: ./packages .github/scripts ./consumer-e2e
     secrets: inherit
 
   cd-prerelease:
