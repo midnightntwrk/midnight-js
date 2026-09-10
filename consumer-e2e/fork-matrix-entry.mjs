@@ -396,7 +396,8 @@ const RETAINED_MATRIX = [
       label: 'round',
       read: (ledgerState) => BigInt(ledgerState.round),
       preFork: 1n,
-      postFork: 2n
+      postFork: 2n,
+      secondCall: 3n
     }
   },
   {
@@ -463,11 +464,27 @@ const RETAINED_MATRIX = [
     // surviving pre-fork write leaves TWO entries and a silently reset state
     // leaves one. Asserted by size rather than by key, so the hash does not have
     // to be recomputed here -- the count is what distinguishes the two outcomes.
+    // A THIRD nonce for the second post-fork call, and the reason is the same one that made
+    // `counters` the right field to read: the key is `persistentHash([mintNonce, domainSep])`, so
+    // reusing the post-fork nonce would overwrite that call's own entry and leave the size at 2
+    // whether the second call wrote or did nothing at all. A distinct nonce makes the size the
+    // thing that answers.
+    secondCall: {
+      circuitId: 'heavyCheckpointMintAndSend',
+      args: (context) => [
+        DOMAIN_SEPARATOR,
+        MINT_AMOUNT,
+        new Uint8Array(32).fill(97),
+        { bytes: context.coinPublicKey },
+        MINT_AMOUNT
+      ]
+    },
     state: {
       label: 'counters.size',
       read: (ledgerState) => BigInt(ledgerState.counters.size()),
       preFork: 1n,
-      postFork: 2n
+      postFork: 2n,
+      secondCall: 3n
     }
   },
   {
@@ -498,11 +515,22 @@ const RETAINED_MATRIX = [
     // `persistentHash([mintNonce, domainSep])`, and the nonce already differs
     // across the boundary (123 before, 122 after), so a surviving pre-fork write
     // leaves two entries where a reset leaves one.
+    secondCall: {
+      circuitId: 'mintWithUnshieldedFee',
+      args: (context) => [
+        DOMAIN_SEPARATOR,
+        MINT_AMOUNT,
+        new Uint8Array(32).fill(121),
+        { bytes: context.coinPublicKey },
+        FEE_AMOUNT
+      ]
+    },
     state: {
       label: 'counters.size',
       read: (ledgerState) => BigInt(ledgerState.counters.size()),
       preFork: 1n,
-      postFork: 2n
+      postFork: 2n,
+      secondCall: 3n
     }
   },
   {
@@ -650,27 +678,33 @@ const callRetained = async (label, key, providers, contractAddress, call, contex
  * callable, which a framework that silently reset the contract's state -- or
  * resolved the address to a fresh one -- would pass just as happily.
  *
- * The field is supplied by the matrix entry rather than fixed here: `simple`
- * has `round: Counter` and `shielded-fallible` has `counters: Map`, and the two
- * cover different things -- state across a trivial circuit, and state across the
- * heaviest one in the set. Contracts declaring no ledger block at all
- * (`unshielded`, `shielded`, `block-time`) cannot be read THIS way: what
- * survives for them is the contract's BALANCE, which `decodeContractState`
- * deliberately omits.
+ * The field is supplied by the matrix entry rather than fixed here. THREE twins
+ * declare one, deliberately at different weights: `simple` has `round: Counter`
+ * across a `noop`, and `shielded-fallible` and `fee-mint` have `counters: Map`
+ * across the partitioned checkpointed mints -- state across a trivial circuit,
+ * and state across the heaviest ones in the set.
  *
- * `unshielded` asserts its surviving state the OTHER way, now that the retained
- * arm answers with `private.result`: a post-fork call to
- * `getUnshieldedBalanceTest`, naming the colour its pre-fork mint captured,
- * returns the surviving balance directly. So the two mechanisms cover different
- * contract shapes: this one reads a declared ledger field (`simple`,
- * `shielded-fallible`, `fee-mint`), that one asks a circuit (`unshielded`).
+ * Each of the three is read at THREE phases: `preFork`, `postFork`, and
+ * `secondCall`. The third is what establishes that a migrated contract is
+ * callable more than once, and it is asserted the same way the first two are --
+ * by the field having moved again, not by the call having been admitted.
  *
- * `shielded` and `block-time` still assert nothing about surviving state, and
- * neither mechanism reaches them: both declare no ledger block, and neither has
- * a circuit that reads earlier state back -- `mintShieldedTokens` returns a new
- * coin and `testBlockTimeGte` answers about the block, not the contract. Closing
- * those two needs a circuit that does not exist in the source yet, so it is a
- * fixture change rather than a harness one.
+ * The other three twins (`unshielded`, `shielded`, `block-time`) declare no
+ * ledger block, so `checkLedgerState` returns `undefined` for them and asserts
+ * nothing about surviving state at any phase. What survives for them is the
+ * contract's BALANCE, which `decodeContractState` deliberately omits, and
+ * neither mechanism in this harness reaches it:
+ *
+ * - `unshielded`'s balance is readable only through a circuit, and a post-fork
+ *   retained call to `getUnshieldedBalanceTest` is REFUSED BY THE CHAIN -- see
+ *   that twin's own entry, which records the measurement and the untried
+ *   write-based alternative. Do not read this as coverage it does not have.
+ * - `shielded` and `block-time` have no circuit that reads earlier state back:
+ *   `mintShieldedTokens` returns a new coin and `testBlockTimeGte` answers about
+ *   the block, not the contract.
+ *
+ * Closing those three needs a circuit that does not exist in the source yet, so
+ * it is a fixture change rather than a harness one.
  */
 const readRetainedLedger = async (key, providers, contractAddress, read) => {
   const [{ ledger }, runtime, { utils }] = await Promise.all([
@@ -991,58 +1025,65 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
 
 // ── (c2) a migrated contract, called a SECOND time ────────────────────────────
 //
-// A probe, not an assertion: the answer decides a product question about the
-// fork window and is not something the framework has committed to.
+// A LEG, not a probe, and it was a probe until the framework committed to an
+// answer. The keep-state leg above establishes that the FIRST post-fork call
+// succeeds and migrates the state envelope from the retained schema to the
+// current one; this establishes that the contract is still callable after that,
+// which is what makes keep-state a supported path rather than a single shot.
 //
-// The keep-state leg above establishes that the FIRST post-fork call succeeds
-// and migrates the state envelope from the retained schema to the current one.
-// What nothing had asked until now is whether the contract is callable after
-// that. This asks it, once per contract, with the same artifacts the successful
-// call used.
+// WHY THE SECOND CALL WORKS AT ALL, since the two facts look contradictory.
+// Migration rewrites the ENVELOPE but keeps the RETAINED verifier keys:
+// `reexpressOperationsForCurrentEra` copies `entryPoint.verifierKey` unchanged
+// into a ledger-v9 `ContractState`. Measured on the committed goldens rather
+// than assumed -- a real migrated 8-to-9 state carries byte-identical
+// `midnight:verifier-key[v6]:` keys, and the current-era decoder reads them. So
+// the contract holds current-era state over retained keys, and the retained
+// artifacts a consumer already has are still the right ones for it.
 //
-// What makes the answer matter rather than merely interesting: migration keeps
-// the RETAINED verifier keys. `reexpressOperationsForCurrentEra` copies
-// `entryPoint.verifierKey` unchanged into a ledger-v9 `ContractState`, so after
-// the boundary the contract holds current-era state over old keys. If the
-// retained arm refuses on the envelope and the current-era arm cannot be handed
-// a retained contract at all -- the two eras' contract shapes are deliberately
-// not interchangeable -- then a pre-fork contract is callable exactly once after
-// the fork, and that is a fork-window limit a consumer has to be told about
-// rather than discover.
+// `readLedger8Snapshot` therefore picks its decoder off the envelope instead of
+// pinning the retained era, and the KEY check decides whether the caller's
+// artifacts fit. Pinning the decoder is what made a pre-fork contract callable
+// exactly once, and this leg is what would catch that regressing.
 for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retained, candidate.key))) {
-  await probe(`a migrated ${entry.key}, called a second time`, async () => {
+  const name = `a migrated ${entry.key}, called a second time`;
+  await leg(name, async () => {
     const deployed = retainedDeployments.get(entry.key);
     if (deployed === undefined) {
       return 'skipped: its pre-fork deploy did not complete';
     }
     const providers = retainedProvidersFor('v9', session.wallet, entry.key);
 
-    // Recorded before the attempt, so a refusal can be read against what the
-    // chain actually held rather than against an assumption about it.
+    // Recorded before the attempt, so the outcome can be read against what the
+    // chain actually held rather than against an assumption about it. This is
+    // the leg's own evidence that the first call migrated the envelope: it
+    // should already read current-era here.
     const before = await providers.publicDataProvider.queryRawContractState(deployed.contractAddress);
     const envelopeBefore = before === null ? 'absent' : envelopeTag(before.raw);
 
-    // The first post-fork call's own circuit and arguments, stripped of
-    // `capture` and `expect`: this probe is about whether the call is ADMITTED,
-    // and an assertion on its return value would turn an answer into a failure.
-    const [{ circuitId, args }] = [entry.postFork].flat();
+    // `secondCall` where the twin declares one, and the post-fork call's own
+    // circuit otherwise. A twin needs its own third call only when reusing the
+    // post-fork arguments would write to the same place twice and leave the
+    // ledger unable to tell a second write from none -- see `shielded-fallible`.
+    const call = entry.secondCall ?? entry.postFork;
+    // Re-read rather than reused: the wallet was rebuilt at the `post-fork head
+    // era` gate, and a key read off the stopped one would be stale.
     const context = { ...(retainedCaptures.get(entry.key) ?? {}), ...(await walletContext(session.wallet)) };
 
-    try {
-      const outcome = await callRetained(
-        `a migrated ${entry.key}, called a second time`,
-        entry.key,
-        providers,
-        deployed.contractAddress,
-        { circuitId, args },
-        context
-      );
-      return { envelopeBefore, retainedArm: 'accepted', ...outcome };
-    } catch (error) {
-      // The refusal IS the finding, so it is returned rather than rethrown --
-      // `probe` would otherwise colour the run's exit code with an answer.
-      return { envelopeBefore, retainedArm: `refused: ${describeError(error)}` };
-    }
+    // NOT caught. A refusal here is a defect now, not a finding, so it must
+    // colour the run's exit code -- which is the whole difference between this
+    // and the probe it replaced.
+    const outcome = await callRetained(name, entry.key, providers, deployed.contractAddress, call, context);
+
+    const after = await providers.publicDataProvider.queryRawContractState(deployed.contractAddress);
+    return {
+      envelopeBefore,
+      envelopeAfter: after === null ? 'absent' : envelopeTag(after.raw),
+      ...outcome,
+      // Where the twin can prove it, that the call was ADMITTED is not enough:
+      // the ledger field has to have moved again. Three of the six can, and for
+      // the other three this leg asserts admission only.
+      ...((await checkLedgerState(name, entry, 'secondCall', providers, deployed.contractAddress)) ?? {})
+    };
   });
 }
 

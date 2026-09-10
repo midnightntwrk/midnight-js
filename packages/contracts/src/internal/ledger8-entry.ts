@@ -766,13 +766,21 @@ export const findLedger8Contract = async (
   // and half against another.
   const snapshot = await readLedger8Snapshot(
     retainedEra,
+    // `resolved.era`, not a second `loadLedgerEra`: the facade bound to this head was acquired at
+    // the operation's start, and acquiring one is a lazy WASM load.
+    resolved.era,
     resolved.head,
     providers.publicDataProvider,
     request.contractAddress,
     providers.loggerProvider
   );
   for (const circuitId of request.circuitIds) {
-    assertSnapshotVerifierKey(snapshot, circuitId, await providers.zkConfigProvider.getVerifierKey(circuitId));
+    assertSnapshotVerifierKey(
+      snapshot,
+      circuitId,
+      await providers.zkConfigProvider.getVerifierKey(circuitId),
+      request.contractAddress
+    );
   }
 
   return { deployTxData: await providers.publicDataProvider.watchForDeployTxData(request.contractAddress) };

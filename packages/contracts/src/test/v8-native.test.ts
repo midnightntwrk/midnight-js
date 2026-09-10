@@ -780,7 +780,15 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       providers.publicDataProvider.queryRawContractState = vi
         .fn()
         .mockResolvedValue(rawState(envelope, PRE_FORK_PROTOCOL_VERSION));
-      return readLedger8Snapshot(retainedEra, 'v8', providers.publicDataProvider, recording.contractAddress);
+      // Both era arguments are the retained facade, which is what a PRE-fork head means: the head's
+      // era and the retained era are the same ledger there.
+      return readLedger8Snapshot(
+        retainedEra,
+        retainedEra,
+        'v8',
+        providers.publicDataProvider,
+        recording.contractAddress
+      );
     };
 
     it('passes against the real committed envelope, which declares the name once', async () => {
@@ -789,7 +797,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       // The POSITIVE half, so the refusal below cannot be satisfied by a check
       // that refuses everything.
       expect(snapshot.decoded.entryPoints.filter((entry) => entry.circuitId === CIRCUIT_ID)).toHaveLength(1);
-      expect(() => assertSnapshotVerifierKey(snapshot, CIRCUIT_ID, STAND_IN_VERIFIER_KEY)).not.toThrow();
+      expect(() => assertSnapshotVerifierKey(snapshot, CIRCUIT_ID, STAND_IN_VERIFIER_KEY, recording.contractAddress)).not.toThrow();
     });
 
     it('REFUSES a state declaring the same entry-point name twice, rather than checking the first', async () => {
@@ -807,7 +815,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
 
       let caught: unknown;
       try {
-        assertSnapshotVerifierKey(ambiguous, CIRCUIT_ID, STAND_IN_VERIFIER_KEY);
+        assertSnapshotVerifierKey(ambiguous, CIRCUIT_ID, STAND_IN_VERIFIER_KEY, recording.contractAddress);
       } catch (error) {
         caught = error;
       }
