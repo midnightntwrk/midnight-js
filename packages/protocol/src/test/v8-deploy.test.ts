@@ -18,6 +18,7 @@ import { resolve } from 'node:path';
 
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
+import type { EncodedZswapLocalState, ZswapLocalState } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
@@ -80,18 +81,40 @@ describe('executeConstructor (fake runtime — plumbing only, no WASM execution)
     let capturedArgs: unknown;
     let capturedContext: unknown;
 
+    const encodedZswapLocalState: EncodedZswapLocalState = {
+      coinPublicKey: { bytes: new Uint8Array(32) },
+      currentIndex: 0n,
+      inputs: [],
+      outputs: []
+    };
+    const decodedZswapLocalState: ZswapLocalState = {
+      coinPublicKey: 'ca'.repeat(32),
+      currentIndex: 0n,
+      inputs: [],
+      outputs: []
+    };
+    let capturedEncodedZswap: unknown;
+
     const runtime: Ledger8ConstructorRuntime = {
       createConstructorContext: (privateState, coinPk) => {
         capturedPrivateState = privateState;
         capturedCoinPk = coinPk;
         return { marker: 'constructor-context' };
+      },
+      decodeZswapLocalState: (state) => {
+        capturedEncodedZswap = state;
+        return decodedZswapLocalState;
       }
     };
     const contract: Ledger8ConstructorContractLike = {
       initialState: (constructorContext, ...args): Ledger8ConstructorResult => {
         capturedContext = constructorContext;
         capturedArgs = args;
-        return { currentContractState: finalContractState, currentPrivateState: { count: 0 } };
+        return {
+          currentContractState: finalContractState,
+          currentPrivateState: { count: 0 },
+          currentZswapLocalState: encodedZswapLocalState
+        };
       }
     };
 
@@ -106,6 +129,11 @@ describe('executeConstructor (fake runtime — plumbing only, no WASM execution)
 
     expect(result.contractState).toBe(finalContractState);
     expect(result.privateState).toEqual({ count: 0 });
+    // The constructor's own Zswap local state, DECODED. A constructor that mints
+    // a coin puts it here, and the deploy that drops it composes a transaction
+    // the ledger cannot balance.
+    expect(capturedEncodedZswap).toBe(encodedZswapLocalState);
+    expect(result.zswapLocalState).toBe(decodedZswapLocalState);
     expect(capturedPrivateState).toEqual({ initial: true });
     expect(capturedCoinPk).toBe('ca'.repeat(32));
     expect(capturedArgs).toEqual(['seed']);
@@ -122,7 +150,13 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
   }
 
   interface CompiledCounterContract extends Ledger8ConstructorContractLike {
-    initialState(constructorContext: unknown): { currentContractState: ocrt3.ContractState; currentPrivateState: unknown };
+    initialState(constructorContext: unknown): {
+      currentContractState: ocrt3.ContractState;
+      currentPrivateState: unknown;
+      // The real generated artifact returns three members; this declaration
+      // named two until the third was read.
+      currentZswapLocalState: EncodedZswapLocalState;
+    };
   }
 
   interface CompiledCounterModule {
@@ -136,7 +170,10 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
 
     const initialPrivateState: Record<string, never> = {};
     const contract = new Contract(initialPrivateState);
-    const runtime: Ledger8ConstructorRuntime = { createConstructorContext: ledger8Runtime.createConstructorContext };
+    const runtime: Ledger8ConstructorRuntime = {
+      createConstructorContext: ledger8Runtime.createConstructorContext,
+      decodeZswapLocalState: ledger8Runtime.decodeZswapLocalState
+    };
 
     const result = executeConstructor({ contract, args: [], privateState: initialPrivateState, coinPk: SAMPLE_COIN_PUBLIC_KEY }, runtime);
 
@@ -187,7 +224,10 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
     const ledger8Runtime = await import('compact-runtime-ledger8');
     const contract = new Contract({});
-    const runtime: Ledger8ConstructorRuntime = { createConstructorContext: ledger8Runtime.createConstructorContext };
+    const runtime: Ledger8ConstructorRuntime = {
+      createConstructorContext: ledger8Runtime.createConstructorContext,
+      decodeZswapLocalState: ledger8Runtime.decodeZswapLocalState
+    };
 
     const result = executeConstructor({ contract, args: [], privateState: {}, coinPk: SAMPLE_COIN_PUBLIC_KEY }, runtime);
     const constructedBytes = result.contractState.serialize();

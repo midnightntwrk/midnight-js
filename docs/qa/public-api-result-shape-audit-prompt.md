@@ -45,9 +45,12 @@ were folded into that:
    omission.
 3. **A justified difference sitting next to an unjustified one.** Two members of
    the current-era shape are live WASM handles (`public.nextContractState`,
-   `private.unprovenTx`). ADR-0007 forbids those crossing an era boundary, so
-   their absence from the retained arm is **correct**. That correct difference
-   had been camouflaging the incorrect ones.
+   `private.unprovenTx`), and ADR-0007 forbade those crossing an era boundary,
+   so their absence from the retained arm read as **correct** and had been
+   camouflaging the incorrect ones. ADR-0011 has since lifted that bar for
+   result types: the retained arm now carries its own handle for the first, and
+   `unprovenTx` remains absent by a recorded decision rather than by the rule
+   cited here.
 
 Point 3 is the discipline this audit needs most. A difference is a finding only
 when nothing explains it.
@@ -107,15 +110,24 @@ For each candidate finding:
 
 Do not report these as defects; do note where they apply:
 
-- **ADR-0007** — no live WASM handle crosses an era boundary. A retained-era
-  surface may not carry a handle the current-era surface carries. Plain-data
-  substitutes are expected instead (for example serialized bytes in place of a
-  transaction object), and their ABSENCE is still a finding.
+- **ADR-0007, as amended by ADR-0011** — a live WASM handle may NOT cross the
+  era-agnostic `LedgerEra` facade, but the framework's era-SPECIFIC result types
+  DO publish handles, provided each travels with a plain-data twin. So on a
+  result type a handle's presence is not a finding; a handle published WITHOUT
+  its twin is, and so is a missing plain-data substitute (for example serialized
+  bytes in place of a transaction object).
 - **Version tagging.** A retained-era finalized record is deliberately
   `VersionedFinalizedTxData` rather than being narrowed to one era; see the
   comment on `submitLedger8CallTx`. Narrowing it would be the defect.
-- **`packages/types` is declarations-only.** Runtime helpers live in
-  `packages/utils`. A missing helper in `types` is not a shape inconsistency.
+- **`packages/types` is mostly, but NOT only, declarations.** It ships around
+  29 runtime values today: the provider factories (`createProofProvider`,
+  `createWalletProvider`, `createMidnightProvider`), the key-material helpers,
+  `unwrapV9`, the export limits, the status and segment constants, `LogLevel`,
+  nine error classes and `ZKConfigRegistry`. Keeping new runtime helpers in
+  `packages/utils` is a real convention and still holds for new code, so a
+  missing *helper* in `types` is not a shape inconsistency — but do not excuse
+  a missing *declaration* there on the grounds that the package cannot hold
+  one. See `2026-09-09-public-api-result-shape-audit.md` §6 for the inventory.
 - **Privacy split.** `public` versus `private` nesting is intentional and
   load-bearing. Report a value on the WRONG side; do not report the split
   itself.

@@ -21,6 +21,7 @@ import { hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';
+import { CURRENT_PIPELINE_ERA } from '../era';
 import {
   CallTxFailedError,
   MixedEraScopeError,
@@ -213,6 +214,7 @@ export class TransactionContextImpl<
       await this.providers.privateStateProvider!.set(privateStateId, unprovenCallTxData.private.nextPrivateState);
     }
     return {
+      era: CURRENT_PIPELINE_ERA,
       private: unprovenCallTxData.private,
       public: {
         ...unprovenCallTxData.public,
@@ -370,7 +372,11 @@ const runScope = async <
       //disable-next-line: no-throw-literal
       throw new Error('No calls were submitted.');
     }
-    return {
+    // ANNOTATED, not asserted: this function answers both scope arms and so
+    // returns `any`, which on its own would let a member fall off this rebuild
+    // and reach a caller as `undefined` at a non-optional member.
+    const nestedCallResult: CallResult<C, PCK> = {
+      era: CURRENT_PIPELINE_ERA,
       public: {
         nextContractState: unprovenCallTxData.public.nextContractState,
         partitionedTranscript: unprovenCallTxData.public.partitionedTranscript,
@@ -384,8 +390,10 @@ const runScope = async <
         result: unprovenCallTxData.private.result,
         nextPrivateState: unprovenCallTxData.private.nextPrivateState,
         nextZswapLocalState: unprovenCallTxData.private.nextZswapLocalState
-      }
-    } as CallResult<C, PCK>;
+      },
+      calls: unprovenCallTxData.calls
+    };
+    return nestedCallResult;
   } catch (err: unknown) {
     // Rethrow known call transaction failures and errors occurring within an outer transaction context...
     if (err instanceof CallTxFailedError || outerTxCtx) {

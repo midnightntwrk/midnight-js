@@ -47,6 +47,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { ComposeCallOptions, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import type { ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { expect } from 'vitest';
 
@@ -195,12 +196,14 @@ export interface CoinReceiverRecording {
 }
 
 /**
- * Every transcript member the pipeline reads, as a runtime list.
+ * Every transcript member the pipeline reads that the FIXTURE carries, as a
+ * runtime list.
  *
- * The list is tied to {@link Ledger8Transcript} by the two assertions below,
- * so a member added to that `Pick` fails THIS file's compilation until it is
- * named here — and then fails the load below until the fixture carries it.
- * Which is what makes the drift claim above checkable rather than asserted.
+ * The list is tied to {@link Ledger8Transcript} by the assertions below, so a
+ * member added to that type fails THIS file's compilation until it is named
+ * here or in {@link SynthesizedMember} — and then fails the load below until
+ * the fixture carries it. Which is what makes the drift claim above checkable
+ * rather than asserted.
  */
 const TRANSCRIPT_MEMBERS = [
   'circuitId',
@@ -211,15 +214,30 @@ const TRANSCRIPT_MEMBERS = [
   'privateTranscriptOutputs',
   'partitionContext',
   'privateStateAfter',
-  'zswapLocalState'
+  'zswapLocalState',
+  'postContractStateEncoded'
 ] as const;
+
+/**
+ * The transcript members the DOUBLE mints rather than replays.
+ *
+ * `postContractState` is a live retained-runtime handle. A recording is JSON,
+ * and no JSON encoding of a WASM pointer means anything, so this member cannot
+ * come from the fixture — the double answers with its own marker instead, and
+ * the pipeline is generic in exactly that type so nothing is cast to make it
+ * fit. Listing it here rather than dropping the drift check is what keeps a
+ * member that SHOULD be recorded from quietly landing on this side.
+ */
+type SynthesizedMember = 'postContractState';
+
+type TranscriptMember = (typeof TRANSCRIPT_MEMBERS)[number] | SynthesizedMember;
 
 type Assert<T extends true> = T;
 type _EveryMemberListed = Assert<
-  [Exclude<keyof Ledger8Transcript, (typeof TRANSCRIPT_MEMBERS)[number]>] extends [never] ? true : false
+  [Exclude<keyof Ledger8Transcript<ReplayState>, TranscriptMember>] extends [never] ? true : false
 >;
 type _NoMemberInvented = Assert<
-  [Exclude<(typeof TRANSCRIPT_MEMBERS)[number], keyof Ledger8Transcript>] extends [never] ? true : false
+  [Exclude<TranscriptMember, keyof Ledger8Transcript<ReplayState>>] extends [never] ? true : false
 >;
 
 /**
@@ -308,6 +326,12 @@ export type OrchestrationLog = string[];
 export interface ReplayExpectations {
   /** The private state the pipeline must have handed the engine. */
   readonly privateState?: unknown;
+  /**
+   * The Zswap local state the CONSTRUCTOR arm answers with. Defaults to an
+   * empty one — the ordinary constructor mints nothing — so a test that wants a
+   * minting constructor says so here rather than the fixture pretending to one.
+   */
+  readonly constructorZswapLocalState?: ZswapLocalState;
 }
 
 /**
@@ -338,7 +362,7 @@ export const createReplayEngine = (
     expect(state).toEqual(recording.preState);
     return { replayedCircuitId: recording.circuitId };
   },
-  executeCircuit: (options): Ledger8Transcript => {
+  executeCircuit: (options): Ledger8Transcript<ReplayState> => {
     log.push('engine.executeCircuit');
     expect(options.circuitId).toBe(recording.circuitId);
     expect(options.args).toEqual([recording.receivedCoin]);
@@ -353,7 +377,10 @@ export const createReplayEngine = (
     if (expectations !== undefined && 'privateState' in expectations) {
       expect(options.privateState).toEqual(expectations.privateState);
     }
-    return recording.transcript;
+    // The post-call state the real engine answers with is a live handle; the
+    // double mints a marker DISTINCT from the down-converted one, so a test can
+    // tell the state a call bound to from the state it ended on.
+    return { ...recording.transcript, postContractState: { replayedCircuitId: `${recording.circuitId}:post` } };
   },
   // Reimplemented rather than delegated, deliberately: these suites test the
   // ORDER an operation touches the era and the engine in, and this package
@@ -385,7 +412,13 @@ export const createReplayEngine = (
       // a deploy composed from it must be given a key map naming exactly that
       // entry point — which is the validation the deploy composition performs.
       contractState: { serialize: (): Uint8Array => constructedState },
-      privateState: {}
+      privateState: {},
+      zswapLocalState: expectations?.constructorZswapLocalState ?? {
+        coinPublicKey: recording.coinPublicKey,
+        currentIndex: 0n,
+        inputs: [],
+        outputs: []
+      }
     };
   }
 });

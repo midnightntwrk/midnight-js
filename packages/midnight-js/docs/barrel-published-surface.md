@@ -43,7 +43,10 @@ answer.
 
 A **type** is published when it is named in the public shape of a value
 published here — a parameter of an exported function, its return type, or a
-public field of an exported error class. That rule is why
+public field of an exported error class. A **constant** a published field is
+compared against qualifies on the same grounds, which is why `NO_CIRCUIT`
+travels with `ComposeFailedError`: it is the value that error's `circuitId`
+carries when the refusal names no circuit. That rule is why
 `VersionResolutionPath` is present (the error's `path`) and why
 `RetainedEraSubpath`, `ComposeStage` and `ComposeOption` came in with the
 classes whose payloads name them.
@@ -57,11 +60,16 @@ Two deliberate exclusions:
   tagged `construct`, and a handler written for the `read` code silently does
   not fire. `versionOfRecord` and `networkHeadVersion` cover both paths and tag
   each one automatically, so the raw resolver adds a footgun and no capability.
-- **`ProtocolErrorCode`.** Nothing on this surface names it:
-  `UnknownProtocolVersionError.code` is declared as the two-member literal
-  union, not the wide alias, so a `switch` over `PROTOCOL_ERROR_CODES` members
-  type-checks without it. A consumer who wants the union as a *declaration* can
-  reach `utils.MidnightJsErrorCode`, which is already published and is a strict
+- **`ProtocolErrorCode`.** Nothing on this surface names it. EVERY published
+  class declares `code` as its own literal, so a `switch` over
+  `PROTOCOL_ERROR_CODES` members narrows without the alias. `ComposeFailedError`,
+  `ComposeOptionError` and `StateDecodeFailedError` are called out only because
+  they were declared as the wide alias until they were narrowed to make this
+  paragraph true — they are examples, not the whole set, which also includes
+  `UnknownProtocolVersionError` (a two-member union), `Ledger8RuntimeMissingError`,
+  `UnknownLedgerVersionError` and `PayloadNotATransactionError`. Declaring `code`
+  as the alias on any class published here breaks the rule again. A consumer who wants the union as a *declaration* can reach
+  `utils.MidnightJsErrorCode`, which is already published and is a strict
   superset.
 
 ## Error codes travel with their classes

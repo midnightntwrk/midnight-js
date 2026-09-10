@@ -34,7 +34,9 @@ const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' }
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT });
 const buildState = (byte: number): DownConvertedState => ({ data: new ocrt3.ChargedState(ocrt3.StateValue.newCell(fieldValue(byte))) });
 
-const buildTranscript = (): TranscriptPojo => ({
+const buildTranscript = (): TranscriptPojo => {
+  const postContractState = buildState(0x02);
+  return {
   circuitId: 'increment',
   result: [],
   input: fieldValue(0x10),
@@ -42,11 +44,14 @@ const buildTranscript = (): TranscriptPojo => ({
   publicTranscript: [],
   privateTranscriptOutputs: [],
   preContractState: buildState(0x01),
-  postContractState: buildState(0x02),
+  postContractState,
+  // The same state the handle holds, in the form that outlives the runtime.
+  postContractStateEncoded: postContractState.data.state.encode(),
   partitionContext: emptyPartitionContext(),
   zswapLocalState: emptyZswapLocalState(),
   privateStateAfter: {}
-});
+  };
+};
 
 // `ContractOperation.verifierKey`'s setter validates a `midnight:verifier-key[...]:`
 // tagged blob — arbitrary bytes are rejected (same rationale as

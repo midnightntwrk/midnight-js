@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+export * from './call-result-base';
 export * from './contract';
 export * from './errors';
 export * from './logger-provider';

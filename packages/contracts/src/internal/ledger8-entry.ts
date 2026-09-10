@@ -53,6 +53,7 @@ import {
   ttlOneHour
 } from '@midnight-ntwrk/midnight-js-utils';
 
+import { RETAINED_PIPELINE_ERA } from '../era';
 import {
   type EraSeam,
   IncompleteCallTxPrivateStateConfig,
@@ -60,7 +61,12 @@ import {
   Ledger8SeamFailedError,
   type SubmittedOperation
 } from '../errors';
-import type { AnyLedger8CallTxOptions, AnyLedger8FinalizedCallTxData } from '../ledger8-contract';
+import type {
+  AnyLedger8CallTxOptions,
+  AnyLedger8FinalizedCallTxData,
+  AnyLedger8SubmittedCallTx,
+  AnyLedger8UnsubmittedCallTxData
+} from '../ledger8-contract';
 import { createEncryptionPublicKeyResolver } from '../utils';
 import { type BreadcrumbSink, emitPipelineSelection } from './breadcrumbs';
 import {
@@ -514,7 +520,7 @@ export interface Ledger8CallRequest {
 /** A composed and submitted retained-era call. */
 export interface Ledger8SubmittedCall {
   readonly txId: string;
-  readonly call: Ledger8CallPipelineResult;
+  readonly call: Ledger8CallPipelineResult<DownConvertedState>;
 }
 
 /**
@@ -666,7 +672,13 @@ export const runLedger8Deploy = async (
     coinPublicKey: parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()),
     verifierKeys: request.verifierKeys,
     networkId: getNetworkId(),
-    ttl: ttlOneHour()
+    ttl: ttlOneHour(),
+    // Built the same way the call arm builds it, so a coin a constructor mints
+    // is encrypted to the same key a coin a circuit mints would be.
+    encryptionPublicKey: createEncryptionPublicKeyResolver(
+      providers.walletProvider.getCoinPublicKey(),
+      providers.walletProvider.getEncryptionPublicKey()
+    )
   });
 
   const txId = await submitLedger8Tx(providers, deploy.txBytes, {
@@ -754,13 +766,21 @@ export const findLedger8Contract = async (
   // and half against another.
   const snapshot = await readLedger8Snapshot(
     retainedEra,
+    // `resolved.era`, not a second `loadLedgerEra`: the facade bound to this head was acquired at
+    // the operation's start, and acquiring one is a lazy WASM load.
+    resolved.era,
     resolved.head,
     providers.publicDataProvider,
     request.contractAddress,
     providers.loggerProvider
   );
   for (const circuitId of request.circuitIds) {
-    assertSnapshotVerifierKey(snapshot, circuitId, await providers.zkConfigProvider.getVerifierKey(circuitId));
+    assertSnapshotVerifierKey(
+      snapshot,
+      circuitId,
+      await providers.zkConfigProvider.getVerifierKey(circuitId),
+      request.contractAddress
+    );
   }
 
   return { deployTxData: await providers.publicDataProvider.watchForDeployTxData(request.contractAddress) };
@@ -875,6 +895,35 @@ export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Led
 });
 
 /**
+ * The retained era's execution data, built in ONE place: the async arm
+ * publishes it as it stands, and the finalizing arm merges the record onto its
+ * public half. Two construction sites could report different executions of the
+ * same call.
+ */
+const toLedger8CallTxData = (
+  call: Ledger8CallPipelineResult<DownConvertedState>
+): AnyLedger8UnsubmittedCallTxData => ({
+  era: RETAINED_PIPELINE_ERA,
+  public: {
+    publicTranscript: call.publicTranscript,
+    partitionedTranscript: call.partitionedTranscript,
+    nextContractState: call.nextContractState,
+    nextContractStateEncoded: call.nextContractStateEncoded
+  },
+  private: {
+    input: call.input,
+    output: call.output,
+    privateTranscriptOutputs: call.privateTranscriptOutputs,
+    result: call.result,
+    nextPrivateState: call.nextPrivateState,
+    nextZswapLocalState: call.nextZswapLocalState,
+    newCoins: call.newCoins,
+    txBytes: call.txBytes
+  },
+  calls: call.calls
+});
+
+/**
  * Runs a retained-era call and returns immediately after submission.
  *
  * Stores nothing: without waiting for finalization there is no evidence the
@@ -886,7 +935,9 @@ export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Led
  *
  * @param providers The provider set.
  * @param options The call the entry point received.
- * @returns The transaction id, the circuit, and the next private state.
+ * @returns The transaction id, the circuit, the next private state, and the
+ * execution data — everything but a finalized record, which a submission that
+ * does not wait for one cannot have.
  * @throws TypeError if the contract address is malformed.
  * @throws Error if the artifact declares no such circuit, or if a named
  * `privateStateId` has nothing stored under it.
@@ -897,18 +948,7 @@ export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Led
 export const submitLedger8CallTxAsync = async (
   providers: Ledger8CallEntryProviders,
   options: Ledger8CallEntryOptions
-): Promise<{
-  readonly txId: string;
-  readonly circuitId: string;
-  readonly nextPrivateState: unknown;
-  /**
-   * The pipeline's own result, carried so the finalizing wrapper can answer with
-   * the execution data rather than re-running anything. Internal: the PUBLIC
-   * async surface stays {@link Ledger8SubmittedCallTx}, which does not wait for
-   * finalization and so has no record to pair this with.
-   */
-  readonly call: Ledger8CallPipelineResult;
-}> => {
+): Promise<AnyLedger8SubmittedCallTx> => {
   // The same two local refusals the current-era arm makes before any provider
   // is touched. A malformed address would otherwise cost a network round trip
   // to discover, and an unknown circuit id would surface as a blank
@@ -937,7 +977,13 @@ export const submitLedger8CallTxAsync = async (
     privateState
   });
 
-  return { txId, circuitId: call.circuitId, nextPrivateState: call.nextPrivateState, call };
+  return {
+    era: RETAINED_PIPELINE_ERA,
+    txId,
+    circuitId: call.circuitId,
+    nextPrivateState: call.nextPrivateState,
+    callTxData: toLedger8CallTxData(call)
+  };
 };
 
 /**
@@ -961,7 +1007,7 @@ export const submitLedger8CallTx = async (
   providers: Ledger8CallEntryProviders,
   options: Ledger8CallEntryOptions
 ): Promise<AnyLedger8FinalizedCallTxData> => {
-  const { txId, circuitId, nextPrivateState, call } = await submitLedger8CallTxAsync(providers, options);
+  const { txId, circuitId, nextPrivateState, callTxData } = await submitLedger8CallTxAsync(providers, options);
   const txData = await providers.publicDataProvider.watchForTxData(txId);
   assertLedger8TxSucceeded(txData, circuitId);
 
@@ -969,25 +1015,14 @@ export const submitLedger8CallTx = async (
     await providers.privateStateProvider.set(options.privateStateId, nextPrivateState);
   }
 
-  // The same two-level structure the current era answers with, so a caller reads
-  // `private.result` and `public.txId` without knowing which era ran. The split
-  // is by sensitivity, not by convenience: the ZK input, output and private
-  // transcript outputs sit beside the circuit's result on `private`, and only
-  // the finalized record and the public transcript are on `public`.
+  // The finalized answer is the SAME execution data the async arm published,
+  // with the record merged onto its public half. Built from one place so the
+  // two surfaces cannot report different executions of the same call.
   return {
+    era: RETAINED_PIPELINE_ERA,
     circuitId,
-    public: {
-      ...txData,
-      publicTranscript: call.publicTranscript,
-      partitionedTranscript: call.partitionedTranscript
-    },
-    private: {
-      input: call.input,
-      output: call.output,
-      privateTranscriptOutputs: call.privateTranscriptOutputs,
-      result: call.result,
-      nextPrivateState,
-      txBytes: call.txBytes
-    }
+    public: { ...txData, ...callTxData.public },
+    private: callTxData.private,
+    calls: callTxData.calls
   };
 };

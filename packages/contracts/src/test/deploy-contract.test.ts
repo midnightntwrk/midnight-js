@@ -21,6 +21,7 @@ import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vites
 
 import { type ContractProviders } from '../contract-providers';
 import { deployContract, type DeployContractOptionsBase, type DeployedContract } from '../deploy-contract';
+import { CURRENT_PIPELINE_ERA } from '../era';
 import type { submitDeployTx } from '../submit-deploy-tx';
 import { type FinalizedDeployTxData, type UnsubmittedDeployTxData } from '../tx-model';
 import {
@@ -58,6 +59,7 @@ describe('deployContract', () => {
   let baseOptions: DeployContractOptionsBase<Contract.Any>;
 
   const createMockDeployTxData = (initialPrivateState?: AnyPrivateState): UnsubmittedDeployTxData<Contract.Any> => ({
+    era: CURRENT_PIPELINE_ERA,
     public: {
       ...createMockFinalizedTxData(),
       contractAddress: 'mock-contract-address',
