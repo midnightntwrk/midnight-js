@@ -86,6 +86,7 @@ export {
   Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
   MixedEraScopeError,
+  ScopedTransactionIdentityMismatchError,
   ScopedTxEraUnsupportedError,
   StaleHeadError,
   type StaleHeadOperationKind,
@@ -178,10 +179,15 @@ export type {
   Ledger8UnsubmittedCallTxData,
   Ledger8Witness
 } from './ledger8-contract';
-export { submitCallTx, submitCallTxAsync } from './submit-call-tx';
+export { submitCallTx, submitCallTxAsync, type SubmitCallTxProviders } from './submit-call-tx';
 export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
 export { submitTx, submitTxAsync, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
-export { ScopedTransactionOptions, TransactionContext, withContractScopedTransaction } from './transaction';
+export {
+  isTransactionContext,
+  ScopedTransactionOptions,
+  TransactionContext,
+  withContractScopedTransaction
+} from './transaction';
 export {
   CircuitCallTxInterface,
   createCallTxOptions,
@@ -208,6 +214,7 @@ export {
   CallTxOptionsWithPrivateStateId,
   createUnprovenCallTx,
   createUnprovenCallTxFromInitialStates,
+  type CrossContractConfig,
   UnprovenCallTxProvidersBase,
   UnprovenCallTxProvidersWithPrivateState
 } from './unproven-call-tx';
