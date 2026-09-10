@@ -272,14 +272,23 @@ describe('every result names the pipeline that produced it', () => {
     // instantiation is the one a shared handler wants -- telemetry, retry, a
     // queue consumer -- which is why these are the published form rather than
     // a four-parameter generic nobody would write.
-    expectTypeOf<AnyEraFinalizedCallTxData>().toEqualTypeOf<
-      | FinalizedCallTxData<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>
-      | Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>
+    // The RETAINED arm is pinned by strict equality: it is published
+    // unmodified, so anything that moves it moves this.
+    expectTypeOf<Extract<AnyEraFinalizedCallTxData, { era: RetainedPipelineEra }>>().toEqualTypeOf<
+      Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>
     >();
-    expectTypeOf<AnyEraSubmittedCallTx>().toEqualTypeOf<
-      | SubmittedCallTx<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>
-      | Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>
+    expectTypeOf<Extract<AnyEraSubmittedCallTx, { era: RetainedPipelineEra }>>().toEqualTypeOf<
+      Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>
     >();
+
+    // The CURRENT arm is the widest instantiation with its two `any` members
+    // restated as `unknown` (see below), so strict equality against the raw
+    // instantiation would pin the `any` back in. What has to hold instead is
+    // that it is the current era's arm and carries that arm's members.
+    type CurrentFinalized = Exclude<AnyEraFinalizedCallTxData, { era: RetainedPipelineEra }>;
+    expectTypeOf<CurrentFinalized['era']>().toEqualTypeOf<CurrentPipelineEra>();
+    expectTypeOf<CurrentFinalized['public']['logEvents']>().toEqualTypeOf<readonly LogEvent[]>();
+    expectTypeOf<CurrentFinalized['circuitId']>().toEqualTypeOf<Contract.ProvableCircuitId<Contract.Any>>();
 
     // The guard narrows by `era`, on any union whose arms carry the tag -- not
     // only on the published ones above. Stated against the NARROW union a
@@ -294,6 +303,32 @@ describe('every result names the pipeline that produced it', () => {
     const narrowCurrent = (result: EitherEraCall): readonly LogEvent[] | undefined =>
       isLedger8Result(result) ? undefined : result.public.logEvents;
     expectTypeOf(narrowCurrent).returns.toEqualTypeOf<readonly LogEvent[] | undefined>();
+ 
+    // The two members that would otherwise arrive as `any`. `Contract.Any` is
+    // `Contract<any>`, so on the WIDEST instantiation `Contract.PrivateState`
+    // and `Contract.CircuitReturnType` both resolve to `any` -- and a union
+    // member typed `any` silently disables checking for exactly the handlers
+    // these unions exist to serve. The retained arm already answers `unknown`;
+    // this pins the current arm to the same.
+    expectTypeOf<AnyEraFinalizedCallTxData['private']['result']>().toEqualTypeOf<unknown>();
+    expectTypeOf<AnyEraFinalizedCallTxData['private']['nextPrivateState']>().toEqualTypeOf<unknown>();
+    expectTypeOf<AnyEraSubmittedCallTx['callTxData']['private']['result']>().toEqualTypeOf<unknown>();
+
+    // Concrete-to-widest assignability, which is the property the whole design
+    // rests on and which nothing asserted. If a concrete result stops being
+    // assignable to the union, every handler declared against it stops
+    // compiling -- and no other assertion here would notice.
+    expectTypeOf<FinalizedCallTxData<Twin018, 'increment'>>().toExtend<AnyEraFinalizedCallTxData>();
+    expectTypeOf<SubmittedCallTx<Twin018, 'increment'>>().toExtend<AnyEraSubmittedCallTx>();
+
+    // A caller whose parameter is tagged with the WIDE union still narrows to
+    // something usable. `Extract` alone answers `never` here -- there is no
+    // union member to pick -- which rejects every property access in the true
+    // branch with no hint as to why. `PipelineEra` is published, so this is a
+    // parameter consumers will write.
+    const wide = (result: { readonly era: PipelineEra; readonly txId: string }): string | undefined =>
+      isLedger8Result(result) ? result.txId : undefined;
+    expectTypeOf(wide).returns.toEqualTypeOf<string | undefined>();
   });
 
   it('tags the asynchronous submit and the contract handles too', () => {
@@ -742,12 +777,15 @@ describe('submitCallTxAsync, deployContract and findDeployedContract resolve bot
     expectTypeOf(submitCallTxAsync(providers018, options018)).toEqualTypeOf<Promise<SubmittedCallTx<Twin018, 'increment'>>>();
   });
 
-  it('resolves a retained-era deployContract to the retained-era deployed-contract type', () => {
+  // `never`, not the retained deployed-contract type: this arm is refused
+  // unconditionally, so there is no value to describe. It also keeps
+  // `Ledger8DeployedContract` -- which the barrel deliberately holds back --
+  // out of a published signature, where it would name a type a caller can
+  // receive by inference and cannot annotate.
+  it('resolves a retained-era deployContract to never, because that arm only ever throws', () => {
     const deployOptions: Ledger8DeployContractOptions<Counter016Contract> = { compiledContract: contract016 };
 
-    expectTypeOf(deployContract(providers016, deployOptions)).toEqualTypeOf<
-      Promise<Ledger8DeployedContract<Counter016Contract>>
-    >();
+    expectTypeOf(deployContract(providers016, deployOptions)).toEqualTypeOf<Promise<never>>();
   });
 
   it('resolves a current-era deployContract to the current-era deployed-contract type', () => {
