@@ -318,7 +318,7 @@ const main = async () => {
     // node's log.
     if (outcome === undefined || outcome.code !== 0) {
       const captured = await environment
-        .captureContainerLogs(path.join(REPOSITORY_ROOT, 'consumer-e2e', '.logs'))
+        .captureContainerLogs(path.join(REPOSITORY_ROOT, 'consumer-e2e', 'stack-logs'))
         .catch((error) => {
           process.stdout.write(`Could not capture container logs: ${describeError(error)}\n`);
           return [];
