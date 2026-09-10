@@ -23,6 +23,7 @@ import {
   type StateValue
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
+  type EncodedStateValue,
   type EncPublicKey,
   type LedgerParameters,
   type ZswapChainState
@@ -146,6 +147,24 @@ export interface CallResultPublic extends CallResultPublicBase {
    * The public state resulting from executing the circuit.
    */
   readonly nextContractState: StateValue;
+  /**
+   * The same state as an {@link EncodedStateValue}: the form that survives this
+   * process, a `structuredClone`, a worker transfer and storage.
+   *
+   * The handle above is valid only while the runtime instance that produced it
+   * is loaded -- anything that walks it sees `__wbg_ptr`, an integer that means
+   * nothing outside its module. `EncodedStateValue` is pinned identical across
+   * `onchain-runtime-v3`, `ledger-v8` and `ledger-v9`, so this is the member
+   * era-agnostic code reads and the one to persist, in either era.
+   *
+   * Derived from the handle rather than fetched again, so the two cannot
+   * describe different states. It costs one encode per call; read
+   * {@link CallResultPublic.nextContractState} instead when the value never
+   * leaves the process that produced it.
+   *
+   * @see ADR-0011 for the decision to publish the handle AND the bytes.
+   */
+  readonly nextContractStateEncoded: EncodedStateValue;
   /**
    * The MIP-0002 contract log events emitted during circuit execution. Surfaced on the `compact-js`
    * executor result and typed by `compact-runtime`'s {@link LogEvent}. This is the single

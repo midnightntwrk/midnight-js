@@ -358,12 +358,15 @@ describe('both eras resolve a call to the SAME result structure', () => {
   /** Private members the retained era adds. An era may add; it may not drop. */
   type RetainedEraOnlyPrivateMembers = 'txBytes';
 
-  /**
-   * Public members the retained era adds: the encoded form of the state handle
-   * it publishes. The current era publishes its post-state as a handle only,
-   * so there is nothing on that side for this to pair with.
+  /*
+   * NO retained-era-only public members. `nextContractStateEncoded` was excused
+   * here on the grounds that the current era "publishes its post-state as a
+   * handle only, so there is nothing on that side for this to pair with". That
+   * was not true: `StateValue.encode()` exists on the current era's handle, so
+   * the pair was available and simply was not built. Both eras publish the
+   * encoded form now, which is what makes it the member era-agnostic code can
+   * read -- the point ADR-0011 argued for and applied to one era.
    */
-  type RetainedEraOnlyPublicMembers = 'nextContractStateEncoded';
 
   /** Top-level members the retained era adds. */
   type RetainedEraOnlyMembers = 'circuitId';
@@ -380,7 +383,6 @@ describe('both eras resolve a call to the SAME result structure', () => {
     expectTypeOf<CurrentEraResult['public']>().toHaveProperty('logEvents');
     expectTypeOf<CurrentEraResult['private']>().toHaveProperty('unprovenTx');
     expectTypeOf<RetainedEraResult['private']>().toHaveProperty('txBytes');
-    expectTypeOf<RetainedEraResult['public']>().toHaveProperty('nextContractStateEncoded');
     expectTypeOf<RetainedEraResult>().toHaveProperty('circuitId');
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('contractStateEncoded');
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('preContractState');
@@ -393,9 +395,9 @@ describe('both eras resolve a call to the SAME result structure', () => {
     expectTypeOf<keyof CurrentEraResult>().toEqualTypeOf<Exclude<keyof RetainedEraResult, RetainedEraOnlyMembers>>();
   });
 
-  it('carries the same public members in BOTH eras, apart from the two excused above', () => {
+  it('carries the same public members in BOTH eras, apart from the ONE excused above', () => {
     expectTypeOf<Exclude<keyof CurrentEraResult['public'], CurrentEraOnlyPublicMembers>>().toEqualTypeOf<
-      Exclude<keyof RetainedEraResult['public'], RetainedEraOnlyPublicMembers>
+      keyof RetainedEraResult['public']
     >();
   });
 

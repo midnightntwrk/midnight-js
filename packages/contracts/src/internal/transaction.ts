@@ -379,6 +379,7 @@ const runScope = async <
       era: CURRENT_PIPELINE_ERA,
       public: {
         nextContractState: unprovenCallTxData.public.nextContractState,
+        nextContractStateEncoded: unprovenCallTxData.public.nextContractStateEncoded,
         partitionedTranscript: unprovenCallTxData.public.partitionedTranscript,
         publicTranscript: unprovenCallTxData.public.publicTranscript,
         logEvents: unprovenCallTxData.public.logEvents

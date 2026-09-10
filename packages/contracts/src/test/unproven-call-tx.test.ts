@@ -129,6 +129,26 @@ describe('unproven-call-tx', () => {
       expect(result.public.logEvents).toEqual([]);
     });
 
+    it('publishes the post-call state as an ENCODED value beside the handle, as the retained era does', async () => {
+      const options = createMockCallOptions({
+        initialContractState: await getInitialContractState()
+      });
+
+      const result = await createUnprovenCallTxFromInitialStates(
+        createMockZKConfigProvider(),
+        options,
+        createMockEncryptionPublicKey()
+      );
+
+      // The handle is valid only inside this process; the encoded form is the
+      // one that survives a `structuredClone`, a worker transfer and storage,
+      // and it is pinned identical across the ledger runtimes -- so it is the
+      // member era-agnostic code can read in either era. Asserting it EQUALS
+      // the handle's own encoding is the point: a second, independently
+      // derived value could disagree with the state actually published.
+      expect(result.public.nextContractStateEncoded).toEqual(result.public.nextContractState.encode());
+    });
+
     it('should fail when circuit fails at runtime', async () => {
       const options = createMockCallOptions({
         compiledContract: createMockCompiledContract({

@@ -152,6 +152,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
       era: CURRENT_PIPELINE_ERA,
       public: {
         nextContractState: rootCall.public.contractState,
+        nextContractStateEncoded: rootCall.public.contractState.encode(),
         partitionedTranscript: rootCall.public.partitionedTranscript,
         publicTranscript: rootCall.public.publicTranscript,
         logEvents: events
