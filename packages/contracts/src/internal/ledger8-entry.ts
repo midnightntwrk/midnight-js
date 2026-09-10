@@ -903,6 +903,7 @@ export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Led
 const toLedger8CallTxData = (
   call: Ledger8CallPipelineResult<DownConvertedState>
 ): AnyLedger8UnsubmittedCallTxData => ({
+  era: RETAINED_PIPELINE_ERA,
   public: {
     publicTranscript: call.publicTranscript,
     partitionedTranscript: call.partitionedTranscript,

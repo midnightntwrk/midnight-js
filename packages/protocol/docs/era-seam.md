@@ -17,8 +17,10 @@ What is allowed across the era boundary is decided in
 `docs/adr/0007-cross-the-era-boundary-with-plain-data-only.md`, as amended by
 `docs/adr/0011-publish-era-handles-alongside-their-plain-data.md`. The half that
 governs THIS seam is unchanged: the era-agnostic facade trades plain data only,
-encoded at the crossing point, and the `structuredClone` gate in
-`src/test/era-parity.test.ts` still enforces it. What ADR-0011 changed is one
+encoded at the crossing point. The `structuredClone` gate in
+`src/test/era-parity.test.ts` records that rule but does not enforce it — a
+`wasm-bindgen` handle clones without throwing, so the gate would pass one
+through; see ADR-0007. What ADR-0011 changed is one
 layer up — the framework's era-SPECIFIC result types now publish handles
 alongside their plain-data members. ADR-0007 also
 records why the rule is a transport guarantee and not an immutability one; where

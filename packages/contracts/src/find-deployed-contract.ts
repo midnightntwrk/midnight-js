@@ -354,7 +354,12 @@ export async function findDeployedContract<C extends Contract.Any>(
       deployTxData: found.deployTxData,
       // Built AFTER the attach has checked every declared circuit's key, so a
       // handle a caller receives is one whose circuits the chain can serve.
-      callTx: createLedger8CircuitCallTxInterface(providers, options.compiledContract, options.contractAddress)
+      callTx: createLedger8CircuitCallTxInterface(
+        providers,
+        options.compiledContract,
+        options.contractAddress,
+        options.privateStateId
+      )
     };
   }
   const { compiledContract, contractAddress } = options;

@@ -699,13 +699,20 @@ export const runLedger8CallPipeline = async <TState>(
         contractAddress,
         circuitId,
         public: {
+          // The state this call ENDED on. `compact-js` fills the current era's
+          // member of this name from its FINAL query context, so the two eras
+          // answer the same question under the same name.
+          contractState: transcript.postContractState,
+          contractStateEncoded: transcript.postContractStateEncoded,
           // The state this call BOUND to: the very handle the circuit executed
-          // against, not a second decode of the same bytes.
-          contractState: downConverted,
-          // The same state, encoded. This one IS the snapshot's own primary
-          // state -- the value the handle was down-converted from -- so it is
-          // forwarded rather than re-encoded.
-          contractStateEncoded: snapshot.encoded,
+          // against, not a second decode of the same bytes. Published under its
+          // own name because the current era means something else by
+          // `contractState`.
+          preContractState: downConverted,
+          // This one IS the snapshot's own primary state -- the value the
+          // handle was down-converted from -- so it is forwarded rather than
+          // re-encoded.
+          preContractStateEncoded: snapshot.encoded,
           publicTranscript: transcript.publicTranscript,
           partitionedTranscript
         },

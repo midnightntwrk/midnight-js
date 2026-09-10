@@ -20,10 +20,12 @@ several.
   `git diff --name-only f1677a0d..92746de0 -- packages/` is **empty**, so every
   `file:line` in the report still resolves. Re-run that diff against the current
   head before trusting line numbers.
-- **The audit report and this prompt are UNTRACKED.** Copy them somewhere durable
-  before any worktree cleanup. Until the report is tracked on `main`, **no code
-  comment, error message, docblock or commit message may cite it** — design
-  rationale goes in the ADR (§2) instead.
+- **The audit report and this prompt are TRACKED** as of the branch that carries
+  this file; they were untracked while the work was being done. The citation
+  rule survives that change and is unconditional: **no code comment, error
+  message, docblock or commit message may cite either document** — design
+  rationale goes in the ADR (§2) instead, because an ADR is what a reader of the
+  source is expected to be able to follow.
 
 ## 1. Decisions already made — implement these, do not re-open them
 
@@ -35,11 +37,12 @@ one is wrong, say so in one sentence and then implement it anyway.
    only at 0005**, so the sequences have genuinely diverged: number from the
    TARGET branch, never from `main`.
 2. **The bases live in `packages/types`**, not in `packages/contracts`.
-3. **Retained-era (`Ledger8*`) declarations get their own directory**,
-   `packages/types/src/v8/`. Create `packages/types/src/v9/` **only if a
-   genuinely v9-specific declaration appears** — do not build an empty symmetry.
-   Today the current-era types are the un-prefixed default and stay where they
-   are.
+3. ~~**Retained-era (`Ledger8*`) declarations get their own directory**,
+   `packages/types/src/v8/`.~~ **SUPERSEDED by ADR-0010**, which decided against
+   creating that directory: the bases turned out to be era-NEUTRAL, so nothing
+   retained-specific moves into `packages/types` and the directory would have
+   been empty. The rule itself stands for the day a retained-era declaration
+   does land there. Follow the ADR, not this line.
 
 There is a direct precedent for the layout: `packages/protocol/src/lib/` is
 already `v8/ v9/ era/ shared/`, with the era-neutral vocabulary in `shared/`.

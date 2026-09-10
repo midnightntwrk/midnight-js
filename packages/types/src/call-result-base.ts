@@ -84,9 +84,10 @@ export interface ContractCallPrivateBase {
  * Generic over the two members whose types are genuinely era-specific: the
  * circuit's own return value and the contract's private state. Everything else
  * is one shared declaration, including `nextZswapLocalState` — the two
- * runtimes' `ZswapLocalState` interfaces are member-for-member identical and
- * mutually assignable, so one type serves both eras rather than a third type
- * parameter that would only ever be filled with structurally equal arguments.
+ * runtimes' `ZswapLocalState` interfaces are mutually assignable, asserted in
+ * both directions by `packages/protocol/src/test/v8-execute.test.ts`, so one
+ * type serves both eras rather than a third type parameter that would only ever
+ * be filled with structurally equal arguments.
  *
  * @remarks **Privacy-sensitive.** Every member carries data the zero-knowledge
  * proofs were designed to keep confidential. Do not log, serialize or transmit
