@@ -16,7 +16,7 @@
 import type { Ledger8DeployableContractState } from '@midnight-ntwrk/midnight-js-protocol';
 import type { CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractAddress, LogEvent } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { describe, expectTypeOf, it } from 'vitest';
 
 // The current-era twin of the retained-era fixture. Imported TYPE-ONLY from the artifact's own
@@ -38,6 +38,7 @@ import {
   type DeployedContract
 } from '../../deploy-contract';
 import type { CurrentPipelineEra, PipelineEra, RetainedPipelineEra } from '../../era';
+import { type AnyEraFinalizedCallTxData, type AnyEraSubmittedCallTx, isLedger8Result } from '../../era-results';
 import {
   findDeployedContract,
   type FindDeployedContractOptionsBase,
@@ -262,6 +263,37 @@ describe('every result names the pipeline that produced it', () => {
 
     expectTypeOf(narrow).parameter(0).toEqualTypeOf<EitherEraCall>();
     expectTypeOf(narrow).returns.toEqualTypeOf<Uint8Array | undefined>();
+  });
+
+  it('publishes a union per result surface, and a guard that narrows it', () => {
+    // Without these a caller can RECEIVE either era and still not declare a
+    // parameter that accepts both: the overloads select a type by inference,
+    // and inference does not let anyone NAME the union. The widest
+    // instantiation is the one a shared handler wants -- telemetry, retry, a
+    // queue consumer -- which is why these are the published form rather than
+    // a four-parameter generic nobody would write.
+    expectTypeOf<AnyEraFinalizedCallTxData>().toEqualTypeOf<
+      | FinalizedCallTxData<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>
+      | Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>
+    >();
+    expectTypeOf<AnyEraSubmittedCallTx>().toEqualTypeOf<
+      | SubmittedCallTx<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>
+      | Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>
+    >();
+
+    // The guard narrows by `era`, on any union whose arms carry the tag -- not
+    // only on the published ones above. Stated against the NARROW union a
+    // caller with concrete contract types would build, because that is the
+    // case a widest-instantiation-only guard would fail to serve.
+    const narrow = (result: EitherEraCall): Uint8Array | undefined =>
+      isLedger8Result(result) ? result.private.txBytes : undefined;
+    expectTypeOf(narrow).returns.toEqualTypeOf<Uint8Array | undefined>();
+
+    // And it narrows the OTHER way too: the else branch is the current era's
+    // arm, so a member only that arm carries is reachable there.
+    const narrowCurrent = (result: EitherEraCall): readonly LogEvent[] | undefined =>
+      isLedger8Result(result) ? undefined : result.public.logEvents;
+    expectTypeOf(narrowCurrent).returns.toEqualTypeOf<readonly LogEvent[] | undefined>();
   });
 
   it('tags the asynchronous submit and the contract handles too', () => {

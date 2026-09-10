@@ -69,6 +69,8 @@ const typeOnlyExportNames = (): string[] => {
 describe('Contracts type ACL', () => {
   it('publishes exactly this type surface', () => {
     expect(typeOnlyExportNames()).toEqual([
+      'AnyEraFinalizedCallTxData',
+      'AnyEraSubmittedCallTx',
       'CallOptions',
       'CallOptionsBase',
       'CallOptionsProviderDataDependencies',
