@@ -40,6 +40,7 @@ import {
 import type { CurrentPipelineEra, PipelineEra, RetainedPipelineEra } from '../../era';
 import {
   findDeployedContract,
+  type FindDeployedContractOptionsBase,
   type FindDeployedContractOptionsStorePrivateState,
   type FoundContract
 } from '../../find-deployed-contract';
@@ -495,6 +496,97 @@ describe('both eras resolve a call to the SAME result structure', () => {
       'nextPrivateState'
     );
     expectTypeOf<FinalizedCallTxData<Twin018, 'increment'>['private']>().toHaveProperty('nextPrivateState');
+  });
+});
+
+describe('both eras answer with the SAME contract-handle structure', () => {
+  // The handle types escaped the discipline ADR-0010 wrote for the RESULT
+  // types, and drifted in BOTH directions while every result-shape assertion
+  // above stayed green. A base cannot hold these in step: `era`, `callTx` and
+  // `deployTxData` are era-specific types on every arm, so a base over them
+  // would declare a key set and nothing else -- the shape ADR-0010 already
+  // rejected for `FinalizedCallTxData`. The key-set gate is the whole
+  // mechanism here.
+
+  /**
+   * Members the current era's found contract carries and the retained era does
+   * NOT. The retained era has no governance arm for a maintenance interface to
+   * reach, so there is no value to carry rather than a value being dropped.
+   */
+  type CurrentEraOnlyFoundMembers = 'circuitMaintenanceTx' | 'contractMaintenanceTx';
+
+  /**
+   * Members the retained era's DEPLOYED contract carries at the top level and
+   * the current era carries under `deployTxData` instead.
+   *
+   * Not a missing member on either side: both eras hold all five facts. They
+   * disagree about the PATH, which no key-set assertion at one level can state
+   * -- the current era nests the first four under `deployTxData.private` and
+   * `initialContractState` under `deployTxData.public`. Excused here so the
+   * rest of the surface is gated, and tracked as its own decision about which
+   * shape wins, because moving either side is a breaking change to a published
+   * surface.
+   */
+  type RetainedEraOnlyDeployedMembers =
+    | 'signingKey'
+    | 'initialContractState'
+    | 'initialState'
+    | 'initialPrivateState'
+    | 'initialZswapState';
+
+  type CurrentFound = FoundContract<Twin018>;
+  type RetainedFound = Ledger8FoundContract<Counter016Contract>;
+  type CurrentDeployed = DeployedContract<Twin018>;
+  type RetainedDeployed = Ledger8DeployedContract<Counter016Contract>;
+
+  it('still CARRIES every member the allow-lists above excuse from parity', () => {
+    // `Exclude<keyof T, 'x'>` is a NO-OP when `x` is absent from `T`, so a name
+    // written into an allow-list stops being checked in either direction.
+    // An allow-list may excuse a member from PARITY; it may not excuse it from
+    // EXISTING.
+    expectTypeOf<CurrentFound>().toHaveProperty('circuitMaintenanceTx');
+    expectTypeOf<CurrentFound>().toHaveProperty('contractMaintenanceTx');
+    expectTypeOf<RetainedDeployed>().toHaveProperty('signingKey');
+    expectTypeOf<RetainedDeployed>().toHaveProperty('initialContractState');
+    expectTypeOf<RetainedDeployed>().toHaveProperty('initialState');
+    expectTypeOf<RetainedDeployed>().toHaveProperty('initialPrivateState');
+    expectTypeOf<RetainedDeployed>().toHaveProperty('initialZswapState');
+  });
+
+  it('carries the same members on a FOUND contract in BOTH eras, apart from the maintenance pair', () => {
+    expectTypeOf<Exclude<keyof CurrentFound, CurrentEraOnlyFoundMembers>>().toEqualTypeOf<keyof RetainedFound>();
+  });
+
+  it('carries the same members on a DEPLOYED contract in BOTH eras, apart from the two lists above', () => {
+    expectTypeOf<Exclude<keyof CurrentDeployed, CurrentEraOnlyFoundMembers>>().toEqualTypeOf<
+      Exclude<keyof RetainedDeployed, RetainedEraOnlyDeployedMembers>
+    >();
+  });
+
+  it('names the contract and its address on the handle in BOTH eras', () => {
+    // The two members that drifted onto the retained arm alone. A caller that
+    // has a handle can reach the artifact and the address it was attached with,
+    // without carrying either alongside it -- in either era.
+    //
+    // Stated against each era's OWN options type rather than against a spelled-out
+    // type: the handle republishes exactly the value the caller supplied, and the
+    // current era's container carries an unconstrained second parameter that a
+    // restatement here would have to either widen or misreport.
+    expectTypeOf<CurrentFound['compiledContract']>().toEqualTypeOf<
+      FindDeployedContractOptionsBase<Twin018>['compiledContract']
+    >();
+    expectTypeOf<RetainedFound['compiledContract']>().toEqualTypeOf<
+      Ledger8FindDeployedContractOptions<Counter016Contract>['compiledContract']
+    >();
+    expectTypeOf<CurrentFound['contractAddress']>().toEqualTypeOf<ContractAddress>();
+    expectTypeOf<RetainedFound['contractAddress']>().toEqualTypeOf<ContractAddress>();
+  });
+
+  it('discriminates a handle on `era` alone, in both directions', () => {
+    expectTypeOf<CurrentFound['era']>().toEqualTypeOf<CurrentPipelineEra>();
+    expectTypeOf<RetainedFound['era']>().toEqualTypeOf<RetainedPipelineEra>();
+    expectTypeOf<CurrentDeployed['era']>().toEqualTypeOf<CurrentPipelineEra>();
+    expectTypeOf<RetainedDeployed['era']>().toEqualTypeOf<RetainedPipelineEra>();
   });
 });
 
