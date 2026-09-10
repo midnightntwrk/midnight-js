@@ -68,14 +68,10 @@ jobs:
         # `events` is current-era only: `emit` is not a language-0.23 form, so a
         # pre-fork events contract cannot exist. Its shard poses the current-era
         # half alone, which `resolveContractSelection` narrows to for it.
+        # DIAGNOSTIC BRANCH: narrowed to the one shard that reproduces the refusal.
+        # The other six answer nothing here and cost ~90 minutes of runner time.
         contract:
-          - simple
           - unshielded
-          - shielded
-          - shielded-fallible
-          - fee-mint
-          - events
-          - block-time
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -186,7 +182,9 @@ jobs:
       # submission: the framework's seam error redacts the provider's message by
       # design, and the provider's own error carries no reason.
       - name: Upload the stack's container logs
-        if: failure()
+        # DIAGNOSTIC BRANCH: `always()`, where the merged shape is `failure()`. The
+        # probe under investigation keeps the run green on purpose.
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # ratchet:actions/upload-artifact@v4.6.2
         with:
           name: fork-stack-logs-${{ matrix.contract }}
