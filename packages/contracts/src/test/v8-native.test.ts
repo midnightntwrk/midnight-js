@@ -70,6 +70,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { isLedger8Result } from '../era-results';
 import {
+  AnyEraTxFailedError,
   BlankVerifierKeySlotError,
   EraInvariantViolationError,
   Ledger8AmbiguousEntryPointError,
@@ -1846,6 +1847,11 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       // failed call must be able to read the status off this arm too rather
       // than parse it out of a message.
       expect(caught).toBeInstanceOf(Ledger8CallTxFailedError);
+      // And a caller that catches the era-agnostic base gets this one too --
+      // asserted on the object the pipeline really threw rather than on a
+      // constructed instance, because the claim is about the throw path.
+      expect(caught).toBeInstanceOf(AnyEraTxFailedError);
+      expect((caught as Ledger8CallTxFailedError).record.status).toBe(FailEntirely);
       expect((caught as Ledger8CallTxFailedError).txData.status).toBe(FailEntirely);
       expect((caught as Ledger8CallTxFailedError).circuitId).toBe(CIRCUIT_ID);
       // Nothing landed on chain either, so saying the local state still matches

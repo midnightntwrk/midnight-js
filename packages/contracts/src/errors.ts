@@ -669,7 +669,34 @@ export const isEffectContractError = (error: unknown): error is EffectContractEr
 /**
  * An error indicating that a transaction submitted to a consensus node failed.
  */
-export class TxFailedError extends Error {
+/**
+ * A transaction this framework submitted that the chain recorded with a
+ * non-success status, in EITHER era. The one class to catch.
+ *
+ * The two eras cannot share a record TYPE. The current era submits and accepts
+ * only v9, so its record is `FinalizedTxData`. A retained-era call is recorded
+ * by whichever era the network head is on, so its record is the version-tagged
+ * union -- which is not assignable to the v9 arm, and narrowing the current
+ * era's member to the union would change a type consumers already read. That
+ * is why the retained era has a class of its own rather than extending
+ * `TxFailedError`, and why this base declares the union.
+ *
+ * Each subclass keeps its own historical member -- `finalizedTxData` on the
+ * current era's, `txData` on the retained one -- so nothing reading those
+ * breaks. {@link AnyEraTxFailedError.record} is the member to write new code
+ * against, and it needs narrowing on `version` before `tx` is touched.
+ */
+export abstract class AnyEraTxFailedError extends Error {
+  /**
+   * The finalized record the chain reported, version-tagged.
+   *
+   * @remarks Narrow on `record.version` before reading `record.tx`: the handle
+   * belongs to the ledger runtime the tag names.
+   */
+  abstract readonly record: VersionedFinalizedTxData;
+}
+
+export class TxFailedError extends AnyEraTxFailedError {
   /**
    * @param finalizedTxData The finalization data of the transaction that failed.
    * @param circuitId The name of the circuit that was called to create the call
@@ -693,6 +720,11 @@ export class TxFailedError extends Error {
       },
       '\t'
     );
+  }
+
+  /** See {@link AnyEraTxFailedError.record}. Always the v9 arm on this class. */
+  get record(): VersionedFinalizedTxData {
+    return this.finalizedTxData;
   }
 }
 
@@ -1058,7 +1090,7 @@ export class Ledger8DeployUnmaintainableError extends Error {
  * places every movement it makes in the guaranteed segment, so the chain moved
  * while the private state was not stored.
  */
-export class Ledger8CallTxFailedError extends Error {
+export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
   constructor(
     readonly txData: VersionedFinalizedTxData,
     readonly circuitId: string
@@ -1073,6 +1105,11 @@ export class Ledger8CallTxFailedError extends Error {
             'state still matches it.')
     );
     this.name = 'Ledger8CallTxFailedError';
+  }
+
+  /** See {@link AnyEraTxFailedError.record}. Either arm on this class. */
+  get record(): VersionedFinalizedTxData {
+    return this.txData;
   }
 }
 
