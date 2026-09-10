@@ -17,13 +17,31 @@ import {
   type AnyProvableCircuitId,
   FailFallible,
   type FinalizedTxData,
+  type FinalizedTxDataV8,
   SegmentFail,
   SegmentSuccess
 } from '@midnight-ntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
-import { AnyEraTxFailedError, CallTxFailedError, Ledger8CallTxFailedError, TxFailedError } from '../errors';
+import {
+  AnyEraTxFailedError,
+  CallTxFailedError,
+  EraInvariantViolationError,
+  Ledger8CallTxFailedError,
+  TxFailedError
+} from '../errors';
 import { createMockFinalizedTxData } from './test-mocks';
+
+// The v8 arm of the record union. Its `tx` is a live `V8Transaction` handle
+// from the retained ledger module, which no unit test can construct and none
+// of these read -- every assertion here is about the tag and the members
+// around it. One cast, in one place, rather than one per call site.
+const v8FailedRecord = (): FinalizedTxDataV8 => ({
+  ...createMockFinalizedTxData(FailFallible),
+  version: 'v8',
+  tx: undefined as unknown as FinalizedTxDataV8['tx']
+});
 
 describe('TxFailedError', () => {
   it('should serialize segmentStatusMap in error message', () => {
@@ -104,8 +122,7 @@ describe('the era-agnostic failure base', () => {
     // The reason the two cannot share a record TYPE: a retained-era call is
     // recorded by whichever era the head is on, so its record is the tagged
     // union. Reading it through `record` requires narrowing on `version`.
-    const v8Record = { ...createMockFinalizedTxData(FailFallible), version: 'v8' as const, tx: undefined as never };
-    const retainedEra = new Ledger8CallTxFailedError(v8Record, 'increment');
+    const retainedEra = new Ledger8CallTxFailedError(v8FailedRecord(), 'increment');
 
     expect(retainedEra.record.version).toBe('v8');
   });
@@ -129,5 +146,47 @@ describe('CallTxFailedError', () => {
     expect(parsed.circuitId).toBe(circuitId);
     expect(parsed.segmentStatusMap['0']).toBe(SegmentSuccess);
     expect(parsed.segmentStatusMap['1']).toBe(SegmentFail);
+  });
+});
+
+describe('EraInvariantViolationError', () => {
+  // A refusal that states only what it wanted leaves the reader to discover
+  // what it got. `received` is what makes the message actionable, and what a
+  // caught error can be inspected for.
+  it('names the era it received alongside the one it can accept', () => {
+    const error = new EraInvariantViolationError('watchForTxData', 'increment', 'v8', 'v9');
+
+    expect(error.expected).toBe('v8');
+    expect(error.received).toBe('v9');
+    expect(error.message).toContain("'v9' ledger era");
+    expect(error.message).toContain("can only accept 'v8'");
+    expect(error.message).toContain('increment');
+  });
+
+  // The default keeps every call site that predates the retained-era pipelines
+  // reading as it did: those flows submit and accept v9 and nothing else.
+  it('defaults the accepted era to the current one', () => {
+    expect(new EraInvariantViolationError('proveTx').expected).toBe('v9');
+  });
+});
+
+describe('the recorded-failure code', () => {
+  // The class hierarchy is the ergonomic route; the code is the one that
+  // survives a second copy of this package in the process, which is a live
+  // condition here for the ledger packages.
+  it('is carried by both eras and by the subclasses that extend them', () => {
+    const record = createMockFinalizedTxData(FailFallible);
+
+    const errors: AnyEraTxFailedError[] = [
+      new TxFailedError(record),
+      new CallTxFailedError(record, 'increment'),
+      new Ledger8CallTxFailedError(v8FailedRecord(), 'increment')
+    ];
+
+    expect(errors.map((error) => error.code)).toEqual([
+      CONTRACTS_ERROR_CODES.TX_FAILED,
+      CONTRACTS_ERROR_CODES.TX_FAILED,
+      CONTRACTS_ERROR_CODES.TX_FAILED
+    ]);
   });
 });

@@ -95,6 +95,7 @@ export {
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation,
   TxFailedError,
+  UnrecognisedResultEraError,
   VerifierKeyMismatchError} from './errors';
 export {
   findDeployedContract,
