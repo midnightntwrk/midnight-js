@@ -470,8 +470,9 @@ export interface Ledger8UnsubmittedCallTxData<C extends Ledger8Contract, K exten
  * waiting for finalization.
  *
  * Carries the execution data on `callTxData`, as the current era's
- * {@link SubmittedCallTx} does, and adds the two members this arm can answer
- * straight away.
+ * {@link SubmittedCallTx} does, and names the same members it does. The next
+ * private state is reachable at `callTxData.private.nextPrivateState`, the one
+ * path both eras publish it on.
  */
 export interface Ledger8SubmittedCallTx<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>
   extends SubmittedCallTxBase<Ledger8UnsubmittedCallTxData<C, K>> {

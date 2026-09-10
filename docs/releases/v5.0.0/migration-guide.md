@@ -471,12 +471,11 @@ either era.
   answers with serialized bytes. Build a transaction object from them through
   the same public loader if you need one.
 
-Two limits to plan around. A retained-era call result carries `circuitId` and so
-does the current era's, but the contract HANDLES still differ: the retained
-`FoundContract` carries `compiledContract` and `contractAddress` at the top
-level and no maintenance interfaces (the retained era has no governance arm),
-and its `deployTxData` is the flat record where the current era's is
-`{ era, public, private }`. And `getStates` / `getPublicStates` have no retained
+Two limits to plan around. Both eras now name the circuit on the result, and
+both handles carry `compiledContract` and `contractAddress`, so the contract
+HANDLES differ in only two places: the retained handle has no maintenance
+interfaces (the retained era has no governance arm), and its `deployTxData` is
+the flat record where the current era's is `{ era, public, private }`. And `getStates` / `getPublicStates` have no retained
 arm: they decode with the current-era deserializer and refuse anything else, so
 for a contract whose state envelope is still pre-fork, read the state through
 `queryRawContractState` and narrow on its `version`, or read

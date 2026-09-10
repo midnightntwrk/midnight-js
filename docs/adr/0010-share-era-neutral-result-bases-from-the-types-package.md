@@ -84,16 +84,23 @@ We will split base placement by what a base names:
 `Ledger8DeployedContract` are held in step by the key-set parity gate ALONE.
 There is no base for them and there will not be one.
 
-Every member the two arms share has an era-specific type: `era` is
+Almost every member the two arms share has an era-specific type: `era` is
 `CurrentPipelineEra` against `RetainedPipelineEra`, `callTx` is
-`CircuitCallTxInterface<C>` against `Ledger8CircuitCallTxInterface<C>`, and
+`CircuitCallTxInterface<C>` against `Ledger8CircuitCallTxInterface<C>`,
 `deployTxData` is `FinalizedDeployTxDataBase<C>` against
-`VersionedFinalizedTxData`. A base over those three declares a key set and
-nothing else — the same shape this ADR already rejected for a top-level
-`FinalizedCallTxDataBase`, and for the same reason: two arms narrowing one
-base's member to different types is a "cannot simultaneously extend" error
-rather than a guarantee. Where the shared members carry no shared type, the
-gate is not the weaker of the two tools; it is the only one.
+`VersionedFinalizedTxData`, and `compiledContract` is the era's own artifact
+type. A base over those four declares a key set and nothing else — the same
+shape this ADR already rejected for a top-level `FinalizedCallTxDataBase`, and
+for the same reason: two arms narrowing one base's member to different types is
+a "cannot simultaneously extend" error rather than a guarantee.
+
+`contractAddress` is the exception, and it is the reason this paragraph now
+says "almost". It is `ContractAddress` on both arms, from the same declaration,
+which the gate asserts on both sides. So a base over it would carry a real
+type, not merely a key. It is one member, and a base holding one member is not
+worth the indirection while every sibling has to stay off it — but the
+justification for the gate here is now a cost argument, not the absence of any
+shared type. Should a second member converge, revisit this.
 
 The gate for these types lives beside the result-shape one in
 `packages/contracts/src/test/typecheck/overloads.test-d.ts`, with the same
