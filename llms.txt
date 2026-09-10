@@ -322,10 +322,12 @@ const circuitCalledOn = async (compiled: MyCompiled): Promise<string> =>
   optionsFor(await findContract(compiled)).circuitId;
 ```
 
-`ContractExecutable` is exported alongside them; it is what `CallResult.calls`
-is typed with. All three are also reachable as `protocol.Contract`,
-`protocol.CompiledContract` and `protocol.ContractExecutable` through the
-barrel.
+`ContractExecutable` is exported alongside them; `CallResult.calls` is typed
+with its nested `ContractExecutable.ContractExecutable.ContractCall`.
+`CompiledContract` and `ContractExecutable` are also reachable as values
+through the barrel, as `protocol.CompiledContract` and
+`protocol.ContractExecutable`. `Contract` is a type, so it is importable only
+in type position -- there is no `protocol.Contract` value to read at runtime.
 
 The barrel also publishes the ledger era vocabulary as named exports, so a
 consumer can say which era produced a payload or a record without depending on
