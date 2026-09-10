@@ -86,17 +86,17 @@ import {
   readLedger8Snapshot,
   runLedger8CallPipeline
 } from '../internal/ledger8-pipeline';
+import {
+  createEncryptionPublicKeyResolver,
+  type EncryptionPublicKeyResolver,
+  SHIELDED_BURN_COIN_PUBLIC_KEY
+} from '../internal/utils';
 import type {
   Ledger8CallTxOptions,
   Ledger8ContractProviders,
   Ledger8FindDeployedContractOptions
 } from '../ledger8-contract';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
-import {
-  createEncryptionPublicKeyResolver,
-  type EncryptionPublicKeyResolver,
-  SHIELDED_BURN_COIN_PUBLIC_KEY
-} from '../utils';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
 import {
   type CoinReceiverRecording,

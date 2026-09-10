@@ -76,7 +76,7 @@ A Zswap offer is not refused on either era. The retained era executes
 coin-moving circuits and hands their post-call Zswap local state back on the
 transcript, which is what a caller turns into the offer it passes here
 (`zswapStateToSegmentedOffer`,
-`packages/contracts/src/utils/zswap-utils.ts`). Refusing the offer on the
+`packages/contracts/src/internal/utils/zswap-utils.ts`). Refusing the offer on the
 retained era would take away the only way to attach those coin movements to the
 transaction that carries the call.
 
@@ -264,7 +264,7 @@ only ever raised for `'v9'`.
 
 Both eras' call legs use `Transaction.fromPartsRandomized`, so the intent lands
 at a random segment id and stays mergeable with other calls — matching the v9
-call path in `packages/contracts/src/utils/ledger-utils.ts`. Both deploy legs
+call path in `packages/contracts/src/internal/utils/ledger-utils.ts`. Both deploy legs
 use `Transaction.fromParts` instead, so the intent lands at a fixed segment id,
 matching `createUnprovenLedgerDeployTx` in the same file, which the v9 deploy
 path already does. Only calls randomize their segment, and only to stay

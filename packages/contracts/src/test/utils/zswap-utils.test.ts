@@ -56,7 +56,7 @@ import {
   ZSWAP_MERKLE_ROOT_RETENTION_SECONDS,
   zswapStateToNewCoins,
   zswapStateToOffer,
-  zswapStateToSegmentedOffer} from '../../utils';
+  zswapStateToSegmentedOffer} from '../../internal/utils';
 
 const arbitraryBytes = fc.uint8Array({ minLength: 32, maxLength: 32 });
 

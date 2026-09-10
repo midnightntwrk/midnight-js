@@ -67,7 +67,6 @@ import type {
   AnyLedger8SubmittedCallTx,
   AnyLedger8UnsubmittedCallTxData
 } from '../ledger8-contract';
-import { createEncryptionPublicKeyResolver } from '../utils';
 import { type BreadcrumbSink, emitPipelineSelection } from './breadcrumbs';
 import {
   assertEraCompatible,
@@ -88,6 +87,7 @@ import {
   runLedger8DeployPipeline
 } from './ledger8-pipeline';
 import { handleSubmitRejection } from './stale-head';
+import { createEncryptionPublicKeyResolver } from './utils';
 
 /**
  * Reads the current era's own freshly composed bytes back into the live
