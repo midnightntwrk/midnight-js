@@ -61,10 +61,12 @@ supported consumer linker — any PnP consumer of the wallet SDK hits these.
 > **Superseded.** This section records a run from before `43b9b0b7` and
 > `736d45b4` (#1276). The keep-state call it reports as refused now succeeds, so
 > the fork crossing is 7/7 for the counter, and the matrix has since been widened to six more
-> contracts on both eras. See
-> [`docs/qa/2026-09-08-fork-contract-matrix.md`](../docs/qa/2026-09-08-fork-contract-matrix.md)
-> for the current picture; the table and the diagnosis below are kept only as a
-> record of what the failure looked like.
+> contracts on both eras. The current picture is whatever
+> [`.github/workflows/ci-hardfork.yml`](../.github/workflows/ci-hardfork.yml)
+> reports on the head being read: it runs this scenario on every PR, one
+> contract per shard, and is a blocking gate. The runs that established the
+> widened matrix are recorded in #1296. The table and the diagnosis below are
+> kept only as a record of what the failure looked like.
 
 Six of seven legs pass. Latest run:
 
