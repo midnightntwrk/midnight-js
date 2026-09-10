@@ -255,6 +255,15 @@ export interface FinalizedCallTxPublicData extends CallResultPublic, FinalizedTx
 export interface FinalizedCallTxData<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
   extends UnsubmittedCallTxData<C, PCK> {
   /**
+   * The circuit this transaction called.
+   *
+   * On the result itself rather than only in the caller's own variables: a
+   * handler that receives a finalized result -- from a queue, a retry, a
+   * batch -- has the execution data and no way back to the options that
+   * produced it. Both eras carry it.
+   */
+  readonly circuitId: PCK;
+  /**
    * Public data relevant to this call transaction.
    */
   readonly public: FinalizedCallTxPublicData;
@@ -274,6 +283,8 @@ export interface FinalizedCallTxData<C extends Contract.Any, PCK extends Contrac
  */
 export interface SubmittedCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
   extends SubmittedCallTxBase<UnsubmittedCallTxData<C, PCK>> {
+  /** See {@link FinalizedCallTxData.circuitId}. */
+  readonly circuitId: PCK;
   /**
    * The pipeline that produced this result: always the current era here.
    *

@@ -483,7 +483,6 @@ export interface Ledger8SubmittedCallTx<C extends Ledger8Contract, K extends Led
    */
   readonly era: RetainedPipelineEra;
   readonly circuitId: K;
-  readonly nextPrivateState: Ledger8PrivateState<C>;
 }
 
 /**
