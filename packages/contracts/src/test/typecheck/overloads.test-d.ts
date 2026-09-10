@@ -370,6 +370,24 @@ describe('both eras resolve a call to the SAME result structure', () => {
   type CurrentEraResult = FinalizedCallTxData<Twin018, 'increment'>;
   type RetainedEraResult = Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>;
 
+  it('still CARRIES every member the allow-lists above excuse from parity', () => {
+    // `Exclude<keyof T, 'x'>` is a NO-OP when `x` is absent from `T`, so every
+    // name written into an allow-list stops being checked in either direction:
+    // dropping `nextContractStateEncoded` outright leaves all the parity
+    // assertions below fully green. An allow-list may excuse a member from
+    // PARITY; it may not excuse it from EXISTING.
+    expectTypeOf<CurrentEraResult['public']>().toHaveProperty('logEvents');
+    expectTypeOf<CurrentEraResult['private']>().toHaveProperty('unprovenTx');
+    expectTypeOf<RetainedEraResult['private']>().toHaveProperty('txBytes');
+    expectTypeOf<RetainedEraResult['public']>().toHaveProperty('nextContractStateEncoded');
+    expectTypeOf<RetainedEraResult>().toHaveProperty('circuitId');
+    expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('contractStateEncoded');
+    expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('preContractState');
+    expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('preContractStateEncoded');
+    expectTypeOf<Ledger8SubmittedCallTx<Counter016Contract, 'increment'>>().toHaveProperty('circuitId');
+    expectTypeOf<Ledger8SubmittedCallTx<Counter016Contract, 'increment'>>().toHaveProperty('nextPrivateState');
+  });
+
   it('carries the same top-level members in BOTH eras', () => {
     expectTypeOf<keyof CurrentEraResult>().toEqualTypeOf<Exclude<keyof RetainedEraResult, RetainedEraOnlyMembers>>();
   });
@@ -395,10 +413,15 @@ describe('both eras resolve a call to the SAME result structure', () => {
     type CurrentEraCall = ContractExecutable.ContractExecutable.ContractCall;
 
     expectTypeOf<keyof CurrentEraCall>().toEqualTypeOf<keyof Ledger8ContractCall>();
-    // The one addition: the encoded form of the state this entry's handle
-    // holds. Nothing is dropped.
+    // Three additions, nothing dropped. `contractState` means the POST-call
+    // state in both eras -- `compact-js` fills it from the final query context
+    // -- so the state the call BOUND to is published beside it under its own
+    // name rather than under a name that already means something else.
+    type RetainedEraOnlyCallPublicMembers =
+      'contractStateEncoded' | 'preContractState' | 'preContractStateEncoded';
+
     expectTypeOf<keyof CurrentEraCall['public']>().toEqualTypeOf<
-      Exclude<keyof Ledger8ContractCall['public'], 'contractStateEncoded'>
+      Exclude<keyof Ledger8ContractCall['public'], RetainedEraOnlyCallPublicMembers>
     >();
     expectTypeOf<keyof CurrentEraCall['private']>().toEqualTypeOf<keyof Ledger8ContractCall['private']>();
   });
@@ -425,6 +448,14 @@ describe('both eras resolve a call to the SAME result structure', () => {
 
     expectTypeOf<keyof SubmittedCallTx<Twin018, 'increment'>>().toEqualTypeOf<
       Exclude<keyof Ledger8SubmittedCallTx<Counter016Contract, 'increment'>, RetainedEraOnlySubmittedMembers>
+    >();
+
+    // Descends into `callTxData` itself. The assertion above compares only the
+    // TOP-LEVEL members of the two submitted results, so a member dropped from
+    // the nested execution data is invisible to it -- which is how `era` fell
+    // off this arm while every top-level key set still matched.
+    expectTypeOf<keyof SubmittedCallTx<Twin018, 'increment'>['callTxData']>().toEqualTypeOf<
+      keyof Ledger8SubmittedCallTx<Counter016Contract, 'increment'>['callTxData']
     >();
   });
 

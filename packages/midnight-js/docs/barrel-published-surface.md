@@ -60,14 +60,15 @@ Two deliberate exclusions:
   tagged `construct`, and a handler written for the `read` code silently does
   not fire. `versionOfRecord` and `networkHeadVersion` cover both paths and tag
   each one automatically, so the raw resolver adds a footgun and no capability.
-- **`ProtocolErrorCode`.** Nothing on this surface names it. Every published
-  class declares `code` as its own literal — `UnknownProtocolVersionError` as
-  the two-member union, and `ComposeFailedError`, `ComposeOptionError` and
-  `StateDecodeFailedError` as the single member each carries — so a `switch`
-  over `PROTOCOL_ERROR_CODES` members narrows without the alias. Those three
-  were declared as the wide alias until they were narrowed to make this
-  paragraph true; declaring `code` as the alias on a class published here
-  breaks it again. A consumer who wants the union as a *declaration* can reach
+- **`ProtocolErrorCode`.** Nothing on this surface names it. EVERY published
+  class declares `code` as its own literal, so a `switch` over
+  `PROTOCOL_ERROR_CODES` members narrows without the alias. `ComposeFailedError`,
+  `ComposeOptionError` and `StateDecodeFailedError` are called out only because
+  they were declared as the wide alias until they were narrowed to make this
+  paragraph true — they are examples, not the whole set, which also includes
+  `UnknownProtocolVersionError` (a two-member union), `Ledger8RuntimeMissingError`,
+  `UnknownLedgerVersionError` and `PayloadNotATransactionError`. Declaring `code`
+  as the alias on any class published here breaks the rule again. A consumer who wants the union as a *declaration* can reach
   `utils.MidnightJsErrorCode`, which is already published and is a strict
   superset.
 
