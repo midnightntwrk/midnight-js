@@ -523,9 +523,9 @@ describe('both eras answer with the SAME contract-handle structure', () => {
    * disagree about the PATH, which no key-set assertion at one level can state
    * -- the current era nests the first four under `deployTxData.private` and
    * `initialContractState` under `deployTxData.public`. Excused here so the
-   * rest of the surface is gated, and tracked as its own decision about which
-   * shape wins, because moving either side is a breaking change to a published
-   * surface.
+   * rest of the surface is gated, and tracked in #1298 as its own decision
+   * about which shape wins, because moving either side is a breaking change to
+   * a published surface.
    */
   type RetainedEraOnlyDeployedMembers =
     | 'signingKey'
