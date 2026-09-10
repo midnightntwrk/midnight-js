@@ -51,19 +51,24 @@ reads, all of them plain data. That is the same narrowing discipline
 
 ### What the narrowed transcript leaves out
 
-Three members of the engine's result are dropped, for two different reasons.
+ONE member of the engine's result is dropped: `preContractState`. Nothing is
+lost by it — the pre-call state the composition needs is the one
+`LedgerEra.extractState` already returned, and the down-convert refuses to
+return unless its decoding re-encodes to exactly that value, so reading it off
+the transcript would only be a second route to the same bytes. That same
+down-converted handle is what the call entry publishes as `preContractState`.
 
-`preContractState` and `postContractState` carry live retained-runtime handles,
-which may not cross this package boundary at all. Nothing is lost: the pre-call
-state the composition needs is the one `LedgerEra.extractState` already
-returned, and the down-convert refuses to return unless its decoding re-encodes
-to exactly that value, so reading it off the transcript would only be a second
-route to the same bytes.
+`postContractState` was dropped for the same reason until ADR-0011 reversed the
+rule it rested on. It carries a live retained-runtime handle, and such a handle
+may now cross this boundary provided it travels with a plain-data twin — so it
+is carried, generically, alongside `postContractStateEncoded`.
 
-`result` is plain data and could be carried. It is dropped because nothing reads
-it — the retained-era result types report the next private state and the
-finalized record, never the circuit's own return value. It belongs in the
-narrowed type the day one of them does.
+`result` used to be a third. It is plain data, and it is now carried: the
+retained-era result types report the circuit's own return value on
+`private.result`, exactly as the current era does. `zswapLocalState` is carried
+for the same reason, and the caller's own new coins are filtered out of it — see
+the era-neutral result bases in `midnight-js-types` and ADR-0010 for the rule
+that keeps the two eras' surfaces in step.
 
 ## The two arms differ only in which era object they are handed
 
@@ -79,10 +84,14 @@ and the era object decides which ledger the call is bound onto.
 `wrapKeepStateCall` is deliberately NOT called from here. The current era's
 composition performs exactly the binding that wrap performs — both reach the
 same assembly step — so calling the wrap first and then composing would do the
-binding twice. Its result could not be handed on anyway: it is a live ledger
-handle, and only bytes and plain data may cross this package boundary
-(`docs/adr/0007-cross-the-era-boundary-with-plain-data-only.md`,
-`packages/protocol/docs/era-seam.md`).
+binding twice. Its result is a live ledger handle, which the ERA-AGNOSTIC facade
+still may not answer with — that half of the transport rule survives
+ADR-0011 and is DOCUMENTED by the `structuredClone` gate
+(`packages/protocol/docs/era-seam.md`). Documented, not enforced: a
+`wasm-bindgen` instance is a plain object carrying an own `__wbg_ptr` number, so
+it clones without throwing and the gate records a meaningless value rather than
+failing. Treat the gate as a reminder of the rule, not as the thing that holds
+it.
 
 ## The order one call runs in
 
@@ -380,6 +389,16 @@ retained runtime is reachable from:
 2. set the authority on the constructor's state inside the retained execution
    leg, so `packages/contracts` still takes no retained-runtime dependency,
 3. return the key, filling in `Ledger8DeployedContract.signingKey`.
+
+A FOURTH thing was missing from this list until it was fixed: the constructor's
+own Zswap local state. `executeConstructor` read two of the three members the
+artifact returns and dropped `currentZswapLocalState`, so a constructor that
+minted a coin composed a deploy carrying an output nothing funded — a
+transaction the ledger cannot balance. The constructor runtime slice now carries
+the same decoder the execution leg uses, and `runLedger8DeployPipeline` routes
+the decoded state into the deploy's guaranteed offer. Nothing about that fix is
+observable through `deployContract` while the refusal stands; it is pinned at
+the pipeline instead.
 
 The current era does not have this problem because its constructor registers the
 signing key it is given, which is what makes its `DeployedContract.signingKey` a

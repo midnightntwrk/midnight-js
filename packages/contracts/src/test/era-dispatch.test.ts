@@ -26,13 +26,12 @@ import {
   EraArtifactMismatchError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
-  Ledger8DeployOnV9Error,
-  RetainedArtifactOnCurrentEraStateError} from '../errors';
+  Ledger8DeployOnV9Error} from '../errors';
 import {
   assertEraCompatible,
-  assertRetainedStateEnvelope,
   type PipelineEra,
   pipelineEraOf,
+  resolveContractStateEra,
   resolveOperationEra
 } from '../internal/era';
 import { NEITHER_ERA_CONTRACT_MESSAGE } from '../ledger8-contract';
@@ -362,42 +361,40 @@ describe('resolveOperationEra: the head is read ONCE per operation and threaded 
   });
 });
 
-describe('assertRetainedStateEnvelope: the retained pipeline reads only what the retained ledger wrote', () => {
+describe("resolveContractStateEra: which era's decoder owns the bytes an operation fetched", () => {
   const v8Envelope = readHexFixture('state-v8.hex');
   const v9Envelope = readHexFixture('state-migrated-v9.hex');
   // A real v9 envelope whose BODY is corrupt (one payload byte XORed past the header). Any decode
   // of these bytes throws; this fixture is how the "tag check happens before any decode" claim is
   // made observable rather than asserted.
   const v9EnvelopeCorruptBody = readHexFixture('state-tampered-bytes.hex');
-  const ADDRESS = '0'.repeat(64);
 
-  // THE RULE: the envelope decides, the block bounds. A retained envelope is accepted under EITHER
-  // head, because the fork does not rewrite a contract's stored state -- so a contract deployed
-  // before it is served with retained bytes under a post-fork head, indefinitely. Only an envelope
-  // NEWER than the block dating it is impossible, and only that is investigated.
+  // THE RULE: the envelope decides, the block bounds. A retained envelope is answered for under
+  // EITHER head, because the fork does not rewrite a contract's stored state -- so a contract
+  // deployed before it is served with retained bytes under a post-fork head, indefinitely. Only an
+  // envelope NEWER than the block dating it is impossible, and only that is investigated.
+  //
+  // What this function does NOT decide is whether the caller's artifacts fit the contract. It names
+  // a decoder; `assertSnapshotVerifierKey` judges the artifacts.
   it.each([
     ['a pre-fork head, which is a native retained call', 'v8' as LedgerVersion, V8_HEAD],
     ['a post-fork head, which is keep-state', 'v9' as LedgerVersion, V9_HEAD]
-  ])('accepts a retained envelope under %s, without re-reading the head', async (_name, head, headInt) => {
+  ])('answers the retained era for a retained envelope under %s, without re-reading the head', async (_name, head, headInt) => {
     const pdp = headSource();
 
-    await expect(
-      assertRetainedStateEnvelope(head, rawState(v8Envelope, headInt, head), ADDRESS, pdp)
-    ).resolves.toBeUndefined();
+    await expect(resolveContractStateEra(head, rawState(v8Envelope, headInt, head), pdp)).resolves.toBe('v8');
 
     // No re-read at all: the head plays no part in accepting a retained envelope, so there is
     // nothing to disambiguate.
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
   });
 
-  it('accepts a retained envelope whatever the head INTEGER is, since the head is not compared', async () => {
+  it('answers the retained era whatever the head INTEGER is, since the head is not compared', async () => {
     const pdp = headSource();
 
     // A same-era minor node bump, and a different era entirely, reach the same answer.
     for (const headInt of [V8_HEAD, 1_000_001, V9_HEAD, 2_001_000]) {
-      await expect(
-        assertRetainedStateEnvelope('v9', rawState(v8Envelope, headInt, 'v9'), ADDRESS, pdp)
-      ).resolves.toBeUndefined();
+      await expect(resolveContractStateEra('v9', rawState(v8Envelope, headInt, 'v9'), pdp)).resolves.toBe('v8');
     }
 
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
@@ -406,31 +403,22 @@ describe('assertRetainedStateEnvelope: the retained pipeline reads only what the
   it('reads the envelope tag BEFORE any decode, so a corrupt body never reaches a decoder', async () => {
     const pdp = headSource();
 
-    // These bytes cannot be decoded by either era. The refusal names the era of the TAG, which is
-    // only possible if the tag was read and the body was not: a decode would have raised a decode
-    // failure instead.
-    await expect(
-      assertRetainedStateEnvelope('v9', rawState(v9EnvelopeCorruptBody, V9_HEAD, 'v9'), ADDRESS, pdp)
-    ).rejects.toThrow(RetainedArtifactOnCurrentEraStateError);
+    // These bytes cannot be decoded by either era. The answer still names the era of the TAG, which
+    // is only possible if the tag was read and the body was not: a decode would have raised a decode
+    // failure instead of returning.
+    await expect(resolveContractStateEra('v9', rawState(v9EnvelopeCorruptBody, V9_HEAD, 'v9'), pdp)).resolves.toBe(
+      'v9'
+    );
   });
 
-  it('refuses a current-era state under a post-fork head as an ARTIFACT problem, not a read-surface one', async () => {
-    // The contract has been deployed with current-toolchain artifacts, so the retained ones no
-    // longer describe it. Nothing is stale and nothing is inconsistent -- a retry cannot help, and
-    // blaming the indexer would send a reader after the wrong thing.
+  it('answers the CURRENT era for a migrated state under a post-fork head, rather than refusing it', async () => {
+    // The fixture is a real ledger-8-to-9 migrated state: current-era envelope, retained verifier
+    // keys. Refusing it here is what made a pre-fork contract callable exactly once after the fork.
+    // Whether the caller's artifacts fit it is a question about the KEYS, and it is asked elsewhere.
     const pdp = headSource();
 
-    try {
-      await assertRetainedStateEnvelope('v9', rawState(v9Envelope, V9_HEAD, 'v9'), ADDRESS, pdp);
-      expect.unreachable('a current-era state was accepted by the retained pipeline');
-    } catch (error) {
-      expect(error).toBeInstanceOf(RetainedArtifactOnCurrentEraStateError);
-      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE)).toBe(true);
-      expect((error as RetainedArtifactOnCurrentEraStateError).contractAddress).toBe(ADDRESS);
-      // Explicitly NOT retry advice, and explicitly not the indexer's fault.
-      expect((error as RetainedArtifactOnCurrentEraStateError).message).toMatch(/cannot succeed/i);
-      expect((error as RetainedArtifactOnCurrentEraStateError).message).not.toMatch(/indexer/i);
-    }
+    await expect(resolveContractStateEra('v9', rawState(v9Envelope, V9_HEAD, 'v9'), pdp)).resolves.toBe('v9');
+
     // No re-read: the head is not in question here.
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
   });
@@ -442,7 +430,7 @@ describe('assertRetainedStateEnvelope: the retained pipeline reads only what the
     const pdp = headSource(V9_HEAD);
 
     try {
-      await assertRetainedStateEnvelope('v8', rawState(v9Envelope, V8_HEAD, 'v8'), ADDRESS, pdp);
+      await resolveContractStateEra('v8', rawState(v9Envelope, V8_HEAD, 'v8'), pdp);
       expect.unreachable('a stale pre-fork head was accepted against a current-era state');
     } catch (error) {
       expect(error).toBeInstanceOf(HeadStateEraMismatchError);
@@ -463,7 +451,7 @@ describe('assertRetainedStateEnvelope: the retained pipeline reads only what the
     const pdp = headSource(V8_HEAD);
 
     try {
-      await assertRetainedStateEnvelope('v8', rawState(v9Envelope, V8_HEAD, 'v8'), ADDRESS, pdp);
+      await resolveContractStateEra('v8', rawState(v9Envelope, V8_HEAD, 'v8'), pdp);
       expect.unreachable('an inconsistent indexer response was accepted');
     } catch (error) {
       expect(error).toBeInstanceOf(IndexerInconsistencyError);
@@ -482,7 +470,7 @@ describe('assertRetainedStateEnvelope: the retained pipeline reads only what the
     const pdp = rejectingHeadSource(transportFailure);
 
     try {
-      await assertRetainedStateEnvelope('v8', rawState(v9Envelope, V8_HEAD, 'v8'), ADDRESS, pdp);
+      await resolveContractStateEra('v8', rawState(v9Envelope, V8_HEAD, 'v8'), pdp);
       expect.unreachable('a failed fresh head read was treated as agreement');
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
@@ -505,7 +493,7 @@ describe('assertRetainedStateEnvelope: the retained pipeline reads only what the
     const pdp = headSource();
 
     await expect(
-      assertRetainedStateEnvelope('v9', rawState(verifierKey, V9_HEAD, 'v9'), ADDRESS, pdp)
+      resolveContractStateEra('v9', rawState(verifierKey, V9_HEAD, 'v9'), pdp)
     ).rejects.toThrow(TagParseError);
   });
 });

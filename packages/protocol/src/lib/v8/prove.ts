@@ -75,7 +75,7 @@ const assertSerializedTransaction = (txBytes: Uint8Array): void => {
  * version-tagged shape the rest of the flow expects.
  *
  * @see docs/adr/0006-version-tagged-payloads-at-provider-seams.md
- * @see docs/adr/0007-cross-the-era-boundary-with-plain-data-only.md
+ * @see docs/adr/0011-publish-era-handles-alongside-their-plain-data.md
  */
 export const proveV8Transaction = async (
   txBytes: Uint8Array,
