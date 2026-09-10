@@ -1,5 +1,18 @@
 # Result-shape consistency audit — public API
 
+> **HISTORICAL. Every defect below is written in the present tense and describes
+> the tree AS AUDITED, not the tree you are reading.** Causes **R1–R4** were
+> closed by the branch that tracks this file (ADR-0010, ADR-0011, ADR-0012); do
+> not re-report them. **R5** (indexer documents), **R6** (error surface), **R7**
+> and **R8** are still open — R7 and R8 are breaking and need a product
+> decision. **B1b** (re-nesting the retained `deployTxData`) was left alone,
+> also as breaking. The one live runtime defect the report found, R1's dropped
+> `calls`, is fixed.
+>
+> Section §4's "do not re-open" list still applies. Where this report cites
+> ADR-0007 to justify a handle's absence, read ADR-0011 instead — it lifted that
+> bar for result types.
+
 Audited `test/1006-ac0-contract-matrix` at `f1677a0d` (PR #1281, since merged into
 `feat/1006-hardening` at `92746de0`). Read-only: no code changed.
 `git diff --name-only f1677a0d..92746de0 -- packages/` is empty, so every
