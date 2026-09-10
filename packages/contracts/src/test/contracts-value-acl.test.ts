@@ -67,6 +67,7 @@ const RUNTIME_EXPORTS: readonly string[] = [
   'StaleHeadError',
   'SubmitRejectionUndiagnosedError',
   'TxFailedError',
+  'UnrecognisedResultEraError',
   'VerifierKeyMismatchError',
   'createCallTxOptions',
   'createCircuitCallTxInterface',
