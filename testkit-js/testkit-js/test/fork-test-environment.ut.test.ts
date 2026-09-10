@@ -13,6 +13,11 @@
  * limitations under the License.
  */
 
+import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
 import pino from 'pino';
 
 import type { ProofServerContainer } from '../src/proof-server-container';
@@ -58,6 +63,17 @@ describe('[Unit tests] ForkTestEnvironment', () => {
       const environment = new ForkTestEnvironment(silentLogger);
 
       await expect(environment.shutdown()).resolves.toBeUndefined();
+    });
+
+    it('should capture no logs, and leave no directory behind, when there is no stack to read', async () => {
+      const environment = new ForkTestEnvironment(silentLogger);
+      const directory = path.join(tmpdir(), `fork-capture-${randomUUID()}`);
+
+      await expect(environment.captureContainerLogs(directory)).resolves.toEqual([]);
+      // The DIRECTORY matters, not just the empty list: creating it would leave the CI upload step
+      // warning about an empty artifact on every run that failed before the stack came up, which
+      // reads as "the logs were lost" rather than "there were none to take".
+      expect(existsSync(directory)).toBe(false);
     });
   });
 
