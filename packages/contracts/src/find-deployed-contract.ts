@@ -243,6 +243,16 @@ export interface FoundContract<C extends Contract.Any> {
    */
   readonly era: CurrentPipelineEra;
   /**
+   * The compiled contract this handle executes circuits from, exactly as the
+   * caller supplied it.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readonly compiledContract: CompiledContract.CompiledContract<C, any>;
+  /**
+   * The ledger address this handle is attached to.
+   */
+  readonly contractAddress: ContractAddress;
+  /**
    * Data for the finalized deploy transaction corresponding to this contract.
    */
   readonly deployTxData: FinalizedDeployTxDataBase<C>;
@@ -387,6 +397,8 @@ export async function findDeployedContract<C extends Contract.Any>(
 
   return {
     era: CURRENT_PIPELINE_ERA,
+    compiledContract,
+    contractAddress,
     deployTxData: {
       era: CURRENT_PIPELINE_ERA,
       private: {

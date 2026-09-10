@@ -33,9 +33,9 @@ import { CURRENT_PIPELINE_ERA } from './era';
 import { IncompleteCallTxPrivateStateConfig, isEffectContractError } from './errors';
 import { type ContractStates, getPublicStates, getStates, type PublicContractStates } from './get-states';
 import * as Transaction from './internal/transaction';
+import { createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver, zswapStateToNewCoins } from './internal/utils';
 import { type TransactionContext } from './transaction';
 import type { UnsubmittedCallTxData } from './tx-model';
-import { createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver, zswapStateToNewCoins } from './utils';
 
 /**
  * Enables cross-contract calls during circuit execution.
@@ -152,6 +152,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
       era: CURRENT_PIPELINE_ERA,
       public: {
         nextContractState: rootCall.public.contractState,
+        nextContractStateEncoded: rootCall.public.contractState.encode(),
         partitionedTranscript: rootCall.public.partitionedTranscript,
         publicTranscript: rootCall.public.publicTranscript,
         logEvents: events

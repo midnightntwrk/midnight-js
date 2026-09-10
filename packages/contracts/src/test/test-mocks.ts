@@ -378,6 +378,7 @@ export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallT
     era: CURRENT_PIPELINE_ERA,
     public: {
       nextContractState: StateValue.newNull(),
+      nextContractStateEncoded: StateValue.newNull().encode(),
       publicTranscript: [
         { noop: { n: 1 } }
       ] as Op<AlignedValue>[],

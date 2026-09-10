@@ -29,6 +29,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CURRENT_PIPELINE_ERA } from '../era';
+import { isLedger8Result } from '../era-results';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from '../errors';
 import { pipelineEraOf } from '../internal/era';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
@@ -94,6 +95,7 @@ describe('submit-call-tx', () => {
     era: CURRENT_PIPELINE_ERA,
     public: {
       nextContractState: StateValue.newNull(),
+      nextContractStateEncoded: StateValue.newNull().encode(),
       publicTranscript: [],
       partitionedTranscript: {} as PartitionedTranscript,
       logEvents: []
@@ -128,6 +130,7 @@ describe('submit-call-tx', () => {
     });
     expect(result).toEqual({
       era: CURRENT_PIPELINE_ERA,
+      circuitId: 'testCircuit',
       calls: mockUnprovenCallTxData.calls,
       private: mockUnprovenCallTxData.private,
       public: {
@@ -280,6 +283,7 @@ describe('submit-call-tx', () => {
         expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options, expect.anything());
         expect(result).toEqual({
           era: CURRENT_PIPELINE_ERA,
+          circuitId: 'testCircuit',
           calls: mockUnprovenCallTxData_2.calls,
           private: mockUnprovenCallTxData_2.private,
           public: {
@@ -515,6 +519,7 @@ describe('submit-call-tx', () => {
         });
         expect(result).toEqual({
           era: CURRENT_PIPELINE_ERA,
+          circuitId: 'testCircuit',
           calls: mockUnprovenCallTxData.calls,
           private: mockUnprovenCallTxData.private,
           public: { ...mockUnprovenCallTxData.public, ...mockFinalizedTxData }
@@ -574,9 +579,14 @@ describe('submit-call-tx', () => {
         });
         expect(result).toEqual({
           era: CURRENT_PIPELINE_ERA,
+          circuitId: 'testCircuit',
           txId: mockTxId,
           callTxData: mockUnprovenCallTxData
         });
+        // The other side of the published guard: a current-era result is not
+        // the retained arm. Asserted on a result this suite actually produced,
+        // so the guard is checked against the era tag the pipeline really set.
+        expect(isLedger8Result(result)).toBe(false);
       });
 
       it('should not update private state during async submission', async () => {

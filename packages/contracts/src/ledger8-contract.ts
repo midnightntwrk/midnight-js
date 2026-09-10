@@ -111,9 +111,23 @@ export type Ledger8Circuit = (context: Ledger8CircuitContext<never>, ...args: ne
 export type Ledger8Witness<PS = unknown> = (...args: never[]) => readonly [PS, unknown];
 
 /**
- * What a retained-era `initialState` returns: a plain object, NOT a `Promise`.
+ * What a retained-era artifact's own `initialState` returns: a plain object,
+ * NOT a `Promise`.
+ *
+ * A declaration OF THE ARTIFACT, not a framework result. It is the shape
+ * {@link Ledger8Contract.initialState} is read through, and it is what makes
+ * the era discriminable at the type level -- the current era's `initialState`
+ * answers with a `Promise`.
+ *
+ * Deliberately NOT the retained counterpart of `ContractConstructorResult`,
+ * which is a framework result carrying `era` and `next*` members. There is no
+ * retained counterpart of that type: the constructor output a retained deploy
+ * would publish is spread across `Ledger8DeployedContract`'s `initial*`
+ * members, and nothing constructs one today. This type was called
+ * `Ledger8ConstructorResult`, which put a false pairing next to
+ * `ContractConstructorResult` on the published surface.
  */
-export interface Ledger8ConstructorResult<PS = unknown> {
+export interface Ledger8InitialStateResult<PS = unknown> {
   readonly currentContractState: unknown;
   readonly currentPrivateState: PS;
   readonly currentZswapLocalState: unknown;
@@ -132,7 +146,7 @@ export interface Ledger8Contract<PS = unknown> {
   readonly circuits: Readonly<Record<string, Ledger8Circuit>>;
   readonly impureCircuits: Readonly<Record<string, Ledger8Circuit>>;
   readonly provableCircuits: Readonly<Record<string, Ledger8Circuit>>;
-  initialState(...args: never[]): Ledger8ConstructorResult<PS>;
+  initialState(...args: never[]): Ledger8InitialStateResult<PS>;
 }
 
 /**
@@ -456,8 +470,9 @@ export interface Ledger8UnsubmittedCallTxData<C extends Ledger8Contract, K exten
  * waiting for finalization.
  *
  * Carries the execution data on `callTxData`, as the current era's
- * {@link SubmittedCallTx} does, and adds the two members this arm can answer
- * straight away.
+ * {@link SubmittedCallTx} does, and names the same members it does. The next
+ * private state is reachable at `callTxData.private.nextPrivateState`, the one
+ * path both eras publish it on.
  */
 export interface Ledger8SubmittedCallTx<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>
   extends SubmittedCallTxBase<Ledger8UnsubmittedCallTxData<C, K>> {
@@ -469,7 +484,6 @@ export interface Ledger8SubmittedCallTx<C extends Ledger8Contract, K extends Led
    */
   readonly era: RetainedPipelineEra;
   readonly circuitId: K;
-  readonly nextPrivateState: Ledger8PrivateState<C>;
 }
 
 /**

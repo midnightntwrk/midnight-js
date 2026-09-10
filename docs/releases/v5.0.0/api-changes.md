@@ -184,13 +184,19 @@ The single `events` list spans the whole call tree. Decode without a direct `com
 ### Era-invariant error (#1204)
 
 ```ts
-// Thrown when a provider returns a v8-era payload, or the read surface reports a
-// v8-era record, on a flow that only submits v9 transactions.
+// Thrown when a provider or the read surface answers in a ledger era the flow
+// cannot accept. `expected` is the era it can accept -- for the current era's
+// flows that is 'v9'; the retained era's finalizing arm passes the network
+// head, because a retained-era call is recorded by whichever ledger the head is
+// on. `received` is the era that actually came back. A payload whose tag is
+// missing or unrecognised raises UntaggedPayloadError instead.
 export type EraSeam = Seam; // re-exported vocabulary from midnight-js-types
 export class EraInvariantViolationError extends Error {
   readonly code: 'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION';
   readonly seam: EraSeam;
   readonly circuitId?: string | readonly string[];
+  readonly expected: LedgerVersion;
+  readonly received?: LedgerVersion;
 }
 ```
 

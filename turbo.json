@@ -7,14 +7,16 @@
   // untouched, so turbo replays a cached PASS for a gate that never ran --
   // `build-tools/` decides how bundles are emitted, `eslint.config.mjs` is
   // the subject of the lint canaries in packages/protocol/src/test/, and the
-  // two documents below are the subject of the doc gates in
-  // packages/utils/src/test/troubleshooting-coverage.test.ts and
-  // packages/midnight-js/src/test/migration-guide-recipe.test.ts.
+  // three documents below are the subject of the doc gates in
+  // packages/utils/src/test/troubleshooting-coverage.test.ts,
+  // packages/midnight-js/src/test/migration-guide-recipe.test.ts and
+  // packages/midnight-js/src/test/protocol-recipe.test.ts.
   "globalDependencies": [
     "build-tools/**",
     "eslint.config.mjs",
     "TROUBLESHOOTING.md",
-    "docs/releases/v5.0.0/migration-guide.md"
+    "docs/releases/v5.0.0/migration-guide.md",
+    "llms.txt"
   ],
   "tasks": {
     "build": {

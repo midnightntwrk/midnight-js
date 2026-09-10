@@ -162,7 +162,8 @@ provider offers.
 ## Pairing the two: which combinations may run
 
 `assertEraCompatible` holds the whole dispatch table, and every cell is ruled
-rather than left to fall through:
+rather than left to fall through — in the FUNCTION. Read the note below the
+table before relying on that for the system as a whole:
 
 | artifact | head | `'call'` | `'deploy'` |
 | -------- | ---- | -------- | ---------- |
@@ -174,6 +175,22 @@ rather than left to fall through:
 A retained-era DEPLOY on a post-fork head is the one cell where the two kinds
 differ: calls against contracts already on chain are what the retained era
 exists to keep working, and a new deployment has no such history to preserve.
+
+Only the two RETAINED rows are enforced in production. Every call site passes
+the literal `'ledger8'`, so the current-era rows are reachable from tests alone,
+and the `current-era` + `v8` refusal — `EraArtifactMismatchError` with reason
+`'current-era-artifact-on-pre-fork-head'` — is not raised by any shipped path.
+
+That is a deliberate consequence of a cost decision, not an oversight: the
+current era's single-call path buys no head read, so it has nothing to compare
+an artifact against. The scoped path does pay for one, which is why a scope on a
+pre-fork head is refused (`ScopedTxEraUnsupportedError`) and a single call on the
+same head is not. A current-era call against a pre-fork head therefore fails
+LATE — at a provider seam or at the node — rather than at this table.
+
+Do not read the table as a guarantee that all four cells fail fast. Lifting that
+means buying a head read on the current era's single-call path, and the cost is
+the reason it has not been.
 
 The function returns nothing. Which pipeline runs is the `(pipeline, head)` pair
 the caller already holds; this decides only whether that pair may run, so it does
