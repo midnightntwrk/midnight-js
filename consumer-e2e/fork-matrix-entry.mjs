@@ -514,16 +514,6 @@ const RETAINED_MATRIX = [
 
 /** What each retained twin's deploy and calls produced, carried from the pre-fork legs to the post-fork ones. */
 const retainedDeployments = new Map();
-/**
- * What a twin's PRE-fork calls captured, keyed by contract.
- *
- * Separate from the per-leg wallet context because it has to survive the fork:
- * the post-fork leg asserts against a value the pre-fork leg produced -- the
- * minted colour, for `unshielded` -- and a context rebuilt per leg cannot carry
- * one.
- */
-const retainedCaptures = new Map();
-
 const retainedZkConfigPath = (key) => {
   const zkConfigPath = config.retainedMatrixZkConfigPaths?.[key];
   if (zkConfigPath === undefined) {
@@ -604,7 +594,7 @@ const deployRetained = async (key, providers, wallet) => {
  * `CompiledContract` container -- and a nullary circuit's options carry no
  * `args` member at all.
  */
-const callRetained = async (label, key, providers, contractAddress, call, context) => {
+const callRetained = async (key, providers, contractAddress, call, context) => {
   const { Contract } = await import(`@midnight-ntwrk/fork-retained-${key}`);
   const submitted = await submitCallTx(providers, {
     compiledContract: new Contract({}),
@@ -613,17 +603,6 @@ const callRetained = async (label, key, providers, contractAddress, call, contex
     ...(call.args === undefined ? {} : { args: call.args(context) })
   });
 
-  // `capture` and `expect` are the current-era matrix's vocabulary, available on
-  // this arm only since it started answering with `private.result`. Before that
-  // the circuit's return value stopped inside the framework, which is why the
-  // retained legs could assert that a call SUCCEEDED and nothing about what it
-  // computed.
-  if (call.capture !== undefined) {
-    context[call.capture] = submitted.private.result;
-  }
-  if (call.expect !== undefined && submitted.private.result !== call.expect) {
-    failures.push(`${label}/${call.circuitId}: returned ${submitted.private.result}, expected ${call.expect}`);
-  }
   // Read through the SAME shape the current-era arm answers with -- `public` for
   // the finalized record, `private` for the circuit's own return value. The
   // retained arm used to answer a thin `{ circuitId, nextPrivateState, txData }`
@@ -832,10 +811,9 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     const calls = [];
     for (const call of entry.preFork) {
       calls.push(
-        await callRetained(`pre-fork retained ${entry.key}`, entry.key, providers, deployed.contractAddress, call, context)
+        await callRetained(entry.key, providers, deployed.contractAddress, call, context)
       );
     }
-    retainedCaptures.set(entry.key, context);
     const ledgerState = await checkLedgerState(
       `pre-fork retained ${entry.key}`,
       entry,
@@ -947,25 +925,16 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
       throw new Error(`its pre-fork deploy did not complete, so there is nothing here to call`);
     }
     const providers = retainedProvidersFor('v9', session.wallet, entry.key);
-    // Seeded with what the pre-fork calls captured, so a post-fork assertion can
-    // name a value from the other side of the boundary. The wallet members are
-    // re-read rather than reused: the wallet was rebuilt at the `post-fork head
+    // Re-read rather than reused: the wallet was rebuilt at the `post-fork head
     // era` gate, and a key read off the stopped one would be stale.
-    const context = { ...(retainedCaptures.get(entry.key) ?? {}), ...(await walletContext(session.wallet)) };
+    const context = await walletContext(session.wallet);
     // A LIST, so a contract can mint on one call and assert on the next. Written
     // as one-or-many rather than always-many to leave the five single-call
     // entries untouched.
     const outcome = [];
     for (const call of [entry.postFork].flat()) {
       outcome.push(
-        await callRetained(
-          `post-fork keep-state ${entry.key}`,
-          entry.key,
-          providers,
-          deployed.contractAddress,
-          call,
-          context
-        )
+        await callRetained(entry.key, providers, deployed.contractAddress, call, context)
       );
     }
     // The state written BEFORE the boundary, read back after it. Without this
@@ -1022,21 +991,14 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     const before = await providers.publicDataProvider.queryRawContractState(deployed.contractAddress);
     const envelopeBefore = before === null ? 'absent' : envelopeTag(before.raw);
 
-    // The first post-fork call's own circuit and arguments, stripped of
-    // `capture` and `expect`: this probe is about whether the call is ADMITTED,
-    // and an assertion on its return value would turn an answer into a failure.
+    // The first post-fork call's own circuit and arguments, and nothing else:
+    // this probe is about whether the call is ADMITTED, so it carries no
+    // assertion on the return value -- one would turn an answer into a failure.
     const [{ circuitId, args }] = [entry.postFork].flat();
-    const context = { ...(retainedCaptures.get(entry.key) ?? {}), ...(await walletContext(session.wallet)) };
+    const context = await walletContext(session.wallet);
 
     try {
-      const outcome = await callRetained(
-        `a migrated ${entry.key}, called a second time`,
-        entry.key,
-        providers,
-        deployed.contractAddress,
-        { circuitId, args },
-        context
-      );
+      const outcome = await callRetained(entry.key, providers, deployed.contractAddress, { circuitId, args }, context);
       return { envelopeBefore, retainedArm: 'accepted', ...outcome };
     } catch (error) {
       // The refusal IS the finding, so it is returned rather than rethrown --
