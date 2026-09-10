@@ -110,6 +110,7 @@ declare const optionsCoin: Ledger8CallTxOptionsBase<CoinReceiver016Contract, 're
 
 // Current-era call-site material, typed off the real generated declaration file.
 declare const providers018: ContractProviders<Twin018, 'increment'>;
+declare const currentCallTx: FoundContract<Twin018>['callTx']['increment'];
 declare const options018: CallTxOptionsWithPrivateStateId<Twin018, 'increment'>;
 declare const compiledContract018: CompiledContract.CompiledContract<Twin018, Twin018PrivateState>;
 declare const contract018: Twin018;
@@ -440,6 +441,33 @@ describe('both eras resolve a call to the SAME result structure', () => {
     expectTypeOf<
       ReturnType<Ledger8FoundContract<Counter016Contract>['callTx']['increment']>
     >().toEqualTypeOf<Promise<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>>>();
+  });
+
+  it('declares BOTH call arms on the current era, and only the bare one on the retained era', () => {
+    // The key sets above match while the SIGNATURES diverge, so nothing there
+    // notices an arm going missing. The current era lifts each circuit to a
+    // PAIR -- bare args, or a scope context plus args -- and the retained era
+    // to a single arm.
+    //
+    // Asserted through `Parameters`/`ReturnType`, which resolve from the LAST
+    // overload by design. That is what makes them usable here: the scoped arm
+    // is declared last on the current era, so reading the last arm names it,
+    // and on the retained era the last arm is the only one.
+    expectTypeOf(currentCallTx).toBeCallableWith();
+    expectTypeOf<ReturnType<FoundContract<Twin018>['callTx']['increment']>>().toEqualTypeOf<
+      Promise<CallResult<Twin018, 'increment'>>
+    >();
+    expectTypeOf<Parameters<FoundContract<Twin018>['callTx']['increment']>>().toEqualTypeOf<
+      [txCtx: TransactionContext<Twin018, 'increment'>]
+    >();
+
+    // The retained era's ONE arm takes the circuit's own args with no context
+    // prepended: a scope refuses a retained-era call outright with
+    // `MixedEraScopeError`, so there is nothing for a second arm to reach. Add
+    // a context arm here and this equality is what fails.
+    expectTypeOf<Parameters<Ledger8FoundContract<Counter016Contract>['callTx']['increment']>>().toEqualTypeOf<
+      Ledger8CircuitParameters<Counter016Contract, 'increment'>
+    >();
   });
 
   it('hands back the execution data on `callTxData` in BOTH eras, before finalization', () => {
