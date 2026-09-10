@@ -181,6 +181,11 @@ jobs:
       # only when it failed. They are the only account of WHY the chain refused a
       # submission: the framework's seam error redacts the provider's message by
       # design, and the provider's own error carries no reason.
+      # `stack-logs`, NOT `.logs`. A leading dot makes every path under it hidden,
+      # and `upload-artifact` skips hidden files unless told otherwise -- so the
+      # dotted name uploaded nothing while the driver reported the files written,
+      # which reads as a working capture and is not one. Measured: "No files were
+      # found with the provided path: consumer-e2e/.logs/".
       - name: Upload the stack's container logs
         # DIAGNOSTIC BRANCH: `always()`, where the merged shape is `failure()`. The
         # probe under investigation keeps the run green on purpose.
@@ -188,6 +193,6 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # ratchet:actions/upload-artifact@v4.6.2
         with:
           name: fork-stack-logs-${{ matrix.contract }}
-          path: consumer-e2e/.logs/
+          path: consumer-e2e/stack-logs/
           if-no-files-found: warn
           retention-days: 7
