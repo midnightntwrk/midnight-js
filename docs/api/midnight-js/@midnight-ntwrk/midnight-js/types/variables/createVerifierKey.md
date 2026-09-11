@@ -8,8 +8,6 @@
 
 > `const` **createVerifierKey**: (`uint8Array`) => [`VerifierKey`](../type-aliases/VerifierKey.md)
 
-Defined in: packages/types/dist/index.d.ts:45
-
 Creates a branded verifier key representation from a verifier key binary.
 
 ## Parameters

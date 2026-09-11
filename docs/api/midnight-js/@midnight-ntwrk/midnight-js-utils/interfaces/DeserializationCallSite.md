@@ -28,6 +28,16 @@ contains an extractable struct name.
 
 ***
 
+### details?
+
+> `readonly` `optional` **details?**: `Readonly`\<`Record`\<`string`, `string` \| `number`\>\>
+
+Facts identifying the particular read that failed, supplied by the caller
+and rendered verbatim. For diagnosis only: nothing here changes the
+classification or the mitigation.
+
+***
+
 ### source
 
 > `readonly` **source**: [`SourceLibrary`](../type-aliases/SourceLibrary.md)

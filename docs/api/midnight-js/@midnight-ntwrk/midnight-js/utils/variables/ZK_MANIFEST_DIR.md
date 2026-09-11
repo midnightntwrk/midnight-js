@@ -8,6 +8,4 @@
 
 > `const` **ZK\_MANIFEST\_DIR**: `"compiler"` = `"compiler"`
 
-Defined in: packages/utils/dist/index.d.ts:416
-
 Directory (relative to a provider's base location) holding the manifest.

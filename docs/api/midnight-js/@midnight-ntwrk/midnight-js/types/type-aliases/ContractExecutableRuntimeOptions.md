@@ -8,8 +8,6 @@
 
 > **ContractExecutableRuntimeOptions** = `object`
 
-Defined in: packages/types/dist/index.d.ts:313
-
 Options for use when constructing a Compact.js contract executable runtime.
 
 ## Properties
@@ -18,8 +16,6 @@ Options for use when constructing a Compact.js contract executable runtime.
 
 > `readonly` **coinPublicKey**: `string`
 
-Defined in: packages/types/dist/index.d.ts:315
-
 The current user's ZSwap public key.
 
 ***
@@ -27,7 +23,5 @@ The current user's ZSwap public key.
 ### signingKey?
 
 > `readonly` `optional` **signingKey?**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
-
-Defined in: packages/types/dist/index.d.ts:317
 
 The signing key to add as the to-be-deployed contract's maintenance authority.

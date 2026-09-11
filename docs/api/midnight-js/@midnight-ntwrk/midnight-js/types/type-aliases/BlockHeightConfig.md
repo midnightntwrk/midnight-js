@@ -8,8 +8,6 @@
 
 > **BlockHeightConfig** = `object`
 
-Defined in: packages/types/dist/index.d.ts:886
-
 Starts a contract state stream at the given block height.
 
 ## Properties
@@ -18,8 +16,6 @@ Starts a contract state stream at the given block height.
 
 > `readonly` **blockHeight**: `number`
 
-Defined in: packages/types/dist/index.d.ts:891
-
 The block height indicating where to begin the state stream.
 
 ***
@@ -27,5 +23,3 @@ The block height indicating where to begin the state stream.
 ### type
 
 > `readonly` **type**: `"blockHeight"`
-
-Defined in: packages/types/dist/index.d.ts:887

@@ -8,8 +8,6 @@
 
 > **BlockHashConfig** = `object`
 
-Defined in: packages/types/dist/index.d.ts:896
-
 Starts a contract state stream at the given block hash.
 
 ## Properties
@@ -18,8 +16,6 @@ Starts a contract state stream at the given block hash.
 
 > `readonly` **blockHash**: `string`
 
-Defined in: packages/types/dist/index.d.ts:901
-
 The block height indicating where to begin the state stream.
 
 ***
@@ -27,5 +23,3 @@ The block height indicating where to begin the state stream.
 ### type
 
 > `readonly` **type**: `"blockHash"`
-
-Defined in: packages/types/dist/index.d.ts:897

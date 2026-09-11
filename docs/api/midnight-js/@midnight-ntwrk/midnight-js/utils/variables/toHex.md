@@ -8,8 +8,6 @@
 
 > `const` **toHex**: (`bytes`) => `string`
 
-Defined in: packages/utils/dist/index.d.ts:272
-
 Converts a byte string into a hex string.
 
 ## Parameters

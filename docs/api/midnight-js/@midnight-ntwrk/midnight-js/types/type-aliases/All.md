@@ -8,8 +8,6 @@
 
 > **All** = `object`
 
-Defined in: packages/types/dist/index.d.ts:863
-
 Streams all previous states of a contract.
 
 ## Properties
@@ -17,5 +15,3 @@ Streams all previous states of a contract.
 ### type
 
 > `readonly` **type**: `"all"`
-
-Defined in: packages/types/dist/index.d.ts:864

@@ -8,8 +8,6 @@
 
 > **BlockInfo** = `object`
 
-Defined in: packages/types/dist/index.d.ts:906
-
 Minimal identifying information for a block.
 
 ## Properties
@@ -18,8 +16,6 @@ Minimal identifying information for a block.
 
 > `readonly` **hash**: `string`
 
-Defined in: packages/types/dist/index.d.ts:910
-
 The hex-encoded block hash.
 
 ***
@@ -27,7 +23,5 @@ The hex-encoded block hash.
 ### height
 
 > `readonly` **height**: `number`
-
-Defined in: packages/types/dist/index.d.ts:914
 
 The block height.

@@ -8,8 +8,6 @@
 
 > `const` **withContractScopedTransaction**: \<`C`, `PCK`\>(`providers`, `fn`, `options?`) => `Promise`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:767
-
 Executes a function within the context of a contract-scoped transaction.
 
 ## Type Parameters
@@ -49,7 +47,18 @@ Optional transaction scope options.
 A `Promise` that resolves with the finalized transaction data of the single transaction
 created for all circuit calls made within `fn`.
 
+## Throws
+
+When the network head is on a ledger era that composes only
+        one call per transaction, so has nothing for a scope to batch into. Raised before `fn`
+        runs, so no circuit is executed and no private state is touched.
+
 ## Remarks
 
 Where `fn` make circuit calls, these are batched together and submitted as a single transaction when
 the function completes successfully. If `fn` throws an error, any unsubmitted circuit calls are discarded.
+
+The ledger era this scope runs against is read ONCE, before `fn` runs, and every call merged into
+the scope shares that one reading — the same single-snapshot discipline the scope already applies
+to the block it pins. A contract produced by the retained Compact toolchain cannot join a scope at
+all; submit those calls individually with `submitCallTx`.

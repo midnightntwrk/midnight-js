@@ -8,7 +8,5 @@
 
 > `const` **SucceedEntirely**: `"SucceedEntirely"`
 
-Defined in: packages/types/dist/index.d.ts:120
-
 Indicates that the guaranteed and fallible portions of the transaction were
 successful.

@@ -6,8 +6,6 @@
 
 # Interface: FinalizedDeployTxPublicData
 
-Defined in: packages/contracts/dist/index.d.ts:576
-
 The public data of a finalized deployment transaction: the deploy-specific
 public data ([UnsubmittedDeployTxPublicData](UnsubmittedDeployTxPublicData.md)) combined with the
 finalized transaction data ([FinalizedTxData](../../types/interfaces/FinalizedTxData.md)).
@@ -22,8 +20,6 @@ finalized transaction data ([FinalizedTxData](../../types/interfaces/FinalizedTx
 
 > `readonly` **blockAuthor**: `string` \| `null`
 
-Defined in: packages/types/dist/index.d.ts:223
-
 The author of the block in which the transaction was included.
 
 #### Inherited from
@@ -35,8 +31,6 @@ The author of the block in which the transaction was included.
 ### blockHash
 
 > `readonly` **blockHash**: `string`
-
-Defined in: packages/types/dist/index.d.ts:211
 
 The block hash of the block in which the transaction was included.
 
@@ -50,8 +44,6 @@ The block hash of the block in which the transaction was included.
 
 > `readonly` **blockHeight**: `number`
 
-Defined in: packages/types/dist/index.d.ts:215
-
 The block height of the block in which the transaction was included.
 
 #### Inherited from
@@ -63,8 +55,6 @@ The block height of the block in which the transaction was included.
 ### blockTimestamp
 
 > `readonly` **blockTimestamp**: `number`
-
-Defined in: packages/types/dist/index.d.ts:219
 
 The timestamp of the block in which the transaction was included.
 
@@ -78,8 +68,6 @@ The timestamp of the block in which the transaction was included.
 
 > `readonly` **contractAddress**: `string`
 
-Defined in: packages/contracts/dist/index.d.ts:480
-
 The ledger address of the contract that was deployed.
 
 #### Inherited from
@@ -91,8 +79,6 @@ The ledger address of the contract that was deployed.
 ### fees
 
 > `readonly` **fees**: [`Fees`](../../types/type-aliases/Fees.md)
-
-Defined in: packages/types/dist/index.d.ts:235
 
 The fees associated with the transaction, including both paid and estimated fees.
 
@@ -106,8 +92,6 @@ The fees associated with the transaction, including both paid and estimated fees
 
 > `readonly` **identifiers**: readonly `string`[]
 
-Defined in: packages/types/dist/index.d.ts:203
-
 All transaction IDs of the submitted transaction.
 
 #### Inherited from
@@ -119,8 +103,6 @@ All transaction IDs of the submitted transaction.
 ### indexerId
 
 > `readonly` **indexerId**: `number`
-
-Defined in: packages/types/dist/index.d.ts:227
 
 The indexer internal db ID.
 
@@ -134,8 +116,6 @@ The indexer internal db ID.
 
 > `readonly` **initialContractState**: [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/contracts/dist/index.d.ts:484
-
 The initial public state of the contract deployed to the blockchain.
 
 #### Inherited from
@@ -148,8 +128,6 @@ The initial public state of the contract deployed to the blockchain.
 
 > `readonly` **protocolVersion**: `number`
 
-Defined in: packages/types/dist/index.d.ts:231
-
 The protocol version of the transaction.
 
 #### Inherited from
@@ -161,8 +139,6 @@ The protocol version of the transaction.
 ### segmentStatusMap
 
 > `readonly` **segmentStatusMap**: `Map`\<`number`, [`SegmentStatus`](../../types/type-aliases/SegmentStatus.md)\> \| `undefined`
-
-Defined in: packages/types/dist/index.d.ts:240
 
 The map that associates segment identifiers (numbers) with their corresponding status [SegmentStatus](../../types/type-aliases/SegmentStatus.md).
 The segment identifier is represented as a number (key in the map), and the status indicates the success or failure of the transaction update.
@@ -177,8 +153,6 @@ The segment identifier is represented as a number (key in the map), and the stat
 
 > `readonly` **status**: [`TxStatus`](../../types/type-aliases/TxStatus.md)
 
-Defined in: packages/types/dist/index.d.ts:195
-
 The status of a submitted transaction.
 
 #### Inherited from
@@ -189,9 +163,7 @@ The status of a submitted transaction.
 
 ### tx
 
-> `readonly` **tx**: [`Transaction`](../../types/classes/Transaction.md)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
-
-Defined in: packages/types/dist/index.d.ts:191
+> `readonly` **tx**: [`Transaction`](https://github.com/midnightntwrk/midnight-ledger)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 The transaction that was finalized.
 
@@ -205,8 +177,6 @@ The transaction that was finalized.
 
 > `readonly` **txHash**: `string`
 
-Defined in: packages/types/dist/index.d.ts:207
-
 The transaction hash of the transaction in which the original transaction was included.
 
 #### Inherited from
@@ -218,8 +188,6 @@ The transaction hash of the transaction in which the original transaction was in
 ### txId
 
 > `readonly` **txId**: `string`
-
-Defined in: packages/types/dist/index.d.ts:199
 
 One of the transaction ID of the submitted transaction.
 
@@ -233,11 +201,21 @@ One of the transaction ID of the submitted transaction.
 
 > `readonly` **unshielded**: [`UnshieldedUtxos`](../../types/type-aliases/UnshieldedUtxos.md)
 
-Defined in: packages/types/dist/index.d.ts:245
-
 Represents the unshielded outputs, typically used for transactions or operations
 involving data or values that are not encrypted or concealed.
 
 #### Inherited from
 
 [`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md).[`unshielded`](../../types/interfaces/FinalizedTxData.md#unshielded)
+
+***
+
+### version
+
+> `readonly` **version**: `"v9"`
+
+Discriminant identifying this as a v9 ledger record.
+
+#### Inherited from
+
+[`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md).[`version`](../../types/interfaces/FinalizedTxData.md#version)

@@ -8,10 +8,14 @@
 
 > `const` **createProofProvider**: (`provingProvider`, `costModel?`) => [`ProofProvider`](../interfaces/ProofProvider.md)
 
-Defined in: packages/types/dist/index.d.ts:858
-
 Creates a [ProofProvider](../interfaces/ProofProvider.md) from a [ProvingProvider](https://github.com/midnightntwrk/midnight-ledger).
 The returned provider proves transactions using the initial cost model.
+
+The returned provider serves the v9 arm only — `supportedEras` says so — and
+that is permanent rather than a gap: it lifts a v9-only `ProvingProvider`. It
+rejects a v8 payload with `V8PayloadUnsupportedError`, and an untagged one
+with `UntaggedPayloadError`. To serve a retained era as well, use
+[createProofProviderFromArms](createProofProviderFromArms.md).
 
 ## Parameters
 

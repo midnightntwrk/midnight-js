@@ -6,8 +6,6 @@
 
 # Interface: PrivateStateProvider\<PSI, PS\>
 
-Defined in: packages/types/dist/index.d.ts:627
-
 Interface for a typed key-valued store containing contract private states.
 
 ## Type Parameters
@@ -30,8 +28,6 @@ Parameter indicating the private state type stored, sometimes a union of private
 
 > **clear**(): `Promise`\<`void`\>
 
-Defined in: packages/types/dist/index.d.ts:692
-
 Remove all contract private states.
 
 #### Returns
@@ -44,8 +40,6 @@ Remove all contract private states.
 
 > **clearSigningKeys**(): `Promise`\<`void`\>
 
-Defined in: packages/types/dist/index.d.ts:750
-
 Remove all contract signing keys.
 
 #### Returns
@@ -57,8 +51,6 @@ Remove all contract signing keys.
 ### exportPrivateStates()
 
 > **exportPrivateStates**(`options?`): `Promise`\<[`PrivateStateExport`](PrivateStateExport.md)\>
-
-Defined in: packages/types/dist/index.d.ts:770
 
 Export all private states as an encrypted JSON-serializable structure.
 
@@ -107,8 +99,6 @@ If reading existing entries fails for any of the reasons listed
 
 > **exportSigningKeys**(`options?`): `Promise`\<[`SigningKeyExport`](SigningKeyExport.md)\>
 
-Defined in: packages/types/dist/index.d.ts:803
-
 Export all signing keys as an encrypted JSON-serializable structure.
 
 #### Parameters
@@ -147,8 +137,6 @@ If reading existing entries fails for any of the reasons listed
 ### get()
 
 > **get**(`privateStateId`): `Promise`\<`PS` \| `null`\>
-
-Defined in: packages/types/dist/index.d.ts:682
 
 Retrieve the private state at the given private state ID.
 
@@ -220,8 +208,6 @@ corruption modes are also surfaced as throws rather than `null`.
 
 > **getSigningKey**(`address`): `Promise`\<[`SigningKey`](https://github.com/midnightntwrk/midnight-ledger) \| `null`\>
 
-Defined in: packages/types/dist/index.d.ts:740
-
 Retrieve the signing key for a contract.
 
 #### Parameters
@@ -290,8 +276,6 @@ and other corruption modes are also surfaced as throws rather than
 
 > **importPrivateStates**(`exportData`, `options?`): `Promise`\<[`ImportPrivateStatesResult`](ImportPrivateStatesResult.md)\>
 
-Defined in: packages/types/dist/index.d.ts:788
-
 Import private states from a previously exported structure.
 
 #### Parameters
@@ -348,8 +332,6 @@ If reading or writing the underlying store fails for any of the
 
 > **importSigningKeys**(`exportData`, `options?`): `Promise`\<[`ImportSigningKeysResult`](ImportSigningKeysResult.md)\>
 
-Defined in: packages/types/dist/index.d.ts:819
-
 Import signing keys from a previously exported structure.
 
 #### Parameters
@@ -401,8 +383,6 @@ If reading or writing the underlying store fails for any of the
 
 > **remove**(`privateStateId`): `Promise`\<`void`\>
 
-Defined in: packages/types/dist/index.d.ts:688
-
 Remove the value at the given private state ID.
 
 #### Parameters
@@ -423,8 +403,6 @@ The private state identifier.
 
 > **removeSigningKey**(`address`): `Promise`\<`void`\>
 
-Defined in: packages/types/dist/index.d.ts:746
-
 Remove the signing key for a contract.
 
 #### Parameters
@@ -444,8 +422,6 @@ The address of the contract for which to delete the signing key.
 ### set()
 
 > **set**(`privateStateId`, `state`): `Promise`\<`void`\>
-
-Defined in: packages/types/dist/index.d.ts:642
 
 Store the given private state at the given private state ID.
 
@@ -473,8 +449,6 @@ The private state to store.
 
 > **setContractAddress**(`address`): `void`
 
-Defined in: packages/types/dist/index.d.ts:635
-
 Set the contract address for scoping private state operations.
 Must be called before any get/set/remove operations on private states.
 This provides namespace isolation between different contracts.
@@ -496,8 +470,6 @@ The contract address to scope operations to.
 ### setSigningKey()
 
 > **setSigningKey**(`address`, `signingKey`): `Promise`\<`void`\>
-
-Defined in: packages/types/dist/index.d.ts:699
 
 Store the given signing key at the given address.
 

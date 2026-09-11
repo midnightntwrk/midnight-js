@@ -8,8 +8,6 @@
 
 > **UnprovenCallTxProvidersWithPrivateState**\<`C`\> = [`UnprovenCallTxProvidersBase`](UnprovenCallTxProvidersBase.md) & `Pick`\<[`ContractProviders`](ContractProviders.md)\<`C`\>, `"privateStateProvider"`\>
 
-Defined in: packages/contracts/dist/index.d.ts:817
-
 Same providers as [UnprovenCallTxProvidersBase](UnprovenCallTxProvidersBase.md) with an additional private
 state provider to store the new private state resulting from the circuit call -
 only used when creating a call transaction for a contract with a private state.

@@ -8,8 +8,6 @@
 
 > **TxIdConfig** = `object`
 
-Defined in: packages/types/dist/index.d.ts:875
-
 Starts a contract state stream at the given transaction identifier.
 
 ## Properties
@@ -18,8 +16,6 @@ Starts a contract state stream at the given transaction identifier.
 
 > `readonly` **txId**: [`TransactionId`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/types/dist/index.d.ts:880
-
 The transaction identifier indicating where to begin the state stream.
 
 ***
@@ -27,5 +23,3 @@ The transaction identifier indicating where to begin the state stream.
 ### type
 
 > `readonly` **type**: `"txId"`
-
-Defined in: packages/types/dist/index.d.ts:876

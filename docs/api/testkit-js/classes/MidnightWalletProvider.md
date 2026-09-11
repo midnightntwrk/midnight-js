@@ -36,6 +36,29 @@ Handles transaction balancing, submission, and wallet state management.
 
 ***
 
+### supportedEras
+
+> `readonly` **supportedEras**: readonly (`"v9"` \| `"v8"`)[]
+
+Both eras, declared once for both seams this class implements.
+
+Written out rather than assembled from per-era arms, which is the escape
+hatch the tagged interfaces deliberately keep open for a class. The two
+methods below genuinely run both eras through ONE call each — the wallet
+SDK adopts a transaction AT a protocol version, so the era is data flowing
+through rather than a branch — and splitting them into arms would duplicate
+the balance/sign/finalize sequence to no end.
+
+Read before an operation starts, by `assertSeamsSupportEra`. Frozen for the
+same reason the factories freeze their computed declaration: a widened
+declaration would let that check pass for an era this wallet cannot serve.
+
+#### Implementation of
+
+`MidnightProvider.supportedEras`
+
+***
+
 ### unshieldedKeystore
 
 > `readonly` **unshieldedKeystore**: `UnshieldedKeystore`
@@ -56,25 +79,40 @@ Handles transaction balancing, submission, and wallet state management.
 
 ### balanceTx()
 
-> **balanceTx**(`tx`, `ttl?`): `Promise`\<`FinalizedTransaction`\>
+> **balanceTx**(`tx`, `ttl?`): `Promise`\<`VersionedFinalizedTransaction`\>
 
-Balances a transaction
+Balances and signs a transaction, readying it for submission.
 
 #### Parameters
 
 ##### tx
 
-`UnboundTransaction`
+`VersionedUnboundTransaction`
 
-The transaction to balance.
+The version-tagged transaction to balance: `{ version: 'v9', tx }` for a live v9
+          ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes.
 
 ##### ttl?
 
 `Date` = `...`
 
+Time-to-live for the balanced transaction. Implementation-defined when omitted;
+           the testkit's `MidnightWalletProvider` defaults to one hour.
+
 #### Returns
 
-`Promise`\<`FinalizedTransaction`\>
+`Promise`\<`VersionedFinalizedTransaction`\>
+
+The balanced, signed transaction, version-tagged. Narrow on `version` — or call
+         `unwrapV9` — before reading the payload.
+
+#### Throws
+
+V8PayloadUnsupportedError if the implementation does not handle the v8 arm.
+
+#### Throws
+
+UntaggedPayloadError if `version` is missing or unrecognised.
 
 #### Implementation of
 
@@ -146,15 +184,25 @@ Submit a transaction to the network to be consensed upon.
 
 ##### tx
 
-`FinalizedTransaction`
+`VersionedFinalizedTransaction`
 
-The finalized transaction to submit.
+The version-tagged finalized transaction to submit: `{ version: 'v9', tx }` for a
+          live v9 ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes.
 
 #### Returns
 
 `Promise`\<`string`\>
 
-The transaction identifier of the submitted transaction.
+The transaction identifier of the submitted transaction. Not version-tagged — a
+         transaction identifier is era-independent.
+
+#### Throws
+
+V8PayloadUnsupportedError if the implementation does not handle the v8 arm.
+
+#### Throws
+
+UntaggedPayloadError if `version` is missing or unrecognised.
 
 #### Implementation of
 

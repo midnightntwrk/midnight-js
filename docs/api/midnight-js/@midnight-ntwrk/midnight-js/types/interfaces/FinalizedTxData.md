@@ -6,16 +6,29 @@
 
 # Interface: FinalizedTxData
 
-Defined in: packages/types/dist/index.d.ts:187
+Data for any finalized transaction produced by the v9 ledger runtime.
 
-Data for any finalized transaction.
+This is the v9 arm of [VersionedFinalizedTxData](../type-aliases/VersionedFinalizedTxData.md) — see
+[FinalizedTxDataV8](FinalizedTxDataV8.md) for the v8 arm. The providers in this framework
+derive `version` from the record's own `protocolVersion`, using the
+`read`-path resolver in `@midnight-ntwrk/midnight-js-protocol`, and throw
+rather than mislabel a record from an era they cannot decode — so from them,
+`version` is a statement about the record rather than an assumption. A
+third-party `PublicDataProvider` is not obliged to do the same.
+
+Narrowing is required: a provider that decodes per era returns the v8 arm as
+a value for any record whose `protocolVersion` places it in that era.
+
+## Extends
+
+- [`FinalizedTxRecord`](FinalizedTxRecord.md)
 
 ## Extended by
 
 - [`FinalizedCallTxPublicData`](../../contracts/interfaces/FinalizedCallTxPublicData.md)
 - [`FinalizedDeployTxPublicData`](../../contracts/interfaces/FinalizedDeployTxPublicData.md)
-- [`FinalizedCallTxPublicData`](../../../midnight-js-contracts/interfaces/FinalizedCallTxPublicData.md)
-- [`FinalizedDeployTxPublicData`](../../../midnight-js-contracts/interfaces/FinalizedDeployTxPublicData.md)
+- [`FinalizedCallTxPublicData`](../../../midnight-js-contracts/index/interfaces/FinalizedCallTxPublicData.md)
+- [`FinalizedDeployTxPublicData`](../../../midnight-js-contracts/index/interfaces/FinalizedDeployTxPublicData.md)
 
 ## Properties
 
@@ -23,9 +36,11 @@ Data for any finalized transaction.
 
 > `readonly` **blockAuthor**: `string` \| `null`
 
-Defined in: packages/types/dist/index.d.ts:223
-
 The author of the block in which the transaction was included.
+
+#### Inherited from
+
+[`FinalizedTxRecord`](FinalizedTxRecord.md).[`blockAuthor`](FinalizedTxRecord.md#blockauthor)
 
 ***
 
@@ -33,9 +48,11 @@ The author of the block in which the transaction was included.
 
 > `readonly` **blockHash**: `string`
 
-Defined in: packages/types/dist/index.d.ts:211
-
 The block hash of the block in which the transaction was included.
+
+#### Inherited from
+
+[`FinalizedTxRecord`](FinalizedTxRecord.md).[`blockHash`](FinalizedTxRecord.md#blockhash)
 
 ***
 
@@ -43,9 +60,11 @@ The block hash of the block in which the transaction was included.
 
 > `readonly` **blockHeight**: `number`
 
-Defined in: packages/types/dist/index.d.ts:215
-
 The block height of the block in which the transaction was included.
+
+#### Inherited from
+
+[`FinalizedTxRecord`](FinalizedTxRecord.md).[`blockHeight`](FinalizedTxRecord.md#blockheight)
 
 ***
 
@@ -53,9 +72,11 @@ The block height of the block in which the transaction was included.
 
 > `readonly` **blockTimestamp**: `number`
 
-Defined in: packages/types/dist/index.d.ts:219
-
 The timestamp of the block in which the transaction was included.
+
+#### Inherited from
+
+[`FinalizedTxRecord`](FinalizedTxRecord.md).[`blockTimestamp`](FinalizedTxRecord.md#blocktimestamp)
 
 ***
 
@@ -63,9 +84,11 @@ The timestamp of the block in which the transaction was included.
 
 > `readonly` **fees**: [`Fees`](../type-aliases/Fees.md)
 
-Defined in: packages/types/dist/index.d.ts:235
-
 The fees associated with the transaction, including both paid and estimated fees.
+
+#### Inherited from
+
+[`FinalizedTxRecord`](FinalizedTxRecord.md).[`fees`](FinalizedTxRecord.md#fees)
 
 ***
 
@@ -73,9 +96,11 @@ The fees associated with the transaction, including both paid and estimated fees
 
 > `readonly` **identifiers**: readonly `string`[]
 
-Defined in: packages/types/dist/index.d.ts:203
-
 All transaction IDs of the submitted transaction.
+
+#### Inherited from
+
+[`FinalizedTxRecord`](FinalizedTxRecord.md).[`identifiers`](FinalizedTxRecord.md#identifiers)
 
 ***
 
@@ -83,9 +108,11 @@ All transaction IDs of the submitted transaction.
 
 > `readonly` **indexerId**: `number`
 
-Defined in: packages/types/dist/index.d.ts:227
-
 The indexer internal db ID.
+
+#### Inherited from
+
+[`FinalizedTxRecord`](FinalizedTxRecord.md).[`indexerId`](FinalizedTxRecord.md#indexerid)
 
 ***
 
@@ -93,9 +120,11 @@ The indexer internal db ID.
 
 > `readonly` **protocolVersion**: `number`
 
-Defined in: packages/types/dist/index.d.ts:231
-
 The protocol version of the transaction.
+
+#### Inherited from
+
+[`FinalizedTxRecord`](FinalizedTxRecord.md).[`protocolVersion`](FinalizedTxRecord.md#protocolversion)
 
 ***
 
@@ -103,10 +132,12 @@ The protocol version of the transaction.
 
 > `readonly` **segmentStatusMap**: `Map`\<`number`, [`SegmentStatus`](../type-aliases/SegmentStatus.md)\> \| `undefined`
 
-Defined in: packages/types/dist/index.d.ts:240
-
 The map that associates segment identifiers (numbers) with their corresponding status [SegmentStatus](../type-aliases/SegmentStatus.md).
 The segment identifier is represented as a number (key in the map), and the status indicates the success or failure of the transaction update.
+
+#### Inherited from
+
+[`FinalizedTxRecord`](FinalizedTxRecord.md).[`segmentStatusMap`](FinalizedTxRecord.md#segmentstatusmap)
 
 ***
 
@@ -114,17 +145,17 @@ The segment identifier is represented as a number (key in the map), and the stat
 
 > `readonly` **status**: [`TxStatus`](../type-aliases/TxStatus.md)
 
-Defined in: packages/types/dist/index.d.ts:195
-
 The status of a submitted transaction.
+
+#### Inherited from
+
+[`FinalizedTxRecord`](FinalizedTxRecord.md).[`status`](FinalizedTxRecord.md#status)
 
 ***
 
 ### tx
 
-> `readonly` **tx**: [`Transaction`](../classes/Transaction.md)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
-
-Defined in: packages/types/dist/index.d.ts:191
+> `readonly` **tx**: [`Transaction`](https://github.com/midnightntwrk/midnight-ledger)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 The transaction that was finalized.
 
@@ -134,9 +165,11 @@ The transaction that was finalized.
 
 > `readonly` **txHash**: `string`
 
-Defined in: packages/types/dist/index.d.ts:207
-
 The transaction hash of the transaction in which the original transaction was included.
+
+#### Inherited from
+
+[`FinalizedTxRecord`](FinalizedTxRecord.md).[`txHash`](FinalizedTxRecord.md#txhash)
 
 ***
 
@@ -144,9 +177,11 @@ The transaction hash of the transaction in which the original transaction was in
 
 > `readonly` **txId**: `string`
 
-Defined in: packages/types/dist/index.d.ts:199
-
 One of the transaction ID of the submitted transaction.
+
+#### Inherited from
+
+[`FinalizedTxRecord`](FinalizedTxRecord.md).[`txId`](FinalizedTxRecord.md#txid)
 
 ***
 
@@ -154,7 +189,17 @@ One of the transaction ID of the submitted transaction.
 
 > `readonly` **unshielded**: [`UnshieldedUtxos`](../type-aliases/UnshieldedUtxos.md)
 
-Defined in: packages/types/dist/index.d.ts:245
-
 Represents the unshielded outputs, typically used for transactions or operations
 involving data or values that are not encrypted or concealed.
+
+#### Inherited from
+
+[`FinalizedTxRecord`](FinalizedTxRecord.md).[`unshielded`](FinalizedTxRecord.md#unshielded)
+
+***
+
+### version
+
+> `readonly` **version**: `"v9"`
+
+Discriminant identifying this as a v9 ledger record.

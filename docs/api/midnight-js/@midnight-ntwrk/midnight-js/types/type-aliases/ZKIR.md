@@ -8,8 +8,6 @@
 
 > **ZKIR** = `Uint8Array` & `object`
 
-Defined in: packages/types/dist/index.d.ts:49
-
 A type representing a zero-knowledge circuit intermediate representation derived from a contract circuit.
 
 ## Type Declaration

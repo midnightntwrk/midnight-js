@@ -8,8 +8,6 @@
 
 > `const` **ttlOneHour**: () => `Date`
 
-Defined in: packages/utils/dist/index.d.ts:25
-
 ## Returns
 
 `Date`

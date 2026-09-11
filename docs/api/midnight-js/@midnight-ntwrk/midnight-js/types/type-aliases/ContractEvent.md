@@ -8,8 +8,6 @@
 
 > **ContractEvent** = [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object`
 
-Defined in: packages/types/dist/index.d.ts:993
-
 A decoded contract event. Discriminated union keyed on `eventType`; narrow on
 it to access the variant-specific payload fields.
 

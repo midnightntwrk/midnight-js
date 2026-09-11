@@ -8,8 +8,6 @@
 
 > **CallOptions**\<`C`, `PCK`\> = [`CallOptionsWithProviderDataDependencies`](CallOptionsWithProviderDataDependencies.md)\<`C`, `PCK`\> \| [`CallOptionsWithPrivateState`](CallOptionsWithPrivateState.md)\<`C`, `PCK`\>
 
-Defined in: packages/contracts/dist/index.d.ts:78
-
 Call options for a given contract and circuit.
 
 ## Type Parameters

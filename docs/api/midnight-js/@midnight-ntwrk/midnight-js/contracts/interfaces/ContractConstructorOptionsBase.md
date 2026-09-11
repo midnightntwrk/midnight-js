@@ -6,8 +6,6 @@
 
 # Interface: ContractConstructorOptionsBase\<C\>
 
-Defined in: packages/contracts/dist/index.d.ts:192
-
 Describes the target of a circuit invocation.
 
 ## Type Parameters
@@ -21,7 +19,5 @@ Describes the target of a circuit invocation.
 ### compiledContract
 
 > `readonly` **compiledContract**: [`CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
-
-Defined in: packages/contracts/dist/index.d.ts:196
 
 The compiled contract defining the circuit to call.

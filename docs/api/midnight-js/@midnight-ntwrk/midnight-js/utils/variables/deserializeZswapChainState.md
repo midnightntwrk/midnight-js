@@ -8,8 +8,6 @@
 
 > `const` **deserializeZswapChainState**: (`bytes`, `ctx`) => [`ZswapChainState`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/utils/dist/index.d.ts:150
-
 Deserialize a ledger [ZswapChainState](https://github.com/midnightntwrk/midnight-ledger) from raw bytes.
 
 ## Parameters

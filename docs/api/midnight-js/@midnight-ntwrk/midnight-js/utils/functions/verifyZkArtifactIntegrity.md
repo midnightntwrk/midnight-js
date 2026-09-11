@@ -8,8 +8,6 @@
 
 > **verifyZkArtifactIntegrity**(`params`): `void`
 
-Defined in: packages/utils/dist/index.d.ts:489
-
 Verifies one artifact's bytes against the manifest entry for `relativePath`.
 - `off`: no-op.
 - no manifest at all: `require` throws, every other mode warns and returns.

@@ -8,8 +8,6 @@
 
 > **UnprovenDeployTxOptions**\<`C`\> = [`DeployTxOptionsBase`](DeployTxOptionsBase.md)\<`C`\> \| [`DeployTxOptionsWithPrivateState`](DeployTxOptionsWithPrivateState.md)\<`C`\>
 
-Defined in: packages/contracts/dist/index.d.ts:1343
-
 Configuration for creating unproven deploy transactions.
 
 ## Type Parameters

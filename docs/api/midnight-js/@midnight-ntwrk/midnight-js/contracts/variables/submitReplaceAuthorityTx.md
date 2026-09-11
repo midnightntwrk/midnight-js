@@ -8,8 +8,6 @@
 
 > `const` **submitReplaceAuthorityTx**: \<`C`\>(`providers`, `compiledContract`, `contractAddress`) => (`newAuthority`) => `Promise`\<[`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md)\>
 
-Defined in: packages/contracts/dist/index.d.ts:1224
-
 Constructs and submits a transaction that replaces the maintenance
 authority stored on the blockchain for this contract. After the transaction is
 finalized, the current signing key stored in the given private state provider

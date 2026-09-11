@@ -8,8 +8,6 @@
 
 > `const` **PATTERNS**: readonly [`PatternEntry`](../interfaces/PatternEntry.md)[]
 
-Defined in: packages/utils/dist/index.d.ts:109
-
 Shared pattern table across all three sources (ledger / compact-runtime / onchain-runtime).
 Sources share the same `serialize` Rust crate, so error message formats are identical.
 Order matters — more specific patterns come first; first match wins.

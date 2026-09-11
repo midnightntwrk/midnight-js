@@ -8,8 +8,6 @@
 
 > **ContractConstructorOptionsWithProviderDataDependencies**\<`C`\> = [`ContractConstructorOptionsWithArguments`](ContractConstructorOptionsWithArguments.md)\<`C`\> & [`ContractConstructorOptionsProviderDataDependencies`](../interfaces/ContractConstructorOptionsProviderDataDependencies.md)
 
-Defined in: packages/contracts/dist/index.d.ts:220
-
 Contract constructor options including arguments and provider data.
 
 ## Type Parameters

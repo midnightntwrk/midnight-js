@@ -6,8 +6,6 @@
 
 # Interface: FindDeployedContractOptionsBase\<C\>
 
-Defined in: packages/contracts/dist/index.d.ts:866
-
 Base type for the configuration options for [findDeployedContract](../functions/findDeployedContract.md).
 
 ## Extended by
@@ -26,8 +24,6 @@ Base type for the configuration options for [findDeployedContract](../functions/
 
 > `readonly` **compiledContract**: [`CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
 
-Defined in: packages/contracts/dist/index.d.ts:870
-
 The compiled contract to use to execute circuits.
 
 ***
@@ -36,8 +32,6 @@ The compiled contract to use to execute circuits.
 
 > `readonly` **contractAddress**: `string`
 
-Defined in: packages/contracts/dist/index.d.ts:874
-
 The address of a previously deployed contract.
 
 ***
@@ -45,8 +39,6 @@ The address of a previously deployed contract.
 ### signingKey?
 
 > `readonly` `optional` **signingKey?**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
-
-Defined in: packages/contracts/dist/index.d.ts:884
 
 The signing key to use to perform contract maintenance updates. If defined, the given signing
 key is stored for this contract address. This is useful when someone has already added the given signing

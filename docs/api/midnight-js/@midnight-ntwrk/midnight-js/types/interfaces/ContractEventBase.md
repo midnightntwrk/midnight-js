@@ -6,8 +6,6 @@
 
 # Interface: ContractEventBase
 
-Defined in: packages/types/dist/index.d.ts:953
-
 Fields common to every [ContractEvent](../type-aliases/ContractEvent.md) variant, regardless of type.
 
 ## Properties
@@ -16,8 +14,6 @@ Fields common to every [ContractEvent](../type-aliases/ContractEvent.md) variant
 
 > `readonly` **contractAddress**: `string`
 
-Defined in: packages/types/dist/index.d.ts:970
-
 Address of the contract that emitted the event.
 
 ***
@@ -25,8 +21,6 @@ Address of the contract that emitted the event.
 ### id
 
 > `readonly` **id**: `number`
-
-Defined in: packages/types/dist/index.d.ts:958
 
 Monotonic indexer cursor for this event. Inclusive resumption point — to
 resume *after* this event, pass `{ fromId: id + 1 }`.
@@ -37,18 +31,28 @@ resume *after* this event, pass `{ fromId: id + 1 }`.
 
 > `readonly` **maxId**: `number`
 
-Defined in: packages/types/dist/index.d.ts:963
-
 Highest event id the indexer currently knows (the chain tip for events).
 Compare against [id](#id) to detect catch-up / whether more events exist.
+
+***
+
+### protocolVersion
+
+> `readonly` **protocolVersion**: `number`
+
+Protocol version of the block this event was emitted in, as the network
+reported it. Distinct from [version](#version): this one says which ledger era
+wrote [raw](#raw), so a consumer decoding those bytes knows which runtime
+to decode them with. Resolve it with `versionOfRecord` from
+`@midnight-ntwrk/midnight-js-protocol` rather than comparing integers by
+hand — this interface satisfies that function's `VersionedRecord`
+parameter.
 
 ***
 
 ### raw
 
 > `readonly` **raw**: `string`
-
-Defined in: packages/types/dist/index.d.ts:983
 
 Opaque hex `VersionedLogItem` bytes, carried verbatim. Never decoded or
 validated by this provider — the forward bridge to a future compact-js
@@ -60,8 +64,6 @@ payload decoder.
 
 > `readonly` **transactionId**: `number`
 
-Defined in: packages/types/dist/index.d.ts:977
-
 Indexer-internal `BIGSERIAL` row id of the emitting transaction — **not**
 the chain transaction hash. To fetch the chain transaction, issue a
 separate query. Note the asymmetry with [ContractEventFilterBase.transactionHash](ContractEventFilterBase.md#transactionhash),
@@ -72,8 +74,6 @@ which narrows by chain hash.
 ### version
 
 > `readonly` **version**: `number`
-
-Defined in: packages/types/dist/index.d.ts:968
 
 Payload schema version — selects the (future) per-event payload decoder.
 Iteration-1 events are `version: 1`.

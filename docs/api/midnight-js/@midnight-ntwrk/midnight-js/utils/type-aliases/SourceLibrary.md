@@ -8,6 +8,4 @@
 
 > **SourceLibrary** = `"ledger"` \| `"compact-runtime"` \| `"onchain-runtime"`
 
-Defined in: packages/utils/dist/index.d.ts:28
-
 Underlying library that produced the deserialization error.

@@ -8,8 +8,6 @@
 
 > `const` **exitResultOrError**: \<`A`, `E`\>(`exit`) => `A`
 
-Defined in: packages/types/dist/index.d.ts:334
-
 Unwraps an Effect `Exit` instance, returning its value if it is successful, or throwing the error contained
 within it.
 

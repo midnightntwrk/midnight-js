@@ -8,8 +8,6 @@
 
 > **CallOptionsWithArguments**\<`C`, `PCK`\> = [`Contract.CircuitParameters`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `PCK`\> *extends* \[\] ? [`CallOptionsBase`](../interfaces/CallOptionsBase.md)\<`C`, `PCK`\> : [`CallOptionsBase`](../interfaces/CallOptionsBase.md)\<`C`, `PCK`\> & `object`
 
-Defined in: packages/contracts/dist/index.d.ts:35
-
 Conditional type that optionally adds the inferred circuit argument types to
 the options for a circuit call.
 

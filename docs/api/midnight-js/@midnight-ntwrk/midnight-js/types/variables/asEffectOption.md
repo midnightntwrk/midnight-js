@@ -8,8 +8,6 @@
 
 > `const` **asEffectOption**: \<`T`\>(`obj`) => `Option.Option`\<`T`\>
 
-Defined in: packages/types/dist/index.d.ts:341
-
 Wraps an object into an `Option.some`.
 
 ## Type Parameters

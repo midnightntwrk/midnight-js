@@ -8,8 +8,6 @@
 
 > `const` **createCircuitMaintenanceTxInterface**: \<`C`, `PCK`\>(`providers`, `circuitId`, `compiledContract`, `contractAddress`) => [`CircuitMaintenanceTxInterface`](../interfaces/CircuitMaintenanceTxInterface.md)
 
-Defined in: packages/contracts/dist/index.d.ts:286
-
 Creates a [CircuitMaintenanceTxInterface](../interfaces/CircuitMaintenanceTxInterface.md).
 
 ## Type Parameters

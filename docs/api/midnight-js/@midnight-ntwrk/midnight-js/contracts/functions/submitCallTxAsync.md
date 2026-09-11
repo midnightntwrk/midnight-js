@@ -6,9 +6,49 @@
 
 # Function: submitCallTxAsync()
 
-> **submitCallTxAsync**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`SubmittedCallTx`](../interfaces/SubmittedCallTx.md)\<`C`, `PCK`\>\>
+## Call Signature
 
-Defined in: packages/contracts/dist/index.d.ts:1299
+> **submitCallTxAsync**\<`C`, `K`\>(`providers`, `options`): `Promise`\<[`SubmittedCallTx`](../namespaces/Ledger8/interfaces/SubmittedCallTx.md)\<`C`, `K`\>\>
+
+The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+the raw contract instance rather than inside a `CompiledContract` container.
+
+Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
+the retained-era-native pipeline, a post-fork head the keep-state one.
+
+### Type Parameters
+
+#### C
+
+`C` *extends* [`Contract`](../namespaces/Ledger8/interfaces/Contract.md)\<`unknown`\>
+
+#### K
+
+`K` *extends* `string`
+
+### Parameters
+
+#### providers
+
+[`ContractProviders`](../namespaces/Ledger8/type-aliases/ContractProviders.md)\<`C`, `K`\>
+
+#### options
+
+[`CallTxOptions`](../namespaces/Ledger8/type-aliases/CallTxOptions.md)\<`C`, `K`\>
+
+### Returns
+
+`Promise`\<[`SubmittedCallTx`](../namespaces/Ledger8/interfaces/SubmittedCallTx.md)\<`C`, `K`\>\>
+
+### See
+
+ - [KeepStatePipeline](../../documents/KeepStatePipeline.md) for the seam table, and for why a provider needs to handle the
+     `'v8'` seam arm only while the network head is still pre-fork.
+ - [OverloadTyping](../../documents/OverloadTyping.md) for how the two eras are discriminated.
+
+## Call Signature
+
+> **submitCallTxAsync**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`SubmittedCallTx`](../interfaces/SubmittedCallTx.md)\<`C`, `PCK`\>\>
 
 Creates and submits a transaction for the invocation of a circuit on a given contract,
 returning immediately after submission without waiting for finalization.
@@ -43,58 +83,73 @@ After calling this function, you must manually:
 - You must NOT store private state updates
 - Transaction appears in blockchain history as partial success
 
-## Type Parameters
+### Type Parameters
 
-### C
+#### C
 
 `C` *extends* [`Any`](https://github.com/midnightntwrk/midnight-sdk)
 
-### PCK
+#### PCK
 
 `PCK` *extends* `string`
 
-## Parameters
+### Parameters
 
-### providers
+#### providers
 
-`SubmitCallTxProviders`\<`C`, `PCK`\>
+[`SubmitCallTxProviders`](../type-aliases/SubmitCallTxProviders.md)\<`C`, `PCK`\>
 
 The providers used to manage the invocation lifecycle.
 
-### options
+#### options
 
 [`CallTxOptions`](../type-aliases/CallTxOptions.md)\<`C`, `PCK`\>
 
 Configuration.
 
-## Returns
+### Returns
 
 `Promise`\<[`SubmittedCallTx`](../interfaces/SubmittedCallTx.md)\<`C`, `PCK`\>\>
 
 A `Promise` that resolves with the transaction ID and call transaction data immediately after submission;
         or rejects with an error if the submission fails.
 
-## Remarks
+### Throws
+
+When `options.compiledContract` belongs to neither Compact
+        era, is a raw current-era contract instance passed instead of its `CompiledContract`
+        container, or its artifacts declare no toolchain this framework can place. Raised before
+        anything is built or submitted; the ZK config provider is asked for the artifacts'
+        declared runtime version, and no other provider is consulted.
+
+### Remarks
 
 The returned [SubmittedCallTx](../interfaces/SubmittedCallTx.md) is privacy-sensitive and carries the
 unproven transaction and private state via `callTxData`. See that type for
 handling guidance before logging, serializing, or transmitting the result.
 
-## Example
+### Example
 
 ```typescript
 // 1. Submit
 const { txId, callTxData } = await submitCallTxAsync(providers, options);
 
-// 2. Watch (when ready)
-const finalizedData = await providers.publicDataProvider.watchForTxData(txId);
+// 2. Watch (when ready). The read surface reports both ledger eras, so the
+//    record is version-tagged.
+const record = await providers.publicDataProvider.watchForTxData(txId);
 
-// 3. Check status
-if (finalizedData.status !== SucceedEntirely) {
-  throw new CallTxFailedError(finalizedData, options.circuitId);
+// 3. Narrow to the v9 arm. This flow submits v9 transactions only, so a v8
+//    record means the provider is pointed at the wrong network.
+if (record.version !== 'v9') {
+  throw new EraInvariantViolationError('watchForTxData', options.circuitId);
 }
 
-// 4. Update private state manually if needed
+// 4. Check status
+if (record.status !== SucceedEntirely) {
+  throw new CallTxFailedError(record, options.circuitId);
+}
+
+// 5. Update private state manually if needed
 if (options.privateStateId) {
   await providers.privateStateProvider.set(
     privateStateId,

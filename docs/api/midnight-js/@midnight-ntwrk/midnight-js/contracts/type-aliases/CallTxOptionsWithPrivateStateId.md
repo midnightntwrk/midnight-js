@@ -8,8 +8,6 @@
 
 > **CallTxOptionsWithPrivateStateId**\<`C`, `PCK`\> = [`CallTxOptionsBase`](CallTxOptionsBase.md)\<`C`, `PCK`\> & `object`
 
-Defined in: packages/contracts/dist/index.d.ts:795
-
 Call transaction options with the private state ID to use to store the new private
 state resulting from the circuit call. Since a private state should already be
 stored at the given private state ID, we don't need an 'initialPrivateState' like

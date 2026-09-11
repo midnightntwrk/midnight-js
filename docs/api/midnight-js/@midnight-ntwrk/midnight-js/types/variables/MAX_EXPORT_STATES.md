@@ -8,7 +8,5 @@
 
 > `const` **MAX\_EXPORT\_STATES**: `10000` = `10000`
 
-Defined in: packages/types/dist/index.d.ts:477
-
 Maximum number of states that can be exported/imported.
 This limit prevents memory exhaustion attacks.

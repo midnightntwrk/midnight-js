@@ -6,8 +6,6 @@
 
 # Interface: PatternEntry
 
-Defined in: packages/utils/dist/index.d.ts:43
-
 Pattern entry in the classifier table.
 
 ## Properties
@@ -16,15 +14,11 @@ Pattern entry in the classifier table.
 
 > `readonly` **classification**: [`Classification`](../type-aliases/Classification.md)
 
-Defined in: packages/utils/dist/index.d.ts:45
-
 ***
 
 ### extract?
 
 > `readonly` `optional` **extract?**: (`match`) => [`ExtractedInfo`](ExtractedInfo.md)
-
-Defined in: packages/utils/dist/index.d.ts:47
 
 #### Parameters
 
@@ -42,8 +36,6 @@ Defined in: packages/utils/dist/index.d.ts:47
 
 > `readonly` `optional` **inferDirection?**: (`match`) => [`Direction`](../type-aliases/Direction.md) \| `undefined`
 
-Defined in: packages/utils/dist/index.d.ts:46
-
 #### Parameters
 
 ##### match
@@ -59,5 +51,3 @@ Defined in: packages/utils/dist/index.d.ts:46
 ### regex
 
 > `readonly` **regex**: `RegExp`
-
-Defined in: packages/utils/dist/index.d.ts:44
