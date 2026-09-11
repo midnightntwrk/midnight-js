@@ -14,6 +14,11 @@
  */
 
 export {
+  BundledFinalizedTxData,
+  MultiContractTransactionContext,
+  withMultiContractScopedTransaction
+} from './bundle';
+export {
   CallOptions,
   CallOptionsBase,
   CallOptionsProviderDataDependencies,
