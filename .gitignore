@@ -41,6 +41,7 @@ logs
 .DS_Store
 
 midnight-concurrent-test-db
+test-concurrency-db
 .claude
 .worktrees
 .gitnexus
