@@ -39,7 +39,8 @@ import {
   type EraSeam,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
-  Ledger8DeployOnV9Error} from '../errors';
+  Ledger8DeployOnV9Error,
+  type StaleHeadOperationKind} from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
 import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcrumbs';
 
@@ -526,56 +527,139 @@ export const resolveOperationEra = async (
 };
 
 /**
+ * How one `(artifact era, head era)` pair may run, before the operation kind is taken into
+ * account.
+ *
+ * A closed set rather than a boolean: the pair that admits calls and refuses deploys is a cell in
+ * its own right, and collapsing it into "allowed" would lose the one asymmetry the fork window
+ * has.
+ */
+export type EraPairing =
+  /** Both kinds run. */
+  | 'run'
+  /** Calls run -- as keep-state, when the head has moved past the artifact -- and deploys do not. */
+  | 'call-only'
+  /** Neither kind runs: the artifact is from an era the network head has not reached. */
+  | 'artifact-newer-than-head';
+
+/** One artifact era's ruling against every era the network head can be on. */
+export type EraRulings = Readonly<Record<LedgerVersion, EraPairing>>;
+
+/**
+ * The pairing table {@link assertEraCompatible} rules from: one row per {@link PipelineEra}, one
+ * column per `LedgerVersion`.
+ *
+ * The two era vocabularies stay separate types because they answer different questions -- which
+ * era built the caller's artifact, and which era the network head is on. What this type adds is
+ * that every pair of them has to be ruled: a member added to either set leaves the table short of
+ * a row or a column, and that is a build failure.
+ *
+ * It does NOT bind the two sets to each other. A further artifact era can be added without a
+ * further head era, and vice versa; what cannot happen is either one arriving unruled.
+ *
+ * @see {@link EraDispatch} for the table in full and why the deploy cell differs.
+ */
+export type EraPairingTable = Readonly<Record<PipelineEra, EraRulings>>;
+
+/**
+ * Re-homes a table onto a null prototype and freezes it, the construction
+ * `packages/protocol/docs/shared-table-discipline.md` prescribes for a table indexed by a value.
+ *
+ * The lone cast is the point of the helper: `Object.create(null)` is `any`, and asserting it once
+ * here keeps the assertion out of the table literals, where it would launder a missing row past
+ * their declared types.
+ */
+const withNullPrototype = <T extends object>(source: T): Readonly<T> =>
+  Object.freeze(Object.assign(Object.create(null) as T, source));
+
+// The two constructors below exist for their PARAMETER types. A literal handed to one is checked
+// against a total `Record`, so a missing cell, an excess cell and a verdict outside the set are all
+// build failures -- at the literal, where the mistake is. Annotating `ERA_PAIRING` itself cannot do
+// that: by then `withNullPrototype` has already asserted the rows into existence, and the
+// annotation would accept an empty table. Do not "simplify" these away.
+const rulings = (byHead: EraRulings): EraRulings => withNullPrototype(byHead);
+const pairingTable = (byPipeline: EraPairingTable): EraPairingTable => withNullPrototype(byPipeline);
+
+/**
+ * Every `(artifact era, head era)` pair, ruled.
+ *
+ * Exported so the construction itself can be asserted -- frozen, null-prototyped, on both levels.
+ * Nothing outside this module reads it to dispatch.
+ */
+export const ERA_PAIRING: EraPairingTable = pairingTable({
+  ledger8: rulings({ v8: 'run', v9: 'call-only' }),
+  ledger9: rulings({ v8: 'artifact-newer-than-head', v9: 'run' })
+});
+
+/**
  * Refuses an operation whose artifact era and network head era cannot be run together.
  *
- * Holds the whole dispatch table, and every cell is ruled rather than left to fall through. A
- * retained-era DEPLOY on a post-fork head is the one cell where calls and deploys differ.
+ * Rules every cell of {@link ERA_PAIRING} rather than letting one fall through. A retained-era
+ * DEPLOY on a post-fork head is the one cell where calls and deploys differ, and the `'call-only'`
+ * verdict is where that difference lives.
  *
  * Returns nothing. Which pipeline runs is the `(pipeline, head)` pair the caller already holds;
  * this decides only whether that pair may run, so it does not restate the pair as a third value
  * that could disagree with it.
  *
- * @see {@link EraDispatch} for the table in full and why the deploy cell differs.
- *
  * @param pipeline The pipeline the artifact belongs to, from {@link resolveArtifactEra}.
  * @param head The era the network head is on, from {@link resolveOperationEra}.
- * @param kind Whether this operation deploys a contract or calls one already deployed.
+ * @param kind Whether this operation deploys a contract or calls one already deployed. Anything
+ * that is not a call is treated as a deploy, which is the refusing side.
  * @throws EraArtifactMismatchError with reason `'current-era-artifact-on-pre-fork-head'` for a
  * current-era artifact on a pre-fork head.
  * @throws Ledger8DeployOnV9Error for a retained-era deploy on a post-fork head.
- * @throws UnknownLedgerVersionError if a ledger era is added without a cell here.
+ * @throws UnknownLedgerVersionError carrying whichever argument has no cell here, if an era is
+ * added without extending the table -- and also from the closing arm, carrying a verdict rather
+ * than an era, if a verdict is ever added without one. The class does not distinguish the three;
+ * read `requestedVersion` for the value that was refused.
  */
-export const assertEraCompatible = (pipeline: PipelineEra, head: LedgerVersion, kind: 'call' | 'deploy'): void => {
-  switch (pipeline) {
-    case 'ledger9':
-      switch (head) {
-        case 'v9':
-          return;
-        case 'v8':
-          throw new EraArtifactMismatchError('current-era-artifact-on-pre-fork-head');
-        default: {
-          // The runtime throw is not redundant with the compile-time gate: a new era reaches here
-          // from a real head integer before this switch is updated.
-          const unhandled: never = head;
-          throw new UnknownLedgerVersionError(String(unhandled));
-        }
+export const assertEraCompatible = (
+  pipeline: PipelineEra,
+  head: LedgerVersion,
+  kind: StaleHeadOperationKind
+): void => {
+  // Defence in depth, not a live boundary: both call sites pass literals today
+  // (`internal/ledger8-entry.ts`) and this module is not reachable from outside the package. The
+  // guards are here so that a future call site threading a value through cannot quietly widen what
+  // the table admits.
+  //
+  // The `typeof` checks are load-bearing and are NOT redundant with the parameter types. A member
+  // access coerces its key -- `ToPropertyKey` runs `toString` -- so an object, a `String` wrapper
+  // or anything with `Symbol.toPrimitive` would select a real row and be RULED ON, where the
+  // `switch` this replaced compared with `===` and refused it.
+  if (typeof pipeline !== 'string') {
+    throw new UnknownLedgerVersionError(String(pipeline));
+  }
+  const pipelineRulings = ERA_PAIRING[pipeline];
+  if (pipelineRulings === undefined) {
+    throw new UnknownLedgerVersionError(pipeline);
+  }
+
+  if (typeof head !== 'string') {
+    throw new UnknownLedgerVersionError(String(head));
+  }
+  const verdict = pipelineRulings[head];
+  if (verdict === undefined) {
+    throw new UnknownLedgerVersionError(head);
+  }
+
+  switch (verdict) {
+    case 'run':
+      return;
+    case 'call-only':
+      // Refuses on anything that is not a call, rather than refusing only on `'deploy'`. The two
+      // read the same for a typed caller and differ for every other value, and this is the one
+      // asymmetric cell in the fork window -- so the value nobody anticipated must land on the
+      // refusing side.
+      if (kind !== 'call') {
+        throw new Ledger8DeployOnV9Error();
       }
-    case 'ledger8':
-      switch (head) {
-        case 'v9':
-          if (kind === 'deploy') {
-            throw new Ledger8DeployOnV9Error();
-          }
-          return;
-        case 'v8':
-          return;
-        default: {
-          const unhandled: never = head;
-          throw new UnknownLedgerVersionError(String(unhandled));
-        }
-      }
+      return;
+    case 'artifact-newer-than-head':
+      throw new EraArtifactMismatchError('current-era-artifact-on-pre-fork-head');
     default: {
-      const unhandled: never = pipeline;
+      const unhandled: never = verdict;
       throw new UnknownLedgerVersionError(String(unhandled));
     }
   }

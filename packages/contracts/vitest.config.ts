@@ -61,7 +61,7 @@ export default defineConfig({
         // makes unreachable for a typed caller.
         'src/internal/ledger8-pipeline.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/internal/ledger8-entry.ts': { lines: 97, functions: 100, branches: 89, statements: 97 },
-        'src/internal/era.ts': { lines: 87, functions: 100, branches: 88, statements: 87 }
+        'src/internal/era.ts': { lines: 92, functions: 100, branches: 91, statements: 92 }
       }
     },
     reporters: [

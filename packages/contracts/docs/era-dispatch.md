@@ -256,9 +256,77 @@ The function returns nothing. Which pipeline runs is the `(pipeline, head)` pair
 the caller already holds; this decides only whether that pair may run, so it does
 not restate the pair as a third value that could disagree with it.
 
-Each `default` arm carries a compile-time exhaustiveness gate AND a runtime
-throw, and the runtime throw is not redundant with it: a new era reaches the
-switch from a real head integer before the switch is updated.
+The rulings live in a DATA table, `ERA_PAIRING`, rather than in a chain of
+switches: one row per `PipelineEra`, one column per `LedgerVersion`. Each cell
+holds one `EraPairing` verdict, `'run'`, `'call-only'` or
+`'artifact-newer-than-head'`, and `assertEraCompatible` turns that verdict and
+the operation kind into the refusal. `'call-only'` is where the deploy asymmetry
+above lives, and it refuses anything that is not positively a call — the one
+asymmetric cell in the fork window must not admit a `kind` nobody anticipated.
+
+### Where the build-time gate actually is
+
+The table is built through two one-line constructors whose PARAMETER types are
+`EraPairingTable` and `EraRulings`. That is deliberate and it is the whole gate:
+a literal handed to one is checked against a total `Record`, so a missing cell,
+an excess cell and a verdict outside the set are all build failures — reported
+at the literal, where the mistake is.
+
+Annotating `ERA_PAIRING` itself cannot carry that. The table is re-homed onto a
+null prototype, and `Object.create(null) as T` asserts the rows into existence
+before the annotation is ever checked; an empty table would satisfy it. So the
+constructors are not ceremony to be simplified away — delete them and the gate
+goes with them, silently, while every test stays green.
+
+What the gate does and does not say: every pair of the two vocabularies has to
+be ruled, so a member added to either one is a build failure here. It does NOT
+bind the two sets to each other — a further artifact era can be added without a
+further head era, and the reverse. What cannot happen is either one arriving
+unruled.
+
+### Why the vocabularies stay separate
+
+`PipelineEra` and `LedgerVersion` name different facts. One says which era built
+the caller's artifact, the other which era the network head is on, and after the
+fork they DISAGREE: a retained-era call is recorded as a keep-state transaction
+tagged `'v9'` while `era` on its result says `'ledger8'`
+(`docs/adr/0011-tag-every-result-with-the-pipeline-that-produced-it.md`).
+Spelling both with one alphabet would put two identically-typed members holding
+different values on one result, and the disagreement the tag exists to express
+would read as a bug.
+
+### Why the lookups are still checked at run time
+
+Both arguments are checked before and after the lookup, and neither check is
+redundant with the build-time gate.
+
+The `typeof` check is the load-bearing one. A member access coerces its key —
+`ToPropertyKey` runs `toString` — so an object with a `toString`, a `String`
+wrapper, or anything carrying `Symbol.toPrimitive` selects a REAL row and gets
+ruled on. The nested switches this table replaced compared with `===` and
+refused all of those. Reading a ruling for a key that merely stringifies to an
+era is the one way a table is weaker than the switch it replaces, and it is why
+the guard is not optional.
+
+The `undefined` check is the ordinary one, and the null prototype is what makes
+it sufficient: on a plain object literal `constructor`, `toString`, `valueOf`
+and `__proto__` all come back as truthy non-cells. Note what that would and
+would not cost. No prototype member is a valid verdict, so no such key reaches a
+wrong RULING; the refusal simply moves to the other axis and blames a value that
+was never at fault, or falls to the closing arm and reports a function where an
+era should be. The null prototype buys a correct diagnosis, not a correct
+verdict — which is why the test that pins it asserts which era gets blamed
+rather than asserting the prototype.
+
+Neither guard is a live boundary today: both call sites pass literals, and this
+module is not reachable from outside the package. They are here so a future call
+site threading a value through cannot quietly widen what the table admits.
+
+`packages/protocol/docs/shared-table-discipline.md` prescribes the null
+prototype and the freeze for a table indexed by a value, which this one is.
+Not every era-keyed table in the tree qualifies — `NODE_MAJOR_TO_LEDGER` is
+keyed by `number`, an open domain, so it is a `Partial` lookup and is neither
+frozen nor null-prototyped.
 
 ## Pairing the head against the fetched state
 
