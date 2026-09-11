@@ -13,15 +13,6 @@
     "TypeId",
     "SubmitCallTxProviders",
     "CachedStateIdentity",
-    "Ledger8Contract",
-    "Ledger8CircuitId",
-    "Ledger8ContractProviders",
-    "Ledger8CallTxOptions",
-    "Ledger8FinalizedCallTxData",
-    "Ledger8SubmittedCallTx",
-    "Ledger8DeployContractOptions",
-    "Ledger8DeployedContract",
-    "Ledger8FindDeployedContractOptions",
-    "Ledger8FoundContract"
+    "Ledger8DeployedContract"
   ]
 }

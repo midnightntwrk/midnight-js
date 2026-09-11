@@ -49,7 +49,7 @@ export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // closes -- `Ledger8.CallTxFailedError` still extends `AnyEraTxFailedError` here, so a handler
 // written against the base keeps catching it.
 //
-// The fork-window refusals are the group that stays. `StaleHeadError` is raised when a submission was
+// The fork-window refusals are the other group. `StaleHeadError` is raised when a submission was
 // rejected and a fresh head read confirms the network crossed the fork under the operation, and it
 // carries the two-step remediation for that operation kind. `SubmitRejectionUndiagnosedError` is
 // the other half of that diagnosis, for a head that could not be re-read or that reported an
@@ -114,8 +114,8 @@ export {
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from './governance';
-// The era vocabulary, which BOTH pipelines are named by -- neither half of it goes when the
-// retained era does.
+// The era vocabulary, which BOTH pipelines are named by, so a caller that tags or branches on an
+// era never reaches for the retained-era namespace to do it.
 export {
   CURRENT_PIPELINE_ERA,
   type CurrentPipelineEra,

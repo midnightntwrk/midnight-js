@@ -101,6 +101,15 @@ const RUNTIME_EXPORTS: readonly string[] = [
 // local export list at the end.
 const EXPORT_STATEMENT = /^export\s*\{([^}]*)\}/gm;
 
+// And the namespace form. Rollup happens to hoist `export * as Ledger8` into the
+// brace list above as `ledger8 as Ledger8`, so the brace scan alone catches it
+// today -- but that is an emit detail. `preserveModules`, a different bundler or
+// plain `tsc` leave the statement standing, and a scan that reads brace lists
+// only would then report the name as a DROPPED export rather than as a statement
+// it could not parse: a failure that sends a reader looking for a deleted export
+// that is still there.
+const NAMESPACE_EXPORT_STATEMENT = /^export\s*\*\s*as\s+(\w+)\s+from/gm;
+
 /**
  * Reads the exported names out of the built bundle.
  *
@@ -119,16 +128,19 @@ const readDistExports = (): string[] => {
   if (!existsSync(absolute)) {
     throw new Error(`${DIST_INDEX_PATH} is missing -- build the package before running this test`);
   }
-  const statements = [...readFileSync(absolute, 'utf8').matchAll(EXPORT_STATEMENT)];
+  const bundle = readFileSync(absolute, 'utf8');
+  const statements = [...bundle.matchAll(EXPORT_STATEMENT)];
   if (statements.length === 0) {
     throw new Error(`${DIST_INDEX_PATH} declares no 'export { ... }' statement`);
   }
-  return statements.flatMap(([, clause]) =>
+  const named = statements.flatMap(([, clause]) =>
     clause
       .split(',')
       .map((name) => name.trim().split(/\s+as\s+/).pop() ?? '')
       .filter((name) => name.length > 0)
   );
+  const namespaced = [...bundle.matchAll(NAMESPACE_EXPORT_STATEMENT)].map(([, name]) => name);
+  return [...named, ...namespaced];
 };
 
 describe('Contracts value ACL', () => {

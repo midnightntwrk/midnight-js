@@ -438,11 +438,12 @@ Everything the retained era publishes is reached through ONE import, the
 is the result type below, `Ledger8.Contract` the constraint for a helper of
 your own, `Ledger8.CallTxFailedError` the failure class. The era prefix is
 dropped inside, so each member is the retained twin of the flat current-era
-name it mirrors. The half that serves BOTH eras -- `AnyEraFinalizedCallTxData`,
-`isLedger8Result`, `AnyEraTxFailedError`, the `*_PIPELINE_ERA` vocabulary --
-stays flat, so a handler that only receives results imports nothing
-era-specific. When the fork window closes, the namespace goes and nothing else
-moves.
+name it mirrors, where one exists. The half that serves BOTH eras --
+`AnyEraFinalizedCallTxData`, `isLedger8Result`, `AnyEraTxFailedError`, the
+`*_PIPELINE_ERA` vocabulary -- stays flat, so a handler that only receives
+results imports nothing era-specific. When the fork window closes, the whole
+namespace goes in one step; the fork-window refusals (`StaleHeadError` and the
+rest of that group) are published flat and go in a separate one.
 
 A call against a contract you compiled with the previous toolchain still goes
 through `submitCallTx` / `submitCallTxAsync` / `findDeployedContract`
