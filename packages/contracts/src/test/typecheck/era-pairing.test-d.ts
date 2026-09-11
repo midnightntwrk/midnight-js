@@ -17,37 +17,25 @@ import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { PipelineEra } from '../../era';
-import { ERA_PAIRING, type EraPairing, type EraPairingTable } from '../../internal/era';
+import type { EraPairing, EraPairingTable, EraRulings } from '../../internal/era';
 
-// Compile-level tests, run by the typecheck pass this package enables in `vitest.config.ts` —
+// Compile-level tests, run by the typecheck pass this package enables in `vitest.config.ts` --
 // see the note at the top of `./overloads.test-d.ts` for how they are gated.
 //
-// What they pin is the ONE declaration that binds the two era vocabularies together: `PipelineEra`
-// keys the rows and `LedgerVersion` keys the columns, so neither set can gain a member without
-// this table gaining the cells for it. The runtime behaviour of every cell is asserted separately,
-// in `../era-dispatch.test.ts`.
+// These two types are the PARAMETER types of the constructors that build the pairing table, so a
+// literal rejected here is a literal the table cannot be built from. That is the whole gate: the
+// annotation on the table itself cannot carry it, because by then the null-prototype cast has
+// asserted the rows into existence and an empty table would satisfy it.
+//
+// Each case gets its own `it`, so a failure names the regression that caused it rather than
+// pointing at a block that covers four of them.
 
-describe('the era pairing table is declared total in BOTH era vocabularies', () => {
-  it('types the table as a row per pipeline era and a column per ledger version', () => {
-    expectTypeOf(ERA_PAIRING).toEqualTypeOf<EraPairingTable>();
-    expectTypeOf<EraPairingTable>().toEqualTypeOf<
-      Readonly<Record<PipelineEra, Readonly<Record<LedgerVersion, EraPairing>>>>
-    >();
+describe('a pairing table must rule every artifact era', () => {
+  it('is a total map from artifact era to rulings', () => {
+    expectTypeOf<EraPairingTable>().toEqualTypeOf<Readonly<Record<PipelineEra, EraRulings>>>();
   });
 
-  it('refuses a table whose row rules only some of the ledger versions', () => {
-    // A `Partial<Record<...>>` here — the shape `NODE_MAJOR_TO_LEDGER` legitimately uses, and so
-    // the shape a later edit is most likely to copy — would accept this and leave the pairing
-    // undecided for one head era at run time.
-    const missingColumn: EraPairingTable = {
-      ledger8: { v8: 'run', v9: 'call-only' },
-      // @ts-expect-error - this row rules no `v8` head
-      ledger9: { v9: 'run' }
-    };
-    void missingColumn;
-  });
-
-  it('refuses a table missing a whole pipeline era', () => {
+  it('refuses a table missing an artifact era', () => {
     // @ts-expect-error - no `ledger8` row
     const missingRow: EraPairingTable = {
       ledger9: { v8: 'artifact-newer-than-head', v9: 'run' }
@@ -55,14 +43,48 @@ describe('the era pairing table is declared total in BOTH era vocabularies', () 
     void missingRow;
   });
 
+  it('refuses a table carrying an artifact era the vocabulary does not spell', () => {
+    const excessRow: EraPairingTable = {
+      ledger8: { v8: 'run', v9: 'call-only' },
+      ledger9: { v8: 'artifact-newer-than-head', v9: 'run' },
+      // @ts-expect-error - `ledger10` is not a `PipelineEra`, so this cell could only ever be
+      // reached by a value the vocabulary has already refused
+      ledger10: { v8: 'run', v9: 'run' }
+    };
+    void excessRow;
+  });
+});
+
+describe('one row must rule every head era', () => {
+  it('is a total map from head era to verdict', () => {
+    expectTypeOf<EraRulings>().toEqualTypeOf<Readonly<Record<LedgerVersion, EraPairing>>>();
+  });
+
+  it('refuses a row that rules only some of the head eras', () => {
+    // `Partial<Record<...>>` here would accept this and leave the pairing undecided for one head
+    // era at run time. That shape is right for `NODE_MAJOR_TO_LEDGER`, whose keys are `number` --
+    // an open domain, where a total `Record` is not expressible. It is wrong for a closed union,
+    // and the two must not be conflated.
+    // @ts-expect-error - rules no `v8` head
+    const missingColumn: EraRulings = { v9: 'run' };
+    void missingColumn;
+  });
+
+  it('refuses a row carrying a head era the vocabulary does not spell', () => {
+    const excessColumn: EraRulings = {
+      v8: 'run',
+      v9: 'call-only',
+      // @ts-expect-error - `v10` is not a `LedgerVersion`
+      v10: 'run'
+    };
+    void excessColumn;
+  });
+
   it('refuses a ruling outside the closed verdict set', () => {
     // Without this the table would type-check with a verdict `assertEraCompatible` never reads,
-    // which is a cell that silently falls through to its unreachable arm.
-    const unknownVerdict: EraPairingTable = {
-      // @ts-expect-error - `'maybe'` is not an era pairing verdict
-      ledger8: { v8: 'run', v9: 'maybe' },
-      ledger9: { v8: 'artifact-newer-than-head', v9: 'run' }
-    };
+    // which is a cell that silently falls through to its unreachable closing arm.
+    // @ts-expect-error - `'maybe'` is not an era pairing verdict
+    const unknownVerdict: EraRulings = { v8: 'run', v9: 'maybe' };
     void unknownVerdict;
   });
 });
