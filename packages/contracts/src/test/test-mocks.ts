@@ -293,6 +293,7 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
     importSigningKeys: vi.fn()
   },
   zkConfigProvider: {
+    getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.16.0'),
     getVerifierKeys: vi.fn(),
     getZKIR: vi.fn(),
     getProverKey: vi.fn(),

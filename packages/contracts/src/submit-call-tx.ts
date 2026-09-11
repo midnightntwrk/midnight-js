@@ -21,7 +21,7 @@ import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
 import { CURRENT_PIPELINE_ERA } from './era';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
-import { isLedger8Request } from './internal/era';
+import { isLedger8Request, resolveArtifactEra } from './internal/era';
 import { submitLedger8CallTx, submitLedger8CallTxAsync, toLedger8CallEntryOptions } from './internal/ledger8-entry';
 import * as Transaction from './internal/transaction';
 import {
@@ -158,8 +158,10 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  * @throws {CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
  * @throws {EraArtifactMismatchError} When `options.compiledContract` belongs to neither Compact
- *         era, or is a raw current-era contract instance passed instead of its `CompiledContract`
- *         container. Raised before any provider is consulted.
+ *         era, is a raw current-era contract instance passed instead of its `CompiledContract`
+ *         container, or its artifacts declare no toolchain this framework can place. Raised before
+ *         anything is built or submitted; the ZK config provider is asked for the artifacts'
+ *         declared runtime version, and no other provider is consulted.
  *
  * @remarks
  * The returned {@link FinalizedCallTxData} (and the {@link CallResult} variant)
@@ -172,7 +174,8 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
   options: CallTxOptions<C, PCK> | AnyLedger8CallTxOptions,
   transactionContext?: TransactionContext<C, PCK>
 ): Promise<FinalizedCallTxData<C, PCK> | CallResult<C, PCK> | AnyLedger8FinalizedCallTxData> {
-  if (isLedger8Request<AnyLedger8CallTxOptions>(options)) {
+  const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
+  if (isLedger8Request<AnyLedger8CallTxOptions>(options, artifactEra)) {
     // The retained-era pipeline runs OUTSIDE the scoped-transaction machinery:
     // that machinery merges live current-era transactions, and a retained-era
     // call is composed and submitted on its own, so there is nothing for it to
@@ -287,8 +290,10 @@ export async function submitCallTxAsync<C extends Ledger8Contract, K extends Led
  *         or rejects with an error if the submission fails.
  *
  * @throws {EraArtifactMismatchError} When `options.compiledContract` belongs to neither Compact
- *         era, or is a raw current-era contract instance passed instead of its `CompiledContract`
- *         container. Raised before any provider is consulted.
+ *         era, is a raw current-era contract instance passed instead of its `CompiledContract`
+ *         container, or its artifacts declare no toolchain this framework can place. Raised before
+ *         anything is built or submitted; the ZK config provider is asked for the artifacts'
+ *         declared runtime version, and no other provider is consulted.
  *
  * @remarks
  * The returned {@link SubmittedCallTx} is privacy-sensitive and carries the
@@ -342,7 +347,8 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
   providers: SubmitCallTxProviders<C, PCK>,
   options: CallTxOptions<C, PCK> | AnyLedger8CallTxOptions
 ): Promise<SubmittedCallTx<C, PCK> | AnyLedger8SubmittedCallTx> {
-  if (isLedger8Request<AnyLedger8CallTxOptions>(options)) {
+  const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
+  if (isLedger8Request<AnyLedger8CallTxOptions>(options, artifactEra)) {
     return submitLedger8CallTxAsync(providers, toLedger8CallEntryOptions(options));
   }
   assertIsContractAddress(options.contractAddress);

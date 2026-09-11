@@ -82,7 +82,7 @@ import {
   VerifierKeyMismatchError
 } from '../errors';
 import { findDeployedContract } from '../find-deployed-contract';
-import { pipelineEraOf } from '../internal/era';
+import { resolveArtifactEra } from '../internal/era';
 import { findLedger8Contract, runLedger8Deploy, submitLedger8CallTx } from '../internal/ledger8-entry';
 import {
   assertSnapshotVerifierKey,
@@ -317,6 +317,7 @@ const retainedProviders = (recording: CoinReceiverRecording, envelope: Uint8Arra
   // and its `getVerifierKeys` return type is covariant in that key, so the
   // narrower provider is built explicitly rather than widened.
 const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
+    getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.16.0'),
     getVerifierKeys: vi.fn(),
     getZKIR: vi.fn(),
     getProverKey: vi.fn(),
@@ -969,11 +970,11 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
     const finalized = await submitCallTx(providers, callOptions());
 
-    // The two facts, side by side. `pipelineEraOf` reads the artifact; the
+    // The two facts, side by side. `resolveArtifactEra` reads the artifact; the
     // record says which ledger recorded the transaction. Pre-fork they happen
     // to agree on the era being retained -- post-fork the record reads `'v9'`
     // for this same call, and the tag must still say `'ledger8'`.
-    expect(finalized.era).toBe(pipelineEraOf(contract));
+    expect(finalized.era).toBe(await resolveArtifactEra(contract, providers.zkConfigProvider));
     expect(finalized.era).toBe('ledger8');
   });
 

@@ -30,7 +30,7 @@ import {
 import {
   assertEraCompatible,
   type PipelineEra,
-  pipelineEraOf,
+  resolveArtifactEra,
   resolveContractStateEra,
   resolveOperationEra
 } from '../internal/era';
@@ -86,18 +86,38 @@ const rejectingHeadSource = (error: Error): { readonly queryLatestProtocolVersio
 const V8_HEAD = 1_000_000;
 const V9_HEAD = 2_000_000;
 
-describe('pipelineEraOf: which execution pipeline an artifact belongs to', () => {
-  it('routes the current-era CompiledContract container to the ledger9 pipeline', () => {
+// A bundle declaring the retained toolchain, which is what the retained-era arm of the dispatch
+// reads. Declared here rather than mocked per test: every case below that reaches it wants the same
+// answer, and the cases that must NOT reach it assert that separately.
+const RETAINED_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
+
+describe('resolveArtifactEra: which execution pipeline an artifact belongs to', () => {
+  it('routes the current-era CompiledContract container to the ledger9 pipeline', async () => {
     // Arrange: the container this repo's own mocks build, which is what every current-era
     // caller passes.
     const container = createMockCompiledContract();
 
     // Act + Assert
-    expect(pipelineEraOf(container)).toBe<PipelineEra>('ledger9');
+    await expect(resolveArtifactEra(container, RETAINED_BUNDLE)).resolves.toBe('ledger9' satisfies PipelineEra);
   });
 
-  it('routes an object with the retained-era shape to the retained-era pipeline', () => {
-    // The real retained (`compact-runtime@0.16`) artifact is asserted against this predicate in
+  it('does not consult the artifact bundle for a current-era container', async () => {
+    // The container declares its own era with an own `tag`, so the current era buys no round trip
+    // and needs no file it does not already ship. A bundle that would REFUSE proves it was never
+    // asked.
+    const refusingBundle = {
+      getArtifactRuntimeVersion: async (): Promise<string> => {
+        throw new Error('the current-era arm must not read the artifact bundle');
+      }
+    };
+
+    await expect(resolveArtifactEra(createMockCompiledContract(), refusingBundle)).resolves.toBe(
+      'ledger9' satisfies PipelineEra
+    );
+  });
+
+  it('routes an object with the retained-era shape to the retained-era pipeline', async () => {
+    // The real retained (`compact-runtime@0.16`) artifact is asserted against this resolver in
     // `era-dispatch-ledger8.test.ts`, which needs a module-scoped runtime stub this file must not
     // install: the current-era artifact below needs the REAL runtime. The shape asserted there and
     // the shape built here are the same one -- `impureCircuits` with a SYNCHRONOUS `initialState`.
@@ -106,7 +126,7 @@ describe('pipelineEraOf: which execution pipeline an artifact belongs to', () =>
       initialState: (): Record<string, never> => ({})
     };
 
-    expect(pipelineEraOf(retained)).toBe<PipelineEra>('ledger8');
+    await expect(resolveArtifactEra(retained, RETAINED_BUNDLE)).resolves.toBe('ledger8' satisfies PipelineEra);
   });
 
   describe('the near-miss a JavaScript caller actually hits', () => {
@@ -121,24 +141,25 @@ describe('pipelineEraOf: which execution pipeline an artifact belongs to', () =>
       });
     });
 
-    it('refuses a raw current-era Contract instance passed instead of its container', () => {
-      // This is the blind spot the superseded provisional predicate documented and could not close: a raw current-era
-      // contract carries `impureCircuits` too, so a structural test for that member alone
-      // misclassifies it as retained-era. The `AsyncFunction` `initialState` is what separates
-      // them, and it is a property of the real generated artifact, not of this test.
+    it('refuses a raw current-era Contract instance passed instead of its container', async () => {
+      // This is the blind spot the superseded provisional predicate documented and could not close:
+      // a raw current-era contract carries `impureCircuits` too, so a structural test for that
+      // member alone misclassifies it as retained-era. An `AsyncFunction` `initialState` refuses it
+      // outright -- a build step can erase that name but never fabricate it, so reading it is sound
+      // in the refusing direction and unsound in the accepting one.
       expect(rawCurrentEraContract.initialState.constructor.name).toBe('AsyncFunction');
 
-      expect(() => pipelineEraOf(rawCurrentEraContract)).toThrow(EraArtifactMismatchError);
-      try {
-        pipelineEraOf(rawCurrentEraContract);
-        expect.unreachable('pipelineEraOf accepted a raw current-era contract');
-      } catch (error) {
-        expect(error).toBeInstanceOf(EraArtifactMismatchError);
-        expect((error as EraArtifactMismatchError).reason).toBe('unwrapped-current-era-contract');
-        expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH)).toBe(true);
-        // The message has to name the actual mistake, because the fix is one step: wrap it.
-        expect((error as EraArtifactMismatchError).message).toMatch(/CompiledContract/);
-      }
+      await expect(resolveArtifactEra(rawCurrentEraContract, RETAINED_BUNDLE)).rejects.toBeInstanceOf(
+        EraArtifactMismatchError
+      );
+      const error = await resolveArtifactEra(rawCurrentEraContract, RETAINED_BUNDLE).catch(
+        (thrown: unknown) => thrown
+      );
+      expect(error).toBeInstanceOf(EraArtifactMismatchError);
+      expect((error as EraArtifactMismatchError).reason).toBe('unwrapped-current-era-contract');
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH)).toBe(true);
+      // The message has to name the actual mistake, because the fix is one step: wrap it.
+      expect((error as EraArtifactMismatchError).message).toMatch(/CompiledContract/);
     });
   });
 
@@ -149,17 +170,14 @@ describe('pipelineEraOf: which execution pipeline an artifact belongs to', () =>
     ['a string', 'contract'],
     ['an object with a non-string tag', { tag: 7 }],
     ['an object whose initialState is not a function', { impureCircuits: {}, initialState: 'nope' }]
-  ])('refuses %s as belonging to neither era', (_label, candidate) => {
-    try {
-      pipelineEraOf(candidate);
-      expect.unreachable('pipelineEraOf accepted an object belonging to neither era');
-    } catch (error) {
-      expect(error).toBeInstanceOf(EraArtifactMismatchError);
-      expect((error as EraArtifactMismatchError).reason).toBe('unrecognised-contract-shape');
-      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH)).toBe(true);
-      // The single settled wording, reused rather than re-invented here.
-      expect((error as EraArtifactMismatchError).message).toContain(NEITHER_ERA_CONTRACT_MESSAGE);
-    }
+  ])('refuses %s as belonging to neither era', async (_label, candidate) => {
+    const error = await resolveArtifactEra(candidate, RETAINED_BUNDLE).catch((thrown: unknown) => thrown);
+
+    expect(error).toBeInstanceOf(EraArtifactMismatchError);
+    expect((error as EraArtifactMismatchError).reason).toBe('unrecognised-contract-shape');
+    expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH)).toBe(true);
+    // The single settled wording, reused rather than re-invented here.
+    expect((error as EraArtifactMismatchError).message).toContain(NEITHER_ERA_CONTRACT_MESSAGE);
   });
 
   it.each([
@@ -175,36 +193,33 @@ describe('pipelineEraOf: which execution pipeline an artifact belongs to', () =>
         yield 1;
       }
     ]
-  ])('refuses an object carrying impureCircuits whose initialState is %s', (_label, initialState) => {
-    // The retained era is recognised POSITIVELY -- `initialState.constructor.name === 'Function'` --
-    // so anything else with `impureCircuits` is refused rather than falling through into the
-    // retained pipeline. These two are the shapes a future or hand-rolled artifact could really
-    // have; a `class` cannot be separated this way, because a class's own constructor IS `Function`.
+  ])('refuses an object carrying impureCircuits whose initialState is %s', async (_label, initialState) => {
+    // `constructor.name` is read to REFUSE and never to accept, so anything that is not a plain
+    // function is rejected here before the bundle is consulted. A plain function gets no verdict
+    // from this reading at all -- it only earns the right to have its bundle asked.
     const candidate = { impureCircuits: { increment: (): void => undefined }, initialState };
 
-    try {
-      pipelineEraOf(candidate);
-      expect.unreachable('pipelineEraOf routed a non-Function initialState into the retained pipeline');
-    } catch (error) {
-      expect(error).toBeInstanceOf(EraArtifactMismatchError);
-      expect((error as EraArtifactMismatchError).reason).toBe('unrecognised-contract-shape');
-    }
+    const error = await resolveArtifactEra(candidate, RETAINED_BUNDLE).catch((thrown: unknown) => thrown);
+
+    expect(error).toBeInstanceOf(EraArtifactMismatchError);
+    expect((error as EraArtifactMismatchError).reason).toBe('unrecognised-contract-shape');
   });
 
-  it('deliberately does NOT discriminate on the compact-js CompiledContract brand', () => {
+  it('deliberately does NOT discriminate on the compact-js CompiledContract brand', async () => {
     // PIN, do not "improve" this away. `CompiledContract.make` installs the registered brand on a
     // PROTOTYPE (`Object.create(CompiledContractProto)`), and every combinator that makes a
     // container usable returns `{ ...self, ... }` -- an own-enumerable-only spread that drops the
     // prototype. So a brand test reports FALSE for every real, witness-bearing container, and a
-    // predicate built on it would misclassify every current-era caller. This repo's own mock goes
+    // check built on it would misclassify every current-era caller. This repo's own mock goes
     // through `withVacantWitnesses`, which makes it a free regression test for exactly that.
     const container = createMockCompiledContract();
 
     expect(COMPILED_CONTRACT_BRAND in container).toBe(false);
     // `pipe` is dropped by the same spread, which is the vendor half of the same defect.
     expect('pipe' in container).toBe(false);
-    // And the predicate still places it correctly, because it does not consult the brand.
-    expect(pipelineEraOf(container)).toBe<PipelineEra>('ledger9');
+    // And the container is still placed correctly, because the `tag` it assigns to ITSELF survives
+    // the spread that drops the brand.
+    await expect(resolveArtifactEra(container, RETAINED_BUNDLE)).resolves.toBe('ledger9' satisfies PipelineEra);
   });
 });
 

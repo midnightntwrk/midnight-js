@@ -27,7 +27,7 @@ import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
-import { isLedger8Request } from './internal/era';
+import { isLedger8Request, resolveArtifactEra } from './internal/era';
 import {
   type AnyLedger8DeployContractOptions,
   type AnyLedger8DeployedContract,
@@ -176,16 +176,20 @@ export async function deployContract<C extends Contract.Any>(
  *
  * @throws DeployTxFailedError If the transaction is submitted successfully but produces an error
  *                             when executed by the node.
- * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, or
- *                                  is a raw current-era contract instance passed instead of its
- *                                  `CompiledContract` container. Raised before any provider is
+ * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, is
+ *                                  a raw current-era contract instance passed instead of its
+ *                                  `CompiledContract` container, or its artifacts declare no
+ *                                  toolchain this framework can place. Raised before anything is
+ *                                  built or submitted; the ZK config provider is asked for the
+ *                                  artifacts' declared runtime version, and no other provider is
  *                                  consulted.
  */
 export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: DeployContractOptions<C> | AnyLedger8DeployContractOptions
 ): Promise<DeployedContract<C> | AnyLedger8DeployedContract> {
-  if (isLedger8Request<AnyLedger8DeployContractOptions>(options)) {
+  const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
+  if (isLedger8Request<AnyLedger8DeployContractOptions>(options, artifactEra)) {
     throw new Ledger8DeployUnmaintainableError();
   }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));

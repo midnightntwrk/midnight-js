@@ -116,9 +116,11 @@ export class EraInvariantViolationError extends Error {
 /**
  * Why an object was refused as belonging to the wrong era, or to neither.
  *
- * One error class over three reasons rather than three classes: a caller catches "I handed the
- * framework the wrong kind of contract" as one condition, and the reason is what tells it which
- * of the three mistakes it made.
+ * One error class over every reason rather than a class per reason: a caller catches "this operation
+ * cannot be placed on a ledger era" as one condition, and the reason is what tells it which mistake
+ * it made. Two of the reasons are about the CALLER's contract object and two are about the artifact
+ * set its ZK config provider serves, which is one condition from the caller's side: something in the
+ * bundle it passed does not belong to the era it is being run against.
  */
 export type EraArtifactMismatchReason =
   /** A raw current-era contract instance, passed where its `CompiledContract` container belongs. */
@@ -126,7 +128,11 @@ export type EraArtifactMismatchReason =
   /** An object matching no era's shape at all. */
   | 'unrecognised-contract-shape'
   /** A current-era artifact, on a network head that is still pre-fork. */
-  | 'current-era-artifact-on-pre-fork-head';
+  | 'current-era-artifact-on-pre-fork-head'
+  /** An artifact set that does not declare which `compact-runtime` produced it. */
+  | 'artifact-era-undeclared'
+  /** An artifact set declaring a `compact-runtime` this framework places on no ledger era. */
+  | 'unknown-artifact-runtime-version';
 
 const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason, string>> = Object.freeze({
   // Named as the mistake it is: the raw instance and the container both carry `impureCircuits`, so
@@ -145,8 +151,29 @@ const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason,
   'current-era-artifact-on-pre-fork-head':
     'This contract was produced by the current Compact toolchain, but the network head is still on the ' +
     'pre-fork ledger era, which cannot execute it. Run this operation against a contract produced by the ' +
-    'retained toolchain until the network head has crossed the fork.'
+    'retained toolchain until the network head has crossed the fork.',
+  // Named as a missing DECLARATION rather than a missing file: the fix is to serve what the compiler
+  // already emitted, not to produce something new.
+  'artifact-era-undeclared':
+    'The ZK config provider for this operation could not report which compact-runtime built these ' +
+    'artifacts, so the ledger era they belong to cannot be established. The compiler records it in ' +
+    'compiler/contract-info.json beside the keys; serve that file from the same location as the ' +
+    'artifacts. The era is never inferred from the generated code, because a build step can rewrite it.',
+  'unknown-artifact-runtime-version':
+    'These artifacts declare a compact-runtime this version of midnight-js places on no ledger era, so ' +
+    'no pipeline can be chosen for them. Upgrade midnight-js to one that knows this toolchain, or ' +
+    'rebuild the contract with a toolchain this version supports.'
 });
+
+/** Options for {@link EraArtifactMismatchError}. */
+export interface EraArtifactMismatchOptions extends ErrorOptions {
+  /**
+   * A sentence appended to the settled wording for this reason, naming the value that was actually
+   * seen. Kept OUT of the reason's own message so every instance of a reason reads identically up to
+   * the fact that varies.
+   */
+  readonly detail?: string;
+}
 
 /**
  * An error indicating that the contract handed to an entry point does not belong to the era the
@@ -161,11 +188,18 @@ export class EraArtifactMismatchError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH;
 
   /**
-   * @param reason Which of the three era mismatches this is. Also the discriminant a caller
-   *               branches on, so it is retained on the error rather than only rendered.
+   * @param reason Which era mismatch this is. Also the discriminant a caller branches on, so it is
+   *               retained on the error rather than only rendered.
+   * @param options Carries the originating failure on `cause` -- a provider that could not serve the
+   *                artifact description reports WHY there -- and an optional `detail` naming the
+   *                value that was seen.
    */
-  constructor(readonly reason: EraArtifactMismatchReason) {
-    super(ERA_ARTIFACT_MISMATCH_MESSAGES[reason]);
+  constructor(
+    readonly reason: EraArtifactMismatchReason,
+    options?: EraArtifactMismatchOptions
+  ) {
+    const message = ERA_ARTIFACT_MISMATCH_MESSAGES[reason];
+    super(options?.detail === undefined ? message : `${message} ${options.detail}`, { cause: options?.cause });
     this.name = 'EraArtifactMismatchError';
   }
 }

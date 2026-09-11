@@ -22,7 +22,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { deployContract } from '../deploy-contract';
 import { EraArtifactMismatchError, Ledger8DeployUnmaintainableError } from '../errors';
-import { isLedger8Request } from '../internal/era';
+import { resolveArtifactEra } from '../internal/era';
 import type { Ledger8ContractProviders } from '../ledger8-contract';
 import type {
   CoinReceiver016Contract,
@@ -252,6 +252,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       getZKIR: vi.fn(),
       getProverKey: vi.fn(),
       getVerifierKey: vi.fn(),
+      getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.16.0'),
       getVerifierKeys: vi.fn(),
       get: vi.fn(),
       asKeyMaterialProvider: vi.fn()
@@ -270,39 +271,45 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       coinReceiverContract = new (await loadCoinReceiver016()).Contract({});
     });
 
-    it('recognises the real retained-era artifacts, and a current-era container as not', () => {
-      // `isLedger8Request` is the single era predicate, in the narrowing form these entry points
-      // need; it replaced a provisional `'impureCircuits' in ...` check that answered TRUE for a
-      // raw current-era contract instance, which carries that member too.
-      expect(isLedger8Request({ compiledContract: contract })).toBe(true);
-      expect(isLedger8Request({ compiledContract: coinReceiverContract })).toBe(true);
-      expect(isLedger8Request({ compiledContract: { tag: 'counter', pipe: (): void => undefined } })).toBe(false);
+    it('places the real retained-era artifacts, and a current-era container as not', async () => {
+      // `resolveArtifactEra` is the single era decision. The retained artifacts are placed from the
+      // runtime version their bundle declares; the current-era container is placed from its own
+      // `tag`, without the bundle being consulted at all.
+      await expect(resolveArtifactEra(contract, zkConfigProvider)).resolves.toBe('ledger8');
+      await expect(resolveArtifactEra(coinReceiverContract, zkConfigProvider)).resolves.toBe('ledger8');
+      await expect(
+        resolveArtifactEra({ tag: 'counter', pipe: (): void => undefined }, zkConfigProvider)
+      ).resolves.toBe('ledger9');
     });
 
-    it('rejects a REAL current-era container, not just a hand-rolled stand-in', () => {
+    it('places a REAL current-era container, not just a hand-rolled stand-in', async () => {
       // `createMockCompiledContract` goes through `CompiledContract.make(...).pipe(withVacantWitnesses)`,
       // which is how every real container is built. A literal `{ tag, pipe }` resembles only the
-      // transient `make()` result and would keep passing if the predicate were widened.
-      expect(isLedger8Request({ compiledContract: createMockCompiledContract() })).toBe(false);
+      // transient `make()` result and would keep passing if the check were widened.
+      await expect(resolveArtifactEra(createMockCompiledContract(), zkConfigProvider)).resolves.toBe('ledger9');
     });
 
-    it('refuses a RAW current-era contract instance, which also carries impureCircuits', () => {
+    it('refuses a RAW current-era contract instance, which also carries impureCircuits', async () => {
       // The blind spot that made the error message lie. A raw current-era instance is what a
       // JavaScript consumer passes when they forget the container, and `impureCircuits` alone does
-      // not tell the eras apart -- the current toolchain installs it too. Only the sync/async split
-      // does, which is the discriminator the type family is already built on. The consolidated
-      // predicate REFUSES such a value rather than reporting `false`, so the caller is told what is
-      // wrong instead of failing later, against the current-era pipeline, for an unrelated reason.
-      expect(() => isLedger8Request({ compiledContract: rawCurrentEraContract })).toThrow(EraArtifactMismatchError);
+      // not tell the eras apart -- the current toolchain installs it too. Here the real artifact
+      // still carries its `async initialState`, which is proof of the current era on its own, so it
+      // is refused before the bundle is read. A build that erased that `async` is refused too, by
+      // the runtime version the bundle declares -- see `era-artifact-declaration.test.ts`.
+      await expect(resolveArtifactEra(rawCurrentEraContract, zkConfigProvider)).rejects.toBeInstanceOf(
+        EraArtifactMismatchError
+      );
     });
 
-    it('refuses a contract belonging to neither era, where the superseded check returned false', () => {
-      // The changed failure mode, and the reason the predicate was replaced rather than patched:
-      // the provisional check answered `false` here and let the request fall into the current-era
-      // pipeline, to fail later on something unrelated to the era.
-      expect(() => isLedger8Request({ compiledContract: undefined })).toThrow(EraArtifactMismatchError);
-      expect(() => isLedger8Request({ compiledContract: null })).toThrow(EraArtifactMismatchError);
-      expect(() => isLedger8Request({ compiledContract: 'not a contract' })).toThrow(EraArtifactMismatchError);
+    it('refuses a contract belonging to neither era, where the superseded check returned false', async () => {
+      // The changed failure mode, and the reason the provisional check was replaced rather than
+      // patched: it answered `false` here and let the request fall into the current-era pipeline,
+      // to fail later on something unrelated to the era.
+      await expect(resolveArtifactEra(undefined, zkConfigProvider)).rejects.toBeInstanceOf(EraArtifactMismatchError);
+      await expect(resolveArtifactEra(null, zkConfigProvider)).rejects.toBeInstanceOf(EraArtifactMismatchError);
+      await expect(resolveArtifactEra('not a contract', zkConfigProvider)).rejects.toBeInstanceOf(
+        EraArtifactMismatchError
+      );
     });
 
     // The one arm that still refuses outright is the deploy. Its reason is measured and is nothing

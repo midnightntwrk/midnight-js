@@ -194,6 +194,32 @@ export class InvalidProtocolSchemeError extends Error {
 }
 
 /**
+ * An error indicating that a {@link ZKConfigProvider} cannot report which `compact-runtime` its
+ * artifact set was compiled against.
+ *
+ * The retained-era pipeline establishes an artifact's era from that declared version, so a provider
+ * that cannot serve it cannot be used with retained-era artifacts. Every provider this framework
+ * ships can serve it; a provider written outside it may not, which is the case named here.
+ *
+ * Raised rather than answered with a default, because every default would be a guess about which
+ * ledger era a caller's artifacts belong to.
+ */
+export class ArtifactRuntimeVersionUnavailableError extends Error {
+  /**
+   * @param providerName The runtime name of the provider that could not answer.
+   */
+  constructor(public readonly providerName: string) {
+    super(
+      `The ZK config provider '${providerName}' does not report the compact-runtime version its ` +
+        `artifacts were compiled against, so the era of those artifacts cannot be established. ` +
+        `Override getArtifactRuntimeVersion() on it to read the runtime-version from the ` +
+        `contract-info.json the compiler emits beside the keys, or use a provider that already does.`
+    );
+    this.name = 'ArtifactRuntimeVersionUnavailableError';
+  }
+}
+
+/**
  * An error thrown when exporting private states fails.
  */
 export class PrivateStateExportError extends Error {

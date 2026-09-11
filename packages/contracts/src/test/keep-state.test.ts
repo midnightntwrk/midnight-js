@@ -165,6 +165,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
 
   const postForkProviders = (envelope: Uint8Array): RetainedProviders => {
     const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
+      getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.16.0'),
       getVerifierKeys: vi.fn(),
       getZKIR: vi.fn(),
       getProverKey: vi.fn(),

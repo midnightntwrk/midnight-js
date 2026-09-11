@@ -31,7 +31,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CURRENT_PIPELINE_ERA } from '../era';
 import { isLedger8Result } from '../era-results';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from '../errors';
-import { pipelineEraOf } from '../internal/era';
+import { resolveArtifactEra } from '../internal/era';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
 import { submitTx, submitTxAsync } from '../submit-tx';
 import { withContractScopedTransaction } from '../transaction';
@@ -185,9 +185,9 @@ describe('submit-call-tx', () => {
 
         const result = await submitCallTx(mockProviders, options);
 
-        // The same fact `pipelineEraOf` resolves from the artifact when the
+        // The same fact `resolveArtifactEra` resolves from the artifact when the
         // entry point routes the call, published so a caller can read it too.
-        expect(result.era).toBe(pipelineEraOf(mockCompiledContract));
+        expect(result.era).toBe(await resolveArtifactEra(mockCompiledContract, mockProviders.zkConfigProvider));
         expect(result.era).toBe('ledger9');
       });
 

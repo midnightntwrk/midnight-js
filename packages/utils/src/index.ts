@@ -25,4 +25,5 @@ export * from './security-utils';
 export * from './serialized-tag';
 export * from './signing-key-utils';
 export * from './type-utils';
+export * from './zk-artifact-contract-info';
 export * from './zk-artifact-manifest';

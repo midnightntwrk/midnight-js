@@ -25,9 +25,12 @@ import {
   assertManifestHash,
   assertSafeName,
   parseZkArtifactManifest,
+  parseZkArtifactRuntimeVersion,
   verifyZkArtifactIntegrity,
+  ZK_CONTRACT_INFO_FILE_NAME,
   ZK_MANIFEST_DIR,
   ZK_MANIFEST_FILE_NAME,
+  ZkArtifactContractInfoError,
   ZkArtifactIntegrityError,
   type ZkArtifactManifest,
   type ZkConfigIntegrityOptions
@@ -50,6 +53,7 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
   private readonly fetchFunc: typeof fetch;
   private readonly integrityOptions: FetchZkConfigProviderOptions;
   private manifestPromise?: Promise<ZkArtifactManifest | undefined>;
+  private runtimeVersionPromise?: Promise<string>;
 
   /**
    * @param baseURL The endpoint to query for ZK artifacts.
@@ -135,6 +139,45 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
       assertManifestHash(bytes, expectedManifestHash);
     }
     return parseZkArtifactManifest(new TextDecoder().decode(bytes));
+  }
+
+  /**
+   * Fetches the `runtime-version` from `compiler/contract-info.json` beside the artifacts.
+   *
+   * Cached per provider instance, like the integrity manifest and for the same reason: the file is
+   * one statement about the whole bundle. A FAILED fetch is not cached, so a transient network
+   * error does not permanently refuse an artifact set that is really there.
+   *
+   * @returns The declared runtime version, verbatim.
+   * @throws ZkArtifactContractInfoError if the location does not serve the file, answers with an
+   * SPA fallback page, or serves something that is not a compiler description. Absence is a refusal
+   * rather than a default: this framework cannot name an artifact set's era on its behalf.
+   */
+  override async getArtifactRuntimeVersion(): Promise<string> {
+    // The cached promise CLEARS ITSELF on failure, so a transient error is retried rather than
+    // remembered. Written as one self-clearing chain rather than as a stored promise compared
+    // against the slot: nothing can replace the slot between the rejection and this handler, so a
+    // comparison would only add a branch no test can reach.
+    this.runtimeVersionPromise ??= this.fetchRuntimeVersion().catch((error: unknown) => {
+      this.runtimeVersionPromise = undefined;
+      throw error;
+    });
+    return this.runtimeVersionPromise;
+  }
+
+  private async fetchRuntimeVersion(): Promise<string> {
+    const url = new URL(`${ZK_MANIFEST_DIR}/${ZK_CONTRACT_INFO_FILE_NAME}`, this.base).toString();
+    const response = await this.fetchFunc(url, { method: 'GET' });
+    // An HTML answer is treated as absence rather than parsed: a CDN serving its SPA fallback with
+    // a 200 is the common shape of "this file is not there".
+    if (!response.ok || FetchZkConfigProvider.isHtmlFallback(response)) {
+      throw new ZkArtifactContractInfoError(
+        `No ${ZK_CONTRACT_INFO_FILE_NAME} was available at ${url} (status ${response.status}), so the ` +
+          `era of these artifacts cannot be established. Serve the compiler output directory that ` +
+          `compactc emits beside the keys.`
+      );
+    }
+    return parseZkArtifactRuntimeVersion(new TextDecoder().decode(new Uint8Array(await response.arrayBuffer())));
   }
 
   private async verifyArtifact(dir: typeof KEY_PATH | typeof ZKIR_PATH, fileName: string, bytes: Uint8Array): Promise<void> {
