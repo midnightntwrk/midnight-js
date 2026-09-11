@@ -126,6 +126,18 @@ const createProvider = async (
   );
 
 describe('MidnightWalletProvider', () => {
+  // Set equality rather than `toContain`: this wallet serves both eras on both
+  // seams it implements, and an era silently dropped from the declaration would
+  // have a retained-era operation refused before it started -- which
+  // `toContain` would not catch.
+  describe('the eras it declares', () => {
+    it('declares both eras, matching what the two seams below actually carry', async () => {
+      const provider = await createProvider(createWalletStub());
+
+      expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
+    });
+  });
+
   // These two used to assert the opposite. The retained arm is now carried rather
   // than refused, so what they pin is that the refusal is GONE -- and that what
   // remains can only be a failure of the bytes, never of the version tag. Three

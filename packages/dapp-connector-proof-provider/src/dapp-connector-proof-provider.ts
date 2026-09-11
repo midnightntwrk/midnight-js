@@ -16,11 +16,8 @@
 import type { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 import {
-  createProofProvider,
+  createProofProviderFromArms,
   type ProofProvider,
-  type ProveTxConfig,
-  type VersionedUnboundTransaction,
-  type VersionedUnprovenTransaction,
   type ZKConfigProvider,
   type ZKConfigRegistry
 } from '@midnight-ntwrk/midnight-js-types';
@@ -57,23 +54,10 @@ export const dappConnectorProofProvider = async <K extends string>(
   costModel: CostModel,
 ): Promise<ProofProvider> => {
   const provingProvider = await dappConnectorProvingProvider(api, zkConfigProvider);
-  // The current era keeps delegating wholesale, so that path stays exactly what it was before this
-  // package grew a second arm -- including how it reports an untagged payload.
-  const currentEraProofProvider = createProofProvider(provingProvider, costModel);
-  return {
-    async proveTx(
-      unprovenTx: VersionedUnprovenTransaction,
-      proveTxConfig?: ProveTxConfig
-    ): Promise<VersionedUnboundTransaction> {
-      // Bytes in, bytes out: a retained-era transaction cannot cross this seam as a live object.
-      // See the `costModel` parameter above for why this one is not forwarded.
-      //
-      // Read through `?.` so a payload that is not an object at all reaches the current-era
-      // provider and gets a coded error instead of a bare `TypeError`.
-      if (unprovenTx?.version === 'v8') {
-        return { version: 'v8', txBytes: await proveV8Transaction(unprovenTx.txBytes, provingProvider) };
-      }
-      return currentEraProofProvider.proveTx(unprovenTx, proveTxConfig);
-    }
-  };
+  return createProofProviderFromArms({
+    currentEra: (tx) => tx.prove(provingProvider, costModel),
+    // Bytes in, bytes out: a retained-era transaction cannot cross this seam as a live object. See
+    // the `costModel` parameter above for why this arm does not take one.
+    retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
+  });
 };

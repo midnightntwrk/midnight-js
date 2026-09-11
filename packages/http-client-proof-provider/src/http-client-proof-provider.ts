@@ -16,11 +16,9 @@
 import { CostModel, type ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 import {
+  createProofProviderFromArms,
   type ProofProvider,
   type ProveTxConfig,
-  unwrapV9,
-  type VersionedUnboundTransaction,
-  type VersionedUnprovenTransaction,
   type ZKConfigProvider,
   type ZKConfigRegistry
 } from '@midnight-ntwrk/midnight-js-types';
@@ -123,41 +121,31 @@ export function httpClientProofProvider<K extends string>(
   // rather than being deferred to (and repeated on) every proveTx call.
   const baseProvingProvider = httpClientProvingProvider(url, resolvedZkConfigProvider, resolvedConfig);
 
-  return {
-    async proveTx(
-      unprovenTx: VersionedUnprovenTransaction,
-      proveTxConfig?: ProveTxConfig
-    ): Promise<VersionedUnboundTransaction> {
-      const perCallTimeout = resolveTimeout(resolvedConfig, proveTxConfig);
-
-      // Wrap the construction-time provider so every circuit-level check/prove in this proveTx uses
-      // the per-call timeout, without rebuilding the underlying provider. The timeout override is
-      // exposed by TimeoutAwareProvingProvider, so this needs no cast. Built before the version
-      // branch because both eras drive the same proof server through the same per-call timeout —
-      // the proving protocol is per-circuit and era-independent.
-      const perCallProvingProvider: ProvingProvider = {
-        check: (serializedPreimage, keyLocation) =>
-          baseProvingProvider.check(serializedPreimage, keyLocation, perCallTimeout),
-        prove: (serializedPreimage, keyLocation, overwriteBindingInput) =>
-          baseProvingProvider.prove(serializedPreimage, keyLocation, overwriteBindingInput, perCallTimeout),
-        lookupKey: (keyLocation) => baseProvingProvider.lookupKey(keyLocation)
-      };
-
-      // Answered in the arm it arrived in: callers narrow the response with `requireV8` and reject
-      // the current-era arm, so replying in the wrong one strands a submit mid-flight.
-      //
-      // Read through `?.` so a payload that is not an object at all reaches `unwrapV9` below and
-      // gets a coded error instead of a bare `TypeError`.
-      if (unprovenTx?.version === 'v8') {
-        return { version: 'v8', txBytes: await proveV8Transaction(unprovenTx.txBytes, perCallProvingProvider) };
-      }
-
-      // Left as `unwrapV9` rather than an `else`: it keeps reporting an untagged or unrecognised
-      // payload as `UntaggedPayloadError`, which is reachable from JavaScript callers and from
-      // consumers built against a pre-5.0.0 `midnight-js-types`.
-      const tx = unwrapV9(unprovenTx, 'proveTx');
-      const costModel = CostModel.initialCostModel();
-      return { version: 'v9', tx: await tx.prove(perCallProvingProvider, costModel) };
-    }
+  // Wraps the construction-time provider so every circuit-level check/prove in one `proveTx` uses
+  // that call's timeout, without rebuilding the underlying provider. The timeout override is
+  // exposed by TimeoutAwareProvingProvider, so this needs no cast. Shared by both era arms because
+  // both drive the same proof server through the same per-call timeout — the proving protocol is
+  // per-circuit and era-independent.
+  const provingProviderFor = (proveTxConfig: ProveTxConfig | undefined): ProvingProvider => {
+    const perCallTimeout = resolveTimeout(resolvedConfig, proveTxConfig);
+    return {
+      check: (serializedPreimage, keyLocation) =>
+        baseProvingProvider.check(serializedPreimage, keyLocation, perCallTimeout),
+      prove: (serializedPreimage, keyLocation, overwriteBindingInput) =>
+        baseProvingProvider.prove(serializedPreimage, keyLocation, overwriteBindingInput, perCallTimeout),
+      lookupKey: (keyLocation) => baseProvingProvider.lookupKey(keyLocation)
+    };
   };
+
+  // One arm per era, with the routing, the `version` tagging and the refusal of an era with no arm
+  // all left to the factory. Answering in the arm a request arrived in is the factory's guarantee,
+  // which matters here because callers narrow the response and reject the other era — replying in
+  // the wrong one would strand a submit mid-flight.
+  return createProofProviderFromArms({
+    currentEra: (tx, proveTxConfig) =>
+      tx.prove(provingProviderFor(proveTxConfig), CostModel.initialCostModel()),
+    retainedEras: {
+      v8: (txBytes, proveTxConfig) => proveV8Transaction(txBytes, provingProviderFor(proveTxConfig))
+    }
+  });
 };

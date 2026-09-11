@@ -56,6 +56,7 @@ import {
   FailEntirely,
   FailFallible,
   type RawContractState,
+  SeamEraUnsupportedError,
   type TxStatus,
   UntaggedPayloadError,
   V8PayloadUnsupportedError,
@@ -1268,12 +1269,11 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
   it('refuses at the FIRST seam, proveTx, when a proof provider serves the current era only', async () => {
     // `createProofProvider` lifts a current-era-only proving implementation,
-    // which is what a dApp has until its providers are widened. `proveTx` is
-    // the FIRST of the three seams, so the refusal lands before anything has
-    // been proven, balanced or submitted -- which is the point of leaving the
-    // inbound guard in `types` rather than lifting it here. The proving
-    // implementation below is never reached, and that is asserted rather than
-    // assumed.
+    // which is what a dApp has until its providers are widened. That provider
+    // DECLARES the current era only, and the operation reads that declaration
+    // before it composes anything -- so the refusal names `proveTx`, the first
+    // of the three seams, and the proving implementation below is never
+    // reached. That is asserted rather than assumed.
     let provingReached = false;
     const provingProvider: ProvingProvider = {
       check: () => Promise.resolve([]),
@@ -1288,17 +1288,29 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       proofProvider: createProofProvider(provingProvider)
     };
 
-    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(V8PayloadUnsupportedError);
+    let caught: unknown;
+    try {
+      await submitCallTx(providers, callOptions());
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(SeamEraUnsupportedError);
+    expect((caught as SeamEraUnsupportedError).seam).toBe('proveTx');
+    expect((caught as SeamEraUnsupportedError).era).toBe('v8');
     expect(provingReached).toBe(false);
     expect(providers.walletProvider.balanceTx).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
   });
 
-  it('refuses at the balanceTx seam when only the wallet serves the current era', async () => {
+  it('refuses at the balanceTx seam when only the wallet serves the current era, WITHOUT proving first', async () => {
     // Covered separately from the first seam, because reaching it proves
-    // something different: the refusal is PER SEAM, so a partly widened
+    // something different. The refusal is PER SEAM, so a partly widened
     // provider set is refused at whichever seam has not been widened rather
-    // than slipping through the ones that have.
+    // than slipping through the ones that have -- and, because the check reads
+    // declarations up front, the refusal lands BEFORE the proof this wallet
+    // could never have balanced was paid for. `proveTx` not having been called
+    // is the assertion that says so.
     const base = preForkProviders(v6Envelope);
     const providers: RetainedProviders = {
       ...base,
@@ -1316,8 +1328,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(V8PayloadUnsupportedError);
-    expect((caught as V8PayloadUnsupportedError).seam).toBe('balanceTx');
+    expect(caught).toBeInstanceOf(SeamEraUnsupportedError);
+    expect((caught as SeamEraUnsupportedError).seam).toBe('balanceTx');
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
   });
 
@@ -1334,8 +1347,10 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(V8PayloadUnsupportedError);
-    expect((caught as V8PayloadUnsupportedError).seam).toBe('submitTx');
+    expect(caught).toBeInstanceOf(SeamEraUnsupportedError);
+    expect((caught as SeamEraUnsupportedError).seam).toBe('submitTx');
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+    expect(providers.walletProvider.balanceTx).not.toHaveBeenCalled();
   });
 
   it('returns the finalized record as the read surface reported it, retained arm included', async () => {
