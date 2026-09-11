@@ -44,12 +44,10 @@ export {
 // the fixed message rather than retype it. The breadcrumb TYPES stay internal -- publishing the
 // shapes would pin them as API before a second consumer has asked for them.
 export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
-// The retained-era entry points run real pipelines with this release, so the era errors below are
-// reachable from a call a consumer makes rather than only from an internal helper. Two are NOT
-// reachable through an entry point yet and are exported for completeness:
-// `Ledger8DeployUnmaintainableError` is the only refusal `deployContract`'s retained arm makes, and
-// `Ledger8DeployOnV9Error` sits behind it in the era pairing table, so the pairing refusal cannot
-// be observed until the deploy arm is wired.
+// The era errors that serve BOTH eras. The retained era's own classes are published under the
+// `Ledger8` namespace below, together with the rest of the surface that goes when the fork window
+// closes -- `Ledger8.CallTxFailedError` still extends `AnyEraTxFailedError` here, so a handler
+// written against the base keeps catching it.
 //
 // The fork-window refusals are the other group. `StaleHeadError` is raised when a submission was
 // rejected and a fresh head read confirms the network crossed the fork under the operation, and it
@@ -80,13 +78,6 @@ export {
   IncompleteCallTxPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   IndexerInconsistencyError,
-  Ledger8AmbiguousEntryPointError,
-  Ledger8CallTxFailedError,
-  Ledger8DeployOnV9Error,
-  Ledger8DeployUnmaintainableError,
-  Ledger8RecipientUnmappableError,
-  Ledger8SeamFailedError,
-  Ledger8ShieldedSpendUnsupportedError,
   MixedEraScopeError,
   ScopedTransactionIdentityMismatchError,
   ScopedTxEraUnsupportedError,
@@ -123,38 +114,8 @@ export {
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from './governance';
-// The retained-era type family. Exported for the same reason the current era's
-// equivalents are: the entry-point OVERLOADS select these types by inference,
-// but inference alone does not let a consumer NAME one. Without these a caller
-// can make a retained-era call and still not write
-// `function handle(r: Ledger8FinalizedCallTxData<C, K>)`, declare a variable of
-// the result type, or constrain a helper of their own by `Ledger8Contract`.
-//
-// A name appearing in the emitted `.d.ts` because an overload signature
-// mentions it is NOT the same as that name being exported, and this package
-// publishes only a `"."` entry, so there is no subpath to reach them through
-// either. `Awaited<ReturnType<typeof submitCallTx>>` is no substitute: it
-// resolves from the LAST overload by design, so it hands back the current-era
-// shape -- the wrong type for a retained-era call.
-//
-// The whole family goes out together rather than just the four result types: a
-// consumer who cannot also name `Ledger8Circuit` and `Ledger8Witness` cannot
-// declare a contract type that satisfies `Ledger8Contract` in the first place.
-// The `AnyLedger8*` aliases stay internal -- they exist to widen the
-// era-dispatching IMPLEMENTATION signatures and are never a signature a caller
-// sees.
-//
-// ONE member is held back: `Ledger8DeployedContract`. The argument above is
-// that a caller who can obtain a value needs to be able to name its type --
-// and no caller can obtain this one. `deployContract`'s retained arm refuses
-// every retained-toolchain artifact with `Ledger8DeployUnmaintainableError`
-// before it touches a provider, so nothing constructs the type. Exporting it
-// would publish a documented five-member type nobody can hold, and, because it
-// extends `Ledger8FoundContract`, would make every later repair of the handle
-// surface a breaking change to a published type with no users. The two refusal
-// ERRORS are exported, because those a caller does receive and must be able to
-// catch by class. Export the type in the commit that makes the deploy arm
-// produce one.
+// The era vocabulary, which BOTH pipelines are named by, so a caller that tags or branches on an
+// era never reaches for the retained-era namespace to do it.
 export {
   CURRENT_PIPELINE_ERA,
   type CurrentPipelineEra,
@@ -166,37 +127,15 @@ export {
 // result by inference, and these let a caller who RECEIVES either one declare a
 // parameter for both and narrow it by name.
 export { type AnyEraFinalizedCallTxData, type AnyEraSubmittedCallTx, isLedger8Result } from './era-results';
-export type {
-  Ledger8CallResultPrivate,
-  Ledger8CallResultPublic,
-  Ledger8CallTxOptions,
-  Ledger8CallTxOptionsBase,
-  Ledger8CallTxOptionsWithPrivateStateId,
-  Ledger8CallTxTarget,
-  Ledger8Circuit,
-  Ledger8CircuitCallTxInterface,
-  Ledger8CircuitContext,
-  Ledger8CircuitId,
-  Ledger8CircuitParameters,
-  Ledger8CircuitResult,
-  Ledger8CircuitReturnType,
-  Ledger8ConstructorParameters,
-  Ledger8Contract,
-  Ledger8ContractCall,
-  Ledger8ContractCallPublic,
-  Ledger8ContractProviders,
-  Ledger8DeployContractOptions,
-  Ledger8DeployContractOptionsBase,
-  Ledger8FinalizedCallTxData,
-  Ledger8FinalizedCallTxPublicData,
-  Ledger8FindDeployedContractOptions,
-  Ledger8FoundContract,
-  Ledger8InitialStateResult,
-  Ledger8PrivateState,
-  Ledger8SubmittedCallTx,
-  Ledger8UnsubmittedCallTxData,
-  Ledger8Witness
-} from './ledger8-contract';
+// The RETAINED era, whole, under one name. The entry-point overloads select these types by
+// inference, and inference alone does not let a consumer NAME one -- `Ledger8.FinalizedCallTxData`
+// is how a caller declares the result it was handed, and `Ledger8.Contract` how it constrains a
+// helper of its own.
+//
+// One export rather than the thirty-seven it re-exports, because the retained era is transitional
+// and a flat family is not: see `docs/retained-era-namespace.md` for what qualifies for membership,
+// what is deliberately held back, and how the whole surface is withdrawn in one step.
+export * as Ledger8 from './ledger8';
 export { submitCallTx, submitCallTxAsync, type SubmitCallTxProviders } from './submit-call-tx';
 export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
 export { submitTx, submitTxAsync, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
@@ -206,11 +145,7 @@ export {
   TransactionContext,
   withContractScopedTransaction
 } from './transaction';
-export {
-  CircuitCallTxInterface,
-  createCallTxOptions,
-  createCircuitCallTxInterface,
-  createLedger8CircuitCallTxInterface} from './tx-interfaces';
+export { CircuitCallTxInterface, createCallTxOptions, createCircuitCallTxInterface } from './tx-interfaces';
 export {
   FinalizedCallTxData,
   FinalizedCallTxPublicData,
