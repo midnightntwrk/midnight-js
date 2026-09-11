@@ -124,10 +124,12 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
     expect(ownMembers.sort()).toEqual(['circuits', 'impureCircuits', 'provableCircuits', 'witnesses'].sort());
   });
 
-  it('exposes initialState as a SYNCHRONOUS function — the load-bearing half of the era discriminator', () => {
+  it('exposes initialState as a SYNCHRONOUS function, which admits the artifact without placing it', () => {
     expect(typeof contract.initialState).toBe('function');
-    // `AsyncFunction` here would mean the artifact was produced by the current toolchain, whose
-    // codegen is fully async. `Function` is what makes the retained shape structurally distinct.
+    // A PRECONDITION of the retained route, not its reason. `AsyncFunction` here would mean the
+    // artifact was produced by the current toolchain and would refuse it outright; `Function` is
+    // what a real retained artifact AND a transpiled current-era one both read, so it decides
+    // nothing on its own -- the declared runtime version does. See `era-artifact-declaration.test.ts`.
     expect(contract.initialState.constructor.name).toBe('Function');
   });
 

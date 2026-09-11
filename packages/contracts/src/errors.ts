@@ -131,6 +131,8 @@ export type EraArtifactMismatchReason =
   | 'current-era-artifact-on-pre-fork-head'
   /** An artifact set that does not declare which `compact-runtime` produced it. */
   | 'artifact-era-undeclared'
+  /** A ZK config provider that cannot report a declared runtime version at all. */
+  | 'provider-cannot-declare-era'
   /** An artifact set declaring a `compact-runtime` this framework places on no ledger era. */
   | 'unknown-artifact-runtime-version';
 
@@ -159,6 +161,14 @@ const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason,
     'artifacts, so the ledger era they belong to cannot be established. The compiler records it in ' +
     'compiler/contract-info.json beside the keys; serve that file from the same location as the ' +
     'artifacts. The era is never inferred from the generated code, because a build step can rewrite it.',
+  // Distinct from `artifact-era-undeclared`: nothing is wrong with the artifacts, and serving a
+  // file cannot fix it. What is missing is a capability of the provider itself.
+  'provider-cannot-declare-era':
+    'The ZK config provider supplied for this operation cannot report which compact-runtime built ' +
+    'its artifacts, so the ledger era they belong to cannot be established. The providers this ' +
+    'framework ships all report it; a provider written elsewhere must override ' +
+    'getArtifactRuntimeVersion() to read the runtime-version from the compiler output beside the ' +
+    'keys. See this refusal\'s cause for which provider could not answer.',
   'unknown-artifact-runtime-version':
     'These artifacts declare a compact-runtime this version of midnight-js places on no ledger era, so ' +
     'no pipeline can be chosen for them. Upgrade midnight-js to one that knows this toolchain, or ' +

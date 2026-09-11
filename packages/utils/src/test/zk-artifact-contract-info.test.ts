@@ -43,8 +43,16 @@ describe('parseZkArtifactRuntimeVersion', () => {
     expect(() => parseZkArtifactRuntimeVersion('<!doctype html>')).toThrow(ZK_CONTRACT_INFO_FILE_NAME);
   });
 
-  it('refuses a JSON document that is not an object', () => {
-    expect(() => parseZkArtifactRuntimeVersion('"0.16.0"')).toThrow(ZkArtifactContractInfoError);
+  it.each([
+    ['a bare string', '"0.16.0"'],
+    ['an array', '[]'],
+    ['null', 'null']
+  ])('refuses %s, which is not a contract description at all', (_label, rawJson) => {
+    // An array passes a naive `typeof === 'object'` check and would then be reported as a
+    // description that merely forgot its runtime version -- sending the caller to recompile a
+    // contract whose artifacts are fine and whose served file is simply the wrong document.
+    expect(() => parseZkArtifactRuntimeVersion(rawJson)).toThrow(ZkArtifactContractInfoError);
+    expect(() => parseZkArtifactRuntimeVersion(rawJson)).toThrow(/must be a JSON object/);
   });
 
   it('refuses a document that declares no runtime version', () => {
@@ -53,10 +61,13 @@ describe('parseZkArtifactRuntimeVersion', () => {
     expect(() => parseZkArtifactRuntimeVersion(rawJson)).toThrow(ZkArtifactContractInfoError);
   });
 
-  it('refuses a runtime version that is not a string, rather than coercing it', () => {
+  it('refuses a runtime version that is not a string, and names the value it saw', () => {
+    // Named, because a truncated or hand-edited file is otherwise indistinguishable from an old
+    // toolchain -- and the two have different fixes.
     const rawJson = JSON.stringify({ 'runtime-version': 16 });
 
     expect(() => parseZkArtifactRuntimeVersion(rawJson)).toThrow(ZkArtifactContractInfoError);
+    expect(() => parseZkArtifactRuntimeVersion(rawJson)).toThrow(/16/);
   });
 
   it('refuses an empty runtime version', () => {

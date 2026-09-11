@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { ArtifactRuntimeVersionUnavailableError, type ProverKey, type VerifierKey, ZKConfigProvider, type ZKIR } from '@midnight-ntwrk/midnight-js-types';
+import { ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, type Mock, vi } from 'vitest';
 
 import { type PipelineEra } from '../era';
@@ -101,10 +103,10 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
     });
   });
 
-  it('refuses when the provider cannot say, and keeps the provider failure on cause', async () => {
+  it('refuses when the artifacts declare nothing, and keeps the provider failure on cause', async () => {
     // Never a fallback to the generated code's shape: an undeclared era is a refusal, because every
     // answer this framework could invent would be a guess about which ledger executes the call.
-    const unavailable = new Error('no contract-info.json at https://cdn.example/compiler/');
+    const unavailable = new ZkArtifactContractInfoError('no contract-info.json at https://cdn.example/compiler/');
     const source = refusing(unavailable);
 
     const error = await resolveArtifactEra(retainedShape(), source).catch((thrown: unknown) => thrown);
@@ -112,6 +114,45 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
     expect(error).toBeInstanceOf(EraArtifactMismatchError);
     expect(error).toMatchObject({ reason: 'artifact-era-undeclared' });
     expect((error as EraArtifactMismatchError).cause).toBe(unavailable);
+  });
+
+  it('separates a provider that CANNOT declare an era from artifacts that do not', async () => {
+    // The real third-party case, through the real base class rather than a stand-in: a provider
+    // written before the retained era existed never overrode the member. Its fix is to implement
+    // the method, not to serve a file, so it may not be reported as an artifact problem.
+    class ArtifactOnlyProvider extends ZKConfigProvider<string> {
+      async getZKIR(): Promise<ZKIR> {
+        return new Uint8Array() as ZKIR;
+      }
+
+      async getProverKey(): Promise<ProverKey> {
+        return new Uint8Array() as ProverKey;
+      }
+
+      async getVerifierKey(): Promise<VerifierKey> {
+        return new Uint8Array() as VerifierKey;
+      }
+    }
+
+    const error = await resolveArtifactEra(retainedShape(), new ArtifactOnlyProvider()).catch(
+      (thrown: unknown) => thrown
+    );
+
+    expect(error).toBeInstanceOf(EraArtifactMismatchError);
+    expect(error).toMatchObject({ reason: 'provider-cannot-declare-era' });
+    expect((error as EraArtifactMismatchError).cause).toBeInstanceOf(ArtifactRuntimeVersionUnavailableError);
+    // The base class names the provider that could not answer; that naming must survive the wrap.
+    expect(((error as EraArtifactMismatchError).cause as Error).message).toMatch(/ArtifactOnlyProvider/);
+  });
+
+  it.each([
+    ['a transport failure', new TypeError('fetch failed')],
+    ['a permission fault', Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' })]
+  ])('propagates %s unchanged rather than reporting it as an era problem', async (_label, failure) => {
+    // These say nothing about which era the artifacts belong to. Relabelling them sends the caller
+    // to serve a file that is already there, and buries the real fault on `cause`. The sibling
+    // `readHeadEra` states the same rule for the head read.
+    await expect(resolveArtifactEra(retainedShape(), refusing(failure))).rejects.toBe(failure);
   });
 
   it('refuses a raw current-era contract by its async initialState before any provider read', async () => {

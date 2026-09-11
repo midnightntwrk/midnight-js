@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { isJsonObject } from './internal/json-object';
+
 /** File name of the `compactc`-emitted contract description, beside the integrity manifest. */
 export const ZK_CONTRACT_INFO_FILE_NAME = 'contract-info.json';
 
@@ -30,9 +32,6 @@ export class ZkArtifactContractInfoError extends Error {
     this.name = 'ZkArtifactContractInfoError';
   }
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
 
 /**
  * Reads the `runtime-version` a `compactc` `contract-info.json` declares.
@@ -58,14 +57,23 @@ export function parseZkArtifactRuntimeVersion(rawJson: string): string {
   } catch (error) {
     throw new ZkArtifactContractInfoError(`${ZK_CONTRACT_INFO_FILE_NAME} is not valid JSON`, { cause: error });
   }
-  if (!isRecord(root)) {
+  if (!isJsonObject(root)) {
     throw new ZkArtifactContractInfoError(`${ZK_CONTRACT_INFO_FILE_NAME} must be a JSON object`);
   }
   const runtimeVersion = root['runtime-version'];
-  if (typeof runtimeVersion !== 'string' || runtimeVersion.length === 0) {
+  if (runtimeVersion === undefined) {
     throw new ZkArtifactContractInfoError(
       `${ZK_CONTRACT_INFO_FILE_NAME} declares no "runtime-version", so the toolchain that produced ` +
         `these artifacts cannot be established. Recompile the contract with a compactc that emits it.`
+    );
+  }
+  // Named rather than merely refused: a truncated or hand-edited file is otherwise indistinguishable
+  // from an artifact set built by a toolchain too old to record the version, and the two have
+  // different fixes.
+  if (typeof runtimeVersion !== 'string' || runtimeVersion.length === 0) {
+    throw new ZkArtifactContractInfoError(
+      `${ZK_CONTRACT_INFO_FILE_NAME} declares an unusable "runtime-version": expected a non-empty ` +
+        `string, got ${JSON.stringify(runtimeVersion)}`
     );
   }
   return runtimeVersion;

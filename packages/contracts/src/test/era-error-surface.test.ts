@@ -62,6 +62,7 @@ describe('the era and verification-path errors a caller has to catch are reachab
       'unrecognised-contract-shape': 'recompile',
       'current-era-artifact-on-pre-fork-head': 'wait-for-fork',
       'artifact-era-undeclared': 'serve-contract-info',
+      'provider-cannot-declare-era': 'implement-the-member',
       'unknown-artifact-runtime-version': 'upgrade-midnight-js'
     };
 
@@ -69,6 +70,9 @@ describe('the era and verification-path errors a caller has to catch are reachab
     expect(REMEDIATION[new EraArtifactMismatchError('unrecognised-contract-shape').reason]).toBe('recompile');
     expect(REMEDIATION[new EraArtifactMismatchError('current-era-artifact-on-pre-fork-head').reason]).toBe('wait-for-fork');
     expect(REMEDIATION[new EraArtifactMismatchError('artifact-era-undeclared').reason]).toBe('serve-contract-info');
+    expect(REMEDIATION[new EraArtifactMismatchError('provider-cannot-declare-era').reason]).toBe(
+      'implement-the-member'
+    );
     expect(REMEDIATION[new EraArtifactMismatchError('unknown-artifact-runtime-version').reason]).toBe(
       'upgrade-midnight-js'
     );

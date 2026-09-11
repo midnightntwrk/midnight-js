@@ -25,13 +25,13 @@
  * container, and the fact that retained-era circuits and `initialState` return
  * plain objects where the current era returns `Promise`s.
  *
- * There is no era predicate in this file. The single RUNTIME predicate is
+ * There is no era decision in this file. The single RUNTIME decision is
  * `resolveArtifactEra` in `./internal/era`; do not add a second one here.
  *
  * @see {@link OverloadTyping} for why the declarations are hand-written and
  *      runtime-pinned, how openness is expressed without `any`, and why the
  *      order of the overload arms is load-bearing.
- * @see {@link EraDispatch} for the runtime predicate and what it may not use.
+ * @see {@link EraDispatch} for the runtime decision and what it may not use.
  */
 
 import type {

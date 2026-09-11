@@ -21,6 +21,7 @@ import {
   UnknownLedgerVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
 import {
+  ArtifactRuntimeVersionUnavailableError,
   type FinalizedTxData,
   type PublicDataProvider,
   type RawContractState,
@@ -29,7 +30,7 @@ import {
   type VersionedTx,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
+import { contractStateEnvelopeVersion, ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
 
 import { CURRENT_PIPELINE_ERA, type PipelineEra, RETAINED_PIPELINE_ERA } from '../era';
 import {
@@ -240,12 +241,12 @@ export interface HeadEraReading {
  */
 export type HeadVersionSource = Pick<PublicDataProvider, 'queryLatestProtocolVersion'>;
 
-// The `constructor.name` values that appear on the two eras' generated code. Both are used to
-// REFUSE and neither is used to accept: a build step targeting below ES2017 rewrites an
-// `AsyncFunction` into a plain one, so reading `PLAIN_FUNCTION` as proof of the retained era let a
-// transpiled current-era contract into the retained pipeline. `ASYNC_FUNCTION` survives no such
-// rewrite in the other direction -- a build step can erase it, never fabricate it -- which is what
-// makes it sound as a refusal and unsound as a route.
+// The `constructor.name` values that appear on the two eras' generated code. `ASYNC_FUNCTION`
+// REFUSES; `PLAIN_FUNCTION` admits a candidate and decides nothing. A build step targeting below
+// ES2017 rewrites an `AsyncFunction` into a plain one, so reading `PLAIN_FUNCTION` as proof of the
+// retained era let a transpiled current-era contract into the retained pipeline. The rewrite runs
+// in one direction only -- a build can erase `async`, never fabricate it -- which is what makes the
+// async reading sound as a refusal and the plain reading unsound as a route.
 const PLAIN_FUNCTION = 'Function';
 const ASYNC_FUNCTION = 'AsyncFunction';
 
@@ -255,6 +256,10 @@ const ASYNC_FUNCTION = 'AsyncFunction';
  *
  * Frozen, and the ONE place a toolchain version is turned into an era. Adding an era adds a row
  * here; the gate below refuses to compile if one is added without a row.
+ *
+ * The gate has to be a CONSTRAINT, not a bare conditional type: `type X = ... ? true : never` is a
+ * legal declaration that nothing reads, so it computes the answer and discards it. Passing the
+ * conditional through `Assert` makes the failing case violate a constraint, which is a build error.
  */
 const RUNTIME_VERSION_TO_ERA = Object.freeze({
   '0.16': RETAINED_PIPELINE_ERA,
@@ -265,7 +270,10 @@ const RUNTIME_VERSION_TO_ERA = Object.freeze({
 // Without it a third era could be added to `PipelineEra` with no toolchain mapped to it, and every
 // artifact built by that toolchain would be refused at run time instead of failing here.
 type MappedEra = (typeof RUNTIME_VERSION_TO_ERA)[keyof typeof RUNTIME_VERSION_TO_ERA];
-type _EveryEraHasARuntimeVersion = PipelineEra extends MappedEra ? true : never;
+type Assert<T extends true> = T;
+// The tuple wrapping keeps this a whole-union check rather than a distributive one, so a single
+// mapped era could never satisfy it on behalf of the rest.
+type _EveryEraHasARuntimeVersion = Assert<[PipelineEra] extends [MappedEra] ? true : false>;
 
 const RUNTIME_VERSION = /^(\d+\.\d+)\.\d+/;
 
@@ -330,11 +338,13 @@ const artifactShapeOf = (compiledContract: unknown): ArtifactShape => {
   }
 
   if (!hasOwnProperty(compiledContract, 'impureCircuits')) {
-    // The container carries a `tag` and none of the circuit collections. The `tag` is an OWN
-    // property the current toolchain's container assigns to itself, so it is a declaration that
-    // survives every build step -- which is why this arm needs no artifact read. Requiring it as
-    // well as the absence of `impureCircuits` is what stops an arbitrary object -- `{}` included --
-    // from being routed into the current-era pipeline by default.
+    // The container carries a `tag` and none of the circuit collections. The `tag`'s VALUE is
+    // chosen by the caller (`CompiledContract.make(tag, ctor)`) and says nothing about an era; what
+    // places this object is that only the current toolchain's container has this shape, and that
+    // the property is an OWN one, so it survives both the spread its own combinators perform and
+    // any build step -- which is why this arm needs no artifact read. Requiring the `tag` as well
+    // as the absence of `impureCircuits` is what stops an arbitrary object -- `{}` included -- from
+    // being routed into the current-era pipeline by default.
     if (hasOwnProperty(compiledContract, 'tag') && typeof compiledContract.tag === 'string') {
       return 'current-era-container';
     }
@@ -362,9 +372,10 @@ const artifactShapeOf = (compiledContract: unknown): ArtifactShape => {
 /**
  * Decides which pipeline a caller's contract belongs to, from what the artifact DECLARES.
  *
- * Two declarations answer it, one per era, and neither is a property of generated JavaScript that a
- * consumer's build can rewrite: the current era's container assigns itself an own `tag`, and the
- * retained era's artifact set carries the `runtime-version` its compiler recorded. The shape of the
+ * Two answers, one per era, and neither rests on a property of generated JavaScript that a
+ * consumer's build can rewrite. The current era arrives wrapped in a container whose own `tag`
+ * survives every build step, so recognising that container is enough. The retained era has no such
+ * container, so it is placed by the `runtime-version` its artifact set declares. The shape of the
  * generated code is consulted only to refuse.
  *
  * The artifact set is read ONLY for a retained candidate, so a current-era caller pays no round trip
@@ -392,7 +403,17 @@ export const resolveArtifactEra = async (
   try {
     runtimeVersion = await source.getArtifactRuntimeVersion();
   } catch (error) {
-    throw new EraArtifactMismatchError('artifact-era-undeclared', { cause: error });
+    // Only the two failures that are STATEMENTS about the era become era refusals. A transport
+    // fault, a permission fault or a bug in a caller's provider says nothing about which ledger
+    // executes this call, and relabelling it sends the caller to serve a file that is already
+    // there. `readHeadEra` states the same rule for the head read.
+    if (error instanceof ZkArtifactContractInfoError) {
+      throw new EraArtifactMismatchError('artifact-era-undeclared', { cause: error });
+    }
+    if (error instanceof ArtifactRuntimeVersionUnavailableError) {
+      throw new EraArtifactMismatchError('provider-cannot-declare-era', { cause: error });
+    }
+    throw error;
   }
 
   const era = eraOfRuntimeVersion(runtimeVersion);

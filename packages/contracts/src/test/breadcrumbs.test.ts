@@ -247,7 +247,7 @@ describe('the breadcrumb emitters', () => {
         decision: 'pipeline-selection',
         version: 'v8',
         protocolVersion: V8_HEAD,
-        source: 'compiled-contract-shape',
+        source: 'artifact-runtime-version-declaration',
         readingProvenance: 'operation-start',
         path: 'ledger8',
         contractAddress: CONTRACT_ADDRESS
@@ -270,7 +270,7 @@ describe('the breadcrumb emitters', () => {
         decision: 'pipeline-selection',
         version: 'v8',
         protocolVersion: V8_HEAD,
-        source: 'compiled-contract-shape',
+        source: 'artifact-runtime-version-declaration',
         readingProvenance: 'operation-start',
         path: 'ledger8'
       }
@@ -424,7 +424,7 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
         decision: 'pipeline-selection',
         version: 'v8',
         protocolVersion: V8_HEAD,
-        source: 'compiled-contract-shape',
+        source: 'artifact-runtime-version-declaration',
         readingProvenance: 'operation-start',
         path: 'ledger8',
         contractAddress: CONTRACT_ADDRESS
@@ -444,7 +444,7 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
       decision: 'pipeline-selection',
       version: 'v9',
       protocolVersion: V9_HEAD,
-      source: 'compiled-contract-shape',
+      source: 'artifact-runtime-version-declaration',
       readingProvenance: 'operation-start',
       path: 'ledger8',
       contractAddress: CONTRACT_ADDRESS
@@ -492,7 +492,7 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
       decision: 'pipeline-selection',
       version: 'v8',
       protocolVersion: V8_HEAD,
-      source: 'compiled-contract-shape',
+      source: 'artifact-runtime-version-declaration',
       readingProvenance: 'operation-start',
       path: 'ledger8',
       contractAddress: CONTRACT_ADDRESS

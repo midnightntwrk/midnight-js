@@ -31,25 +31,45 @@ A pipeline era is not a statement about the network. It says only which era's
 artifact the caller handed over; whether that artifact can run at all is the
 pairing rule below.
 
-## Reading the artifact's era: only from what the artifact declares
+## Reading the artifact's era: never from the generated code
 
-The era is a consensus-level fact, so it is established only from something the
-artifact states about itself. It is never inferred from the shape of the code
-the compiler generated, because a consumer's build is free to rewrite that
-shape and this framework never sees the setting that did.
+The era is a consensus-level fact, so it is never inferred from the shape of the
+code the compiler generated: a consumer's build is free to rewrite that shape,
+and this framework never sees the setting that did.
 
-Each era carries its own declaration:
+The two eras are answered differently, and it is worth being exact about why:
 
-| era | declaration | where it comes from |
-| --- | ----------- | ------------------- |
-| current | own `tag` on the `CompiledContract` container | the container assigns it to itself |
-| retained | `runtime-version` | `compiler/contract-info.json`, emitted by `compactc` |
+| era | what answers it | why a build cannot change it |
+| --- | --------------- | ---------------------------- |
+| current | the `CompiledContract` container it arrives in, recognised by its own `tag` | the property is an OWN one, and only that container has this shape |
+| retained | the `runtime-version` its artifact set declares | it is data on disk, not code |
 
-Only the retained arm reads the bundle, through
-`ZKConfigProvider.getArtifactRuntimeVersion()`. The current era's declaration is
-on the object already in hand, so a current-era caller buys no round trip and
-needs no file it does not already ship. `resolveArtifactEra` in
+The current era's answer is a CONTAINER CHECK, not a statement by the compiler.
+The `tag`'s value is chosen by the caller — `CompiledContract.make(tag, ctor)` —
+and carries no era information. What places the object is that nothing else has
+this shape, and that the property survives both a bundler and the object spread
+the container's own combinators perform. The retained era has no such container,
+which is why it is the arm that has to ask the artifact set.
+
+So only the retained arm reads the bundle, through
+`ZKConfigProvider.getArtifactRuntimeVersion()`; a current-era caller buys no
+round trip and needs no file it does not already ship. `resolveArtifactEra` in
 `packages/contracts/src/internal/era.ts` holds both halves.
+
+### Which file the retained answer comes from
+
+The provider prefers the INTEGRITY MANIFEST (`compiler/contract-manifest.json`),
+which already records `runtime-version`. That file is the only one in a bundle
+an application can anchor to a digest it controls, via `expectedManifestHash`;
+everything else is served from the same place as the artifacts it describes.
+Since this value selects which ledger pipeline executes a call, whoever serves
+the artifacts must not be the one who decides it.
+
+`compiler/contract-info.json` is the fallback, because `compactc` only began
+emitting a manifest in 0.33 and the retained toolchain (0.31) never did. When a
+manifest IS present it vouches for that file too, so the fallback passes through
+the same integrity gate as every key and ZKIR — under the default `require` an
+unvouched-for description is refused rather than trusted.
 
 `@midnight-ntwrk/compact-js` also brands its `CompiledContract` with the
 registered symbol `Symbol.for('compact-js/CompiledContract')`, which looks like
@@ -76,12 +96,13 @@ properties and loses everything it only inherited.
 
 ### What the shape is still read for
 
-The shape decides which DECLARATION to consult, and which objects to refuse
-outright. It never decides an era.
+The shape decides an era for exactly one input — the current-era container,
+which carries its marker on the object itself. For everything else it decides
+only which declaration to consult, or refuses outright.
 
 | shape | own `tag` | own `impureCircuits` | `initialState` | verdict |
 | ----- | --------- | -------------------- | -------------- | ------- |
-| current-era container | string | absent | absent | `'ledger9'`, declared by the `tag` |
+| current-era container | string | absent | absent | `'ledger9'`, from the container itself |
 | retained-era candidate | absent | present | `Function` | ask the bundle |
 | raw current-era instance | absent | present | `AsyncFunction` | refused, by name |
 | anything else | — | — | — | refused as neither era |

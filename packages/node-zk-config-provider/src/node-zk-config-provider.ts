@@ -110,16 +110,28 @@ export class NodeZkConfigProvider<K extends string> extends ZKConfigProvider<K> 
   }
 
   /**
-   * Reads the `runtime-version` from `compiler/contract-info.json` beside the artifacts.
+   * Reports the `compact-runtime` this bundle was built against, preferring the source an
+   * application can anchor to a hash it controls.
    *
-   * Cached per provider instance, like the integrity manifest and for the same reason: the file is
-   * one statement about the whole bundle, so re-reading it once per operation would buy nothing. A
-   * FAILED read is not cached, so a bundle that becomes readable later is picked up.
+   * The INTEGRITY MANIFEST is consulted first, because `expectedManifestHash` pins it to a digest
+   * the application supplies at build time, while everything else in the bundle is fetched from the
+   * same place as the artifacts it describes. This value selects which ledger pipeline executes the
+   * call, so whoever serves the artifacts must not be the one who decides it.
+   *
+   * `compiler/contract-info.json` is the fallback, for bundles that carry no manifest at all --
+   * `compactc` only began emitting one in 0.33, which is exactly the retained-era case. It is put
+   * through the same integrity gate as every key and ZKIR, so under the default `require` an
+   * unvouched-for description is refused rather than trusted.
+   *
+   * Cached per provider instance, like the manifest and for the same reason: the answer is one
+   * statement about the whole bundle. A FAILED read is not cached.
    *
    * @returns The declared runtime version, verbatim.
-   * @throws ZkArtifactContractInfoError if the file is absent, unreadable, or declares no runtime
-   * version. Absence is a refusal rather than a default: this framework cannot name an artifact
-   * set's era on its behalf.
+   * @throws ZkArtifactContractInfoError if the description is absent or declares no runtime version.
+   * Absence is a refusal rather than a default: this framework cannot name an artifact set's era on
+   * its behalf.
+   * @throws ZkArtifactIntegrityError if the description is not covered by the manifest under a mode
+   * that requires it.
    */
   override async getArtifactRuntimeVersion(): Promise<string> {
     // The cached promise CLEARS ITSELF on failure, so a transient error is retried rather than
@@ -134,6 +146,11 @@ export class NodeZkConfigProvider<K extends string> extends ZKConfigProvider<K> 
   }
 
   private async readRuntimeVersion(): Promise<string> {
+    const manifest = await this.loadManifest();
+    if (manifest?.runtimeVersion !== undefined) {
+      return manifest.runtimeVersion;
+    }
+
     const infoPath = path.resolve(this.directory, ZK_MANIFEST_DIR, ZK_CONTRACT_INFO_FILE_NAME);
     let bytes: Buffer;
     try {
@@ -149,6 +166,14 @@ export class NodeZkConfigProvider<K extends string> extends ZKConfigProvider<K> 
       }
       throw error;
     }
+    verifyZkArtifactIntegrity({
+      manifest,
+      relativePath: `${ZK_MANIFEST_DIR}/${ZK_CONTRACT_INFO_FILE_NAME}`,
+      bytes,
+      mode: this.integrityOptions.verify ?? 'require',
+      onWarn: this.integrityOptions.onWarn
+    });
+
     return parseZkArtifactRuntimeVersion(bytes.toString('utf-8'));
   }
 

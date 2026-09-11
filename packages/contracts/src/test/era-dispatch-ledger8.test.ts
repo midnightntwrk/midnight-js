@@ -69,7 +69,8 @@ vi.mock('@midnight-ntwrk/compact-runtime', () => {
 
 // What a retained bundle declares about itself: the compact-runtime its compiler recorded in
 // `compiler/contract-info.json`. These fixtures were built by compactc 0.31.1, whose runtime is
-// 0.16.0 -- asserted against the real file in `fixtures-hf`, not assumed here.
+// 0.16.0 -- asserted against the real counter-016 file in
+// `testkit-js/testkit-js/test/counter-016-artifacts.ut.test.ts`, not assumed here.
 const RETAINED_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
 
 describe('resolveArtifactEra against the REAL retained-era artifacts', () => {
