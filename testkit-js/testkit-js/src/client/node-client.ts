@@ -46,7 +46,7 @@ export class NodeClient {
    */
   async health() {
     const url = buildUrlWithPath(this.nodeURL, '/health');
-    const response = await axios.get(url, { timeout: 1000 });
+    const response = await axios.get(url, { timeout: 15000 });
     this.logger.info(`Connected to node ${url}: ${JSON.stringify(response.data)}`);
     return response;
   }
