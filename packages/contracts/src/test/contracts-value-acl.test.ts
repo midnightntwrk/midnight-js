@@ -34,6 +34,10 @@ const DIST_INDEX_PATH = 'dist/index.js';
  * Type-only exports have no runtime binding and are pinned separately, by
  * `contracts-type-acl.test.ts`, which reads them off the barrel with the
  * compiler's own resolution.
+ *
+ * `Ledger8` is one name here and a namespace of its own behind it: the members
+ * inside it are pinned by `ledger8-namespace.test.ts`, so this list stays a
+ * list of the names a consumer imports.
  */
 const RUNTIME_EXPORTS: readonly string[] = [
   'AnyEraTxFailedError',
@@ -51,13 +55,7 @@ const RUNTIME_EXPORTS: readonly string[] = [
   'IncompleteFindContractPrivateStateConfig',
   'IndexerInconsistencyError',
   'InsertVerifierKeyTxFailedError',
-  'Ledger8AmbiguousEntryPointError',
-  'Ledger8CallTxFailedError',
-  'Ledger8DeployOnV9Error',
-  'Ledger8DeployUnmaintainableError',
-  'Ledger8RecipientUnmappableError',
-  'Ledger8SeamFailedError',
-  'Ledger8ShieldedSpendUnsupportedError',
+  'Ledger8',
   'MixedEraScopeError',
   'RETAINED_PIPELINE_ERA',
   'RemoveVerifierKeyTxFailedError',
@@ -74,7 +72,6 @@ const RUNTIME_EXPORTS: readonly string[] = [
   'createCircuitMaintenanceTxInterface',
   'createCircuitMaintenanceTxInterfaces',
   'createContractMaintenanceTxInterface',
-  'createLedger8CircuitCallTxInterface',
   'createUnprovenCallTx',
   'createUnprovenCallTxFromInitialStates',
   'createUnprovenDeployTx',

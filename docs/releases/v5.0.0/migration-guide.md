@@ -396,7 +396,7 @@ For a **deploy** the remediation is different, and it is also two steps:
 
 ### Runtime-deploy chapter: factory patterns
 
-This section is linked from `Ledger8DeployOnV9Error`
+This section is linked from `Ledger8.DeployOnV9Error`
 (`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9`). That code is **currently dormant** — do not
 write a `catch` for the class. The refusal you will actually meet is the uncoded
 `Error` described below, and it has the same remediation.
@@ -432,6 +432,17 @@ exercised against a retained artifact, discovering only at the fork that the
 artifacts it ships take a release cycle to replace.
 
 ### What a retained-era call answers with
+
+Everything the retained era publishes is reached through ONE import, the
+`Ledger8` namespace of `midnight-js-contracts`: `Ledger8.FinalizedCallTxData`
+is the result type below, `Ledger8.Contract` the constraint for a helper of
+your own, `Ledger8.CallTxFailedError` the failure class. The era prefix is
+dropped inside, so each member is the retained twin of the flat current-era
+name it mirrors. The half that serves BOTH eras -- `AnyEraFinalizedCallTxData`,
+`isLedger8Result`, `AnyEraTxFailedError`, the `*_PIPELINE_ERA` vocabulary --
+stays flat, so a handler that only receives results imports nothing
+era-specific. When the fork window closes, the namespace goes and nothing else
+moves.
 
 A call against a contract you compiled with the previous toolchain still goes
 through `submitCallTx` / `submitCallTxAsync` / `findDeployedContract`
@@ -485,7 +496,7 @@ for a contract whose state envelope is still pre-fork, read the state through
 
 A call the chain recorded with a non-success status throws by class, and the
 class differs per era: `CallTxFailedError` on the current era,
-`Ledger8CallTxFailedError` on the retained one. The retained class is NOT a
+`Ledger8.CallTxFailedError` on the retained one. The retained class is NOT a
 `CallTxFailedError` — it cannot be, because that class carries a v9-only
 record.
 
