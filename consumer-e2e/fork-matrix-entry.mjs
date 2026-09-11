@@ -793,7 +793,7 @@ const readRetainedLedger = async (key, providers, contractAddress, read) => {
   // `StateDecodeFailedError` for a tag mismatch.
   const era = await loadLedgerEra(utils.contractStateEnvelopeVersion(state.raw));
 
-  // ADR-0007: the era boundary is crossed with plain data only. `extractState`
+  // ADR-0010: the era-agnostic facade is crossed with plain data only. `extractState`
   // answers with an `EncodedStateValue`, and the twin's OWN runtime turns that
   // back into a handle. Handing over a handle minted anywhere else -- the
   // provider's module included -- is what `ledger()` refuses with

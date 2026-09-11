@@ -982,7 +982,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
     const finalized = await submitCallTx(providers, callOptions());
 
-    // ADR-0011: the handle the execution ended on, forwarded rather than
+    // ADR-0010: the handle the execution ended on, forwarded rather than
     // dropped. The marker proves it is the POST state -- the pre-call state the
     // call bound to is a different object, published on `calls[0].public`.
     expect(finalized.public.nextContractState).toEqual({ replayedCircuitId: `${CIRCUIT_ID}:post` });

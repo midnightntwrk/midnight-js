@@ -21,7 +21,7 @@
  * whole point of declaring them here: a member added to a base reaches both
  * eras' surfaces at once, so the two cannot drift as members are added.
  *
- * @see ADR-0010 for why these live in this package, and for the rule that
+ * @see ADR-0009 for why these live in this package, and for the rule that
  *      separates a data-shape base from a behaviour-bearing one.
  */
 

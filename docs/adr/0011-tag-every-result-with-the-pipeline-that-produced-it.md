@@ -1,4 +1,4 @@
-# 0012. Tag every result with the pipeline that produced it
+# 0011. Tag every result with the pipeline that produced it
 
 - Status: Accepted
 - Date: 2026-09-10
@@ -6,7 +6,7 @@
 
 ## Context
 
-ADR-0011 put live era handles on the framework's result types. A caller now
+ADR-0010 put live era handles on the framework's result types. A caller now
 holds objects whose runtime module matters: a `Ledger8ChargedState` belongs to
 `onchain-runtime-v3` and is meaningless to `ledger-v9`, and the two eras'
 encoded forms, while identical in shape, are produced by different toolchains.

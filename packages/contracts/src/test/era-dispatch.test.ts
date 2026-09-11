@@ -340,7 +340,7 @@ describe('resolveOperationEra: the head is read ONCE per operation and threaded 
 
   it('reports the era the head integer resolves to, not a latched one', async () => {
     // Two independent operations against a head that moved between them. Each resolves the era it
-    // actually read: nothing here caches across calls (see docs/adr/0008).
+    // actually read: nothing here caches across calls (see docs/adr/0007).
     const pdp = headSource(V8_HEAD, V9_HEAD);
 
     const first = await resolveOperationEra(pdp);

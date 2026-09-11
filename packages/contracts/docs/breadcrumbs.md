@@ -38,7 +38,7 @@ see [VerificationPath](./verification-path.md).
 
 There is no breadcrumb for a latched or cached era reading, because there is no
 latch: an era reading is taken per operation and threaded down as a value
-(`docs/adr/0008-never-latch-the-network-head-version.md`).
+(`docs/adr/0007-never-latch-the-network-head-version.md`).
 
 ## Every head read in this package is breadcrumbed
 

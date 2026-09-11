@@ -14,15 +14,14 @@ surface is split between the two objects, and how each side is acquired.
 ## What may cross the seam
 
 What is allowed across the era boundary is decided in
-`docs/adr/0007-cross-the-era-boundary-with-plain-data-only.md`, as amended by
-`docs/adr/0011-publish-era-handles-alongside-their-plain-data.md`. The half that
-governs THIS seam is unchanged: the era-agnostic facade trades plain data only,
-encoded at the crossing point. The `structuredClone` gate in
+`docs/adr/0010-publish-era-handles-alongside-their-plain-data.md`. The half that
+governs THIS seam is the strict one: the era-agnostic facade trades plain data
+only, encoded at the crossing point. The `structuredClone` gate in
 `src/test/era-parity.test.ts` records that rule but does not enforce it — a
 `wasm-bindgen` handle clones without throwing, so the gate would pass one
-through; see ADR-0007. What ADR-0011 changed is one
-layer up — the framework's era-SPECIFIC result types now publish handles
-alongside their plain-data members. ADR-0007 also
+through, and the ADR says so. What that ADR relaxes is one
+layer up — the framework's era-SPECIFIC result types publish handles
+alongside their plain-data members. It also
 records why the rule is a transport guarantee and not an immutability one; where
 this package does need immutability it freezes the object itself, see
 [SharedTableDiscipline](./shared-table-discipline.md). This document does not

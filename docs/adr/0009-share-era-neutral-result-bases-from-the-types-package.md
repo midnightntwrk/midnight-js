@@ -1,4 +1,4 @@
-# 0010. Share era-neutral result bases from the types package
+# 0009. Share era-neutral result bases from the types package
 
 - Status: Accepted
 - Date: 2026-09-09
@@ -116,7 +116,8 @@ Two members of the base set are deliberately NOT generic:
   `packages/protocol/src/test/v8-execute.test.ts` — `packages/types` cannot host
   the check because it may not reach the retained runtime. This is the *decoded* post-call state, not
   `Ledger8CircuitContext.currentZswapLocalState`, which is the runtime's
-  byte-encoded form and does fall under ADR-0007.
+  byte-encoded form and does fall under the era-boundary transport rule in
+  ADR-0010.
 - `newCoins` is `ShieldedCoinInfo[]`, on the same grounds.
 
 Moving a member from an era's own declaration into a base it extends is not a
@@ -159,8 +160,8 @@ is what the key-set gate asserts directly.
   the retained arm alone, for no reason anyone had written down, and are now on
   both.
 - **Follow-ups:** the retained era's missing `calls` was
-  listed here while ADR-0007 still barred a live `StateValue` from the type;
-  ADR-0011 lifted that bar, so `Ledger8ContractCall` is published with a full
+  listed here while a live `StateValue` was still barred from every result
+  type; ADR-0010 lifted that bar, so `Ledger8ContractCall` is published with a full
   call-entry parity assertion rather than an allow-list entry.
   One handle divergence is excused rather than closed: both eras hold the
   deployer's `signingKey`, `initialPrivateState`, `initialZswapState` and

@@ -496,7 +496,7 @@ export interface PublicDataProvider {
    * announces that. A cache that expires needs no such recognition. It is also
    * why this member takes no "give me a fresh one" option: under the bound,
    * every answer is at most one bound old, so there is nothing for a caller to
-   * opt out of (see ADR 0008).
+   * opt out of (see ADR 0007).
    *
    * This is the construct-path counterpart to the `protocolVersion` that every
    * read on this interface already carries. Prefer that field wherever the era

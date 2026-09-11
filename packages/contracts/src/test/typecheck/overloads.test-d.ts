@@ -379,7 +379,7 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
       | 'initialPrivateState'
       | 'initialZswapState'
     >();
-    // ADR-0011: the handle and the bytes, not one instead of the other.
+    // ADR-0010: the handle and the bytes, not one instead of the other.
     expectTypeOf<Ledger8DeployedContract<Counter016Contract>['initialState']>().toEqualTypeOf<Uint8Array>();
     expectTypeOf<
       Ledger8DeployedContract<Counter016Contract>['initialContractState']
@@ -429,7 +429,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
    */
   type CurrentEraOnlyPrivateMembers =
     // The retained composer answers with bytes; `txBytes` below is the member
-    // that carries them. See ADR-0011 for why no live transaction is built.
+    // that carries them. See ADR-0010 for why no live transaction is built.
     'unprovenTx';
 
   /** Private members the retained era adds. An era may add; it may not drop. */
@@ -442,7 +442,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
    * was not true: `StateValue.encode()` exists on the current era's handle, so
    * the pair was available and simply was not built. Both eras publish the
    * encoded form now, which is what makes it the member era-agnostic code can
-   * read -- the point ADR-0011 argued for and applied to one era.
+   * read -- the point ADR-0010 argued for and applied to one era.
    */
 
   /*
@@ -589,7 +589,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
   });
 
   it('carries the post-state as a HANDLE, and the composed transaction as bytes', () => {
-    // ADR-0011: the retained post-state is published as the runtime's own
+    // ADR-0010: the retained post-state is published as the runtime's own
     // handle rather than withheld. The composed transaction stays bytes --
     // `txBytes` is what the retained composer answers with, and deserializing
     // one eagerly would pay for an object most callers never read.
@@ -611,11 +611,11 @@ describe('both eras resolve a call to the SAME result structure', () => {
 });
 
 describe('both eras answer with the SAME contract-handle structure', () => {
-  // The handle types escaped the discipline ADR-0010 wrote for the RESULT
+  // The handle types escaped the discipline ADR-0009 wrote for the RESULT
   // types, and drifted in BOTH directions while every result-shape assertion
   // above stayed green. A base cannot hold these in step: `era`, `callTx` and
   // `deployTxData` are era-specific types on every arm, so a base over them
-  // would declare a key set and nothing else -- the shape ADR-0010 already
+  // would declare a key set and nothing else -- the shape ADR-0009 already
   // rejected for `FinalizedCallTxData`. The key-set gate is the whole
   // mechanism here.
 

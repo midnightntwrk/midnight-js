@@ -119,7 +119,7 @@ export const versionOfRecord = (record: VersionedRecord): LedgerVersion =>
  * will land in, and a stale reading is wrong exactly at the fork boundary,
  * where that question matters. `PublicDataProvider.queryLatestProtocolVersion`
  * states the same prohibition as a requirement on its implementations; this
- * parameter is a structural type, so nothing here can enforce it. See ADR 0008.
+ * parameter is a structural type, so nothing here can enforce it. See ADR 0007.
  *
  * @param source The indexer or node client to ask for the head version.
  * @returns A promise for the {@link LedgerVersion} at the network head.

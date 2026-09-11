@@ -542,7 +542,7 @@ describe('the two ledger eras run the same scenario', () => {
   // a `wasm-bindgen` handle is a plain object whose only own property is a
   // `__wbg_ptr` number, so it clones WITHOUT throwing and these assertions
   // would pass one through. What they do catch is a value that genuinely
-  // refuses to clone, such as a function or a live proxy. See ADR-0007.
+  // refuses to clone, such as a function or a live proxy. See ADR-0010.
   // Parity of the happy path is the easy half. A caller writing era-agnostic
   // code also has to be able to handle a refusal the same way on both arms, so
   // the coded refusals for a malformed envelope are pinned per era too.

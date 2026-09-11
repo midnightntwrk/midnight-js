@@ -1,4 +1,4 @@
-# 0008. Never latch the network head version
+# 0007. Never latch the network head version
 
 - Status: Accepted
 - Date: 2026-09-04
@@ -95,12 +95,24 @@ needs the head reading, and it resolves the era in three steps:
    deploy actually landed in, rather than by asserting the era it was built
    for.
 
-Step 1 is not wired into `createUnprovenDeployTx` yet, and this ADR does not
-add it. The flows in `packages/contracts` are v9-only today (`requireV9`,
-`requireV9Record`, `unwrapV9`), so resolving the era there would produce only an
-earlier refusal that `requireV9` already produces, at the cost of a request —
-a second era arm has to exist for the choice to mean anything. It lands with
-MJS-02/MJS-03, and this ADR is what it will be built against.
+Step 1 is wired for every operation that dispatches by era. `readHeadEra` makes
+the single read and `acquireHeadEra` binds the era facade to it
+(`packages/contracts/src/internal/era.ts`); `resolveOperationEra` is the one
+entry both call sites come through, and nothing caches across calls. The
+retained-era deploy arm, `runLedger8Deploy`
+(`packages/contracts/src/internal/ledger8-entry.ts`), resolves its era this way.
+
+It is NOT wired into `createUnprovenDeployTx`
+(`packages/contracts/src/unproven-deploy-tx.ts`), which composes with the
+current era unconditionally and reads no head — it does not even take a
+`PublicDataProvider`. When this ADR was written that was justified by there
+being no second era arm to choose between, so an era read there could only
+produce an earlier version of a refusal the v9-only flow already produced. That
+justification has expired: the second arm exists. What limits the exposure now
+is `deployContract`, which refuses a retained-era deploy outright with
+`Ledger8DeployUnmaintainableError`, so no caller can reach the retained deploy
+through the public surface and mis-era it. The gap is real, it is narrower than
+it was, and it is recorded here rather than closed.
 
 ## Consequences
 
@@ -122,8 +134,11 @@ MJS-02/MJS-03, and this ADR is what it will be built against.
   construction-to-inclusion window stays open — this decision narrows it to the
   smallest a client can achieve, but only step 3's after-the-fact confirmation
   detects a crossing, and only after the fact.
-- **Follow-ups:** wire the deploy-path resolution (steps 1 and 2) with
-  MJS-02/MJS-03, when a second era arm exists to choose between. If head reads
+- **Follow-ups:** wire steps 1 and 2 into `createUnprovenDeployTx`, which is
+  the one write path still composing with an era it never read. Doing so
+  changes its signature — it needs a read surface it does not currently take —
+  so it is a breaking change to a published function and its own decision. If
+  head reads
   ever become a measured cost, two shapes are open and neither is a return to
   corroboration: an expiring cache inside the provider, as the contract above
   allows; or, cheaper and with no staleness at all, coalescing concurrent

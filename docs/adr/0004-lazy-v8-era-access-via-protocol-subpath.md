@@ -3,9 +3,6 @@
 - Status: Accepted
 - Date: 2026-08-20
 - Deciders: Szymon Paluchowski
-- Amended: 2026-08-26 — the accessor moved from `src/lib/load-v8.ts` to
-  `src/lib/v8/load.ts` when `src/lib/` was split by ledger era. Paths and the
-  quoted specifier below track that move; the decision itself is unchanged.
 
 ## Context
 
@@ -129,3 +126,10 @@ Specifically:
   scatters era-loading across packages, breaks the one-copy guarantee, and
   couples consumers to the versioned ledger package name the protocol package
   exists to hide.
+
+---
+
+## Amendment — the accessor moved when `src/lib/` was split by era (2026-08-26)
+
+`loadLedger8` moved from `src/lib/load-v8.ts` to `src/lib/v8/load.ts`. Paths and
+the quoted specifier above track that move; the decision itself is unchanged.

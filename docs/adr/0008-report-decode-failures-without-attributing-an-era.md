@@ -1,4 +1,4 @@
-# 0009. Report decode failures without attributing an era
+# 0008. Report decode failures without attributing an era
 
 - Status: Accepted
 - Date: 2026-09-07

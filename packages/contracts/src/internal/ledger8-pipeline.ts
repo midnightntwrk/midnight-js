@@ -99,7 +99,7 @@ export type Ledger8Transcript<TState = DownConvertedState> = Pick<
   | 'zswapLocalState'
   | 'postContractStateEncoded'
 > & {
-  /** The state the execution ENDED on, as a live handle. See ADR-0011. */
+  /** The state the execution ENDED on, as a live handle. See ADR-0010. */
   readonly postContractState: TState;
 };
 
@@ -449,7 +449,7 @@ export interface Ledger8CallPipelineResult<TState> {
   /**
    * The UNPROVEN transaction, serialized. Bytes rather than a handle because
    * `LedgerEra.composeCallTx` answers with bytes — the era-agnostic facade
-   * trades plain data whatever ADR-0011 allows one layer up, so there is no
+   * trades plain data whatever ADR-0010 allows one layer up, so there is no
    * handle here to hold in the first place.
    *
    * Which form it crosses the PROVIDER SEAMS in is a separate question decided
@@ -492,7 +492,7 @@ export interface Ledger8CallPipelineResult<TState> {
   readonly nextZswapLocalState: ZswapLocalState;
   /**
    * The state the execution ENDED on, as the retained runtime's own live
-   * handle. Published under ADR-0011 rather than dropped: the pipeline held the
+   * handle. Published under ADR-0010 rather than dropped: the pipeline held the
    * decoded state and a caller would otherwise re-read and re-decode the same
    * bytes to get it back.
    */
@@ -769,7 +769,7 @@ export interface Ledger8DeployPipelineResult {
   readonly initialState: Uint8Array;
   /**
    * The same state as a LIVE handle, as the constructor built it. Published
-   * under ADR-0011 next to the bytes rather than instead of them: the handle is
+   * under ADR-0010 next to the bytes rather than instead of them: the handle is
    * valid only while the retained runtime that produced it is loaded, and only
    * the bytes survive a clone, a worker transfer or storage.
    */

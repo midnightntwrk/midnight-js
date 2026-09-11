@@ -58,7 +58,7 @@ return unless its decoding re-encodes to exactly that value, so reading it off
 the transcript would only be a second route to the same bytes. That same
 down-converted handle is what the call entry publishes as `preContractState`.
 
-`postContractState` was dropped for the same reason until ADR-0011 reversed the
+`postContractState` was dropped for the same reason until ADR-0010 reversed the
 rule it rested on. It carries a live retained-runtime handle, and such a handle
 may now cross this boundary provided it travels with a plain-data twin — so it
 is carried, generically, alongside `postContractStateEncoded`.
@@ -67,7 +67,7 @@ is carried, generically, alongside `postContractStateEncoded`.
 retained-era result types report the circuit's own return value on
 `private.result`, exactly as the current era does. `zswapLocalState` is carried
 for the same reason, and the caller's own new coins are filtered out of it — see
-the era-neutral result bases in `midnight-js-types` and ADR-0010 for the rule
+the era-neutral result bases in `midnight-js-types` and ADR-0009 for the rule
 that keeps the two eras' surfaces in step.
 
 ## The two arms differ only in which era object they are handed
@@ -86,7 +86,7 @@ composition performs exactly the binding that wrap performs — both reach the
 same assembly step — so calling the wrap first and then composing would do the
 binding twice. Its result is a live ledger handle, which the ERA-AGNOSTIC facade
 still may not answer with — that half of the transport rule survives
-ADR-0011 and is DOCUMENTED by the `structuredClone` gate
+ADR-0010 and is DOCUMENTED by the `structuredClone` gate
 (`packages/protocol/docs/era-seam.md`). Documented, not enforced: a
 `wasm-bindgen` instance is a plain object carrying an own `__wbg_ptr` number, so
 it clones without throwing and the gate records a meaningless value rather than

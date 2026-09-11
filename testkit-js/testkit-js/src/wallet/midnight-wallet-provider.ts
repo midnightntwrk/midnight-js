@@ -79,7 +79,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     // transaction AT a protocol version and unwraps it WITHIN an epoch, so the
     // era is data flowing through rather than a branch in the balancing itself;
     // what differs per era is only how the payload is carried (a live object, or
-    // serialized bytes -- ADR 0007).
+    // serialized bytes -- ADR 0006).
     const finalizedTransactionRecipe = await this.wallet.balanceUnboundTransaction(
       await adoptVersionedUnbound(this.wallet, tx),
       { ttl }

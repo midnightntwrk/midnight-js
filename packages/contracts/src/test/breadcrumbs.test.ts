@@ -349,7 +349,7 @@ describe('head resolution leaves a breadcrumb naming the integer AND the era', (
 
   it('leaves one breadcrumb per operation and never reports a cached reading', async () => {
     // Two operations against a head that moved between them. Nothing caches
-    // across operations (docs/adr/0008-never-latch-the-network-head-version.md),
+    // across operations (docs/adr/0007-never-latch-the-network-head-version.md),
     // so there are two breadcrumbs and they disagree, which is the observable
     // form of that rule.
     const sink = createSink();

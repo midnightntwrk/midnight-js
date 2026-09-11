@@ -133,20 +133,34 @@ asserting it.
   closing it later means a phantom type parameter, which is itself breaking.
 
 - **Follow-ups.**
-  - Dual decode: teach the read path to deserialize the v8 arm so
+  - ~~Dual decode: teach the read path to deserialize the v8 arm so
     `FinalizedTxDataV8` gains a producer. Until then a v8-era record is a
-    loud failure, not a value.
+    loud failure, not a value.~~ **Resolved.** Shipped in #1241: the read path
+    decodes per record with the era that record's own `protocolVersion`
+    selects, covered by
+    `packages/indexer-public-data-provider/src/test/dual-decode.test.ts`. A
+    v8-era record now arrives as a value on the `'v8'` arm, which is what
+    `docs/releases/v5.0.0/breaking-changes.md` tells consumers to expect.
   - Provider-side v8 support, which retires `V8PayloadUnsupportedError`.
-  - Era-guarding the contract-state read paths. `queryContractState`,
+  - ~~Era-guarding the contract-state read paths. `queryContractState`,
     `queryDeployContractState`, `queryZSwapAndContractState` and
     `watchForContractState` decode with the v9-only runtime but resolve no era,
     because their GraphQL documents do not select `protocolVersion`. On a v8-era
     network they fail inside the codec — the outcome this ADR exists to remove.
-    Closing it needs a query change, so it is deferred rather than overlooked.
+    Closing it needs a query change, so it is deferred rather than
+    overlooked.~~ **Resolved.** The query change was made:
+    `CONTRACT_STATE_QUERY`, `RAW_CONTRACT_STATE_QUERY`,
+    `CONTRACT_AND_ZSWAP_STATE_QUERY` and `CONTRACT_STATE_SUB` all select
+    `protocolVersion` as a sibling of the bytes they return
+    (`packages/indexer-public-data-provider/src/query-definitions.ts`), so the
+    era arrives with the data, per record. ADR-0007 records why that
+    per-record answer — and not a head reading — is what dates a read.
   - Branding `V8TxBytes.txBytes` as tag-prefixed bytes behind a smart
     constructor. Free while nothing produces the arm; breaking for every
     producer once v8 support ships.
-  - Migration notes in `docs/releases/v5.0.0/breaking-changes.md`.
+  - ~~Migration notes in `docs/releases/v5.0.0/breaking-changes.md`.~~
+    **Resolved.** That file carries the seam-by-seam narrowing recipe, the
+    `unwrapV9` guidance and the v8-arm read surface.
   - ~~`assertNever` is not exported from `midnight-js-utils`.~~ **Resolved.**
     Exported in #1254, which is the change that first needed it: the migration
     guide publishes a narrowing recipe that closes its `switch` with it, so the

@@ -143,7 +143,7 @@ being built now will land in, and a stale answer is wrong exactly at the fork
 boundary, where that question matters. For the era of data already read, use the
 `protocolVersion` the read itself carries — it is dated to the same block as the
 bytes and costs no extra request. The decision and the deploy-path consequences
-are recorded in ADR 0008.
+are recorded in ADR 0007.
 
 ### Watch Methods
 

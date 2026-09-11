@@ -85,7 +85,7 @@ type MutuallyAssignable<A, B> = [A] extends [B] ? ([B] extends [A] ? true : fals
 
 describe('the two runtimes decode a Zswap local state to the SAME declaration', () => {
   it('is mutually assignable, in BOTH directions', () => {
-    // ADR-0010 declares `nextZswapLocalState` once, as the CURRENT era's
+    // ADR-0009 declares `nextZswapLocalState` once, as the CURRENT era's
     // `ZswapLocalState`, rather than behind a third type parameter -- and rests
     // that on the two runtimes' declarations being interchangeable. This is the
     // check that claim names. The annotation is the assertion: if either
@@ -463,7 +463,7 @@ describe('executeCircuit against the ported spike counter-016 fixture (real comp
     expect(ledger(transcript.postContractState.data.state).round).toBe(1n);
 
     // The encoded twin, pinned to the state it CLAIMS to encode. This is the
-    // member ADR-0011 tells a consumer to persist, and nothing else in either
+    // member ADR-0010 tells a consumer to persist, and nothing else in either
     // package checks it against a real execution: the golden below omits it,
     // and every other test synthesizes the value it then asserts on. Encoding
     // the PRE-state at the production site instead would leave the whole suite

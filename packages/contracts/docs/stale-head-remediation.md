@@ -24,7 +24,7 @@ them is that the transaction belongs to the era the network has just left.
 Nothing in the node's own rejection distinguishes that case — it is an ordinary
 rejection — and the era the operation started from cannot report itself as
 stale, because nothing in a head reading announces that it has fallen behind.
-That is the rule in `docs/adr/0008-never-latch-the-network-head-version.md`.
+That is the rule in `docs/adr/0007-never-latch-the-network-head-version.md`.
 
 So the head is read once more and ERAS are compared. Never the raw
 protocol-version integers: two readings one node minor release apart
@@ -37,7 +37,7 @@ integer comparison would report that ordinary node upgrade as a fork.
 deliberately. Implementations may only serve it from a cache that expires by
 itself on a bound short relative to block time, so every answer is at most one
 bound old and there is nothing for a caller to opt out of. That is why the
-module simply asks again — see ADR 0008 and the method's own documentation in
+module simply asks again — see ADR 0007 and the method's own documentation in
 `packages/types/src/public-data-provider.ts`.
 
 `networkHeadVersion` is what the module calls: one round trip, the same

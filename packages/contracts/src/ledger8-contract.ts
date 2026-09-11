@@ -292,7 +292,7 @@ export interface Ledger8CallResultPublic extends CallResultPublicBase {
    * It does not survive `structuredClone`, a `postMessage` to a worker, or
    * serialization — anything that walks it sees `__wbg_ptr`, an integer that
    * means nothing outside its module. Serialize it yourself if you need to
-   * keep it; see ADR-0011.
+   * keep it; see ADR-0010.
    */
   readonly nextContractState: DownConvertedState;
   /**
@@ -315,7 +315,7 @@ export interface Ledger8CallResultPublic extends CallResultPublicBase {
  * declarations the current era uses — and adds `txBytes`, which stands in for
  * `unprovenTx`: the retained composer answers with serialized bytes, and
  * deserializing one into a live `UnprovenTransaction` eagerly would pay for an
- * object most callers never read. ADR-0011 records that as a cost decision;
+ * object most callers never read. ADR-0010 records that as a cost decision;
  * build one from these bytes through the same public loader if you want it.
  *
  * @remarks **Privacy-sensitive.** Carries the ZK input and output, the private
@@ -376,7 +376,7 @@ export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, K extends
  * Both state members are LIVE `onchain-runtime-v3` handles, valid only while
  * the retained runtime instance that produced them is loaded. Neither survives
  * `structuredClone`, a worker transfer or serialization; both are published
- * under ADR-0011 for callers that want the object rather than another decode of
+ * under ADR-0010 for callers that want the object rather than another decode of
  * the same bytes, and both carry an {@link EncodedStateValue} twin for
  * everything else.
  *
@@ -622,7 +622,7 @@ export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledg
   readonly signingKey: SigningKey;
   /**
    * The state the contract was deployed with, as the LIVE handle the retained
-   * constructor built. See ADR-0011 for its lifetime, and prefer
+   * constructor built. See ADR-0010 for its lifetime, and prefer
    * {@link Ledger8DeployedContract.initialState} for anything that has to
    * outlive the runtime instance.
    */

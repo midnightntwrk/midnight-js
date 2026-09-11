@@ -97,7 +97,7 @@ the same way, and one does not classify it at all:
 ### Decoders that are correct because the payload is version-tagged at the seam
 
 The provider seams carry `{ version, tx | txBytes }`, so the era is on the payload rather than
-inferred (ADR 0006, ADR 0007).
+inferred (ADR 0006).
 
 - `packages/indexer-public-data-provider/src/codec.ts` — `parseHexTransactionV8`
 - `testkit-js/testkit-js/src/wallet/wallet-transaction.ts` — both adopt seams

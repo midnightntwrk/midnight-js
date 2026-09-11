@@ -132,7 +132,7 @@ second, independent reason to reject a current-era contract.
 The two era-internal members of `Ledger8CircuitContext` — `currentQueryContext`
 and `currentZswapLocalState` — are `unknown` because they are live values of the
 previous runtime, and nothing outside that runtime may inspect them. Unchanged by
-ADR-0011, which publishes handles a caller RECEIVES: these are values the
+ADR-0010, which publishes handles a caller RECEIVES: these are values the
 framework builds and hands the runtime, and a caller has no way to construct one.
 The same reasoning is
 why `Ledger8CircuitParameters` strips the leading context: handing the caller

@@ -144,7 +144,7 @@ await a runtime; see `packages/protocol/docs/era-seam.md`.
 Nothing is cached across calls. Two operations read the head twice,
 deliberately, because an era reading that has fallen behind cannot be recognised
 as stale from the integer itself. That is the rule recorded in
-`docs/adr/0008-never-latch-the-network-head-version.md`, and it is why
+`docs/adr/0007-never-latch-the-network-head-version.md`, and it is why
 `ResolvedOperationEra` is threaded down as a plain value resolved once per
 operation rather than held anywhere.
 
@@ -225,7 +225,7 @@ The order is load-bearing:
    reported as one.
 3. On a disagreement the head is re-read, FRESH. The provider issues an uncached
    request per call, so a re-read really is a second reading of the network
-   (`docs/adr/0008-never-latch-the-network-head-version.md`).
+   (`docs/adr/0007-never-latch-the-network-head-version.md`).
 4. If the fresh head now agrees with the state, the first reading was merely
    stale: the caller can fix it by re-running, so `HeadStateEraMismatchError`
    says how.

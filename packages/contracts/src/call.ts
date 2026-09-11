@@ -162,7 +162,7 @@ export interface CallResultPublic extends CallResultPublicBase {
    * {@link CallResultPublic.nextContractState} instead when the value never
    * leaves the process that produced it.
    *
-   * @see ADR-0011 for the decision to publish the handle AND the bytes.
+   * @see ADR-0010 for the decision to publish the handle AND the bytes.
    */
   readonly nextContractStateEncoded: EncodedStateValue;
   /**
