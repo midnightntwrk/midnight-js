@@ -15,6 +15,8 @@
 
 export * from './call-result-base';
 export * from './contract';
+export * from './era-arms';
+export * from './era-support';
 export * from './errors';
 export * from './logger-provider';
 export * from './midnight-provider';

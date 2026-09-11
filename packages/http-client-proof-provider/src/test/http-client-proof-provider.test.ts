@@ -143,6 +143,15 @@ describe('httpClientProofProvider', () => {
     expect(typeof provider.proveTx).toBe('function');
   });
 
+  // Set equality rather than `toContain`: this provider serves both eras, and
+  // an era silently dropped from the declaration would have a retained-era
+  // operation refused before it started -- which `toContain` would not catch.
+  test('declares both eras, matching the two arms it is built from', () => {
+    wireMocks();
+    const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
+    expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
+  });
+
   test('builds the underlying ProvingProvider exactly once at construction', () => {
     const { constructionConfigs } = wireMocks();
     httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());

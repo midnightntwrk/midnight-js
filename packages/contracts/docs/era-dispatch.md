@@ -381,3 +381,61 @@ The seam types do not tie a provider's output era to its input era, so this
 runtime check is what upholds that invariant for these flows. `PublicDataProvider`
 reports both eras, and the v9-only flows reject a v8-era record here rather than
 widening their own public return types.
+
+## Refusing a provider set before it costs anything
+
+The table above pairs the ARTIFACT's era with the NETWORK's. A third pairing
+exists and is checked separately: the era an operation runs on against the eras
+the three write seams say they serve.
+
+`assertSeamsSupportEra(era, providers)` from `@midnight-ntwrk/midnight-js-types`
+reads `supportedEras` off `proofProvider`, `walletProvider` and
+`midnightProvider`, in that order, and refuses with `SeamEraUnsupportedError`
+naming the first that does not list `era`.
+
+This package calls it in exactly two places, one per pipeline:
+
+| pipeline | call site | era checked |
+| -------- | --------- | ----------- |
+| retained | `acquireLedger8Runtime`, immediately after `assertEraCompatible` | `resolved.head` |
+| current | `submitTxCore`, before the first seam call | `CURRENT_LEDGER_VERSION` |
+
+Two things about that table are easy to get wrong.
+
+The era checked on the retained pipeline is the HEAD era, not the artifact's.
+That is not a shortcut — it is what `submitLedger8Tx` switches on to pick the
+seam arm. A pre-fork head crosses as `{ version: 'v8', txBytes }`; a post-fork
+head is keep-state, which composes on the CURRENT era and crosses as
+`{ version: 'v9', tx }`, because the tag names the runtime that produced the
+bytes and never the toolchain that produced the contract. Checking the artifact's
+era — `'ledger8'`, so `'v8'` — would refuse every keep-state operation whose
+wallet serves only the current era, which is the ordinary post-fork wallet.
+`seam-era-support.test.ts` pins both directions of that: keep-state with
+current-era-only seams is ADMITTED, and the same head with a seam serving
+neither is refused naming `'v9'`.
+
+One call site per pipeline, not one per entry point. `acquireLedger8Runtime` is
+the single funnel every retained-era operation passes through — `runLedger8Call`
+and `runLedger8Deploy` both — so the check sits there rather than being spread
+across its callers, where a third caller would eventually forget it. That is also
+why acquisition takes the provider set (`Ledger8RuntimeProviders`) rather than
+just the read surface. That type is deliberately narrow: the head source plus the
+three declarations, and nothing else, so a reader can see that acquisition reads
+no more than it says.
+
+### Why the pre-flight check does not replace the per-seam narrowing
+
+`supportedEras` is a CLAIM by an implementation, and nothing verifies it. A
+provider that lists an era it cannot serve still fails at the seam, with
+`V8PayloadUnsupportedError` — the narrowing at each seam is unchanged and is what
+actually upholds the arm. The two errors stay distinct because their remedies
+differ: `SeamEraUnsupportedError` means wire a different provider,
+`V8PayloadUnsupportedError` means the provider you wired does not do what it
+said.
+
+What the check buys is WHERE the refusal lands. Proving is the expensive step
+and the first of the three seams, so a wallet that cannot balance a retained-era
+transaction otherwise costs a full proving cycle before anything notices. Read up
+front, the same gap costs one comparison. `v8-native.test.ts` pins that
+directly: the wallet-gap and submitter-gap cases assert `proveTx` was never
+called.

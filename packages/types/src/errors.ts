@@ -51,6 +51,7 @@ export type Seam = ProviderSeam | ReadSeam;
 // thinking they restate the constructor.
 const V8_PAYLOAD_UNSUPPORTED = 'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED';
 const UNTAGGED_PAYLOAD = 'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD';
+const SEAM_ERA_UNSUPPORTED = 'MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED';
 
 /**
  * Thrown by a provider that only speaks the v9 ledger runtime when it is
@@ -174,6 +175,59 @@ export class UntaggedPayloadError extends Error {
     );
     this.name = 'UntaggedPayloadError';
     this.received = received;
+  }
+}
+
+/**
+ * Thrown BEFORE an operation starts, when one of the three transaction seams
+ * declares that it does not serve the ledger era that operation needs.
+ *
+ * This is a pre-flight refusal, not a payload rejection. It is raised by
+ * `assertSeamsSupportEra` from the provider set alone — no payload has been
+ * built, no proof has been requested — and it exists so that an operation whose
+ * wallet cannot balance the result is refused before its proof is paid for,
+ * rather than after.
+ *
+ * Distinct from {@link V8PayloadUnsupportedError} on purpose, and the two are
+ * not interchangeable:
+ *
+ * - This error means the provider SAID SO, in `supportedEras`, before it was
+ *   asked to do anything. The remedy is to wire a different provider.
+ * - `V8PayloadUnsupportedError` means a payload reached a seam that will not
+ *   take it. That remains the defence in depth: a declaration is a claim by the
+ *   implementation, and nothing verifies it, so the narrowing at each seam still
+ *   runs and still reports its own error when a declaration turns out to be
+ *   wrong.
+ *
+ * Catch it via its stable `code`, using `hasErrorCode` from
+ * `@midnight-ntwrk/midnight-js-utils`.
+ */
+export class SeamEraUnsupportedError extends Error {
+  readonly code = SEAM_ERA_UNSUPPORTED;
+
+  /**
+   * @param seam The seam whose provider does not declare `era`. Reported in
+   *             pipeline order, so this names the first seam the operation
+   *             would have reached.
+   * @param era The ledger era the operation needs every seam to serve.
+   * @param declared What that provider does declare. An empty list is the
+   *                 honest reading of a provider carrying no declaration at all
+   *                 — which a JavaScript caller, or a consumer built against an
+   *                 older `midnight-js-types`, really can supply.
+   */
+  constructor(
+    readonly seam: ProviderSeam,
+    readonly era: string,
+    readonly declared: readonly string[]
+  ) {
+    super(
+      `This operation runs on the ${era} ledger era, but the provider wired to ${seam} declares that it serves ` +
+        `${declared.length === 0 ? 'no era at all' : declared.join(', ')}. ` +
+        `Refused before any proof was requested, because a transaction this set cannot carry end to end is not ` +
+        `worth proving. Wire a provider that serves ${era} on ${seam}, or run this operation on an era the ` +
+        `whole set serves.`
+    );
+    this.name = 'SeamEraUnsupportedError';
   }
 }
 

@@ -19,6 +19,7 @@ import {
   type EncPublicKey,
   ZswapSecretKeys
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type MidnightProvider,
   type VersionedFinalizedTransaction,
@@ -39,6 +40,22 @@ import { getInitialShieldedState, waitForFunds } from './wallet-utils';
  * Handles transaction balancing, submission, and wallet state management.
  */
 export class MidnightWalletProvider implements MidnightProvider, WalletProvider {
+  /**
+   * Both eras, declared once for both seams this class implements.
+   *
+   * Written out rather than assembled from per-era arms, which is the escape
+   * hatch the tagged interfaces deliberately keep open for a class. The two
+   * methods below genuinely run both eras through ONE call each — the wallet
+   * SDK adopts a transaction AT a protocol version, so the era is data flowing
+   * through rather than a branch — and splitting them into arms would duplicate
+   * the balance/sign/finalize sequence to no end.
+   *
+   * Read before an operation starts, by `assertSeamsSupportEra`. Frozen for the
+   * same reason the factories freeze their computed declaration: a widened
+   * declaration would let that check pass for an era this wallet cannot serve.
+   */
+  readonly supportedEras: readonly LedgerVersion[] = Object.freeze<LedgerVersion[]>(['v8', 'v9']);
+
   logger: Logger;
   readonly env: EnvironmentConfiguration;
   readonly wallet: WalletFacade;

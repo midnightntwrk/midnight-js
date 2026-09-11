@@ -15,7 +15,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { LEDGER_VERSIONS } from '../lib/shared/ledger-version';
+import { CURRENT_LEDGER_VERSION, LEDGER_VERSIONS, RETAINED_LEDGER_VERSIONS } from '../lib/shared/ledger-version';
 import * as version from '../version';
 
 // `lib/shared/ledger-version.ts` exists to break a module cycle: `errors.ts` needs
@@ -40,5 +40,46 @@ describe('LEDGER_VERSIONS', () => {
   // assertion above, and still let the two drift apart on the next edit.
   it('is the same object the version module publishes', () => {
     expect(version.LEDGER_VERSIONS).toBe(LEDGER_VERSIONS);
+  });
+});
+
+// Which era is CURRENT is a protocol fact — it is the era whose objects
+// `./ledger` hands out live — so it is declared beside the era set rather than
+// restated by every package that has to split "now" from "still supported".
+describe('CURRENT_LEDGER_VERSION', () => {
+  it('is the era whose live objects the ledger subpath serves', () => {
+    expect(CURRENT_LEDGER_VERSION).toBe('v9');
+  });
+
+  it('is a member of the era set', () => {
+    expect(LEDGER_VERSIONS).toContain(CURRENT_LEDGER_VERSION);
+  });
+
+  it('is the same value the version module publishes', () => {
+    expect(version.CURRENT_LEDGER_VERSION).toBe(CURRENT_LEDGER_VERSION);
+  });
+});
+
+describe('RETAINED_LEDGER_VERSIONS', () => {
+  // Equality against the set difference, not `toContain`: the point of this
+  // constant is that it holds EVERY era except the current one, so a member
+  // going missing has to fail here. A one-directional assertion would pass on
+  // an empty list.
+  it('is exactly the era set minus the current era', () => {
+    expect([...RETAINED_LEDGER_VERSIONS].sort()).toEqual(
+      LEDGER_VERSIONS.filter((era) => era !== CURRENT_LEDGER_VERSION).sort()
+    );
+  });
+
+  it('does not contain the current era', () => {
+    expect(RETAINED_LEDGER_VERSIONS).not.toContain(CURRENT_LEDGER_VERSION);
+  });
+
+  it('is frozen', () => {
+    expect(Object.isFrozen(RETAINED_LEDGER_VERSIONS)).toBe(true);
+  });
+
+  it('is the same object the version module publishes', () => {
+    expect(version.RETAINED_LEDGER_VERSIONS).toBe(RETAINED_LEDGER_VERSIONS);
   });
 });

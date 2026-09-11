@@ -111,6 +111,13 @@ describe('createWalletProvider', () => {
     expect(provider.getCoinPublicKey()).toBe(coinPublicKey);
     expect(provider.getEncryptionPublicKey()).toBe(encryptionPublicKey);
   });
+
+  // Compared by set equality rather than `toContain`: this adapter lifts a
+  // v9-only implementation, so declaring anything more than the current era
+  // would be a promise it cannot keep — and `toContain` would pass for it.
+  it('declares exactly the current era, matching what it refuses above', () => {
+    expect([...createWalletProvider(buildImpl(stubFinalized())).supportedEras].sort()).toEqual(['v9']);
+  });
 });
 
 describe('createMidnightProvider', () => {
@@ -152,5 +159,11 @@ describe('createMidnightProvider', () => {
 
     expect(rejection).toBeInstanceOf(UntaggedPayloadError);
     expect(submit).not.toHaveBeenCalled();
+  });
+
+  it('declares exactly the current era, matching what it refuses above', () => {
+    const provider = createMidnightProvider(vi.fn(async () => 'tx-id' as TransactionId));
+
+    expect([...provider.supportedEras].sort()).toEqual(['v9']);
   });
 });

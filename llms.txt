@@ -237,17 +237,29 @@ if (proven.version === 'v8') {
 }
 ```
 
-Two things to know before wiring a retained-era flow:
+Three things to know before wiring a retained-era flow:
 
 - `createProofProvider`, `createWalletProvider` and `createMidnightProvider` in
   `@midnight-ntwrk/midnight-js-types` all refuse the retained arm with `V8PayloadUnsupportedError`.
   That is permanent and by design: each lifts a v9-only implementation into the version-tagged
-  interface, so refusing is the adapter reporting what it wraps.
-- Consequently a retained-era transaction wired through the **wallet and midnight adapters** (but a
-  proof provider that does serve the arm) **proves successfully and is then refused at `balanceTx`**
-  — after a full proving cycle, not at the first seam. Wired through `createProofProvider` instead,
-  it is refused at `proveTx` and never proves at all. To run one end to end, implement
-  `WalletProvider` and `MidnightProvider` against the version-tagged interfaces directly.
+  interface, so refusing is the adapter reporting what it wraps. Each declares `supportedEras:
+  ['v9']` to say so up front.
+- Every seam carries a required `supportedEras`, and the framework reads all three BEFORE an
+  operation starts. So a retained-era transaction wired through the wallet and midnight adapters is
+  now refused with `SeamEraUnsupportedError` (`MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED`) naming
+  `balanceTx`, before any proving happens — not, as previously, after a full proving cycle.
+- To run one end to end, serve both eras on all three seams. Use
+  `createProofProviderFromArms` / `createWalletProviderFromArms` / `createMidnightProviderFromArms`,
+  which take one handler per era and compute `supportedEras` from the handlers supplied:
+
+  ```typescript
+  const proofProvider = createProofProviderFromArms({
+    currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
+    retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
+  });
+  ```
+
+  Implementing a version-tagged interface directly still works — write `supportedEras` yourself.
 
 A payload sent on the `v8` arm that is not a serialized transaction is refused with
 `PayloadNotATransactionError` (from `@midnight-ntwrk/midnight-js-protocol/errors`, code

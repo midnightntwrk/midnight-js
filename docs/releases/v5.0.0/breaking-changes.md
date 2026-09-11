@@ -324,15 +324,80 @@ const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction
 Both narrow the inbound payload and tag the outbound one, so the `version`
 discriminant never appears in your code.
 
-### 8f. New and changed exports
+### 8f. The three seams gained a required `supportedEras` field (#1004)
+
+`ProofProvider`, `WalletProvider` and `MidnightProvider` each declare which
+ledger eras that instance serves:
+
+```typescript
+readonly supportedEras: readonly LedgerVersion[];
+```
+
+It is REQUIRED, so an implementation that does not have it stops compiling. The
+framework reads all three before an operation starts and refuses a set that
+cannot carry the transaction end to end — with `SeamEraUnsupportedError`
+(`MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED`), before any proof is requested, rather
+than at `balanceTx` after one has been paid for.
+
+**If you use `createProofProvider`, `createWalletProvider` or
+`createMidnightProvider`, you need to change nothing.** Each lifts a v9-only
+implementation and now declares `['v9']` for you.
+
+**If you implement a seam directly**, add the field and list exactly what you
+serve:
+
+```typescript
+const midnightProvider: MidnightProvider = {
+  supportedEras: ['v9'],
+  submitTx: (tx) => wallet.submitTransaction(unwrapV9(tx, 'submitTx'))
+};
+```
+
+**If you serve more than one era**, write one handler per era instead and let
+the factory compute the declaration:
+
+```typescript
+import { createProofProviderFromArms } from '@midnight-ntwrk/midnight-js-types';
+
+const proofProvider = createProofProviderFromArms({
+  currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
+  retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
+});
+```
+
+The factory routes each request to its era's handler, tags the answer as the era
+the request carried, and raises `V8PayloadUnsupportedError` for an era you did
+not supply a handler for — the same error the un-widened provider raised before.
+`retainedEras` cannot name the current era: that era crosses the seam as a live
+ledger object, not as bytes, so registering a handler for it is a compile error.
+
+Nothing verifies the declaration. Listing an era you do not serve makes the
+failure later, not absent: the seam still narrows its own payload and still
+raises `V8PayloadUnsupportedError`.
+
+See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-arms.md).
+
+### 8g. New and changed exports
 
 **`@midnight-ntwrk/midnight-js-types`** — added: `FinalizedTxRecord`,
 `FinalizedTxDataV8`, `VersionedFinalizedTxData`, `V8TxBytes`, `V9Tx`,
 `VersionedTx`, `VersionedUnprovenTransaction`, `VersionedUnboundTransaction`,
 `VersionedFinalizedTransaction`, `ProviderSeam`, `ReadSeam`, `Seam`,
 `unwrapV9`, `V8PayloadUnsupportedError`, `UntaggedPayloadError`,
-`V9WalletProvider`, `createWalletProvider`, `createMidnightProvider`. Changed:
-`FinalizedTxData` gained `version: 'v9'`.
+`V9WalletProvider`, `createWalletProvider`, `createMidnightProvider`,
+`SeamEraUnsupportedError`, `assertSeamsSupportEra`, `TransactionSeams`,
+`EraDeclaringProvider`, `RetainedEraHandlers`, `EraArmRequest`, `erasServedBy`,
+`narrowToEraArm`, `createProofProviderFromArms`, `createWalletProviderFromArms`,
+`createMidnightProviderFromArms`, `ProofProviderArms`, `WalletProviderArms`,
+`MidnightProviderArms`, `CurrentEraProver`, `RetainedEraProver`,
+`CurrentEraBalancer`, `RetainedEraBalancer`, `CurrentEraSubmitter`,
+`RetainedEraSubmitter`. Changed: `FinalizedTxData` gained `version: 'v9'`;
+`ProofProvider`, `WalletProvider` and `MidnightProvider` each gained a required
+`supportedEras`.
+
+**`@midnight-ntwrk/midnight-js-protocol`** — added: `CURRENT_LEDGER_VERSION`,
+`CurrentLedgerVersion`, `RETAINED_LEDGER_VERSIONS`, `RetainedLedgerVersion`, on
+the barrel and on the `./version` subpath.
 
 **`@midnight-ntwrk/midnight-js-utils`** — added: `hasErrorCode`,
 `MIDNIGHT_JS_ERROR_CODES`, `MidnightJsErrorCode`, `CONTRACTS_ERROR_CODES`,
