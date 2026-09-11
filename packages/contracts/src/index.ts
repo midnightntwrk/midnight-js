@@ -40,16 +40,63 @@ export {
   DeployContractOptionsWithPrivateState,
   DeployedContract
 } from './deploy-contract';
+// The one member of `./internal/breadcrumbs` that is CONSUMER-FACING: an aggregator has to import
+// the fixed message rather than retype it. The breadcrumb TYPES stay internal -- publishing the
+// shapes would pin them as API before a second consumer has asked for them.
+export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
+// The retained-era entry points run real pipelines with this release, so the era errors below are
+// reachable from a call a consumer makes rather than only from an internal helper. Two are NOT
+// reachable through an entry point yet and are exported for completeness:
+// `Ledger8DeployUnmaintainableError` is the only refusal `deployContract`'s retained arm makes, and
+// `Ledger8DeployOnV9Error` sits behind it in the era pairing table, so the pairing refusal cannot
+// be observed until the deploy arm is wired.
+//
+// The fork-window refusals are the other group. `StaleHeadError` is raised when a submission was
+// rejected and a fresh head read confirms the network crossed the fork under the operation, and it
+// carries the two-step remediation for that operation kind. `SubmitRejectionUndiagnosedError` is
+// the other half of that diagnosis, for a head that could not be re-read or that reported an
+// EARLIER era: reported as undiagnosable rather than as a fork, because neither case establishes
+// one, and carrying a registered code of its own so a retry handler branching on `hasErrorCode`
+// behaves the same whichever failure came first. `ScopedTxEraUnsupportedError` and
+// `MixedEraScopeError` are the scoped-transaction era rules -- a scope is refused outright on a
+// head era that composes only one call per transaction, and a retained-toolchain call cannot join
+// a scope at all.
+//
+// Deliberately no test-file names here: which suite exercises what is the kind of claim that rots
+// the first time a test moves.
 export {
+  AnyEraTxFailedError,
+  BlankVerifierKeySlotError,
   CallTxFailedError,
   ContractTypeError,
   ContractTypeMismatch,
   DeployTxFailedError,
+  EraArtifactMismatchError,
+  type EraArtifactMismatchReason,
   EraInvariantViolationError,
   type EraSeam,
+  HeadStateEraMismatchError,
   IncompleteCallTxPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
-  TxFailedError} from './errors';
+  IndexerInconsistencyError,
+  Ledger8AmbiguousEntryPointError,
+  Ledger8CallTxFailedError,
+  Ledger8DeployOnV9Error,
+  Ledger8DeployUnmaintainableError,
+  Ledger8RecipientUnmappableError,
+  Ledger8SeamFailedError,
+  Ledger8ShieldedSpendUnsupportedError,
+  MixedEraScopeError,
+  ScopedTransactionIdentityMismatchError,
+  ScopedTxEraUnsupportedError,
+  StaleHeadError,
+  type StaleHeadOperationKind,
+  type SubmitRejectionUndiagnosedCause,
+  SubmitRejectionUndiagnosedError,
+  type SubmittedOperation,
+  TxFailedError,
+  UnrecognisedResultEraError,
+  VerifierKeyMismatchError} from './errors';
 export {
   findDeployedContract,
   FindDeployedContractOptions,
@@ -75,14 +122,94 @@ export {
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from './governance';
-export { submitCallTx, submitCallTxAsync } from './submit-call-tx';
+// The retained-era type family. Exported for the same reason the current era's
+// equivalents are: the entry-point OVERLOADS select these types by inference,
+// but inference alone does not let a consumer NAME one. Without these a caller
+// can make a retained-era call and still not write
+// `function handle(r: Ledger8FinalizedCallTxData<C, K>)`, declare a variable of
+// the result type, or constrain a helper of their own by `Ledger8Contract`.
+//
+// A name appearing in the emitted `.d.ts` because an overload signature
+// mentions it is NOT the same as that name being exported, and this package
+// publishes only a `"."` entry, so there is no subpath to reach them through
+// either. `Awaited<ReturnType<typeof submitCallTx>>` is no substitute: it
+// resolves from the LAST overload by design, so it hands back the current-era
+// shape -- the wrong type for a retained-era call.
+//
+// The whole family goes out together rather than just the four result types: a
+// consumer who cannot also name `Ledger8Circuit` and `Ledger8Witness` cannot
+// declare a contract type that satisfies `Ledger8Contract` in the first place.
+// The `AnyLedger8*` aliases stay internal -- they exist to widen the
+// era-dispatching IMPLEMENTATION signatures and are never a signature a caller
+// sees.
+//
+// ONE member is held back: `Ledger8DeployedContract`. The argument above is
+// that a caller who can obtain a value needs to be able to name its type --
+// and no caller can obtain this one. `deployContract`'s retained arm refuses
+// every retained-toolchain artifact with `Ledger8DeployUnmaintainableError`
+// before it touches a provider, so nothing constructs the type. Exporting it
+// would publish a documented five-member type nobody can hold, and, because it
+// extends `Ledger8FoundContract`, would make every later repair of the handle
+// surface a breaking change to a published type with no users. The two refusal
+// ERRORS are exported, because those a caller does receive and must be able to
+// catch by class. Export the type in the commit that makes the deploy arm
+// produce one.
+export {
+  CURRENT_PIPELINE_ERA,
+  type CurrentPipelineEra,
+  type PipelineEra,
+  RETAINED_PIPELINE_ERA,
+  type RetainedPipelineEra
+} from './era';
+// The receiving half of the era surface: the overloads hand a caller one era's
+// result by inference, and these let a caller who RECEIVES either one declare a
+// parameter for both and narrow it by name.
+export { type AnyEraFinalizedCallTxData, type AnyEraSubmittedCallTx, isLedger8Result } from './era-results';
+export type {
+  Ledger8CallResultPrivate,
+  Ledger8CallResultPublic,
+  Ledger8CallTxOptions,
+  Ledger8CallTxOptionsBase,
+  Ledger8CallTxOptionsWithPrivateStateId,
+  Ledger8CallTxTarget,
+  Ledger8Circuit,
+  Ledger8CircuitCallTxInterface,
+  Ledger8CircuitContext,
+  Ledger8CircuitId,
+  Ledger8CircuitParameters,
+  Ledger8CircuitResult,
+  Ledger8CircuitReturnType,
+  Ledger8ConstructorParameters,
+  Ledger8Contract,
+  Ledger8ContractCall,
+  Ledger8ContractCallPublic,
+  Ledger8ContractProviders,
+  Ledger8DeployContractOptions,
+  Ledger8DeployContractOptionsBase,
+  Ledger8FinalizedCallTxData,
+  Ledger8FinalizedCallTxPublicData,
+  Ledger8FindDeployedContractOptions,
+  Ledger8FoundContract,
+  Ledger8InitialStateResult,
+  Ledger8PrivateState,
+  Ledger8SubmittedCallTx,
+  Ledger8UnsubmittedCallTxData,
+  Ledger8Witness
+} from './ledger8-contract';
+export { submitCallTx, submitCallTxAsync, type SubmitCallTxProviders } from './submit-call-tx';
 export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
 export { submitTx, submitTxAsync, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
-export { ScopedTransactionOptions, TransactionContext, withContractScopedTransaction } from './transaction';
+export {
+  isTransactionContext,
+  ScopedTransactionOptions,
+  TransactionContext,
+  withContractScopedTransaction
+} from './transaction';
 export {
   CircuitCallTxInterface,
   createCallTxOptions,
-  createCircuitCallTxInterface} from './tx-interfaces';
+  createCircuitCallTxInterface,
+  createLedger8CircuitCallTxInterface} from './tx-interfaces';
 export {
   FinalizedCallTxData,
   FinalizedCallTxPublicData,
@@ -104,6 +231,7 @@ export {
   CallTxOptionsWithPrivateStateId,
   createUnprovenCallTx,
   createUnprovenCallTxFromInitialStates,
+  type CrossContractConfig,
   UnprovenCallTxProvidersBase,
   UnprovenCallTxProvidersWithPrivateState
 } from './unproven-call-tx';

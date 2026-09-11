@@ -44,7 +44,7 @@ MidnightProviders
 | `@midnight-ntwrk/midnight-js-node-zk-config-provider` | Node.js filesystem ZK artifact provider |
 | `@midnight-ntwrk/midnight-js-network-id` | Network identifier management |
 | `@midnight-ntwrk/midnight-js-logger-provider` | Pino logger wrapper |
-| `@midnight-ntwrk/midnight-js-utils` | Shared utilities (hex, bech32m, assertions) |
+| `@midnight-ntwrk/midnight-js-utils` | Shared utilities (hex, bech32m, assertions, error-code registry) |
 | `@midnight-ntwrk/midnight-js-compact` | Compact compiler manager |
 
 ### Testing (testkit-js/*)
@@ -71,6 +71,15 @@ MidnightProviders
 - `SucceedEntirely` - All segments succeeded
 - `FailFallible` - Guaranteed portion succeeded, fallible failed
 - `FailEntirely` - Transaction invalid
+
+### Ledger Eras and the Fork Window
+- **Ledger era**: which ledger runtime produced a payload — `'v8'` (retained, pre-fork) or `'v9'` (current). `LedgerVersion` is the union; `LEDGER_VERSIONS` is the tuple.
+- **`versionOfRecord(record)`**: the era a record was produced in, from its own `protocolVersion` (read path).
+- **`networkHeadVersion(source)`**: the era the network head is in, read fresh on every call — never cached, never latched (ADR 0008). This is the construct path.
+- **Version-tagged payloads**: the `proveTx` / `balanceTx` / `submitTx` seams carry `VersionedTx<T>` = `{ version: 'v9', tx }` | `{ version: 'v8', txBytes }`. Narrow with `unwrapV9(payload, seam)`.
+- **Version-tagged records**: `watchForTxData` / `watchForDeployTxData` return `VersionedFinalizedTxData`. Its v8 arm carries `tx`, not `txBytes`, so `unwrapV9` does not apply — narrow with a `switch` on `version` closed by `assertNever(record, '<call site>')`. The context argument is required; the message never renders the value. Reaching it raises `MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER`.
+- **Keep-state**: calling a contract deployed before the fork, after the fork, through the same unchanged call site.
+- Migration: [docs/releases/v5.0.0/migration-guide.md](docs/releases/v5.0.0/migration-guide.md). Error codes: [TROUBLESHOOTING.md](TROUBLESHOOTING.md#midnightjs-error-codes).
 
 ### Private State Security
 - Encryption: AES-256-GCM
@@ -214,6 +223,41 @@ const provenTx = unwrapV9(
 );
 ```
 
+### Proving a Retained-Era (v8) Transaction
+
+`httpClientProofProvider` and `dappConnectorProofProvider` serve BOTH ledger eras. A retained-era
+transaction crosses the seam as serialized bytes in each direction and comes back in the arm it was
+sent in, so narrow on `version` rather than calling `unwrapV9` (which exists to reject anything that
+is not the current era):
+
+```typescript
+const proven = await proofProvider.proveTx({ version: 'v8', txBytes: unprovenTxBytes });
+if (proven.version === 'v8') {
+  // proven.txBytes — the serialized, proven transaction
+}
+```
+
+Two things to know before wiring a retained-era flow:
+
+- `createProofProvider`, `createWalletProvider` and `createMidnightProvider` in
+  `@midnight-ntwrk/midnight-js-types` all refuse the retained arm with `V8PayloadUnsupportedError`.
+  That is permanent and by design: each lifts a v9-only implementation into the version-tagged
+  interface, so refusing is the adapter reporting what it wraps.
+- Consequently a retained-era transaction wired through the **wallet and midnight adapters** (but a
+  proof provider that does serve the arm) **proves successfully and is then refused at `balanceTx`**
+  — after a full proving cycle, not at the first seam. Wired through `createProofProvider` instead,
+  it is refused at `proveTx` and never proves at all. To run one end to end, implement
+  `WalletProvider` and `MidnightProvider` against the version-tagged interfaces directly.
+
+A payload sent on the `v8` arm that is not a serialized transaction is refused with
+`PayloadNotATransactionError` (from `@midnight-ntwrk/midnight-js-protocol/errors`, code
+`PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`) before any proving is attempted.
+
+The seam itself is `proveV8Transaction`, published from the leaf subpath
+`@midnight-ntwrk/midnight-js-protocol/prove` for anyone implementing a `ProofProvider` that serves
+the retained arm. Importing it does not load the v8 WASM: the runtime stays behind the dynamic
+import inside `loadLedger8`.
+
 ### DApp Connector Proof Generation
 
 ```typescript
@@ -247,7 +291,7 @@ const provingProvider = await dappConnectorProvingProvider(
 
 ```typescript
 // Single import for all core modules
-import { contracts, networkId, types, utils } from '@midnight-ntwrk/midnight-js';
+import { contracts, networkId, protocol, types, utils } from '@midnight-ntwrk/midnight-js';
 
 networkId.setNetworkId('testnet');
 const deployed = await contracts.deployContract(providers, options);
@@ -256,6 +300,106 @@ const deployed = await contracts.deployContract(providers, options);
 import { deployContract } from '@midnight-ntwrk/midnight-js/contracts';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
 ```
+
+### Annotating the Contract APIs
+
+The contract APIs are generic over a compiled contract, and several of their
+options carry a `compiledContract` field. The types needed to write those
+annotations ship from `@midnight-ntwrk/midnight-js/protocol`, so naming them
+does not require installing a second package:
+
+```typescript
+import type { CompiledContract, Contract } from '@midnight-ntwrk/midnight-js/protocol';
+import type { CallOptions, FoundContract } from '@midnight-ntwrk/midnight-js/contracts';
+
+type MyCompiled = CompiledContract.CompiledContract<Contract.Any, unknown>;
+type MyHandle = FoundContract<Contract.Any>;
+
+declare const findContract: (compiled: MyCompiled) => Promise<MyHandle>;
+declare const optionsFor: (handle: MyHandle) => CallOptions<Contract.Any, string>;
+
+const circuitCalledOn = async (compiled: MyCompiled): Promise<string> =>
+  optionsFor(await findContract(compiled)).circuitId;
+```
+
+`ContractExecutable` is exported alongside them; `CallResult.calls` is typed
+with its nested `ContractExecutable.ContractExecutable.ContractCall`.
+`CompiledContract` and `ContractExecutable` are also reachable as values
+through the barrel, as `protocol.CompiledContract` and
+`protocol.ContractExecutable`. `Contract` is a type, so it is importable only
+in type position -- there is no `protocol.Contract` value to read at runtime.
+
+The barrel also publishes the ledger era vocabulary as named exports, so a
+consumer can say which era produced a payload or a record without depending on
+`@midnight-ntwrk/midnight-js-protocol` directly. `versionOfRecord` resolves the
+era of an existing record; `networkHeadVersion` resolves the era a transaction
+built now would land in.
+
+```typescript
+import {
+  LEDGER_VERSIONS,    // the closed, frozen set: ['v8', 'v9']
+  type LedgerVersion, // 'v8' | 'v9'
+  networkHeadVersion,
+  versionOfRecord
+} from '@midnight-ntwrk/midnight-js';
+
+// Any record carrying a raw protocolVersion, e.g. a transaction or block
+// already read from the indexer.
+const era: LedgerVersion = versionOfRecord({ protocolVersion: 1_000_000 }); // 'v8'
+
+// The era at the network head, asked of a provider on every call.
+const head: LedgerVersion = await networkHeadVersion(providers.publicDataProvider);
+```
+
+Both resolvers refuse rather than guess: they raise `UnknownProtocolVersionError`
+when a `protocolVersion` is malformed (not a non-negative integer) or is
+well-formed but maps to no era this build knows. `versionOfRecord` throws;
+`networkHeadVersion` is `async` and rejects, passing a rejection from the
+source itself through unchanged. Handle it by class and rethrow anything else:
+
+```typescript
+import {
+  type ProtocolVersionUnknownReason,
+  UnknownProtocolVersionError,
+  versionOfRecord,
+  type VersionResolutionPath
+} from '@midnight-ntwrk/midnight-js';
+
+// Node major 9 is one this build has no era for, so this takes the failure path.
+try {
+  const era = versionOfRecord({ protocolVersion: 9_000_000 });
+  console.log(`written under ledger ${era}`);
+} catch (error) {
+  // Anything that is not ours is not ours to interpret. Never swallow it.
+  if (!(error instanceof UnknownProtocolVersionError)) {
+    throw error;
+  }
+
+  const path: VersionResolutionPath = error.path;            // 'read' | 'construct'
+  const reason: ProtocolVersionUnknownReason = error.reason; // 'unknown' | 'malformed'
+
+  // 'unknown' means this build predates the network; 'malformed' means the
+  // wrong field was wired into the resolver. Different fixes, so do not
+  // collapse them into one warning.
+  throw new Error(`no era on the ${path} path: ${reason}`, { cause: error });
+}
+```
+
+To discriminate on a stable string instead of a class, every error here also
+carries a `code`: `utils.hasErrorCode(error, PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ)`.
+
+The retained pre-fork (`v8`) pipeline raises its own errors, whose classes the
+barrel also publishes so a consumer can read their payload without a cast:
+`Ledger8RuntimeMissingError` (`subpath`), `ComposeFailedError` (`version`,
+`stage`, `circuitId`), `ComposeOptionError` (`version`, `option`),
+`StateDecodeFailedError` (`version`) and `UnknownLedgerVersionError`
+(`requestedVersion`). `PayloadNotATransactionError` is published alongside them
+for the `proveTx` rejection path.
+
+The retained pre-fork ledger runtime itself is **not** re-exported from the
+barrel and is absent from its static import graph, loaded only on demand when a
+`v8` contract is actually touched. Importing the barrel does pull the `v9`
+ledger and onchain-runtime, because `contracts` needs them.
 
 ### Network Setup
 
@@ -395,4 +539,6 @@ midnight-js/
 ## Links
 
 - Repository: https://github.com/midnightntwrk/midnight-js
+- Fork-window migration guide: docs/releases/v5.0.0/migration-guide.md
+- Error-code reference: TROUBLESHOOTING.md#midnightjs-error-codes
 - License: Apache 2.0

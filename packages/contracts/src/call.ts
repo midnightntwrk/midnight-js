@@ -16,21 +16,21 @@
 import type { CompiledContract, ContractExecutable  } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
-  type AlignedValue,
   type CoinPublicKey,
   type ContractAddress,
   type ContractState,
   type LogEvent,
-  type Op,
-  type StateValue,
-  type ZswapLocalState
+  type StateValue
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
+  type EncodedStateValue,
   type EncPublicKey,
   type LedgerParameters,
-  type PartitionedTranscript,
   type ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { CallResultPrivateBase, CallResultPublicBase } from '@midnight-ntwrk/midnight-js-types';
+
+import type { CurrentPipelineEra } from './era';
 
 /**
  * Describes the target of a circuit invocation.
@@ -136,52 +136,35 @@ export type CallOptions<C extends Contract.Any, PCK extends Contract.ProvableCir
  * the JS `result` value alone), extract that field explicitly rather than
  * passing the whole object across a trust boundary.
  */
-export interface CallResultPrivate<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> {
-  /**
-   * ZK representation of the circuit arguments.
-   */
-  readonly input: AlignedValue;
-  /**
-   * ZK representation of the circuit result.
-   */
-  readonly output: AlignedValue;
-  /**
-   * ZK representation of the circuit witness call results.
-   */
-  readonly privateTranscriptOutputs: AlignedValue[];
-  /**
-   * The JS representation of the value returned by the circuit.
-   */
-  readonly result: Contract.CircuitReturnType<C, PCK>;
-  /**
-   * The private state resulting from executing the circuit.
-   */
-  readonly nextPrivateState: Contract.PrivateState<C>;
-  /**
-   * The Zswap local state resulting from executing the circuit.
-   */
-  readonly nextZswapLocalState: ZswapLocalState;
-};
+export type CallResultPrivate<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
+  CallResultPrivateBase<Contract.CircuitReturnType<C, PCK>, Contract.PrivateState<C>>;
 
 /**
  * The public portions of the call result.
  */
-export interface CallResultPublic {
+export interface CallResultPublic extends CallResultPublicBase {
   /**
    * The public state resulting from executing the circuit.
    */
   readonly nextContractState: StateValue;
   /**
-   * The public transcript resulting from executing the circuit.
+   * The same state as an {@link EncodedStateValue}: the form that survives this
+   * process, a `structuredClone`, a worker transfer and storage.
+   *
+   * The handle above is valid only while the runtime instance that produced it
+   * is loaded -- anything that walks it sees `__wbg_ptr`, an integer that means
+   * nothing outside its module. `EncodedStateValue` is pinned identical across
+   * `onchain-runtime-v3`, `ledger-v8` and `ledger-v9`, so this is the member
+   * era-agnostic code reads and the one to persist, in either era.
+   *
+   * Derived from the handle rather than fetched again, so the two cannot
+   * describe different states. It costs one encode per call; read
+   * {@link CallResultPublic.nextContractState} instead when the value never
+   * leaves the process that produced it.
+   *
+   * @see ADR-0011 for the decision to publish the handle AND the bytes.
    */
-  readonly publicTranscript: Op<AlignedValue>[];
-  /**
-   * A {@link publicTranscript} partitioned into guaranteed and fallible sections.
-   * The guaranteed section of a public transcript must succeed for the corresponding
-   * transaction to be considered valid. The fallible section of a public transcript
-   * can fail without invalidating the transaction, as long as the guaranteed section succeeds.
-   */
-  readonly partitionedTranscript: PartitionedTranscript;
+  readonly nextContractStateEncoded: EncodedStateValue;
   /**
    * The MIP-0002 contract log events emitted during circuit execution. Surfaced on the `compact-js`
    * executor result and typed by `compact-runtime`'s {@link LogEvent}. This is the single
@@ -231,4 +214,12 @@ export interface CallResult<C extends Contract.Any, PCK extends Contract.Provabl
    * for a call in the tree. Treat as confidential alongside {@link private}.
    */
   readonly calls: readonly ContractExecutable.ContractExecutable.ContractCall[];
+  /**
+   * The pipeline that produced this result: always the current era here.
+   *
+   * Read off the compiled artifact, NEVER off a transaction record — the two
+   * facts disagree after the fork, and only this one says which module the
+   * objects in this result came from.
+   */
+  readonly era: CurrentPipelineEra;
 }

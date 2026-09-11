@@ -45,6 +45,8 @@ const buildTranscript = (): TranscriptPojo => ({
   privateTranscriptOutputs: [],
   preContractState: buildState(0x01),
   postContractState: buildState(0x02),
+  // The same state the handle holds, in the form that outlives the runtime.
+  postContractStateEncoded: buildState(0x02).data.state.encode(),
   privateStateAfter: {},
   partitionContext: emptyPartitionContext(),
   zswapLocalState: emptyZswapLocalState()
@@ -78,7 +80,7 @@ describe('wrapKeepStateCall defensive guard', () => {
     contractState.setOperation('increment', operation);
 
     expect(() =>
-      wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: LedgerV9.sampleContractAddress(), contractState })
+      wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: LedgerV9.sampleContractAddress(), contractState, ledgerParameters: 'initial' })
     ).toThrow(/partitionTranscripts returned no result/);
   });
 });

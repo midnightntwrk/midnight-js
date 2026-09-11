@@ -16,23 +16,36 @@
 import type { ContractCallPrototype } from '@midnightntwrk/ledger-v9';
 
 import type { EncodedStateValue } from '../era/envelope';
+import type { ContractEntryPointPojo } from '../shared/contract-state';
+import { reexpressOperationsForCurrentEra } from '../v9/operations';
 import { wrapKeepStateCall, type WrapKeepStateCallOptions } from '../v9/wrap';
 import {
   type ConstructorResultPojo,
   executeConstructor,
   type ExecuteConstructorOptions,
-  type Ledger8ConstructorRuntime
+  type Ledger8ConstructorRuntime,
+  type Ledger8DeployableContractState
 } from './deploy';
-import { type DownConvertedState, downConvertForExecution, type Ledger8CompactRuntime } from './down-convert';
+import {
+  type DownConvertedState,
+  downConvertForExecution,
+  type Ledger8ChargedState,
+  type Ledger8CompactRuntime,
+  type Ledger8StateValue
+} from './down-convert';
 import { executeCircuit, type ExecuteCircuitOptions, type Ledger8ExecutionRuntime, type TranscriptPojo } from './execute';
 import { assertSharedLedger8Instance } from './instance-guard';
 
 export type {
   ConstructorResultPojo,
+  ContractEntryPointPojo,
   DownConvertedState,
   EncodedStateValue,
   ExecuteCircuitOptions,
   ExecuteConstructorOptions,
+  Ledger8ChargedState,
+  Ledger8DeployableContractState,
+  Ledger8StateValue,
   TranscriptPojo,
   WrapKeepStateCallOptions
 };
@@ -52,6 +65,14 @@ export interface Ledger8Engine {
   executeCircuit(options: ExecuteCircuitOptions): TranscriptPojo;
   wrapKeepStateCall(options: WrapKeepStateCallOptions): ContractCallPrototype;
   executeConstructor(options: ExecuteConstructorOptions): ConstructorResultPojo;
+  /**
+   * Re-expresses a retained-era contract's entry points as a current-era contract state, so a
+   * keep-state call has an operation registry the current composer can read.
+   *
+   * Fork-crossing work, which is why it sits here rather than on either era facade: the input is
+   * what the retained decoder read off the chain, and the output is for the current ledger.
+   */
+  reexpressOperationsForCurrentEra(entryPoints: readonly ContractEntryPointPojo[]): Uint8Array;
 }
 
 /**
@@ -97,13 +118,15 @@ export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
     CostModel: glue.CostModel
   };
   const ledger8ConstructorRuntime: Ledger8ConstructorRuntime = {
-    createConstructorContext: glue.createConstructorContext
+    createConstructorContext: glue.createConstructorContext,
+    decodeZswapLocalState: glue.decodeZswapLocalState
   };
 
   return {
     downConvertForExecution: (state) => downConvertForExecution(state, ledger8CompactRuntime),
     executeCircuit: (options) => executeCircuit(options, ledger8ExecutionRuntime),
     wrapKeepStateCall,
+    reexpressOperationsForCurrentEra,
     executeConstructor: (options) => executeConstructor(options, ledger8ConstructorRuntime)
   };
 };

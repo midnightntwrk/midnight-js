@@ -28,10 +28,14 @@ longer satisfies the interface. `createWalletProvider` and
 your code.
 
 The discriminant on a read record is *derived* from the record's own
-`protocolVersion`, never asserted — so pointing the indexer provider at a
-network outside the node 2.x range now fails at the read boundary
-(`EraUnsupportedError` / `EraUnresolvableError`, both `IndexerError`
-subclasses) instead of returning a record that fails later inside the codec.
+`protocolVersion`, never asserted, and that same answer picks the ledger runtime
+that decodes the record — so a v8-era record is served on the `'v8'` arm rather
+than refused, with the pre-fork runtime acquired lazily on first use. What fails
+at the read boundary is a `protocolVersion` that maps to no era at all
+(`EraUnresolvableError`, an `IndexerError`), instead of returning a record that
+fails later inside the codec. Bytes that will not decode on the era selected for
+them stay the `DeserializationError` the runtime produced, which now names the
+era, the `protocolVersion`, the seam and the record.
 
 See [breaking-changes.md section 8](./breaking-changes.md) and
 [ADR 0006](../../adr/0006-version-tagged-payloads-at-provider-seams.md).

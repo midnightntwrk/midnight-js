@@ -21,7 +21,6 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type MidnightProvider,
-  unwrapV9,
   type VersionedFinalizedTransaction,
   type VersionedUnboundTransaction,
   type WalletProvider
@@ -32,7 +31,7 @@ import type { Logger } from 'pino';
 
 import { type EnvironmentConfiguration } from '../index';
 import { FluentWalletBuilder } from './fluent-wallet-builder';
-import { adoptFinalized, adoptUnbound, unwrapFinalized } from './wallet-transaction';
+import { adoptVersionedFinalized, adoptVersionedUnbound, unwrapVersionedFinalized } from './wallet-transaction';
 import { getInitialShieldedState, waitForFunds } from './wallet-utils';
 
 /**
@@ -76,17 +75,21 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     tx: VersionedUnboundTransaction,
     ttl: Date = ttlOneHour()
   ): Promise<VersionedFinalizedTransaction> {
-    const unbound = unwrapV9(tx, 'balanceTx');
+    // Both eras balance through the same call. The wallet SDK adopts a
+    // transaction AT a protocol version and unwraps it WITHIN an epoch, so the
+    // era is data flowing through rather than a branch in the balancing itself;
+    // what differs per era is only how the payload is carried (a live object, or
+    // serialized bytes -- ADR 0007).
     const finalizedTransactionRecipe = await this.wallet.balanceUnboundTransaction(
-      await adoptUnbound(this.wallet, unbound),
+      await adoptVersionedUnbound(this.wallet, tx),
       { ttl }
     );
     const signed = await this.wallet.signRecipe(finalizedTransactionRecipe, (payload) => this.unshieldedKeystore.signDataAsync(payload));
-    return { version: 'v9', tx: unwrapFinalized(await this.wallet.finalizeRecipe(signed)) };
+    return unwrapVersionedFinalized(this.wallet, tx.version, await this.wallet.finalizeRecipe(signed));
   }
 
   async submitTx(tx: VersionedFinalizedTransaction): Promise<string> {
-    return this.wallet.submitTransaction(await adoptFinalized(this.wallet, unwrapV9(tx, 'submitTx')));
+    return this.wallet.submitTransaction(await adoptVersionedFinalized(this.wallet, tx));
   }
 
   async start(waitForFundsInWallet = true): Promise<void> {

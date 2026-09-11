@@ -275,19 +275,38 @@ for await (const event of getAllContractEvents(provider, { contractAddress })) {
 
 ## Transaction Data
 
-`IndexerPublicDataProvider.watchForTxData` and `watchForDeployTxData` declare
-`Promise<FinalizedTxData>` — the v9 arm only, narrower than the
-`PublicDataProvider` interface they satisfy. Holding this concrete class, you
-need no narrowing. Holding the interface, you get `VersionedFinalizedTxData`
-(the closed union of this record and `FinalizedTxDataV8`) and must narrow on
-`version` before reading `tx`.
+`IndexerPublicDataProvider.watchForTxData` and `watchForDeployTxData` resolve
+`Promise<VersionedFinalizedTxData>` — the closed union of `FinalizedTxData`
+(v9) and `FinalizedTxDataV8` — exactly as the `PublicDataProvider` interface
+they satisfy does. Narrow on `version` before reading `tx`: the two arms carry
+transaction objects from different ledger runtimes, and neither runtime's
+object can be handed to the other.
 
-Either way the discriminant is resolved from the record's own
-`protocolVersion`, never asserted: a record this provider cannot decode is
-reported as `EraUnsupportedError` — or `EraUnresolvableError` when the
-`protocolVersion` maps to no known era — rather than mislabelled as v9. Both
-are `IndexerError` subclasses and both name the raw `protocolVersion` and the
-record being read.
+Each record is decoded with the runtime of the era the record itself reports.
+A v8-era record is read with the pre-fork runtime, which is acquired lazily on
+first use — a session that meets no v8 record never instantiates that WASM.
+
+The discriminant is resolved from the record's own `protocolVersion`, never
+asserted, so it cannot disagree with the `protocolVersion` beside it. Era
+resolution itself can refuse the read one way: `EraUnresolvableError`, an
+`IndexerError` naming the raw `protocolVersion` and the record, when that
+integer maps to no known ledger era. A `raw` that is not a whole hex byte
+string is refused as `IndexerDataError` before any decoder runs.
+
+Bytes that will not decode on the era selected for them surface as the
+`DeserializationError` the runtime produced, carrying the era, the
+`protocolVersion`, the seam and the record on `context.details`. This provider
+does not re-attribute that failure: a self-contradicting record and a
+`@midnightntwrk/ledger`-vN in your dApp of a different vintage than the
+network's are indistinguishable from here, and the error's own mitigation
+covers both.
+
+Two failures a read can raise are deliberately outside the `IndexerError`
+hierarchy, because neither is an indexer fault: `DeserializationError`
+(`midnight-js-utils`), which already was, and `Ledger8RuntimeMissingError`
+(`midnight-js-protocol`), raised when the pre-fork runtime cannot be acquired
+for a v8-era record — an installation or bundling problem in your own
+dependency tree.
 
 The v9 record includes:
 

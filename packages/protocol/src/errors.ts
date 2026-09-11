@@ -34,7 +34,8 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   STATE_DECODE_FAILED: 'MIDNIGHT_JS_P_STATE_DECODE_FAILED',
   UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
   LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
-  UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS'
+  UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS',
+  PAYLOAD_NOT_A_TRANSACTION: 'MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION'
 } as const);
 /** The union of every value in {@link PROTOCOL_ERROR_CODES}; the type of every error class's `code` field. */
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[keyof typeof PROTOCOL_ERROR_CODES];
@@ -397,7 +398,7 @@ export type ComposeStage =
  * @see {@link VerifierKeys}
  */
 export class ComposeFailedError extends Error {
-  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.COMPOSE_FAILED;
+  readonly code = PROTOCOL_ERROR_CODES.COMPOSE_FAILED;
 
   constructor(
     readonly version: LedgerVersion,
@@ -533,7 +534,14 @@ export class ComposeFailedError extends Error {
  * @see {@link ComposeRefusalOrder}
  * @see {@link VerifierKeys}
  */
-export type ComposeOption = 'calls' | 'contractState' | 'networkId' | 'ttl' | 'verifierKeys' | 'zswapOffer';
+export type ComposeOption =
+  | 'calls'
+  | 'contractState'
+  | 'ledgerParameters'
+  | 'networkId'
+  | 'ttl'
+  | 'verifierKeys'
+  | 'zswapOffer';
 
 /**
  * Thrown by the composition legs when one of their options cannot be used at
@@ -554,7 +562,7 @@ export type ComposeOption = 'calls' | 'contractState' | 'networkId' | 'ttl' | 'v
  * @see {@link VerifierKeys}
  */
 export class ComposeOptionError extends Error {
-  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID;
+  readonly code = PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID;
 
   constructor(
     readonly version: LedgerVersion,
@@ -573,6 +581,11 @@ export class ComposeOptionError extends Error {
       `${version} ledger era. Read the wrapped cause for what the decoder reported; it distinguishes an ` +
       'envelope tagged for a different ledger era from truncated or empty input bytes. Pass the contract ' +
       'state the era it targets produced, not an already down-converted or otherwise re-tagged one.',
+    ledgerParameters: (version) =>
+      `Failed to compose a ${version} transaction: the supplied ledger parameters could not be read by the ` +
+      `${version} ledger. They are era-tagged, so bytes read from a block of the other era will be refused ` +
+      'here — read the wrapped cause for the tag the decoder found. Pass the parameters the block this call ' +
+      'is built against served, which is what `RawContractState.ledgerParameters` carries.',
     networkId: () =>
       'Refusing to compose a transaction against an empty network id. The ledger would accept it and bake ' +
       'it into the transaction, which the network then rejects at submission. Resolve the network id for ' +
@@ -614,7 +627,7 @@ export class ComposeOptionError extends Error {
  * @see {@link FailClosedDecoding}
  */
 export class StateDecodeFailedError extends Error {
-  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED;
+  readonly code = PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED;
 
   constructor(
     readonly version: LedgerVersion,
@@ -716,5 +729,111 @@ export class UnknownLedgerVersionError extends Error {
         'protocolVersionToLedger rather than constructing the string by hand.'
     );
     this.name = 'UnknownLedgerVersionError';
+  }
+}
+
+/**
+ * The opening of the tag every serialized ledger transaction carries, on both
+ * eras.
+ *
+ * Stops before the bracketed version deliberately: a `[vN]` is the wire-schema
+ * version of the serialized OBJECT and never a ledger era — the retained era's
+ * transactions are tagged `transaction[v9]`.
+ *
+ * @see packages/contracts/docs/verification-path.md for the same rule stated
+ *      about verifier-key tags.
+ */
+export const TRANSACTION_TAG_PREFIX = 'midnight:transaction[';
+
+/**
+ * The bounds on a constructor name reported by {@link describeType}. It is
+ * CALLER DATA — `{ constructor: { name: ... } }` sets it to anything at all —
+ * so it is bounded in length and restricted to an identifier alphabet before
+ * it can reach an error message and from there a logger provider.
+ */
+const MAX_TYPE_NAME_LENGTH = 32;
+const TYPE_NAME_PATTERN = /^[A-Za-z0-9_$]+$/;
+
+/**
+ * Reads a value's constructor name, or `undefined` where it cannot be read.
+ *
+ * The read is a property access on caller data, so it can throw: an object may
+ * define `constructor` as an accessor that throws, or be an exotic object whose
+ * trap does. No operation is being attempted here — only a label chosen for a
+ * payload that has ALREADY been refused — so letting the throw propagate would
+ * replace the coded refusal with the caller's own error.
+ */
+const readConstructorName = (value: object): unknown => {
+  try {
+    return value.constructor?.name;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Names the kind of a value without reproducing any of it verbatim.
+ *
+ * Validated AFTER truncation, and that order is the point: what is checked has
+ * to be exactly what is emitted.
+ */
+const describeType = (value: unknown): string => {
+  if (value === null) {
+    return 'null';
+  }
+  if (typeof value !== 'object') {
+    return typeof value;
+  }
+  const constructorName = readConstructorName(value);
+  if (typeof constructorName !== 'string') {
+    return 'object';
+  }
+  const bounded = constructorName.slice(0, MAX_TYPE_NAME_LENGTH);
+  return TYPE_NAME_PATTERN.test(bounded) ? bounded : 'object';
+};
+
+/**
+ * Thrown when a payload handed to a proving seam is not a serialized
+ * transaction at all.
+ *
+ * Distinct from a decode failure inside the ledger runtime: this is raised
+ * before any runtime is asked to read the bytes, so it says the caller sent the
+ * wrong KIND of payload rather than a damaged one. It covers three ways that
+ * can happen — a `txBytes` field that is not a byte string, a byte string
+ * shorter than the tag prefix, and one that does not open with the prefix.
+ *
+ * @remarks Raised by `proveV8Transaction`, so it reaches application code as a
+ * `proveTx` rejection. Match it with `hasErrorCode` against
+ * `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION` rather than constructing it.
+ */
+export class PayloadNotATransactionError extends Error {
+  readonly code = PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION;
+
+  private constructor(detail: string) {
+    super(
+      `${detail} Pass the bytes produced by a sanctioned composition seam; a contract state, a ` +
+        'Zswap offer or a proof preimage is not a transaction and cannot be proved.'
+    );
+    this.name = 'PayloadNotATransactionError';
+  }
+
+  /**
+   * The `txBytes` field of a `v8` payload was not a `Uint8Array`. Reachable
+   * from JavaScript, from a consumer built against a pre-5.0.0
+   * `midnight-js-types`, or across an untyped boundary — so it is refused with
+   * a code rather than left to become a bare `TypeError`.
+   */
+  static notBytes(received: unknown): PayloadNotATransactionError {
+    return new PayloadNotATransactionError(
+      `Refusing to prove a v8 payload whose 'txBytes' is ${describeType(received)} rather than a Uint8Array.`
+    );
+  }
+
+  /** The payload is a byte string, but does not open with a transaction's tag. */
+  static wrongTag(byteLength: number): PayloadNotATransactionError {
+    return new PayloadNotATransactionError(
+      `Refusing to prove a ${byteLength}-byte payload that does not begin with the ` +
+        `'${TRANSACTION_TAG_PREFIX}' tag of a serialized ledger transaction.`
+    );
   }
 }

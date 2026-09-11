@@ -76,13 +76,13 @@ describe('withDeserializationContext', () => {
     });
   });
 
-  describe('non-Error throws (pass-through)', () => {
+  describe('non-Error throws', () => {
     it.each([
       ['string', 'just a string'],
       ['number', 42],
       ['null', null],
       ['object without name', { foo: 'bar' }]
-    ])('re-throws %s unchanged (no wrapping)', (_label, thrown) => {
+    ])('classifies a thrown %s instead of letting it escape unwrapped', (_label, thrown) => {
       let caught: unknown;
       try {
         withDeserializationContext(callSite, () => { throw thrown; });
@@ -90,8 +90,28 @@ describe('withDeserializationContext', () => {
         caught = e;
       }
 
-      expect(caught).toBe(thrown);
-      expect(isDeserializationError(caught)).toBe(false);
+      expect(isDeserializationError(caught)).toBe(true);
+      expect((caught as DeserializationError).context.caller).toBe(callSite.caller);
+    });
+
+    it('keeps the thrown value itself reachable on cause', () => {
+      const thrown = 'a wasm-bindgen Result<_, String>';
+
+      try {
+        withDeserializationContext(callSite, () => { throw thrown; });
+      } catch (e) {
+        expect((e as DeserializationError).cause).toBe(thrown);
+      }
+    });
+
+    it('classifies a non-Error whose text names a version mismatch', () => {
+      const thrown = "expected header tag 'midnight:transaction[v6]:', got 'midnight:transaction[v7]:'";
+
+      try {
+        withDeserializationContext(callSite, () => { throw thrown; });
+      } catch (e) {
+        expect((e as DeserializationError).context.classification).toBe('version-mismatch');
+      }
     });
   });
 

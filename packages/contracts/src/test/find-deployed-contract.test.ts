@@ -67,6 +67,12 @@ describe('findDeployedContract', () => {
 
   const expectBasicResult = (result: FoundContract<Contract.Any>) => {
     expect(result).toBeDefined();
+    // IDENTITY, not shape: the handle promises the artifact the caller passed
+    // and the address it asked for. A key-set parity gate proves both members
+    // exist and cannot tell either from a copy, or from the address the
+    // indexer happened to echo back on the deploy record.
+    expect(result.compiledContract).toBe(compiledContract);
+    expect(result.contractAddress).toBe(contractAddress);
     expect(result.deployTxData).toBeDefined();
     expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
     expect(result.deployTxData.public.initialContractState).toBe(contractState);

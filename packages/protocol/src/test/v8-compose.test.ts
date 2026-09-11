@@ -25,22 +25,18 @@ import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '..
 import { type ComposeV8CallOptions, composeV8CallTx } from '../lib/v8/compose';
 import type { DownConvertedState } from '../lib/v8/down-convert';
 import type { TranscriptPojo } from '../lib/v8/execute';
-import { emptyPartitionContext, emptyZswapLocalState } from './fixtures';
+import { emptyPartitionContext, emptyZswapLocalState, V8_UNPROVEN_TX_TAG } from './fixtures';
 
 const NETWORK_ID = 'test-network';
 const TTL = new Date(Date.now() + 3_600_000);
-
-// The exact tag `Transaction.serialize()` emits for an unproven
-// (SignatureEnabled/PreProof/PreBinding) transaction — derived empirically by
-// serializing an unproven transaction against the pinned
-// `@midnightntwrk/ledger-v8@8.1.2` build, not guessed.
-const V8_UNPROVEN_TX_TAG = 'midnight:transaction[v9](signature[v1],proof-preimage,embedded-fr[v1]):';
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT });
 const buildState = (byte: number): DownConvertedState => ({ data: new ocrt3.ChargedState(ocrt3.StateValue.newCell(fieldValue(byte))) });
 
-const buildTranscript = (): TranscriptPojo => ({
+const buildTranscript = (): TranscriptPojo => {
+  const postContractState = buildState(0x02);
+  return {
   circuitId: 'increment',
   result: [],
   input: fieldValue(0x10),
@@ -48,11 +44,14 @@ const buildTranscript = (): TranscriptPojo => ({
   publicTranscript: [],
   privateTranscriptOutputs: [],
   preContractState: buildState(0x01),
-  postContractState: buildState(0x02),
+  postContractState,
+  // The same state the handle holds, in the form that outlives the runtime.
+  postContractStateEncoded: postContractState.data.state.encode(),
   partitionContext: emptyPartitionContext(),
   zswapLocalState: emptyZswapLocalState(),
   privateStateAfter: {}
-});
+  };
+};
 
 // `ContractOperation.verifierKey`'s setter validates a `midnight:verifier-key[...]:`
 // tagged blob — arbitrary bytes are rejected (same rationale as
@@ -84,6 +83,8 @@ const buildCallOptions = (contractState: LedgerV8.ContractState): ComposeV8CallO
     circuitId: transcript.circuitId,
     contractAddress: LedgerV8.sampleContractAddress(),
     contractState,
+    // Named explicitly: this helper's cases are about the compose leg, not the cost model.
+    ledgerParameters: 'initial',
     transcript: {
       kind: 'unpartitioned',
       preState: transcript.preContractState.data.state.encode(),
