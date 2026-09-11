@@ -17,7 +17,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import { type LedgerVersion, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import type { RawContractState } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode, TagParseError } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it, type Mock, vi } from 'vitest';
@@ -29,6 +29,7 @@ import {
   Ledger8DeployOnV9Error} from '../errors';
 import {
   assertEraCompatible,
+  ERA_PAIRING,
   type PipelineEra,
   pipelineEraOf,
   resolveContractStateEra,
@@ -208,7 +209,9 @@ describe('pipelineEraOf: which execution pipeline an artifact belongs to', () =>
   });
 });
 
-type OperationKind = 'call' | 'deploy';
+// Read off the production signature rather than restated here. A test-local alias would make the
+// exhaustive map below a gate over itself, which is what left the kind axis unbound.
+type OperationKind = Parameters<typeof assertEraCompatible>[2];
 
 interface DispatchCell {
   readonly artifact: string;
@@ -259,6 +262,34 @@ const REFUSED_CELLS: readonly (DispatchCell & {
   }
 ];
 
+// Exhaustive maps over the three axes, in the `Record<K, K>` form this repo uses where a test has
+// to enumerate a closed set: a member added to any of the three types stops the literal below
+// compiling, which is what makes the completeness gate further down a real one.
+const ALL_PIPELINES: Record<PipelineEra, PipelineEra> = {
+  ledger8: 'ledger8',
+  ledger9: 'ledger9'
+};
+
+const ALL_HEADS: Record<LedgerVersion, LedgerVersion> = {
+  v8: 'v8',
+  v9: 'v9'
+};
+
+const ALL_KINDS: Record<OperationKind, OperationKind> = {
+  call: 'call',
+  deploy: 'deploy'
+};
+
+// The values the run-time guards exist for, asserted back in one named place so the negative tests
+// below read as the calls they are rather than as a cast each.
+//
+// `unknown`, not `string`. Typed as `string` these helpers could not express the case that matters
+// most -- a non-string key, which a member access coerces and a `switch` did not -- so every
+// negative test would have been confined to the inputs that were already safe.
+const asPipelineEra = (value: unknown): PipelineEra => value as PipelineEra;
+const asHeadEra = (value: unknown): LedgerVersion => value as LedgerVersion;
+const asOperationKind = (value: unknown): OperationKind => value as OperationKind;
+
 describe('the era dispatch table: artifact era x network head era x operation kind', () => {
   it.each(ACCEPTED_CELLS)('accepts a $artifact $kind on a $head head, routing it $route', ({ pipeline, head, kind }) => {
     expect(() => assertEraCompatible(pipeline, head, kind)).not.toThrow();
@@ -281,10 +312,16 @@ describe('the era dispatch table: artifact era x network head era x operation ki
     // differently on `kind`, so the cross product has to include it -- omitting it left
     // `ledger9/v9/deploy`, the most common post-fork operation there is, untested while this gate
     // claimed completeness.
+    //
+    // The three enumerations are `Record<K, K>` maps, not `readonly K[]` arrays. An array only
+    // asserts that each element IS a member and never that all members are listed, so a third
+    // pipeline era or a third ledger version compiled and left this gate claiming completeness
+    // over a cross product two thirds the real size. `breadcrumbs.test.ts` had the same weakness
+    // and records the same reason.
     const covered = [...ACCEPTED_CELLS.map(cellKey), ...REFUSED_CELLS.map(cellKey)];
-    const pipelines: readonly PipelineEra[] = ['ledger8', 'ledger9'];
-    const heads: readonly LedgerVersion[] = ['v8', 'v9'];
-    const kinds: readonly OperationKind[] = ['call', 'deploy'];
+    const pipelines = Object.values(ALL_PIPELINES);
+    const heads = Object.values(ALL_HEADS);
+    const kinds = Object.values(ALL_KINDS);
     const wholeCrossProduct = pipelines.flatMap((pipeline) =>
       heads.flatMap((head) => kinds.map((kind) => cellKey({ artifact: '', pipeline, head, kind })))
     );
@@ -312,6 +349,102 @@ describe('the era dispatch table: artifact era x network head era x operation ki
       expect(error).toBeInstanceOf(Ledger8DeployOnV9Error);
       expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9)).toBe(true);
       expect((error as Ledger8DeployOnV9Error).message).toMatch(/runtime-deploy|0\.18 artifacts/);
+    }
+  });
+
+  it('keeps the three exhaustive maps self-consistent, so none of them drives the wrong values', () => {
+    // The maps are compile-time gates whose VALUES are what the cross product above is built from.
+    // A copy-paste slip -- a key mapped to a sibling's value -- would compile and would quietly
+    // cover one member twice while never covering another.
+    expect(Object.keys(ALL_PIPELINES)).toEqual(Object.values(ALL_PIPELINES));
+    expect(Object.keys(ALL_HEADS)).toEqual(Object.values(ALL_HEADS));
+    expect(Object.keys(ALL_KINDS)).toEqual(Object.values(ALL_KINDS));
+  });
+
+  // The refusal is asserted on `requestedVersion`, never on the class alone. Every path out of
+  // this function that is not a ruling throws the same class, so a class-only assertion passes
+  // whichever axis was refused and whatever value it blamed -- including a value read off
+  // `Object.prototype`, which is exactly what these tests exist to rule out.
+  //
+  // That one class covers both axes is a known wart, not something asserted here as desirable:
+  // `UnknownLedgerVersionError`'s own message names `v8`/`v9`, which is the wrong vocabulary for a
+  // refused artifact era. These tests pin the VALUE blamed, and deliberately not the message.
+  const refusedEra = (pipeline: PipelineEra, head: LedgerVersion): string => {
+    try {
+      assertEraCompatible(pipeline, head, 'call');
+      return expect.unreachable(`assertEraCompatible ruled on ${String(pipeline)}/${String(head)}`);
+    } catch (error) {
+      expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+      return (error as UnknownLedgerVersionError).requestedVersion;
+    }
+  };
+
+  it('refuses an era outside either vocabulary, naming the one it could not place', () => {
+    // The build-time gate on the pairing table cannot cover these: a head era arrives as an
+    // integer resolved at run time, and a pipeline era as whatever a JavaScript caller's artifact
+    // turned out to be. Both reach this function before the table is extended for them.
+    expect(refusedEra(asPipelineEra('ledger10'), 'v9')).toBe('ledger10');
+    expect(refusedEra('ledger8', asHeadEra('v10'))).toBe('v10');
+  });
+
+  it('refuses a key that merely COERCES to an era, on either axis', () => {
+    // A member access runs `ToPropertyKey` on its key, so `{ toString: () => 'ledger9' }` selects a
+    // real row. The nested switches this table replaced compared with `===` and refused it. Without
+    // the `typeof` guards these six inputs are RULED ON, and four of them are ruled `'run'`.
+    const coercing: readonly unknown[] = [
+      { toString: () => 'ledger9' },
+      { [Symbol.toPrimitive]: () => 'ledger9' },
+      new String('ledger9'),
+      Object('ledger9')
+    ];
+
+    for (const coerces of coercing) {
+      expect(refusedEra(asPipelineEra(coerces), 'v9')).toBe(String(coerces));
+      expect(refusedEra('ledger9', asHeadEra(coerces))).toBe(String(coerces));
+    }
+  });
+
+  it('refuses the two era arguments transposed', () => {
+    // Both are era-shaped strings in adjacent positions, so this is the call a caller gets wrong.
+    expect(refusedEra(asPipelineEra('v9'), 'v9')).toBe('v9');
+    expect(refusedEra('ledger9', asHeadEra('ledger9'))).toBe('ledger9');
+  });
+
+  it('refuses a retained-era operation on a post-fork head unless it is positively a call', () => {
+    // The `'call-only'` cell is the one asymmetric ruling in the fork window, so it refuses
+    // anything that is not a call rather than admitting anything that is not a deploy. Asserting
+    // only the two declared literals would leave that direction untested -- and every value here
+    // was ADMITTED before.
+    const notCalls: readonly unknown[] = ['Deploy', 'DEPLOY', 'deploy ', '', undefined, null, 0, {}];
+
+    for (const notCall of notCalls) {
+      expect(() => assertEraCompatible('ledger8', 'v9', asOperationKind(notCall))).toThrow(Ledger8DeployOnV9Error);
+    }
+    expect(() => assertEraCompatible('ledger8', 'v9', 'call')).not.toThrow();
+  });
+
+  it('holds the table frozen and off the object prototype, at both levels', () => {
+    // The behavioural consequence of the null prototype is pinned by the test below; this pins the
+    // construction itself, because dropping either `Object.freeze` changes no behaviour any other
+    // test observes while leaving a process-wide singleton that a test double can rewrite.
+    expect(Object.isFrozen(ERA_PAIRING)).toBe(true);
+    expect(Object.getPrototypeOf(ERA_PAIRING)).toBeNull();
+
+    for (const row of Object.values(ERA_PAIRING)) {
+      expect(Object.isFrozen(row)).toBe(true);
+      expect(Object.getPrototypeOf(row)).toBeNull();
+    }
+  });
+
+  it('refuses a prototype-reachable key on either axis, blaming the key and not a prototype member', () => {
+    // The difference between a table on a null prototype and one on a plain object literal. From a
+    // literal, `ERA_PAIRING.constructor` comes back as a truthy non-cell, so the refusal moves to
+    // the OTHER axis and blames a head era that was perfectly valid; on the head axis it blames
+    // `Object.prototype.constructor` rendered as a string. Both axes are checked, because both
+    // keys are supplied from outside this package.
+    for (const inherited of ['constructor', 'toString', 'hasOwnProperty', 'valueOf', '__proto__']) {
+      expect(refusedEra(asPipelineEra(inherited), 'v9')).toBe(inherited);
+      expect(refusedEra('ledger8', asHeadEra(inherited))).toBe(inherited);
     }
   });
 
