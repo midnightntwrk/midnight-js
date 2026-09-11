@@ -33,7 +33,10 @@ import { CURRENT_PIPELINE_ERA } from './era';
 import { IncompleteCallTxPrivateStateConfig, isEffectContractError } from './errors';
 import { type ContractStates, getPublicStates, getStates, type PublicContractStates } from './get-states';
 import * as Transaction from './internal/transaction';
-import { createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver, zswapStateToNewCoins } from './internal/utils';
+import {
+  createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver,
+  zswapCallsToNewCoins
+} from './internal/utils';
 import { type TransactionContext } from './transaction';
 import type { UnsubmittedCallTxData } from './tx-model';
 
