@@ -160,7 +160,7 @@ describe('verifyZkArtifactIntegrity', () => {
     expect(onWarn.mock.calls[0][0]).toMatch(/^midnight-js:/);
   });
 
-  it('warns when the manifest is present but the entry is missing (treated as absent)', () => {
+  it('warns when the manifest is present but the entry is missing', () => {
     const onWarn = vi.fn();
     verifyZkArtifactIntegrity({ manifest, relativePath: 'keys/missing.prover', bytes: BYTES, mode: 'warn', onWarn });
     expect(onWarn).toHaveBeenCalledOnce();
@@ -186,7 +186,9 @@ describe('verifyZkArtifactIntegrity', () => {
   it('names the opt-out hatches when it throws for a missing manifest in require mode', () => {
     expect(() =>
       verifyZkArtifactIntegrity({ manifest: undefined, relativePath: 'keys/increment.prover', bytes: BYTES, mode: 'require' })
-    ).toThrow(/recompile with a manifest-emitting compactc.*verify: 'warn'.*verify: 'off'/is);
+    ).toThrow(
+      /recompile with a manifest-emitting compactc.*verify: 'require-if-present'.*verify: 'warn'.*verify: 'off'/is
+    );
   });
 
   it('rejects an artifact whose length differs from the manifest size before hashing', () => {
@@ -199,6 +201,69 @@ describe('verifyZkArtifactIntegrity', () => {
     expect(() =>
       verifyZkArtifactIntegrity({ manifest: wrongSize, relativePath: 'keys/increment.prover', bytes: BYTES, mode: 'require' })
     ).toThrow(new RegExp(`expected ${BYTES.length + 1} bytes, got ${BYTES.length}`));
+  });
+
+  describe('require-if-present mode', () => {
+    it('warns and returns when no manifest exists at all', () => {
+      const onWarn = vi.fn();
+
+      verifyZkArtifactIntegrity({
+        manifest: undefined,
+        relativePath: 'keys/increment.prover',
+        bytes: BYTES,
+        mode: 'require-if-present',
+        onWarn
+      });
+
+      expect(onWarn).toHaveBeenCalledOnce();
+      expect(onWarn.mock.calls[0][0]).toMatch(/^midnight-js:.*keys\/increment\.prover/);
+    });
+
+    it('throws when the manifest exists but has no entry for the artifact', () => {
+      const onWarn = vi.fn();
+
+      expect(() =>
+        verifyZkArtifactIntegrity({
+          manifest,
+          relativePath: 'keys/missing.prover',
+          bytes: BYTES,
+          mode: 'require-if-present',
+          onWarn
+        })
+      ).toThrow(ZkArtifactIntegrityError);
+      expect(onWarn).not.toHaveBeenCalled();
+    });
+
+    it('throws on a digest mismatch', () => {
+      const wrong = parseZkArtifactManifest(manifestJson(OTHER_HASH));
+
+      expect(() =>
+        verifyZkArtifactIntegrity({
+          manifest: wrong,
+          relativePath: 'keys/increment.prover',
+          bytes: BYTES,
+          mode: 'require-if-present'
+        })
+      ).toThrow(ZkArtifactIntegrityError);
+    });
+
+    it('rejects an artifact whose length differs from the manifest size before hashing', () => {
+      const wrongSize = parseZkArtifactManifest(
+        JSON.stringify({
+          'manifest-version': '1',
+          keys: { type: 'directory', 'increment.prover': { type: 'file', size: BYTES.length + 1, hash: BYTES_SHA256 } }
+        })
+      );
+
+      expect(() =>
+        verifyZkArtifactIntegrity({
+          manifest: wrongSize,
+          relativePath: 'keys/increment.prover',
+          bytes: BYTES,
+          mode: 'require-if-present'
+        })
+      ).toThrow(new RegExp(`expected ${BYTES.length + 1} bytes, got ${BYTES.length}`));
+    });
   });
 
   it('skips verification entirely in off mode (even on mismatch)', () => {

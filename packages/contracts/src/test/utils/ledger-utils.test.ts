@@ -74,9 +74,8 @@ const emptyTranscript: PartitionedTranscript = [undefined, undefined];
 /**
  * A real, serialized verifier key. `createUnprovenLedgerCallTx` hashes each operation's verifier
  * key into the call's key location (see `ZKConfigRegistry`), and the `ContractOperation.verifierKey`
- * setter validates the bytes against the `midnight:verifier-key[v6]:` header — so fixtures cannot
- * use arbitrary bytes. We reuse a committed compiled key; its contents are irrelevant to these
- * tests (only that it is a valid, present key).
+ * setter rejects untagged bytes — so fixtures cannot use arbitrary bytes. We reuse a committed
+ * compiled key; its contents are irrelevant to these tests (only that it is a valid, present key).
  */
 const DUMMY_VERIFIER_KEY = new Uint8Array(
   readFileSync(new URL('../resources/compiled/shielded-map/keys/deposit.verifier', import.meta.url))
