@@ -7,5 +7,3 @@
 # Variable: MAX\_SAFE\_NAME\_LENGTH
 
 > `const` **MAX\_SAFE\_NAME\_LENGTH**: `255` = `255`
-
-Defined in: packages/utils/dist/index.d.ts:350

@@ -6,14 +6,12 @@
 
 # Interface: FinalizedCallTxData\<C, PCK\>
 
-Defined in: packages/contracts/dist/index.d.ts:656
-
 Contains all information resulting from circuit execution.
 
 ## Remarks
 
 **Privacy-sensitive type.** The `private` field is a
-[CallResultPrivate](CallResultPrivate.md) carrying ZK-confidential data. Treat the whole
+[CallResultPrivate](../type-aliases/CallResultPrivate.md) carrying ZK-confidential data. Treat the whole
 object as confidential when logging, serializing, or transmitting — read
 only the `public` field or destructure specific non-sensitive fields rather
 than spreading or stringifying the whole object.
@@ -38,8 +36,6 @@ than spreading or stringifying the whole object.
 
 > `readonly` **calls**: readonly [`ContractCall`](https://github.com/midnightntwrk/midnight-sdk)[]
 
-Defined in: packages/contracts/dist/index.d.ts:186
-
 Proof data for every contract call made while executing the circuit, in execution-trace order:
 cross-contract callees first, the root call last. For a circuit that performs no cross-contract
 calls this contains a single entry (the root). Consistent with `compact-js`'s
@@ -56,11 +52,61 @@ for a call in the tree. Treat as confidential alongside [private](CallResult.md#
 
 ***
 
+### circuitId
+
+> `readonly` **circuitId**: [`ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
+
+The circuit whose call this result describes.
+
+On the result itself rather than only in the caller's own variables: a
+handler that receives a finalized result -- from a queue, a retry, a
+batch -- has the execution data and no way back to the options that
+produced it. Both eras carry it.
+
+In a scope that made several calls this names the LAST one, which is the
+call `public`, `private` and `calls` also describe: this type is one
+call's result, not the transaction's. The transaction may carry more, and
+a failure reports all of them -- `CallTxFailedError`'s `circuitId` is the
+accumulated list. The two are answering different questions, and a caller
+routing on this one is routing on the call, not the transaction.
+
+Typed as the contract's whole circuit-id union, NOT as `PCK`, and that is
+load-bearing. This type is reachable through `TransactionContext[Submit]`,
+so naming `PCK` in a property position makes the context invariant in
+`PCK`. A scope is legitimately typed with the union --
+`withContractScopedTransaction<C>` defaults it that way -- while the calls
+made inside it name one circuit each, and invariance refuses exactly that
+pairing. `SubmittedCallTx` has no scope on its path and names `PCK`
+precisely.
+
+What catches a regression here is `testkit-js-e2e`'s scoped-transaction
+test, through the repo-wide `typecheck:tests`. NOT an assertion in this
+package: reproducing the failure needs a contract whose circuits differ in
+arity, and every era-9 fixture here declares exactly one no-argument
+circuit, so an in-package assertion passes whichever way this member is
+typed. Do not add one and take it for a gate.
+
+***
+
+### era
+
+> `readonly` **era**: `"ledger9"`
+
+The pipeline that produced this result: always the current era here.
+
+Read off the compiled artifact, NEVER off a transaction record — the two
+facts disagree after the fork, and only this one says which module the
+objects in this result came from.
+
+#### Inherited from
+
+[`UnsubmittedCallTxData`](UnsubmittedCallTxData.md).[`era`](UnsubmittedCallTxData.md#era)
+
+***
+
 ### private
 
 > `readonly` **private**: [`UnsubmittedCallTxPrivateData`](UnsubmittedCallTxPrivateData.md)\<`C`, `PCK`\>
-
-Defined in: packages/contracts/dist/index.d.ts:630
 
 Private data relevant to this call transaction.
 
@@ -73,8 +119,6 @@ Private data relevant to this call transaction.
 ### public
 
 > `readonly` **public**: [`FinalizedCallTxPublicData`](FinalizedCallTxPublicData.md)
-
-Defined in: packages/contracts/dist/index.d.ts:660
 
 Public data relevant to this call transaction.
 

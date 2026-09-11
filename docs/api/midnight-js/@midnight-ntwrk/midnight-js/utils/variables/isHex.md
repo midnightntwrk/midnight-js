@@ -8,8 +8,6 @@
 
 > `const` **isHex**: (`source`, `byteLen?`) => `boolean`
 
-Defined in: packages/utils/dist/index.d.ts:288
-
 Determines if a string represents a hex-encoded sequence of bytes.
 
 ## Parameters

@@ -8,8 +8,6 @@
 
 > `const` **FailFallible**: `"FailFallible"`
 
-Defined in: packages/types/dist/index.d.ts:115
-
 Indicates that the transaction is valid but the portion of the transcript
 that is allowed to fail (the portion after a checkpoint) did fail. All effects
 from the guaranteed part of the transaction are kept but the effects from the

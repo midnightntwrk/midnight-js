@@ -8,6 +8,12 @@
 
 > **parseHexZswapState**(`s`): [`ZswapChainState`](https://github.com/midnightntwrk/midnight-ledger)
 
+Adapters that take hex-encoded indexer payloads, decode to bytes, and
+dispatch to the typed deserialization wrappers from `@midnight-ntwrk/midnight-js-utils`.
+They exist (rather than inlining) so the `caller` string is centralized and
+regression-testable. Re-exported from the package entry point, so their
+signatures are public API.
+
 ## Parameters
 
 ### s

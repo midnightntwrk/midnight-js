@@ -8,8 +8,6 @@
 
 > `const` **createCallTxOptions**: \<`C`, `PCK`\>(`compiledContract`, `circuitId`, `contractAddress`, `privateStateId`, `additionalCoinEncPublicKeyMappings`, `args`) => [`CallTxOptions`](../type-aliases/CallTxOptions.md)\<`C`, `PCK`\>
 
-Defined in: packages/contracts/dist/index.d.ts:834
-
 Creates a [CallTxOptions](../type-aliases/CallTxOptions.md) object from various data.
 
 ## Type Parameters

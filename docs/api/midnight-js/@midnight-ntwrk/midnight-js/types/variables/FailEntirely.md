@@ -8,6 +8,4 @@
 
 > `const` **FailEntirely**: `"FailEntirely"`
 
-Defined in: packages/types/dist/index.d.ts:108
-
 Indicates that the transaction is invalid.

@@ -6,8 +6,6 @@
 
 # Interface: CallOptionsBase\<C, PCK\>
 
-Defined in: packages/contracts/dist/index.d.ts:12
-
 Describes the target of a circuit invocation.
 
 ## Type Parameters
@@ -26,8 +24,6 @@ Describes the target of a circuit invocation.
 
 > `readonly` `optional` **additionalCoinEncPublicKeyMappings?**: `ReadonlyMap`\<`string`, `string`\>
 
-Defined in: packages/contracts/dist/index.d.ts:17
-
 An optional mapping of [CoinPublicKey](https://github.com/midnightntwrk/midnight-ledger) to [EncPublicKey](https://github.com/midnightntwrk/midnight-ledger) that can be used to resolve encryption
 keys for coins created during circuit execution.
 
@@ -37,8 +33,6 @@ keys for coins created during circuit execution.
 
 > `readonly` **circuitId**: `PCK`
 
-Defined in: packages/contracts/dist/index.d.ts:25
-
 The identifier of the circuit to call.
 
 ***
@@ -47,8 +41,6 @@ The identifier of the circuit to call.
 
 > `readonly` **compiledContract**: [`CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
 
-Defined in: packages/contracts/dist/index.d.ts:21
-
 The contract defining the circuit to call.
 
 ***
@@ -56,7 +48,5 @@ The contract defining the circuit to call.
 ### contractAddress
 
 > `readonly` **contractAddress**: `string`
-
-Defined in: packages/contracts/dist/index.d.ts:29
 
 The address of the contract being executed.

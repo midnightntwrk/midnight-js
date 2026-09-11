@@ -8,8 +8,6 @@
 
 > `const` **computeSha256Hex**: (`bytes`) => `string`
 
-Defined in: packages/utils/dist/index.d.ts:471
-
 Lowercase hex SHA-256 of the given bytes.
 
 ## Parameters

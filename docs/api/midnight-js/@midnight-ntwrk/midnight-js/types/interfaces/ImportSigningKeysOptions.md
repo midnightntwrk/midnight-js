@@ -6,8 +6,6 @@
 
 # Interface: ImportSigningKeysOptions
 
-Defined in: packages/types/dist/index.d.ts:582
-
 Options for importing signing keys.
 
 ## Properties
@@ -15,8 +13,6 @@ Options for importing signing keys.
 ### conflictStrategy?
 
 > `readonly` `optional` **conflictStrategy?**: `"skip"` \| `"overwrite"` \| `"error"`
-
-Defined in: packages/types/dist/index.d.ts:596
 
 How to handle conflicts when a signing key already exists for an address.
 - 'skip': Keep existing key, ignore imported key
@@ -30,8 +26,6 @@ Default: 'error'
 
 > `readonly` `optional` **maxKeys?**: `number`
 
-Defined in: packages/types/dist/index.d.ts:602
-
 Maximum number of keys to import.
 Defaults to MAX_EXPORT_SIGNING_KEYS (10000).
 Set to a lower value to limit memory usage.
@@ -41,8 +35,6 @@ Set to a lower value to limit memory usage.
 ### password?
 
 > `readonly` `optional` **password?**: `string`
-
-Defined in: packages/types/dist/index.d.ts:588
 
 Password used to decrypt the import.
 Must match the password used during export.

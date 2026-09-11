@@ -8,6 +8,4 @@
 
 > **TxStatus** = *typeof* [`FailEntirely`](../variables/FailEntirely.md) \| *typeof* [`FailFallible`](../variables/FailFallible.md) \| *typeof* [`SucceedEntirely`](../variables/SucceedEntirely.md)
 
-Defined in: packages/types/dist/index.d.ts:124
-
 The status of a transaction.

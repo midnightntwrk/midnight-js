@@ -8,6 +8,4 @@
 
 > **NetworkId** = `string`
 
-Defined in: packages/network-id/dist/index.d.ts:4
-
 A valid named Midnight network identifier.

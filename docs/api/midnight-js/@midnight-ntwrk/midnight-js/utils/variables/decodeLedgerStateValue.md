@@ -8,8 +8,6 @@
 
 > `const` **decodeLedgerStateValue**: (`encoded`, `ctx`) => [`StateValue`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/utils/dist/index.d.ts:181
-
 Decode an onchain-runtime LedgerStateValue from its
 [EncodedStateValue](https://github.com/midnightntwrk/midnight-ledger) representation (a tagged union, NOT a byte
 buffer — `StateValue.decode` operates on the structured encoding produced

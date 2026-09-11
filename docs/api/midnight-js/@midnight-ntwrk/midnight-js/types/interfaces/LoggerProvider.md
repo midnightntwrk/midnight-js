@@ -6,8 +6,6 @@
 
 # Interface: LoggerProvider
 
-Defined in: packages/types/dist/index.d.ts:427
-
 A provider for logging functions.
 
 ## Properties
@@ -16,15 +14,11 @@ A provider for logging functions.
 
 > `optional` **debug?**: `LogFn`
 
-Defined in: packages/types/dist/index.d.ts:431
-
 ***
 
 ### error?
 
 > `optional` **error?**: `LogFn`
-
-Defined in: packages/types/dist/index.d.ts:430
 
 ***
 
@@ -32,15 +26,11 @@ Defined in: packages/types/dist/index.d.ts:430
 
 > `optional` **fatal?**: `LogFn`
 
-Defined in: packages/types/dist/index.d.ts:432
-
 ***
 
 ### info?
 
 > `optional` **info?**: `LogFn`
-
-Defined in: packages/types/dist/index.d.ts:428
 
 ***
 
@@ -48,15 +38,11 @@ Defined in: packages/types/dist/index.d.ts:428
 
 > `optional` **warn?**: `LogFn`
 
-Defined in: packages/types/dist/index.d.ts:429
-
 ## Methods
 
 ### isLevelEnabled()
 
 > **isLevelEnabled**(`level`): `boolean`
-
-Defined in: packages/types/dist/index.d.ts:433
 
 #### Parameters
 

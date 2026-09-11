@@ -10,8 +10,6 @@
 
 > **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:1344
-
 ### Type Parameters
 
 #### C
@@ -43,8 +41,6 @@ Defined in: packages/contracts/dist/index.d.ts:1344
 ## Call Signature
 
 > **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
-
-Defined in: packages/contracts/dist/index.d.ts:1345
 
 ### Type Parameters
 

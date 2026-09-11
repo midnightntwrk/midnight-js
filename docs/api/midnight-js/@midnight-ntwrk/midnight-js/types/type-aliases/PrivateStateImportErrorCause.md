@@ -8,6 +8,4 @@
 
 > **PrivateStateImportErrorCause** = `"decryption_failed"` \| `"invalid_format"` \| `"conflict"` \| `"unknown"`
 
-Defined in: packages/types/dist/index.d.ts:377
-
 Cause types for private state import errors.

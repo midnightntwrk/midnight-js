@@ -10,8 +10,6 @@
 
 > **createUnprovenDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:1351
-
 ### Type Parameters
 
 #### C
@@ -35,8 +33,6 @@ Defined in: packages/contracts/dist/index.d.ts:1351
 ## Call Signature
 
 > **createUnprovenDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
-
-Defined in: packages/contracts/dist/index.d.ts:1352
 
 ### Type Parameters
 

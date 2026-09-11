@@ -8,8 +8,6 @@
 
 > `const` **deserializeLedgerParameters**: (`bytes`, `ctx`) => [`LedgerParameters`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/utils/dist/index.d.ts:167
-
 Deserialize ledger [LedgerParameters](https://github.com/midnightntwrk/midnight-ledger) from raw bytes.
 
 ## Parameters

@@ -8,6 +8,4 @@
 
 > **BlockHash** = `string`
 
-Defined in: packages/types/dist/index.d.ts:183
-
 Block identifier

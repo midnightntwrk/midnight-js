@@ -7,6 +7,7 @@ Provides common functionality for managing test wallets and environments.
 
 ## Extended by
 
+- [`ForkTestEnvironment`](ForkTestEnvironment.md)
 - [`LocalTestEnvironment`](LocalTestEnvironment.md)
 - [`RemoteTestEnvironment`](RemoteTestEnvironment.md)
 

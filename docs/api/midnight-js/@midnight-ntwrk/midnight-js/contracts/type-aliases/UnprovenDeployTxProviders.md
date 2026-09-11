@@ -8,8 +8,6 @@
 
 > **UnprovenDeployTxProviders**\<`C`\> = `Pick`\<[`ContractProviders`](ContractProviders.md)\<`C`\>, `"zkConfigProvider"` \| `"walletProvider"`\>
 
-Defined in: packages/contracts/dist/index.d.ts:1350
-
 Providers needed to create an unproven deployment transactions, just the ZK artifact
 provider and a wallet.
 

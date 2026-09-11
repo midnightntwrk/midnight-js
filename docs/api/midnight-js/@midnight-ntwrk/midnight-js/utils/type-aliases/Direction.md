@@ -8,6 +8,4 @@
 
 > **Direction** = `"data-newer-than-code"` \| `"data-older-than-code"`
 
-Defined in: packages/utils/dist/index.d.ts:32
-
 Direction of incompatibility when inferable from the error message.

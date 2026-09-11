@@ -6,8 +6,6 @@
 
 # Interface: ScopedTransactionOptions
 
-Defined in: packages/contracts/dist/index.d.ts:743
-
 Options for use when creating scoped transactions.
 
 ## Properties
@@ -15,8 +13,6 @@ Options for use when creating scoped transactions.
 ### additionalCoinEncPublicKeyMappings?
 
 > `readonly` `optional` **additionalCoinEncPublicKeyMappings?**: `ReadonlyMap`\<`string`, `string`\>
-
-Defined in: packages/contracts/dist/index.d.ts:752
 
 An optional mapping of [CoinPublicKey](https://github.com/midnightntwrk/midnight-ledger) to [EncPublicKey](https://github.com/midnightntwrk/midnight-ledger) that can be used to resolve encryption
 keys for coins created during circuit execution.
@@ -26,7 +22,5 @@ keys for coins created during circuit execution.
 ### scopeName?
 
 > `readonly` `optional` **scopeName?**: `string`
-
-Defined in: packages/contracts/dist/index.d.ts:747
 
 An optional name for the transaction scope.

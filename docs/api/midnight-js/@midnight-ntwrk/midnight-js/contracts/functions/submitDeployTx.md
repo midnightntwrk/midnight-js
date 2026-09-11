@@ -10,8 +10,6 @@
 
 > **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`FinalizedDeployTxData`](../interfaces/FinalizedDeployTxData.md)\<`C`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:1358
-
 ### Type Parameters
 
 #### C
@@ -35,8 +33,6 @@ Defined in: packages/contracts/dist/index.d.ts:1358
 ## Call Signature
 
 > **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`FinalizedDeployTxData`](../interfaces/FinalizedDeployTxData.md)\<`C`\>\>
-
-Defined in: packages/contracts/dist/index.d.ts:1359
 
 ### Type Parameters
 

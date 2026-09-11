@@ -7,5 +7,3 @@
 # Variable: MAX\_CONSECUTIVE\_REPEATED
 
 > `const` **MAX\_CONSECUTIVE\_REPEATED**: `3` = `3`
-
-Defined in: packages/utils/dist/index.d.ts:330

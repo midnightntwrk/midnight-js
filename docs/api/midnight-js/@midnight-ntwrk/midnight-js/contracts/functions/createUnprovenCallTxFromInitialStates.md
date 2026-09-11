@@ -10,8 +10,6 @@
 
 > **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`, `crossContract?`): `Promise`\<[`UnsubmittedCallTxData`](../interfaces/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:783
-
 ### Type Parameters
 
 #### C
@@ -38,7 +36,7 @@ Defined in: packages/contracts/dist/index.d.ts:783
 
 #### crossContract?
 
-`CrossContractConfig`
+[`CrossContractConfig`](../interfaces/CrossContractConfig.md)
 
 ### Returns
 
@@ -47,8 +45,6 @@ Defined in: packages/contracts/dist/index.d.ts:783
 ## Call Signature
 
 > **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`, `crossContract?`): `Promise`\<[`UnsubmittedCallTxData`](../interfaces/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
-
-Defined in: packages/contracts/dist/index.d.ts:784
 
 ### Type Parameters
 
@@ -76,7 +72,7 @@ Defined in: packages/contracts/dist/index.d.ts:784
 
 #### crossContract?
 
-`CrossContractConfig`
+[`CrossContractConfig`](../interfaces/CrossContractConfig.md)
 
 ### Returns
 

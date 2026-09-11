@@ -8,6 +8,4 @@
 
 > **Classification** = `"version-mismatch"` \| `"format-mismatch"` \| `"unknown"`
 
-Defined in: packages/utils/dist/index.d.ts:30
-
 How the classifier categorized the error.

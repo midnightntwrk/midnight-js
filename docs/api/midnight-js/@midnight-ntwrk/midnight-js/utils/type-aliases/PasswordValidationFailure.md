@@ -8,6 +8,4 @@
 
 > **PasswordValidationFailure** = `"missing"` \| `"too_short"` \| `"insufficient_classes"` \| `"repeated_characters"` \| `"sequential_pattern"`
 
-Defined in: packages/utils/dist/index.d.ts:335
-
 Reason categories for password validation failures.

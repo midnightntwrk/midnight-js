@@ -8,8 +8,6 @@
 
 > **assertManifestHash**(`rawBytes`, `expectedHash`): `void`
 
-Defined in: packages/utils/dist/index.d.ts:479
-
 Verifies raw manifest bytes against a build-time pin. Throws on mismatch.
 
 ## Parameters

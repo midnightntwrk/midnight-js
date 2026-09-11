@@ -10,8 +10,6 @@
 
 > **createUnprovenCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext?`): `Promise`\<[`UnsubmittedCallTxData`](../interfaces/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:818
-
 ### Type Parameters
 
 #### C
@@ -43,8 +41,6 @@ Defined in: packages/contracts/dist/index.d.ts:818
 ## Call Signature
 
 > **createUnprovenCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext?`): `Promise`\<[`UnsubmittedCallTxData`](../interfaces/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
-
-Defined in: packages/contracts/dist/index.d.ts:819
 
 ### Type Parameters
 

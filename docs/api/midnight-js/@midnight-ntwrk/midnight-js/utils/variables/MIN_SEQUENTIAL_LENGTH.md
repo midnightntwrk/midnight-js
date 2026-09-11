@@ -7,5 +7,3 @@
 # Variable: MIN\_SEQUENTIAL\_LENGTH
 
 > `const` **MIN\_SEQUENTIAL\_LENGTH**: `4` = `4`
-
-Defined in: packages/utils/dist/index.d.ts:331

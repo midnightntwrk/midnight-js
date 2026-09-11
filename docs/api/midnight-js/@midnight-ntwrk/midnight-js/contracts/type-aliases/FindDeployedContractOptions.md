@@ -8,8 +8,6 @@
 
 > **FindDeployedContractOptions**\<`C`\> = [`FindDeployedContractOptionsBase`](../interfaces/FindDeployedContractOptionsBase.md)\<`C`\> \| [`FindDeployedContractOptionsExistingPrivateState`](../interfaces/FindDeployedContractOptionsExistingPrivateState.md)\<`C`\> \| [`FindDeployedContractOptionsStorePrivateState`](../interfaces/FindDeployedContractOptionsStorePrivateState.md)\<`C`\>
 
-Defined in: packages/contracts/dist/index.d.ts:915
-
 Configuration for [findDeployedContract](../functions/findDeployedContract.md).
 
 ## Type Parameters

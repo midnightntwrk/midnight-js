@@ -6,8 +6,6 @@
 
 # Interface: FinalizedDeployTxData\<C\>
 
-Defined in: packages/contracts/dist/index.d.ts:601
-
 Data for a finalized deploy transaction submitted in this process.
 
 ## Remarks
@@ -37,11 +35,25 @@ not an intended use.
 
 ## Properties
 
+### era
+
+> `readonly` **era**: `"ledger9"`
+
+The pipeline that produced this result: always the current era here.
+
+Read off the compiled artifact, NEVER off a transaction record — the two
+facts disagree after the fork, and only this one says which module the
+objects in this result came from.
+
+#### Inherited from
+
+[`UnsubmittedDeployTxDataBase`](UnsubmittedDeployTxDataBase.md).[`era`](UnsubmittedDeployTxDataBase.md#era)
+
+***
+
 ### private
 
 > `readonly` **private**: [`UnsubmittedDeployTxPrivateDataFull`](UnsubmittedDeployTxPrivateDataFull.md)\<`C`\>
-
-Defined in: packages/contracts/dist/index.d.ts:559
 
 The data of this transaction that is only visible on the user device.
 
@@ -54,8 +66,6 @@ The data of this transaction that is only visible on the user device.
 ### public
 
 > `readonly` **public**: [`FinalizedDeployTxPublicData`](FinalizedDeployTxPublicData.md)
-
-Defined in: packages/contracts/dist/index.d.ts:605
 
 The data of this transaction that is visible on the blockchain.
 
