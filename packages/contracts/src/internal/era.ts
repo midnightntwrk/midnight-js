@@ -401,10 +401,67 @@ export const resolveOperationEra = async (
 };
 
 /**
+ * How one `(artifact era, head era)` pair may run, before the operation kind is taken into
+ * account.
+ *
+ * A closed set rather than a boolean: the pair that admits calls and refuses deploys is a cell in
+ * its own right, and collapsing it into "allowed" would lose the one asymmetry the fork window
+ * has.
+ */
+export type EraPairing =
+  /** Both kinds run. */
+  | 'run'
+  /** Calls run -- as keep-state, when the head has moved past the artifact -- and deploys do not. */
+  | 'call-only'
+  /** Neither kind runs: the artifact is from an era the network head has not reached. */
+  | 'artifact-newer-than-head';
+
+/**
+ * The pairing table {@link assertEraCompatible} rules from: one row per {@link PipelineEra}, one
+ * column per `LedgerVersion`.
+ *
+ * This declaration is the one place the two era vocabularies are bound together. They stay
+ * separate types because they answer different questions -- which era built the caller's artifact,
+ * and which era the network head is on -- but they may not drift apart in size. A member added to
+ * either set leaves this table short of a row or a column and the annotation refuses it, so a
+ * further era is a BUILD failure here rather than a refusal at run time.
+ *
+ * @see {@link EraDispatch} for the table in full and why the deploy cell differs.
+ * @see `packages/protocol/docs/shared-table-discipline.md` for the construction every era-keyed
+ * table in this tree uses.
+ */
+export type EraPairingTable = Readonly<Record<PipelineEra, Readonly<Record<LedgerVersion, EraPairing>>>>;
+
+// Null prototype and frozen, for the reason `packages/protocol/docs/shared-table-discipline.md`
+// gives: both keys reach here from caller- or network-supplied values, and a plain object literal
+// resolves `constructor` and `toString` through `Object.prototype` to truthy non-cells.
+//
+// Exported so `src/test/typecheck/era-pairing.test-d.ts` can assert the DECLARED type. Dropping
+// the annotation for an inferred `as const` would leave every runtime test green while the
+// build-time gate this table exists for was gone.
+export const ERA_PAIRING: EraPairingTable = Object.freeze(
+  Object.assign(Object.create(null) as Record<PipelineEra, Readonly<Record<LedgerVersion, EraPairing>>>, {
+    ledger8: Object.freeze(
+      Object.assign(Object.create(null) as Record<LedgerVersion, EraPairing>, {
+        v8: 'run',
+        v9: 'call-only'
+      } satisfies Record<LedgerVersion, EraPairing>)
+    ),
+    ledger9: Object.freeze(
+      Object.assign(Object.create(null) as Record<LedgerVersion, EraPairing>, {
+        v8: 'artifact-newer-than-head',
+        v9: 'run'
+      } satisfies Record<LedgerVersion, EraPairing>)
+    )
+  } satisfies Record<PipelineEra, Readonly<Record<LedgerVersion, EraPairing>>>)
+);
+
+/**
  * Refuses an operation whose artifact era and network head era cannot be run together.
  *
- * Holds the whole dispatch table, and every cell is ruled rather than left to fall through. A
- * retained-era DEPLOY on a post-fork head is the one cell where calls and deploys differ.
+ * Rules every cell of {@link ERA_PAIRING} rather than letting one fall through. A retained-era
+ * DEPLOY on a post-fork head is the one cell where calls and deploys differ, and the `'call-only'`
+ * verdict is where that difference lives.
  *
  * Returns nothing. Which pipeline runs is the `(pipeline, head)` pair the caller already holds;
  * this decides only whether that pair may run, so it does not restate the pair as a third value
@@ -418,39 +475,37 @@ export const resolveOperationEra = async (
  * @throws EraArtifactMismatchError with reason `'current-era-artifact-on-pre-fork-head'` for a
  * current-era artifact on a pre-fork head.
  * @throws Ledger8DeployOnV9Error for a retained-era deploy on a post-fork head.
- * @throws UnknownLedgerVersionError if a ledger era is added without a cell here.
+ * @throws UnknownLedgerVersionError naming whichever of the two eras has no cell here, if one is
+ * added without extending the table.
  */
 export const assertEraCompatible = (pipeline: PipelineEra, head: LedgerVersion, kind: 'call' | 'deploy'): void => {
-  switch (pipeline) {
-    case 'ledger9':
-      switch (head) {
-        case 'v9':
-          return;
-        case 'v8':
-          throw new EraArtifactMismatchError('current-era-artifact-on-pre-fork-head');
-        default: {
-          // The runtime throw is not redundant with the compile-time gate: a new era reaches here
-          // from a real head integer before this switch is updated.
-          const unhandled: never = head;
-          throw new UnknownLedgerVersionError(String(unhandled));
-        }
+  // Looked up and checked, never indexed straight into the switch. The compile-time gate on
+  // ERA_PAIRING does not cover the value that arrives from a real head integer, or from a caller's
+  // artifact, before the table is extended -- and a missing cell has to refuse rather than reach a
+  // neighbour's ruling. The annotations widen both lookups so the checks are comparisons the
+  // compiler keeps rather than ones it reports as impossible.
+  const rulings: Readonly<Record<LedgerVersion, EraPairing>> | undefined = ERA_PAIRING[pipeline];
+  if (rulings === undefined) {
+    throw new UnknownLedgerVersionError(String(pipeline));
+  }
+  const verdict: EraPairing | undefined = rulings[head];
+  if (verdict === undefined) {
+    throw new UnknownLedgerVersionError(String(head));
+  }
+
+  switch (verdict) {
+    case 'run':
+      return;
+    case 'call-only':
+      if (kind === 'deploy') {
+        throw new Ledger8DeployOnV9Error();
       }
-    case 'ledger8':
-      switch (head) {
-        case 'v9':
-          if (kind === 'deploy') {
-            throw new Ledger8DeployOnV9Error();
-          }
-          return;
-        case 'v8':
-          return;
-        default: {
-          const unhandled: never = head;
-          throw new UnknownLedgerVersionError(String(unhandled));
-        }
-      }
+      return;
+    case 'artifact-newer-than-head':
+      throw new EraArtifactMismatchError('current-era-artifact-on-pre-fork-head');
     default: {
-      const unhandled: never = pipeline;
+      // A verdict added to EraPairing without an arm here stops this assignment type-checking.
+      const unhandled: never = verdict;
       throw new UnknownLedgerVersionError(String(unhandled));
     }
   }

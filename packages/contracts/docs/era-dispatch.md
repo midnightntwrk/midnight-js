@@ -196,9 +196,43 @@ The function returns nothing. Which pipeline runs is the `(pipeline, head)` pair
 the caller already holds; this decides only whether that pair may run, so it does
 not restate the pair as a third value that could disagree with it.
 
-Each `default` arm carries a compile-time exhaustiveness gate AND a runtime
-throw, and the runtime throw is not redundant with it: a new era reaches the
-switch from a real head integer before the switch is updated.
+The rulings live in a DATA table, `ERA_PAIRING`, rather than in a chain of
+switches: one row per `PipelineEra`, one column per `LedgerVersion`, on a null
+prototype and frozen — the construction every era-keyed table in this tree uses
+(`packages/protocol/docs/shared-table-discipline.md`). Each cell holds one
+`EraPairing` verdict, `'run'`, `'call-only'` or `'artifact-newer-than-head'`,
+and `assertEraCompatible` turns that verdict and the operation kind into the
+refusal. `'call-only'` is where the deploy asymmetry above lives.
+
+### The table is where the two era vocabularies are bound
+
+`PipelineEra` and `LedgerVersion` name different facts and stay separate types.
+One says which era built the caller's artifact, the other which era the network
+head is on, and after the fork they DISAGREE: a retained-era call is recorded as
+a keep-state transaction tagged `'v9'` while `era` on its result says
+`'ledger8'`
+(`docs/adr/0011-tag-every-result-with-the-pipeline-that-produced-it.md`).
+Spelling both with one alphabet would put two identically-typed members holding
+different values on one result, and the disagreement the tag exists to express
+would read as a bug.
+
+What the two sets may not do is drift apart in size. `ERA_PAIRING`'s declared
+type, `Readonly<Record<PipelineEra, Readonly<Record<LedgerVersion, EraPairing>>>>`,
+is the one declaration that binds them: a member added to either set leaves the
+table short of a row or a column, and the build fails. A third era is a compile
+error here rather than a refusal discovered at the fork.
+`src/test/typecheck/era-pairing.test-d.ts` pins that the refusal is real — a
+`Partial<Record<...>>`, the shape `NODE_MAJOR_TO_LEDGER` legitimately uses and
+therefore the shape a later edit is most likely to copy, would accept an
+incomplete table and leave one pairing undecided.
+
+Both lookups are checked at run time as well, and neither check is redundant
+with the build-time gate: a head era arrives as an integer resolved at run time,
+and a pipeline era as whatever a JavaScript caller's artifact turned out to be,
+so either can reach the table before it has been extended for them. A missing
+cell refuses and names the era it could not place, rather than reaching a
+neighbour's ruling — which is also why the table is on a null prototype, where
+`constructor` and `toString` are absent instead of truthy.
 
 ## Pairing the head against the fetched state
 
