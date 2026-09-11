@@ -64,11 +64,11 @@ describe('createLedger8Engine', () => {
   // Strict equality, not a per-method `typeof` sweep: a method leaked onto the
   // facade, renamed, or silently dropped has to fail here, which a
   // one-directional check of the names we happen to remember cannot do.
-  it('exposes exactly the four documented engine methods, and nothing else', async () => {
+  it('exposes exactly the five documented engine methods, and nothing else', async () => {
     const engine = await createLedger8Engine();
 
     expect(Object.keys(engine).sort()).toEqual(
-      ['downConvertForExecution', 'executeCircuit', 'executeConstructor', 'wrapKeepStateCall'].sort()
+      ['downConvertForExecution', 'executeCircuit', 'executeConstructor', 'reexpressOperationsForCurrentEra', 'wrapKeepStateCall'].sort()
     );
     expect(Object.values(engine).every((method) => typeof method === 'function')).toBe(true);
   });
@@ -102,10 +102,12 @@ describe('createLedger8Engine', () => {
         zswapLocalState: emptyZswapLocalState(),
         preContractState: { data: state },
         postContractState: { data: state },
+        postContractStateEncoded: state.state.encode(),
         privateStateAfter: {}
       },
       contractAddress: sampleContractAddress(),
-      contractState
+      contractState,
+      ledgerParameters: 'initial'
     });
 
     expect(prototype).toBeInstanceOf(ContractCallPrototype);
@@ -183,7 +185,7 @@ describe('createLedger8Engine', () => {
     );
     contractState.setOperation('increment', op);
 
-    const prototype = engine.wrapKeepStateCall({ transcript, contractAddress: address, contractState });
+    const prototype = engine.wrapKeepStateCall({ transcript, contractAddress: address, contractState, ledgerParameters: 'initial' });
     const ttl = new Date(Date.now() + 3_600_000);
 
     expect(prototype).toBeInstanceOf(ContractCallPrototype);

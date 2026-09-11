@@ -8,6 +8,19 @@ build/
 .idea/
 .env
 *.log
+# ...except the frozen private-state fixture's LevelDB write-ahead log, which is
+# the only file in that store holding the encrypted state. Without it a fresh
+# clone gets a store that opens but returns nothing, and the consuming test
+# reports an envelope break that never happened.
+!testkit-js/testkit-js/src/fixtures/hf/pre-fork-private-state-store/store/*.log
+# LevelDB's runtime files are NOT part of that fixture, and none of them matches
+# the `*.log` rule above. `LOG` carries wall-clock timestamps, so committing one
+# would freeze a single machine's run log into a store whose whole value is byte
+# determinism -- and the digest gate would then bless it, because the digest is
+# defined by the bytes present rather than by an expected file set.
+testkit-js/testkit-js/src/fixtures/hf/pre-fork-private-state-store/store/LOCK
+testkit-js/testkit-js/src/fixtures/hf/pre-fork-private-state-store/store/LOG
+testkit-js/testkit-js/src/fixtures/hf/pre-fork-private-state-store/store/LOG.old
 coverage/
 reports/
 .pnp.*

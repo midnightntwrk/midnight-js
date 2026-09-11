@@ -32,6 +32,16 @@ import type { PartitionContext } from '../lib/shared/compose-types';
 const FIXTURES_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf');
 
 /**
+ * The retained era's own UNPROVEN transaction tag, measured against the real
+ * runtime. Pinned once for this package: v8-compose, v8-deploy and v8-prove all
+ * read it from here, so a vendor schema bump moves this line and nothing else.
+ *
+ * The `[v9]` is the wire-schema version of the serialized OBJECT, not a ledger
+ * era. Never read an era off it.
+ */
+export const V8_UNPROVEN_TX_TAG = 'midnight:transaction[v9](signature[v1],proof-preimage,embedded-fr[v1]):';
+
+/**
  * Reads a hex-encoded fixture into the bytes it encodes.
  *
  * The length check is the point: `Buffer.from(text, 'hex')` stops at the first

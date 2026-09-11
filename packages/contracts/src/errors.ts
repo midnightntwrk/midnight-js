@@ -24,6 +24,7 @@ import type {
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 
+import { CURRENT_PIPELINE_ERA, RETAINED_PIPELINE_ERA } from './era';
 import { NEITHER_ERA_CONTRACT_MESSAGE } from './ledger8-contract';
 
 /**
@@ -66,10 +67,19 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
  * means the provider re-tagged or converted the payload it was handed, or that
  * the flow is pointed at a network whose records belong to the other era.
  *
- * {@link EraInvariantViolationError.expected} names the era the flow submitted,
- * and so which direction the violation went. It defaults to `'v9'` — the era
- * every flow that predates the retained-era pipelines submits — so existing
- * call sites read exactly as they did before it existed.
+ * {@link EraInvariantViolationError.expected} names the only era this flow can
+ * accept back, and so which direction the violation went. For the current
+ * era's flows that is the era they submit, which is always `'v9'` — the
+ * default, so call sites that predate the retained-era pipelines read exactly
+ * as they did before it existed. The retained era's finalizing arm passes the
+ * network HEAD instead: it composes retained-era transactions but is recorded
+ * by whichever ledger the head is on, so the head, not the pipeline, is what
+ * the record has to agree with.
+ *
+ * {@link EraInvariantViolationError.received} names the era that actually came
+ * back, when the payload carried a readable one. A payload whose tag is
+ * missing or unrecognised is a different fault and raises
+ * {@link UntaggedPayloadError} instead.
  */
 export class EraInvariantViolationError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION;
@@ -79,17 +89,23 @@ export class EraInvariantViolationError extends Error {
    * @param circuitId The circuit, or circuits, whose flow this happened on,
    *                  when known. A dApp firing many circuits needs this to
    *                  tell which call broke.
-   * @param expected The era this flow submits, and therefore the only era it
-   *                 can accept back. Defaults to `'v9'`.
+   * @param expected The only era this flow can accept back. Defaults to
+   *                 `'v9'`. See the class comment for which fact this names
+   *                 on each arm.
+   * @param received The era the payload actually carried, when it carried a
+   *                 readable one. Named in the message: a refusal that states
+   *                 only what it wanted leaves the reader to find out what it
+   *                 got.
    */
   constructor(
     readonly seam: EraSeam,
     readonly circuitId?: string | readonly string[],
-    readonly expected: LedgerVersion = 'v9'
+    readonly expected: LedgerVersion = 'v9',
+    readonly received?: LedgerVersion
   ) {
     super(
-      `${seam} returned a payload from a ledger era other than '${expected}', on a flow that only submits ` +
-        `'${expected}' transactions${formatCircuitClause(circuitId) ?? ''}. ` +
+      `${seam} returned a payload from the '${received ?? 'other'}' ledger era, on a flow that can only ` +
+        `accept '${expected}'${formatCircuitClause(circuitId) ?? ''}. ` +
         `Check that the configured provider matches the network this application targets, and that no custom ` +
         `provider implementation re-tags the payload it was handed.`
     );
@@ -151,6 +167,49 @@ export class EraArtifactMismatchError extends Error {
   constructor(readonly reason: EraArtifactMismatchReason) {
     super(ERA_ARTIFACT_MISMATCH_MESSAGES[reason]);
     this.name = 'EraArtifactMismatchError';
+  }
+}
+
+/**
+ * An error indicating that the contract at this address is held on chain in a CURRENT-era state,
+ * while the artifacts handed to this operation came from the retained Compact toolchain.
+ *
+ * The retained era stays supported for a contract whose state the retained ledger wrote, and it
+ * stays supported after that state has been MIGRATED: a contract's first post-fork call rewrites
+ * its envelope to the current era, and the ledger carries the retained verifier keys across
+ * unchanged. So a current-era envelope on its own says nothing about which toolchain built the
+ * contract, and this error is not raised for one.
+ *
+ * What raises it is the pair: a current-era envelope AND a key these artifacts cannot match. A
+ * migrated pre-fork contract still declares the keys the retained toolchain produced, so it does not
+ * reach here; a contract deployed with current-toolchain artifacts declares keys no retained
+ * artifact can match, and that is the case named here.
+ *
+ * Distinct from the era disagreements either side of it: nothing here is stale or inconsistent, and
+ * a retry cannot change it. What has to change is which artifacts the caller passes.
+ */
+export class RetainedArtifactOnCurrentEraStateError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE;
+
+  /**
+   * @param contractAddress The contract whose on-chain state was read.
+   * @param options Carries the key-mismatch this refusal re-reports on `cause`, so the byte-level
+   * diagnosis is not lost behind the era-level one.
+   */
+  constructor(
+    readonly contractAddress: string,
+    options?: ErrorOptions
+  ) {
+    super(
+      `The contract at '${contractAddress}' is held on chain in a current-era state whose verifier key ` +
+        `for this circuit is not the one the supplied artifacts carry, so those artifacts do not describe ` +
+        `this contract. A contract deployed before the fork keeps its retained keys even after a post-fork ` +
+        `call migrates its state, so this is not that case: it is a contract built with current-toolchain ` +
+        `artifacts. Re-run the operation with the artifacts the current toolchain produced for it. Retrying ` +
+        `with the same artifacts cannot succeed.`,
+      options
+    );
+    this.name = 'RetainedArtifactOnCurrentEraStateError';
   }
 }
 
@@ -241,6 +300,44 @@ export class IndexerInconsistencyError extends Error {
         `client can correct. Retry the operation, and if it persists check the health of the configured indexer.`
     );
     this.name = 'IndexerInconsistencyError';
+  }
+}
+
+/**
+ * An error indicating that the read surface served a contract state without the block's ledger
+ * parameters, so a call cannot be composed against the cost model the chain is running.
+ *
+ * `RawContractState.ledgerParameters` is optional — a provider that cannot serve them is still a
+ * usable provider, and the bundled indexer provider always does serve them. This pipeline, though,
+ * has just read the chain, so an absent parameter set here is a provider that did not serve them
+ * rather than a caller with no read surface.
+ *
+ * Raised instead of substituting the ledger's initial parameters, which is what happened before and
+ * is the failure this error exists to replace: the partitioner drew the guaranteed/fallible boundary
+ * from a cost model the chain does not run, the caller paid to prove the result, and the node then
+ * refused the guaranteed segment with `Transcript(Execution(OutOfGas))`. Nothing in that path named
+ * the cost model, so the diagnosis was unreachable from the error.
+ *
+ * The compatibility path still exists for a caller that genuinely cannot read the chain, but it has
+ * to be selected by name — see `INITIAL_LEDGER_PARAMETERS` in `midnight-js-protocol`.
+ */
+export class LedgerParametersUnservedError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED;
+
+  /**
+   * @param contractAddress The contract whose state was read without its block's parameters.
+   */
+  constructor(readonly contractAddress: string) {
+    super(
+      `The read surface served the state of the contract at '${contractAddress}' without the ledger ` +
+        `parameters of the block that dates it, so this call cannot be partitioned against the cost model ` +
+        `the chain is running. Substituting the ledger's initial parameters would draw the guaranteed and ` +
+        `fallible segment boundary from a model the chain does not use, and the node would refuse the ` +
+        `guaranteed segment for running out of gas after you had already paid to prove it. Use a ` +
+        `PublicDataProvider that serves 'ledgerParameters' on 'queryRawContractState' — the bundled indexer ` +
+        `provider does.`
+    );
+    this.name = 'LedgerParametersUnservedError';
   }
 }
 
@@ -586,9 +683,80 @@ export const isEffectContractError = (error: unknown): error is EffectContractEr
   'message' in ((error as Record<string, unknown>).cause as object);
 
 /**
- * An error indicating that a transaction submitted to a consensus node failed.
+ * An era tag on a result that names neither pipeline.
+ *
+ * {@link isLedger8Result} refuses rather than answering `false`. Answering
+ * `false` would mean "this is a current-era result", which for an unreadable
+ * tag is a guess, and the caller would then read the result through the wrong
+ * era's shape. Every result this framework builds carries one of the two
+ * literals; a value that does not has been round-tripped through something
+ * that dropped it -- a queue, a JSON boundary, a structured clone.
  */
-export class TxFailedError extends Error {
+export class UnrecognisedResultEraError extends Error {
+  readonly code = CONTRACTS_ERROR_CODES.UNRECOGNISED_RESULT_ERA;
+
+  /**
+   * @param received What the result's `era` field actually held.
+   */
+  constructor(readonly received: unknown) {
+    super(
+      `A result carried an era tag naming neither pipeline (got: ${JSON.stringify(received) ?? 'undefined'}). ` +
+        `Results are tagged '${CURRENT_PIPELINE_ERA}' or '${RETAINED_PIPELINE_ERA}' by the pipeline that built ` +
+        `them. A tag lost in transit -- through a queue, a JSON boundary, a structured clone -- cannot be ` +
+        `recovered here: narrow the result before it crosses that boundary, or carry the era beside it.`
+    );
+    this.name = 'UnrecognisedResultEraError';
+  }
+}
+
+/**
+ * A transaction this framework submitted that the chain recorded with a
+ * non-success status, in EITHER era. The one class to catch.
+ *
+ * The two eras cannot share a record TYPE. The current era submits and accepts
+ * only v9, so its record is `FinalizedTxData`. A retained-era call is recorded
+ * by whichever era the network head is on, so its record is the version-tagged
+ * union -- which is not assignable to the v9 arm, and narrowing the current
+ * era's member to the union would change a type consumers already read. That
+ * is why the retained era has a class of its own rather than extending
+ * `TxFailedError`, and why this base declares the union.
+ *
+ * Each subclass keeps its own historical member -- `finalizedTxData` on the
+ * current era's, `txData` on the retained one -- so nothing reading those
+ * breaks. {@link AnyEraTxFailedError.record} is the member to write new code
+ * against, and it needs narrowing on `version` before `tx` is touched.
+ */
+export abstract class AnyEraTxFailedError extends Error {
+  /**
+   * The one code every recorded-failure class in this package answers to.
+   *
+   * `instanceof` is the idiom this hierarchy is built for, but it is identity-
+   * based: with two copies of this package resolved in one process it returns
+   * `false` and a failed transaction walks past a correctly written handler.
+   * A consumer that cannot import these classes, or cannot rely on there being
+   * one copy of them, branches on this instead. Subclasses inherit it rather
+   * than each declaring their own -- what a caller needs to distinguish is
+   * WHICH transaction failed, which the class and the record answer, not a
+   * finer code.
+   */
+  readonly code = CONTRACTS_ERROR_CODES.TX_FAILED;
+
+  /**
+   * The finalized record the chain reported, version-tagged.
+   *
+   * @remarks Narrow on `record.version` before reading `record.tx`: the handle
+   * belongs to the ledger runtime the tag names.
+   */
+  abstract readonly record: VersionedFinalizedTxData;
+}
+
+/**
+ * An error indicating that a transaction submitted to a consensus node failed.
+ *
+ * The current era's arm of {@link AnyEraTxFailedError}: its record is always
+ * the v9 one. Catch the base to catch both eras.
+ */
+export class TxFailedError extends AnyEraTxFailedError {
   /**
    * @param finalizedTxData The finalization data of the transaction that failed.
    * @param circuitId The name of the circuit that was called to create the call
@@ -613,6 +781,11 @@ export class TxFailedError extends Error {
       '\t'
     );
   }
+
+  /** See {@link AnyEraTxFailedError.record}. Always the v9 arm on this class. */
+  get record(): VersionedFinalizedTxData {
+    return this.finalizedTxData;
+  }
 }
 
 /**
@@ -630,6 +803,12 @@ export class DeployTxFailedError extends TxFailedError {
 
 /**
  * An error indicating that a call transaction was not successfully applied by the consensus node.
+ *
+ * `circuitId` names every circuit the failed TRANSACTION carried, so in a
+ * scope that made several calls it is the whole list. That is deliberately
+ * wider than {@link FinalizedCallTxData.circuitId}, which names the one call
+ * its result describes: nothing about a transaction-level failure attributes
+ * it to a single call within the transaction.
  */
 export class CallTxFailedError extends TxFailedError {
   /**
@@ -977,7 +1156,7 @@ export class Ledger8DeployUnmaintainableError extends Error {
  * places every movement it makes in the guaranteed segment, so the chain moved
  * while the private state was not stored.
  */
-export class Ledger8CallTxFailedError extends Error {
+export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
   constructor(
     readonly txData: VersionedFinalizedTxData,
     readonly circuitId: string
@@ -992,6 +1171,11 @@ export class Ledger8CallTxFailedError extends Error {
             'state still matches it.')
     );
     this.name = 'Ledger8CallTxFailedError';
+  }
+
+  /** See {@link AnyEraTxFailedError.record}. Either arm on this class. */
+  get record(): VersionedFinalizedTxData {
+    return this.txData;
   }
 }
 

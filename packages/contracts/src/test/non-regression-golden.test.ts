@@ -44,7 +44,7 @@ import { Transaction } from '@midnight-ntwrk/midnight-js-types';
 import { Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createUnprovenLedgerCallTx, toLedgerContractState } from '../utils/ledger-utils';
+import { createUnprovenLedgerCallTx, toLedgerContractState } from '../internal/utils/ledger-utils';
 
 /** The compiled `shielded-map` contract, typed through the runtime's own exported generics. */
 type ShieldedMapContract = {

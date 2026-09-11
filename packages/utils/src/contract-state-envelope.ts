@@ -15,7 +15,7 @@
 
 // The `./version` leaf subpath, not the package root: the root barrel re-exports the
 // ledger/compact-js/onchain-runtime namespaces, which every `utils` consumer would then pull in.
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { parseSerializedTag, TagParseError } from './serialized-tag';
 
@@ -33,10 +33,17 @@ import { parseSerializedTag, TagParseError } from './serialized-tag';
 // `packages/indexer-public-data-provider/src/test/raw-contract-state.test.ts`, which mints a real
 // state with each runtime through `midnight-js-protocol` -- `ledger` for v9, `loadLedger8()` for
 // v8 -- rather than checking byte blobs in.
-const CONTRACT_STATE_TAG_TO_LEDGER_VERSION: Readonly<Partial<Record<string, LedgerVersion>>> = Object.freeze({
-  'midnight:contract-state[v6]': 'v8',
-  'midnight:contract-state[v8]': 'v9'
-});
+//
+// Keyed by ERA and searched, rather than keyed by tag and indexed: the lookup key is
+// network-supplied, and a tag-keyed object literal resolves an unexpected key through
+// `Object.prototype` -- `constructor` and `toString` come back as truthy non-eras. Turning the
+// lookup around removes that reachability rather than guarding it, and `satisfies` then makes a
+// new `LedgerVersion` with no tag here a BUILD failure instead of a refusal at the fork -- see
+// `packages/protocol/docs/shared-table-discipline.md`.
+const CONTRACT_STATE_TAG_BY_ERA = {
+  v8: 'midnight:contract-state[v6]',
+  v9: 'midnight:contract-state[v8]'
+} as const satisfies Record<LedgerVersion, string>;
 
 /**
  * Reads which ledger runtime wrote a serialized contract state, from the envelope tag in front of
@@ -57,7 +64,7 @@ const CONTRACT_STATE_TAG_TO_LEDGER_VERSION: Readonly<Partial<Record<string, Ledg
  */
 export const contractStateEnvelopeVersion = (raw: Uint8Array): LedgerVersion => {
   const { tag } = parseSerializedTag(raw);
-  const ledgerVersion = CONTRACT_STATE_TAG_TO_LEDGER_VERSION[tag];
+  const ledgerVersion = LEDGER_VERSIONS.find((era) => CONTRACT_STATE_TAG_BY_ERA[era] === tag);
   if (ledgerVersion === undefined) {
     // Never echo the observed tag: it is attacker-controlled and validated only against a
     // character set, so embedding it verbatim puts arbitrary text into this message.

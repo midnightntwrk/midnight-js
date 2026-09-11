@@ -35,6 +35,12 @@ type RawContractStateFixture = {
   readonly version: 'v8' | 'v9';
   readonly protocolVersion: number;
   readonly raw: Uint8Array;
+  // OPTIONAL, and the optionality is the load-bearing part: a provider that
+  // cannot serve the block's ledger parameters is still a usable provider, so
+  // this may not become required without breaking every existing implementation.
+  // Bytes rather than a decoded object for the same reason `raw` is bytes —
+  // they are era-tagged, and this record is era-agnostic.
+  readonly ledgerParameters?: Uint8Array;
 };
 
 // Independent restatements of the two new member signatures — written out
@@ -103,7 +109,7 @@ describe('PublicDataProvider head-version and raw-state members', () => {
     expectTypeOf<PublicDataProvider['queryRawContractState']>().toEqualTypeOf<RawStateQuery>();
   });
 
-  it('pins RawContractState to exactly three fields — fails if one is dropped, added, or retyped', () => {
+  it('pins RawContractState to exactly four fields — fails if one is dropped, added, or retyped', () => {
     // Bidirectional: catches a field being dropped (the fixture would then
     // demand a field `RawContractState` no longer has), added
     // (`RawContractState` would demand a field the fixture doesn't have), or

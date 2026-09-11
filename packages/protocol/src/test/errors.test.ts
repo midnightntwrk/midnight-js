@@ -62,7 +62,8 @@ describe('PROTOCOL_ERROR_CODES', () => {
       STATE_DECODE_FAILED: 'MIDNIGHT_JS_P_STATE_DECODE_FAILED',
       UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
       LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
-      UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS'
+      UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS',
+      PAYLOAD_NOT_A_TRANSACTION: 'MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION'
     });
   });
 
@@ -471,6 +472,7 @@ const ALL_STAGES = Object.keys(STAGE_KEYS) as ComposeStage[];
 const OPTION_KEYS: Readonly<Record<ComposeOption, true>> = {
   calls: true,
   contractState: true,
+  ledgerParameters: true,
   networkId: true,
   ttl: true,
   verifierKeys: true,
@@ -638,6 +640,31 @@ describe('UnknownLedger8AxisError', () => {
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS);
     expect(error.requestedAxis).toBe('__proto__');
     expect(error.message).not.toContain('__proto__');
+  });
+});
+
+describe('the code every published class carries', () => {
+  it('narrows to that class own literal, so a caller switch discriminates on it', () => {
+    // The ANNOTATIONS are the assertion: a class whose `code` is declared as the
+    // wide `ProtocolErrorCode` alias fails to compile here, and would leave a
+    // caller's `switch (error.code)` unable to narrow on it. Checked by
+    // `yarn typecheck:tests`; the runtime half below only pins the values.
+    const composeFailed: typeof PROTOCOL_ERROR_CODES.COMPOSE_FAILED = new ComposeFailedError(
+      'v9',
+      'call-empty',
+      'increment'
+    ).code;
+    const composeOption: typeof PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID = new ComposeOptionError('v8', 'ttl').code;
+    const stateDecode: typeof PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED = new StateDecodeFailedError(
+      'v8',
+      new Error('boom')
+    ).code;
+
+    expect([composeFailed, composeOption, stateDecode]).toEqual([
+      PROTOCOL_ERROR_CODES.COMPOSE_FAILED,
+      PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID,
+      PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED
+    ]);
   });
 });
 

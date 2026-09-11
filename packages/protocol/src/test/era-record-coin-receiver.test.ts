@@ -201,6 +201,7 @@ interface RecordedTranscript {
   readonly partitionContext: unknown;
   readonly privateStateAfter: unknown;
   readonly zswapLocalState: unknown;
+  readonly postContractStateEncoded: unknown;
 }
 
 /** The recording file's own shape. Every member is the real execution's output. */
@@ -256,6 +257,10 @@ const buildRecording = (execution: RealExecution): RecordingFile => {
       publicTranscript: encodeRecorded(transcript.publicTranscript),
       privateTranscriptOutputs: encodeRecorded(transcript.privateTranscriptOutputs),
       partitionContext: encodeRecorded(freezeClock(transcript.partitionContext)),
+      // The post-state in the form that can be recorded at all. The HANDLE
+      // beside it cannot: a WASM pointer means nothing outside the module that
+      // minted it, which is why the two handle members are excluded above.
+      postContractStateEncoded: encodeRecorded(transcript.postContractStateEncoded),
       // Recorded, not omitted: a consumer replaying this transcript hands
       // `privateStateAfter` straight back to its caller as the call's next
       // private state, so a recording without it would replay every call as
@@ -301,6 +306,8 @@ const ARMS: Readonly<
     return assembleCallPrototype(LedgerV8, {
       circuitId: CIRCUIT_ID,
       contractAddress: ocrt3.dummyContractAddress(),
+      // Named explicitly: these arms compare era ASSEMBLY, not cost models.
+      ledgerParameters: 'initial',
       transcript: { kind: 'unpartitioned', preState, publicTranscript: transcript.publicTranscript, partitionContext },
       privateTranscriptOutputs: transcript.privateTranscriptOutputs,
       input: transcript.input,
@@ -315,6 +322,8 @@ const ARMS: Readonly<
     return assembleCallPrototype(ledgerV9, {
       circuitId: CIRCUIT_ID,
       contractAddress: ocrt3.dummyContractAddress(),
+      // Named explicitly: these arms compare era ASSEMBLY, not cost models.
+      ledgerParameters: 'initial',
       transcript: { kind: 'unpartitioned', preState, publicTranscript: transcript.publicTranscript, partitionContext },
       privateTranscriptOutputs: transcript.privateTranscriptOutputs,
       input: transcript.input,

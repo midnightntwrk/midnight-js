@@ -20,9 +20,9 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import { ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
-import { assembleCallPrototype } from '../lib/shared/assemble-call';
-import type { CallTranscriptSource } from '../lib/shared/compose-types';
+import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
+import { assembleCallPrototype, partitionCallTranscript } from '../lib/shared/assemble-call';
+import type { CallTranscriptSource, LedgerParametersOption } from '../lib/shared/compose-types';
 import { emptyPartitionContext } from './fixtures';
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
@@ -84,6 +84,25 @@ const callIn = (intent: ledgerV9.Intent<ledgerV9.SignatureEnabled, ledgerV9.PreP
   return calls[0];
 };
 
+const assembleWithParameters = (
+  address: string,
+  transcript: CallTranscriptSource,
+  operations: ledgerV9.ContractState,
+  ledgerParameters: LedgerParametersOption
+): ledgerV9.ContractCallPrototype =>
+  assembleCallPrototype(ledgerV9, {
+    circuitId: 'increment',
+    contractAddress: address,
+    transcript,
+    privateTranscriptOutputs: [],
+    input: fieldValue(0x10),
+    output: fieldValue(0x20),
+    operations,
+    ledgerParameters,
+    stage: 'call-operation',
+    version: 'v9'
+  });
+
 const assembleWith = (
   address: string,
   transcript: CallTranscriptSource,
@@ -99,6 +118,8 @@ const assembleWith = (
     output: fieldValue(0x20),
     communicationCommitmentRandomness,
     operations,
+    // Named explicitly: this helper's cases are about assembly, not the cost model.
+    ledgerParameters: 'initial',
     stage: 'call-operation',
     version: 'v9'
   });
@@ -199,6 +220,77 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
     expect(render(fromPartitioned)).toBe(render(fromUnpartitioned));
   });
 
+  // The claim the retained call pipeline rests on. It resolves the partition up
+  // front — it has to, because it routes a Zswap coin against the split before
+  // the offer becomes an option on the composition — and then hands the pair
+  // straight to the composer so the work is done ONCE. That is only safe if the
+  // standalone seam and the assembler's internal step are the same answer.
+  it('resolves the same pair the assembler resolves internally, so one partition serves both', () => {
+    const address = ledgerV9.sampleContractAddress();
+    const randomness = ledgerV9.communicationCommitmentRandomness();
+    const ttl = new Date(Date.now() + 3_600_000);
+    const unpartitioned: CallTranscriptSource = {
+      kind: 'unpartitioned',
+      preState: PRE_STATE,
+      publicTranscript: PUBLIC_TRANSCRIPT,
+      partitionContext: emptyPartitionContext()
+    };
+
+    const [guaranteed, fallible] = partitionCallTranscript(ledgerV9, {
+      circuitId: 'increment',
+      contractAddress: address,
+      transcript: unpartitioned,
+      // The same cost model `assembleWith` names, because that is what the two
+      // sides of this equality are being compared under.
+      ledgerParameters: 'initial',
+      version: 'v9'
+    });
+
+    // Not vacuous: an all-`undefined` pair would make the comparison below hold
+    // for a seam that returned nothing at all.
+    expect(guaranteed).toBeDefined();
+    expect(fallible).toBeUndefined();
+
+    const render = (prototype: ledgerV9.ContractCallPrototype): string =>
+      callIn(ledgerV9.Intent.new(ttl).addCall(prototype)).toString();
+
+    expect(
+      render(assembleWith(address, { kind: 'partitioned', guaranteed, fallible }, contractStateWithOperation(), randomness))
+    ).toBe(render(assembleWith(address, unpartitioned, contractStateWithOperation(), randomness)));
+  });
+
+  // The seam reports the ledger's refusal as the composition would, rather than
+  // letting a raw wasm error out: a caller that partitions up front must be able
+  // to diagnose a bad parameter blob the same way it would from `composeCallTx`.
+  it('refuses a parameter blob this era cannot read, naming the option rather than the partition', () => {
+    let caught: unknown;
+    try {
+      partitionCallTranscript(ledgerV9, {
+        circuitId: 'increment',
+        contractAddress: ledgerV9.sampleContractAddress(),
+        transcript: {
+          kind: 'unpartitioned',
+          preState: PRE_STATE,
+          publicTranscript: PUBLIC_TRANSCRIPT,
+          partitionContext: emptyPartitionContext()
+        },
+        ledgerParameters: new Uint8Array([0x00, 0x01, 0x02]),
+        version: 'v9'
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    // Reported as a bad OPTION, exactly as the composition reports it, so a
+    // caller that partitions up front is sent to the bytes it passed rather
+    // than to the transcript -- and the ledger's own diagnosis survives on
+    // `cause`.
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    expect((caught as ComposeOptionError).option).toBe('ledgerParameters');
+    expect((caught as ComposeOptionError).version).toBe('v9');
+    expect((caught as ComposeOptionError).cause).toBeDefined();
+  });
+
   // Proof the branch really is a branch: a ledger whose partitioner throws
   // still assembles a partitioned call. Without the skip this would fail, and
   // the previous test alone could not tell the two paths apart.
@@ -220,6 +312,9 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
       input: fieldValue(0x10),
       output: fieldValue(0x20),
       operations: contractStateWithOperation(),
+      // Supplied but never read: this transcript arrives already partitioned, so the partitioner --
+      // poisoned here to prove it does not run -- never asks for a cost model.
+      ledgerParameters: 'initial',
       stage: 'call-operation',
       version: 'v9'
     });
@@ -347,5 +442,81 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
     expect(failure.circuitId).toBe('increment');
     expect(failure.cause).toBeInstanceOf(Error);
     expect(failure.message).not.toMatch(/[0-9a-f]{16,}/i);
+  });
+});
+
+describe('the transcript partitioner and the chain\'s own ledger parameters', () => {
+  // The partitioner decides what goes in the guaranteed segment from the cost model these carry.
+  // They are dynamic (prices adjust per block) and era-tagged, so the ledger's `initialParameters()`
+  // is the model the chain STARTED with, not the one it is running. Partitioning against it draws
+  // the boundary in the wrong place and the node refuses the guaranteed segment for running out of
+  // gas -- which is what kept the post-fork keep-state call from ever being accepted.
+  const address = ledgerV9.sampleContractAddress();
+  const unpartitioned: CallTranscriptSource = {
+    kind: 'unpartitioned',
+    preState: PRE_STATE,
+    publicTranscript: PUBLIC_TRANSCRIPT,
+    partitionContext: emptyPartitionContext()
+  };
+
+  it('partitions against the parameters it is handed, reading them with this era', () => {
+    // Arrange: the chain's parameters, as bytes -- which is how they arrive from a block.
+    const served = ledgerV9.LedgerParameters.initialParameters().serialize();
+
+    // Act.
+    const act = (): ledgerV9.ContractCallPrototype =>
+      assembleWithParameters(address, unpartitioned, contractStateWithOperation(), served);
+
+    // Assert: the deserialized path reaches the partitioner and composes. Asserted as "does not
+    // throw" rather than by comparing transcripts, because these particular bytes ARE the initial
+    // parameters -- what is under test is that supplied bytes are read and used at all.
+    expect(act).not.toThrow();
+  });
+
+  it('uses the initial parameters only when the caller names them, never by omission', () => {
+    // Arrange / Act: the sentinel is the ONLY way to reach the initial cost model. A caller with no
+    // read surface can still compose, but it has to say so -- omitting the option no longer means
+    // "use whatever", because that made a wrong cost model the default for anyone who forgot.
+    const act = (): ledgerV9.ContractCallPrototype =>
+      assembleWithParameters(address, unpartitioned, contractStateWithOperation(), 'initial');
+
+    // Assert.
+    expect(act).not.toThrow();
+  });
+
+  it('refuses a parameter set it cannot read rather than substituting the initial one', () => {
+    // The sentinel is a NAMED value, not "anything that is not bytes": a string the caller made up
+    // is refused exactly as malformed bytes are. This is what makes the option's contract binary --
+    // the chain's parameters, or an explicit request for the initial ones, and nothing in between.
+    let caught: unknown;
+    try {
+      assembleWithParameters(address, unpartitioned, contractStateWithOperation(), Uint8Array.of());
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    expect((caught as ComposeOptionError).option).toBe('ledgerParameters');
+  });
+
+  it('refuses parameters this era cannot read, naming the option rather than the partition', () => {
+    // Arrange: well-formed bytes that are not ledger parameters. On a real chain this is what
+    // pre-fork parameters look like to the current era -- they carry `ledger-parameters[v5]`.
+    const notParameters = Uint8Array.from([1, 2, 3, 4]);
+
+    // Act.
+    let caught: unknown;
+    try {
+      assembleWithParameters(address, unpartitioned, contractStateWithOperation(), notParameters);
+    } catch (error) {
+      caught = error;
+    }
+
+    // Assert: reported as a bad OPTION, so a reader is sent to the bytes they passed rather than to
+    // the transcript, and the ledger's own diagnosis survives on `cause`.
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    expect((caught as ComposeOptionError).option).toBe('ledgerParameters');
+    expect((caught as ComposeOptionError).version).toBe('v9');
+    expect((caught as ComposeOptionError).cause).toBeDefined();
   });
 });

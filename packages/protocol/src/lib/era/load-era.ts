@@ -16,6 +16,7 @@
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 
 import { UnknownLedgerVersionError } from '../../errors';
+import { partitionCallTranscript } from '../shared/assemble-call';
 import { decodeContractStateWith, extractStateWith } from '../shared/contract-state';
 import type { LedgerVersion } from '../shared/ledger-version';
 import { composeEraV8CallTx, composeEraV8DeployTx } from '../v8/adapt';
@@ -24,14 +25,24 @@ import { composeV9CallTx, composeV9DeployTx } from '../v9/compose';
 import { extractEncodedStateValue, extractV9EncodedStateValue } from './envelope';
 import type { LedgerEra } from './era';
 
+// The option, parameter and return vocabulary of the facade's
+// `partitionCallTranscript` travels with the method: publishing the method
+// without them leaves a caller unable to name what it takes or answers with,
+// and `INITIAL_LEDGER_PARAMETERS` unreachable except as a hand-written literal.
+// The constant is a plain string and its module imports nothing at run time, so
+// this re-export adds no eager graph -- see the dist-laziness gate.
 export type {
   CallTranscriptSource,
   ComposeCallEntry,
   ComposeCallOptions,
   ComposeDeployOptions,
   DeployResultPojo,
-  PartitionContext
+  EraPartitionCallOptions,
+  LedgerParametersOption,
+  PartitionContext,
+  PartitionedCallTranscript
 } from '../shared/compose-types';
+export { INITIAL_LEDGER_PARAMETERS } from '../shared/compose-types';
 export type { ContractEntryPointPojo, ContractStatePojo } from '../shared/contract-state';
 export type { LedgerEra } from './era';
 
@@ -47,7 +58,12 @@ const createV9Era = (): LedgerEra => {
     extractState: (raw) => extractStateWith(raw, 'v9', extractV9EncodedStateValue),
     decodeContractState: (raw) => decodeContractStateWith(raw, 'v9', ledgerV9),
     composeCallTx: composeV9CallTx,
-    composeDeployTx: composeV9DeployTx
+    composeDeployTx: composeV9DeployTx,
+    partitionCallTranscript: (options) => {
+      // See the v8 arm: the assembler's tuple is readonly, the ledger's is not.
+      const [guaranteed, fallible] = partitionCallTranscript(ledgerV9, { ...options, version: 'v9' });
+      return [guaranteed, fallible];
+    }
   };
 
   return Object.freeze(era);
@@ -66,7 +82,14 @@ const createV8Era = async (): Promise<LedgerEra> => {
     extractState: (raw) => extractStateWith(raw, 'v8', (bytes) => extractEncodedStateValue(bytes, 'v8', v8.ContractState)),
     decodeContractState: (raw) => decodeContractStateWith(raw, 'v8', v8),
     composeCallTx: (options) => composeEraV8CallTx(options, v8),
-    composeDeployTx: (options) => composeEraV8DeployTx(options, v8)
+    composeDeployTx: (options) => composeEraV8DeployTx(options, v8),
+    partitionCallTranscript: (options) => {
+      // Copied into a mutable pair rather than handed on: the assembler answers
+      // with a readonly tuple, and the ledger's own `PartitionedTranscript` --
+      // which is what every consumer of this pair is typed against -- is not.
+      const [guaranteed, fallible] = partitionCallTranscript(v8, { ...options, version: 'v8' });
+      return [guaranteed, fallible];
+    }
   };
 
   return Object.freeze(era);

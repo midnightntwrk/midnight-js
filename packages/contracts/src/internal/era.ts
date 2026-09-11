@@ -30,14 +30,14 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
 
+import type { PipelineEra } from '../era';
 import {
   EraArtifactMismatchError,
   EraInvariantViolationError,
   type EraSeam,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
-  Ledger8DeployOnV9Error
-} from '../errors';
+  Ledger8DeployOnV9Error} from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
 import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcrumbs';
 
@@ -67,7 +67,7 @@ export function requireV9<T>(
     case 'v9':
       return payload.tx;
     case 'v8':
-      throw new EraInvariantViolationError(seam, circuitId);
+      throw new EraInvariantViolationError(seam, circuitId, 'v9', 'v8');
     default: {
       const unhandled: never = payload;
       throw new UntaggedPayloadError(seam, unhandled);
@@ -113,9 +113,41 @@ export function requireV8<T>(
     case 'v8':
       return payload.txBytes;
     case 'v9':
-      throw new EraInvariantViolationError(seam, circuitId, 'v8');
+      throw new EraInvariantViolationError(seam, circuitId, 'v8', 'v9');
     default: {
       const unhandled: never = payload;
+      throw new UntaggedPayloadError(seam, unhandled);
+    }
+  }
+}
+
+/**
+ * Refuses a finalized-transaction record that carries no readable era tag,
+ * accepting either arm.
+ *
+ * The retained arm's counterpart to {@link requireV9Record}, for the paths
+ * where BOTH tags are legitimate answers and there is therefore no era to
+ * refuse. A contract found on chain was deployed in whichever era was current
+ * then, so its deploy record is genuinely either arm. What is still refusable
+ * is a tag that names no era at all: `version` selects the runtime of the live
+ * `tx` handle beside it, so an unreadable tag hands a caller a handle it cannot
+ * attribute.
+ *
+ * @param record The record the read surface returned.
+ * @param seam The read-surface method that returned it.
+ * @returns The record, tagged with a recognised era.
+ * @throws UntaggedPayloadError if `version` is missing or unrecognised.
+ */
+export function requireTaggedRecord(record: VersionedFinalizedTxData, seam: EraSeam): VersionedFinalizedTxData {
+  if (typeof record !== 'object' || record === null) {
+    throw new UntaggedPayloadError(seam, record);
+  }
+  switch (record.version) {
+    case 'v8':
+    case 'v9':
+      return record;
+    default: {
+      const unhandled: never = record;
       throw new UntaggedPayloadError(seam, unhandled);
     }
   }
@@ -154,19 +186,11 @@ export function requireV9Record(
   }
 }
 
-/**
- * Which execution pipeline an operation takes.
- *
- * Each member names the LEDGER ERA the pipeline executes against — `'ledger8'` runs against
- * ledger 8, `'ledger9'` against ledger 9 — never a toolchain version, and never which era is the
- * newest. A further ledger era ADDS a member instead of renaming one.
- *
- * Not a statement about the network — see {@link assertEraCompatible} for the pairing with the
- * head era, which is what decides whether the operation can run at all.
- *
- * @see {@link EraDispatch} for why the names are keyed to the ledger era.
- */
-export type PipelineEra = 'ledger8' | 'ledger9';
+// Declared on the PUBLIC surface, in `../era`, because results now publish it:
+// `src/internal` is hidden from consumers, and a published member whose type a
+// consumer cannot name is one they cannot write a signature against. Re-exported
+// here so this module's own callers keep importing it from where they always did.
+export type { PipelineEra } from '../era';
 
 /**
  * The era facts one operation resolves ONCE, at its asynchronous start, and then threads down as
@@ -206,7 +230,7 @@ export interface HeadEraReading {
 }
 
 /**
- * The one read {@link resolveOperationEra} and {@link assertHeadStateEraAgreement} make on the
+ * The one read {@link resolveOperationEra} and {@link resolveContractStateEra} make on the
  * public data provider.
  *
  * Declared as a `Pick` of the real provider rather than as the whole interface: a full
@@ -433,40 +457,58 @@ export const assertEraCompatible = (pipeline: PipelineEra, head: LedgerVersion, 
 };
 
 /**
- * Refuses an operation whose network head and fetched contract state belong to different ledger
- * eras.
+ * Resolves WHICH era's decoder may be handed a fetched contract state, refusing only the
+ * combination that cannot describe one chain.
  *
- * `RawContractState.version` cannot answer this: it is derived from the record's `protocolVersion`
- * alone and is explicitly not a verified statement about the envelope the bytes carry (see its own
- * documentation in `packages/types/src/raw-contract-state.ts`). This closes that gap by reading the
- * envelope.
+ * THE RULE THIS ENFORCES: the envelope decides, the block bounds. The two signals are not
+ * symmetric and must not be compared for equality.
  *
- * THE ORDER OF THE FIVE STEPS BELOW IS LOAD-BEARING. Do not reorder them, and do not declare the
- * tag-to-era mapping here — it lives once, as `contractStateEnvelopeVersion` in
+ * The **envelope** comes off the bytes. It is what the deserializer reads, so a wrong envelope
+ * yields a failure and never a wrong answer — which is what makes it safe to route on. It decides
+ * which era's decoder may be handed these bytes.
+ *
+ * The reported **`protocolVersion`** dates the READ, not the bytes: the read surface serves the
+ * latest contract action at or before the requested block, and the ledger does not rewrite a
+ * contract's stored state at the fork. So a contract deployed before the fork and dormant across it
+ * is served with its retained-era envelope under a post-fork head, indefinitely. That is the
+ * ORDINARY case, and it is precisely what keep-state operates on. Only the reverse — an envelope
+ * NEWER than the block dating it — is impossible and therefore reported.
+ *
+ * DO NOT REINTRODUCE AN EQUALITY CHECK BETWEEN `head` AND THE ENVELOPE. It reads as symmetry and
+ * costs the whole keep-state path: every post-fork call against a pre-fork contract is refused, and
+ * the error blames the read surface for serving exactly what it is supposed to serve.
+ *
+ * `RawContractState.version` cannot answer this either: it is derived from the record's
+ * `protocolVersion` alone and is explicitly not a verified statement about the envelope the bytes
+ * carry (see its own documentation in `packages/types/src/raw-contract-state.ts`).
+ *
+ * Do not declare the tag-to-era mapping here — it lives once, as `contractStateEnvelopeVersion` in
  * `@midnight-ntwrk/midnight-js-utils`.
  *
  * @see {@link EraDispatch} for what each step buys and what breaks if it moves.
  *
- * Both observations are breadcrumbed: the envelope's era as an encoding decision, and the fresh
- * re-read of step 3 as a head resolution carrying its own provenance, so a log can tell it apart
- * from the reading the operation started on.
+ * The envelope's era is breadcrumbed as an encoding decision, and the fresh re-read below as a head
+ * resolution carrying its own provenance, so a log can tell it apart from the reading the operation
+ * started on.
  *
  * @param head The era the operation resolved from the network head.
  * @param state The raw contract state the operation fetched, envelope included.
- * @param pdp The read surface, for the fresh head read step 3 needs.
+ * @param pdp The read surface, for the fresh head read the impossible case needs.
  * @param logger The optional logger the encoding and re-read breadcrumbs are written to.
+ * @returns The era whose decoder owns these bytes: `'v8'` for a retained envelope, `'v9'` for a
+ * current-era one.
  * @throws TagParseError if `state.raw` carries no supported contract-state envelope.
  * @throws Error, carrying the transport failure on `cause`, if the fresh head read rejects — so the
  * disagreement that was under investigation is not lost behind a bare transport error.
  * @throws HeadStateEraMismatchError if a fresh head read agrees with the state's era.
  * @throws IndexerInconsistencyError if a fresh head read still disagrees with it.
  */
-export const assertHeadStateEraAgreement = async (
+export const resolveContractStateEra = async (
   head: LedgerVersion,
   state: RawContractState,
   pdp: HeadVersionSource,
   logger?: BreadcrumbSink
-): Promise<void> => {
+): Promise<LedgerVersion> => {
   // NOT breadcrumbed when this THROWS. `contractStateEnvelopeVersion` refuses
   // an envelope it cannot parse, and the encoding breadcrumb's only field is
   // the era the tag declared -- so on that path there is no era to report and
@@ -474,14 +516,39 @@ export const assertHeadStateEraAgreement = async (
   // already names what the bytes carried instead, which is the more precise
   // signal, and the operation-start head reading is already in the log.
   const stateEra = contractStateEnvelopeVersion(state.raw);
-  // Reported for the AGREEING case too, not only for a disagreement: which era
+  // Reported for the ACCEPTED case too, not only for a refusal: which era
   // decoded a state is the fact an operator needs when the state decodes but
-  // the call behaves oddly, and only the agreeing path reaches a decoder.
+  // the call behaves oddly, and only the accepted path reaches a decoder.
   emitEncoding(logger, stateEra);
-  if (stateEra === head) {
-    return;
+  // The retained ledger wrote it, which is the only thing this pipeline can
+  // read -- under EITHER head. Pre-fork this is a native call; post-fork it is
+  // keep-state. Both are ordinary, and neither involves the head.
+  if (stateEra === 'v8') {
+    return stateEra;
   }
 
+  // From here the state carries a CURRENT-era envelope.
+  //
+  // Under a post-fork head that is ORDINARY, and it is what makes keep-state
+  // more than a single call: the first post-fork call migrates the contract's
+  // envelope from retained to current-era, and the ledger carries the retained
+  // VERIFIER KEYS across unchanged. So the bytes are the current decoder's to
+  // read while the artifacts that fit the contract are still the retained ones.
+  //
+  // The envelope answers ONE question -- which decoder may read these bytes --
+  // and it is not the question of whether the caller's artifacts fit this
+  // contract. Refusing here answered the second question with the first, and
+  // cost every call after a contract's first post-fork one. The key check does
+  // answer it, against the keys this state actually declares; see
+  // `assertSnapshotVerifierKey`.
+  if (head === 'v9') {
+    return stateEra;
+  }
+
+  // Under a PRE-fork head a current-era envelope is impossible: the envelope is
+  // newer than the block dating it, and no runtime can have written it yet.
+  // Either the operation's head reading went stale under it, or the two answers
+  // cannot both describe one chain -- a fresh read is what separates the two.
   let freshReading: HeadEraReading;
   try {
     // `readHeadEra` rather than `networkHeadVersion`: the same one round trip

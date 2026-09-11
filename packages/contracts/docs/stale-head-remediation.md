@@ -167,8 +167,8 @@ The scope's merge is `unprovenTx.merge(...)` on live CURRENT-era transactions,
 and a retained-era call never produces one: it is composed against whichever era
 the head is on and crosses the provider seams as its own transaction, in that
 era's own form. So there is nothing to merge it into, at either head — the scope
-would have to hold an era object this package is not allowed to hold
-(`docs/adr/0007-cross-the-era-boundary-with-plain-data-only.md`).
+would have to hold, and MERGE, two transactions built by two different WASM
+modules, which is the cross-module operation no ADR makes safe.
 
 This is reachable only from JavaScript today, because the retained-era
 `submitCallTx` overload declares no scope parameter. It is still checked,

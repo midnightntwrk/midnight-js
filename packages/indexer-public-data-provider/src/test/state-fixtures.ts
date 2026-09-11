@@ -16,6 +16,8 @@
 import { ledger, loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 
+import type { RegularTransaction } from '../gen/schema-types';
+
 // Contract-state fixtures are minted here, at test time, from the two ledger
 // runtimes themselves — never checked in as byte blobs. Minting keeps the
 // fixtures honest (they are whatever the pinned runtimes actually produce)
@@ -41,11 +43,78 @@ export const mintV9ContractStateHex = (): string => toHex(mintV9ContractStateByt
 export const mintV8ContractStateHex = async (): Promise<string> => toHex(await mintV8ContractStateBytes());
 
 /**
+ * Ledger parameters as each runtime writes them.
+ *
+ * `initialParameters()` is the only parameter set constructible without a chain, and it is enough
+ * for what these fixtures are for: the ENVELOPE. A running chain serves different CONTENT -- prices
+ * adjust per block -- but the same envelope tag, which is the thing the era dating reads.
+ */
+export const mintV9LedgerParametersBytes = (): Uint8Array => ledger.LedgerParameters.initialParameters().serialize();
+
+/** The v8-era twin of {@link mintV9LedgerParametersBytes}, reached through `loadLedger8()`. */
+export const mintV8LedgerParametersBytes = async (): Promise<Uint8Array> => {
+  const v8 = await loadLedger8();
+  return v8.LedgerParameters.initialParameters().serialize();
+};
+
+/** The v9 parameter fixture in the indexer's wire encoding: lowercase hex, no prefix. */
+export const mintV9LedgerParametersHex = (): string => toHex(mintV9LedgerParametersBytes());
+
+/** The v8 parameter fixture in the indexer's wire encoding: lowercase hex, no prefix. */
+export const mintV8LedgerParametersHex = async (): Promise<string> => toHex(await mintV8LedgerParametersBytes());
+
+// A fixed timestamp, so the bytes a block update produces are the same on every run. The value is
+// arbitrary; what matters is that both eras are handed the identical one.
+const ZSWAP_BLOCK_TIME = new Date(1_000_000);
+const ZSWAP_ROOT_RETENTION_SECONDS = 3_600n;
+
+/**
+ * A zswap chain state serialized by the v9 runtime, optionally carrying retained past roots.
+ *
+ * The populated variant exists because an EMPTY state is weak evidence for a claim about a wire
+ * format: two eras could agree on nothing and still emit identical bytes for it.
+ */
+export const mintV9ZswapChainStateBytes = (populated = false): Uint8Array =>
+  (populated
+    ? new ledger.ZswapChainState().postBlockUpdate(ZSWAP_BLOCK_TIME, ZSWAP_ROOT_RETENTION_SECONDS)
+    : new ledger.ZswapChainState()
+  ).serialize();
+
+/** The v8-era twin of {@link mintV9ZswapChainStateBytes}, reached through `loadLedger8()`. */
+export const mintV8ZswapChainStateBytes = async (populated = false): Promise<Uint8Array> => {
+  const v8 = await loadLedger8();
+  return (
+    populated
+      ? new v8.ZswapChainState().postBlockUpdate(ZSWAP_BLOCK_TIME, ZSWAP_ROOT_RETENTION_SECONDS)
+      : new v8.ZswapChainState()
+  ).serialize();
+};
+
+/** The v9 zswap fixture in the indexer's wire encoding: lowercase hex, no prefix. */
+export const mintV9ZswapChainStateHex = (populated = false): string => toHex(mintV9ZswapChainStateBytes(populated));
+
+/**
  * A minimal, real v9 transaction in the indexer's wire encoding. Built from
  * the v9 runtime itself so it deserializes for real — no stubbing of the
  * transaction decoder is needed anywhere.
  */
 export const mintV9TransactionHex = (): string => toHex(ledger.Transaction.fromParts('local-test').mockProve().bind().serialize());
+
+/**
+ * The v8-era twin of {@link mintV9TransactionHex}: a minimal, real finalized
+ * transaction in the indexer's wire encoding, produced by the v8 runtime
+ * itself and reached through `loadLedger8()`, the only sanctioned path to it.
+ *
+ * `mockProve()` already yields the `(SignatureEnabled, Proof, Binding)` shape a
+ * finalized transaction has — no separate `bind()` on this era — so the bytes
+ * carry the same `proof,pedersen-schnorr` tag a real finalized v8 transaction
+ * does, and round-trip through `Transaction.deserialize('signature', 'proof',
+ * 'binding', ...)`.
+ */
+export const mintV8TransactionHex = async (): Promise<string> => {
+  const v8 = await loadLedger8();
+  return toHex(v8.Transaction.fromParts('local-test').mockProve().serialize());
+};
 
 /** Protocol-version integer for a node release whose ledger runtime is v8. */
 export const V8_ERA_PROTOCOL_VERSION = 1_000_000;
@@ -61,3 +130,52 @@ export const V9_ERA_LATER_PROTOCOL_VERSION = 2_003_000;
 
 /** A protocol-version integer no release of this client can resolve. */
 export const UNRESOLVABLE_PROTOCOL_VERSION = 0;
+
+/** The regular-transaction row shape the read seams consume. */
+export type RegularTransactionRow = RegularTransaction & { hash: string; identifiers: string[] };
+
+/** The fields a test varies on a {@link RegularTransactionRow} fixture. */
+export interface RegularTransactionFixture {
+  readonly protocolVersion: number;
+  readonly raw: string;
+  readonly indexerId?: number;
+  readonly txHash?: string;
+  readonly identifiers?: readonly string[];
+  readonly contractAddresses?: readonly string[];
+  readonly blockHeight?: number;
+  readonly blockHash?: string;
+  readonly blockAuthor?: string | null;
+  readonly blockTimestamp?: number;
+  readonly estimatedFees?: string;
+  readonly paidFees?: string;
+}
+
+/**
+ * Builds one regular-transaction row as the indexer's generated types describe
+ * it, from the handful of fields a read-path test actually varies.
+ *
+ * The generated `RegularTransaction` declares two dozen fields no read seam
+ * touches (dust indices, zswap offsets, merkle-tree roots), so a fixture cannot
+ * be a structurally complete value. THIS is the one place that widens a partial
+ * row to it — every test builds fixtures through here rather than casting its
+ * own literal.
+ */
+export const regularTransactionRow = (fixture: RegularTransactionFixture): RegularTransactionRow =>
+  ({
+    id: fixture.indexerId ?? 1,
+    protocolVersion: fixture.protocolVersion,
+    raw: fixture.raw,
+    hash: fixture.txHash ?? 'ab'.repeat(32),
+    identifiers: [...(fixture.identifiers ?? ['test-tx-id'])],
+    block: {
+      height: fixture.blockHeight ?? 10,
+      hash: fixture.blockHash ?? 'cd'.repeat(32),
+      author: fixture.blockAuthor ?? null,
+      timestamp: fixture.blockTimestamp ?? 0
+    },
+    contractActions: (fixture.contractAddresses ?? []).map((address) => ({ address })),
+    unshieldedCreatedOutputs: [],
+    unshieldedSpentOutputs: [],
+    fees: { estimatedFees: fixture.estimatedFees ?? '1', paidFees: fixture.paidFees ?? '1' },
+    transactionResult: { status: 'SUCCESS' as const, segments: null }
+  }) as unknown as RegularTransactionRow;

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { CompiledContract, type ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
   assert as compactAssert,
@@ -51,6 +51,7 @@ import {
   type ZswapChainState,
   type ZswapSecretKeys,
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
@@ -64,10 +65,12 @@ import {
   ZKConfigProvider,
   type ZKIR
 } from '@midnight-ntwrk/midnight-js-types';
+import { Option } from 'effect';
 
 import { type CallOptions, type CallOptionsWithPrivateState } from '../call';
 import { type ContractConstructorResult } from '../call-constructor';
 import type { ContractProviders } from '../contract-providers';
+import { CURRENT_PIPELINE_ERA } from '../era';
 import { type UnsubmittedCallTxData, type UnsubmittedDeployTxData } from '../tx-model';
 
 export const createMockContractAddress = () => sampleContractAddress();
@@ -335,6 +338,7 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
 });
 
 export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDeployTxData<Contract.Any>> = {}): UnsubmittedDeployTxData<Contract.Any> => ({
+  era: CURRENT_PIPELINE_ERA,
   public: {
     contractAddress: createMockContractAddress(),
     initialContractState: createMockContractState()
@@ -349,9 +353,32 @@ export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDep
   ...overrides
 });
 
+export const createMockContractCall = (
+  overrides: Partial<ContractExecutable.ContractExecutable.ContractCall> = {}
+): ContractExecutable.ContractExecutable.ContractCall => ({
+  contractAddress:
+    overrides.contractAddress ?? PlatformContractAddress.ContractAddress(createMockContractAddress()),
+  circuitId: overrides.circuitId ?? 'testCircuit',
+  public: {
+    contractState: StateValue.newNull(),
+    publicTranscript: [] as Op<AlignedValue>[],
+    partitionedTranscript: [undefined, undefined],
+    ...overrides.public
+  },
+  private: {
+    input: {} as AlignedValue,
+    output: {} as AlignedValue,
+    privateTranscriptOutputs: [] as AlignedValue[],
+    ...overrides.private
+  },
+  communicationCommitment: overrides.communicationCommitment ?? Option.none()
+});
+
 export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>> = {}): UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
+    era: CURRENT_PIPELINE_ERA,
     public: {
       nextContractState: StateValue.newNull(),
+      nextContractStateEncoded: StateValue.newNull().encode(),
       publicTranscript: [
         { noop: { n: 1 } }
       ] as Op<AlignedValue>[],
@@ -392,6 +419,7 @@ export const createMockCallOptionsWithPrivateState = (overrides: Partial<CallOpt
 });
 
 export const createMockConstructorResult = (): ContractConstructorResult<Contract.Any> => ({
+  era: CURRENT_PIPELINE_ERA,
   nextContractState: createMockContractState(),
   nextPrivateState: { test: 'next-private-state' },
   nextZswapLocalState: createMockZswapLocalState(),

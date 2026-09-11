@@ -315,6 +315,8 @@ const callOptionsFor = (version: LedgerVersion): ComposeCallOptions => ({
       contractAddress: ocrt3.dummyContractAddress(),
       circuitId: 'increment',
       contractState: FIXTURES[version].keyedContractState(),
+      // Named explicitly: this test compares the two eras' assembly, not their cost models.
+      ledgerParameters: 'initial',
       transcript: {
         kind: 'unpartitioned',
         preState: PRE_STATE,
@@ -535,9 +537,12 @@ describe('the two ledger eras run the same scenario', () => {
     expect(shape.deployedVerifierKeyHashes).toEqual([hashVerifierKey(VERIFIER_KEY)]);
   });
 
-  // The boundary rule, mechanised across the whole surface: only plain data
-  // crosses the facade. A live WASM handle in any of these results would make
-  // structuredClone throw, so this fails rather than shipping one.
+  // The boundary rule, DOCUMENTED across the surface: only plain data crosses
+  // the facade. Read what this does and does not catch before relying on it --
+  // a `wasm-bindgen` handle is a plain object whose only own property is a
+  // `__wbg_ptr` number, so it clones WITHOUT throwing and these assertions
+  // would pass one through. What they do catch is a value that genuinely
+  // refuses to clone, such as a function or a live proxy. See ADR-0007.
   // Parity of the happy path is the easy half. A caller writing era-agnostic
   // code also has to be able to handle a refusal the same way on both arms, so
   // the coded refusals for a malformed envelope are pinned per era too.
@@ -641,6 +646,35 @@ describe('the two ledger eras run the same scenario', () => {
     expect(() => structuredClone(era.composeDeployTx(deployOptionsFor(version)))).not.toThrow();
   });
 
+  // Both eras answer the partition question the same way for the same call, and
+  // the pair either answers with composes. The retained CALL pipeline depends on
+  // exactly this: it resolves the split before it can route a Zswap coin, then
+  // hands the composer the pair rather than the raw op sequence.
+  it.each(ERAS)('partitions a call the same way on %s, and composes from the pair it returns', async (version) => {
+    const era = await loadLedgerEra(version);
+    const [call] = callOptionsFor(version).calls;
+
+    const [guaranteed, fallible] = era.partitionCallTranscript({
+      circuitId: call.circuitId,
+      contractAddress: call.contractAddress,
+      transcript: call.transcript,
+      ledgerParameters: call.ledgerParameters
+    });
+
+    // This fixture's program is wholly guaranteed on both eras. Pinned in both
+    // directions: a seam that answered with an empty pair would satisfy a
+    // one-sided check and compose a call that records nothing.
+    expect(guaranteed).toBeDefined();
+    expect(fallible).toBeUndefined();
+
+    expect(() =>
+      era.composeCallTx({
+        ...callOptionsFor(version),
+        calls: [{ ...call, transcript: { kind: 'partitioned', guaranteed, fallible } }]
+      })
+    ).not.toThrow();
+  });
+
   it.each(ERAS)('exposes the same method names on %s', async (version) => {
     const era = await loadLedgerEra(version);
 
@@ -649,6 +683,7 @@ describe('the two ledger eras run the same scenario', () => {
       'composeDeployTx',
       'decodeContractState',
       'extractState',
+      'partitionCallTranscript',
       'version'
     ]);
   });
