@@ -60,12 +60,22 @@ describe('the era and verification-path errors a caller has to catch are reachab
     const REMEDIATION: Readonly<Record<EraArtifactMismatchReason, string>> = {
       'unwrapped-current-era-contract': 'wrap-it',
       'unrecognised-contract-shape': 'recompile',
-      'current-era-artifact-on-pre-fork-head': 'wait-for-fork'
+      'current-era-artifact-on-pre-fork-head': 'wait-for-fork',
+      'artifact-era-undeclared': 'serve-contract-info',
+      'provider-cannot-declare-era': 'implement-the-member',
+      'unknown-artifact-runtime-version': 'upgrade-midnight-js'
     };
 
     expect(REMEDIATION[new EraArtifactMismatchError('unwrapped-current-era-contract').reason]).toBe('wrap-it');
     expect(REMEDIATION[new EraArtifactMismatchError('unrecognised-contract-shape').reason]).toBe('recompile');
     expect(REMEDIATION[new EraArtifactMismatchError('current-era-artifact-on-pre-fork-head').reason]).toBe('wait-for-fork');
+    expect(REMEDIATION[new EraArtifactMismatchError('artifact-era-undeclared').reason]).toBe('serve-contract-info');
+    expect(REMEDIATION[new EraArtifactMismatchError('provider-cannot-declare-era').reason]).toBe(
+      'implement-the-member'
+    );
+    expect(REMEDIATION[new EraArtifactMismatchError('unknown-artifact-runtime-version').reason]).toBe(
+      'upgrade-midnight-js'
+    );
   });
 
   it('retains the two eras on a head/state disagreement, so a caller can report which pair failed', () => {

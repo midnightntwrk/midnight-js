@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { computeSha256Hex, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
+import { computeSha256Hex, ZkArtifactContractInfoError, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
 import { fetch } from 'cross-fetch';
 import type { BinaryLike } from 'crypto';
 import * as crypto from 'crypto';
@@ -505,6 +505,203 @@ describe('Fetch ZK config Provider', () => {
         expect(manifestFetchAttempts).toBeGreaterThanOrEqual(2);
       } finally {
         flaky.close();
+      }
+    });
+  });
+
+  describe('getArtifactRuntimeVersion', () => {
+    // Serves only what this member reads. The retained toolchain emits no integrity manifest, so the
+    // era has to come from contract-info.json, which every compactc emits.
+    // A location serving no integrity manifest is the retained (pre-compactc-0.33) case, so these
+    // providers use the mode the manifest documentation names for it. Under the default `require`
+    // the absence is itself a refusal, asserted separately below.
+    const RETAINED_BUNDLE_OPTIONS = { verify: 'require-if-present' } as const;
+
+    const serveContractInfo = async (body?: string): Promise<{ url: string; close: () => void }> => {
+      const app = express();
+      if (body !== undefined) {
+        app.get('/compiler/contract-info.json', (_, res) => {
+          res.type('application/json').send(body);
+        });
+      }
+      const listening = app.listen();
+      const address = listening.address();
+      if (address === null || typeof address === 'string') {
+        throw new Error('express did not report a usable address');
+      }
+      return { url: `http://localhost:${address.port}`, close: () => listening.close() };
+    };
+
+    it('reports the runtime version the compiler recorded', async () => {
+      // Arrange
+      const served = await serveContractInfo(JSON.stringify({ 'runtime-version': '0.16.0' }));
+      try {
+        const provider = new FetchZkConfigProvider(served.url, RETAINED_BUNDLE_OPTIONS);
+
+        // Act
+        const runtimeVersion = await provider.getArtifactRuntimeVersion();
+
+        // Assert
+        expect(runtimeVersion).toBe('0.16.0');
+      } finally {
+        served.close();
+      }
+    });
+
+    it('refuses a location that serves no compiler description', async () => {
+      const served = await serveContractInfo();
+      try {
+        const provider = new FetchZkConfigProvider(served.url, RETAINED_BUNDLE_OPTIONS);
+
+        await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactContractInfoError);
+      } finally {
+        served.close();
+      }
+    });
+
+    it('refuses an SPA fallback page served in place of the compiler description', async () => {
+      // The failure this guards is a silent one: a CDN answering 200 with index.html would otherwise
+      // be parsed as an artifact description rather than reported as a missing file.
+      const app = express();
+      app.get('/compiler/contract-info.json', (_, res) => {
+        res.type('text/html').send('<!doctype html><html></html>');
+      });
+      const listening = app.listen();
+      const address = listening.address();
+      if (address === null || typeof address === 'string') {
+        throw new Error('express did not report a usable address');
+      }
+      try {
+        const provider = new FetchZkConfigProvider(`http://localhost:${address.port}`, RETAINED_BUNDLE_OPTIONS);
+
+        await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactContractInfoError);
+      } finally {
+        listening.close();
+      }
+    });
+
+    it('takes the runtime version from the INTEGRITY MANIFEST when the location serves one', async () => {
+      // The manifest is the only file an application can anchor to a hash it controls
+      // (`expectedManifestHash`). Where it declares the version, reading it from anywhere else would
+      // let whoever serves the artifacts decide which ledger pipeline runs.
+      const app = express();
+      app.get('/compiler/contract-manifest.json', (_, res) => {
+        res.type('application/json').send(JSON.stringify({ 'manifest-version': '1', 'runtime-version': '0.19.0' }));
+      });
+      app.get('/compiler/contract-info.json', (_, res) => {
+        res.type('application/json').send(JSON.stringify({ 'runtime-version': '0.16.0' }));
+      });
+      const listening = app.listen();
+      const address = listening.address();
+      if (address === null || typeof address === 'string') {
+        throw new Error('express did not report a usable address');
+      }
+      try {
+        const provider = new FetchZkConfigProvider(`http://localhost:${address.port}`, RETAINED_BUNDLE_OPTIONS);
+
+        await expect(provider.getArtifactRuntimeVersion()).resolves.toBe('0.19.0');
+      } finally {
+        listening.close();
+      }
+    });
+
+    it('refuses a contract description the manifest does not vouch for', async () => {
+      // A manifest covering the file but not declaring the version itself: the description is read,
+      // and it has to survive the same integrity gate every key and ZKIR passes.
+      const contractInfo = JSON.stringify({ 'runtime-version': '0.16.0' });
+      const app = express();
+      app.get('/compiler/contract-manifest.json', (_, res) => {
+        res.type('application/json').send(
+          JSON.stringify({
+            'manifest-version': '1',
+            compiler: {
+              type: 'directory',
+              'contract-info.json': { type: 'file', size: contractInfo.length, hash: '00'.repeat(32) }
+            }
+          })
+        );
+      });
+      app.get('/compiler/contract-info.json', (_, res) => {
+        res.type('application/json').send(contractInfo);
+      });
+      const listening = app.listen();
+      const address = listening.address();
+      if (address === null || typeof address === 'string') {
+        throw new Error('express did not report a usable address');
+      }
+      try {
+        const provider = new FetchZkConfigProvider(`http://localhost:${address.port}`);
+
+        await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactIntegrityError);
+      } finally {
+        listening.close();
+      }
+    });
+
+    it('refuses to read an unvouched-for description at all under the default require mode', async () => {
+      // Consistent with every other artifact this provider serves: with verification required and
+      // no manifest available, nothing is trusted -- including the file that decides the era.
+      const served = await serveContractInfo(JSON.stringify({ 'runtime-version': '0.16.0' }));
+      try {
+        const provider = new FetchZkConfigProvider(served.url);
+
+        await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactIntegrityError);
+      } finally {
+        served.close();
+      }
+    });
+
+    it('retries after a failed fetch rather than caching the failure', async () => {
+      // A transient network error must not permanently refuse an artifact set that is really there:
+      // the era read would then stay broken for the life of the provider.
+      let attempts = 0;
+      const app = express();
+      app.get('/compiler/contract-info.json', (_, res) => {
+        attempts += 1;
+        if (attempts === 1) {
+          res.status(503).send('unavailable');
+          return;
+        }
+        res.type('application/json').send(JSON.stringify({ 'runtime-version': '0.16.0' }));
+      });
+      const listening = app.listen();
+      const address = listening.address();
+      if (address === null || typeof address === 'string') {
+        throw new Error('express did not report a usable address');
+      }
+      try {
+        const provider = new FetchZkConfigProvider(`http://localhost:${address.port}`, RETAINED_BUNDLE_OPTIONS);
+
+        await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactContractInfoError);
+
+        await expect(provider.getArtifactRuntimeVersion()).resolves.toBe('0.16.0');
+        expect(attempts).toBe(2);
+      } finally {
+        listening.close();
+      }
+    });
+
+    it('fetches the description once and answers later calls from that reading', async () => {
+      let attempts = 0;
+      const app = express();
+      app.get('/compiler/contract-info.json', (_, res) => {
+        attempts += 1;
+        res.type('application/json').send(JSON.stringify({ 'runtime-version': '0.16.0' }));
+      });
+      const listening = app.listen();
+      const address = listening.address();
+      if (address === null || typeof address === 'string') {
+        throw new Error('express did not report a usable address');
+      }
+      try {
+        const provider = new FetchZkConfigProvider(`http://localhost:${address.port}`, RETAINED_BUNDLE_OPTIONS);
+
+        await provider.getArtifactRuntimeVersion();
+        await provider.getArtifactRuntimeVersion();
+
+        expect(attempts).toBe(1);
+      } finally {
+        listening.close();
       }
     });
   });

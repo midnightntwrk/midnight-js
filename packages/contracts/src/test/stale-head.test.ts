@@ -447,6 +447,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
   /** A retained-era provider set on a PRE-FORK head, with the three seams recorded. */
   const preForkProviders = (): RetainedProviders => {
     const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
+      getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.16.0'),
       getVerifierKeys: vi.fn(),
       getZKIR: vi.fn(),
       getProverKey: vi.fn(),

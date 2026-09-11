@@ -40,7 +40,7 @@ import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MixedEraScopeError, ScopedTxEraUnsupportedError } from '../errors';
-import { pipelineEraOf } from '../internal/era';
+import { resolveArtifactEra } from '../internal/era';
 import { assertScopeAdmitsRetainedEraCall, scopedTransaction, TransactionContextImpl } from '../internal/transaction';
 import { submitCallTx } from '../submit-call-tx';
 import { submitTx } from '../submit-tx';
@@ -294,7 +294,7 @@ describe('the era ordering the forward-only fork guard relies on', () => {
 });
 
 describe('a retained-era call handed a scope', () => {
-  // A retained-era artifact, in the shape `pipelineEraOf` recognises: own
+  // A retained-era artifact, in the shape `resolveArtifactEra` recognises: own
   // `impureCircuits`, and an `initialState` that is a SYNCHRONOUS function.
   // Asserted below rather than assumed, so this fixture cannot drift into the
   // current-era arm and make the negative vacuous.
@@ -310,8 +310,12 @@ describe('a retained-era call handed a scope', () => {
     args: []
   });
 
-  it('is the shape the era dispatch calls retained-era', () => {
-    expect(pipelineEraOf(retainedContract)).toBe('ledger8');
+  it('is the shape the era dispatch calls retained-era', async () => {
+    // Paired with the artifact declaration a retained bundle carries, because the shape alone no
+    // longer decides the era -- it only says which declaration is consulted.
+    const declaringRetained = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
+
+    await expect(resolveArtifactEra(retainedContract, declaringRetained)).resolves.toBe('ledger8');
   });
 
   it('is REFUSED rather than silently run outside the scope it was handed', () => {
@@ -345,6 +349,10 @@ describe('a retained-era call handed a scope', () => {
     // caller got something `hasErrorCode` cannot see.
     const providers = createMockProviders();
     providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(POST_FORK_PROTOCOL_VERSION);
+    // The bundle has to declare the RETAINED toolchain for this call to reach the scope refusal at
+    // all: the shared mock set is the current-era one, and an artifact whose declaration disagrees
+    // with its shape is refused at the era decision, before any scope is consulted.
+    providers.zkConfigProvider.getArtifactRuntimeVersion = vi.fn().mockResolvedValue('0.16.0');
     eraLoadSlot.rejectFor = undefined;
 
     let caught: unknown;

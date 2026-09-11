@@ -90,9 +90,11 @@ export interface PipelineSelectionBreadcrumb {
   /** The era the network head is on. */
   readonly version: LedgerVersion;
   readonly protocolVersion: number;
-  /** One value today, carried anyway: a second selection input is exactly the
-   * change that would need to show up in a log. */
-  readonly source: 'compiled-contract-shape';
+  /** Which input the pipeline was selected from. One value today, carried anyway:
+   * a second selection input is exactly the change that would need to show up in
+   * a log -- and the move from the contract's shape to the artifacts' declared
+   * runtime version is exactly that change having happened once already. */
+  readonly source: 'artifact-runtime-version-declaration';
   readonly readingProvenance: HeadReadingProvenance;
   /** The pipeline the artifact belongs to. */
   readonly path: PipelineEra;
@@ -202,7 +204,7 @@ export const emitPipelineSelection = (
     decision: 'pipeline-selection',
     version: reading.head,
     protocolVersion: reading.headProtocolVersion,
-    source: 'compiled-contract-shape',
+    source: 'artifact-runtime-version-declaration',
     readingProvenance: 'operation-start',
     path,
     // Spread rather than assigned: an operation with no address must leave the field OUT, not

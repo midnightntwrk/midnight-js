@@ -85,9 +85,13 @@ name could disagree with the pair it was derived from, which is the same reason
 the era gate itself returns nothing.
 
 `source` has one value today, because a pipeline is selected in exactly one way:
-from the shape of the compiled contract the caller passed. It is carried anyway,
+from the `runtime-version` the artifact set declares. It is carried anyway,
 because a second selection input is exactly the change that would need to show
-up in a log.
+up in a log — and this field has already earned that keep once. It read
+`compiled-contract-shape` while the era was inferred from the generated code;
+when that inference was replaced (see [EraDispatch](./era-dispatch.md)), the
+field was the one place an operator could otherwise have gone on reading a
+retired answer.
 
 `contractAddress` is present exactly when the operation names one, and ABSENT
 otherwise rather than empty. A deploy has no address until its composition mints

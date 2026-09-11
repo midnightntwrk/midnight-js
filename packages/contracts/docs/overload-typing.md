@@ -178,7 +178,7 @@ statement on the common path. An arm that is NOT last never renders at all, so p
 earlier would only distort `ReturnType` and `Parameters`.
 
 `NEITHER_ERA_CONTRACT_MESSAGE` is consumed by `EraArtifactMismatchError`, which
-`pipelineEraOf` raises when it is handed an object belonging to neither era. A
+`resolveArtifactEra` raises when it is handed an object belonging to neither era. A
 thrown error can carry full remediation text where a compiler diagnostic cannot,
 which is why the text is not wired into an overload arm.
 
@@ -197,17 +197,18 @@ verbatim, and pins that a neither-era object really is refused by
 `NeitherEraContractOptions` — the assignability fact the overloads rely on,
 whether or not any arm spells it out.
 
-## The runtime predicate lives elsewhere
+## The runtime decision lives elsewhere
 
 This file declares no era predicate. Telling the two eras apart at runtime is
-`pipelineEraOf` in `packages/contracts/src/internal/era.ts`, and it is the only
-one — see [EraDispatch](./era-dispatch.md) for why it is a structural check, why
-it must not be "improved" to test the vendor's `CompiledContract` brand, and
-what it refuses.
+`resolveArtifactEra` in `packages/contracts/src/internal/era.ts`, and it is the only
+one — see [EraDispatch](./era-dispatch.md) for which answer each era carries, why
+the era may not be inferred from generated code at all, why the check that
+remains must not be "improved" to test the vendor's `CompiledContract` brand,
+and what it refuses.
 
 An earlier, provisional check tested for `impureCircuits` alone. It lived here,
 answered `true` for a raw current-era contract instance, and could not close that
-blind spot; `pipelineEraOf` replaced it.
+blind spot; `resolveArtifactEra` replaced it.
 
 ## Why a retained-era result is version-tagged
 

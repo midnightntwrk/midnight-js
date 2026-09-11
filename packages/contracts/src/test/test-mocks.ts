@@ -293,6 +293,10 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
     importSigningKeys: vi.fn()
   },
   zkConfigProvider: {
+    // The CURRENT-era value, because this is the current-era provider set. A retained value here
+    // would be read by nothing today and would silently route a regression into the retained
+    // pipeline instead of failing at the era decision.
+    getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.19.0'),
     getVerifierKeys: vi.fn(),
     getZKIR: vi.fn(),
     getProverKey: vi.fn(),

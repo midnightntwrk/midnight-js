@@ -17,8 +17,9 @@
  * Which pipeline produced a result, published so a caller can tell without
  * inspecting the objects inside it.
  *
- * The vocabulary was already resolved internally, by `pipelineEraOf`, from the
- * compiled artifact a caller supplied. This module is where it becomes
+ * The vocabulary was already resolved internally, by `resolveArtifactEra` --
+ * from the container a caller supplied for the current era, and from the
+ * artifact set its ZK config provider serves for the retained one. This module is where it becomes
  * nameable: `src/internal` is hidden from consumers, and a published member
  * whose type a consumer cannot name is a member they cannot write a signature
  * against.

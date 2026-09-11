@@ -21,16 +21,18 @@ import {
   UnknownLedgerVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
 import {
+  ArtifactRuntimeVersionUnavailableError,
   type FinalizedTxData,
   type PublicDataProvider,
   type RawContractState,
   UntaggedPayloadError,
   type VersionedFinalizedTxData,
-  type VersionedTx
+  type VersionedTx,
+  type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
+import { contractStateEnvelopeVersion, ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
 
-import type { PipelineEra } from '../era';
+import { CURRENT_PIPELINE_ERA, type PipelineEra, RETAINED_PIPELINE_ERA } from '../era';
 import {
   EraArtifactMismatchError,
   EraInvariantViolationError,
@@ -240,11 +242,41 @@ export interface HeadEraReading {
  */
 export type HeadVersionSource = Pick<PublicDataProvider, 'queryLatestProtocolVersion'>;
 
-// The `constructor.name` values that separate the two eras' generated code, asserted against real
-// compiled contracts by `src/test/era-dispatch-ledger8.test.ts` and `src/test/era-dispatch.test.ts`.
-// Match `PLAIN_FUNCTION` POSITIVELY -- never as "anything that is not async", which would fail open.
+// The `constructor.name` values that appear on the two eras' generated code. `ASYNC_FUNCTION`
+// REFUSES; `PLAIN_FUNCTION` admits a candidate and decides nothing. A build step targeting below
+// ES2017 rewrites an `AsyncFunction` into a plain one, so reading `PLAIN_FUNCTION` as proof of the
+// retained era let a transpiled current-era contract into the retained pipeline. The rewrite runs
+// in one direction only -- a build can erase `async`, never fabricate it -- which is what makes the
+// async reading sound as a refusal and the plain reading unsound as a route.
 const PLAIN_FUNCTION = 'Function';
 const ASYNC_FUNCTION = 'AsyncFunction';
+
+/**
+ * The `compact-runtime` versions this framework can place on the era timeline, keyed by
+ * `major.minor` because a patch release never moves a toolchain across the fork.
+ *
+ * Frozen, and the ONE place a toolchain version is turned into an era. Adding an era adds a row
+ * here; the gate below refuses to compile if one is added without a row.
+ *
+ * The gate has to be a CONSTRAINT, not a bare conditional type: `type X = ... ? true : never` is a
+ * legal declaration that nothing reads, so it computes the answer and discards it. Passing the
+ * conditional through `Assert` makes the failing case violate a constraint, which is a build error.
+ */
+const RUNTIME_VERSION_TO_ERA = Object.freeze({
+  '0.16': RETAINED_PIPELINE_ERA,
+  '0.19': CURRENT_PIPELINE_ERA
+} as const);
+
+// Compile-time gate: every pipeline era must be reachable from some declared runtime version.
+// Without it a third era could be added to `PipelineEra` with no toolchain mapped to it, and every
+// artifact built by that toolchain would be refused at run time instead of failing here.
+type MappedEra = (typeof RUNTIME_VERSION_TO_ERA)[keyof typeof RUNTIME_VERSION_TO_ERA];
+type Assert<T extends true> = T;
+// The tuple wrapping keeps this a whole-union check rather than a distributive one, so a single
+// mapped era could never satisfy it on behalf of the rest.
+type _EveryEraHasARuntimeVersion = Assert<[PipelineEra] extends [MappedEra] ? true : false>;
+
+const RUNTIME_VERSION = /^(\d+\.\d+)\.\d+/;
 
 /**
  * Whether `value` carries `key` as its OWN property, narrowing `value` so the property can then be
@@ -258,8 +290,34 @@ const ASYNC_FUNCTION = 'AsyncFunction';
 const hasOwnProperty = <K extends string>(value: object, key: K): value is object & Record<K, unknown> =>
   Object.hasOwn(value, key);
 
+/** What the artifact's own shape can establish, which is never an era on its own. */
+type ArtifactShape = 'current-era-container' | 'retained-era-candidate';
+
 /**
- * Decides which pipeline a caller's contract belongs to, from the object itself.
+ * The one read {@link resolveArtifactEra} makes on the ZK config provider.
+ *
+ * Declared as a `Pick` of the real provider for the same reason {@link HeadVersionSource} is: a full
+ * `ZKConfigProvider` satisfies it, so nothing at a call site changes, while a test -- and a reader
+ * -- sees exactly which member is consulted.
+ */
+export type ArtifactRuntimeVersionSource = Pick<ZKConfigProvider<string>, 'getArtifactRuntimeVersion'>;
+
+/**
+ * Places a declared `compact-runtime` version on the era timeline.
+ *
+ * @param runtimeVersion The version string the compiler recorded, verbatim.
+ * @returns The pipeline era that toolchain builds for, or `undefined` if this framework knows no
+ * such toolchain -- which the caller reports rather than resolving to a default.
+ */
+const eraOfRuntimeVersion = (runtimeVersion: string): PipelineEra | undefined => {
+  const majorMinor = RUNTIME_VERSION.exec(runtimeVersion)?.[1];
+
+  return majorMinor === undefined ? undefined : RUNTIME_VERSION_TO_ERA[majorMinor as keyof typeof RUNTIME_VERSION_TO_ERA];
+};
+
+/**
+ * Reads what the caller's contract object can prove about itself, WITHOUT deciding an era for a
+ * retained candidate.
  *
  * A STRUCTURAL check, and it must not be "improved" to test the vendor's registered
  * `CompiledContract` brand: that brand sits on a prototype the container's own combinators drop,
@@ -268,24 +326,28 @@ const hasOwnProperty = <K extends string>(value: object, key: K): value is objec
  *
  * @param compiledContract The value a caller passed as its contract. `unknown`, because a
  * JavaScript caller can pass anything and the point of this function is to say what it passed.
- * @returns The pipeline that contract belongs to.
+ * @returns Which of the two recognised shapes it has.
  * @throws EraArtifactMismatchError with reason `'unwrapped-current-era-contract'` for a raw
- * current-era contract instance, and `'unrecognised-contract-shape'` for an object matching
- * neither era.
+ * current-era contract instance whose `async` survived the caller's build, and
+ * `'unrecognised-contract-shape'` for an object matching neither era.
  * @see {@link EraDispatch} for the shape table each branch below implements, the brand-loss
  * measurement, and why `initialState` is the one check that is not an own-property check.
  */
-export const pipelineEraOf = (compiledContract: unknown): PipelineEra => {
+const artifactShapeOf = (compiledContract: unknown): ArtifactShape => {
   if (typeof compiledContract !== 'object' || compiledContract === null) {
     throw new EraArtifactMismatchError('unrecognised-contract-shape');
   }
 
   if (!hasOwnProperty(compiledContract, 'impureCircuits')) {
-    // The container carries a `tag` and none of the circuit collections. Requiring the `tag` as
-    // well as the absence of `impureCircuits` is what stops an arbitrary object — `{}` included —
-    // from being routed into the current-era pipeline by default.
+    // The container carries a `tag` and none of the circuit collections. The `tag`'s VALUE is
+    // chosen by the caller (`CompiledContract.make(tag, ctor)`) and says nothing about an era; what
+    // places this object is that only the current toolchain's container has this shape, and that
+    // the property is an OWN one, so it survives both the spread its own combinators perform and
+    // any build step -- which is why this arm needs no artifact read. Requiring the `tag` as well
+    // as the absence of `impureCircuits` is what stops an arbitrary object -- `{}` included -- from
+    // being routed into the current-era pipeline by default.
     if (hasOwnProperty(compiledContract, 'tag') && typeof compiledContract.tag === 'string') {
-      return 'ledger9';
+      return 'current-era-container';
     }
     throw new EraArtifactMismatchError('unrecognised-contract-shape');
   }
@@ -299,7 +361,7 @@ export const pipelineEraOf = (compiledContract: unknown): PipelineEra => {
 
   switch (initialState.constructor.name) {
     case PLAIN_FUNCTION:
-      return 'ledger8';
+      return 'retained-era-candidate';
     case ASYNC_FUNCTION:
       throw new EraArtifactMismatchError('unwrapped-current-era-contract');
     default:
@@ -309,26 +371,89 @@ export const pipelineEraOf = (compiledContract: unknown): PipelineEra => {
 };
 
 /**
- * {@link pipelineEraOf}, in the narrowing form each era-dispatching entry point needs.
+ * Decides which pipeline a caller's contract belongs to, from what the artifact DECLARES.
  *
- * Not a second predicate: the decision is made in exactly one place, and this only gives it a type
- * predicate so an entry point's body can drop the retained-era arm from its parameter union without
- * a cast.
+ * Two answers, one per era, and neither rests on a property of generated JavaScript that a
+ * consumer's build can rewrite. The current era arrives wrapped in a container whose own `tag`
+ * survives every build step, so recognising that container is enough. The retained era has no such
+ * container, so it is placed by the `runtime-version` its artifact set declares. The shape of the
+ * generated code is consulted only to refuse.
+ *
+ * The artifact set is read ONLY for a retained candidate, so a current-era caller pays no round trip
+ * for this and needs no file it does not already ship.
+ *
+ * @param compiledContract The value a caller passed as its contract.
+ * @param source The ZK config provider serving that contract's artifacts.
+ * @returns The pipeline that contract belongs to.
+ * @throws EraArtifactMismatchError with reason `'unrecognised-contract-shape'` or
+ * `'unwrapped-current-era-contract'` before the provider is consulted at all;
+ * `'artifact-era-undeclared'` when the provider cannot report a runtime version, carrying its
+ * failure on `cause`; and `'unknown-artifact-runtime-version'` for a toolchain this framework
+ * cannot place.
+ * @see {@link EraDispatch} for the table this implements and why the era may not be inferred.
+ */
+export const resolveArtifactEra = async (
+  compiledContract: unknown,
+  source: ArtifactRuntimeVersionSource
+): Promise<PipelineEra> => {
+  if (artifactShapeOf(compiledContract) === 'current-era-container') {
+    return CURRENT_PIPELINE_ERA;
+  }
+
+  let runtimeVersion: string;
+  try {
+    runtimeVersion = await source.getArtifactRuntimeVersion();
+  } catch (error) {
+    // Only the two failures that are STATEMENTS about the era become era refusals. A transport
+    // fault, a permission fault or a bug in a caller's provider says nothing about which ledger
+    // executes this call, and relabelling it sends the caller to serve a file that is already
+    // there. `readHeadEra` states the same rule for the head read.
+    if (error instanceof ZkArtifactContractInfoError) {
+      throw new EraArtifactMismatchError('artifact-era-undeclared', { cause: error });
+    }
+    if (error instanceof ArtifactRuntimeVersionUnavailableError) {
+      throw new EraArtifactMismatchError('provider-cannot-declare-era', { cause: error });
+    }
+    throw error;
+  }
+
+  const era = eraOfRuntimeVersion(runtimeVersion);
+  if (era === undefined) {
+    throw new EraArtifactMismatchError('unknown-artifact-runtime-version', {
+      detail: `The artifacts declare compact-runtime ${runtimeVersion}.`
+    });
+  }
+  // A retained SHAPE whose artifacts declare the current toolchain is the mistake this dispatch
+  // exists to catch: a current-era contract passed raw, with its `async` erased by the caller's
+  // build. It reads as retained and is not.
+  if (era === CURRENT_PIPELINE_ERA) {
+    throw new EraArtifactMismatchError('unwrapped-current-era-contract');
+  }
+
+  return era;
+};
+
+/**
+ * {@link resolveArtifactEra}'s answer, in the narrowing form each era-dispatching entry point needs.
+ *
+ * Not a second decision: the era is established in exactly one place, and this only gives that
+ * established value a type predicate so an entry point's body can drop the retained-era arm from its
+ * parameter union without a cast.
  *
  * Name the type parameter explicitly at each call site rather than letting it infer, so the
  * narrowing removes exactly the retained-era arm of that entry point's parameter union.
  *
- * @see {@link EraDispatch} for the provisional check this replaces and the failure mode that
- *      changed with it.
+ * @see {@link EraDispatch} for how `era` was established.
  *
- * @param options The options object an entry point received.
+ * @param _options The options object an entry point received. Read by the type system only -- the
+ *                 decision was made from the artifact's declaration, not from this object.
+ * @param era The era {@link resolveArtifactEra} resolved for that object's contract.
  * @returns Whether this is a retained-era request.
- * @throws EraArtifactMismatchError if the contract belongs to neither era, or is a raw current-era
- * contract passed instead of its container.
  */
 export const isLedger8Request = <L extends { readonly compiledContract: Ledger8Contract }>(
-  options: { readonly compiledContract: unknown } | L
-): options is L => pipelineEraOf(options.compiledContract) === 'ledger8';
+  _options: { readonly compiledContract: unknown } | L,
+  era: PipelineEra
+): _options is L => era === RETAINED_PIPELINE_ERA;
 
 /**
  * Makes the ONE head read and resolves it to an era, acquiring nothing.
@@ -477,7 +602,7 @@ export const ERA_PAIRING: EraPairingTable = pairingTable({
  * this decides only whether that pair may run, so it does not restate the pair as a third value
  * that could disagree with it.
  *
- * @param pipeline The pipeline the artifact belongs to, from {@link pipelineEraOf}.
+ * @param pipeline The pipeline the artifact belongs to, from {@link resolveArtifactEra}.
  * @param head The era the network head is on, from {@link resolveOperationEra}.
  * @param kind Whether this operation deploys a contract or calls one already deployed. Anything
  * that is not a call is treated as a deploy, which is the refusing side.

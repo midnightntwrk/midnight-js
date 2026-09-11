@@ -25,9 +25,12 @@ import {
   assertManifestHash,
   assertSafeName,
   parseZkArtifactManifest,
+  parseZkArtifactRuntimeVersion,
   verifyZkArtifactIntegrity,
+  ZK_CONTRACT_INFO_FILE_NAME,
   ZK_MANIFEST_DIR,
   ZK_MANIFEST_FILE_NAME,
+  ZkArtifactContractInfoError,
   ZkArtifactIntegrityError,
   type ZkArtifactManifest,
   type ZkConfigIntegrityOptions
@@ -50,6 +53,7 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
   private readonly fetchFunc: typeof fetch;
   private readonly integrityOptions: FetchZkConfigProviderOptions;
   private manifestPromise?: Promise<ZkArtifactManifest | undefined>;
+  private runtimeVersionPromise?: Promise<string>;
 
   /**
    * @param baseURL The endpoint to query for ZK artifacts.
@@ -135,6 +139,78 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
       assertManifestHash(bytes, expectedManifestHash);
     }
     return parseZkArtifactManifest(new TextDecoder().decode(bytes));
+  }
+
+  /**
+   * Reports the `compact-runtime` this bundle was built against, preferring the source an
+   * application can anchor to a hash it controls.
+   *
+   * The INTEGRITY MANIFEST is consulted first, because `expectedManifestHash` pins it to a digest
+   * the application supplies at build time, while everything else is fetched from the same host as
+   * the artifacts it describes. This value selects which ledger pipeline executes the call, so
+   * whoever serves the artifacts must not be the one who decides it.
+   *
+   * `compiler/contract-info.json` is the fallback, for bundles that carry no manifest at all --
+   * `compactc` only began emitting one in 0.33, which is exactly the retained-era case. It is put
+   * through the same integrity gate as every key and ZKIR, so under the default `require` an
+   * unvouched-for description is refused rather than trusted.
+   *
+   * Cached per provider instance. A FAILED fetch is not cached, so a transient network error does
+   * not permanently refuse an artifact set that is really there.
+   *
+   * @returns The declared runtime version, verbatim.
+   * @throws ZkArtifactContractInfoError if the location does not serve the description, answers
+   * with an SPA fallback page, or serves something that is not a compiler description.
+   * @throws ZkArtifactIntegrityError if the description is not covered by the manifest under a mode
+   * that requires it.
+   */
+  override async getArtifactRuntimeVersion(): Promise<string> {
+    // The cached promise CLEARS ITSELF on failure, so a transient error is retried rather than
+    // remembered. Written as one self-clearing chain rather than as a stored promise compared
+    // against the slot: nothing can replace the slot between the rejection and this handler, so a
+    // comparison would only add a branch no test can reach.
+    this.runtimeVersionPromise ??= this.fetchRuntimeVersion().catch((error: unknown) => {
+      this.runtimeVersionPromise = undefined;
+      throw error;
+    });
+    return this.runtimeVersionPromise;
+  }
+
+  private async fetchRuntimeVersion(): Promise<string> {
+    const manifest = await this.loadManifest();
+    if (manifest?.runtimeVersion !== undefined) {
+      return manifest.runtimeVersion;
+    }
+
+    const url = new URL(`${ZK_MANIFEST_DIR}/${ZK_CONTRACT_INFO_FILE_NAME}`, this.base).toString();
+    const response = await this.fetchFunc(url, { method: 'GET' });
+    if (!response.ok) {
+      throw new ZkArtifactContractInfoError(
+        `No ${ZK_CONTRACT_INFO_FILE_NAME} was available at ${url} (status ${response.status}), so the ` +
+          `era of these artifacts cannot be established. Serve the compiler output directory that ` +
+          `compactc emits beside the keys.`
+      );
+    }
+    // An HTML answer is reported as its own condition rather than parsed: a CDN serving its SPA
+    // fallback with a 200 is the common shape of "this file is not there", and an operator told
+    // only that the file is missing will keep re-uploading one that is already in place.
+    if (FetchZkConfigProvider.isHtmlFallback(response)) {
+      throw new ZkArtifactContractInfoError(
+        `Expected ${ZK_CONTRACT_INFO_FILE_NAME} at ${url}, but the response content-type was ` +
+          `${JSON.stringify(response.headers.get('content-type'))}. This usually means the file does ` +
+          `not exist and the server returned an SPA fallback page.`
+      );
+    }
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    verifyZkArtifactIntegrity({
+      manifest,
+      relativePath: `${ZK_MANIFEST_DIR}/${ZK_CONTRACT_INFO_FILE_NAME}`,
+      bytes,
+      mode: this.integrityOptions.verify ?? 'require',
+      onWarn: this.integrityOptions.onWarn
+    });
+
+    return parseZkArtifactRuntimeVersion(new TextDecoder().decode(bytes));
   }
 
   private async verifyArtifact(dir: typeof KEY_PATH | typeof ZKIR_PATH, fileName: string, bytes: Uint8Array): Promise<void> {

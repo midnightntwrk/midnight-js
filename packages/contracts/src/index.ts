@@ -72,6 +72,7 @@ export {
   ContractTypeMismatch,
   DeployTxFailedError,
   EraArtifactMismatchError,
+  type EraArtifactMismatchOptions,
   type EraArtifactMismatchReason,
   EraInvariantViolationError,
   type EraSeam,

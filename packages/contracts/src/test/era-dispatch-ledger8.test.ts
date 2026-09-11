@@ -18,10 +18,10 @@ import { fileURLToPath } from 'node:url';
 
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { type PipelineEra, pipelineEraOf } from '../internal/era';
+import { type PipelineEra, resolveArtifactEra } from '../internal/era';
 import type { CoinReceiver016Contract, CoinReceiver016Module, Counter016Contract, Counter016Module } from './ledger8-fixture-types';
 
-// The retained-era half of `pipelineEraOf`'s coverage, and the reason it is a FILE of its own
+// The retained-era half of `resolveArtifactEra`'s coverage, and the reason it is a FILE of its own
 // rather than a `describe` inside `era-dispatch.test.ts`: the real `compact-runtime@0.16`
 // artifacts need a module-scoped runtime stub (their generated code opens with
 // `checkRuntimeVersion('0.16.0')`, which the installed current runtime rejects outright), while
@@ -29,7 +29,7 @@ import type { CoinReceiver016Contract, CoinReceiver016Module, Counter016Contract
 // registry cannot serve both, so the two halves are split and each runs against a real artifact.
 //
 // `ledger8-contract.test.ts` asserts the STRUCTURE these artifacts have. This file asserts that
-// `pipelineEraOf` reads that structure correctly -- the two are separate claims, and the second is
+// `resolveArtifactEra` reads that structure correctly -- the two are separate claims, and the second is
 // the one the era dispatch depends on.
 const FIXTURES_DIR = resolve(fileURLToPath(new URL('../../../../', import.meta.url)), 'testkit-js/testkit-js/src/fixtures/hf');
 const COUNTER_016_MODULE = resolve(FIXTURES_DIR, 'counter-016/compiled/contract/index.js');
@@ -67,7 +67,13 @@ vi.mock('@midnight-ntwrk/compact-runtime', () => {
   };
 });
 
-describe('pipelineEraOf against the REAL retained-era artifacts', () => {
+// What a retained bundle declares about itself: the compact-runtime its compiler recorded in
+// `compiler/contract-info.json`. These fixtures were built by compactc 0.31.1, whose runtime is
+// 0.16.0 -- asserted against the real counter-016 file in
+// `testkit-js/testkit-js/test/counter-016-artifacts.ut.test.ts`, not assumed here.
+const RETAINED_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
+
+describe('resolveArtifactEra against the REAL retained-era artifacts', () => {
   let counter: Counter016Contract;
   let coinReceiver: CoinReceiver016Contract;
 
@@ -78,18 +84,20 @@ describe('pipelineEraOf against the REAL retained-era artifacts', () => {
     coinReceiver = new coinReceiverModule.Contract({});
   });
 
-  it('routes the real zero-argument retained artifact to the retained-era pipeline', () => {
-    // The discriminator, restated as an assertion so a toolchain change that made the retained
-    // codegen async would fail HERE, naming the cause, rather than in the routing below.
+  it('routes the real zero-argument retained artifact to the retained-era pipeline', async () => {
+    // The shape, restated as an assertion so a toolchain change that made the retained codegen
+    // async would fail HERE, naming the cause, rather than in the routing below. It is a
+    // PRECONDITION of the routing, not the routing's reason: the era itself comes from what the
+    // bundle declares.
     expect(counter.initialState.constructor.name).toBe('Function');
 
-    expect(pipelineEraOf(counter)).toBe<PipelineEra>('ledger8');
+    await expect(resolveArtifactEra(counter, RETAINED_BUNDLE)).resolves.toBe('ledger8' satisfies PipelineEra);
   });
 
-  it('routes the real argument-taking retained artifact the same way', () => {
+  it('routes the real argument-taking retained artifact the same way', async () => {
     expect(coinReceiver.initialState.constructor.name).toBe('Function');
 
-    expect(pipelineEraOf(coinReceiver)).toBe<PipelineEra>('ledger8');
+    await expect(resolveArtifactEra(coinReceiver, RETAINED_BUNDLE)).resolves.toBe('ledger8' satisfies PipelineEra);
   });
 
   it('places the real artifact without consulting the compact-js brand, which it does not carry', () => {

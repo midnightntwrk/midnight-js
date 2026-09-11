@@ -36,7 +36,7 @@ import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
-import { isLedger8Request, requireV9Record } from './internal/era';
+import { isLedger8Request, requireV9Record, resolveArtifactEra } from './internal/era';
 import { findLedger8Contract } from './internal/ledger8-entry';
 import {
   type AnyLedger8FindDeployedContractOptions,
@@ -341,14 +341,18 @@ export async function findDeployedContract<C extends Contract.Any>(
  *                                                  `privateStateId` is given to store it under.
  * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, or
  *                                  is a raw current-era contract instance passed instead of its
- *                                  `CompiledContract` container. Raised before any provider is
+ *                                  `CompiledContract` container, or its artifacts declare no
+ *                                  toolchain this framework can place. Raised before anything is
+ *                                  read from the chain; the ZK config provider is asked for the
+ *                                  artifacts' declared runtime version, and no other provider is
  *                                  consulted.
  */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: FindDeployedContractOptions<C> | AnyLedger8FindDeployedContractOptions
 ): Promise<FoundContract<C> | AnyLedger8FoundContract> {
-  if (isLedger8Request<AnyLedger8FindDeployedContractOptions>(options)) {
+  const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
+  if (isLedger8Request<AnyLedger8FindDeployedContractOptions>(options, artifactEra)) {
     const found = await findLedger8Contract(providers, {
       contract: options.compiledContract,
       contractAddress: options.contractAddress,

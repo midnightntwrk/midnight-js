@@ -13,17 +13,15 @@
  * limitations under the License.
  */
 
-export * from './assertion-utils';
-export * from './contract-state-envelope';
-export * from './date-utils';
-export * from './deserialization';
-export * from './error-codes';
-export * from './hex-utils';
-export * from './ledger-parameters-envelope';
-export * from './password-validation';
-export * from './security-utils';
-export * from './serialized-tag';
-export * from './signing-key-utils';
-export * from './type-utils';
-export * from './zk-artifact-contract-info';
-export * from './zk-artifact-manifest';
+/**
+ * Whether a `JSON.parse` result is a JSON OBJECT, as opposed to an array or `null`.
+ *
+ * Arrays are excluded deliberately. `typeof [] === 'object'` and `[] !== null`, so a naive check
+ * admits them, and a parser that admits an array then reports it as an object missing its members
+ * -- which sends a caller to fix a document that is not the one they served.
+ *
+ * Not exported from the package barrel: it is shared between this package's own parsers, not part
+ * of the published surface.
+ */
+export const isJsonObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
