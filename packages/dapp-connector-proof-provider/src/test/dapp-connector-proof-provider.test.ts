@@ -13,13 +13,38 @@
  * limitations under the License.
  */
 
+import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { PayloadNotATransactionError, PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CostModel, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { KeyMaterialProvider, UnboundTransaction, ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import {
+  type KeyMaterialProvider,
+  type UnboundTransaction,
+  type VersionedUnprovenTransaction,
+  type ZKConfigProvider
+} from '@midnight-ntwrk/midnight-js-types';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import type { ProvingProvider } from '@midnightntwrk/dapp-connector-api';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { dappConnectorProofProvider } from '../dapp-connector-proof-provider';
 import type { DAppConnectorProvingAPI } from '../dapp-connector-proving-provider';
+
+/**
+ * The `namespace:type-descriptor:` tag a serialized transaction opens with,
+ * read as a raw prefix. Never `parseSerializedTag`: that parser scans only the
+ * first 64 bytes for its second colon, and transaction tags run past that.
+ */
+const txTag = (bytes: Uint8Array): string => {
+  const head = Buffer.from(bytes.subarray(0, 96)).toString('latin1');
+  const end = head.indexOf('):');
+  // Without this, a vendor bump that pushed the terminator past 96 bytes would
+  // make `indexOf` return -1, collapse every tag to 'm', and let the assertions
+  // that use this pass while comparing nothing.
+  if (end === -1) {
+    throw new Error(`No transaction tag terminator within the first 96 bytes of a ${bytes.byteLength}-byte payload.`);
+  }
+  return head.slice(0, end + 2);
+};
 
 describe('dappConnectorProofProvider', () => {
   const mockUnboundTx = { tag: 'proven-tx' } as unknown as UnboundTransaction;
@@ -42,6 +67,13 @@ describe('dappConnectorProofProvider', () => {
   let mockUnprovenTx: UnprovenTransaction;
 
   beforeEach(() => {
+    // `mockProvingProvider` is a file-level const that individual tests replace
+    // members on, so its methods are restored here rather than only reset. The
+    // vitest config sets no `restoreMocks`, and without this the file would be
+    // order-dependent for anything added after a test that stubs one.
+    mockProvingProvider.check = vi.fn();
+    mockProvingProvider.prove = vi.fn();
+
     mockApi = {
       getProvingProvider: vi.fn().mockResolvedValue(mockProvingProvider)
     };
@@ -63,10 +95,19 @@ describe('dappConnectorProofProvider', () => {
     expect(typeof proofProvider.proveTx).toBe('function');
   });
 
+  // Set equality rather than `toContain`: this provider serves both eras, and
+  // an era silently dropped from the declaration would have a retained-era
+  // operation refused before it started -- which `toContain` would not catch.
+  it('declares both eras, matching the two arms it is built from', async () => {
+    const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+    expect([...proofProvider.supportedEras].sort()).toEqual(['v8', 'v9']);
+  });
+
   it('should delegate proveTx to unprovenTx.prove with the injected cost model', async () => {
     const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
 
-    const result = await proofProvider.proveTx(mockUnprovenTx);
+    const result = await proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx });
 
     expect(mockUnprovenTx.prove).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -76,14 +117,116 @@ describe('dappConnectorProofProvider', () => {
       }),
       mockCostModel
     );
-    expect(result).toBe(mockUnboundTx);
+    // Identity, not structural equality: the whole premise of the versioned
+    // seam is that ledger objects from different WASM instances must not be
+    // interchanged, so a structurally-equal-but-different object must fail.
+    expect(result.version).toBe('v9');
+    expect(result.version === 'v9' && result.tx).toBe(mockUnboundTx);
+  });
+
+  // This package delegates the current era to `createProofProvider` but owns
+  // the retained arm itself, so these cases cover a body the types package's
+  // tests do not reach.
+  describe('v8 payload', () => {
+    let retainedEraTxBytes: Uint8Array;
+    let circuitDrivingTxBytes: Uint8Array;
+
+    beforeAll(async () => {
+      const v8 = await loadLedger8();
+      retainedEraTxBytes = v8.Transaction.fromParts('undeployed').serialize();
+
+      // Carries one Zswap output, so proving it drives a real circuit. The
+      // empty transaction above has nothing to prove, so it cannot show which
+      // proving provider -- if any -- the seam handed to the runtime.
+      const rawTokenType = v8.sampleRawTokenType();
+      const output = v8.ZswapOutput.new(
+        v8.createShieldedCoinInfo(rawTokenType, 100n),
+        1,
+        v8.sampleCoinPublicKey(),
+        v8.sampleEncryptionPublicKey()
+      );
+      circuitDrivingTxBytes = v8.Transaction.fromParts(
+        'undeployed',
+        v8.ZswapOffer.fromOutput(output, rawTokenType, 100n)
+      ).serialize();
+    });
+
+    it('answers the v8 arm with the PROVEN serialization, ignoring the caller-supplied cost model', async () => {
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      const result = await proofProvider.proveTx({ version: 'v8', txBytes: retainedEraTxBytes });
+
+      // `mockCostModel` is a plain object, not a ledger `CostModel` at all. The
+      // retained runtime type-checks that argument across the WASM boundary and
+      // throws `expected instance of CostModel` for anything else -- so this
+      // call SUCCEEDING is the proof that the caller's cost model was not
+      // forwarded. Forward it and this test fails.
+      expect(result.version).toBe('v8');
+      const returned = result.version === 'v8' ? result.txBytes : new Uint8Array();
+      expect(returned).toBeInstanceOf(Uint8Array);
+
+      // Derived from the input's own tag rather than spelled out -- see the
+      // matching case in `http-client-proof-provider`. The two seams answer the
+      // same contract, so they are asserted at the same strictness.
+      const expectedTag = txTag(retainedEraTxBytes).replace('proof-preimage', 'proof');
+      // Without this, a vendor rename of the stage marker would make `replace`
+      // a no-op and invert the assertion below into "the same bytes came back".
+      expect(expectedTag).not.toBe(txTag(retainedEraTxBytes));
+      expect(txTag(returned)).toBe(expectedTag);
+    });
+
+    it('refuses a payload that is not a serialized transaction, with the registered code', async () => {
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      const rejection = await proofProvider.proveTx({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      expect(rejection).toBeInstanceOf(PayloadNotATransactionError);
+      expect(rejection).toHaveProperty('code', PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION);
+      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION)).toBe(true);
+      expect(mockProvingProvider.prove).not.toHaveBeenCalled();
+    });
+
+    it("drives the retained runtime through the WALLET's proving provider", async () => {
+      const keyLocations: string[] = [];
+      mockProvingProvider.prove = vi.fn((_preimage: Uint8Array, keyLocation: string) => {
+        keyLocations.push(keyLocation);
+        return Promise.reject(new Error('wallet declined'));
+      });
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      // The wallet declines, so the call rejects. That is beside the point:
+      // what this measures is that the provider obtained from the wallet is the
+      // one the retained runtime consults. Drop it on the floor in this
+      // package's `proveTx` and `keyLocations` stays empty.
+      await proofProvider.proveTx({ version: 'v8', txBytes: circuitDrivingTxBytes }).catch(() => undefined);
+
+      expect(keyLocations).toEqual(['midnight/zswap/output']);
+    });
+  });
+
+  it('reports a payload with no version tag as UntaggedPayloadError, not a TypeError', async () => {
+    const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+    // Unrepresentable in TypeScript, and reachable anyway: from JavaScript, and
+    // from a consumer built against a pre-5.0.0 `midnight-js-types`. Dispatching
+    // on `.version` must not read through a null payload before the guard that
+    // turns this into a coded error a caller can act on.
+    const rejection = await proofProvider.proveTx(null as unknown as VersionedUnprovenTransaction).then(
+      () => undefined,
+      (error: unknown) => error
+    );
+
+    expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
   });
 
   it('should obtain the ProvingProvider once at setup, not per proveTx call', async () => {
     const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
 
-    await proofProvider.proveTx(mockUnprovenTx);
-    await proofProvider.proveTx(mockUnprovenTx);
+    await proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx });
+    await proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx });
 
     expect(mockApi.getProvingProvider).toHaveBeenCalledTimes(1);
   });

@@ -28,7 +28,10 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { CURRENT_PIPELINE_ERA } from '../era';
+import { isLedger8Result } from '../era-results';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from '../errors';
+import { resolveArtifactEra } from '../internal/era';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
 import { submitTx, submitTxAsync } from '../submit-tx';
 import { withContractScopedTransaction } from '../transaction';
@@ -38,6 +41,7 @@ import {
   createMockCoinInfo,
   createMockCompiledContract,
   createMockContractAddress,
+  createMockContractCall,
   createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
@@ -88,8 +92,10 @@ describe('submit-call-tx', () => {
   };
 
   const createFailedTxData = (): UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
+    era: CURRENT_PIPELINE_ERA,
     public: {
       nextContractState: StateValue.newNull(),
+      nextContractStateEncoded: StateValue.newNull().encode(),
       publicTranscript: [],
       partitionedTranscript: {} as PartitionedTranscript,
       logEvents: []
@@ -123,6 +129,8 @@ describe('submit-call-tx', () => {
       circuitId: 'testCircuit'
     });
     expect(result).toEqual({
+      era: CURRENT_PIPELINE_ERA,
+      circuitId: 'testCircuit',
       calls: mockUnprovenCallTxData.calls,
       private: mockUnprovenCallTxData.private,
       public: {
@@ -169,6 +177,38 @@ describe('submit-call-tx', () => {
         });
 
         expect(nestedResult?.public.logEvents).toBe(mockUnprovenCallTxData.public.logEvents);
+      });
+
+      it('tags the result with the era the ARTIFACT reports', async () => {
+        const options = createBasicCallOptions();
+        setupSuccessfulMocks();
+
+        const result = await submitCallTx(mockProviders, options);
+
+        // The same fact `resolveArtifactEra` resolves from the artifact when the
+        // entry point routes the call, published so a caller can read it too.
+        expect(result.era).toBe(await resolveArtifactEra(mockCompiledContract, mockProviders.zkConfigProvider));
+        expect(result.era).toBe('ledger9');
+      });
+
+      it('forwards calls through the nested scoped CallResult rebuild', async () => {
+        const options = createBasicCallOptions();
+        const rootCall = createMockContractCall({ circuitId: 'testCircuit' });
+        const mockUnprovenCallTxData = createMockUnprovenCallTxData({ calls: [rootCall] });
+        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        vi.mocked(submitTx).mockResolvedValue(createMockFinalizedTxData());
+
+        // `calls` is a caller's only route to callee proof data for a cross-contract circuit, and
+        // the nested arm rebuilds `CallResult` member by member rather than spreading the
+        // executor's data. Reference identity proves the rebuild forwards the executor's own array
+        // instead of a fresh or defaulted one.
+        let nestedResult: Awaited<ReturnType<typeof submitCallTx>> | undefined;
+        await withContractScopedTransaction(mockProviders, async (txCtx) => {
+          nestedResult = await submitCallTx(mockProviders, options, txCtx);
+        });
+
+        expect(nestedResult?.calls).toBe(mockUnprovenCallTxData.calls);
+        expect(nestedResult?.calls).toEqual([rootCall]);
       });
     });
 
@@ -242,6 +282,8 @@ describe('submit-call-tx', () => {
         expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, nextPrivateState_2);
         expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options, expect.anything());
         expect(result).toEqual({
+          era: CURRENT_PIPELINE_ERA,
+          circuitId: 'testCircuit',
           calls: mockUnprovenCallTxData_2.calls,
           private: mockUnprovenCallTxData_2.private,
           public: {
@@ -476,6 +518,8 @@ describe('submit-call-tx', () => {
           circuitId: 'testCircuit'
         });
         expect(result).toEqual({
+          era: CURRENT_PIPELINE_ERA,
+          circuitId: 'testCircuit',
           calls: mockUnprovenCallTxData.calls,
           private: mockUnprovenCallTxData.private,
           public: { ...mockUnprovenCallTxData.public, ...mockFinalizedTxData }
@@ -534,9 +578,15 @@ describe('submit-call-tx', () => {
           circuitId: 'testCircuit'
         });
         expect(result).toEqual({
+          era: CURRENT_PIPELINE_ERA,
+          circuitId: 'testCircuit',
           txId: mockTxId,
           callTxData: mockUnprovenCallTxData
         });
+        // The other side of the published guard: a current-era result is not
+        // the retained arm. Asserted on a result this suite actually produced,
+        // so the guard is checked against the era tag the pipeline really set.
+        expect(isLedger8Result(result)).toBe(false);
       });
 
       it('should not update private state during async submission', async () => {

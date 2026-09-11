@@ -19,8 +19,22 @@ import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight
 
 import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
+import { CURRENT_PIPELINE_ERA } from './era';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
+import { isLedger8Request, resolveArtifactEra } from './internal/era';
+import { submitLedger8CallTx, submitLedger8CallTxAsync, toLedger8CallEntryOptions } from './internal/ledger8-entry';
 import * as Transaction from './internal/transaction';
+import {
+  type AnyLedger8CallTxOptions,
+  type AnyLedger8FinalizedCallTxData,
+  type AnyLedger8SubmittedCallTx,
+  type Ledger8CallTxOptions,
+  type Ledger8CircuitId,
+  type Ledger8Contract,
+  type Ledger8ContractProviders,
+  type Ledger8FinalizedCallTxData,
+  type Ledger8SubmittedCallTx
+} from './ledger8-contract';
 import type { SubmitTxProviders } from './submit-tx';
 import { submitTxAsync } from './submit-tx';
 import { type TransactionContext } from './transaction';
@@ -32,26 +46,78 @@ import {
   createUnprovenCallTx
 } from './unproven-call-tx';
 
+/**
+ * The provider set a call entry point accepts.
+ *
+ * Two arms because a call does not always need private state:
+ * `SubmitTxProviders` is `ContractProviders` without `privateStateProvider`,
+ * so a contract that declares no private state can be called with a set that
+ * has none. Naming only `ContractProviders` would demand a provider such a
+ * caller has no reason to build.
+ *
+ * The arm without the provider is valid only for options that name no
+ * `privateStateId`. Naming one without a `privateStateProvider` is refused
+ * before any provider is touched, with
+ * {@link IncompleteCallTxPrivateStateConfig} -- so the pairing the type cannot
+ * state is enforced at run time rather than left to go wrong. That refusal is
+ * what makes the narrowing inside these functions sound.
+ */
 export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
   | ContractProviders<C>
   | SubmitTxProviders<C, PCK>;
 
+/*
+ * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
+ * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
+ * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ */
+/**
+ * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * the raw contract instance rather than inside a `CompiledContract` container.
+ *
+ * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
+ * the retained-era-native pipeline, a post-fork head the keep-state one.
+ *
+ * @see {@link KeepStatePipeline} for the seam table, and for why a provider needs to handle the
+ *      `'v8'` seam arm only while the network head is still pre-fork.
+ *
+ * @see {@link OverloadTyping} for how the two eras are discriminated.
+ */
+export async function submitCallTx<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
+  providers: Ledger8ContractProviders<C, K>,
+  options: Ledger8CallTxOptions<C, K>
+): Promise<Ledger8FinalizedCallTxData<C, K>>;
+
+/**
+ * Calls a circuit on a contract that declares no private state.
+ */
 export async function submitCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: CallTxOptionsBase<C, PCK>
 ): Promise<FinalizedCallTxData<C, PCK>>;
 
+/**
+ * Calls a circuit on a contract that declares private state, naming where that state is stored.
+ */
 export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: ContractProviders<C>,
   options: CallTxOptionsWithPrivateStateId<C, PCK>
 ): Promise<FinalizedCallTxData<C, PCK>>;
 
+/**
+ * Calls a circuit inside a scoped transaction, on a contract that declares private state. The
+ * call is added to the scope rather than submitted on its own.
+ */
 export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: ContractProviders<C>,
   options: CallTxOptionsWithPrivateStateId<C, PCK>,
   transactionContext: TransactionContext<C, PCK>
 ): Promise<CallResult<C, PCK>>;
 
+/**
+ * Calls a circuit inside a scoped transaction, on a contract that declares no private state.
+ */
 export async function submitCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: CallTxOptionsBase<C, PCK>,
@@ -91,6 +157,11 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  *
  * @throws {CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
+ * @throws {EraArtifactMismatchError} When `options.compiledContract` belongs to neither Compact
+ *         era, is a raw current-era contract instance passed instead of its `CompiledContract`
+ *         container, or its artifacts declare no toolchain this framework can place. Raised before
+ *         anything is built or submitted; the ZK config provider is asked for the artifacts'
+ *         declared runtime version, and no other provider is consulted.
  *
  * @remarks
  * The returned {@link FinalizedCallTxData} (and the {@link CallResult} variant)
@@ -100,9 +171,23 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  */
 export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitCallTxProviders<C, PCK>,
-  options: CallTxOptions<C, PCK>,
+  options: CallTxOptions<C, PCK> | AnyLedger8CallTxOptions,
   transactionContext?: TransactionContext<C, PCK>
-): Promise<FinalizedCallTxData<C, PCK> | CallResult<C, PCK>> {
+): Promise<FinalizedCallTxData<C, PCK> | CallResult<C, PCK> | AnyLedger8FinalizedCallTxData> {
+  const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
+  if (isLedger8Request<AnyLedger8CallTxOptions>(options, artifactEra)) {
+    // The retained-era pipeline runs OUTSIDE the scoped-transaction machinery:
+    // that machinery merges live current-era transactions, and a retained-era
+    // call is composed and submitted on its own, so there is nothing for it to
+    // merge into. A `transactionContext` is therefore REFUSED on this arm
+    // rather than ignored -- ignoring it submitted a transaction the caller
+    // believed had been batched with the rest of its scope. The retained-era
+    // overload declares no parameter for one, so this is reachable from
+    // JavaScript only.
+    Transaction.assertScopeAdmitsRetainedEraCall(options.circuitId, transactionContext);
+
+    return submitLedger8CallTx(providers, toLedger8CallEntryOptions(options));
+  }
   assertIsContractAddress(options.contractAddress);
   assertDefined(
     ContractExecutable.make(options.compiledContract)
@@ -131,10 +216,38 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
     );
   };
 
+  // Narrowed, not widened: the `privateStateId`-without-provider pairing was
+  // already refused above, and `MidnightProviders` is invariant in `PCK`, so
+  // the declared `ContractProviders<C>` -- whose `PCK` defaults to the whole
+  // circuit-id union -- is not assignable to the one-circuit instantiation
+  // this scope needs. The value is the same object either way.
   return transactionContext
     ? Transaction.scoped(providers as ContractProviders<C, PCK>, callTxFn, transactionContext)
     : Transaction.scoped(providers as ContractProviders<C, PCK>, callTxFn)
 }
+
+/*
+ * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
+ * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
+ * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ */
+/**
+ * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * the raw contract instance rather than inside a `CompiledContract` container.
+ *
+ * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
+ * the retained-era-native pipeline, a post-fork head the keep-state one.
+ *
+ * @see {@link KeepStatePipeline} for the seam table, and for why a provider needs to handle the
+ *      `'v8'` seam arm only while the network head is still pre-fork.
+ *
+ * @see {@link OverloadTyping} for how the two eras are discriminated.
+ */
+export async function submitCallTxAsync<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
+  providers: Ledger8ContractProviders<C, K>,
+  options: Ledger8CallTxOptions<C, K>
+): Promise<Ledger8SubmittedCallTx<C, K>>;
 
 /**
  * Creates and submits a transaction for the invocation of a circuit on a given contract,
@@ -176,6 +289,12 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
  * @returns A `Promise` that resolves with the transaction ID and call transaction data immediately after submission;
  *         or rejects with an error if the submission fails.
  *
+ * @throws {EraArtifactMismatchError} When `options.compiledContract` belongs to neither Compact
+ *         era, is a raw current-era contract instance passed instead of its `CompiledContract`
+ *         container, or its artifacts declare no toolchain this framework can place. Raised before
+ *         anything is built or submitted; the ZK config provider is asked for the artifacts'
+ *         declared runtime version, and no other provider is consulted.
+ *
  * @remarks
  * The returned {@link SubmittedCallTx} is privacy-sensitive and carries the
  * unproven transaction and private state via `callTxData`. See that type for
@@ -186,15 +305,22 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
  * // 1. Submit
  * const { txId, callTxData } = await submitCallTxAsync(providers, options);
  *
- * // 2. Watch (when ready)
- * const finalizedData = await providers.publicDataProvider.watchForTxData(txId);
+ * // 2. Watch (when ready). The read surface reports both ledger eras, so the
+ * //    record is version-tagged.
+ * const record = await providers.publicDataProvider.watchForTxData(txId);
  *
- * // 3. Check status
- * if (finalizedData.status !== SucceedEntirely) {
- *   throw new CallTxFailedError(finalizedData, options.circuitId);
+ * // 3. Narrow to the v9 arm. This flow submits v9 transactions only, so a v8
+ * //    record means the provider is pointed at the wrong network.
+ * if (record.version !== 'v9') {
+ *   throw new EraInvariantViolationError('watchForTxData', options.circuitId);
  * }
  *
- * // 4. Update private state manually if needed
+ * // 4. Check status
+ * if (record.status !== SucceedEntirely) {
+ *   throw new CallTxFailedError(record, options.circuitId);
+ * }
+ *
+ * // 5. Update private state manually if needed
  * if (options.privateStateId) {
  *   await providers.privateStateProvider.set(
  *     privateStateId,
@@ -206,7 +332,25 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
 export async function submitCallTxAsync<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitCallTxProviders<C, PCK>,
   options: CallTxOptions<C, PCK>
-): Promise<SubmittedCallTx<C, PCK>> {
+): Promise<SubmittedCallTx<C, PCK>>;
+
+/*
+ * The TSDoc below is the function-level summary, and it sits on the IMPLEMENTATION signature
+ * because that is where TypeDoc reads a function's summary from. Per-era detail belongs on each
+ * declared overload above, not here.
+ */
+/**
+ * Creates and submits a transaction for the invocation of a circuit on a given contract,
+ * returning immediately after submission without waiting for finalization.
+ */
+export async function submitCallTxAsync<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: SubmitCallTxProviders<C, PCK>,
+  options: CallTxOptions<C, PCK> | AnyLedger8CallTxOptions
+): Promise<SubmittedCallTx<C, PCK> | AnyLedger8SubmittedCallTx> {
+  const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
+  if (isLedger8Request<AnyLedger8CallTxOptions>(options, artifactEra)) {
+    return submitLedger8CallTxAsync(providers, toLedger8CallEntryOptions(options));
+  }
   assertIsContractAddress(options.contractAddress);
   assertDefined(
     ContractExecutable.make(options.compiledContract)
@@ -234,6 +378,8 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
   });
 
   return {
+    era: CURRENT_PIPELINE_ERA,
+    circuitId: options.circuitId,
     txId,
     callTxData: unprovenCallTxData
   };

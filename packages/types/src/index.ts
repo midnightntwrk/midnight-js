@@ -13,7 +13,10 @@
  * limitations under the License.
  */
 
+export * from './call-result-base';
 export * from './contract';
+export * from './era-arms';
+export * from './era-support';
 export * from './errors';
 export * from './logger-provider';
 export * from './midnight-provider';
@@ -22,6 +25,9 @@ export * from './private-state-provider';
 export * from './proof-provider';
 export * from './providers';
 export * from './public-data-provider';
+export * from './raw-contract-state';
+export * from './unwrap-v9';
+export * from './versioned';
 export * from './wallet-provider';
 export * from './zk-config-provider';
 export * from './zk-config-registry';

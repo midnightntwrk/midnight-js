@@ -60,14 +60,43 @@ describe('Protocol ACL package', () => {
       expect(Object.keys(ns).length).toBeGreaterThan(0);
     });
 
-    it('exposes exactly the documented namespaces', () => {
-      // If this fails after adding a new protocol namespace, update the expected list.
+    it('exposes exactly the full barrel export surface, including ./errors, ./version and lib/v8/load', () => {
+      // Strict sorted-key equality over the whole barrel: the five pre-existing
+      // namespace exports (unchanged) plus every value exported from ./errors,
+      // ./version, lib/era/load-era and lib/v8/load. If this fails after adding/removing a
+      // protocol export, update the expected list. `ProtocolV8` is a
+      // type-only export and does not appear here (types have no runtime key).
       expect(sortedKeys(protocol)).toEqual([
         'compactJs',
         'compactRuntime',
+        'ComposeFailedError',
+        'ComposeOptionError',
+        'CURRENT_LEDGER_VERSION',
+        'DownConvertFailedError',
+        'INITIAL_LEDGER_PARAMETERS',
         'ledger',
+        'LEDGER_VERSIONS',
+        'Ledger8InstanceMismatchError',
+        'Ledger8RuntimeInvalidError',
+        'Ledger8RuntimeMissingError',
+        'loadLedger8',
+        'loadLedger8Engine',
+        'loadLedgerEra',
+        'MerkleNotRehashedError',
+        'networkHeadVersion',
+        'NO_CIRCUIT',
         'onchainRuntime',
+        'PayloadNotATransactionError',
         'platform',
+        'PROTOCOL_ERROR_CODES',
+        'protocolVersionToLedger',
+        'RETAINED_LEDGER_VERSIONS',
+        'StateDecodeFailedError',
+        'TRANSACTION_TAG_PREFIX',
+        'UnknownLedger8AxisError',
+        'UnknownLedgerVersionError',
+        'UnknownProtocolVersionError',
+        'versionOfRecord',
       ]);
     });
   });

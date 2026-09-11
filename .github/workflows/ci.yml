@@ -34,6 +34,7 @@ jobs:
       build_shared: ${{ steps.build-targets.outputs.shared }}
       build_mn_js: ${{ steps.build-targets.outputs.midnight-js }}
       build_t_js: ${{ steps.build-targets.outputs.testkit-js }}
+      build_consumer_e2e: ${{ steps.build-targets.outputs.consumer-e2e }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
@@ -53,21 +54,56 @@ jobs:
               - 'package.json'
             midnight-js:
               - 'packages/**'
+              # Subjects of the doc gates in packages/*/src/test: without these
+              # a doc-only commit skips the job that enforces them entirely.
+              - 'TROUBLESHOOTING.md'
+              - 'docs/releases/v5.0.0/migration-guide.md'
             testkit-js:
               - 'packages/**'
               - 'testkit-js/**'
+            consumer-e2e:
+              - 'consumer-e2e/**'
 
   ci-midnightjs:
     needs: ci
     name: Build Midnight.js
     uses: ./.github/workflows/ci-midnight-js.yml
     with:
-      should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
+      # `build_consumer_e2e` too, because this is the only leg that lints and
+      # `consumer-e2e/` is in its lint paths. Without it a PR whose whole range
+      # stays inside that directory skips the lint it is the sole subject of,
+      # while still spending 13 minutes per Hard fork shard discovering the same
+      # defect at runtime.
+      should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_consumer_e2e == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
         }}
     secrets: inherit
+
+  # The only lane that exercises the framework as a consumer installs it: packed
+  # tarballs, isolated linker, outside the workspace.
+  consumer-e2e:
+    needs: ci
+    name: Consumer E2E
+    with:
+      should_run: ${{ needs.ci.outputs.build_consumer_e2e == 'true' || needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
+    uses: ./.github/workflows/ci-consumer-e2e.yml
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+  # The fork-crossing gate. Red on purpose until the keep-state partitioning is
+  # fixed -- see the comment on its own run step for why it is not hidden.
+  hardfork:
+    needs: ci
+    name: Hard fork
+    with:
+      should_run: ${{ needs.ci.outputs.build_consumer_e2e == 'true' || needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
+    uses: ./.github/workflows/ci-hardfork.yml
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
   ci-testkit:
     needs: ci

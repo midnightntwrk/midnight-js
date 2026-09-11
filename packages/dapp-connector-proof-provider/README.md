@@ -12,6 +12,7 @@ yarn add @midnight-ntwrk/midnight-js-dapp-connector-proof-provider
 
 ```typescript
 import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
 
 const proofProvider = await dappConnectorProofProvider(
   walletConnectedAPI,
@@ -19,7 +20,15 @@ const proofProvider = await dappConnectorProofProvider(
   costModel
 );
 
-const provenTx = await proofProvider.proveTx(unprovenTx);
+// Transaction payloads cross a provider seam version-tagged: tag on the way
+// in, narrow on `version` on the way out. There is no untagged form.
+// `unwrapV9` is the framework's narrowing helper — it throws
+// V8PayloadUnsupportedError or UntaggedPayloadError, both carrying a stable
+// `code` you can match with `hasErrorCode`.
+const provenTx = unwrapV9(
+  await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
+  'proveTx'
+);
 ```
 
 ## Configuration
@@ -48,6 +57,7 @@ Use `dappConnectorProofProvider` for most use cases. It wraps the wallet's provi
 
 ```typescript
 import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
 
 const proofProvider = await dappConnectorProofProvider(
   walletConnectedAPI,
@@ -55,7 +65,10 @@ const proofProvider = await dappConnectorProofProvider(
   costModel
 );
 
-const provenTx = await proofProvider.proveTx(unprovenTx);
+const provenTx = unwrapV9(
+  await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
+  'proveTx'
+);
 ```
 
 ### Low-Level: Circuit Proving

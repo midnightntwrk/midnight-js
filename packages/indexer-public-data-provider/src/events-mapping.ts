@@ -37,6 +37,7 @@ const baseFields = (node: ContractEventNode): ContractEventBase => ({
   id: node.id,
   maxId: node.maxId,
   version: node.version,
+  protocolVersion: node.protocolVersion,
   contractAddress: node.contractAddress as ContractAddress,
   transactionId: node.transactionId,
   raw: node.raw

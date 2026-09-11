@@ -28,6 +28,7 @@ import {
 import { assertDefined, assertIsContractAddress, toHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
+import { CURRENT_PIPELINE_ERA, type CurrentPipelineEra, RETAINED_PIPELINE_ERA } from './era';
 import { ContractTypeError, IncompleteFindContractPrivateStateConfig } from './errors';
 import {
   type CircuitMaintenanceTxInterfaces,
@@ -35,9 +36,21 @@ import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
+import { isLedger8Request, requireV9Record, resolveArtifactEra } from './internal/era';
+import { findLedger8Contract } from './internal/ledger8-entry';
+import {
+  type AnyLedger8FindDeployedContractOptions,
+  type AnyLedger8FoundContract,
+  type Ledger8CircuitId,
+  type Ledger8Contract,
+  type Ledger8ContractProviders,
+  type Ledger8FindDeployedContractOptions,
+  type Ledger8FoundContract
+} from './ledger8-contract';
 import {
   type CircuitCallTxInterface,
-  createCircuitCallTxInterface
+  createCircuitCallTxInterface,
+  createLedger8CircuitCallTxInterface
 } from './tx-interfaces';
 import type { FinalizedDeployTxDataBase } from './tx-model';
 
@@ -222,6 +235,24 @@ export type FindDeployedContractOptions<C extends Contract.Any> =
  */
 export interface FoundContract<C extends Contract.Any> {
   /**
+   * The pipeline that produced this result: always the current era here.
+   *
+   * Read off the compiled artifact, NEVER off a transaction record — the two
+   * facts disagree after the fork, and only this one says which module the
+   * objects in this result came from.
+   */
+  readonly era: CurrentPipelineEra;
+  /**
+   * The compiled contract this handle executes circuits from, exactly as the
+   * caller supplied it.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readonly compiledContract: CompiledContract.CompiledContract<C, any>;
+  /**
+   * The ledger address this handle is attached to.
+   */
+  readonly contractAddress: ContractAddress;
+  /**
    * Data for the finalized deploy transaction corresponding to this contract.
    */
   readonly deployTxData: FinalizedDeployTxDataBase<C>;
@@ -241,16 +272,51 @@ export interface FoundContract<C extends Contract.Any> {
   readonly contractMaintenanceTx: ContractMaintenanceTxInterface;
 }
 
+/*
+ * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
+ * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
+ * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ */
+/**
+ * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * the raw contract instance rather than inside a `CompiledContract` container.
+ *
+ * A READ path, so it composes and submits nothing. It still resolves the head era, dates the
+ * fetched state's envelope against it, and byte-matches every local verifier key against the slot
+ * the chain holds — the checks that make a later call against this contract safe, done once here
+ * so a mis-dispatch is caught at attach time rather than at the first call.
+ *
+ * The deploy record is returned VERSION-TAGGED rather than narrowed to the current era: a
+ * retained-era contract was deployed in whichever era was current at the time, and refusing the
+ * pre-fork arm would refuse exactly the contracts this arm exists to keep callable.
+ *
+ * @see {@link OverloadTyping} for how the two eras are discriminated.
+ */
+export async function findDeployedContract<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  options: Ledger8FindDeployedContractOptions<C>
+): Promise<Ledger8FoundContract<C>>;
+
+/**
+ * Attaches to a deployed contract that declares no private state.
+ */
 export async function findDeployedContract<C extends Contract<undefined>>(
   providers: ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
   options: FindDeployedContractOptionsBase<C>
 ): Promise<FoundContract<C>>;
 
+/**
+ * Attaches to a deployed contract, reusing the private state already stored at `privateStateId`.
+ */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: FindDeployedContractOptionsExistingPrivateState<C>
 ): Promise<FoundContract<C>>;
 
+/**
+ * Attaches to a deployed contract, storing the given `initialPrivateState` at `privateStateId`.
+ */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: FindDeployedContractOptionsStorePrivateState<C>
@@ -273,16 +339,51 @@ export async function findDeployedContract<C extends Contract.Any>(
  *                           have mis-matched verifier keys.
  * @throws IncompleteFindContractPrivateStateConfig If an `initialPrivateState` is given but no
  *                                                  `privateStateId` is given to store it under.
+ * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, or
+ *                                  is a raw current-era contract instance passed instead of its
+ *                                  `CompiledContract` container, or its artifacts declare no
+ *                                  toolchain this framework can place. Raised before anything is
+ *                                  read from the chain; the ZK config provider is asked for the
+ *                                  artifacts' declared runtime version, and no other provider is
+ *                                  consulted.
  */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
-  options: FindDeployedContractOptions<C>
-): Promise<FoundContract<C>> {
+  options: FindDeployedContractOptions<C> | AnyLedger8FindDeployedContractOptions
+): Promise<FoundContract<C> | AnyLedger8FoundContract> {
+  const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
+  if (isLedger8Request<AnyLedger8FindDeployedContractOptions>(options, artifactEra)) {
+    const found = await findLedger8Contract(providers, {
+      contract: options.compiledContract,
+      contractAddress: options.contractAddress,
+      // EVERY circuit the artifact declares, off the ARTIFACT rather than off
+      // the state -- see the attach section of `docs/keep-state-pipeline.md` for
+      // what this costs and why both eras pay it.
+      circuitIds: Object.keys(options.compiledContract.impureCircuits)
+    });
+    return {
+      era: RETAINED_PIPELINE_ERA,
+      compiledContract: options.compiledContract,
+      contractAddress: options.contractAddress,
+      deployTxData: found.deployTxData,
+      // Built AFTER the attach has checked every declared circuit's key, so a
+      // handle a caller receives is one whose circuits the chain can serve.
+      callTx: createLedger8CircuitCallTxInterface(
+        providers,
+        options.compiledContract,
+        options.contractAddress,
+        options.privateStateId
+      )
+    };
+  }
   const { compiledContract, contractAddress } = options;
   assertIsContractAddress(contractAddress);
   providers.privateStateProvider.setContractAddress(contractAddress);
 
-  const finalizedTxData = await providers.publicDataProvider.watchForDeployTxData(contractAddress);
+  const finalizedTxData = requireV9Record(
+    await providers.publicDataProvider.watchForDeployTxData(contractAddress),
+    'watchForDeployTxData'
+  );
 
   const initialContractState = await providers.publicDataProvider.queryDeployContractState(contractAddress);
   assertDefined(initialContractState, `No contract deployed at contract address '${contractAddress}'`);
@@ -299,7 +400,11 @@ export async function findDeployedContract<C extends Contract.Any>(
   const initialPrivateState = await setOrGetInitialPrivateState(providers.privateStateProvider, options);
 
   return {
+    era: CURRENT_PIPELINE_ERA,
+    compiledContract,
+    contractAddress,
     deployTxData: {
+      era: CURRENT_PIPELINE_ERA,
       private: {
         signingKey,
         initialPrivateState

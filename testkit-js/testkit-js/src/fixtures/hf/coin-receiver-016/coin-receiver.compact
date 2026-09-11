@@ -1,0 +1,24 @@
+// Minimal SECOND-generation fixture for the era seam's partition path: the
+// smallest contract that RECEIVES a shielded coin in-contract and then writes
+// it into its own ledger cell.
+//
+// `writeCoin` on a `QualifiedShieldedCoinInfo` cell is the point. Receiving
+// registers the coin's commitment with the runtime, and writing it back needs
+// that commitment's recorded INDEX to qualify the coin — so a transcript from
+// this circuit cannot be partitioned unless the indices the runtime recorded
+// travel with the call. `counter-016` cannot exercise that: it moves no coins.
+//
+// Deliberately not the spike's micro-dao: same receive path, without the
+// witnesses, Merkle tree, minting or voting phases none of this tests.
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+export ledger pot: QualifiedShieldedCoinInfo;
+export ledger pot_has_coin: Boolean;
+
+export circuit receive_coin(coin: ShieldedCoinInfo): [] {
+  receiveShielded(disclose(coin));
+  pot.writeCoin(disclose(coin), right<ZswapCoinPublicKey, ContractAddress>(kernel.self()));
+  pot_has_coin = true;
+}

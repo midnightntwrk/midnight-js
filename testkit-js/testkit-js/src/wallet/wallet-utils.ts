@@ -63,14 +63,15 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout =
           state.unshielded.progress?.isStrictlyComplete() === true;
 
         logger.info(
-          `Wallet synced state emission (synced=${isSynced}): { shielded=${state.shielded.state.progress.isStrictlyComplete()}, unshielded=${state.unshielded.progress.isStrictlyComplete()}, dust=${state.dust.state.progress.isStrictlyComplete()} }`
+          `Wallet synced state emission (synced=${isSynced}, protocol=${state.protocol._tag}): { shielded=${state.shielded.state.progress.isStrictlyComplete()}, unshielded=${state.unshielded.progress.isStrictlyComplete()}, dust=${state.dust.state.progress.isStrictlyComplete()} }`
         );
       }),
       Rx.filter(
         (state) =>
           state.shielded.state.progress.isStrictlyComplete() &&
           state.dust.state.progress.isStrictlyComplete() &&
-          state.unshielded.progress.isStrictlyComplete() === true
+          state.unshielded.progress.isStrictlyComplete() === true &&
+          state.protocol._tag === 'Settled'
       ),
       Rx.tap(() => logger.info('Sync complete')),
       Rx.tap((state) => {

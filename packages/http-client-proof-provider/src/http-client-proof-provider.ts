@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type {
-  ProofProvider,
-  ProveTxConfig,
-  UnboundTransaction,
-  ZKConfigProvider,
-  ZKConfigRegistry
+import { CostModel, type ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
+import {
+  createProofProviderFromArms,
+  type ProofProvider,
+  type ProveTxConfig,
+  type ZKConfigProvider,
+  type ZKConfigRegistry
 } from '@midnight-ntwrk/midnight-js-types';
 
 import { DEFAULT_TIMEOUT, httpClientProvingProvider, type ProvingProviderConfig } from './http-client-proving-provider';
@@ -120,26 +121,31 @@ export function httpClientProofProvider<K extends string>(
   // rather than being deferred to (and repeated on) every proveTx call.
   const baseProvingProvider = httpClientProvingProvider(url, resolvedZkConfigProvider, resolvedConfig);
 
-  return {
-    async proveTx(
-      unprovenTx: UnprovenTransaction,
-      proveTxConfig?: ProveTxConfig
-    ): Promise<UnboundTransaction> {
-      const perCallTimeout = resolveTimeout(resolvedConfig, proveTxConfig);
-
-      // Wrap the construction-time provider so every circuit-level check/prove in this proveTx uses
-      // the per-call timeout, without rebuilding the underlying provider. The timeout override is
-      // exposed by TimeoutAwareProvingProvider, so this needs no cast.
-      const perCallProvingProvider: ProvingProvider = {
-        check: (serializedPreimage, keyLocation) =>
-          baseProvingProvider.check(serializedPreimage, keyLocation, perCallTimeout),
-        prove: (serializedPreimage, keyLocation, overwriteBindingInput) =>
-          baseProvingProvider.prove(serializedPreimage, keyLocation, overwriteBindingInput, perCallTimeout),
-        lookupKey: (keyLocation) => baseProvingProvider.lookupKey(keyLocation)
-      };
-
-      const costModel = CostModel.initialCostModel();
-      return unprovenTx.prove(perCallProvingProvider, costModel);
-    }
+  // Wraps the construction-time provider so every circuit-level check/prove in one `proveTx` uses
+  // that call's timeout, without rebuilding the underlying provider. The timeout override is
+  // exposed by TimeoutAwareProvingProvider, so this needs no cast. Shared by both era arms because
+  // both drive the same proof server through the same per-call timeout — the proving protocol is
+  // per-circuit and era-independent.
+  const provingProviderFor = (proveTxConfig: ProveTxConfig | undefined): ProvingProvider => {
+    const perCallTimeout = resolveTimeout(resolvedConfig, proveTxConfig);
+    return {
+      check: (serializedPreimage, keyLocation) =>
+        baseProvingProvider.check(serializedPreimage, keyLocation, perCallTimeout),
+      prove: (serializedPreimage, keyLocation, overwriteBindingInput) =>
+        baseProvingProvider.prove(serializedPreimage, keyLocation, overwriteBindingInput, perCallTimeout),
+      lookupKey: (keyLocation) => baseProvingProvider.lookupKey(keyLocation)
+    };
   };
+
+  // One arm per era, with the routing, the `version` tagging and the refusal of an era with no arm
+  // all left to the factory. Answering in the arm a request arrived in is the factory's guarantee,
+  // which matters here because callers narrow the response and reject the other era — replying in
+  // the wrong one would strand a submit mid-flight.
+  return createProofProviderFromArms({
+    currentEra: (tx, proveTxConfig) =>
+      tx.prove(provingProviderFor(proveTxConfig), CostModel.initialCostModel()),
+    retainedEras: {
+      v8: (txBytes, proveTxConfig) => proveV8Transaction(txBytes, provingProviderFor(proveTxConfig))
+    }
+  });
 };

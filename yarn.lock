@@ -1878,10 +1878,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/ledger-v8@npm:^8.1.0":
+"@midnight-ntwrk/ledger-v8@npm:@midnightntwrk/ledger-v8@8.1.2, @midnightntwrk/ledger-v8@npm:8.1.2":
   version: 8.1.2
-  resolution: "@midnight-ntwrk/ledger-v8@npm:8.1.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v8%2F8.1.2%2F1cb93e168dc220b073eb22e060e16a692d705541"
-  checksum: 10/f27243ebce72d2e8177245ee0aade6430fdb2bdfd51c4f43394e174f935c655efc4850c76bf1eb015303f366257c0c902da58a94621fde04109e6d03a84970d2
+  resolution: "@midnightntwrk/ledger-v8@npm:8.1.2"
+  checksum: 10/733dc1f5eca1a2f310d9b35e32b602704c23639fc4c174448187a2610ab1ffb8250f1aaecc68fe8ca4feb1a89e2905b77bafdcc343a6fd3d92b8c740948c07d1
   languageName: node
   linkType: hard
 
@@ -1912,6 +1912,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     effect: "npm:^3.22.1"
     rollup: "npm:^4.60.4"
+    typescript: "npm:^6.0.3"
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft
@@ -1922,6 +1923,7 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@midnightntwrk/dapp-connector-api": "npm:4.1.0-beta.1"
     rollup: "npm:^4.60.4"
     vitest: "npm:^4.1.7"
@@ -2042,6 +2044,7 @@ __metadata:
     husky: "npm:^9.1.7"
     lint-staged: "npm:^17.0.7"
     pinst: "npm:^3.0.0"
+    pnpm: "npm:10.20.0"
     prettier: "npm:^3.9.4"
     rollup: "npm:^4.60.4"
     rollup-plugin-dts: "npm:^6.4.1"
@@ -2082,12 +2085,16 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:2.5.5-rc.8"
     "@midnight-ntwrk/compact-runtime": "npm:0.19.0"
+    "@midnight-ntwrk/onchain-runtime-v3": "npm:3.1.1"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
+    "@midnightntwrk/ledger-v8": "npm:8.1.2"
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.4"
     "@midnightntwrk/onchain-runtime-v4": "npm:4.0.0-rc.3"
     "@rollup/plugin-typescript": "npm:^12.3.0"
     "@vitest/coverage-v8": "npm:^4.1.10"
+    compact-runtime-ledger8: "npm:@midnight-ntwrk/compact-runtime@0.16.0"
     eslint: "npm:^10.8.1"
+    onchain-runtime-v3-test-only: "npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0"
     rollup: "npm:^4.60.4"
     rollup-plugin-dts: "npm:^6.4.1"
     typescript: "npm:^6.0.3"
@@ -2100,10 +2107,12 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-types@workspace:packages/types"
   dependencies:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     effect: "npm:^3.22.1"
     pino: "npm:^10.3.1"
     rollup: "npm:^4.60.4"
     rxjs: "npm:^7.8.2"
+    typescript: "npm:^6.0.3"
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft
@@ -2138,6 +2147,13 @@ __metadata:
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft
+
+"@midnight-ntwrk/onchain-runtime-v3@npm:3.1.1":
+  version: 3.1.1
+  resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.1.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v3%2F3.1.1%2Fc246131be13bd689bd8568d1aaf22f579465a457"
+  checksum: 10/03b5752fcf108e95e3ed8ffd80aedd42fe69a5458f24262dc9928df2e48daf121f8d2b57bfa1a61cea57bf42e166883818050d2469efd9de121d2a249c7b6039
+  languageName: node
+  linkType: hard
 
 "@midnight-ntwrk/platform-js@npm:3.0.0":
   version: 3.0.0
@@ -2188,6 +2204,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/testkit-js@workspace:testkit-js/testkit-js"
   dependencies:
+    "@midnight-ntwrk/compact-runtime": "npm:0.19.0"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*"
@@ -2212,6 +2229,7 @@ __metadata:
     allure-vitest: "npm:^3.10.2"
     axios: "npm:^1.16.1"
     buffer: "npm:^6.0.3"
+    compact-runtime-ledger8: "npm:@midnight-ntwrk/compact-runtime@0.16.0"
     cross-fetch: "npm:^4.1.0"
     effect: "npm:^3.22.1"
     pino: "npm:^10.3.1"
@@ -2237,13 +2255,6 @@ __metadata:
   version: 4.1.0-beta.1
   resolution: "@midnightntwrk/dapp-connector-api@npm:4.1.0-beta.1"
   checksum: 10/dc4ca4a201f98a2e078d3546fb0a60760dc6f2c8784ca2fdbed275009383dfc763a3007dfabd6d7d23faf5dcb93e28b24ae09f519692b33eefe149841cc767ee
-  languageName: node
-  linkType: hard
-
-"@midnightntwrk/ledger-v8@npm:8.1.2":
-  version: 8.1.2
-  resolution: "@midnightntwrk/ledger-v8@npm:8.1.2"
-  checksum: 10/733dc1f5eca1a2f310d9b35e32b602704c23639fc4c174448187a2610ab1ffb8250f1aaecc68fe8ca4feb1a89e2905b77bafdcc343a6fd3d92b8c740948c07d1
   languageName: node
   linkType: hard
 
@@ -5755,6 +5766,17 @@ __metadata:
   version: 1.8.2
   resolution: "common-tags@npm:1.8.2"
   checksum: 10/c665d0f463ee79dda801471ad8da6cb33ff7332ba45609916a508ad3d77ba07ca9deeb452e83f81f24c2b081e2c1315347f23d239210e63d1c5e1a0c7c019fe2
+  languageName: node
+  linkType: hard
+
+"compact-runtime-ledger8@npm:@midnight-ntwrk/compact-runtime@0.16.0":
+  version: 0.16.0
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.16.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.16.0%2F4a2d38a4237b0abd6d833c0ee94baa6318323a79"
+  dependencies:
+    "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0"
+    "@types/object-inspect": "npm:^1.8.1"
+    object-inspect: "npm:^1.12.3"
+  checksum: 10/ef0c68d53bba6a04f336094c82c26b781082d7ce4ee09f0539009fb108776b36ea24b9a774292d9bbf9722b8a78d47254b5f80a613d4010a7f7d108514243023
   languageName: node
   linkType: hard
 
@@ -9908,6 +9930,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"onchain-runtime-v3-test-only@npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0":
+  version: 3.1.0
+  resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.1.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v3%2F3.1.0%2F9e7166a1a37b28579339a3e3176b4bf024818a73"
+  checksum: 10/b13ce3729fd290220bdad0b5139793f8b3d01fdeb8317b2ed0542262b67a556ebfdebe0ed0e3047e9d5b460368e39f79e29d6c641c2f3b246dc74aa28e8e7f6f
+  languageName: node
+  linkType: hard
+
 "onetime@npm:^7.0.0":
   version: 7.0.0
   resolution: "onetime@npm:7.0.0"
@@ -10296,6 +10325,18 @@ __metadata:
   bin:
     pinst: bin.js
   checksum: 10/a75e4f7b5eeb9c76e7fd1b2d9854fcd38c304a3b1f9b563946a0f4357772c742222094e851f4c23d0bbdc4151af2d7875bb919c9ef8a9c4af77a02a73e8f72f0
+  languageName: node
+  linkType: hard
+
+"pnpm@npm:10.20.0":
+  version: 10.20.0
+  resolution: "pnpm@npm:10.20.0"
+  dependencies:
+    node-gyp: "npm:latest"
+  bin:
+    pnpm: bin/pnpm.cjs
+    pnpx: bin/pnpx.cjs
+  checksum: 10/46ad22617eef9b2396416700333c6c29853e6195be2faa2e8b20056e99d12a2f10e089d766164d0ba92061d12bd4f9e736e24f7e59ab297162d42999010b9335
   languageName: node
   linkType: hard
 
