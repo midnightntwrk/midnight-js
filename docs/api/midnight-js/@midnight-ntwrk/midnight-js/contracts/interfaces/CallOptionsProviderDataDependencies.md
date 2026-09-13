@@ -6,8 +6,6 @@
 
 # Interface: CallOptionsProviderDataDependencies
 
-Defined in: packages/contracts/dist/index.d.ts:44
-
 Data retrieved via providers that should be included in the call options.
 
 ## Properties
@@ -15,8 +13,6 @@ Data retrieved via providers that should be included in the call options.
 ### coinPublicKey
 
 > `readonly` **coinPublicKey**: `string`
-
-Defined in: packages/contracts/dist/index.d.ts:48
 
 The Zswap public key of the current user.
 
@@ -26,8 +22,6 @@ The Zswap public key of the current user.
 
 > `readonly` **initialContractState**: [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/contracts/dist/index.d.ts:52
-
 The initial public state of the contract to run the circuit against.
 
 ***
@@ -36,8 +30,6 @@ The initial public state of the contract to run the circuit against.
 
 > `readonly` **initialZswapChainState**: [`ZswapChainState`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/contracts/dist/index.d.ts:56
-
 The initial public Zswap state of the contract to run the circuit against.
 
 ***
@@ -45,7 +37,5 @@ The initial public Zswap state of the contract to run the circuit against.
 ### ledgerParameters
 
 > `readonly` **ledgerParameters**: [`LedgerParameters`](https://github.com/midnightntwrk/midnight-ledger)
-
-Defined in: packages/contracts/dist/index.d.ts:60
 
 The ledger parameters to use when executing the circuit.

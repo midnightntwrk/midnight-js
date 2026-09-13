@@ -1,0 +1,18 @@
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../../README.md) / [index](../README.md) / ContractConstructorOptions
+
+# Type Alias: ContractConstructorOptions\<C\>
+
+> **ContractConstructorOptions**\<`C`\> = [`ContractConstructorOptionsWithProviderDataDependencies`](ContractConstructorOptionsWithProviderDataDependencies.md)\<`C`\> \| [`ContractConstructorOptionsWithPrivateState`](ContractConstructorOptionsWithPrivateState.md)\<`C`\>
+
+Conditional type that optionally adds the inferred circuit argument types to
+the target of a circuit invocation.
+
+## Type Parameters
+
+### C
+
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)

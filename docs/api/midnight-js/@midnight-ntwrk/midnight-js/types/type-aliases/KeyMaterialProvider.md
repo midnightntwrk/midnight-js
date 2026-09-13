@@ -8,8 +8,6 @@
 
 > **KeyMaterialProvider** = `object`
 
-Defined in: packages/types/dist/index.d.ts:269
-
 DApp connector API type for key material retrieval
 
 ## Methods
@@ -17,8 +15,6 @@ DApp connector API type for key material retrieval
 ### getProverKey()
 
 > **getProverKey**(`circuitKeyLocation`): `Promise`\<`Uint8Array`\<`ArrayBufferLike`\>\>
-
-Defined in: packages/types/dist/index.d.ts:271
 
 #### Parameters
 
@@ -36,8 +32,6 @@ Defined in: packages/types/dist/index.d.ts:271
 
 > **getVerifierKey**(`circuitKeyLocation`): `Promise`\<`Uint8Array`\<`ArrayBufferLike`\>\>
 
-Defined in: packages/types/dist/index.d.ts:272
-
 #### Parameters
 
 ##### circuitKeyLocation
@@ -53,8 +47,6 @@ Defined in: packages/types/dist/index.d.ts:272
 ### getZKIR()
 
 > **getZKIR**(`circuitKeyLocation`): `Promise`\<`Uint8Array`\<`ArrayBufferLike`\>\>
-
-Defined in: packages/types/dist/index.d.ts:270
 
 #### Parameters
 

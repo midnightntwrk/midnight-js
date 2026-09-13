@@ -91,9 +91,12 @@ describe('parseZkArtifactManifest', () => {
     expect(() => parseZkArtifactManifest(rawJson)).toThrow(/must be a JSON object/);
   });
 
-  it('throws on an array root (fails the manifest-version check)', () => {
-    // Arrays pass the record guard (typeof [] === 'object'), so they surface as a version error.
-    expect(() => parseZkArtifactManifest('[]')).toThrow(/manifest-version/);
+  it('throws on an array root, as the wrong kind of document rather than a version problem', () => {
+    // Arrays used to pass the record guard (typeof [] === 'object') and surface as a version error,
+    // which named the wrong fault: an array is not a manifest missing its version, it is not a
+    // manifest at all. The guard is now shared with the contract-description parser and excludes
+    // arrays, so both report the document kind.
+    expect(() => parseZkArtifactManifest('[]')).toThrow(/must be a JSON object/);
   });
 
   it('normalizes uppercase entry hashes to lowercase so verification accepts them', () => {

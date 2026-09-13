@@ -6,8 +6,6 @@
 
 # Interface: ImportPrivateStatesResult
 
-Defined in: packages/types/dist/index.d.ts:523
-
 Result of an import operation.
 
 ## Properties
@@ -15,8 +13,6 @@ Result of an import operation.
 ### imported
 
 > `readonly` **imported**: `number`
-
-Defined in: packages/types/dist/index.d.ts:527
 
 Number of states successfully imported.
 
@@ -26,8 +22,6 @@ Number of states successfully imported.
 
 > `readonly` **overwritten**: `number`
 
-Defined in: packages/types/dist/index.d.ts:535
-
 Number of states that overwrote existing states (when conflictStrategy is 'overwrite').
 
 ***
@@ -35,7 +29,5 @@ Number of states that overwrote existing states (when conflictStrategy is 'overw
 ### skipped
 
 > `readonly` **skipped**: `number`
-
-Defined in: packages/types/dist/index.d.ts:531
 
 Number of states skipped due to conflicts (when conflictStrategy is 'skip').

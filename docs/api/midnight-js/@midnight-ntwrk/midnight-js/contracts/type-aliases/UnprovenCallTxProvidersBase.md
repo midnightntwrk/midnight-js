@@ -8,8 +8,6 @@
 
 > **UnprovenCallTxProvidersBase** = `Pick`\<[`ContractProviders`](ContractProviders.md), `"zkConfigProvider"` \| `"publicDataProvider"` \| `"walletProvider"`\>
 
-Defined in: packages/contracts/dist/index.d.ts:811
-
 The minimum set of providers needed to create a call transaction, the ZK
 artifact provider and a wallet. By defining this type, users can choose to
 omit a private state provider if they're creating a call transaction for a

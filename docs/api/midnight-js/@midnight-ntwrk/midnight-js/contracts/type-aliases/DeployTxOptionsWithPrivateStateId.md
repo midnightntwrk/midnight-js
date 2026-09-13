@@ -8,8 +8,6 @@
 
 > **DeployTxOptionsWithPrivateStateId**\<`C`\> = [`DeployTxOptionsWithPrivateState`](DeployTxOptionsWithPrivateState.md)\<`C`\> & `object`
 
-Defined in: packages/contracts/dist/index.d.ts:1334
-
 Configuration for creating deploy transactions for contracts with private state. This
 configuration is used when a deployment transaction is created and an initial private
 state needs to be stored, as is the case in [submitDeployTx](../functions/submitDeployTx.md).

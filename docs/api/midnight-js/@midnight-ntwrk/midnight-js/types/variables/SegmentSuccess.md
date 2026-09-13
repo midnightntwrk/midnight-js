@@ -8,6 +8,4 @@
 
 > `const` **SegmentSuccess**: `"SegmentSuccess"`
 
-Defined in: packages/types/dist/index.d.ts:99
-
 Indicates that the segment is valid.

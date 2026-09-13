@@ -8,8 +8,6 @@
 
 > `const` **SOURCE\_PACKAGES**: `object`
 
-Defined in: packages/utils/dist/index.d.ts:193
-
 The npm package families that produce the deserialization errors this
 module wraps. The major-version suffix (e.g. `-v8`, `-v3`) is intentionally
 omitted — error messages reference the family and rely on the structural

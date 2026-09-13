@@ -8,8 +8,6 @@
 
 > **parseZkArtifactManifest**(`rawJson`): [`ZkArtifactManifest`](../interfaces/ZkArtifactManifest.md)
 
-Defined in: packages/utils/dist/index.d.ts:477
-
 Parses a `compactc` `contract-manifest.json`. Asserts `manifest-version === '1'`, flattens exactly
 one directory level into `"<dir>/<fileName>"` keys (nested sub-directories are ignored), validates
 each file entry, and throws [ZkArtifactIntegrityError](../classes/ZkArtifactIntegrityError.md) on any structural violation.

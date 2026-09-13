@@ -40,6 +40,20 @@ Fully-classified context attached to a `DeserializationError`.
 
 ***
 
+### details?
+
+> `readonly` `optional` **details?**: `Readonly`\<`Record`\<`string`, `string` \| `number`\>\>
+
+Facts identifying the particular read that failed, supplied by the caller
+and rendered verbatim. For diagnosis only: nothing here changes the
+classification or the mitigation.
+
+#### Inherited from
+
+[`DeserializationCallSite`](DeserializationCallSite.md).[`details`](DeserializationCallSite.md#details)
+
+***
+
 ### direction?
 
 > `readonly` `optional` **direction?**: [`Direction`](../type-aliases/Direction.md)

@@ -7,5 +7,3 @@
 # Type Alias: AnyProvableCircuitId
 
 > **AnyProvableCircuitId** = [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<[`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)\>
-
-Defined in: packages/types/dist/index.d.ts:13

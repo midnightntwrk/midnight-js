@@ -6,8 +6,6 @@
 
 # Class: ZKConfigRegistry
 
-Defined in: packages/types/dist/index.d.ts:1351
-
 Resolves canonical contract key locations to ZK artifacts across a *set* of compiled-contract
 artifact sources.
 
@@ -32,8 +30,6 @@ registry's memory does not grow with the number of distinct locations resolved.
 
 > **new ZKConfigRegistry**(`sources`): `ZKConfigRegistry`
 
-Defined in: packages/types/dist/index.d.ts:1367
-
 #### Parameters
 
 ##### sources
@@ -53,8 +49,6 @@ contract the application can call (its own contracts and any cross-contract call
 
 > **asKeyMaterialProvider**(): [`KeyMaterialProvider`](../type-aliases/KeyMaterialProvider.md)
 
-Defined in: packages/types/dist/index.d.ts:1389
-
 Adapts this registry to the DApp connector's [KeyMaterialProvider](../type-aliases/KeyMaterialProvider.md), allowing a wallet
 to resolve the key locations of a transaction assembled by this application.
 
@@ -68,15 +62,13 @@ to resolve the key locations of a transaction assembled by this application.
 
 > **get**(`location`): `Promise`\<[`ZKConfig`](../interfaces/ZKConfig.md)\<`string`\>\>
 
-Defined in: packages/types/dist/index.d.ts:1374
-
 Resolves the ZK artifacts for a structured contract key.
 
 #### Parameters
 
 ##### location
 
-[`ContractKeyLocation`](../interfaces/ContractKeyLocation.md)
+[`ContractKeyLocation`](https://github.com/midnightntwrk/midnight-sdk)
 
 The contract address, circuit, and deployed verifier key hash to resolve.
 
@@ -93,8 +85,6 @@ ZKArtifactNotFoundError If no source's verifier key for the circuit matches.
 ### resolveKeyLocation()
 
 > **resolveKeyLocation**(`keyLocation`): `Promise`\<[`ZKConfig`](../interfaces/ZKConfig.md)\<`string`\> \| `undefined`\>
-
-Defined in: packages/types/dist/index.d.ts:1384
 
 Resolves the ZK artifacts for a key-location string from a proof preimage.
 

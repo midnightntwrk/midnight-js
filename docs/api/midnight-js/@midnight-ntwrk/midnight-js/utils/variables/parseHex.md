@@ -8,8 +8,6 @@
 
 > `const` **parseHex**: (`source`) => [`ParsedHexString`](../type-aliases/ParsedHexString.md)
 
-Defined in: packages/utils/dist/index.d.ts:266
-
 Parses a string as a hex-encoded string.
 
 ## Parameters

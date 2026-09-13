@@ -8,8 +8,6 @@
 
 > `const` **submitTxAsync**: \<`C`, `PCK`\>(`providers`, `options`) => `Promise`\<`string`\>
 
-Defined in: packages/contracts/dist/index.d.ts:445
-
 Proves, balances, and submits an unproven deployment or call transaction using
 the given providers, according to the given options. Unlike [submitTx](submitTx.md),
 this function returns immediately after submission without waiting for finalization.

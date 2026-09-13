@@ -6,8 +6,6 @@
 
 # Interface: ContractConstructorOptionsProviderDataDependencies
 
-Defined in: packages/contracts/dist/index.d.ts:211
-
 Data retrieved via providers that should be included in the constructor call options.
 
 ## Properties
@@ -15,7 +13,5 @@ Data retrieved via providers that should be included in the constructor call opt
 ### coinPublicKey
 
 > `readonly` **coinPublicKey**: `string`
-
-Defined in: packages/contracts/dist/index.d.ts:215
 
 The current user's ZSwap public key.

@@ -68,7 +68,7 @@ import {
   fromLedgerContractState,
   toLedgerContractState,
   toLedgerQueryContext,
-  ZSWAP_MERKLE_ROOT_RETENTION_SECONDS} from '../../utils';
+  ZSWAP_MERKLE_ROOT_RETENTION_SECONDS} from '../../internal/utils';
 const emptyTranscript: PartitionedTranscript = [undefined, undefined];
 
 /**
@@ -812,6 +812,141 @@ describe('ledger-utils', () => {
       expect(intent!.fallibleUnshieldedOffer).toBeDefined();
       expect(intent!.fallibleUnshieldedOffer!.outputs).toHaveLength(1);
       expect(intent!.fallibleUnshieldedOffer!.outputs[0].value).toBe(200n);
+    });
+  });
+
+  // `createUnprovenLedgerCallTx` aggregates unshielded outputs across every call in the tree with
+  // `calls.flatMap(...)`; every other test in this file passes a single call.
+  // @see docs/architecture/contracts-non-regression-golden-baselines.md
+  describe('createUnprovenLedgerCallTx aggregates unshielded outputs across all calls', () => {
+    const noSpends = (): Map<[TokenType, PublicAddress], bigint> => new Map();
+
+    const userSpend = (
+      userAddress: string,
+      amount: bigint
+    ): Map<[TokenType, PublicAddress], bigint> =>
+      new Map([[[unshieldedToken(), { tag: 'user', address: userAddress } as PublicAddress], amount]]);
+
+    const callAlignedValue: AlignedValue = {
+      value: [new Uint8Array()],
+      alignment: [{ tag: 'atom', value: { tag: 'field' } }]
+    };
+
+    type Calls = Parameters<typeof createUnprovenLedgerCallTx>[0];
+    type StateResolver = Parameters<typeof createUnprovenLedgerCallTx>[1];
+
+    /**
+     * Assembles a two-call tree -- callee first, root last, as the execution trace orders them --
+     * and returns the single intent produced, so a test can read the offers off it.
+     */
+    const assembleTwoCallTree = (
+      calleeTranscripts: PartitionedTranscript,
+      rootTranscripts: PartitionedTranscript
+    ) => {
+      const calleeAddress = sampleContractAddress();
+      const rootAddress = sampleContractAddress();
+
+      const stateWith = (circuitId: string): CompactContractState => {
+        const state = new CompactContractState();
+        state.setOperation(circuitId, makeOperation());
+        return state;
+      };
+      const states = new Map<string, CompactContractState>([
+        [calleeAddress, stateWith('calleeCircuit')],
+        [rootAddress, stateWith('rootCircuit')]
+      ]);
+      const contractStateFor: StateResolver = (address) => states.get(String(address));
+
+      const calls: Calls = [
+        {
+          contractAddress: PlatformContractAddress.ContractAddress(calleeAddress),
+          circuitId: 'calleeCircuit',
+          public: {
+            contractState: states.get(calleeAddress)!.data.state,
+            publicTranscript: [],
+            partitionedTranscript: calleeTranscripts
+          },
+          private: { input: callAlignedValue, output: callAlignedValue, privateTranscriptOutputs: [] },
+          communicationCommitment: Option.none()
+        },
+        {
+          contractAddress: PlatformContractAddress.ContractAddress(rootAddress),
+          circuitId: 'rootCircuit',
+          public: {
+            contractState: states.get(rootAddress)!.data.state,
+            publicTranscript: [],
+            partitionedTranscript: rootTranscripts
+          },
+          private: { input: callAlignedValue, output: callAlignedValue, privateTranscriptOutputs: [] },
+          communicationCommitment: Option.none()
+        }
+      ];
+
+      const tx = createUnprovenLedgerCallTx(
+        calls,
+        contractStateFor,
+        new ZswapChainState(),
+        { outputs: [], inputs: [], coinPublicKey: sampleCoinPublicKey(), currentIndex: 0n },
+        sampleEncryptionPublicKey()
+      );
+
+      const intent = tx.intents?.values().next().value;
+      expect(intent).toBeDefined();
+      return intent!;
+    };
+
+    it('attaches a guaranteed offer for a callee-only spend, which the root call does not carry', () => {
+      const calleeUser = sampleUserAddress();
+
+      const intent = assembleTwoCallTree(
+        [makeTranscript(userSpend(calleeUser, 100n)), undefined],
+        [makeTranscript(noSpends()), undefined]
+      );
+
+      expect(intent.guaranteedUnshieldedOffer).toBeDefined();
+      expect(intent.guaranteedUnshieldedOffer!.outputs).toHaveLength(1);
+      expect(intent.guaranteedUnshieldedOffer!.outputs[0]).toEqual({
+        value: 100n,
+        owner: calleeUser,
+        type: unshieldedToken().raw
+      });
+    });
+
+    it('attaches a fallible offer for a callee-only spend, which the root call does not carry', () => {
+      const calleeUser = sampleUserAddress();
+
+      const intent = assembleTwoCallTree(
+        [makeTranscript(noSpends()), makeTranscript(userSpend(calleeUser, 250n))],
+        [makeTranscript(noSpends()), makeTranscript(noSpends())]
+      );
+
+      expect(intent.fallibleUnshieldedOffer).toBeDefined();
+      expect(intent.fallibleUnshieldedOffer!.outputs).toHaveLength(1);
+      expect(intent.fallibleUnshieldedOffer!.outputs[0]).toEqual({
+        value: 250n,
+        owner: calleeUser,
+        type: unshieldedToken().raw
+      });
+    });
+
+    it('aggregates spends from the callee and the root into one guaranteed offer', () => {
+      const calleeUser = sampleUserAddress();
+      const rootUser = sampleUserAddress();
+
+      const intent = assembleTwoCallTree(
+        [makeTranscript(userSpend(calleeUser, 100n)), undefined],
+        [makeTranscript(userSpend(rootUser, 400n)), undefined]
+      );
+
+      expect(intent.guaranteedUnshieldedOffer).toBeDefined();
+      expect(intent.guaranteedUnshieldedOffer!.outputs).toHaveLength(2);
+      expect([...intent.guaranteedUnshieldedOffer!.outputs].map((output) => output.value).sort()).toEqual([
+        100n,
+        400n
+      ]);
+      expect([...intent.guaranteedUnshieldedOffer!.outputs].map((output) => output.owner).sort()).toEqual(
+        [calleeUser, rootUser].sort()
+      );
     });
   });
 

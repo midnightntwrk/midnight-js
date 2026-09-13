@@ -6,9 +6,11 @@
 
 # Interface: CallResultPublic
 
-Defined in: packages/contracts/dist/index.d.ts:123
-
 The public portions of the call result.
+
+## Extends
+
+- [`CallResultPublicBase`](../../types/interfaces/CallResultPublicBase.md)
 
 ## Extended by
 
@@ -18,12 +20,10 @@ The public portions of the call result.
 
 ### logEvents
 
-> `readonly` **logEvents**: readonly [`LogEvent`](../type-aliases/LogEvent.md)[]
-
-Defined in: packages/contracts/dist/index.d.ts:151
+> `readonly` **logEvents**: readonly [`LogEvent`](https://github.com/LFDT-Minokawa/compact)[]
 
 The MIP-0002 contract log events emitted during circuit execution. Surfaced on the `compact-js`
-executor result and typed by `compact-runtime`'s [LogEvent](../type-aliases/LogEvent.md). This is the single
+executor result and typed by `compact-runtime`'s [LogEvent](https://github.com/LFDT-Minokawa/compact). This is the single
 execution-wide list across the whole call tree (not just the root call), in emission order; each
 event is tagged with its emitting contract's address, so a per-contract view is a filter over
 that address.
@@ -39,9 +39,31 @@ Empty when the circuit emits no logs.
 
 > `readonly` **nextContractState**: [`StateValue`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/contracts/dist/index.d.ts:127
-
 The public state resulting from executing the circuit.
+
+***
+
+### nextContractStateEncoded
+
+> `readonly` **nextContractStateEncoded**: [`EncodedStateValue`](https://github.com/midnightntwrk/midnight-ledger)
+
+The same state as an [EncodedStateValue](https://github.com/midnightntwrk/midnight-ledger): the form that survives this
+process, a `structuredClone`, a worker transfer and storage.
+
+The handle above is valid only while the runtime instance that produced it
+is loaded -- anything that walks it sees `__wbg_ptr`, an integer that means
+nothing outside its module. `EncodedStateValue` is pinned identical across
+`onchain-runtime-v3`, `ledger-v8` and `ledger-v9`, so this is the member
+era-agnostic code reads and the one to persist, in either era.
+
+Derived from the handle rather than fetched again, so the two cannot
+describe different states. It costs one encode per call; read
+[CallResultPublic.nextContractState](#nextcontractstate) instead when the value never
+leaves the process that produced it.
+
+#### See
+
+ADR-0010 for the decision to publish the handle AND the bytes.
 
 ***
 
@@ -49,12 +71,13 @@ The public state resulting from executing the circuit.
 
 > `readonly` **partitionedTranscript**: [`PartitionedTranscript`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/contracts/dist/index.d.ts:138
+The public transcript partitioned into its guaranteed and fallible halves.
+The guaranteed half must succeed for the transaction to be valid; the
+fallible half may fail without invalidating it.
 
-A [publicTranscript](#publictranscript) partitioned into guaranteed and fallible sections.
-The guaranteed section of a public transcript must succeed for the corresponding
-transaction to be considered valid. The fallible section of a public transcript
-can fail without invalidating the transaction, as long as the guaranteed section succeeds.
+#### Inherited from
+
+[`CallResultPublicBase`](../../types/interfaces/CallResultPublicBase.md).[`partitionedTranscript`](../../types/interfaces/CallResultPublicBase.md#partitionedtranscript)
 
 ***
 
@@ -62,6 +85,8 @@ can fail without invalidating the transaction, as long as the guaranteed section
 
 > `readonly` **publicTranscript**: [`Op`](https://github.com/midnightntwrk/midnight-ledger)\<[`AlignedValue`](https://github.com/midnightntwrk/midnight-ledger)\>[]
 
-Defined in: packages/contracts/dist/index.d.ts:131
+The public transcript the execution produced, unpartitioned.
 
-The public transcript resulting from executing the circuit.
+#### Inherited from
+
+[`CallResultPublicBase`](../../types/interfaces/CallResultPublicBase.md).[`publicTranscript`](../../types/interfaces/CallResultPublicBase.md#publictranscript)

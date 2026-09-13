@@ -8,8 +8,6 @@
 
 > **assertIsHex**(`source`, `byteLen?`): `asserts source is string`
 
-Defined in: packages/utils/dist/index.d.ts:304
-
 Asserts that a string represents a hex-encoded sequence of bytes.
 
 ## Parameters

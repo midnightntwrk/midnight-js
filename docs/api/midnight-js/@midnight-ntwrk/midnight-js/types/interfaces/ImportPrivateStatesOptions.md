@@ -6,8 +6,6 @@
 
 # Interface: ImportPrivateStatesOptions
 
-Defined in: packages/types/dist/index.d.ts:498
-
 Options for importing private states.
 
 ## Properties
@@ -15,8 +13,6 @@ Options for importing private states.
 ### conflictStrategy?
 
 > `readonly` `optional` **conflictStrategy?**: `"skip"` \| `"overwrite"` \| `"error"`
-
-Defined in: packages/types/dist/index.d.ts:512
 
 How to handle conflicts when a private state ID already exists.
 - 'skip': Keep existing state, ignore imported state
@@ -30,8 +26,6 @@ Default: 'error'
 
 > `readonly` `optional` **maxStates?**: `number`
 
-Defined in: packages/types/dist/index.d.ts:518
-
 Maximum number of states to import.
 Defaults to MAX_EXPORT_STATES (10000).
 Set to a lower value to limit memory usage.
@@ -41,8 +35,6 @@ Set to a lower value to limit memory usage.
 ### password?
 
 > `readonly` `optional` **password?**: `string`
-
-Defined in: packages/types/dist/index.d.ts:504
 
 Password used to decrypt the import.
 Must match the password used during export.

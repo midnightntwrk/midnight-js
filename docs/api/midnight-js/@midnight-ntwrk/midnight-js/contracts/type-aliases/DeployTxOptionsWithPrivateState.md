@@ -8,8 +8,6 @@
 
 > **DeployTxOptionsWithPrivateState**\<`C`\> = [`DeployTxOptionsBase`](DeployTxOptionsBase.md)\<`C`\> & `object`
 
-Defined in: packages/contracts/dist/index.d.ts:1323
-
 Configuration for creating deploy transactions for contracts with private state. This
 configuration used as a base type for the [DeployTxOptionsWithPrivateStateId](DeployTxOptionsWithPrivateStateId.md) configuration.
 It is also used directly as parameter to [createUnprovenDeployTx](../functions/createUnprovenDeployTx.md) which doesn't need

@@ -8,8 +8,6 @@
 
 > `const` **submitTx**: \<`C`, `PCK`\>(`providers`, `options`) => `Promise`\<[`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md)\>
 
-Defined in: packages/contracts/dist/index.d.ts:432
-
 Proves, balances, and submits an unproven deployment or call transaction using
 the given providers, according to the given options.
 

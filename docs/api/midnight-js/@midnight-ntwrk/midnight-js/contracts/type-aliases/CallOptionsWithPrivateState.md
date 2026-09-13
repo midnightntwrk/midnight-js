@@ -8,8 +8,6 @@
 
 > **CallOptionsWithPrivateState**\<`C`, `PCK`\> = [`CallOptionsWithProviderDataDependencies`](CallOptionsWithProviderDataDependencies.md)\<`C`, `PCK`\> & `object`
 
-Defined in: packages/contracts/dist/index.d.ts:69
-
 Call options for contracts with private state.
 
 ## Type Declaration

@@ -8,8 +8,6 @@
 
 > `const` **getNetworkId**: () => [`NetworkId`](../type-aliases/NetworkId.md)
 
-Defined in: packages/network-id/dist/index.d.ts:18
-
 Retrieves the currently set global network identifier.
 
 ## Returns

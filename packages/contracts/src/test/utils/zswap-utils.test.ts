@@ -56,7 +56,7 @@ import {
   ZSWAP_MERKLE_ROOT_RETENTION_SECONDS,
   zswapStateToNewCoins,
   zswapStateToOffer,
-  zswapStateToSegmentedOffer} from '../../utils';
+  zswapStateToSegmentedOffer} from '../../internal/utils';
 
 const arbitraryBytes = fc.uint8Array({ minLength: 32, maxLength: 32 });
 
@@ -428,6 +428,58 @@ describe('Zswap utilities', () => {
         expect(newCoins).toEqual(expected);
       })
     );
+  });
+
+  test('should NOT report a CONTRACT-owned output whose unused `left` slot holds the wallet key', () => {
+    // `Recipient` is a tagged union written as a flat struct, and the runtime's
+    // `decodeRecipient` fills `left` AND `right` on every output regardless of
+    // `is_left` -- neither is ever absent. So reading `left` without first
+    // reading the tag asks a question the value never answered: this output
+    // belongs to a CONTRACT, and the key in its `left` slot is not a recipient.
+    // Reporting it hands the caller a coin it cannot spend, and the rejection
+    // surfaces later at balancing with nothing naming where it came from.
+    const walletCoinPublicKey = sampleCoinPublicKey();
+    const coinInfo = createShieldedCoinInfo(nativeToken().raw, 100n);
+    const contractOwned: { recipient: Recipient; coinInfo: ShieldedCoinInfo } = {
+      coinInfo,
+      recipient: {
+        is_left: false,
+        left: walletCoinPublicKey,
+        right: sampleContractAddress()
+      }
+    };
+
+    const newCoins = zswapStateToNewCoins(walletCoinPublicKey, {
+      currentIndex: 0n,
+      coinPublicKey: walletCoinPublicKey,
+      inputs: [],
+      outputs: [contractOwned]
+    });
+
+    expect(newCoins).toEqual([]);
+  });
+
+  test('should still report a USER-owned output for the same wallet key', () => {
+    // The other half of the pair: the tag check must not turn the filter off.
+    const walletCoinPublicKey = sampleCoinPublicKey();
+    const coinInfo = createShieldedCoinInfo(nativeToken().raw, 100n);
+    const userOwned: { recipient: Recipient; coinInfo: ShieldedCoinInfo } = {
+      coinInfo,
+      recipient: {
+        is_left: true,
+        left: walletCoinPublicKey,
+        right: sampleContractAddress()
+      }
+    };
+
+    const newCoins = zswapStateToNewCoins(walletCoinPublicKey, {
+      currentIndex: 0n,
+      coinPublicKey: walletCoinPublicKey,
+      inputs: [],
+      outputs: [userOwned]
+    });
+
+    expect(newCoins).toEqual([coinInfo]);
   });
 
   describe('Edge cases for inputs, outputs, and transients', () => {

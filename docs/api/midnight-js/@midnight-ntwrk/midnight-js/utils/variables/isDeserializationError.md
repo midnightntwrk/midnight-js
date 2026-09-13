@@ -8,8 +8,6 @@
 
 > `const` **isDeserializationError**: (`e`) => `e is DeserializationError`
 
-Defined in: packages/utils/dist/index.d.ts:83
-
 Type guard for `DeserializationError`.
 
 ## Parameters

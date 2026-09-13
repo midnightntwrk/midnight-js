@@ -8,8 +8,6 @@
 
 > `const` **parseEncPublicKeyToHex**: (`possibleBech32`, `zswapNetworkId`) => `string`
 
-Defined in: packages/utils/dist/index.d.ts:326
-
 Parses an encryption public key (in Bech32m or hex format) into a hex formatted string.
 
 ## Parameters

@@ -8,12 +8,14 @@
 
 > `const` **withDeserializationContext**: \<`T`\>(`callSite`, `fn`) => `T`
 
-Defined in: packages/utils/dist/index.d.ts:223
+Wraps a synchronous deserialization call. Whatever `fn()` throws, the
+wrapper classifies it and re-throws a `DeserializationError` carrying
+structured context, with the original value on `cause`.
 
-Wraps a synchronous deserialization call. If `fn()` throws an `Error`,
-the wrapper classifies it and re-throws a `DeserializationError` with
-structured context. Non-`Error` throws (`string`, `number`, `null`, etc.)
-pass through unchanged.
+A non-`Error` throw is classified on its string form rather than escaping
+unwrapped: some wasm-bindgen bindings surface a `Result<_, String>` as a
+bare string, and a caller that received one would get a value with no
+`cause`, no call site and no `instanceof` identity to branch on.
 
 Sync-only by contract. The typed wrappers in `./typed-wrappers.ts` are
 the primary API; use this HOF directly only for ad-hoc deserialization
@@ -45,7 +47,7 @@ thenable would otherwise escape the try/catch.
 
 ## Throws
 
-When `fn()` throws an `Error`.
+When `fn()` throws anything at all.
 
 ## Throws
 

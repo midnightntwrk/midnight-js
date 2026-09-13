@@ -54,6 +54,60 @@ Construct via the static factory methods to ensure the message and
 
 ## Methods
 
+### eraDisagreement()
+
+> `static` **eraDisagreement**(`protocolVersion`, `reportedVersion`, `envelopeVersion`): `IndexerDataError`
+
+#### Parameters
+
+##### protocolVersion
+
+`number`
+
+##### reportedVersion
+
+`"v8"` \| `"v9"`
+
+##### envelopeVersion
+
+`"v8"` \| `"v9"`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### malformedParametersEncoding()
+
+> `static` **malformedParametersEncoding**(): `IndexerDataError`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### malformedStateEncoding()
+
+> `static` **malformedStateEncoding**(): `IndexerDataError`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### malformedTransactionEncoding()
+
+> `static` **malformedTransactionEncoding**(): `IndexerDataError`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
 ### missingContractAction()
 
 > `static` **missingContractAction**(`contractAddress`): `IndexerDataError`
@@ -90,6 +144,16 @@ Construct via the static factory methods to ensure the message and
 
 ***
 
+### missingHeadBlock()
+
+> `static` **missingHeadBlock**(): `IndexerDataError`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
 ### missingIdentifier()
 
 > `static` **missingIdentifier**(`contractAddress`, `actionIndex`, `identifiersLength`): `IndexerDataError`
@@ -107,6 +171,16 @@ Construct via the static factory methods to ensure the message and
 ##### identifiersLength
 
 `number`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### undatedState()
+
+> `static` **undatedState**(): `IndexerDataError`
 
 #### Returns
 
@@ -163,6 +237,38 @@ Construct via the static factory methods to ensure the message and
 ##### value
 
 `string`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### unsupportedDecodeEra()
+
+> `static` **unsupportedDecodeEra**(`version`): `IndexerDataError`
+
+#### Parameters
+
+##### version
+
+`"v8"` \| `"v9"`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### unsupportedParametersEra()
+
+> `static` **unsupportedParametersEra**(`version`): `IndexerDataError`
+
+#### Parameters
+
+##### version
+
+`"v8"` \| `"v9"`
 
 #### Returns
 

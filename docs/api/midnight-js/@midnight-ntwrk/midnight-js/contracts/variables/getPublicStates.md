@@ -8,8 +8,6 @@
 
 > `const` **getPublicStates**: (`publicDataProvider`, `contractAddress`, `blockHash?`) => `Promise`\<[`PublicContractStates`](../interfaces/PublicContractStates.md)\>
 
-Defined in: packages/contracts/dist/index.d.ts:358
-
 Fetches only the public visible (Zswap and ledger) states of a contract.
 
 ## Parameters

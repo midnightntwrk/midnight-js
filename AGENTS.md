@@ -372,8 +372,14 @@ If unsure whether a change qualifies, it probably does — write the ADR.
 2. Fill in Context / Decision / Consequences / Alternatives, marked `Accepted` —
    approving the PR is the acceptance, so ADRs land `Accepted`, not `Proposed`.
    There is no shared index to update, so ADR PRs never conflict with each other.
-3. To reverse a past decision, add a new ADR and mark the old one
-   `Superseded by ADR-NNNN`.
+3. To reverse a decision already on `main`, add a new ADR and mark the old one
+   `Superseded by ADR-NNNN`. Both files stay.
+4. An ADR that has not yet reached `main` has no published number — edit or
+   delete it in place and close the numbering up behind it, rather than
+   shipping a file that was superseded before anyone could read it.
+5. To amend an ADR whose decision still stands, append an
+   `## Amendment — <what changed> (date)` section. Do not edit the original
+   sections, and do not add an `Amended:` header field.
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence

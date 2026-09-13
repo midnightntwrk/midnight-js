@@ -8,8 +8,6 @@
 
 > **assertIsContractAddress**(`contractAddress`): `asserts contractAddress is string`
 
-Defined in: packages/utils/dist/index.d.ts:413
-
 **`Internal`**
 
 Asserts that a string represents a hex-encoded contract address.

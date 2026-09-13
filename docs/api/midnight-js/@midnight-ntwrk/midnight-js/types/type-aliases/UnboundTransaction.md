@@ -6,6 +6,4 @@
 
 # Type Alias: UnboundTransaction
 
-> **UnboundTransaction** = [`Transaction`](../classes/Transaction.md)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`PreBinding`](https://github.com/midnightntwrk/midnight-ledger)\>
-
-Defined in: packages/types/dist/index.d.ts:822
+> **UnboundTransaction** = [`Transaction`](https://github.com/midnightntwrk/midnight-ledger)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`PreBinding`](https://github.com/midnightntwrk/midnight-ledger)\>

@@ -8,8 +8,6 @@
 
 > **SubmitTxProviders**\<`C`, `PCK`\> = `Omit`\<[`ContractProviders`](ContractProviders.md)\<`C`, `PCK`\>, `"privateStateProvider"`\>
 
-Defined in: packages/contracts/dist/index.d.ts:393
-
 Providers required to submit an unproven deployment transaction. Since [submitTx](../variables/submitTx.md) doesn't
 manipulate private state, the private state provider can be omitted.
 

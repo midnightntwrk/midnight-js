@@ -6,8 +6,6 @@
 
 # Interface: PublicDataProvider
 
-Defined in: packages/types/dist/index.d.ts:1106
-
 Interface for a public data service. This service retrieves public data from the blockchain.
 TODO: Add timeouts or retry limits to 'watchFor' queries.
 
@@ -16,8 +14,6 @@ TODO: Add timeouts or retry limits to 'watchFor' queries.
 ### contractEventsObservable()
 
 > **contractEventsObservable**(`filter`, `opts?`): `Observable`\<[`ContractEvent`](../type-aliases/ContractEvent.md)\>
-
-Defined in: packages/types/dist/index.d.ts:1257
 
 Streams contract events for a contract address — replay from a cursor, then
 live, in one continuous stream.
@@ -64,8 +60,6 @@ Optional stream start.
 
 > **contractStateObservable**(`address`, `config`): `Observable`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
 
-Defined in: packages/types/dist/index.d.ts:1201
-
 Creates a stream of contract states. The observable emits a value every time a state is either
 created or updated at the given address.
 Waits indefinitely for matching data to appear.
@@ -94,8 +88,6 @@ The configuration for the observable.
 
 > **queryBlock**(`config?`): `Promise`\<[`BlockInfo`](../type-aliases/BlockInfo.md) \| `null`\>
 
-Defined in: packages/types/dist/index.d.ts:1113
-
 Retrieves a block. If no block hash or block height is provided, the latest block is returned.
 Immediately returns null if no matching block is found.
 
@@ -117,8 +109,6 @@ The configuration of the query identifying the block of interest.
 ### queryContractEvents()
 
 > **queryContractEvents**(`filter`, `page?`): `Promise`\<[`ContractEvent`](../type-aliases/ContractEvent.md)[]\>
-
-Defined in: packages/types/dist/index.d.ts:1233
 
 Queries contract events for a contract address — a finite, paginated,
 point-in-time read.
@@ -163,8 +153,6 @@ Optional pagination window.
 
 > **queryContractState**(`contractAddress`, `config?`): `Promise`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger) \| `null`\>
 
-Defined in: packages/types/dist/index.d.ts:1122
-
 Retrieves the on-chain state of a contract. If no block hash or block height are provided, the
 contract state at the address in the latest block is returned.
 Immediately returns null if no matching data is found.
@@ -194,8 +182,6 @@ The configuration of the query.
 
 > **queryDeployContractState**(`contractAddress`): `Promise`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger) \| `null`\>
 
-Defined in: packages/types/dist/index.d.ts:1138
-
 Retrieves the contract state included in the deployment of the contract at the given contract address.
 Immediately returns null if no matching data is found.
 
@@ -213,11 +199,92 @@ The address of the contract of interest.
 
 ***
 
+### queryLatestProtocolVersion()
+
+> **queryLatestProtocolVersion**(): `Promise`\<`number`\>
+
+Retrieves the protocol-version integer reported by the network's current
+head block.
+
+Implementations MAY serve this from a cache, on one condition: the cached
+answer must expire by itself, on a bound short relative to block time.
+What is forbidden is a reading held indefinitely.
+
+The reason for the condition: the point of asking is to learn which ledger
+era a transaction being built now will land in, and that is exactly the
+question a stale answer gets wrong at the one moment it matters — the fork
+boundary. An era only ever moves forward, so a reading that has fallen
+behind cannot be corrected by a later reading of the same kind; it would
+have to be recognised as wrong first, and nothing in a head integer
+announces that. A cache that expires needs no such recognition. It is also
+why this member takes no "give me a fresh one" option: under the bound,
+every answer is at most one bound old, so there is nothing for a caller to
+opt out of (see ADR 0007).
+
+This is the construct-path counterpart to the `protocolVersion` that every
+read on this interface already carries. Prefer that field wherever the era
+of *existing* data is the question — it is dated to the same block as the
+bytes it describes and costs no extra request. Reach for this method only
+where there is no record to date: the deploy path, which has no prior
+contract state to read.
+
+The answer is a lower bound on the era of the block that will include a
+transaction built from it, never a guarantee — inclusion happens later,
+and the era may have advanced by then. A caller that must be certain
+confirms after the fact, from the `protocolVersion` on the finalized
+record.
+
+#### Returns
+
+`Promise`\<`number`\>
+
+#### Throws
+
+Implementation-specific error when the network reports no head
+  block at all.
+
+***
+
+### queryRawContractState()
+
+> **queryRawContractState**(`contractAddress`, `config?`): `Promise`\<[`RawContractState`](RawContractState.md) \| `null`\>
+
+Retrieves the on-chain state of a contract as the raw serialized bytes the
+network returned, without deserializing them, together with the era the
+record is dated to.
+
+This is the state input for callers that must work across the ledger fork:
+they narrow on [RawContractState.version](RawContractState.md#version) and then hand the bytes to
+that era's deserializer. Both eras' envelopes are returned unchanged. The
+era comes from the record's protocol version and is not checked against
+the envelope the bytes carry.
+
+Immediately returns null if no matching data is found.
+
+#### Parameters
+
+##### contractAddress
+
+`string`
+
+The address of the contract of interest.
+
+##### config?
+
+[`BlockHashConfig`](../type-aliases/BlockHashConfig.md) \| [`BlockHeightConfig`](../type-aliases/BlockHeightConfig.md)
+
+The configuration of the query.
+              If `undefined` returns the latest state.
+
+#### Returns
+
+`Promise`\<[`RawContractState`](RawContractState.md) \| `null`\>
+
+***
+
 ### queryUnshieldedBalances()
 
 > **queryUnshieldedBalances**(`contractAddress`, `config?`): `Promise`\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md) \| `null`\>
-
-Defined in: packages/types/dist/index.d.ts:1145
 
 Retrieves the unshielded balances associated with a specific contract address.
 
@@ -245,8 +312,6 @@ The configuration of the query.
 ### queryZSwapAndContractState()
 
 > **queryZSwapAndContractState**(`contractAddress`, `config?`): `Promise`\<\[[`ZswapChainState`](https://github.com/midnightntwrk/midnight-ledger), [`ContractState`](https://github.com/midnightntwrk/midnight-ledger), [`LedgerParameters`](https://github.com/midnightntwrk/midnight-ledger)\] \| `null`\>
-
-Defined in: packages/types/dist/index.d.ts:1132
 
 Retrieves the zswap chain state (token balances), the contract state of the contract at the
 given address, and the ledger parameters in effect on the associated block. Both states are
@@ -278,8 +343,6 @@ The configuration of the query.
 
 > **unshieldedBalancesObservable**(`address`, `config`): `Observable`\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>
 
-Defined in: packages/types/dist/index.d.ts:1209
-
 Retrieves an observable that tracks the unshielded balances for a specific contract address.
 
 #### Parameters
@@ -308,8 +371,6 @@ An observable that emits the unshielded balances for the provided address.
 
 > **watchForContractState**(`contractAddress`): `Promise`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
 
-Defined in: packages/types/dist/index.d.ts:1151
-
 Retrieves the contract state of the contract with the given address.
 Waits indefinitely for matching data to appear.
 
@@ -329,9 +390,7 @@ The address of the contract of interest.
 
 ### watchForDeployTxData()
 
-> **watchForDeployTxData**(`contractAddress`): `Promise`\<[`FinalizedTxData`](FinalizedTxData.md)\>
-
-Defined in: packages/types/dist/index.d.ts:1173
+> **watchForDeployTxData**(`contractAddress`): `Promise`\<[`VersionedFinalizedTxData`](../type-aliases/VersionedFinalizedTxData.md)\>
 
 Retrieves data of the deployment transaction for the contract at the given contract address.
 
@@ -351,7 +410,7 @@ The address of the contract of interest.
 
 #### Returns
 
-`Promise`\<[`FinalizedTxData`](FinalizedTxData.md)\>
+`Promise`\<[`VersionedFinalizedTxData`](../type-aliases/VersionedFinalizedTxData.md)\>
 
 A promise that resolves with finalized transaction data when the deployment appears on-chain.
          The promise never rejects due to timeout.
@@ -360,9 +419,7 @@ A promise that resolves with finalized transaction data when the deployment appe
 
 ### watchForTxData()
 
-> **watchForTxData**(`txId`): `Promise`\<[`FinalizedTxData`](FinalizedTxData.md)\>
-
-Defined in: packages/types/dist/index.d.ts:1193
+> **watchForTxData**(`txId`): `Promise`\<[`VersionedFinalizedTxData`](../type-aliases/VersionedFinalizedTxData.md)\>
 
 Retrieves data of the transaction containing the call or deployment with the given identifier.
 
@@ -387,7 +444,7 @@ The identifier of the call or deployment of interest.
 
 #### Returns
 
-`Promise`\<[`FinalizedTxData`](FinalizedTxData.md)\>
+`Promise`\<[`VersionedFinalizedTxData`](../type-aliases/VersionedFinalizedTxData.md)\>
 
 A promise that resolves with finalized transaction data when the transaction appears on-chain.
          The promise never rejects due to timeout.
@@ -397,8 +454,6 @@ A promise that resolves with finalized transaction data when the transaction app
 ### watchForUnshieldedBalances()
 
 > **watchForUnshieldedBalances**(`contractAddress`): `Promise`\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>
-
-Defined in: packages/types/dist/index.d.ts:1158
 
 Monitors for any unshielded balances associated with a specific contract address.
 

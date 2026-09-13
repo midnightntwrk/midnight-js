@@ -32,6 +32,12 @@ Re-exports [assertManifestHash](../../utils/functions/assertManifestHash.md)
 
 ***
 
+### assertNever
+
+Re-exports [assertNever](../../utils/functions/assertNever.md)
+
+***
+
 ### assertSafeName
 
 Re-exports [assertSafeName](../../utils/functions/assertSafeName.md)
@@ -71,6 +77,24 @@ Re-exports [classify](../../utils/variables/classify.md)
 ### computeSha256Hex
 
 Re-exports [computeSha256Hex](../../utils/variables/computeSha256Hex.md)
+
+***
+
+### CONTRACTS\_ERROR\_CODES
+
+Re-exports [CONTRACTS_ERROR_CODES](../../utils/variables/CONTRACTS_ERROR_CODES.md)
+
+***
+
+### ContractsErrorCode
+
+Re-exports [ContractsErrorCode](../../utils/type-aliases/ContractsErrorCode.md)
+
+***
+
+### contractStateEnvelopeVersion
+
+Re-exports [contractStateEnvelopeVersion](../../utils/variables/contractStateEnvelopeVersion.md)
 
 ***
 
@@ -146,6 +170,12 @@ Re-exports [fromHex](../../utils/variables/fromHex.md)
 
 ***
 
+### hasErrorCode
+
+Re-exports [hasErrorCode](../../utils/functions/hasErrorCode.md)
+
+***
+
 ### isDeserializationError
 
 Re-exports [isDeserializationError](../../utils/variables/isDeserializationError.md)
@@ -164,6 +194,12 @@ Re-exports [isValidSigningKey](../../utils/variables/isValidSigningKey.md)
 
 ***
 
+### ledgerParametersEnvelopeVersion
+
+Re-exports [ledgerParametersEnvelopeVersion](../../utils/variables/ledgerParametersEnvelopeVersion.md)
+
+***
+
 ### MAX\_CONSECUTIVE\_REPEATED
 
 Re-exports [MAX_CONSECUTIVE_REPEATED](../../utils/variables/MAX_CONSECUTIVE_REPEATED.md)
@@ -173,6 +209,18 @@ Re-exports [MAX_CONSECUTIVE_REPEATED](../../utils/variables/MAX_CONSECUTIVE_REPE
 ### MAX\_SAFE\_NAME\_LENGTH
 
 Re-exports [MAX_SAFE_NAME_LENGTH](../../utils/variables/MAX_SAFE_NAME_LENGTH.md)
+
+***
+
+### MIDNIGHT\_JS\_ERROR\_CODES
+
+Re-exports [MIDNIGHT_JS_ERROR_CODES](../../utils/variables/MIDNIGHT_JS_ERROR_CODES.md)
+
+***
+
+### MidnightJsErrorCode
+
+Re-exports [MidnightJsErrorCode](../../utils/type-aliases/MidnightJsErrorCode.md)
 
 ***
 
@@ -206,6 +254,12 @@ Re-exports [ParsedHexString](../../utils/type-aliases/ParsedHexString.md)
 
 ***
 
+### ParsedSerializedTag
+
+Re-exports [ParsedSerializedTag](../../utils/interfaces/ParsedSerializedTag.md)
+
+***
+
 ### parseEncPublicKeyToHex
 
 Re-exports [parseEncPublicKeyToHex](../../utils/variables/parseEncPublicKeyToHex.md)
@@ -218,9 +272,21 @@ Re-exports [parseHex](../../utils/variables/parseHex.md)
 
 ***
 
+### parseSerializedTag
+
+Re-exports [parseSerializedTag](../../utils/variables/parseSerializedTag.md)
+
+***
+
 ### parseZkArtifactManifest
 
 Re-exports [parseZkArtifactManifest](../../utils/functions/parseZkArtifactManifest.md)
+
+***
+
+### parseZkArtifactRuntimeVersion
+
+Re-exports [parseZkArtifactRuntimeVersion](../../utils/functions/parseZkArtifactRuntimeVersion.md)
 
 ***
 
@@ -248,6 +314,18 @@ Re-exports [PATTERNS](../../utils/variables/PATTERNS.md)
 
 ***
 
+### PROVIDER\_ERROR\_CODES
+
+Re-exports [PROVIDER_ERROR_CODES](../../utils/variables/PROVIDER_ERROR_CODES.md)
+
+***
+
+### ProviderErrorCode
+
+Re-exports [ProviderErrorCode](../../utils/type-aliases/ProviderErrorCode.md)
+
+***
+
 ### SOURCE\_PACKAGES
 
 Re-exports [SOURCE_PACKAGES](../../utils/variables/SOURCE_PACKAGES.md)
@@ -260,6 +338,12 @@ Re-exports [SourceLibrary](../../utils/type-aliases/SourceLibrary.md)
 
 ***
 
+### TagParseError
+
+Re-exports [TagParseError](../../utils/classes/TagParseError.md)
+
+***
+
 ### toHex
 
 Re-exports [toHex](../../utils/variables/toHex.md)
@@ -269,6 +353,24 @@ Re-exports [toHex](../../utils/variables/toHex.md)
 ### ttlOneHour
 
 Re-exports [ttlOneHour](../../utils/variables/ttlOneHour.md)
+
+***
+
+### UnhandledUnionMemberError
+
+Re-exports [UnhandledUnionMemberError](../../utils/classes/UnhandledUnionMemberError.md)
+
+***
+
+### UTILS\_ERROR\_CODES
+
+Re-exports [UTILS_ERROR_CODES](../../utils/variables/UTILS_ERROR_CODES.md)
+
+***
+
+### UtilsErrorCode
+
+Re-exports [UtilsErrorCode](../../utils/type-aliases/UtilsErrorCode.md)
 
 ***
 
@@ -296,6 +398,12 @@ Re-exports [withDeserializationContext](../../utils/variables/withDeserializatio
 
 ***
 
+### ZK\_CONTRACT\_INFO\_FILE\_NAME
+
+Re-exports [ZK_CONTRACT_INFO_FILE_NAME](../../utils/variables/ZK_CONTRACT_INFO_FILE_NAME.md)
+
+***
+
 ### ZK\_MANIFEST\_DIR
 
 Re-exports [ZK_MANIFEST_DIR](../../utils/variables/ZK_MANIFEST_DIR.md)
@@ -305,6 +413,12 @@ Re-exports [ZK_MANIFEST_DIR](../../utils/variables/ZK_MANIFEST_DIR.md)
 ### ZK\_MANIFEST\_FILE\_NAME
 
 Re-exports [ZK_MANIFEST_FILE_NAME](../../utils/variables/ZK_MANIFEST_FILE_NAME.md)
+
+***
+
+### ZkArtifactContractInfoError
+
+Re-exports [ZkArtifactContractInfoError](../../utils/classes/ZkArtifactContractInfoError.md)
 
 ***
 

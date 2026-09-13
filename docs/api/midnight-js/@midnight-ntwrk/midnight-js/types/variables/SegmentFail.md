@@ -8,6 +8,4 @@
 
 > `const` **SegmentFail**: `"SegmentFail"`
 
-Defined in: packages/types/dist/index.d.ts:95
-
 Indicates that the segment update is invalid.

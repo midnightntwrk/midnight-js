@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { computeSha256Hex, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
+import { computeSha256Hex, ZkArtifactContractInfoError, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
 import type { BinaryLike } from 'crypto';
 import * as crypto from 'crypto';
 import * as fs from 'fs/promises';
@@ -335,5 +335,131 @@ describe('Node ZK config Provider', () => {
       expect(computeSha256Hex(offsetView)).toBe(computeSha256Hex(small));
       expect(computeSha256Hex(new Uint8Array(offsetView.buffer))).not.toBe(computeSha256Hex(offsetView));
     });
+  });
+});
+
+describe('NodeZkConfigProvider.getArtifactRuntimeVersion', () => {
+  // A bundle carrying only what this member reads: the compiler's own description of the artifact
+  // set. `contract-info.json` is emitted by every compactc, including the retained toolchain that
+  // emits no integrity manifest, which is why the era is read from it rather than from the manifest.
+  // A bundle with NO integrity manifest is the retained (pre-compactc-0.33) case, so every provider
+  // over one is constructed with the mode the manifest documentation names for exactly that:
+  // `require-if-present`. Under the default `require` the absence is itself a refusal, which is
+  // asserted separately below.
+  const RETAINED_BUNDLE_OPTIONS = { verify: 'require-if-present' } as const;
+
+  const buildInfoDir = async (contractInfo?: string): Promise<string> => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'node-zk-info-'));
+    await fs.mkdir(path.join(dir, 'keys'));
+    await fs.mkdir(path.join(dir, 'zkir'));
+    if (contractInfo !== undefined) {
+      await fs.mkdir(path.join(dir, 'compiler'));
+      await fs.writeFile(path.join(dir, 'compiler', 'contract-info.json'), contractInfo);
+    }
+    return dir;
+  };
+
+  it('reports the runtime version the compiler recorded', async () => {
+    // Arrange
+    const dir = await buildInfoDir(JSON.stringify({ 'compiler-version': '0.31.1', 'runtime-version': '0.16.0' }));
+    const provider = new NodeZkConfigProvider(dir, RETAINED_BUNDLE_OPTIONS);
+
+    // Act
+    const runtimeVersion = await provider.getArtifactRuntimeVersion();
+
+    // Assert
+    expect(runtimeVersion).toBe('0.16.0');
+  });
+
+  it('refuses a bundle that ships no compiler description, naming the file it looked for', async () => {
+    const provider = new NodeZkConfigProvider(await buildInfoDir(), RETAINED_BUNDLE_OPTIONS);
+
+    await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactContractInfoError);
+    await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(/contract-info\.json/);
+  });
+
+  it('refuses a compiler description that is not readable as one', async () => {
+    const provider = new NodeZkConfigProvider(await buildInfoDir('<!doctype html>'), RETAINED_BUNDLE_OPTIONS);
+
+    await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactContractInfoError);
+  });
+
+  it('takes the runtime version from the INTEGRITY MANIFEST when there is one', async () => {
+    // The manifest is the only file in the bundle an application can anchor to a hash it controls
+    // (`expectedManifestHash`). Where it declares the version, reading it from anywhere else would
+    // let whoever serves the artifacts decide which ledger pipeline runs.
+    const dir = await buildInfoDir(JSON.stringify({ 'runtime-version': '0.16.0' }));
+    await fs.writeFile(
+      path.join(dir, 'compiler', 'contract-manifest.json'),
+      JSON.stringify({ 'manifest-version': '1', 'runtime-version': '0.19.0' })
+    );
+    const provider = new NodeZkConfigProvider(dir, RETAINED_BUNDLE_OPTIONS);
+
+    await expect(provider.getArtifactRuntimeVersion()).resolves.toBe('0.19.0');
+  });
+
+  it('refuses a contract description the manifest does not vouch for', async () => {
+    // A manifest that covers the file but does not declare the version itself: the description is
+    // read, and it has to survive the same integrity gate every key and ZKIR passes.
+    const contractInfo = JSON.stringify({ 'runtime-version': '0.16.0' });
+    const dir = await buildInfoDir(contractInfo);
+    await fs.writeFile(
+      path.join(dir, 'compiler', 'contract-manifest.json'),
+      JSON.stringify({
+        'manifest-version': '1',
+        compiler: {
+          type: 'directory',
+          'contract-info.json': { type: 'file', size: contractInfo.length, hash: '00'.repeat(32) }
+        }
+      })
+    );
+    const provider = new NodeZkConfigProvider(dir);
+
+    await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactIntegrityError);
+  });
+
+  it('refuses to read an unvouched-for description at all under the default require mode', async () => {
+    // Consistent with every other artifact this provider serves: with verification required and no
+    // manifest present, nothing is trusted -- including the file that decides the ledger era.
+    const provider = new NodeZkConfigProvider(await buildInfoDir(JSON.stringify({ 'runtime-version': '0.16.0' })));
+
+    await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactIntegrityError);
+  });
+
+  it('propagates a read failure that is not a missing file, unwrapped', async () => {
+    // Only ABSENCE is translated into an era refusal. Anything else -- a permissions fault, a
+    // directory where the file belongs -- is a fault in the caller's environment and is reported as
+    // itself, so it is not mistaken for an artifact set that declares nothing.
+    const dir = await buildInfoDir();
+    await fs.mkdir(path.join(dir, 'compiler'));
+    await fs.mkdir(path.join(dir, 'compiler', 'contract-info.json'));
+    const provider = new NodeZkConfigProvider(dir, RETAINED_BUNDLE_OPTIONS);
+
+    // Asserted POSITIVELY: `not.toBeInstanceOf` alone would pass for any unrelated fault, including
+    // one that never reached the file at all, so it would not test what this test is named for.
+    await expect(provider.getArtifactRuntimeVersion()).rejects.toMatchObject({ code: 'EISDIR' });
+    await expect(provider.getArtifactRuntimeVersion()).rejects.not.toBeInstanceOf(ZkArtifactContractInfoError);
+  });
+
+  it('reads the description once and answers later calls from that reading', async () => {
+    // Arrange: a bundle that answers, then loses the file underneath the provider.
+    const dir = await buildInfoDir(JSON.stringify({ 'runtime-version': '0.16.0' }));
+    const provider = new NodeZkConfigProvider(dir, RETAINED_BUNDLE_OPTIONS);
+    await provider.getArtifactRuntimeVersion();
+    await fs.rm(path.join(dir, 'compiler', 'contract-info.json'));
+
+    // Act + Assert: a second read would now fail, so answering proves the first was retained.
+    await expect(provider.getArtifactRuntimeVersion()).resolves.toBe('0.16.0');
+  });
+
+  it('retries after a failed read rather than caching the failure', async () => {
+    const dir = await buildInfoDir();
+    const provider = new NodeZkConfigProvider(dir, RETAINED_BUNDLE_OPTIONS);
+    await expect(provider.getArtifactRuntimeVersion()).rejects.toThrow(ZkArtifactContractInfoError);
+
+    await fs.mkdir(path.join(dir, 'compiler'));
+    await fs.writeFile(path.join(dir, 'compiler', 'contract-info.json'), JSON.stringify({ 'runtime-version': '0.16.0' }));
+
+    await expect(provider.getArtifactRuntimeVersion()).resolves.toBe('0.16.0');
   });
 });

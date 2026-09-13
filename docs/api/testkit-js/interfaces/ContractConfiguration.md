@@ -15,6 +15,21 @@ This is used as a base name - a signing key store will also be created with "-si
 
 ***
 
+### zkConfigIntegrity?
+
+> `readonly` `optional` **zkConfigIntegrity?**: `ZkConfigIntegrityOptions`
+
+Integrity-verification options for the ZK artifacts, passed straight to the
+config provider. Omitted means the provider's own default, `require`.
+
+Needed because retained-era artifacts cannot satisfy `require`: `compactc`
+0.31.1 emits `compiler/contract-info.json` and no
+`compiler/contract-manifest.json`, and the manifest is what verification
+reads. A pre-fork contract therefore has nothing to verify against, however
+intact its artifacts are.
+
+***
+
 ### zkConfigPath
 
 > `readonly` **zkConfigPath**: `string`

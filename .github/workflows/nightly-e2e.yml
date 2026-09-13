@@ -53,6 +53,9 @@ jobs:
       test_files: ${{ needs.build.outputs.test-files }}
       testkit_docker_env: ${{ matrix.image_versions }}
       network: 'undeployed'
+      # The fork stack pins its own images and ignores testkit_docker_env, so all five legs would
+      # run byte-identical containers. Run it on one leg; the other four skip it.
+      run_fork_lane: ${{ matrix.image_versions == 'preview' }}
     secrets: inherit
 
   summary:

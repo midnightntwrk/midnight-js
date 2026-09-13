@@ -36,6 +36,20 @@ Compare against [id](#id) to detect catch-up / whether more events exist.
 
 ***
 
+### protocolVersion
+
+> `readonly` **protocolVersion**: `number`
+
+Protocol version of the block this event was emitted in, as the network
+reported it. Distinct from [version](#version): this one says which ledger era
+wrote [raw](#raw), so a consumer decoding those bytes knows which runtime
+to decode them with. Resolve it with `versionOfRecord` from
+`@midnight-ntwrk/midnight-js-protocol` rather than comparing integers by
+hand — this interface satisfies that function's `VersionedRecord`
+parameter.
+
+***
+
 ### raw
 
 > `readonly` **raw**: `string`

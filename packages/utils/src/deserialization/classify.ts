@@ -108,6 +108,7 @@ export const classify = (
       classification,
       direction,
       mitigation,
+      ...(callSite.details !== undefined ? { details: callSite.details } : {}),
       ...(extracted !== undefined ? { extracted } : {})
     };
   }
@@ -117,6 +118,7 @@ export const classify = (
     source: callSite.source,
     caller: callSite.caller,
     classification: 'unknown',
+    ...(callSite.details !== undefined ? { details: callSite.details } : {}),
     mitigation: buildMitigation('unknown', callSite.source)
   };
 };

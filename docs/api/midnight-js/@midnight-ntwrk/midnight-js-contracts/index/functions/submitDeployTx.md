@@ -1,0 +1,104 @@
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../../README.md) / [index](../README.md) / submitDeployTx
+
+# Function: submitDeployTx()
+
+Creates and submits a deploy transaction for the given contract.
+
+## Transaction Execution Phases
+
+Midnight transactions execute in two phases:
+1. **Guaranteed phase**: If failure occurs, the transaction is NOT included in the blockchain
+2. **Fallible phase**: If failure occurs, the transaction IS recorded on-chain as a partial success
+
+## Failure Behavior
+
+**Guaranteed Phase Failure:**
+- Transaction is rejected and not included in the blockchain
+- `DeployTxFailedError` is thrown with transaction data
+- Private state (if `privateStateId` provided) is NOT stored
+- Contract signing key is NOT stored in private state provider
+- Contract is NOT deployed
+
+**Fallible Phase Failure:**
+- Transaction is recorded on-chain with non-`SucceedEntirely` status
+- `DeployTxFailedError` is thrown with transaction data
+- Private state (if `privateStateId` provided) is NOT stored
+- Contract signing key is NOT stored in private state provider
+- Transaction appears in blockchain history as partial success
+- Contract may be partially deployed but not functional
+
+## Param
+
+**providers**
+
+The providers used to manage the deploy lifecycle.
+
+## Param
+
+**options**
+
+Configuration.
+
+## Throws
+
+When transaction fails in either guaranteed or fallible phase.
+        The error contains the finalized transaction data for debugging.
+
+## Remarks
+
+The returned [FinalizedDeployTxData](../interfaces/FinalizedDeployTxData.md) is privacy-sensitive and carries
+the unproven transaction, signing key, and initial private state. See that
+type for handling guidance before logging, serializing, or transmitting the
+result.
+
+## Call Signature
+
+> **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`FinalizedDeployTxData`](../interfaces/FinalizedDeployTxData.md)\<`C`\>\>
+
+### Type Parameters
+
+#### C
+
+`C` *extends* [`Contract`](https://github.com/midnightntwrk/midnight-sdk)\<`undefined`, [`Witnesses`](https://github.com/midnightntwrk/midnight-sdk)\<`undefined`\>\>
+
+### Parameters
+
+#### providers
+
+[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`, [`ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>, `unknown`\>
+
+#### options
+
+[`DeployTxOptionsBase`](../type-aliases/DeployTxOptionsBase.md)\<`C`\>
+
+### Returns
+
+`Promise`\<[`FinalizedDeployTxData`](../interfaces/FinalizedDeployTxData.md)\<`C`\>\>
+
+## Call Signature
+
+> **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`FinalizedDeployTxData`](../interfaces/FinalizedDeployTxData.md)\<`C`\>\>
+
+### Type Parameters
+
+#### C
+
+`C` *extends* [`Any`](https://github.com/midnightntwrk/midnight-sdk)
+
+### Parameters
+
+#### providers
+
+[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`\>
+
+#### options
+
+[`DeployTxOptionsWithPrivateStateId`](../type-aliases/DeployTxOptionsWithPrivateStateId.md)\<`C`\>
+
+### Returns
+
+`Promise`\<[`FinalizedDeployTxData`](../interfaces/FinalizedDeployTxData.md)\<`C`\>\>

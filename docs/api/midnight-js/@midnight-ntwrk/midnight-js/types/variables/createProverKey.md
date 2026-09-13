@@ -8,8 +8,6 @@
 
 > `const` **createProverKey**: (`uint8Array`) => [`ProverKey`](../type-aliases/ProverKey.md)
 
-Defined in: packages/types/dist/index.d.ts:30
-
 Creates a branded prover key representation from a prover key binary.
 
 ## Parameters

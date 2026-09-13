@@ -8,8 +8,6 @@
 
 > `const` **zkConfigToProvingKeyMaterial**: \<`K`\>(`zkConfig`) => `object`
 
-Defined in: packages/types/dist/index.d.ts:87
-
 Converts a ZKConfig object to ProvingKeyMaterial format.
 
 ## Type Parameters

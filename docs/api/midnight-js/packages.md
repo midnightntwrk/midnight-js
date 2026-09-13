@@ -6,7 +6,7 @@
 
 ## Packages
 
-- [@midnight-ntwrk/midnight-js](@midnight-ntwrk/midnight-js/README.md)
+- [@midnight-ntwrk/midnight-js - v5.0.0-beta.7](@midnight-ntwrk/midnight-js/README.md)
 - [@midnight-ntwrk/midnight-js-contracts - v5.0.0-beta.7](@midnight-ntwrk/midnight-js-contracts/README.md)
 - [@midnight-ntwrk/midnight-js-dapp-connector-proof-provider - v5.0.0-beta.7](@midnight-ntwrk/midnight-js-dapp-connector-proof-provider/README.md)
 - [@midnight-ntwrk/midnight-js-fetch-zk-config-provider - v5.0.0-beta.7](@midnight-ntwrk/midnight-js-fetch-zk-config-provider/README.md)

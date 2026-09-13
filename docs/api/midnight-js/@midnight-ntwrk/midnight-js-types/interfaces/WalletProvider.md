@@ -9,29 +9,55 @@
 Interface representing a WalletProvider that handles operations such as
 transaction balancing and finalization, and provides access to cryptographic secret keys.
 
+## Properties
+
+### supportedEras
+
+> `readonly` **supportedEras**: readonly (`"v9"` \| `"v8"`)[]
+
+The ledger eras THIS INSTANCE serves. See
+[ProofProvider.supportedEras](ProofProvider.md#supportederas) — the field means the same on all three
+transaction seams, and all three are read together before an operation
+starts.
+
 ## Methods
 
 ### balanceTx()
 
-> **balanceTx**(`tx`, `ttl?`): `Promise`\<[`FinalizedTransaction`](https://github.com/midnightntwrk/midnight-ledger)\>
+> **balanceTx**(`tx`, `ttl?`): `Promise`\<[`VersionedFinalizedTransaction`](../type-aliases/VersionedFinalizedTransaction.md)\>
 
-Balances a transaction
+Balances and signs a transaction, readying it for submission.
 
 #### Parameters
 
 ##### tx
 
-[`UnboundTransaction`](../type-aliases/UnboundTransaction.md)
+[`VersionedUnboundTransaction`](../type-aliases/VersionedUnboundTransaction.md)
 
-The transaction to balance.
+The version-tagged transaction to balance: `{ version: 'v9', tx }` for a live v9
+          ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes.
 
 ##### ttl?
 
 `Date`
 
+Time-to-live for the balanced transaction. Implementation-defined when omitted;
+           the testkit's `MidnightWalletProvider` defaults to one hour.
+
 #### Returns
 
-`Promise`\<[`FinalizedTransaction`](https://github.com/midnightntwrk/midnight-ledger)\>
+`Promise`\<[`VersionedFinalizedTransaction`](../type-aliases/VersionedFinalizedTransaction.md)\>
+
+The balanced, signed transaction, version-tagged. Narrow on `version` — or call
+         `unwrapV9` — before reading the payload.
+
+#### Throws
+
+V8PayloadUnsupportedError if the implementation does not handle the v8 arm.
+
+#### Throws
+
+UntaggedPayloadError if `version` is missing or unrecognised.
 
 ***
 

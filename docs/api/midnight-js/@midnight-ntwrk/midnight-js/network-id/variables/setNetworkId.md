@@ -8,8 +8,6 @@
 
 > `const` **setNetworkId**: (`id`) => `void`
 
-Defined in: packages/network-id/dist/index.d.ts:11
-
 Sets the global network identifier.
 
 ## Parameters

@@ -78,6 +78,99 @@ createZKIR(uint8Array: Uint8Array): ZKIR
 
 ## Transaction Types
 
+### Version-tagged payloads
+
+During the ledger-fork window every transaction crossing a provider seam is
+tagged with the ledger runtime it belongs to. The two runtimes are separate WASM
+instances, so a v8 object cannot be handed to the v9 runtime — `instanceof` does
+not cross the boundary and duck-typing cannot tell them apart. An explicit tag is
+the only mechanism available.
+
+```typescript
+interface V8TxBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
+interface V9Tx<T>   { readonly version: 'v9'; readonly tx: T; }
+type VersionedTx<T> = V8TxBytes | V9Tx<T>;
+```
+
+There is deliberately no untagged arm, so a bare `Uint8Array` — bytes whose era
+nobody can tell — is never assignable. `proveTx`, `balanceTx` and `submitTx`
+carry these in both directions.
+
+Narrow with `unwrapV9`, which reports a coded error instead of letting a bare
+`TypeError` surface from inside a WASM call:
+
+```typescript
+import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+
+const provenTx = unwrapV9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
+```
+
+Its `seam` parameter is a `ProviderSeam`, so it covers those three methods only.
+The read surface reports a *different* union, `VersionedFinalizedTxData`, whose
+v8 arm carries `tx` rather than `txBytes` — narrow that one with
+`switch (record.version)`.
+
+**Implementing `WalletProvider` or `MidnightProvider`?** Wrap a v9-only
+implementation rather than tagging by hand:
+
+```typescript
+import { createMidnightProvider, createWalletProvider } from '@midnight-ntwrk/midnight-js-types';
+
+const walletProvider = createWalletProvider({
+  balanceTx: (tx, ttl) => wallet.balanceAndProveTransaction(tx, ttl),
+  getCoinPublicKey: () => wallet.coinPublicKey,
+  getEncryptionPublicKey: () => wallet.encryptionPublicKey
+});
+const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx));
+```
+
+### Declaring the eras a provider serves
+
+The three transaction seams each carry a required `supportedEras` list. It is
+read BEFORE an operation starts, so a provider set that cannot carry a
+transaction end to end is refused with `SeamEraUnsupportedError` rather than
+after a proof has been paid for.
+
+```typescript
+interface ProofProvider {
+  readonly supportedEras: readonly LedgerVersion[];
+  proveTx(unprovenTx: VersionedUnprovenTransaction, config?: ProveTxConfig): Promise<VersionedUnboundTransaction>;
+}
+```
+
+The three `create*Provider` adapters above declare `['v9']` — each lifts a
+v9-only implementation, so that is the honest answer and it needs no change from
+you.
+
+**Serving more than one era?** Write one handler per era and let the factory
+assemble the provider. The routing, the `version` tagging and the refusal of an
+era you did not supply are all handled for you, and `supportedEras` is computed
+from the handlers, so it cannot disagree with what the provider does:
+
+```typescript
+import { createProofProviderFromArms } from '@midnight-ntwrk/midnight-js-types';
+
+const proofProvider = createProofProviderFromArms({
+  currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
+  retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
+});
+// proofProvider.supportedEras === ['v9', 'v8']
+```
+
+The current era crosses the seam as a live ledger object; a retained era crosses
+as serialized bytes, in both directions. That is why the two handler signatures
+differ, and why `retainedEras` cannot name the current era — registering one
+there is a compile error.
+
+`createWalletProviderFromArms` and `createMidnightProviderFromArms` are the same
+shape for the other two seams. Implementing a tagged interface directly is also
+fine — a class, or a provider that routes internally — in which case you write
+`supportedEras` yourself.
+
+Nothing verifies the declaration. A seam still narrows its own payload and still
+reports `V8PayloadUnsupportedError` for an arm it cannot serve, so declaring an
+era you do not serve makes a failure later, not absent.
+
 ### TxStatus
 
 ```typescript
@@ -101,6 +194,7 @@ type SegmentStatus = typeof SegmentSuccess | typeof SegmentFail;
 
 ```typescript
 interface FinalizedTxData {
+  version: 'v9';
   tx: Transaction;
   status: TxStatus;
   txId: TransactionId;
@@ -145,6 +239,8 @@ type UnshieldedBalances = UnshieldedBalance[];
 
 ```typescript
 import {
+  V8PayloadUnsupportedError,
+  UntaggedPayloadError,
   InvalidProtocolSchemeError,
   PrivateStateExportError,
   SigningKeyExportError,
@@ -181,6 +277,7 @@ import {
 
   // Transaction types
   type FinalizedTxData,
+  type FinalizedTxRecord,
   type TxStatus,
   type SegmentStatus,
   SucceedEntirely,
@@ -197,6 +294,30 @@ import {
   type Fees,
   type BlockHash,
 
+  // Version-tagged payloads for the ledger-fork window
+  type V8TxBytes,
+  type V9Tx,
+  type VersionedTx,
+  type VersionedUnprovenTransaction,
+  type VersionedUnboundTransaction,
+  type VersionedFinalizedTransaction,
+  type FinalizedTxRecord,
+  type FinalizedTxDataV8,
+  type VersionedFinalizedTxData,
+  type ProviderSeam,
+  type ReadSeam,
+  type Seam,
+  unwrapV9,
+
+  // Per-era arms, and the declaration built from them
+  type RetainedEraHandlers,
+  type EraArmRequest,
+  erasServedBy,
+  narrowToEraArm,
+  type EraDeclaringProvider,
+  type TransactionSeams,
+  assertSeamsSupportEra,
+
   // Private state types
   type PrivateStateId,
 
@@ -204,6 +325,9 @@ import {
   LogLevel,
 
   // Errors
+  V8PayloadUnsupportedError,
+  UntaggedPayloadError,
+  SeamEraUnsupportedError,
   InvalidProtocolSchemeError,
   PrivateStateExportError,
   SigningKeyExportError,
@@ -213,7 +337,22 @@ import {
   ImportConflictError,
 
   // Factory functions
+  type V9WalletProvider,
+  createWalletProvider,
+  createMidnightProvider,
   createProofProvider,
+  type ProofProviderArms,
+  type WalletProviderArms,
+  type MidnightProviderArms,
+  type CurrentEraProver,
+  type RetainedEraProver,
+  type CurrentEraBalancer,
+  type RetainedEraBalancer,
+  type CurrentEraSubmitter,
+  type RetainedEraSubmitter,
+  createProofProviderFromArms,
+  createWalletProviderFromArms,
+  createMidnightProviderFromArms,
 
   // Re-exports
   Transaction

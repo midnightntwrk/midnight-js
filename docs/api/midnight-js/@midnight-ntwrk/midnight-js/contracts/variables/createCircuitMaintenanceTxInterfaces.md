@@ -8,8 +8,6 @@
 
 > `const` **createCircuitMaintenanceTxInterfaces**: \<`C`\>(`providers`, `compiledContract`, `contractAddress`) => [`CircuitMaintenanceTxInterfaces`](../type-aliases/CircuitMaintenanceTxInterfaces.md)\<`C`\>
 
-Defined in: packages/contracts/dist/index.d.ts:300
-
 Creates a [CircuitMaintenanceTxInterfaces](../type-aliases/CircuitMaintenanceTxInterfaces.md).
 
 ## Type Parameters

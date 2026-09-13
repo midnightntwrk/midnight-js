@@ -8,8 +8,6 @@
 
 > **ContractConstructorOptionsWithPrivateState**\<`C`\> = [`ContractConstructorOptionsWithProviderDataDependencies`](ContractConstructorOptionsWithProviderDataDependencies.md)\<`C`\> & `object`
 
-Defined in: packages/contracts/dist/index.d.ts:225
-
 Conditional type that optionally adds the inferred circuit argument types to
 the target of a circuit invocation.
 

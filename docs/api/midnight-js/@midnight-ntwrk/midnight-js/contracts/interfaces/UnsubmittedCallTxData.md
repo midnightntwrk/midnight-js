@@ -6,14 +6,12 @@
 
 # Interface: UnsubmittedCallTxData\<C, PCK\>
 
-Defined in: packages/contracts/dist/index.d.ts:626
-
 Contains all information resulting from circuit execution.
 
 ## Remarks
 
 **Privacy-sensitive type.** The `private` field is a
-[CallResultPrivate](CallResultPrivate.md) carrying ZK-confidential data. Treat the whole
+[CallResultPrivate](../type-aliases/CallResultPrivate.md) carrying ZK-confidential data. Treat the whole
 object as confidential when logging, serializing, or transmitting — read
 only the `public` field or destructure specific non-sensitive fields rather
 than spreading or stringifying the whole object.
@@ -42,8 +40,6 @@ than spreading or stringifying the whole object.
 
 > `readonly` **calls**: readonly [`ContractCall`](https://github.com/midnightntwrk/midnight-sdk)[]
 
-Defined in: packages/contracts/dist/index.d.ts:186
-
 Proof data for every contract call made while executing the circuit, in execution-trace order:
 cross-contract callees first, the root call last. For a circuit that performs no cross-contract
 calls this contains a single entry (the root). Consistent with `compact-js`'s
@@ -60,11 +56,25 @@ for a call in the tree. Treat as confidential alongside [private](CallResult.md#
 
 ***
 
+### era
+
+> `readonly` **era**: `"ledger9"`
+
+The pipeline that produced this result: always the current era here.
+
+Read off the compiled artifact, NEVER off a transaction record — the two
+facts disagree after the fork, and only this one says which module the
+objects in this result came from.
+
+#### Inherited from
+
+[`CallResult`](CallResult.md).[`era`](CallResult.md#era)
+
+***
+
 ### private
 
 > `readonly` **private**: [`UnsubmittedCallTxPrivateData`](UnsubmittedCallTxPrivateData.md)\<`C`, `PCK`\>
-
-Defined in: packages/contracts/dist/index.d.ts:630
 
 Private data relevant to this call transaction.
 
@@ -77,8 +87,6 @@ Private data relevant to this call transaction.
 ### public
 
 > `readonly` **public**: [`CallResultPublic`](CallResultPublic.md)
-
-Defined in: packages/contracts/dist/index.d.ts:170
 
 The public/non-sensitive data produced by the circuit execution.
 

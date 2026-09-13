@@ -26,11 +26,29 @@ on:
         type: number
         required: false
         default: 30
+      run_fork_lane:
+        type: boolean
+        description: Whether to run the fork-crossing lane (fork.*). The fork stack pins its own images and ignores testkit_docker_env, so fanning it out over image sets repeats the same run.
+        required: false
+        default: true
       network:
         type: string
         description: Midnight network to use (testnet/devnet/undeployed)
         required: true
         default: 'undeployed'
+    # Declared so a caller can hand over these four credentials instead of the
+    # whole repository's secrets. Only the packages token is required; the
+    # Docker Hub pair and the reporting token are absent in some repositories,
+    # and every step that uses them tolerates an empty value.
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE:
+        required: true
+      DOCKERHUB_USERNAME:
+        required: false
+      DOCKERHUB_TOKEN:
+        required: false
+      GH_TOKEN:
+        required: false
 
 concurrency:
   group: TK-JS-e2e-${{ github.workflow }}-${{ inputs.testkit_docker_env || 'default' }}-${{ github.event.pull_request.number || github.ref }}
@@ -64,6 +82,20 @@ jobs:
           username: MidnightCI
           password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
+      # The steps in e2e_tests key the extra registry logins and the longer job timeout off a
+      # `fork.` filename prefix, because the matrix carries filenames and nothing else. Assert the
+      # convention here rather than letting a violation surface as an opaque `unauthorized` on a
+      # cache hit -- a failure that only appears on some runs and points nowhere near the cause.
+      - name: Check fork-stack tests follow the fork.* naming convention
+        run: |
+          set -euo pipefail
+          cd testkit-js/testkit-js-e2e/test
+          offenders=$(grep -l 'ForkTestEnvironment' *.test.ts | grep -v '^fork\.' || true)
+          if [ -n "$offenders" ]; then
+            echo "::error::These tests drive ForkTestEnvironment but are not named fork.*, so they will not get the fork stack's registry logins or job timeout: $offenders"
+            exit 1
+          fi
+
       - name: Pull and save images
         if: steps.image-cache.outputs.cache-hit != 'true'
         run: |
@@ -82,7 +114,10 @@ jobs:
     name: E2E Tests
     needs: prepare_images
     runs-on: ubuntu-latest-8-core-x64
-    timeout-minutes: ${{ inputs.build_timeout }}
+    timeout-minutes: ${{ startsWith(matrix.test-file, 'fork.') && 60 || inputs.build_timeout }}
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     strategy:
       fail-fast: false
       max-parallel: 14
@@ -131,24 +166,44 @@ jobs:
           path: image-cache
           key: docker-images-zst-${{ inputs.testkit_docker_env }}-${{ hashFiles(format('testkit-js/env/{0}.env', inputs.testkit_docker_env)) }}
 
-      # ghcr is only needed on a cache miss: on a hit the images are loaded from
-      # the tarball below and `docker compose up` finds them locally (no pull).
-      # Mirrors prepare_images' conditional login and removes a per-matrix-job
-      # ghcr round-trip that was prone to `Client.Timeout` failures.
+      # ghcr is normally only needed on a cache miss: on a hit the images are
+      # loaded from the tarball below and `docker compose up` finds them locally
+      # (no pull). Mirrors prepare_images' conditional login and removes a
+      # per-matrix-job ghcr round-trip that was prone to `Client.Timeout`.
+      #
+      # A `fork.` test file is the exception: it stands up its own compose stack
+      # (compose-fork.yml) whose images are not in the cached set at all, so on a
+      # cache hit it would reach ghcr unauthenticated and fail with
+      # `unauthorized`. Only that job pays the extra login.
       - name: Log in to GitHub Container registry
-        if: steps.image-cache.outputs.cache-hit != 'true'
+        if: steps.image-cache.outputs.cache-hit != 'true' || startsWith(matrix.test-file, 'fork.')
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
         with:
           registry: 'https://ghcr.io'
           username: MidnightCI
           password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
+      # The fork stack's toolkit image is on Docker Hub, not ghcr, so the login above does not
+      # authorize it. Anonymous pulls from shared runner IPs hit Docker Hub's rate limit, and the
+      # pull happens inside enactFork() -- minutes into the test -- where it looks like a governance
+      # failure rather than a registry one.
+      #
+      # No Docker Hub credentials are configured for this repo today, and an empty login is a hard
+      # failure in the action, so this is inert until someone adds them. The anonymous pull that the
+      # lane relies on meanwhile is the thing being hardened against, not a supported arrangement.
+      - name: Log in to Docker Hub
+        if: startsWith(matrix.test-file, 'fork.') && env.DOCKERHUB_USERNAME != ''
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
       - name: Load Docker images
         if: steps.image-cache.outputs.cache-hit == 'true'
         run: zstd -dc image-cache/images.tar.zst | docker load
 
       - name: Run e2e tests - ${{ matrix.test-file }}
-        if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
+        if: ${{ !contains(github.event.head_commit.message, '[skip_it]') && (inputs.run_fork_lane || !startsWith(matrix.test-file, 'fork.')) }}
         run: yarn e2e-single --filter="./testkit-js/*" --concurrency 1 --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

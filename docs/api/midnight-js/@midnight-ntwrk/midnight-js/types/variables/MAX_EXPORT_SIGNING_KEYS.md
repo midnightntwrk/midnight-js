@@ -8,7 +8,5 @@
 
 > `const` **MAX\_EXPORT\_SIGNING\_KEYS**: `10000` = `10000`
 
-Defined in: packages/types/dist/index.d.ts:561
-
 Maximum number of signing keys that can be exported/imported.
 This limit prevents memory exhaustion attacks.

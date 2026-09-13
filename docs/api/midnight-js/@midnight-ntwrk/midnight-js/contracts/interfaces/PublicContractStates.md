@@ -6,8 +6,6 @@
 
 # Interface: PublicContractStates
 
-Defined in: packages/contracts/dist/index.d.ts:327
-
 Object containing the publicly visible states of a contract.
 
 ## Extended by
@@ -20,8 +18,6 @@ Object containing the publicly visible states of a contract.
 
 > `readonly` **contractState**: [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/contracts/dist/index.d.ts:335
-
 The (public) ledger state of a contract.
 
 ***
@@ -30,8 +26,6 @@ The (public) ledger state of a contract.
 
 > `readonly` **ledgerParameters**: [`LedgerParameters`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/contracts/dist/index.d.ts:339
-
 The ledger parameters in effect on the block associated with the contract state.
 
 ***
@@ -39,7 +33,5 @@ The ledger parameters in effect on the block associated with the contract state.
 ### zswapChainState
 
 > `readonly` **zswapChainState**: [`ZswapChainState`](https://github.com/midnightntwrk/midnight-ledger)
-
-Defined in: packages/contracts/dist/index.d.ts:331
 
 The (public) Zswap chain state of a contract.

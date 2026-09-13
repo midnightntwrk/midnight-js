@@ -8,6 +8,4 @@
 
 > `const` **ZK\_MANIFEST\_FILE\_NAME**: `"contract-manifest.json"` = `"contract-manifest.json"`
 
-Defined in: packages/utils/dist/index.d.ts:418
-
 File name of the `compactc`-emitted integrity manifest.

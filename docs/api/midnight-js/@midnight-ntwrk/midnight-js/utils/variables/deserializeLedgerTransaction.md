@@ -6,9 +6,7 @@
 
 # Variable: deserializeLedgerTransaction
 
-> `const` **deserializeLedgerTransaction**: (`bytes`, `ctx`) => [`Transaction`](../../types/classes/Transaction.md)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
-
-Defined in: packages/utils/dist/index.d.ts:160
+> `const` **deserializeLedgerTransaction**: (`bytes`, `ctx`) => [`Transaction`](https://github.com/midnightntwrk/midnight-ledger)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 Deserialize a ledger LedgerTransaction from raw bytes.
 The proof / signature / binding markers are hidden — all current callers
@@ -27,7 +25,7 @@ different combination is needed.
 
 ## Returns
 
-[`Transaction`](../../types/classes/Transaction.md)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
+[`Transaction`](https://github.com/midnightntwrk/midnight-ledger)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 ## Throws
 

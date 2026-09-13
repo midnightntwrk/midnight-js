@@ -255,6 +255,83 @@ The address of the contract of interest.
 
 ***
 
+### queryLatestProtocolVersion()
+
+> **queryLatestProtocolVersion**(): `Promise`\<`number`\>
+
+Reads the protocol-version integer of the network's head block.
+
+The indexer's `block` root field with no offset resolves to the latest
+indexed block, so this is the head version.
+
+This implementation does not cache: every call issues a request. The
+interface permits a cache bounded short of block time — see
+`PublicDataProvider.queryLatestProtocolVersion` — but there is no measured
+cost here to spend that budget on, and an expiring cache is not free to
+get right. For the era of a record already read, use
+[queryRawContractState](#queryrawcontractstate), which costs no request at all.
+
+#### Returns
+
+`Promise`\<`number`\>
+
+#### Throws
+
+When the indexer has not indexed a block yet
+  and therefore reports no head block.
+
+#### Implementation of
+
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md).[`queryLatestProtocolVersion`](../../midnight-js/types/interfaces/PublicDataProvider.md#querylatestprotocolversion)
+
+***
+
+### queryRawContractState()
+
+> **queryRawContractState**(`address`, `config?`): `Promise`\<[`RawContractState`](../../midnight-js/types/interfaces/RawContractState.md) \| `null`\>
+
+Reads the contract state at `address` as the bytes the indexer served,
+without deserializing them, paired with the ledger era those bytes belong
+to.
+
+The block that dates the state and the state itself are asked for in a
+single document. That saves a round trip; it does **not** make the two
+fields a consistent snapshot — the indexer resolves Query-root siblings
+concurrently, from independent reads, so they can still come from
+different blocks. The era on the returned record therefore describes the
+block that dated these bytes, and is not a reading of where the network is
+now: for that, ask [queryLatestProtocolVersion](#querylatestprotocolversion), which reads it.
+
+#### Parameters
+
+##### address
+
+`string`
+
+##### config?
+
+[`BlockHeightConfig`](../../midnight-js/types/type-aliases/BlockHeightConfig.md) \| [`BlockHashConfig`](../../midnight-js/types/type-aliases/BlockHashConfig.md)
+
+#### Returns
+
+`Promise`\<[`RawContractState`](../../midnight-js/types/interfaces/RawContractState.md) \| `null`\>
+
+#### Throws
+
+When the served state does not carry a
+  contract-state envelope from a supported ledger runtime.
+
+#### Throws
+
+When the served state is not hex-encoded, or
+  when a state is served with no block to date it.
+
+#### Implementation of
+
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md).[`queryRawContractState`](../../midnight-js/types/interfaces/PublicDataProvider.md#queryrawcontractstate)
+
+***
+
 ### queryUnshieldedBalances()
 
 > **queryUnshieldedBalances**(`address`, `config?`): `Promise`\<[`UnshieldedBalances`](../../midnight-js/types/type-aliases/UnshieldedBalances.md) \| `null`\>
@@ -391,15 +468,11 @@ The address of the contract of interest.
 
 ### watchForDeployTxData()
 
-> **watchForDeployTxData**(`contractAddress`): `Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
+> **watchForDeployTxData**(`contractAddress`): `Promise`\<[`VersionedFinalizedTxData`](../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)\>
 
-Retrieves data of the deployment transaction for the contract at the given contract address.
-
-**IMPORTANT: This method waits indefinitely** until the deployment transaction appears on the
-blockchain. It will never timeout or reject unless an error occurs.
-
-Custom implementations MUST maintain this indefinite waiting behavior to ensure consistency
-across all PublicDataProvider implementations. Do not implement timeouts in this method.
+Not declared `async`, so an invalid address is refused synchronously. The
+record itself is built after the poll resolves, because the era's runtime
+may still have to be acquired.
 
 #### Parameters
 
@@ -407,14 +480,9 @@ across all PublicDataProvider implementations. Do not implement timeouts in this
 
 `string`
 
-The address of the contract of interest.
-
 #### Returns
 
-`Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
-
-A promise that resolves with finalized transaction data when the deployment appears on-chain.
-         The promise never rejects due to timeout.
+`Promise`\<[`VersionedFinalizedTxData`](../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)\>
 
 #### Implementation of
 
@@ -424,7 +492,7 @@ A promise that resolves with finalized transaction data when the deployment appe
 
 ### watchForTxData()
 
-> **watchForTxData**(`txId`): `Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
+> **watchForTxData**(`txId`): `Promise`\<[`VersionedFinalizedTxData`](../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)\>
 
 Retrieves data of the transaction containing the call or deployment with the given identifier.
 
@@ -449,7 +517,7 @@ The identifier of the call or deployment of interest.
 
 #### Returns
 
-`Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
+`Promise`\<[`VersionedFinalizedTxData`](../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)\>
 
 A promise that resolves with finalized transaction data when the transaction appears on-chain.
          The promise never rejects due to timeout.

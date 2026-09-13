@@ -6,8 +6,6 @@
 
 # Interface: ContractEventsPage
 
-Defined in: packages/types/dist/index.d.ts:1098
-
 Pagination window for [PublicDataProvider.queryContractEvents](PublicDataProvider.md#querycontractevents).
 `offset` is only stable within a window with a fixed upper bound — pin
 `toBlock` for multi-page reads.
@@ -18,12 +16,8 @@ Pagination window for [PublicDataProvider.queryContractEvents](PublicDataProvide
 
 > `readonly` `optional` **limit?**: `number`
 
-Defined in: packages/types/dist/index.d.ts:1099
-
 ***
 
 ### offset?
 
 > `readonly` `optional` **offset?**: `number`
-
-Defined in: packages/types/dist/index.d.ts:1100

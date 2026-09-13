@@ -8,8 +8,6 @@
 
 > **CallTxOptions**\<`C`, `PCK`\> = [`CallTxOptionsBase`](CallTxOptionsBase.md)\<`C`, `PCK`\> \| [`CallTxOptionsWithPrivateStateId`](CallTxOptionsWithPrivateStateId.md)\<`C`, `PCK`\>
 
-Defined in: packages/contracts/dist/index.d.ts:804
-
 Call transaction configuration.
 
 ## Type Parameters

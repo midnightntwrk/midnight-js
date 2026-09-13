@@ -8,8 +8,6 @@
 
 > **ProverKey** = `Uint8Array` & `object`
 
-Defined in: packages/types/dist/index.d.ts:18
-
 A type representing a prover key derived from a contract circuit.
 
 ## Type Declaration

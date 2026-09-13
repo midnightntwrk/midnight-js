@@ -33,6 +33,7 @@ const event = (id: number, maxId: number): ContractEvent => ({
   id,
   maxId,
   version: 1,
+  protocolVersion: 2_000_000,
   contractAddress: ADDRESS,
   transactionId: id,
   raw: `r${id}`

@@ -6,8 +6,6 @@
 
 # Interface: UnsubmittedDeployTxDataBase\<C\>
 
-Defined in: packages/contracts/dist/index.d.ts:521
-
 Base type for data relevant to an unsubmitted deployment transaction.
 
 ## Remarks
@@ -31,11 +29,21 @@ read only the `public` field or destructure specific non-sensitive fields
 
 ## Properties
 
+### era
+
+> `readonly` **era**: `"ledger9"`
+
+The pipeline that produced this result: always the current era here.
+
+Read off the compiled artifact, NEVER off a transaction record — the two
+facts disagree after the fork, and only this one says which module the
+objects in this result came from.
+
+***
+
 ### private
 
 > `readonly` **private**: [`UnsubmittedDeployTxPrivateData`](UnsubmittedDeployTxPrivateData.md)\<`C`\>
-
-Defined in: packages/contracts/dist/index.d.ts:529
 
 The private data (data that will not be revealed upon tx submission) relevant to the deployment transaction.
 
@@ -44,7 +52,5 @@ The private data (data that will not be revealed upon tx submission) relevant to
 ### public
 
 > `readonly` **public**: [`UnsubmittedDeployTxPublicData`](UnsubmittedDeployTxPublicData.md)
-
-Defined in: packages/contracts/dist/index.d.ts:525
 
 The public data (data that will be revealed upon tx submission) relevant to the deployment transaction.

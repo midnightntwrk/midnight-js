@@ -17,6 +17,7 @@ import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
+import { CURRENT_PIPELINE_ERA } from './era';
 import { DeployTxFailedError } from './errors';
 import { submitTx } from './submit-tx';
 import type { FinalizedDeployTxData } from './tx-model';
@@ -106,6 +107,7 @@ export async function submitDeployTx<C extends Contract.Any>(
     unprovenDeployTxData.private.signingKey
   );
   return {
+    era: CURRENT_PIPELINE_ERA,
     private: unprovenDeployTxData.private,
     public: {
       ...finalizedTxData,

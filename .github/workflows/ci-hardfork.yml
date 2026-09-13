@@ -1,0 +1,200 @@
+name: CI - Hard fork
+
+# The fork-crossing gate: one build of one dApp, no code change at the
+# fork, operating on a ledger-8 head, crossing the boundary mid-session, and
+# operating again afterwards through the same call sites.
+#
+# Deliberately separate from `ci-consumer-e2e.yml`. That workflow's subject is "the
+# framework installs the way a consumer installs it", which outlives the fork and
+# stays after the retained era is dropped. THIS workflow is deleted whole at that
+# point, which is the test of whether the split is drawn in the right place.
+#
+# It repeats the pack rather than consuming an artifact from `ci-consumer-e2e.yml`.
+# Two extra minutes buys independence: a gate whose result depends on another
+# job's artifact is a gate that goes red for reasons that are not about the fork.
+# Sharding below keeps that property -- each shard is self-contained and packs
+# its own framework, so no shard can fail for another job's reasons either.
+#
+# SHARDED ONE CONTRACT PER JOB. Whole, the scenario ran 36 minutes, and 20 of
+# those were nineteen contract legs executed strictly one after another -- the
+# proving in them is what the run costs. A shard also compiles only its own
+# retained twin, so `fee-mint`'s 146 MB of prover keys stop being every job's
+# bill. What does NOT shard is the floor: ~2m of setup, a fork stack per shard,
+# and `enactFork` itself, which is a real governance upgrade on a real chain and
+# measured 3m41s. That floor is why a shard lands near 13 minutes rather than
+# near the leg time.
+
+permissions:
+  contents: read
+  packages: write
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      should_run:
+        required: true
+        type: string
+    # Declared rather than inherited, so a caller hands over these three
+    # credentials instead of the whole repository's secrets. The Docker Hub pair
+    # is optional because this repository has none configured -- the toolkit
+    # login step is guarded on the username being non-empty.
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE:
+        required: true
+      DOCKERHUB_USERNAME:
+        required: false
+      DOCKERHUB_TOKEN:
+        required: false
+
+concurrency:
+  group: hardfork-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  fork-crossing:
+    name: ${{ matrix.contract }}
+    if: inputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    # One contract's legs plus the unshardable floor. Generous against a cold
+    # runner and against `enactFork`'s own deadlines, which sum to 12 minutes.
+    timeout-minutes: 30
+    strategy:
+      # Every shard runs. A contract's legs are the answer for THAT contract, so
+      # cancelling the rest on one failure would turn one red row into fifteen
+      # unknowns -- which is the report shape this scenario exists to avoid.
+      fail-fast: false
+      matrix:
+        # `events` is current-era only: `emit` is not a language-0.23 form, so a
+        # pre-fork events contract cannot exist. Its shard poses the current-era
+        # half alone, which `resolveContractSelection` narrows to for it.
+        contract:
+          - simple
+          - unshielded
+          - shielded
+          - shielded-fallible
+          - fee-mint
+          - events
+          - block-time
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          cache-key-prefix: 'turbo-hardfork'
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build
+        run: yarn build --cache-dir ./turbo
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Pack the framework
+        run: node consumer-e2e/pack-framework.mjs
+
+      # `compactc` 0.31.1 is fetched at run time and is the same download for every
+      # shard, so it is cached on the version alone.
+      - name: Cache the retained-era compiler
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v4.4.0
+        with:
+          path: packages/compact/managed/0.31.1
+          key: fork-compactc-0.31.1
+
+      # Keyed on the `.compact` source and the compiler, which is exactly what
+      # decides the artifacts: a source edit or a compiler bump misses and
+      # recompiles, anything else hits. Per contract rather than for the set, so
+      # one contract's edit does not invalidate the other six.
+      #
+      # Skipped for `events`, which has no retained twin to cache.
+      - name: Cache this shard's retained twin
+        if: matrix.contract != 'events'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v4.4.0
+        with:
+          path: consumer-e2e/.retained/${{ matrix.contract }}
+          key: >-
+            fork-twin-${{ matrix.contract }}-0.31.1-${{
+              hashFiles(format('testkit-js/testkit-js-e2e/src/contract/{0}.compact', matrix.contract))
+            }}
+
+      # The personas resolve `@midnight-ntwrk/compact-runtime` from GitHub
+      # Packages, and neither pnpm nor a PnP install inherits Yarn's own scope
+      # configuration, so each needs the credential written where it looks.
+      - name: Authorize the persona installs
+        run: |
+          {
+            echo "@midnight-ntwrk:registry=https://npm.pkg.github.com"
+            echo "//npm.pkg.github.com/:_authToken=${MIDNIGHTCI_PACKAGES_WRITE}"
+          } >> "$HOME/.npmrc"
+        env:
+          MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      # Every image in `compose-fork.yml` comes from ghcr except the toolkit, and
+      # none of them are in the image cache the e2e lane restores, so this login
+      # is unconditional here.
+      - name: Log in to GitHub Container registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
+        with:
+          registry: 'https://ghcr.io'
+          username: MidnightCI
+          password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      # The node toolkit is published on Docker Hub, not ghcr, so the login above
+      # does not authorize it. No Docker Hub credentials are configured for this
+      # repository, and an empty login is a hard failure in the action, so this
+      # step is inert until someone adds them. The anonymous pull it falls back on
+      # is rate-limited from shared runner IPs, and it fails inside `enactFork()`
+      # where it reads as a governance failure rather than a registry one.
+      # Mirroring the toolkit to ghcr would remove this hazard entirely.
+      - name: Log in to Docker Hub
+        if: env.DOCKERHUB_USERNAME != ''
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      # The release gate for the fork window: this scenario passing is what
+      # "production-ready for the window" means, so it is a blocking job and is
+      # deliberately not marked `continue-on-error`. A gate that reports green
+      # while the scenario it guards cannot run is worse than no gate -- this
+      # test was kept out of CI once already for exactly that reason.
+      - name: Run the fork-crossing scenario
+        run: node consumer-e2e/fork-matrix-smoke.mjs pnp --contracts=${{ matrix.contract }}
+        env:
+          YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      # AFTER the step above, `env:` block included, and that placement is the
+      # whole of this step's history. Inserting it between that step's `run:` and
+      # its `env:` re-parents the block onto THIS step -- which needs no
+      # credentials -- and leaves the scenario without `YARN_NPM_AUTH_TOKEN`. The
+      # persona install then resolves the `@midnight-ntwrk` scope anonymously
+      # against GitHub Packages and every shard fails alike on
+      # `YN0041: Invalid authentication (as an anonymous user)`. That took the
+      # lane from 6/7 to 0/7 once, and the diff read as innocent because the
+      # `env:` lines never appeared in it.
+      #
+      # The scenario writes these itself, before it tears the stack down, and
+      # only when it failed. They are the only account of WHY the chain refused a
+      # submission: the framework's seam error redacts the provider's message by
+      # design, and the provider's own error carries no reason.
+      # `stack-logs`, NOT `.logs`. A leading dot makes every path under it hidden,
+      # and `upload-artifact` skips hidden files unless told otherwise -- so the
+      # dotted name uploaded nothing while the driver reported the files written,
+      # which reads as a working capture and is not one. Measured: "No files were
+      # found with the provided path: consumer-e2e/.logs/".
+      - name: Upload the stack's container logs
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # ratchet:actions/upload-artifact@v4.6.2
+        with:
+          name: fork-stack-logs-${{ matrix.contract }}
+          path: consumer-e2e/stack-logs/
+          if-no-files-found: warn
+          retention-days: 7

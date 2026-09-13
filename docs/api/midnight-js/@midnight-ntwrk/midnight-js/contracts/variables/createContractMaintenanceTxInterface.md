@@ -8,8 +8,6 @@
 
 > `const` **createContractMaintenanceTxInterface**: \<`C`\>(`providers`, `compiledContract`, `contractAddress`) => [`ContractMaintenanceTxInterface`](../interfaces/ContractMaintenanceTxInterface.md)
 
-Defined in: packages/contracts/dist/index.d.ts:321
-
 Creates a [ContractMaintenanceTxInterface](../interfaces/ContractMaintenanceTxInterface.md).
 
 ## Type Parameters

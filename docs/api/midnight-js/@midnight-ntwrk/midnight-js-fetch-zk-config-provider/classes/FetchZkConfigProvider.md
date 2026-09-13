@@ -94,6 +94,48 @@ The circuit ID of the artifacts to retrieve.
 
 ***
 
+### getArtifactRuntimeVersion()
+
+> **getArtifactRuntimeVersion**(): `Promise`\<`string`\>
+
+Reports the `compact-runtime` this bundle was built against, preferring the source an
+application can anchor to a hash it controls.
+
+The INTEGRITY MANIFEST is consulted first, because `expectedManifestHash` pins it to a digest
+the application supplies at build time, while everything else is fetched from the same host as
+the artifacts it describes. This value selects which ledger pipeline executes the call, so
+whoever serves the artifacts must not be the one who decides it.
+
+`compiler/contract-info.json` is the fallback, for bundles that carry no manifest at all --
+`compactc` only began emitting one in 0.33, which is exactly the retained-era case. It is put
+through the same integrity gate as every key and ZKIR, so under the default `require` an
+unvouched-for description is refused rather than trusted.
+
+Cached per provider instance. A FAILED fetch is not cached, so a transient network error does
+not permanently refuse an artifact set that is really there.
+
+#### Returns
+
+`Promise`\<`string`\>
+
+The declared runtime version, verbatim.
+
+#### Throws
+
+ZkArtifactContractInfoError if the location does not serve the description, answers
+with an SPA fallback page, or serves something that is not a compiler description.
+
+#### Throws
+
+ZkArtifactIntegrityError if the description is not covered by the manifest under a mode
+that requires it.
+
+#### Overrides
+
+[`ZKConfigProvider`](../../midnight-js/types/classes/ZKConfigProvider.md).[`getArtifactRuntimeVersion`](../../midnight-js/types/classes/ZKConfigProvider.md#getartifactruntimeversion)
+
+***
+
 ### getProverKey()
 
 > **getProverKey**(`circuitId`): `Promise`\<[`ProverKey`](../../midnight-js/types/type-aliases/ProverKey.md)\>

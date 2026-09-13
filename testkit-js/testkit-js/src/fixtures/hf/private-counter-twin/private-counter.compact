@@ -1,0 +1,27 @@
+// The fork-window continuity fixture: `../twin-contract/counter.compact` plus a
+// witness, so the contract has GENUINE private state to carry across the fork.
+//
+// The counter that pair compiles declares no witness at all, so a dApp built on
+// it holds no private state a continuity test could carry: the round trip would
+// be `{}` in, `{}` out. `localIncrement()` fixes that. It reads the step from
+// the dApp's own private state, so executing `increment()` calls the witness,
+// threads the private state through the runtime, and lets the witness hand a
+// NEW private state back -- which is what makes the state the test persists
+// something the retained toolchain really produced.
+//
+// Compiled by BOTH toolchains, from this one file, into
+// `../private-counter-016/compiled/` (retained: compiler 0.31.1, runtime
+// 0.16.0) and `./compiled/` (current: compiler 0.34.0, runtime 0.19.0-rc.0).
+// Keep this file's name: the generated code bakes it into the witness
+// type-error messages.
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+export ledger round: Counter;
+
+witness localIncrement(): Uint<16>;
+
+export circuit increment(): [] {
+  round.increment(disclose(localIncrement()));
+}

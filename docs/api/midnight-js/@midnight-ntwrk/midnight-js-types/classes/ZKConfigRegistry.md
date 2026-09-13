@@ -68,7 +68,7 @@ Resolves the ZK artifacts for a structured contract key.
 
 ##### location
 
-[`ContractKeyLocation`](../../midnight-js/types/interfaces/ContractKeyLocation.md)
+[`ContractKeyLocation`](https://github.com/midnightntwrk/midnight-sdk)
 
 The contract address, circuit, and deployed verifier key hash to resolve.
 

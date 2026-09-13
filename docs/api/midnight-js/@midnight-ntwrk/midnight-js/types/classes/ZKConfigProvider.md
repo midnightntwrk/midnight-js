@@ -6,8 +6,6 @@
 
 # Abstract Class: ZKConfigProvider\<K\>
 
-Defined in: packages/types/dist/index.d.ts:281
-
 A provider for zero-knowledge intermediate representations, prover keys, and verifier keys. All
 three are used by the [ProofProvider](../interfaces/ProofProvider.md) to create a proof for a call transaction. The implementation
 of this provider depends on the runtime environment, since each environment has different conventions
@@ -42,8 +40,6 @@ The type of the circuit ID used by the provider.
 
 > **asKeyMaterialProvider**(): [`KeyMaterialProvider`](../type-aliases/KeyMaterialProvider.md)
 
-Defined in: packages/types/dist/index.d.ts:307
-
 #### Returns
 
 [`KeyMaterialProvider`](../type-aliases/KeyMaterialProvider.md)
@@ -53,8 +49,6 @@ Defined in: packages/types/dist/index.d.ts:307
 ### get()
 
 > **get**(`circuitId`): `Promise`\<[`ZKConfig`](../interfaces/ZKConfig.md)\<`K`\>\>
-
-Defined in: packages/types/dist/index.d.ts:306
 
 Retrieves all zero-knowledge artifacts produced by `compactc` compiler for the given circuit.
 
@@ -72,11 +66,38 @@ The circuit ID of the artifacts to retrieve.
 
 ***
 
+### getArtifactRuntimeVersion()
+
+> **getArtifactRuntimeVersion**(): `Promise`\<`string`\>
+
+Reports the `compact-runtime` version the artifact set this provider serves was compiled
+against, as `compactc` recorded it in `compiler/contract-info.json` (for example `'0.16.0'`).
+
+A DECLARED fact, read from the compiler's own output, and the only era statement about an
+artifact that survives a consumer's build: a bundler's `target` rewrites generated code, and a
+minifier rewrites its names, but neither touches this file. It is what lets a caller's contract
+be placed on the ledger-era timeline without inspecting the shape of the generated JavaScript.
+
+Not abstract, and deliberately so: only the retained-era pipeline consults it, so a provider
+written for current-era artifacts alone stays valid without implementing it and fails loudly
+only if it is handed retained-era artifacts. Both providers this framework ships override it.
+
+#### Returns
+
+`Promise`\<`string`\>
+
+The declared runtime version, verbatim.
+
+#### Throws
+
+ArtifactRuntimeVersionUnavailableError from this base implementation, which has no
+artifact location to read and must not guess one.
+
+***
+
 ### getProverKey()
 
 > `abstract` **getProverKey**(`circuitId`): `Promise`\<[`ProverKey`](../type-aliases/ProverKey.md)\>
-
-Defined in: packages/types/dist/index.d.ts:291
 
 Retrieves the prover key produced by `compactc` compiler for the given circuit.
 
@@ -98,8 +119,6 @@ The circuit ID of the prover key to retrieve.
 
 > `abstract` **getVerifierKey**(`circuitId`): `Promise`\<[`VerifierKey`](../type-aliases/VerifierKey.md)\>
 
-Defined in: packages/types/dist/index.d.ts:296
-
 Retrieves the verifier key produced by `compactc` compiler for the given circuit.
 
 #### Parameters
@@ -120,8 +139,6 @@ The circuit ID of the verifier key to retrieve.
 
 > **getVerifierKeys**(`circuitIds`): `Promise`\<\[`K`, [`VerifierKey`](../type-aliases/VerifierKey.md)\][]\>
 
-Defined in: packages/types/dist/index.d.ts:301
-
 Retrieves the verifier keys produced by `compactc` compiler for the given circuits.
 
 #### Parameters
@@ -141,8 +158,6 @@ The circuit IDs of the verifier keys to retrieve.
 ### getZKIR()
 
 > `abstract` **getZKIR**(`circuitId`): `Promise`\<[`ZKIR`](../type-aliases/ZKIR.md)\>
-
-Defined in: packages/types/dist/index.d.ts:286
 
 Retrieves the zero-knowledge intermediate representation produced by `compactc` compiler for the given circuit.
 

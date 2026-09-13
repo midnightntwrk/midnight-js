@@ -8,8 +8,6 @@
 
 > **CallOptionsWithProviderDataDependencies**\<`C`, `PCK`\> = [`CallOptionsWithArguments`](CallOptionsWithArguments.md)\<`C`, `PCK`\> & [`CallOptionsProviderDataDependencies`](../interfaces/CallOptionsProviderDataDependencies.md)
 
-Defined in: packages/contracts/dist/index.d.ts:65
-
 Call options with circuit arguments and data
 
 ## Type Parameters

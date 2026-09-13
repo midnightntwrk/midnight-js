@@ -8,8 +8,6 @@
 
 > **VerifierKey** = `Uint8Array` & `object`
 
-Defined in: packages/types/dist/index.d.ts:34
-
 A type representing a verifier key derived from a contract circuit.
 
 ## Type Declaration

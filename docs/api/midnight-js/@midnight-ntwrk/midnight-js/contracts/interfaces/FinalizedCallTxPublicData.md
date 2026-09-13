@@ -6,8 +6,6 @@
 
 # Interface: FinalizedCallTxPublicData
 
-Defined in: packages/contracts/dist/index.d.ts:654
-
 The public data of a finalized call transaction: the circuit execution's
 public result ([CallResultPublic](CallResultPublic.md)) combined with the finalized
 transaction data ([FinalizedTxData](../../types/interfaces/FinalizedTxData.md)).
@@ -22,8 +20,6 @@ transaction data ([FinalizedTxData](../../types/interfaces/FinalizedTxData.md)).
 
 > `readonly` **blockAuthor**: `string` \| `null`
 
-Defined in: packages/types/dist/index.d.ts:223
-
 The author of the block in which the transaction was included.
 
 #### Inherited from
@@ -35,8 +31,6 @@ The author of the block in which the transaction was included.
 ### blockHash
 
 > `readonly` **blockHash**: `string`
-
-Defined in: packages/types/dist/index.d.ts:211
 
 The block hash of the block in which the transaction was included.
 
@@ -50,8 +44,6 @@ The block hash of the block in which the transaction was included.
 
 > `readonly` **blockHeight**: `number`
 
-Defined in: packages/types/dist/index.d.ts:215
-
 The block height of the block in which the transaction was included.
 
 #### Inherited from
@@ -63,8 +55,6 @@ The block height of the block in which the transaction was included.
 ### blockTimestamp
 
 > `readonly` **blockTimestamp**: `number`
-
-Defined in: packages/types/dist/index.d.ts:219
 
 The timestamp of the block in which the transaction was included.
 
@@ -78,8 +68,6 @@ The timestamp of the block in which the transaction was included.
 
 > `readonly` **fees**: [`Fees`](../../types/type-aliases/Fees.md)
 
-Defined in: packages/types/dist/index.d.ts:235
-
 The fees associated with the transaction, including both paid and estimated fees.
 
 #### Inherited from
@@ -91,8 +79,6 @@ The fees associated with the transaction, including both paid and estimated fees
 ### identifiers
 
 > `readonly` **identifiers**: readonly `string`[]
-
-Defined in: packages/types/dist/index.d.ts:203
 
 All transaction IDs of the submitted transaction.
 
@@ -106,8 +92,6 @@ All transaction IDs of the submitted transaction.
 
 > `readonly` **indexerId**: `number`
 
-Defined in: packages/types/dist/index.d.ts:227
-
 The indexer internal db ID.
 
 #### Inherited from
@@ -118,12 +102,10 @@ The indexer internal db ID.
 
 ### logEvents
 
-> `readonly` **logEvents**: readonly [`LogEvent`](../type-aliases/LogEvent.md)[]
-
-Defined in: packages/contracts/dist/index.d.ts:151
+> `readonly` **logEvents**: readonly [`LogEvent`](https://github.com/LFDT-Minokawa/compact)[]
 
 The MIP-0002 contract log events emitted during circuit execution. Surfaced on the `compact-js`
-executor result and typed by `compact-runtime`'s [LogEvent](../type-aliases/LogEvent.md). This is the single
+executor result and typed by `compact-runtime`'s [LogEvent](https://github.com/LFDT-Minokawa/compact). This is the single
 execution-wide list across the whole call tree (not just the root call), in emission order; each
 event is tagged with its emitting contract's address, so a per-contract view is a filter over
 that address.
@@ -143,8 +125,6 @@ Empty when the circuit emits no logs.
 
 > `readonly` **nextContractState**: [`StateValue`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/contracts/dist/index.d.ts:127
-
 The public state resulting from executing the circuit.
 
 #### Inherited from
@@ -153,16 +133,41 @@ The public state resulting from executing the circuit.
 
 ***
 
+### nextContractStateEncoded
+
+> `readonly` **nextContractStateEncoded**: [`EncodedStateValue`](https://github.com/midnightntwrk/midnight-ledger)
+
+The same state as an [EncodedStateValue](https://github.com/midnightntwrk/midnight-ledger): the form that survives this
+process, a `structuredClone`, a worker transfer and storage.
+
+The handle above is valid only while the runtime instance that produced it
+is loaded -- anything that walks it sees `__wbg_ptr`, an integer that means
+nothing outside its module. `EncodedStateValue` is pinned identical across
+`onchain-runtime-v3`, `ledger-v8` and `ledger-v9`, so this is the member
+era-agnostic code reads and the one to persist, in either era.
+
+Derived from the handle rather than fetched again, so the two cannot
+describe different states. It costs one encode per call; read
+[CallResultPublic.nextContractState](CallResultPublic.md#nextcontractstate) instead when the value never
+leaves the process that produced it.
+
+#### See
+
+ADR-0010 for the decision to publish the handle AND the bytes.
+
+#### Inherited from
+
+[`CallResultPublic`](CallResultPublic.md).[`nextContractStateEncoded`](CallResultPublic.md#nextcontractstateencoded)
+
+***
+
 ### partitionedTranscript
 
 > `readonly` **partitionedTranscript**: [`PartitionedTranscript`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/contracts/dist/index.d.ts:138
-
-A [publicTranscript](CallResultPublic.md#publictranscript) partitioned into guaranteed and fallible sections.
-The guaranteed section of a public transcript must succeed for the corresponding
-transaction to be considered valid. The fallible section of a public transcript
-can fail without invalidating the transaction, as long as the guaranteed section succeeds.
+The public transcript partitioned into its guaranteed and fallible halves.
+The guaranteed half must succeed for the transaction to be valid; the
+fallible half may fail without invalidating it.
 
 #### Inherited from
 
@@ -173,8 +178,6 @@ can fail without invalidating the transaction, as long as the guaranteed section
 ### protocolVersion
 
 > `readonly` **protocolVersion**: `number`
-
-Defined in: packages/types/dist/index.d.ts:231
 
 The protocol version of the transaction.
 
@@ -188,9 +191,7 @@ The protocol version of the transaction.
 
 > `readonly` **publicTranscript**: [`Op`](https://github.com/midnightntwrk/midnight-ledger)\<[`AlignedValue`](https://github.com/midnightntwrk/midnight-ledger)\>[]
 
-Defined in: packages/contracts/dist/index.d.ts:131
-
-The public transcript resulting from executing the circuit.
+The public transcript the execution produced, unpartitioned.
 
 #### Inherited from
 
@@ -201,8 +202,6 @@ The public transcript resulting from executing the circuit.
 ### segmentStatusMap
 
 > `readonly` **segmentStatusMap**: `Map`\<`number`, [`SegmentStatus`](../../types/type-aliases/SegmentStatus.md)\> \| `undefined`
-
-Defined in: packages/types/dist/index.d.ts:240
 
 The map that associates segment identifiers (numbers) with their corresponding status [SegmentStatus](../../types/type-aliases/SegmentStatus.md).
 The segment identifier is represented as a number (key in the map), and the status indicates the success or failure of the transaction update.
@@ -217,8 +216,6 @@ The segment identifier is represented as a number (key in the map), and the stat
 
 > `readonly` **status**: [`TxStatus`](../../types/type-aliases/TxStatus.md)
 
-Defined in: packages/types/dist/index.d.ts:195
-
 The status of a submitted transaction.
 
 #### Inherited from
@@ -229,9 +226,7 @@ The status of a submitted transaction.
 
 ### tx
 
-> `readonly` **tx**: [`Transaction`](../../types/classes/Transaction.md)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
-
-Defined in: packages/types/dist/index.d.ts:191
+> `readonly` **tx**: [`Transaction`](https://github.com/midnightntwrk/midnight-ledger)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
 
 The transaction that was finalized.
 
@@ -245,8 +240,6 @@ The transaction that was finalized.
 
 > `readonly` **txHash**: `string`
 
-Defined in: packages/types/dist/index.d.ts:207
-
 The transaction hash of the transaction in which the original transaction was included.
 
 #### Inherited from
@@ -258,8 +251,6 @@ The transaction hash of the transaction in which the original transaction was in
 ### txId
 
 > `readonly` **txId**: `string`
-
-Defined in: packages/types/dist/index.d.ts:199
 
 One of the transaction ID of the submitted transaction.
 
@@ -273,11 +264,21 @@ One of the transaction ID of the submitted transaction.
 
 > `readonly` **unshielded**: [`UnshieldedUtxos`](../../types/type-aliases/UnshieldedUtxos.md)
 
-Defined in: packages/types/dist/index.d.ts:245
-
 Represents the unshielded outputs, typically used for transactions or operations
 involving data or values that are not encrypted or concealed.
 
 #### Inherited from
 
 [`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md).[`unshielded`](../../types/interfaces/FinalizedTxData.md#unshielded)
+
+***
+
+### version
+
+> `readonly` **version**: `"v9"`
+
+Discriminant identifying this as a v9 ledger record.
+
+#### Inherited from
+
+[`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md).[`version`](../../types/interfaces/FinalizedTxData.md#version)

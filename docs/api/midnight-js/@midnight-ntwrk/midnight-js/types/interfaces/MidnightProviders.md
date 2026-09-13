@@ -6,8 +6,6 @@
 
 # Interface: MidnightProviders\<PCK, PSI, PS\>
 
-Defined in: packages/types/dist/index.d.ts:1284
-
 Set of providers needed for transaction construction and submission.
 
 ## Type Parameters
@@ -36,8 +34,6 @@ Parameter indicating the private state type stored, sometimes a union of private
 
 > `readonly` `optional` **loggerProvider?**: [`LoggerProvider`](LoggerProvider.md)
 
-Defined in: packages/types/dist/index.d.ts:1312
-
 An optional logger that provides utilities for logging at given levels.
 
 ***
@@ -45,8 +41,6 @@ An optional logger that provides utilities for logging at given levels.
 ### midnightProvider
 
 > `readonly` **midnightProvider**: [`MidnightProvider`](MidnightProvider.md)
-
-Defined in: packages/types/dist/index.d.ts:1308
 
 Submits proven, balanced transactions to the network.
 
@@ -56,8 +50,6 @@ Submits proven, balanced transactions to the network.
 
 > `readonly` **privateStateProvider**: [`PrivateStateProvider`](PrivateStateProvider.md)\<`PSI`, `PS`\>
 
-Defined in: packages/types/dist/index.d.ts:1288
-
 Manages the private state of a contract.
 
 ***
@@ -65,8 +57,6 @@ Manages the private state of a contract.
 ### proofProvider
 
 > `readonly` **proofProvider**: [`ProofProvider`](ProofProvider.md)
-
-Defined in: packages/types/dist/index.d.ts:1300
 
 Creates proven, unbalanced transactions.
 
@@ -76,8 +66,6 @@ Creates proven, unbalanced transactions.
 
 > `readonly` **publicDataProvider**: [`PublicDataProvider`](PublicDataProvider.md)
 
-Defined in: packages/types/dist/index.d.ts:1292
-
 Retrieves public data from the blockchain.
 
 ***
@@ -86,8 +74,6 @@ Retrieves public data from the blockchain.
 
 > `readonly` **walletProvider**: [`WalletProvider`](WalletProvider.md)
 
-Defined in: packages/types/dist/index.d.ts:1304
-
 Creates proven, balanced transactions.
 
 ***
@@ -95,7 +81,5 @@ Creates proven, balanced transactions.
 ### zkConfigProvider
 
 > `readonly` **zkConfigProvider**: [`ZKConfigProvider`](../classes/ZKConfigProvider.md)\<`PCK`\>
-
-Defined in: packages/types/dist/index.d.ts:1296
 
 Retrieves the ZK artifacts of a contract needed to create proofs.

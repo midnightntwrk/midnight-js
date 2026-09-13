@@ -6,8 +6,6 @@
 
 # Interface: DeserializationContext
 
-Defined in: packages/utils/dist/index.d.ts:60
-
 Fully-classified context attached to a `DeserializationError`.
 
 ## Extends
@@ -20,8 +18,6 @@ Fully-classified context attached to a `DeserializationError`.
 
 > `readonly` **caller**: `string`
 
-Defined in: packages/utils/dist/index.d.ts:57
-
 #### Inherited from
 
 [`DeserializationCallSite`](DeserializationCallSite.md).[`caller`](DeserializationCallSite.md#caller)
@@ -32,15 +28,11 @@ Defined in: packages/utils/dist/index.d.ts:57
 
 > `readonly` **classification**: [`Classification`](../type-aliases/Classification.md)
 
-Defined in: packages/utils/dist/index.d.ts:61
-
 ***
 
 ### dataType
 
 > `readonly` **dataType**: `string`
-
-Defined in: packages/utils/dist/index.d.ts:55
 
 #### Inherited from
 
@@ -48,11 +40,23 @@ Defined in: packages/utils/dist/index.d.ts:55
 
 ***
 
+### details?
+
+> `readonly` `optional` **details?**: `Readonly`\<`Record`\<`string`, `string` \| `number`\>\>
+
+Facts identifying the particular read that failed, supplied by the caller
+and rendered verbatim. For diagnosis only: nothing here changes the
+classification or the mitigation.
+
+#### Inherited from
+
+[`DeserializationCallSite`](DeserializationCallSite.md).[`details`](DeserializationCallSite.md#details)
+
+***
+
 ### direction?
 
 > `readonly` `optional` **direction?**: [`Direction`](../type-aliases/Direction.md)
-
-Defined in: packages/utils/dist/index.d.ts:62
 
 ***
 
@@ -60,23 +64,17 @@ Defined in: packages/utils/dist/index.d.ts:62
 
 > `readonly` `optional` **extracted?**: [`ExtractedInfo`](ExtractedInfo.md)
 
-Defined in: packages/utils/dist/index.d.ts:64
-
 ***
 
 ### mitigation
 
 > `readonly` **mitigation**: readonly `string`[]
 
-Defined in: packages/utils/dist/index.d.ts:63
-
 ***
 
 ### source
 
 > `readonly` **source**: [`SourceLibrary`](../type-aliases/SourceLibrary.md)
-
-Defined in: packages/utils/dist/index.d.ts:56
 
 #### Inherited from
 

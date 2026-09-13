@@ -8,8 +8,6 @@
 
 > **CallTxOptionsBase**\<`C`, `PCK`\> = [`CallOptionsWithArguments`](CallOptionsWithArguments.md)\<`C`, `PCK`\>
 
-Defined in: packages/contracts/dist/index.d.ts:788
-
 Base type for configuration for a call transaction; identical to [CallOptionsWithArguments](CallOptionsWithArguments.md).
 
 ## Type Parameters

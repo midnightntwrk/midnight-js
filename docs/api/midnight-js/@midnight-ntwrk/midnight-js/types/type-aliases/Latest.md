@@ -8,8 +8,6 @@
 
 > **Latest** = `object`
 
-Defined in: packages/types/dist/index.d.ts:869
-
 Streams all states of a contract starting with the most recent.
 
 ## Properties
@@ -17,5 +15,3 @@ Streams all states of a contract starting with the most recent.
 ### type
 
 > `readonly` **type**: `"latest"`
-
-Defined in: packages/types/dist/index.d.ts:870

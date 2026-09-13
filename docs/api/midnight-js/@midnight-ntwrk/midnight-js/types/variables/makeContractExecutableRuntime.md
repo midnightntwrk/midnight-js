@@ -8,8 +8,6 @@
 
 > `const` **makeContractExecutableRuntime**: (`zkConfigProvider`, `options`) => [`ManagedRuntime`](#)\<[`ContractExecutable.ContractExecutable.Context`](https://github.com/midnightntwrk/midnight-sdk), `ConfigError.ConfigError`\>
 
-Defined in: packages/types/dist/index.d.ts:326
-
 Constructs an Effect managed runtime configured to execute contract executables.
 
 ## Parameters

@@ -6,8 +6,6 @@
 
 # Interface: ContractConstructorResult\<C\>
 
-Defined in: packages/contracts/dist/index.d.ts:239
-
 The updated states resulting from executing a contract constructor.
 
 ## Type Parameters
@@ -18,11 +16,21 @@ The updated states resulting from executing a contract constructor.
 
 ## Properties
 
+### era
+
+> `readonly` **era**: `"ledger9"`
+
+The pipeline that produced this result: always the current era here.
+
+Read off the compiled artifact, NEVER off a transaction record — the two
+facts disagree after the fork, and only this one says which module the
+objects in this result came from.
+
+***
+
 ### nextContractState
 
 > `readonly` **nextContractState**: [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
-
-Defined in: packages/contracts/dist/index.d.ts:243
 
 The public state resulting from executing the contract constructor.
 
@@ -32,8 +40,6 @@ The public state resulting from executing the contract constructor.
 
 > `readonly` **nextPrivateState**: [`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
-Defined in: packages/contracts/dist/index.d.ts:247
-
 The private state resulting from executing the contract constructor.
 
 ***
@@ -41,7 +47,5 @@ The private state resulting from executing the contract constructor.
 ### nextZswapLocalState
 
 > `readonly` **nextZswapLocalState**: [`ZswapLocalState`](https://github.com/LFDT-Minokawa/compact)
-
-Defined in: packages/contracts/dist/index.d.ts:251
 
 The Zswap local state resulting from executing the contract constructor.

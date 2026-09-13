@@ -8,8 +8,6 @@
 
 > `const` **verifierKeysEqual**: (`a`, `b`) => `boolean`
 
-Defined in: packages/contracts/dist/index.d.ts:853
-
 Checks that two verifier keys are equal. Does initial length check match for efficiency.
 
 ## Parameters

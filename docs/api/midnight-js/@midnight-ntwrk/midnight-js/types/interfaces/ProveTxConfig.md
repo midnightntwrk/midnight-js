@@ -6,8 +6,6 @@
 
 # Interface: ProveTxConfig
 
-Defined in: packages/types/dist/index.d.ts:826
-
 The configuration for the proof request to the proof provider.
 
 ## Properties
@@ -15,8 +13,6 @@ The configuration for the proof request to the proof provider.
 ### timeout?
 
 > `readonly` `optional` **timeout?**: `number`
-
-Defined in: packages/types/dist/index.d.ts:833
 
 The timeout for the request, in milliseconds. This is a per-request timeout for the underlying
 proof server call, not a hard wall-clock ceiling for the whole `proveTx` call — the proof

@@ -8,8 +8,6 @@
 
 > **warnIfInsecureRemoteUrl**(`url`, `label`): `void`
 
-Defined in: packages/utils/dist/index.d.ts:388
-
 Emits a `console.warn` when `url` uses an unencrypted scheme (`http:` or `ws:`)
 targeting a non-loopback host. No-op for encrypted schemes (`https:`, `wss:`),
 other schemes, and unparseable input.

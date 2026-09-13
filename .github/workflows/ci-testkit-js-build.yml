@@ -40,8 +40,11 @@ on:
         default: 'devnet'
     outputs:
       test-files:
-        description: JSON array of e2e test filenames discovered in testkit-js-e2e/test.
+        description: JSON array of e2e test filenames discovered in testkit-js-e2e/test, excluding the era-specific lanes.
         value: ${{ jobs.generate-test-matrix.outputs.test-files }}
+      v8-era-test-files:
+        description: JSON array of e2e test filenames that must run against the pre-fork (ledger v8) image set.
+        value: ${{ jobs.generate-test-matrix.outputs.v8-era-test-files }}
 
 concurrency:
   group: TK-JS-build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -149,6 +152,7 @@ jobs:
     if: inputs.should_run == 'true'
     outputs:
       test-files: ${{ steps.generate-matrix.outputs.test-files }}
+      v8-era-test-files: ${{ steps.generate-matrix.outputs.v8-era-test-files }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
 
@@ -159,11 +163,23 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          FILES=$(cd testkit-js/testkit-js-e2e/test && ls *.test.ts)
-          if [ -z "$FILES" ]; then
+          ALL=$(cd testkit-js/testkit-js-e2e/test && ls *.test.ts)
+          if [ -z "$ALL" ]; then
             echo "::error::No e2e test files discovered in testkit-js/testkit-js-e2e/test"
             exit 1
           fi
+          # Era-specific lanes are selected by filename. A `.v8era.` file asserts
+          # behaviour that is only true on the pre-fork image set, so running it in
+          # the default lane would fail for the right reason at the wrong time.
+          V8_ERA_FILES=$(printf '%s\n' "$ALL" | grep '\.v8era\.' || true)
+          FILES=$(printf '%s\n' "$ALL" | grep -v '\.v8era\.' || true)
+          if [ -z "$FILES" ]; then
+            echo "::error::Every discovered e2e test file is era-specific; the default lane would have no matrix"
+            exit 1
+          fi
+          V8_ERA_TEST_FILES=$(printf '%s\n' "$V8_ERA_FILES" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "v8-era-test-files=$V8_ERA_TEST_FILES" >> "$GITHUB_OUTPUT"
+          echo "Generated v8-era test matrix: $V8_ERA_TEST_FILES"
           # Order longest-first from recent run history so the slowest files start
           # in the first max-parallel wave (LPT). Fall back to alphabetical if the
           # ordering script fails or returns anything other than the same file set.

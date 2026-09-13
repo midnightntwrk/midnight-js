@@ -61,6 +61,35 @@ The circuit ID of the artifacts to retrieve.
 
 ***
 
+### getArtifactRuntimeVersion()
+
+> **getArtifactRuntimeVersion**(): `Promise`\<`string`\>
+
+Reports the `compact-runtime` version the artifact set this provider serves was compiled
+against, as `compactc` recorded it in `compiler/contract-info.json` (for example `'0.16.0'`).
+
+A DECLARED fact, read from the compiler's own output, and the only era statement about an
+artifact that survives a consumer's build: a bundler's `target` rewrites generated code, and a
+minifier rewrites its names, but neither touches this file. It is what lets a caller's contract
+be placed on the ledger-era timeline without inspecting the shape of the generated JavaScript.
+
+Not abstract, and deliberately so: only the retained-era pipeline consults it, so a provider
+written for current-era artifacts alone stays valid without implementing it and fails loudly
+only if it is handed retained-era artifacts. Both providers this framework ships override it.
+
+#### Returns
+
+`Promise`\<`string`\>
+
+The declared runtime version, verbatim.
+
+#### Throws
+
+ArtifactRuntimeVersionUnavailableError from this base implementation, which has no
+artifact location to read and must not guess one.
+
+***
+
 ### getProverKey()
 
 > `abstract` **getProverKey**(`circuitId`): `Promise`\<[`ProverKey`](../type-aliases/ProverKey.md)\>

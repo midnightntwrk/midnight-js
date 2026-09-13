@@ -8,8 +8,6 @@
 
 > `const` **deserializeCompactContractState**: (`bytes`, `ctx`) => [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/utils/dist/index.d.ts:143
-
 Deserialize a compact-runtime CompactContractState from raw bytes.
 
 ## Parameters

@@ -6,8 +6,6 @@
 
 # Enumeration: LogLevel
 
-Defined in: packages/types/dist/index.d.ts:410
-
 A valid named log level.
 
 ## Enumeration Members
@@ -15,8 +13,6 @@ A valid named log level.
 ### DEBUG
 
 > **DEBUG**: `"debug"`
-
-Defined in: packages/types/dist/index.d.ts:421
 
 Log levels used by Midnight.JS to report internal state.
 
@@ -26,23 +22,17 @@ Log levels used by Midnight.JS to report internal state.
 
 > **ERROR**: `"error"`
 
-Defined in: packages/types/dist/index.d.ts:416
-
 ***
 
 ### FATAL
 
 > **FATAL**: `"fatal"`
 
-Defined in: packages/types/dist/index.d.ts:417
-
 ***
 
 ### INFO
 
 > **INFO**: `"info"`
-
-Defined in: packages/types/dist/index.d.ts:414
 
 Log levels typically used by DAapp developers.
 
@@ -52,12 +42,8 @@ Log levels typically used by DAapp developers.
 
 > **TRACE**: `"trace"`
 
-Defined in: packages/types/dist/index.d.ts:422
-
 ***
 
 ### WARN
 
 > **WARN**: `"warn"`
-
-Defined in: packages/types/dist/index.d.ts:415
