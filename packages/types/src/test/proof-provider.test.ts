@@ -14,10 +14,9 @@
  */
 
 import type { CostModel, ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import { UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
+import { PROVIDER_ERROR_CODES, UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
 import {
   createProofProvider,
   type UnboundTransaction,
@@ -78,7 +77,7 @@ describe('createProofProvider', () => {
         );
 
       expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
+      expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
     });
 
     it('names the seam that received the payload so the caller can tell which call failed', async () => {
@@ -162,7 +161,7 @@ describe('createProofProvider', () => {
       const rejection = await proveUntagged(payload);
 
       expect(rejection).toBeInstanceOf(UntaggedPayloadError);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
+      expect((rejection as UntaggedPayloadError).code).toBe(PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD);
       expect((rejection as UntaggedPayloadError).seam).toBe('proveTx');
       expect((rejection as UntaggedPayloadError).received).toBe(received);
     });

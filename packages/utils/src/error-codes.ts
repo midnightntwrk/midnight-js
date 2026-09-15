@@ -18,11 +18,16 @@
 // namespaces too, and pulling those into every `utils` consumer just to read
 // a handful of error-code strings would be a needless dependency footprint.
 import { PROTOCOL_ERROR_CODES, type ProtocolErrorCode } from '@midnight-ntwrk/midnight-js-protocol/errors';
+// Same leaf-subpath reasoning as above: the `types` root barrel pulls `effect`
+// and the protocol ledger namespace, neither of which reading a code needs.
+import { PROVIDER_ERROR_CODES, type ProviderErrorCode } from '@midnight-ntwrk/midnight-js-types/errors';
 
-// Codes for higher layers are declared here because `contracts` and the
-// provider packages depend on `utils`; protocol's own codes are imported
-// rather than re-declared. Add a constant here in the same change that first
-// throws with it.
+// Declared here, above the package that throws them, because the no-argument
+// `hasErrorCode` needs a COMPLETE registry and is consulted from `contracts`
+// (`internal/ledger8-entry.ts`, `internal/transaction.ts`) and by
+// `src/test/troubleshooting-coverage.test.ts`. Both sit at or above `utils`, so
+// the registry cannot move up with them. Every other group is imported from its
+// owner. Add a constant here in the same change that first throws with it.
 export const CONTRACTS_ERROR_CODES = Object.freeze({
   ERA_INVARIANT_VIOLATION: 'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION',
   ERA_ARTIFACT_MISMATCH: 'MIDNIGHT_JS_C_ERA_ARTIFACT_MISMATCH',
@@ -44,18 +49,9 @@ export const CONTRACTS_ERROR_CODES = Object.freeze({
 } as const);
 export type ContractsErrorCode = (typeof CONTRACTS_ERROR_CODES)[keyof typeof CONTRACTS_ERROR_CODES];
 
-export const PROVIDER_ERROR_CODES = Object.freeze({
-  V8_PAYLOAD_UNSUPPORTED: 'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED',
-  UNTAGGED_PAYLOAD: 'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD',
-  ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_ERA_UNSUPPORTED',
-  ERA_UNRESOLVABLE: 'MIDNIGHT_JS_PR_ERA_UNRESOLVABLE',
-  // Distinct from ERA_UNSUPPORTED above, which belongs to the READ surface:
-  // that one means "this record cannot be decoded", raised while decoding. This
-  // one means "this provider states it does not serve that era", raised from a
-  // declaration before any payload exists.
-  SEAM_ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED'
-} as const);
-export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
+// Re-exported, not re-declared: the group is owned by `@midnight-ntwrk/midnight-js-types`.
+// Kept on this module so the published surface of this package is unchanged.
+export { PROVIDER_ERROR_CODES, type ProviderErrorCode };
 
 export const UTILS_ERROR_CODES = Object.freeze({
   TAG_PARSE_FAILED: 'MIDNIGHT_JS_U_TAG_PARSE_FAILED',

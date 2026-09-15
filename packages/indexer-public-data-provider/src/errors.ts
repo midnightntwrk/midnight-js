@@ -15,7 +15,7 @@
 
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { ReadSeam } from '@midnight-ntwrk/midnight-js-types';
-import { PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types/errors';
 import type { GraphQLFormattedError } from 'graphql';
 
 /**

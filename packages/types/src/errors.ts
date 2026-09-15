@@ -40,18 +40,30 @@ export type ReadSeam = 'watchForTxData' | 'watchForDeployTxData';
  */
 export type Seam = ProviderSeam | ReadSeam;
 
-// These two code strings are declared here rather than imported from
-// `@midnight-ntwrk/midnight-js-utils`, because that would invert the package
-// layer order: `utils` sits below `types`, and `types` is the leaf every other
-// package depends on (see ADR 0006). They must stay in step with
-// PROVIDER_ERROR_CODES in `utils`, which is the registry `hasErrorCode`
-// consults. What holds them in step is `src/test/proof-provider.test.ts`: it
-// throws these errors and asserts the code against the `utils` registry, so
-// the two copies drifting apart fails a test. Do not delete those assertions
-// thinking they restate the constructor.
-const V8_PAYLOAD_UNSUPPORTED = 'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED';
-const UNTAGGED_PAYLOAD = 'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD';
-const SEAM_ERA_UNSUPPORTED = 'MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED';
+/**
+ * Stable error-code strings for the provider seams.
+ *
+ * Declared in this package because this is where the payload union they refuse
+ * is defined, and where three of the five are thrown; the other two come from
+ * `@midnight-ntwrk/midnight-js-indexer-public-data-provider`, which depends on
+ * this package. `@midnight-ntwrk/midnight-js-utils` re-exports the group and
+ * folds it into the registry `hasErrorCode` consults.
+ */
+export const PROVIDER_ERROR_CODES = Object.freeze({
+  V8_PAYLOAD_UNSUPPORTED: 'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED',
+  UNTAGGED_PAYLOAD: 'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD',
+  ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_ERA_UNSUPPORTED',
+  ERA_UNRESOLVABLE: 'MIDNIGHT_JS_PR_ERA_UNRESOLVABLE',
+  // Distinct from ERA_UNSUPPORTED above, which belongs to the READ surface:
+  // that one means "this record cannot be decoded", raised while decoding. This
+  // one means "this provider states it does not serve that era", raised from a
+  // declaration before any payload exists.
+  SEAM_ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED'
+} as const);
+/** The union of every value in {@link PROVIDER_ERROR_CODES}. */
+export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
+
+const { V8_PAYLOAD_UNSUPPORTED, UNTAGGED_PAYLOAD, SEAM_ERA_UNSUPPORTED } = PROVIDER_ERROR_CODES;
 
 /**
  * Thrown by a provider that only speaks the v9 ledger runtime when it is

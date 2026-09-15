@@ -24,57 +24,12 @@ import {
   UTILS_ERROR_CODES
 } from '../error-codes';
 
-// Spelled out by hand rather than derived from the groups: a derived list
-// would agree with any regression the groups themselves contain.
-const EXPECTED_CODES = [
-  // protocol (imported)
-  'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_READ',
-  'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_CONSTRUCT',
-  'MIDNIGHT_JS_P_LEDGER8_INSTANCE_MISMATCH',
-  'MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING',
-  'MIDNIGHT_JS_P_DOWN_CONVERT_FAILED',
-  'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED',
-  'MIDNIGHT_JS_P_COMPOSE_FAILED',
-  'MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID',
-  'MIDNIGHT_JS_P_STATE_DECODE_FAILED',
-  'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
-  'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
-  'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS',
-  'MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION',
-  // contracts
-  'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION',
-  'MIDNIGHT_JS_C_ERA_ARTIFACT_MISMATCH',
-  'MIDNIGHT_JS_C_UNRECOGNISED_RESULT_ERA',
-  'MIDNIGHT_JS_C_TX_FAILED',
-  'MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9',
-  'MIDNIGHT_JS_C_HEAD_STATE_ERA_MISMATCH',
-  'MIDNIGHT_JS_C_INDEXER_INCONSISTENCY',
-  'MIDNIGHT_JS_C_RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE',
-  'MIDNIGHT_JS_C_BLANK_VERIFIER_KEY_SLOT',
-  'MIDNIGHT_JS_C_VERIFIER_KEY_MISMATCH',
-  'MIDNIGHT_JS_C_LEDGER8_SHIELDED_SPEND_UNSUPPORTED',
-  'MIDNIGHT_JS_C_LEDGER8_SEAM_FAILED',
-  'MIDNIGHT_JS_C_STALE_HEAD',
-  'MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED',
-  'MIDNIGHT_JS_C_SCOPED_TX_ERA_UNSUPPORTED',
-  'MIDNIGHT_JS_C_MIXED_ERA_SCOPE',
-  'MIDNIGHT_JS_C_LEDGER_PARAMETERS_UNSERVED',
-  // providers
-  'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED',
-  'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD',
-  'MIDNIGHT_JS_PR_ERA_UNSUPPORTED',
-  'MIDNIGHT_JS_PR_ERA_UNRESOLVABLE',
-  'MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED',
-  // utils
-  'MIDNIGHT_JS_U_TAG_PARSE_FAILED',
-  'MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER'
-];
-
+// The exhaustive code list this file used to carry lived here. It is redundant
+// with `troubleshooting-coverage.test.ts`, which pins the same registry against
+// the TROUBLESHOOTING.md table in both directions and additionally demands a
+// remediation per entry. What remains below are the invariants that gate alone
+// does not cover.
 describe('MIDNIGHT_JS_ERROR_CODES', () => {
-  it('is exactly the union of every error-code group, spelled out', () => {
-    expect([...MIDNIGHT_JS_ERROR_CODES].sort()).toEqual([...EXPECTED_CODES].sort());
-  });
-
   it('has no duplicate codes across groups', () => {
     expect(new Set(MIDNIGHT_JS_ERROR_CODES).size).toBe(MIDNIGHT_JS_ERROR_CODES.length);
   });
