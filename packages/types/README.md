@@ -124,6 +124,53 @@ const walletProvider = createWalletProvider({
 const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx));
 ```
 
+### Declaring the eras a provider serves
+
+The three transaction seams each carry a required `supportedEras` list. It is
+read BEFORE an operation starts, so a provider set that cannot carry a
+transaction end to end is refused with `SeamEraUnsupportedError` rather than
+after a proof has been paid for.
+
+```typescript
+interface ProofProvider {
+  readonly supportedEras: readonly LedgerVersion[];
+  proveTx(unprovenTx: VersionedUnprovenTransaction, config?: ProveTxConfig): Promise<VersionedUnboundTransaction>;
+}
+```
+
+The three `create*Provider` adapters above declare `['v9']` — each lifts a
+v9-only implementation, so that is the honest answer and it needs no change from
+you.
+
+**Serving more than one era?** Write one handler per era and let the factory
+assemble the provider. The routing, the `version` tagging and the refusal of an
+era you did not supply are all handled for you, and `supportedEras` is computed
+from the handlers, so it cannot disagree with what the provider does:
+
+```typescript
+import { createProofProviderFromArms } from '@midnight-ntwrk/midnight-js-types';
+
+const proofProvider = createProofProviderFromArms({
+  currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
+  retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
+});
+// proofProvider.supportedEras === ['v9', 'v8']
+```
+
+The current era crosses the seam as a live ledger object; a retained era crosses
+as serialized bytes, in both directions. That is why the two handler signatures
+differ, and why `retainedEras` cannot name the current era — registering one
+there is a compile error.
+
+`createWalletProviderFromArms` and `createMidnightProviderFromArms` are the same
+shape for the other two seams. Implementing a tagged interface directly is also
+fine — a class, or a provider that routes internally — in which case you write
+`supportedEras` yourself.
+
+Nothing verifies the declaration. A seam still narrows its own payload and still
+reports `V8PayloadUnsupportedError` for an arm it cannot serve, so declaring an
+era you do not serve makes a failure later, not absent.
+
 ### TxStatus
 
 ```typescript
@@ -262,6 +309,15 @@ import {
   type Seam,
   unwrapV9,
 
+  // Per-era arms, and the declaration built from them
+  type RetainedEraHandlers,
+  type EraArmRequest,
+  erasServedBy,
+  narrowToEraArm,
+  type EraDeclaringProvider,
+  type TransactionSeams,
+  assertSeamsSupportEra,
+
   // Private state types
   type PrivateStateId,
 
@@ -271,6 +327,7 @@ import {
   // Errors
   V8PayloadUnsupportedError,
   UntaggedPayloadError,
+  SeamEraUnsupportedError,
   InvalidProtocolSchemeError,
   PrivateStateExportError,
   SigningKeyExportError,
@@ -284,6 +341,18 @@ import {
   createWalletProvider,
   createMidnightProvider,
   createProofProvider,
+  type ProofProviderArms,
+  type WalletProviderArms,
+  type MidnightProviderArms,
+  type CurrentEraProver,
+  type RetainedEraProver,
+  type CurrentEraBalancer,
+  type RetainedEraBalancer,
+  type CurrentEraSubmitter,
+  type RetainedEraSubmitter,
+  createProofProviderFromArms,
+  createWalletProviderFromArms,
+  createMidnightProviderFromArms,
 
   // Re-exports
   Transaction

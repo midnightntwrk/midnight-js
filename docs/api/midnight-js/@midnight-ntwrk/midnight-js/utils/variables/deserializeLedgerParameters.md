@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: deserializeLedgerParameters
 
 > `const` **deserializeLedgerParameters**: (`bytes`, `ctx`) => [`LedgerParameters`](https://github.com/midnightntwrk/midnight-ledger)
-
-Defined in: packages/utils/dist/index.d.ts:167
 
 Deserialize ledger [LedgerParameters](https://github.com/midnightntwrk/midnight-ledger) from raw bytes.
 

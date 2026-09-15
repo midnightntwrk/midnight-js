@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Function: verifyZkArtifactIntegrity()
 
 > **verifyZkArtifactIntegrity**(`params`): `void`
-
-Defined in: packages/utils/dist/index.d.ts:489
 
 Verifies one artifact's bytes against the manifest entry for `relativePath`.
 - `off`: no-op.

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Type Alias: CallOptionsWithArguments\<C, PCK\>
 
 > **CallOptionsWithArguments**\<`C`, `PCK`\> = [`Contract.CircuitParameters`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `PCK`\> *extends* \[\] ? [`CallOptionsBase`](../interfaces/CallOptionsBase.md)\<`C`, `PCK`\> : [`CallOptionsBase`](../interfaces/CallOptionsBase.md)\<`C`, `PCK`\> & `object`
-
-Defined in: packages/contracts/dist/index.d.ts:35
 
 Conditional type that optionally adds the inferred circuit argument types to
 the options for a circuit call.

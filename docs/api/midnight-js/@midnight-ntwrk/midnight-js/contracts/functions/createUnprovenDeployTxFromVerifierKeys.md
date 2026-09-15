@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -9,8 +9,6 @@
 ## Call Signature
 
 > **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
-
-Defined in: packages/contracts/dist/index.d.ts:1344
 
 ### Type Parameters
 
@@ -43,8 +41,6 @@ Defined in: packages/contracts/dist/index.d.ts:1344
 ## Call Signature
 
 > **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
-
-Defined in: packages/contracts/dist/index.d.ts:1345
 
 ### Type Parameters
 

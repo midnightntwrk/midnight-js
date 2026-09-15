@@ -1,12 +1,10 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / FindDeployedContractOptionsStorePrivateState
 
 # Interface: FindDeployedContractOptionsStorePrivateState\<C\>
-
-Defined in: packages/contracts/dist/index.d.ts:904
 
 [findDeployedContract](../functions/findDeployedContract.md) configuration that includes an initial private
 state to store and the private state ID at which to store it. Only used if
@@ -29,8 +27,6 @@ private state ID.
 
 > `readonly` **compiledContract**: [`CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
 
-Defined in: packages/contracts/dist/index.d.ts:870
-
 The compiled contract to use to execute circuits.
 
 #### Inherited from
@@ -42,8 +38,6 @@ The compiled contract to use to execute circuits.
 ### contractAddress
 
 > `readonly` **contractAddress**: `string`
-
-Defined in: packages/contracts/dist/index.d.ts:874
 
 The address of a previously deployed contract.
 
@@ -57,8 +51,6 @@ The address of a previously deployed contract.
 
 > `readonly` **initialPrivateState**: [`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
-Defined in: packages/contracts/dist/index.d.ts:910
-
 For types of contract that make no use of private state and or witnesses that operate upon it, this
 property may be `undefined`. Otherwise, the value provided via this property should be same initial
 state that was used when calling [deployContract](../functions/deployContract.md).
@@ -68,8 +60,6 @@ state that was used when calling [deployContract](../functions/deployContract.md
 ### privateStateId
 
 > `readonly` **privateStateId**: `string`
-
-Defined in: packages/contracts/dist/index.d.ts:896
 
 An identifier for the private state of the contract being found.
 
@@ -82,8 +72,6 @@ An identifier for the private state of the contract being found.
 ### signingKey?
 
 > `readonly` `optional` **signingKey?**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
-
-Defined in: packages/contracts/dist/index.d.ts:884
 
 The signing key to use to perform contract maintenance updates. If defined, the given signing
 key is stored for this contract address. This is useful when someone has already added the given signing

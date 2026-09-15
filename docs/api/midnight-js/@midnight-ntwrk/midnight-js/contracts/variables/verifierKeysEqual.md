@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: verifierKeysEqual
 
 > `const` **verifierKeysEqual**: (`a`, `b`) => `boolean`
-
-Defined in: packages/contracts/dist/index.d.ts:853
 
 Checks that two verifier keys are equal. Does initial length check match for efficiency.
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Type Alias: UnshieldedUtxo
 
 > **UnshieldedUtxo** = `object`
-
-Defined in: packages/types/dist/index.d.ts:129
 
 Represents an unshielded UTXO (Unspent Transaction Output).
 Unshielded UTXOs are outputs that have not been shielded or encrypted, making them visible on the public ledger.
@@ -19,8 +17,6 @@ Unshielded UTXOs are outputs that have not been shielded or encrypted, making th
 
 > `readonly` **intentHash**: [`IntentHash`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/types/dist/index.d.ts:138
-
 The identifier of the intent associated with the unshielded UTXO.
 This is used to track the intent behind the creation or use of the UTXO.
 
@@ -30,8 +26,6 @@ This is used to track the intent behind the creation or use of the UTXO.
 
 > `readonly` **owner**: [`ContractAddress`](https://github.com/midnightntwrk/midnight-ledger)
 
-Defined in: packages/types/dist/index.d.ts:133
-
 The unique identifier of the unshielded UTXO.
 
 ***
@@ -39,8 +33,6 @@ The unique identifier of the unshielded UTXO.
 ### tokenType
 
 > `readonly` **tokenType**: [`RawTokenType`](https://github.com/midnightntwrk/midnight-ledger)
-
-Defined in: packages/types/dist/index.d.ts:143
 
 The type of token associated with the unshielded UTXO.
 This indicates the kind of asset or currency represented by the UTXO.
@@ -50,7 +42,5 @@ This indicates the kind of asset or currency represented by the UTXO.
 ### value
 
 > `readonly` **value**: `bigint`
-
-Defined in: packages/types/dist/index.d.ts:147
 
 The value of the unshielded UTXO, represented as a bigint.

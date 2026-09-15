@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Type Alias: ContractEvent
 
 > **ContractEvent** = [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object` \| [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object`
-
-Defined in: packages/types/dist/index.d.ts:993
 
 A decoded contract event. Discriminated union keyed on `eventType`; narrow on
 it to access the variant-specific payload fields.

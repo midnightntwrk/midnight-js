@@ -71,6 +71,14 @@ Implementing `WalletProvider` or `MidnightProvider`? Use `createWalletProvider` 
 `createMidnightProvider` from `types` rather than tagging by hand. See
 [ADR 0006](./docs/adr/0006-version-tagged-payloads-at-provider-seams.md).
 
+Serving more than one era? Use `createProofProviderFromArms` /
+`createWalletProviderFromArms` / `createMidnightProviderFromArms` — one handler
+per era, with the routing, the tagging and the `supportedEras` declaration
+derived from the handlers. All three seams carry a required `supportedEras`, read
+before an operation starts so a set that cannot carry a transaction end to end is
+refused before the proof is paid for. See
+[ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-arms.md).
+
 ## CI Pipeline & PR Gates
 
 All CI checks block merge unless noted:

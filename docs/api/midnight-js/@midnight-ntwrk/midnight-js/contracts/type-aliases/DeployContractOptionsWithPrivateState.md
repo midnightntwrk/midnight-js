@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Type Alias: DeployContractOptionsWithPrivateState\<C\>
 
 > **DeployContractOptionsWithPrivateState**\<`C`\> = [`DeployContractOptionsBase`](DeployContractOptionsBase.md)\<`C`\> & `object`
-
-Defined in: packages/contracts/dist/index.d.ts:969
 
 [deployContract](../functions/deployContract.md) base options with information needed to store private states;
 only used if the contract being deployed has a private state.

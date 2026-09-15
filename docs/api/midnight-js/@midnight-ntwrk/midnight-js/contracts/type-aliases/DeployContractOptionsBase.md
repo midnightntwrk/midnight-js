@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Type Alias: DeployContractOptionsBase\<C\>
 
 > **DeployContractOptionsBase**\<`C`\> = [`ContractConstructorOptionsWithArguments`](ContractConstructorOptionsWithArguments.md)\<`C`\> & `object`
-
-Defined in: packages/contracts/dist/index.d.ts:949
 
 Base type for configuration for [deployContract](../functions/deployContract.md); identical to
 [ContractConstructorOptionsWithArguments](ContractConstructorOptionsWithArguments.md) except the `signingKey` is

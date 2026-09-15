@@ -367,3 +367,43 @@ byte-identical envelopes for it, in both directions. They do.
 That test is the unit-level evidence for reusing the current era's builders. It
 is not a substitute for driving a retained-era contract call against a real
 proof server, which remains untested.
+
+---
+
+## Amendment — the seams now say what they serve (2026-09-11)
+
+The decision above stands unchanged. This note records that one consequence its
+first amendment described has been addressed, by
+[ADR-0014](./0014-build-provider-seams-from-per-era-arms.md).
+
+That amendment closed with:
+
+> a retained-era transaction wired through the `create*` adapters now proves
+> successfully and is refused at `balanceTx`, so the refusal lands after a full
+> proving cycle rather than at the first seam it meets.
+
+It no longer does. The three transaction seams each carry a required
+`supportedEras` declaration, and `packages/contracts` reads all three before an
+operation starts — so a set whose wallet serves only the current era is refused
+with `SeamEraUnsupportedError` before `proveTx` is called at all.
+
+Three points of this ADR are affected, none reversed:
+
+- Point 5, "v9-only components reject the v8 arm loudly", still holds and is
+  still the enforcement. `V8PayloadUnsupportedError` is not retired. A
+  declaration is a claim by an implementation and nothing verifies it, so the
+  narrowing at each seam remains what upholds the arm; the new check only moves
+  a KNOWABLE refusal earlier.
+- Point 6, "one narrowing helper, not a switch per seam", is extended rather
+  than replaced. `unwrapV9` is unchanged and still exported for v9-only
+  providers and consumers. `narrowToEraArm` is its generalisation for a provider
+  serving more than one era, and it reports the same two errors for the same two
+  reasons.
+- The `create*Provider` adapters keep their signatures. Each is now a one-line
+  call to its arms factory and declares exactly the current era, which is the
+  same permanent refusal this ADR's first amendment describes — now stated in
+  the type rather than discoverable only by sending a payload.
+
+The stage-erasure risk that amendment records is NOT affected: `V8TxBytes` is
+still identical across the three seams. The arms narrow what an implementation
+sees, not what the union expresses.

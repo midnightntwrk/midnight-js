@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Type Alias: ContractProviders\<C, PCK, PS\>
 
 > **ContractProviders**\<`C`, `PCK`, `PS`\> = [`MidnightProviders`](../../types/interfaces/MidnightProviders.md)\<`PCK`, [`PrivateStateId`](../../types/type-aliases/PrivateStateId.md), `PS`\>
-
-Defined in: packages/contracts/dist/index.d.ts:258
 
 Convenience type for representing the set of providers necessary to use
 a given contract.

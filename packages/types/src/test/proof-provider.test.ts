@@ -123,6 +123,15 @@ describe('createProofProvider', () => {
 
       expect((rejection as V8PayloadUnsupportedError).byteLength).toBe(4);
     });
+
+    // Set equality rather than `toContain`: this adapter lifts a v9-only
+    // `ProvingProvider`, so a declaration listing anything else is a promise
+    // the refusals above prove it cannot keep.
+    it('declares exactly the current era, which is why the refusals above are permanent', () => {
+      const provider = createProofProvider(stubProvingProvider, stubCostModel);
+
+      expect([...provider.supportedEras].sort()).toEqual(['v9']);
+    });
   });
 
   // The seam types make an untagged payload unrepresentable, so these drive it

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Type Alias: CallOptionsWithProviderDataDependencies\<C, PCK\>
 
 > **CallOptionsWithProviderDataDependencies**\<`C`, `PCK`\> = [`CallOptionsWithArguments`](CallOptionsWithArguments.md)\<`C`, `PCK`\> & [`CallOptionsProviderDataDependencies`](../interfaces/CallOptionsProviderDataDependencies.md)
-
-Defined in: packages/contracts/dist/index.d.ts:65
 
 Call options with circuit arguments and data
 

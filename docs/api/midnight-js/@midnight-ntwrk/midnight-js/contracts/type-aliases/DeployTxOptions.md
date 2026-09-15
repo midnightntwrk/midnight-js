@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Type Alias: DeployTxOptions\<C\>
 
 > **DeployTxOptions**\<`C`\> = [`DeployTxOptionsBase`](DeployTxOptionsBase.md)\<`C`\> \| [`DeployTxOptionsWithPrivateStateId`](DeployTxOptionsWithPrivateStateId.md)\<`C`\>
-
-Defined in: packages/contracts/dist/index.d.ts:1357
 
 Configuration for creating deploy transactions.
 

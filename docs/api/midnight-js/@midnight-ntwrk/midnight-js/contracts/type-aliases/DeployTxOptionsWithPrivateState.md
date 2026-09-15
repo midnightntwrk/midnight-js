@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Type Alias: DeployTxOptionsWithPrivateState\<C\>
 
 > **DeployTxOptionsWithPrivateState**\<`C`\> = [`DeployTxOptionsBase`](DeployTxOptionsBase.md)\<`C`\> & `object`
-
-Defined in: packages/contracts/dist/index.d.ts:1323
 
 Configuration for creating deploy transactions for contracts with private state. This
 configuration used as a base type for the [DeployTxOptionsWithPrivateStateId](DeployTxOptionsWithPrivateStateId.md) configuration.

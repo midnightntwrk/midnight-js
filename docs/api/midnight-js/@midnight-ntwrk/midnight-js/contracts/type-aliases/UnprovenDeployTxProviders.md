@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Type Alias: UnprovenDeployTxProviders\<C\>
 
 > **UnprovenDeployTxProviders**\<`C`\> = `Pick`\<[`ContractProviders`](ContractProviders.md)\<`C`\>, `"zkConfigProvider"` \| `"walletProvider"`\>
-
-Defined in: packages/contracts/dist/index.d.ts:1350
 
 Providers needed to create an unproven deployment transactions, just the ZK artifact
 provider and a wallet.

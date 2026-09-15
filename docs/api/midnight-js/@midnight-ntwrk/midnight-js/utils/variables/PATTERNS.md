@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: PATTERNS
 
 > `const` **PATTERNS**: readonly [`PatternEntry`](../interfaces/PatternEntry.md)[]
-
-Defined in: packages/utils/dist/index.d.ts:109
 
 Shared pattern table across all three sources (ledger / compact-runtime / onchain-runtime).
 Sources share the same `serialize` Rust crate, so error message formats are identical.

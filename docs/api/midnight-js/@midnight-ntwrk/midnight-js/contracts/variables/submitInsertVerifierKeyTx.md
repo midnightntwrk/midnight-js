@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: submitInsertVerifierKeyTx
 
 > `const` **submitInsertVerifierKeyTx**: \<`C`\>(`providers`, `compiledContract`, `contractAddress`, `circuitId`, `newVk`) => `Promise`\<[`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md)\>
-
-Defined in: packages/contracts/dist/index.d.ts:1138
 
 Constructs and submits a transaction that adds a new verifier key to the
 blockchain for the given circuit ID at the given contract address.

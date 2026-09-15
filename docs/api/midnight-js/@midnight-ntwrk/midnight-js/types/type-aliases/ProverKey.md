@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Type Alias: ProverKey
 
 > **ProverKey** = `Uint8Array` & `object`
-
-Defined in: packages/types/dist/index.d.ts:18
 
 A type representing a prover key derived from a contract circuit.
 

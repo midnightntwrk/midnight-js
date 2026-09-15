@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,7 +7,5 @@
 # Type Alias: NetworkId
 
 > **NetworkId** = `string`
-
-Defined in: packages/network-id/dist/index.d.ts:4
 
 A valid named Midnight network identifier.

@@ -52,6 +52,7 @@ import {
   type ZswapSecretKeys,
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
@@ -253,8 +254,20 @@ export const createMockCoinInfo = (): ShieldedCoinInfo => ({
 /** Protocol-version integer of a node release whose ledger runtime is v9. */
 const MOCK_HEAD_PROTOCOL_VERSION = 2_000_000;
 
+/**
+ * What the three write seams declare here: BOTH eras, mirroring the testkit's
+ * real `MidnightWalletProvider`, which serves both.
+ *
+ * Declared once and shared by the three mocks, because a set where the seams
+ * disagree is the thing a test should have to say out loud. A test that wants a
+ * gap replaces one provider's declaration explicitly — see
+ * `seam-era-support.test.ts`.
+ */
+const MOCK_SUPPORTED_ERAS: readonly LedgerVersion[] = Object.freeze<LedgerVersion[]>(['v8', 'v9']);
+
 export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvableCircuitId, AnyPrivateState> => ({
   midnightProvider: {
+    supportedEras: MOCK_SUPPORTED_ERAS,
     submitTx: vi.fn()
   },
   publicDataProvider: {
@@ -305,11 +318,13 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
     asKeyMaterialProvider: vi.fn()
 },
   walletProvider: {
+    supportedEras: MOCK_SUPPORTED_ERAS,
     balanceTx: vi.fn(),
     getCoinPublicKey: createMockCoinPublicKey,
     getEncryptionPublicKey: createMockEncryptionPublicKey
   },
   proofProvider: {
+    supportedEras: MOCK_SUPPORTED_ERAS,
     proveTx: vi.fn()
   }
 });

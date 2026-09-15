@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: makeContractExecutableRuntime
 
 > `const` **makeContractExecutableRuntime**: (`zkConfigProvider`, `options`) => [`ManagedRuntime`](#)\<[`ContractExecutable.ContractExecutable.Context`](https://github.com/midnightntwrk/midnight-sdk), `ConfigError.ConfigError`\>
-
-Defined in: packages/types/dist/index.d.ts:326
 
 Constructs an Effect managed runtime configured to execute contract executables.
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: FailFallible
 
 > `const` **FailFallible**: `"FailFallible"`
-
-Defined in: packages/types/dist/index.d.ts:115
 
 Indicates that the transaction is valid but the portion of the transcript
 that is allowed to fail (the portion after a checkpoint) did fail. All effects

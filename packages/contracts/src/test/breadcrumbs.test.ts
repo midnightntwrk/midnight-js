@@ -58,7 +58,7 @@ import {
 import type { DispatchBreadcrumb, HeadReadingProvenance } from '../internal/breadcrumbs';
 import { DISPATCH_BREADCRUMB_MESSAGE, emitEncoding, emitHeadResolution, emitPipelineSelection } from '../internal/breadcrumbs';
 import { type PipelineEra, resolveContractStateEra, resolveOperationEra } from '../internal/era';
-import { acquireLedger8Runtime, findLedger8Contract } from '../internal/ledger8-entry';
+import { acquireLedger8Runtime, findLedger8Contract, type Ledger8RuntimeProviders } from '../internal/ledger8-entry';
 import { handleSubmitRejection } from '../internal/stale-head';
 import { resolveScopeEra } from '../internal/transaction';
 import { createMockContractAddress, createMockProviders } from './test-mocks';
@@ -143,6 +143,20 @@ const headSource = (...protocolVersions: readonly number[]): { readonly queryLat
     queryLatestProtocolVersion.mockResolvedValueOnce(protocolVersion);
   }
   return { queryLatestProtocolVersion };
+};
+
+// The provider set `acquireLedger8Runtime` consults: the head source under test,
+// plus three write seams that declare both eras so the seam check is never what
+// a breadcrumb assertion here fails on. The gap case is covered on its own, in
+// `seam-era-support.test.ts`.
+const retainedRuntime = (...protocolVersions: readonly number[]): Ledger8RuntimeProviders => {
+  const bothEras = { supportedEras: Object.freeze<LedgerVersion[]>(['v8', 'v9']) };
+  return {
+    publicDataProvider: headSource(...protocolVersions),
+    proofProvider: bothEras,
+    walletProvider: bothEras,
+    midnightProvider: bothEras
+  };
 };
 
 const rawState = (raw: Uint8Array, protocolVersion: number, version: LedgerVersion): RawContractState => ({
@@ -410,7 +424,7 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
   it('breadcrumbs the retained pipeline on a pre-fork head, after the era gate accepted it', async () => {
     const sink = createSink();
 
-    await acquireLedger8Runtime(headSource(V8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
+    await acquireLedger8Runtime(retainedRuntime(V8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
 
     expect(emitted(sink)).toStrictEqual([
       {
@@ -438,7 +452,7 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
     // disagree with it: `path: 'ledger8'` with `version: 'v9'` IS keep-state.
     const sink = createSink();
 
-    await acquireLedger8Runtime(headSource(V9_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
+    await acquireLedger8Runtime(retainedRuntime(V9_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
 
     expect(emitted(sink).at(-1)).toStrictEqual({
       decision: 'pipeline-selection',
@@ -458,7 +472,7 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
     const sink = createSink();
 
     await expect(
-      acquireLedger8Runtime(headSource(V9_HEAD), 'deploy', { logger: sink })
+      acquireLedger8Runtime(retainedRuntime(V9_HEAD), 'deploy', { logger: sink })
     ).rejects.toThrow(Ledger8DeployOnV9Error);
 
     expect(emitted(sink).map((breadcrumb) => breadcrumb.decision)).toEqual(['head-resolution']);
@@ -606,7 +620,7 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
 
     // One breadcrumb of every kind, produced by real code paths rather than
     // hand-built, so this gate is over what actually ships.
-    await acquireLedger8Runtime(headSource(V8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
+    await acquireLedger8Runtime(retainedRuntime(V8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
     await resolveContractStateEra('v8', rawState(v8Envelope, V8_HEAD, 'v8'), headSource(), sink);
     breadcrumbs = emitted(sink);
   });
@@ -816,7 +830,7 @@ describe('a faulty logger cannot fail an operation that otherwise succeeds', () 
     const sink = throwingSink();
 
     await expect(
-      acquireLedger8Runtime(headSource(V9_HEAD), 'deploy', { logger: sink })
+      acquireLedger8Runtime(retainedRuntime(V9_HEAD), 'deploy', { logger: sink })
     ).rejects.toThrow(Ledger8DeployOnV9Error);
   });
 
@@ -827,7 +841,7 @@ describe('a faulty logger cannot fail an operation that otherwise succeeds', () 
     const sink = throwingSink();
 
     await expect(
-      acquireLedger8Runtime(headSource(V8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS })
+      acquireLedger8Runtime(retainedRuntime(V8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS })
     ).resolves.toBeDefined();
 
     expect(sink.debug).toHaveBeenCalledTimes(2);

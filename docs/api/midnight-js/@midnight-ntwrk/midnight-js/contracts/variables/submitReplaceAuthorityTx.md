@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: submitReplaceAuthorityTx
 
 > `const` **submitReplaceAuthorityTx**: \<`C`\>(`providers`, `compiledContract`, `contractAddress`) => (`newAuthority`) => `Promise`\<[`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md)\>
-
-Defined in: packages/contracts/dist/index.d.ts:1224
 
 Constructs and submits a transaction that replaces the maintenance
 authority stored on the blockchain for this contract. After the transaction is

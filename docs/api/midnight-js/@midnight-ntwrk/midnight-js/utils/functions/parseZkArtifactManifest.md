@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Function: parseZkArtifactManifest()
 
 > **parseZkArtifactManifest**(`rawJson`): [`ZkArtifactManifest`](../interfaces/ZkArtifactManifest.md)
-
-Defined in: packages/utils/dist/index.d.ts:477
 
 Parses a `compactc` `contract-manifest.json`. Asserts `manifest-version === '1'`, flattens exactly
 one directory level into `"<dir>/<fileName>"` keys (nested sub-directories are ignored), validates

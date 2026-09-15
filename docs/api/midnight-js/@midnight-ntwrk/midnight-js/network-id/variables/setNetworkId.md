@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: setNetworkId
 
 > `const` **setNetworkId**: (`id`) => `void`
-
-Defined in: packages/network-id/dist/index.d.ts:11
 
 Sets the global network identifier.
 

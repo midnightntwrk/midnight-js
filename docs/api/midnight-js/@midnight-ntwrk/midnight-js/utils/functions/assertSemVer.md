@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Function: assertSemVer()
 
 > **assertSemVer**(`version`, `label`): `void`
-
-Defined in: packages/utils/dist/index.d.ts:372
 
 Asserts that `version` is a valid SemVer-style version string of the shape
 `MAJOR.MINOR.PATCH` with an optional pre-release suffix

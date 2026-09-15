@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: submitTx
 
 > `const` **submitTx**: \<`C`, `PCK`\>(`providers`, `options`) => `Promise`\<[`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md)\>
-
-Defined in: packages/contracts/dist/index.d.ts:432
 
 Proves, balances, and submits an unproven deployment or call transaction using
 the given providers, according to the given options.

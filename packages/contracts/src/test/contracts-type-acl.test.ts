@@ -31,6 +31,24 @@ const compilerOptions = (): ts.CompilerOptions => {
 };
 
 /**
+ * Resolves a namespace re-export (`export * as Ledger8 from ...`) to the module
+ * it stands for, so its members can be pinned the same way the barrel's own
+ * are.
+ *
+ * Throws rather than returning the barrel when the name is absent: a namespace
+ * silently swapped for the module itself would compare the retained era's
+ * member list against the whole package and report a difference nobody can
+ * read.
+ */
+const namespaceSymbol = (checker: ts.TypeChecker, moduleSymbol: ts.Symbol, name: string): ts.Symbol => {
+  const exported = checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.getName() === name);
+  if (!exported) {
+    throw new Error(`${BARREL} exports no namespace named '${name}'`);
+  }
+  return exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
+};
+
+/**
  * The names the barrel exports that carry NO runtime meaning, read from the
  * source with the compiler's own resolution.
  *
@@ -44,7 +62,7 @@ const compilerOptions = (): ts.CompilerOptions => {
  * `packages/protocol/src/test/protocol-type-acl.test.ts`. Deliberately
  * duplicated rather than shared: neither package depends on the other's tests.
  */
-const typeOnlyExportNames = (): string[] => {
+const typeOnlyExportNames = (namespaceExport?: string): string[] => {
   const program = ts.createProgram([BARREL], compilerOptions());
   const checker = program.getTypeChecker();
   const source = program.getSourceFile(BARREL);
@@ -55,9 +73,10 @@ const typeOnlyExportNames = (): string[] => {
   if (!moduleSymbol) {
     throw new Error(`${BARREL} resolves to no module symbol`);
   }
+  const container = namespaceExport === undefined ? moduleSymbol : namespaceSymbol(checker, moduleSymbol, namespaceExport);
 
   return checker
-    .getExportsOfModule(moduleSymbol)
+    .getExportsOfModule(container)
     .filter((exported) => {
       const resolved = exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
       return (resolved.flags & ts.SymbolFlags.Value) === 0;
@@ -120,35 +139,6 @@ describe('Contracts type ACL', () => {
       'FindDeployedContractOptionsExistingPrivateState',
       'FindDeployedContractOptionsStorePrivateState',
       'FoundContract',
-      'Ledger8CallResultPrivate',
-      'Ledger8CallResultPublic',
-      'Ledger8CallTxOptions',
-      'Ledger8CallTxOptionsBase',
-      'Ledger8CallTxOptionsWithPrivateStateId',
-      'Ledger8CallTxTarget',
-      'Ledger8Circuit',
-      'Ledger8CircuitCallTxInterface',
-      'Ledger8CircuitContext',
-      'Ledger8CircuitId',
-      'Ledger8CircuitParameters',
-      'Ledger8CircuitResult',
-      'Ledger8CircuitReturnType',
-      'Ledger8ConstructorParameters',
-      'Ledger8Contract',
-      'Ledger8ContractCall',
-      'Ledger8ContractCallPublic',
-      'Ledger8ContractProviders',
-      'Ledger8DeployContractOptions',
-      'Ledger8DeployContractOptionsBase',
-          'Ledger8FinalizedCallTxData',
-      'Ledger8FinalizedCallTxPublicData',
-      'Ledger8FindDeployedContractOptions',
-      'Ledger8FoundContract',
-      'Ledger8InitialStateResult',
-      'Ledger8PrivateState',
-      'Ledger8SubmittedCallTx',
-      'Ledger8UnsubmittedCallTxData',
-      'Ledger8Witness',
       'LogEvent',
       'PipelineEra',
       'PublicContractStates',
@@ -174,6 +164,50 @@ describe('Contracts type ACL', () => {
       'UnsubmittedDeployTxPrivateDataFull',
       'UnsubmittedDeployTxPublicData',
       'UnsubmittedTxData'
+    ]);
+  });
+
+  /**
+   * @given the `Ledger8` namespace the barrel re-exports
+   * @when its type-only members are read with the compiler's own resolution
+   * @then they equal the pinned set exactly
+   *
+   * The retained-era family left the flat surface, and the list above stopped
+   * covering it with it. Pinned here instead: dropping this suite would leave
+   * ~30 published types with no gate at all, which is the surface the previous
+   * list existed to guard.
+   */
+  it('publishes exactly this retained-era type surface', () => {
+    expect(typeOnlyExportNames('Ledger8')).toEqual([
+      'CallResultPrivate',
+      'CallResultPublic',
+      'CallTxOptions',
+      'CallTxOptionsBase',
+      'CallTxOptionsWithPrivateStateId',
+      'CallTxTarget',
+      'Circuit',
+      'CircuitCallTxInterface',
+      'CircuitContext',
+      'CircuitId',
+      'CircuitParameters',
+      'CircuitResult',
+      'CircuitReturnType',
+      'ConstructorParameters',
+      'Contract',
+      'ContractCall',
+      'ContractCallPublic',
+      'ContractProviders',
+      'DeployContractOptions',
+      'DeployContractOptionsBase',
+      'FinalizedCallTxData',
+      'FinalizedCallTxPublicData',
+      'FindDeployedContractOptions',
+      'FoundContract',
+      'InitialStateResult',
+      'PrivateState',
+      'SubmittedCallTx',
+      'UnsubmittedCallTxData',
+      'Witness'
     ]);
   });
 });

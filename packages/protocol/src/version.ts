@@ -14,11 +14,25 @@
  */
 
 import { UnknownProtocolVersionError, type VersionResolutionPath } from './errors';
-import { LEDGER_VERSIONS, type LedgerVersion } from './lib/shared/ledger-version';
+import {
+  CURRENT_LEDGER_VERSION,
+  type CurrentLedgerVersion,
+  LEDGER_VERSIONS,
+  type LedgerVersion,
+  RETAINED_LEDGER_VERSIONS,
+  type RetainedLedgerVersion
+} from './lib/shared/ledger-version';
 
 // Declared in the leaf module `./lib/shared/ledger-version`, which `./errors`
 // can also reach; declaring it here would close a cycle — see ModuleGraphAndLazyLoading.
-export { LEDGER_VERSIONS, type LedgerVersion };
+export {
+  CURRENT_LEDGER_VERSION,
+  type CurrentLedgerVersion,
+  LEDGER_VERSIONS,
+  type LedgerVersion,
+  RETAINED_LEDGER_VERSIONS,
+  type RetainedLedgerVersion
+};
 
 /**
  * Anything that can report the network's current head protocol version —

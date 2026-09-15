@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: createCircuitCallTxInterface
 
 > `const` **createCircuitCallTxInterface**: \<`C`\>(`providers`, `compiledContract`, `contractAddress`, `privateStateId`) => [`CircuitCallTxInterface`](../type-aliases/CircuitCallTxInterface.md)\<`C`\>
-
-Defined in: packages/contracts/dist/index.d.ts:844
 
 Creates a circuit call transaction interface for a contract.
 

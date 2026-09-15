@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Type Alias: Fees
 
 > **Fees** = `object`
-
-Defined in: packages/types/dist/index.d.ts:170
 
 Represents the fees associated with a particular entity or operation.
 
@@ -22,8 +20,6 @@ or projection of expected fees.
 
 > `readonly` **estimatedFees**: `string`
 
-Defined in: packages/types/dist/index.d.ts:178
-
 The estimated fees that are expected to be incurred.
 
 ***
@@ -31,7 +27,5 @@ The estimated fees that are expected to be incurred.
 ### paidFees
 
 > `readonly` **paidFees**: `string`
-
-Defined in: packages/types/dist/index.d.ts:174
 
 The fees that have already been paid.

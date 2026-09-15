@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: classify
 
 > `const` **classify**: (`callSite`, `cause`) => [`DeserializationContext`](../interfaces/DeserializationContext.md)
-
-Defined in: packages/utils/dist/index.d.ts:96
 
 Classify a deserialization error against the shared pattern table.
 Returns a fully-populated `DeserializationContext` ready to attach to a

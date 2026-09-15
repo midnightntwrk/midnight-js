@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: getNetworkId
 
 > `const` **getNetworkId**: () => [`NetworkId`](../type-aliases/NetworkId.md)
-
-Defined in: packages/network-id/dist/index.d.ts:18
 
 Retrieves the currently set global network identifier.
 

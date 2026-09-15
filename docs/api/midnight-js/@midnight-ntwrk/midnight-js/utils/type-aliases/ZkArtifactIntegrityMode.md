@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Type Alias: ZkArtifactIntegrityMode
 
 > **ZkArtifactIntegrityMode** = `"require"` \| `"require-if-present"` \| `"warn"` \| `"off"`
-
-Defined in: packages/utils/dist/index.d.ts:430
 
 How a provider reacts to a manifest that does not cover an artifact. A digest mismatch always
 throws (except `off`).

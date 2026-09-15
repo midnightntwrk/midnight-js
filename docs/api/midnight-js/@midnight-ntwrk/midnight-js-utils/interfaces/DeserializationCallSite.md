@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
 
 ***
 
@@ -25,6 +25,16 @@ contains an extractable struct name.
 ### dataType
 
 > `readonly` **dataType**: `string`
+
+***
+
+### details?
+
+> `readonly` `optional` **details?**: `Readonly`\<`Record`\<`string`, `string` \| `number`\>\>
+
+Facts identifying the particular read that failed, supplied by the caller
+and rendered verbatim. For diagnosis only: nothing here changes the
+classification or the mitigation.
 
 ***
 

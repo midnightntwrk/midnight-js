@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Type Alias: CallTxOptionsWithPrivateStateId\<C, PCK\>
 
 > **CallTxOptionsWithPrivateStateId**\<`C`, `PCK`\> = [`CallTxOptionsBase`](CallTxOptionsBase.md)\<`C`, `PCK`\> & `object`
-
-Defined in: packages/contracts/dist/index.d.ts:795
 
 Call transaction options with the private state ID to use to store the new private
 state resulting from the circuit call. Since a private state should already be

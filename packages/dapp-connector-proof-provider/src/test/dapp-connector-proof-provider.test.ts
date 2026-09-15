@@ -95,6 +95,15 @@ describe('dappConnectorProofProvider', () => {
     expect(typeof proofProvider.proveTx).toBe('function');
   });
 
+  // Set equality rather than `toContain`: this provider serves both eras, and
+  // an era silently dropped from the declaration would have a retained-era
+  // operation refused before it started -- which `toContain` would not catch.
+  it('declares both eras, matching the two arms it is built from', async () => {
+    const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+    expect([...proofProvider.supportedEras].sort()).toEqual(['v8', 'v9']);
+  });
+
   it('should delegate proveTx to unprovenTx.prove with the injected cost model', async () => {
     const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
 

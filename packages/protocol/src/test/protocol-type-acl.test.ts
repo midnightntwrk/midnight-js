@@ -95,6 +95,10 @@ describe('Protocol type ACL', () => {
       'ConstructorResultPojo',
       'ContractEntryPointPojo',
       'ContractStatePojo',
+      // The current/retained split of `LedgerVersion`, published beside it:
+      // a consumer writing a per-era handler cannot name which half it is
+      // writing for without these.
+      'CurrentLedgerVersion',
       'DeployResultPojo',
       'DownConvertedState',
       'DownConvertStage',
@@ -121,6 +125,7 @@ describe('Protocol type ACL', () => {
       'ProtocolVersionSource',
       'ProtocolVersionUnknownReason',
       'RetainedEraSubpath',
+      'RetainedLedgerVersion',
       'TranscriptPojo',
       'VersionedRecord',
       'VersionResolutionPath',

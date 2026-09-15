@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: decodeLedgerStateValue
 
 > `const` **decodeLedgerStateValue**: (`encoded`, `ctx`) => [`StateValue`](https://github.com/midnightntwrk/midnight-ledger)
-
-Defined in: packages/utils/dist/index.d.ts:181
 
 Decode an onchain-runtime LedgerStateValue from its
 [EncodedStateValue](https://github.com/midnightntwrk/midnight-ledger) representation (a tagged union, NOT a byte

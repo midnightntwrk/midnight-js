@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: createCircuitMaintenanceTxInterfaces
 
 > `const` **createCircuitMaintenanceTxInterfaces**: \<`C`\>(`providers`, `compiledContract`, `contractAddress`) => [`CircuitMaintenanceTxInterfaces`](../type-aliases/CircuitMaintenanceTxInterfaces.md)\<`C`\>
-
-Defined in: packages/contracts/dist/index.d.ts:300
 
 Creates a [CircuitMaintenanceTxInterfaces](../type-aliases/CircuitMaintenanceTxInterfaces.md).
 

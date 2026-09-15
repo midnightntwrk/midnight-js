@@ -27,7 +27,7 @@ import {
   EraInvariantViolationError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
-  Ledger8DeployOnV9Error,
+  Ledger8,
   VerifierKeyMismatchError
 } from '../index';
 
@@ -35,7 +35,7 @@ describe('the era and verification-path errors a caller has to catch are reachab
   it('carries the registered code on an instance built through the barrel export', () => {
     const cases = [
       { error: new EraArtifactMismatchError('unrecognised-contract-shape'), code: CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH },
-      { error: new Ledger8DeployOnV9Error(), code: CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9 },
+      { error: new Ledger8.DeployOnV9Error(), code: CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9 },
       { error: new HeadStateEraMismatchError('v9', 'v8'), code: CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH },
       { error: new IndexerInconsistencyError('v9', 'v8'), code: CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY },
       { error: new BlankVerifierKeySlotError('increment'), code: CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT },

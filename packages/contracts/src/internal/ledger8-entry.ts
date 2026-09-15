@@ -41,11 +41,13 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol';
 import { Transaction, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  assertSeamsSupportEra,
   type MidnightProvider,
   type PrivateStateProvider,
   type ProofProvider,
   type PublicDataProvider,
   SucceedEntirely,
+  type TransactionSeams,
   type VersionedFinalizedTxData,
   type WalletProvider,
   type ZKConfigProvider
@@ -129,6 +131,19 @@ export interface Ledger8EntryProviders {
 }
 
 /**
+ * What {@link acquireLedger8Runtime} consults: the read surface for the one
+ * head read, and the three write seams for their era declarations.
+ *
+ * Narrower than {@link Ledger8EntryProviders} — no ZK config, no logger — so a
+ * reader can see that acquisition reads nothing else, and so a test can drive
+ * it without standing up a provider set it does not exercise. A full
+ * `Ledger8EntryProviders` satisfies it structurally.
+ */
+export interface Ledger8RuntimeProviders extends TransactionSeams {
+  readonly publicDataProvider: HeadVersionSource;
+}
+
+/**
  * The era facade and the retained engine, acquired once at an operation's
  * asynchronous start.
  *
@@ -153,12 +168,26 @@ export interface Ledger8Runtime {
 
 /**
  * Resolves the head era and acquires the retained engine, then refuses the
- * `(retained artifact, head era)` pairings that cannot run.
+ * `(retained artifact, head era)` pairings that cannot run and the provider
+ * sets that cannot carry a retained-era transaction.
  *
  * The two acquisitions are independent and are started together; keep them
  * that way, because neither needs the other's answer.
  *
- * @param pdp The read surface, for the one head read.
+ * Every retained-era operation funnels through here — the call arm and the
+ * deploy arm both — which is why the seam check belongs here rather than in
+ * each of them.
+ *
+ * The era checked is `resolved.head`, because that is what picks the seam arm
+ * in {@link submitLedger8Tx}: a pre-fork head crosses as `{ version: 'v8',
+ * txBytes }` and a post-fork head as `{ version: 'v9', tx }`, since the tag
+ * names the runtime that produced the bytes and keep-state composes on the
+ * CURRENT era. Checking the artifact's era instead would refuse every keep-state
+ * operation whose wallet serves only the current era — which is the ordinary
+ * post-fork wallet.
+ *
+ * @param providers The provider set, for the one head read and for the three
+ * write seams' era declarations.
  * @param kind Whether this operation deploys a contract or calls one already
  * deployed — the one cell where the era table differs.
  * @param breadcrumbs The optional logger the head-resolution and
@@ -168,20 +197,27 @@ export interface Ledger8Runtime {
  * @throws Ledger8DeployOnV9Error for a retained-era deploy on a post-fork head.
  * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
  * @throws Ledger8RuntimeMissingError if the retained runtime cannot be acquired.
+ * @throws SeamEraUnsupportedError if a write seam does not serve the era this
+ * operation's payloads will carry, which is the head era.
  * @see {@link EraDispatch} for the pairing table.
  */
 export const acquireLedger8Runtime = async (
-  pdp: HeadVersionSource,
+  providers: Ledger8RuntimeProviders,
   kind: 'call' | 'deploy',
   breadcrumbs?: { readonly logger?: BreadcrumbSink; readonly contractAddress?: string }
 ): Promise<Ledger8Runtime> => {
   const [resolved, engine, retainedEra] = await Promise.all([
-    resolveOperationEra(pdp, breadcrumbs?.logger),
+    resolveOperationEra(providers.publicDataProvider, breadcrumbs?.logger),
     loadLedger8Engine(),
     loadLedgerEra('v8')
   ]);
   assertEraCompatible('ledger8', resolved.head, kind);
-  // AFTER the gate: a selection breadcrumb written before it would claim a
+  // AFTER the era gate, and both before the selection breadcrumb and before any
+  // composition: a proof is the expensive step and the first of the three, so a
+  // seam that cannot take this operation's payload has to be found now rather
+  // than after one has been paid for.
+  assertSeamsSupportEra(resolved.head, providers);
+  // AFTER the gates: a selection breadcrumb written before them would claim a
   // pipeline for an operation the very next line refuses.
   emitPipelineSelection(breadcrumbs?.logger, resolved, 'ledger8', breadcrumbs?.contractAddress);
 
@@ -577,7 +613,7 @@ export const runLedger8Call = async (
   providers: Ledger8EntryProviders,
   request: Ledger8CallRequest
 ): Promise<Ledger8SubmittedCall> => {
-  const { resolved, engine, retainedEra } = await acquireLedger8Runtime(providers.publicDataProvider, 'call', {
+  const { resolved, engine, retainedEra } = await acquireLedger8Runtime(providers, 'call', {
     logger: providers.loggerProvider,
     contractAddress: request.contractAddress
   });
@@ -675,7 +711,7 @@ export const runLedger8Deploy = async (
 ): Promise<Ledger8SubmittedDeploy> => {
   // No contract address on this arm: a deploy has none until the composition
   // below mints one, so the selection breadcrumb leaves the field out.
-  const { resolved, engine } = await acquireLedger8Runtime(providers.publicDataProvider, 'deploy', {
+  const { resolved, engine } = await acquireLedger8Runtime(providers, 'deploy', {
     logger: providers.loggerProvider
   });
 

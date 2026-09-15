@@ -48,7 +48,12 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   V8_PAYLOAD_UNSUPPORTED: 'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED',
   UNTAGGED_PAYLOAD: 'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD',
   ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_ERA_UNSUPPORTED',
-  ERA_UNRESOLVABLE: 'MIDNIGHT_JS_PR_ERA_UNRESOLVABLE'
+  ERA_UNRESOLVABLE: 'MIDNIGHT_JS_PR_ERA_UNRESOLVABLE',
+  // Distinct from ERA_UNSUPPORTED above, which belongs to the READ surface:
+  // that one means "this record cannot be decoded", raised while decoding. This
+  // one means "this provider states it does not serve that era", raised from a
+  // declaration before any payload exists.
+  SEAM_ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED'
 } as const);
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
 
