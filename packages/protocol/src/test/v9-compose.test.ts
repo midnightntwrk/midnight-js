@@ -137,7 +137,7 @@ const caught = (compose: () => unknown): unknown => {
 
 describe('composeV9CallTx', () => {
   it('composes a single call into one intent carrying one contract call', () => {
-    const transaction = readBack(composeV9CallTx(callOptions()));
+    const transaction = readBack(composeV9CallTx(callOptions()).transaction);
 
     const intents = [...(transaction.intents?.values() ?? [])];
     expect(intents).toHaveLength(1);
@@ -159,7 +159,7 @@ describe('composeV9CallTx', () => {
   // provers resolve artifacts by. A bare circuit id is ambiguous across
   // contracts and cannot be resolved through the ZK config registry at all.
   it('keys the call by the contract-qualified location that hashes the deployed verifier key', () => {
-    const calls = callsIn(readBack(composeV9CallTx(callOptions())));
+    const calls = callsIn(readBack(composeV9CallTx(callOptions()).transaction));
 
     expect(String(calls[0].proof)).toContain(
       encodeContractKeyLocation({
@@ -175,14 +175,14 @@ describe('composeV9CallTx', () => {
   // randomness. Reusing a caller's commitment for a root call, or sampling
   // fresh randomness for a callee, breaks the commitment the ledger checks.
   it('samples fresh randomness for a root call and reuses a supplied commitment for a callee', () => {
-    const rootA = callsIn(readBack(composeV9CallTx(callOptions())))[0];
-    const rootB = callsIn(readBack(composeV9CallTx(callOptions())))[0];
+    const rootA = callsIn(readBack(composeV9CallTx(callOptions()).transaction))[0];
+    const rootB = callsIn(readBack(composeV9CallTx(callOptions()).transaction))[0];
     expect(String(rootA.communicationCommitment)).not.toBe(String(rootB.communicationCommitment));
 
     const randomness = ledgerV9.communicationCommitmentRandomness();
     const boundOptions = callOptions({ calls: [callEntry({ communicationCommitmentRandomness: randomness })] });
-    const calleeA = callsIn(readBack(composeV9CallTx(boundOptions)))[0];
-    const calleeB = callsIn(readBack(composeV9CallTx(boundOptions)))[0];
+    const calleeA = callsIn(readBack(composeV9CallTx(boundOptions).transaction))[0];
+    const calleeB = callsIn(readBack(composeV9CallTx(boundOptions).transaction))[0];
     expect(String(calleeA.communicationCommitment)).toBe(String(calleeB.communicationCommitment));
   });
 
@@ -194,7 +194,7 @@ describe('composeV9CallTx', () => {
     };
 
     const transaction = readBack(
-      composeV9CallTx(callOptions({ guaranteedZswapOffer: buildOffer(), fallibleZswapOffer: buildOffer() }))
+      composeV9CallTx(callOptions({ zswapOffer: () => ({ guaranteed: buildOffer(), fallible: buildOffer() }) })).transaction
     );
 
     expect(transaction.guaranteedOffer?.outputs).toHaveLength(1);
@@ -207,7 +207,7 @@ describe('composeV9CallTx', () => {
   });
 
   it('refuses Zswap offer bytes this era cannot read, preserving the decoder failure', () => {
-    const error = caught(() => composeV9CallTx(callOptions({ guaranteedZswapOffer: new Uint8Array([1, 2, 3]) })));
+    const error = caught(() => composeV9CallTx(callOptions({ zswapOffer: () => ({ guaranteed: new Uint8Array([1, 2, 3]) }) })));
 
     expect(error).toBeInstanceOf(ComposeOptionError);
     expect(error).toMatchObject({ option: 'zswapOffer', version: 'v9' });
@@ -275,7 +275,7 @@ describe('composeV9CallTx', () => {
       ]
     });
 
-    const intents = [...(readBack(composeV9CallTx(options)).intents?.values() ?? [])];
+    const intents = [...(readBack(composeV9CallTx(options).transaction).intents?.values() ?? [])];
 
     expect(intents[0].guaranteedUnshieldedOffer?.outputs).toEqual([{ value: 42n, owner: USER, type: TOKEN }]);
     expect(intents[0].fallibleUnshieldedOffer?.outputs).toEqual([{ value: 7n, owner: USER, type: TOKEN }]);
@@ -304,7 +304,7 @@ describe('composeV9CallTx', () => {
       ]
     });
 
-    const transaction = readBack(composeV9CallTx(options));
+    const transaction = readBack(composeV9CallTx(options).transaction);
 
     const calls = callsIn(transaction);
     expect(calls.map((call) => call.address)).toEqual([calleeAddress, ADDRESS]);
@@ -408,7 +408,7 @@ describe('composeV9DeployTx', () => {
     // Sampled repeatedly: a randomized segment can coincide with a fixed one
     // once, so a single comparison could pass by luck.
     const callSegments = new Set(
-      Array.from({ length: 8 }, () => segmentsOf(composeV9CallTx(callOptions())).join(','))
+      Array.from({ length: 8 }, () => segmentsOf(composeV9CallTx(callOptions()).transaction).join(','))
     );
     expect(callSegments.size).toBeGreaterThan(1);
   });

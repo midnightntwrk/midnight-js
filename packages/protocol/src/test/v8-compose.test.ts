@@ -103,7 +103,7 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
   it('composes and serializes a v8-native call transaction, tag-prefixed exactly as ledger-v8 emits it', () => {
     const contractState = buildV8ContractStateWithOperation('increment');
 
-    const bytes = composeV8CallTx(buildCallOptions(contractState), LedgerV8);
+    const { transaction: bytes } = composeV8CallTx(buildCallOptions(contractState), LedgerV8);
 
     expect(bytes).toBeInstanceOf(Uint8Array);
     const tag = Buffer.from(bytes.subarray(0, V8_UNPROVEN_TX_TAG.length)).toString('latin1');
@@ -115,7 +115,7 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
   it('round-trips through the real v8 decoder: deserialize then re-serialize yields byte-identical output', () => {
     const contractState = buildV8ContractStateWithOperation('increment');
 
-    const bytes = composeV8CallTx(buildCallOptions(contractState), LedgerV8);
+    const { transaction: bytes } = composeV8CallTx(buildCallOptions(contractState), LedgerV8);
     const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
 
     expect(Buffer.from(back.serialize())).toEqual(Buffer.from(bytes));

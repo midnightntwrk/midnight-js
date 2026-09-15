@@ -134,7 +134,7 @@ The engine exposes `downConvertForExecution`, `executeCircuit`, `executeConstruc
 
 `migratedV9ContractState` passed to `wrapKeepStateCall` must be the migrated v9 state **as read from chain**, which is not `rawContractState` above: it is where the deployed operation and its verifier key come from, and the key location the prototype carries is derived from that key. A blank or constructor-built state throws `ComposeFailedError` (code `MIDNIGHT_JS_P_COMPOSE_FAILED`) with `stage` naming which lookup failed and `version` naming the ledger era it was composing for.
 
-Circuits with Zswap coin effects run on this leg like any other. The transcript carries `zswapLocalState` — the post-call Zswap local state, decoded into the runtime's public shape — which is what you turn into the transaction's segmented Zswap offer (`zswapStateToSegmentedOffer` in `@midnight-ntwrk/midnight-js-contracts`) and pass to `composeCallTx` as `guaranteedZswapOffer` / `fallibleZswapOffer`. Dropping it is what would leave you composing a transaction missing the coin movements the circuit recorded.
+Circuits with Zswap coin effects run on this leg like any other. The transcript carries `zswapLocalState` — the post-call Zswap local state, decoded into the runtime's public shape — which is what you turn into the transaction's segmented Zswap offer (`zswapStateToSegmentedOffer` in `@midnight-ntwrk/midnight-js-contracts`). You do not hand that offer to `composeCallTx` as ready-made bytes: you hand it a `zswapOffer` factory, which the composer calls back with each call's guaranteed/fallible split once it has drawn it. That split is the fourth argument `zswapStateToSegmentedOffer` routes by — without it every movement lands in the guaranteed segment, and a circuit whose transcript is wholly fallible produces an offer the wallet cannot balance. Omitting the factory altogether leaves you composing a transaction missing the coin movements the circuit recorded.
 
 The transcript also carries `partitionContext` — the block, the starting effects and the commitment indices the pre-fork query context recorded while the circuit ran. Pass it on unchanged: a transcript composed without it is partitioned against a context the circuit never ran on, and a circuit that RECEIVED a coin in-contract cannot be partitioned at all, because the index its commitment was registered at lives only in that context. `wrapKeepStateCall` carries it for you; a hand-built call entry has to supply it. A context the target era cannot read throws `ComposeFailedError` with `stage: 'call-partition-context'`.
 
@@ -151,7 +151,13 @@ const era = await loadLedgerEra(versionOfRecord(indexerRecord));
 
 const state = era.extractState(rawContractState);
 const decoded = era.decodeContractState(rawContractState);
-const callTx = era.composeCallTx({ calls, networkId, ttl });
+const { transaction, partitions } = era.composeCallTx({
+  calls,
+  networkId,
+  ttl,
+  // Called back with one `[guaranteed, fallible]` pair per call, in `calls` order.
+  zswapOffer: ([partition]) => buildSegmentedOfferBytes(partition)
+});
 const deploy = era.composeDeployTx({ contractState, verifierKeys, networkId, ttl });
 ```
 
@@ -160,7 +166,7 @@ const deploy = era.composeDeployTx({ contractState, verifierKeys, networkId, ttl
 | `version` | The era this object is bound to — the value that was passed in |
 | `extractState` | Reads the primary state out of a raw contract-state envelope |
 | `decodeContractState` | Reads an envelope into its state plus the entry points it declares, each with its verifier key and that key's hash |
-| `composeCallTx` | Composes an UNPROVEN call transaction and serializes it |
+| `composeCallTx` | Composes an UNPROVEN call transaction and answers with its bytes plus each call's guaranteed/fallible split |
 | `composeDeployTx` | Composes an UNPROVEN deploy and returns it with the address it will have and the initial state that address came from |
 
 Derive the era with `versionOfRecord` or `networkHeadVersion` (see [Version Module](#version-module)) rather than writing the string by hand. An era string that is not `'v8'` or `'v9'` rejects with `UnknownLedgerVersionError`; the offending value is on the error's `requestedVersion` field, not in its message.

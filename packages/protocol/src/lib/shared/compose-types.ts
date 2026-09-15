@@ -114,26 +114,22 @@ export type PartitionedCallTranscript = [
 ];
 
 /**
- * What an era needs to partition one call's transcript, which is strictly less
- * than composing the call: no operation registry, no private outputs, no
- * transaction envelope. The era supplies its own version.
+ * Builds the transaction's Zswap offers once the composer holds every call's
+ * partition, in `calls` order. Returns serialized offer bytes per segment; an
+ * absent member is the normal shape of a segment that moves no shielded coin.
+ *
+ * A function rather than ready-made bytes because a coin has to be routed into
+ * the segment its movement belongs to, and the segment boundary is not known
+ * until the transcripts are split -- which happens inside the composer. There
+ * is deliberately no way to supply an offer without being handed the partition
+ * it must be routed against.
+ *
+ * @see {@link ComposeRefusalOrder}
  */
-export interface EraPartitionCallOptions {
-  readonly circuitId: string;
-  readonly contractAddress: string;
-  readonly transcript: CallTranscriptSource;
-  /**
-   * The chain's own serialized ledger parameters at the block this call is
-   * built against, or {@link INITIAL_LEDGER_PARAMETERS} to partition against
-   * the era's initial cost model instead.
-   *
-   * Required, exactly as on `ComposeCallEntry`. The partitioner runs on this
-   * path too, so an optional field here would reopen the silent
-   * wrong-cost-model fallback that {@link LedgerParametersOption} exists to
-   * close.
-   */
-  readonly ledgerParameters: LedgerParametersOption;
-}
+export type ZswapOfferFactory = (partitions: readonly PartitionedCallTranscript[]) => {
+  readonly guaranteed?: Uint8Array;
+  readonly fallible?: Uint8Array;
+};
 
 /**
  * One contract call in a call transaction.
@@ -175,10 +171,12 @@ export interface ComposeCallEntry {
  * `calls` is in execution-trace order: cross-contract callees first, the root
  * call last. A circuit with no cross-contract calls has a single entry.
  *
- * The two Zswap offers are serialized offer bytes. `networkId` and `ttl` carry
- * the caller's policy decisions — which network, how long the transaction
- * lives.
+ * `zswapOffer` is called back once every call has been assembled, with the
+ * partitions to route against; omitting it composes a transaction with no
+ * shielded offer. `networkId` and `ttl` carry the caller's policy decisions —
+ * which network, how long the transaction lives.
  *
+ * @see {@link ZswapOfferFactory}
  * @see {@link ComposeRefusalOrder} for when the envelope options are checked.
  * @see {@link EraSeam}
  */
@@ -186,8 +184,23 @@ export interface ComposeCallOptions {
   readonly calls: readonly ComposeCallEntry[];
   readonly networkId: string;
   readonly ttl: Date;
-  readonly guaranteedZswapOffer?: Uint8Array;
-  readonly fallibleZswapOffer?: Uint8Array;
+  readonly zswapOffer?: ZswapOfferFactory;
+}
+
+/**
+ * What a composed call transaction answers with: the serialized UNPROVEN
+ * transaction, and the partition each call was split into, in `calls` order.
+ *
+ * The partitions are returned rather than left inside the composer because a
+ * caller that has to report what a call recorded per segment would otherwise
+ * have to split the same transcript a second time, and nothing would notice if
+ * the two answers stopped agreeing.
+ *
+ * @see {@link EraSeam}
+ */
+export interface ComposeCallResultPojo {
+  readonly transaction: Uint8Array;
+  readonly partitions: readonly PartitionedCallTranscript[];
 }
 
 /**

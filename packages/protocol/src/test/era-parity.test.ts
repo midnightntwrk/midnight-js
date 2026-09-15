@@ -23,7 +23,12 @@ import { describe, expect, it } from 'vitest';
 
 import { PROTOCOL_ERROR_CODES, StateDecodeFailedError } from '../errors';
 import { loadLedgerEra } from '../lib/era/load-era';
-import type { CallTranscriptSource, ComposeCallOptions, ComposeDeployOptions } from '../lib/shared/compose-types';
+import type {
+  CallTranscriptSource,
+  ComposeCallOptions,
+  ComposeDeployOptions,
+  PartitionedCallTranscript
+} from '../lib/shared/compose-types';
 import type { LedgerVersion } from '../lib/shared/ledger-version';
 import { emptyPartitionContext, fixturePath, readHexFixture } from './fixtures';
 
@@ -412,7 +417,7 @@ describe('the two ledger eras run the same scenario', () => {
       ]
     };
 
-    const shape = FIXTURES[version].readTransaction(era.composeCallTx(options));
+    const shape = FIXTURES[version].readTransaction(era.composeCallTx(options).transaction);
 
     expect(shape.calls[0].claimedShieldedReceives).toEqual([received]);
   });
@@ -421,7 +426,7 @@ describe('the two ledger eras run the same scenario', () => {
     const era = await loadLedgerEra(version);
     const options = callOptionsFor(version);
 
-    const shape = FIXTURES[version].readTransaction(era.composeCallTx(options));
+    const shape = FIXTURES[version].readTransaction(era.composeCallTx(options).transaction);
 
     expect(shape.intents).toBe(1);
     expect(shape.calls).toHaveLength(1);
@@ -442,12 +447,12 @@ describe('the two ledger eras run the same scenario', () => {
     const payee = FIXTURES[version].samplePayee();
     const options = callOptionsFor(version);
 
-    const bytes = era.composeCallTx({
+    const { transaction } = era.composeCallTx({
       ...options,
       calls: [{ ...options.calls[0], transcript: payingTranscriptSource(payee) }]
     });
 
-    const outputs = FIXTURES[version].readUnshieldedOutputs(bytes);
+    const outputs = FIXTURES[version].readUnshieldedOutputs(transaction);
     expect(outputs.guaranteed).toEqual([{ value: GUARANTEED_PAYOUT, owner: payee.owner, type: payee.token }]);
     expect(outputs.fallible).toEqual([{ value: FALLIBLE_PAYOUT, owner: payee.owner, type: payee.token }]);
   });
@@ -588,20 +593,19 @@ describe('the two ledger eras run the same scenario', () => {
     const era = await loadLedgerEra(version);
     const fixture = FIXTURES[version];
 
-    const bytes = era.composeCallTx({
+    const { transaction } = era.composeCallTx({
       ...callOptionsFor(version),
-      guaranteedZswapOffer: fixture.sampleZswapOffer(),
-      fallibleZswapOffer: fixture.sampleZswapOffer()
+      zswapOffer: () => ({ guaranteed: fixture.sampleZswapOffer(), fallible: fixture.sampleZswapOffer() })
     });
 
-    expect(fixture.readZswapOutputCounts(bytes)).toEqual({ guaranteed: 1, fallible: 1 });
+    expect(fixture.readZswapOutputCounts(transaction)).toEqual({ guaranteed: 1, fallible: 1 });
   });
 
   it.each(ERAS)('refuses unreadable Zswap offer bytes with the same coded error on %s', async (version) => {
     const era = await loadLedgerEra(version);
 
     expect(() =>
-      era.composeCallTx({ ...callOptionsFor(version), guaranteedZswapOffer: new Uint8Array([1, 2, 3]) })
+      era.composeCallTx({ ...callOptionsFor(version), zswapOffer: () => ({ guaranteed: new Uint8Array([1, 2, 3]) }) })
     ).toThrowError(
       expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'zswapOffer', version })
     );
@@ -620,7 +624,7 @@ describe('the two ledger eras run the same scenario', () => {
       era.composeCallTx({
         ...callOptionsFor(version),
         networkId: '',
-        guaranteedZswapOffer: new Uint8Array([0xff, 0xff])
+        zswapOffer: () => ({ guaranteed: new Uint8Array([0xff, 0xff]) })
       })
     ).toThrowError(
       expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'networkId', version })
@@ -646,33 +650,32 @@ describe('the two ledger eras run the same scenario', () => {
     expect(() => structuredClone(era.composeDeployTx(deployOptionsFor(version)))).not.toThrow();
   });
 
-  // Both eras answer the partition question the same way for the same call, and
-  // the pair either answers with composes. The retained CALL pipeline depends on
-  // exactly this: it resolves the split before it can route a Zswap coin, then
-  // hands the composer the pair rather than the raw op sequence.
-  it.each(ERAS)('partitions a call the same way on %s, and composes from the pair it returns', async (version) => {
+  // Both eras hand the offer factory the same split for the same call, and
+  // answer with it. The retained CALL pipeline depends on exactly this: it can
+  // only route a Zswap coin once it holds the split, and the factory is the
+  // only place that split is ever offered.
+  it.each(ERAS)('hands %s the same partition to route against, and answers with it', async (version) => {
+    // Arrange.
     const era = await loadLedgerEra(version);
-    const [call] = callOptionsFor(version).calls;
+    const routed: PartitionedCallTranscript[] = [];
 
-    const [guaranteed, fallible] = era.partitionCallTranscript({
-      circuitId: call.circuitId,
-      contractAddress: call.contractAddress,
-      transcript: call.transcript,
-      ledgerParameters: call.ledgerParameters
+    // Act.
+    const result = era.composeCallTx({
+      ...callOptionsFor(version),
+      zswapOffer: (partitions) => {
+        routed.push(...partitions);
+        return {};
+      }
     });
 
-    // This fixture's program is wholly guaranteed on both eras. Pinned in both
-    // directions: a seam that answered with an empty pair would satisfy a
-    // one-sided check and compose a call that records nothing.
+    // Assert: this fixture's program is wholly guaranteed on both eras. Pinned
+    // in both directions -- a factory handed an empty pair would satisfy a
+    // one-sided check and route every coin into the guaranteed segment.
+    expect(routed).toHaveLength(1);
+    const [guaranteed, fallible] = routed[0];
     expect(guaranteed).toBeDefined();
     expect(fallible).toBeUndefined();
-
-    expect(() =>
-      era.composeCallTx({
-        ...callOptionsFor(version),
-        calls: [{ ...call, transcript: { kind: 'partitioned', guaranteed, fallible } }]
-      })
-    ).not.toThrow();
+    expect(result.partitions).toEqual(routed);
   });
 
   it.each(ERAS)('exposes the same method names on %s', async (version) => {
@@ -683,7 +686,6 @@ describe('the two ledger eras run the same scenario', () => {
       'composeDeployTx',
       'decodeContractState',
       'extractState',
-      'partitionCallTranscript',
       'version'
     ]);
   });

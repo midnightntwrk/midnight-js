@@ -175,7 +175,6 @@ describe('dist laziness gate', () => {
       'composeDeployTx',
       'decodeContractState',
       'extractState',
-      'partitionCallTranscript',
       'version'
     ]);
     expect(era.decodeContractState(readHexFixture('state-migrated-v9.hex')).entryPoints.length).toBeGreaterThan(0);

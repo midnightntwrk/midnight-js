@@ -18,7 +18,13 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { ComposeFailedError, ComposeOptionError, NO_CIRCUIT } from '../../errors';
 import { assembleCallPrototype } from '../shared/assemble-call';
 import { assertComposeEnvelope } from '../shared/compose-options';
-import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from '../shared/compose-types';
+import type {
+  ComposeCallOptions,
+  ComposeCallResultPojo,
+  ComposeDeployOptions,
+  DeployResultPojo,
+  PartitionedCallTranscript
+} from '../shared/compose-types';
 import { aggregateUnshieldedOffers } from '../shared/unshielded';
 import { entryPointName, resolveVerifierKeyRegistrations } from '../shared/verifier-keys';
 
@@ -59,42 +65,45 @@ const readZswapOffer = (raw: Uint8Array | undefined): ledgerV9.UnprovenOffer | u
  * before `.prove()` is ever called.
  *
  * @param options The calls to compose and the transaction-wide envelope.
- * @returns The serialized UNPROVEN transaction.
+ * @returns The serialized UNPROVEN transaction and each call's partition.
  * @throws ComposeFailedError if the call list is empty (stage `'call-empty'`)
  * or a call cannot be assembled; `stage` names which step refused it.
  * @throws ComposeOptionError if the network id, the ttl, a Zswap offer or a
  * call's contract state is unusable.
  * @see {@link ComposeRefusalOrder}
  */
-export const composeV9CallTx = (options: ComposeCallOptions): Uint8Array => {
-  const { calls, networkId, ttl, guaranteedZswapOffer, fallibleZswapOffer } = options;
+export const composeV9CallTx = (options: ComposeCallOptions): ComposeCallResultPojo => {
+  const { calls, networkId, ttl, zswapOffer } = options;
   assertComposeEnvelope(options, 'v9');
   if (calls.length === 0) {
     throw new ComposeFailedError('v9', 'call-empty', NO_CIRCUIT);
   }
 
-  // Read both offers before composing anything -- see ComposeRefusalOrder.
-  const guaranteedOffer = readZswapOffer(guaranteedZswapOffer);
-  const fallibleOffer = readZswapOffer(fallibleZswapOffer);
-
   let intent = ledgerV9.Intent.new(ttl);
+  const partitions: PartitionedCallTranscript[] = [];
   for (const call of calls) {
-    intent = intent.addCall(
-      assembleCallPrototype(ledgerV9, {
-        circuitId: call.circuitId,
-        contractAddress: call.contractAddress,
-        transcript: call.transcript,
-        privateTranscriptOutputs: call.privateTranscriptOutputs,
-        input: call.input,
-        output: call.output,
-        communicationCommitmentRandomness: call.communicationCommitmentRandomness,
-        ledgerParameters: call.ledgerParameters,
-        operations: readContractState(call.contractState),
-        stage: 'call-operation',
-        version: 'v9'
-      })
-    );
+    const { prototype, partition } = assembleCallPrototype(ledgerV9, {
+      circuitId: call.circuitId,
+      contractAddress: call.contractAddress,
+      transcript: call.transcript,
+      privateTranscriptOutputs: call.privateTranscriptOutputs,
+      input: call.input,
+      output: call.output,
+      communicationCommitmentRandomness: call.communicationCommitmentRandomness,
+      ledgerParameters: call.ledgerParameters,
+      operations: readContractState(call.contractState),
+      stage: 'call-operation',
+      version: 'v9'
+    });
+    partitions.push(partition);
+    intent = intent.addCall(prototype);
   }
+
+  // Built only once every call is split, which is the whole point of taking a
+  // factory -- see ComposeRefusalOrder.
+  const offers = zswapOffer?.(partitions);
+  const guaranteedOffer = readZswapOffer(offers?.guaranteed);
+  const fallibleOffer = readZswapOffer(offers?.fallible);
 
   // Read the partitioned pairs back off the intent rather than re-deriving
   // them -- see ComposeRefusalOrder.
@@ -116,7 +125,10 @@ export const composeV9CallTx = (options: ComposeCallOptions): Uint8Array => {
     intent.fallibleUnshieldedOffer = unshielded.fallible;
   }
 
-  return ledgerV9.Transaction.fromPartsRandomized(networkId, guaranteedOffer, fallibleOffer, intent).serialize();
+  return {
+    transaction: ledgerV9.Transaction.fromPartsRandomized(networkId, guaranteedOffer, fallibleOffer, intent).serialize(),
+    partitions
+  };
 };
 
 /**

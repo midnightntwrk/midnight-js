@@ -44,7 +44,6 @@ describe('loadLedgerEra', () => {
       'composeDeployTx',
       'decodeContractState',
       'extractState',
-      'partitionCallTranscript',
       'version'
     ]);
   });

@@ -68,8 +68,9 @@ Four rules bound this:
    network answered with — so a handle there would be a value the caller cannot
    type, compare or safely pass on. Every value on that surface is era-crossing
    and is therefore encoded: `extractState` returns an `EncodedStateValue`,
-   `decodeContractState` a `ContractStatePojo`, `composeCallTx` a `Uint8Array`,
-   `composeDeployTx` a `DeployResultPojo` of bytes and a string. Inward too —
+   `decodeContractState` a `ContractStatePojo`, `composeCallTx` a
+   `ComposeCallResultPojo` of bytes and the ledger's own declared transcript
+   algebra, `composeDeployTx` a `DeployResultPojo` of bytes and a string. Inward too —
    `composeEraV8DeployTx` (`src/lib/v8/adapt.ts`) hands the contract state to
    the v8-native deploy leg as BYTES, which that leg deserializes into its own
    era rather than accepting a handle.
