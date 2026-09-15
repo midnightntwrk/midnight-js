@@ -19,6 +19,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CONTRACTS_ERROR_CODES,
   hasErrorCode,
+  hasForeignErrorCode,
   MIDNIGHT_JS_ERROR_CODES,
   PROVIDER_ERROR_CODES,
   UTILS_ERROR_CODES
@@ -76,13 +77,21 @@ describe('hasErrorCode', () => {
     expect(hasErrorCode(error, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(false);
   });
 
-  it('returns false for the with-code form even for a plausible-looking typo of a real code', () => {
+  it('rejects a typo of a real code at compile time', () => {
     const error: unknown = Object.assign(new Error('boom'), { code: PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED });
 
-    // `hasErrorCode<C extends string>` intentionally does not require `C` to
-    // be a member of MidnightJsErrorCode, so comparing against an arbitrary
-    // (here, typo'd) string still compiles — and correctly returns false.
+    // The `@ts-expect-error` IS the assertion: it fails the build if the typo
+    // ever starts compiling. A runtime `toBe(false)` cannot catch this, because
+    // a typo'd code is false either way.
+    // @ts-expect-error -- not a member of MidnightJsErrorCode
     expect(hasErrorCode(error, 'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTD')).toBe(false);
+  });
+
+  it('still compares against a foreign code through the explicit form', () => {
+    const econnrefused: unknown = Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
+
+    expect(hasForeignErrorCode(econnrefused, 'ECONNREFUSED')).toBe(true);
+    expect(hasForeignErrorCode(econnrefused, 'ENOTFOUND')).toBe(false);
   });
 
   it('returns false for a plain Error without a code property', () => {

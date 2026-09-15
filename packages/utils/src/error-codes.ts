@@ -76,6 +76,9 @@ export const MIDNIGHT_JS_ERROR_CODES: readonly MidnightJsErrorCode[] = Object.fr
 
 const MIDNIGHT_JS_ERROR_CODE_SET: ReadonlySet<string> = new Set(MIDNIGHT_JS_ERROR_CODES);
 
+const codeOf = (e: unknown): e is Error & { code: string } =>
+  e instanceof Error && 'code' in e && typeof e.code === 'string';
+
 /**
  * Type guard for "this is one of midnight-js's own coded errors" — narrows
  * to `Error & { code: MidnightJsErrorCode }` only when `e.code` is present
@@ -85,17 +88,32 @@ const MIDNIGHT_JS_ERROR_CODE_SET: ReadonlySet<string> = new Set(MIDNIGHT_JS_ERRO
 export function hasErrorCode(e: unknown): e is Error & { code: MidnightJsErrorCode };
 /**
  * Type guard for "this error carries exactly `code`" — narrows to
- * `Error & { code: C }` when `e.code === code`. `C` is not required to be a
- * member of {@link MidnightJsErrorCode}, so this form also works for
- * comparing against a specific foreign code.
+ * `Error & { code: C }` when `e.code === code`.
+ *
+ * `code` must be one of this framework's own codes, so a typo is a compile
+ * error rather than a guard that silently never matches. To compare against a
+ * code this framework does not own, use {@link hasForeignErrorCode}.
  */
-export function hasErrorCode<C extends string>(e: unknown, code: C): e is Error & { code: C };
-export function hasErrorCode<C extends string>(e: unknown, code?: C): boolean {
-  if (!(e instanceof Error) || !('code' in e) || typeof e.code !== 'string') {
+export function hasErrorCode<C extends MidnightJsErrorCode>(e: unknown, code: C): e is Error & { code: C };
+export function hasErrorCode<C extends MidnightJsErrorCode>(e: unknown, code?: C): boolean {
+  if (!codeOf(e)) {
     return false;
   }
   if (code === undefined) {
     return MIDNIGHT_JS_ERROR_CODE_SET.has(e.code);
   }
   return e.code === code;
+}
+
+/**
+ * Type guard for "this error carries exactly `code`", where `code` belongs to
+ * someone else — Node's `ECONNREFUSED`, a driver's own vocabulary, anything
+ * outside {@link MidnightJsErrorCode}.
+ *
+ * Separate from {@link hasErrorCode} so that reaching outside this framework's
+ * codes is deliberate and visible at the call site, instead of being the same
+ * call that a typo degrades into.
+ */
+export function hasForeignErrorCode<C extends string>(e: unknown, code: C): e is Error & { code: C } {
+  return codeOf(e) && e.code === code;
 }

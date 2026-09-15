@@ -123,9 +123,14 @@ MIDNIGHT_JS_ERROR_CODES: readonly MidnightJsErrorCode[]
 // - no-arg: true only if `e` is an Error and `e.code` is a member of
 //   MIDNIGHT_JS_ERROR_CODES
 hasErrorCode(e: unknown): e is Error & { code: MidnightJsErrorCode }
-// - with-code: true only if `e.code === code` (code need not be a member of
-//   MidnightJsErrorCode, so this also compares against foreign codes)
-hasErrorCode<C extends string>(e: unknown, code: C): e is Error & { code: C }
+// - with-code: true only if `e.code === code`. `code` must be one of this
+//   framework's own codes, so a typo is a compile error.
+hasErrorCode<C extends MidnightJsErrorCode>(e: unknown, code: C): e is Error & { code: C }
+
+// Same comparison for a code this framework does NOT own (Node's
+// ECONNREFUSED, a driver's own vocabulary). Separate name so that reaching
+// outside the framework's codes is deliberate and visible at the call site.
+hasForeignErrorCode<C extends string>(e: unknown, code: C): e is Error & { code: C }
 ```
 
 ### Serialized Tag Parsing
@@ -184,6 +189,7 @@ import {
   MIDNIGHT_JS_ERROR_CODES,
   type MidnightJsErrorCode,
   hasErrorCode,
+  hasForeignErrorCode,
 
   // Serialized tag parsing
   parseSerializedTag,
