@@ -81,9 +81,8 @@ import {
   Ledger8AmbiguousEntryPointError,
   Ledger8CallTxFailedError,
   Ledger8DeployOnV9Error,
-  Ledger8DeployRecordEraError,
-  Ledger8DeployRecordUnavailableError,
   Ledger8DeployTxFailedError,
+  Ledger8DeployUnconfirmedError,
   Ledger8RecipientUnmappableError,
   Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
@@ -2288,13 +2287,14 @@ describe('deploying a retained-era contract through deployContract', () => {
     // transaction this operation cannot have produced.
     providers.publicDataProvider.watchForDeployTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
 
-    await expect(
-      deployContract(providers, {
-        compiledContract: contract,
-        privateStateId: 'retained-private-state',
-        initialPrivateState: {}
-      })
-    ).rejects.toBeInstanceOf(EraInvariantViolationError);
+    const caught: unknown = await deployContract(providers, {
+      compiledContract: contract,
+      privateStateId: 'retained-private-state',
+      initialPrivateState: {}
+    }).catch((error: unknown) => error);
+
+    expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
+    expect((caught as Ledger8DeployUnconfirmedError).cause).toBeInstanceOf(EraInvariantViolationError);
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
     // The namespace switch too, not only the write: moved ahead of the assertions, a refused
     // deploy would leave the provider pointed at an address holding nothing, and the next
@@ -2310,10 +2310,14 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     // `status` is a field of the very record whose provenance is in doubt, so
     // the era is settled first and the refusal names the cause a caller can act
-    // on.
-    await expect(deployContract(providers, { compiledContract: contract })).rejects.toBeInstanceOf(
-      EraInvariantViolationError
+    // on. Read off `cause`: the refusal carries the era violation there, and a
+    // status refusal would carry none.
+    const caught: unknown = await deployContract(providers, { compiledContract: contract }).catch(
+      (error: unknown) => error
     );
+
+    expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
+    expect((caught as Ledger8DeployUnconfirmedError).cause).toBeInstanceOf(EraInvariantViolationError);
   });
 
   it('refuses a deploy the node recorded with a non-success status, and stores nothing', async () => {
@@ -2660,16 +2664,18 @@ describe('deploying a retained-era contract through deployContract', () => {
       caught = error;
     }
 
-    // Still the era violation a caller branches on, code and seam intact -- this arm adds a fact
-    // rather than replacing a condition.
-    expect(caught).toBeInstanceOf(EraInvariantViolationError);
-    expect(caught).toBeInstanceOf(Ledger8DeployRecordEraError);
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
-    expect((caught as Ledger8DeployRecordEraError).seam).toBe('watchForDeployTxData');
+    // One refusal for every way the record fails to arrive usable, with the era violation kept on
+    // `cause` -- so the condition a caller branches on, its seam and its registered code are all
+    // still reachable, and the original stack is not thrown away.
+    expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
+    const cause = (caught as Ledger8DeployUnconfirmedError).cause;
+    expect(cause).toBeInstanceOf(EraInvariantViolationError);
+    expect(hasErrorCode(cause, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
+    expect((cause as EraInvariantViolationError).seam).toBe('watchForDeployTxData');
     // The transaction is already on the network by the time this is raised, so discarding the key
     // here leaves whatever does finalize permanently unmaintainable.
-    expect((caught as Ledger8DeployRecordEraError).signingKey).toBe(SAMPLED_SIGNING_KEY);
-    expect((caught as Ledger8DeployRecordEraError).contractAddress).toMatch(/^[0-9a-f]+$/);
+    expect((caught as Ledger8DeployUnconfirmedError).signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect((caught as Ledger8DeployUnconfirmedError).contractAddress).toMatch(/^[0-9a-f]+$/);
   });
 
   it('carries the signing key when the record cannot be read back at all, keeping the rejection on cause', async () => {
@@ -2684,11 +2690,11 @@ describe('deploying a retained-era contract through deployContract', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8DeployRecordUnavailableError);
-    expect((caught as Ledger8DeployRecordUnavailableError).signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
+    expect((caught as Ledger8DeployUnconfirmedError).signingKey).toBe(SAMPLED_SIGNING_KEY);
     // The reason the record is unreadable is what the caller acts on, so it is kept rather than
     // replaced -- this class adds the one fact a provider rejection cannot carry.
-    expect((caught as Ledger8DeployRecordUnavailableError).cause).toBe(unreachable);
+    expect((caught as Ledger8DeployUnconfirmedError).cause).toBe(unreachable);
   });
 
   it('carries the signing key when the record comes back with no readable era tag', async () => {
@@ -2707,9 +2713,9 @@ describe('deploying a retained-era contract through deployContract', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8DeployRecordUnavailableError);
-    expect((caught as Ledger8DeployRecordUnavailableError).signingKey).toBe(SAMPLED_SIGNING_KEY);
-    expect((caught as Ledger8DeployRecordUnavailableError).cause).toBeInstanceOf(UntaggedPayloadError);
+    expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
+    expect((caught as Ledger8DeployUnconfirmedError).signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect((caught as Ledger8DeployUnconfirmedError).cause).toBeInstanceOf(UntaggedPayloadError);
   });
 });
 

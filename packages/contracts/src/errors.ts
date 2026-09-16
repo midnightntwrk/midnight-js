@@ -1257,11 +1257,11 @@ export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
 }
 
 /**
- * The sentence every post-submission retained-era deploy refusal ends on.
+ * The sentence a post-submission retained-era deploy refusal ends on.
  *
- * One text rather than one per class: the two refusals below differ in WHY the
- * deployment could not be confirmed, and not at all in what the caller has to
- * do about the key.
+ * One text rather than one per condition: the conditions below differ in WHY
+ * the deployment could not be confirmed, and not at all in what the caller has
+ * to do about the key.
  */
 const DEPLOY_KEY_STRANDED_REMEDIATION =
   "The deploy transaction was SUBMITTED and may still finalize. This error's 'signingKey' is the key its " +
@@ -1270,31 +1270,39 @@ const DEPLOY_KEY_STRANDED_REMEDIATION =
   'again: a deploy mints a fresh nonce, so a second attempt lands at a different one.';
 
 /**
- * An error indicating that a retained-era deployment was submitted, but the
- * record the chain made of it could not be read back and attributed.
+ * An error indicating that a retained-era deployment was submitted, but what
+ * the chain did with it could not be confirmed.
  *
- * Covers every way that step fails EXCEPT a readable record from the wrong era,
- * which keeps its own class: the read surface rejecting, and a record whose
- * version tag is missing or unrecognised.
+ * Covers every way that step fails: the read surface rejecting, a record whose
+ * version tag is missing or unrecognised, and a record that arrives from an era
+ * the head this deployment composed on cannot have recorded. One class over all
+ * of them because the caller's action is the same in each - the transaction may
+ * still finalize, this error holds the only copy of the signing key, and the
+ * address has to be checked before deploying again. One class does not mean one
+ * message: the wording states which condition was hit.
  *
  * Wraps the underlying failure on `cause` rather than replacing it: the reason
- * the record could not be established - an unreachable indexer, a timeout, an
- * untagged payload - is what a caller acts on, and this class adds the one fact
- * that failure cannot carry, which is the signing key the submitted deployment
- * was built with.
+ * the deployment is unconfirmed - an unreachable indexer, a timeout, an
+ * untagged payload, an era violation - is what a caller branches on, and this
+ * class adds the one fact that failure cannot carry, which is the key the
+ * submitted deployment was built with. An era violation reaching `cause`
+ * unchanged is what keeps `cause instanceof EraInvariantViolationError`, its
+ * seam and its registered code reachable.
  *
  * Reachable only AFTER submission. Every refusal ahead of it is raised with no
  * key having been sampled.
  *
- * Carries no registered error code, for the same reason
+ * Carries no registered error code of its own, for the same reason
  * {@link Ledger8DeployTxFailedError} does not.
  */
-export class Ledger8DeployRecordUnavailableError extends Error {
+export class Ledger8DeployUnconfirmedError extends Error {
   /**
    * @param contractAddress The address the submitted deployment composed.
    * @param signingKey The key that deployment's maintenance authority was built
    * from - sampled when the caller named none, and then this is its only copy.
-   * @param cause The read surface's own rejection.
+   * @param cause Why the deployment could not be confirmed: the read surface's
+   * own rejection, or the {@link EraInvariantViolationError} the record was
+   * refused by.
    */
   constructor(
     readonly contractAddress: string,
@@ -1302,42 +1310,16 @@ export class Ledger8DeployRecordUnavailableError extends Error {
     cause: unknown
   ) {
     super(
-      `The retained-era deployment of the contract at '${contractAddress}' was submitted, but the record ` +
-        "the chain made of it could not be read back and attributed - see this error's cause for what " +
-        `failed. ${DEPLOY_KEY_STRANDED_REMEDIATION}`,
+      `The retained-era deployment of the contract at '${contractAddress}' was submitted, but what the ` +
+        'chain did with it could not be confirmed. ' +
+        (cause instanceof EraInvariantViolationError
+          ? `The record came back from an era the head this deployment composed on cannot have recorded: ${cause.message}`
+          : "The record the chain made of it could not be read back and attributed - see this error's " +
+            'cause for what failed.') +
+        ` ${DEPLOY_KEY_STRANDED_REMEDIATION}`,
       { cause }
     );
-    this.name = 'Ledger8DeployRecordUnavailableError';
-  }
-}
-
-/**
- * An error indicating that the record of a SUBMITTED retained-era deployment
- * came back from an era the head that deployment composed on cannot have
- * recorded.
- *
- * An {@link EraInvariantViolationError}, and deliberately still one: the
- * violation, its seam and its registered code are what a caller branches on,
- * and this arm adds a fact rather than replacing a condition. The fact is the
- * signing key - sampled inside the composition and, before this class existed,
- * discarded by every refusal raised after submission.
- */
-export class Ledger8DeployRecordEraError extends EraInvariantViolationError {
-  /**
-   * @param contractAddress The address the submitted deployment composed.
-   * @param signingKey The key that deployment's maintenance authority was built
-   * from - sampled when the caller named none, and then this is its only copy.
-   * @param violation The era violation this refusal reports, whose seam, eras
-   * and message are carried through unchanged.
-   */
-  constructor(
-    readonly contractAddress: string,
-    readonly signingKey: Ledger8SigningKey,
-    violation: EraInvariantViolationError
-  ) {
-    super(violation.seam, violation.circuitId, violation.expected, violation.received);
-    this.name = 'Ledger8DeployRecordEraError';
-    this.message = `${violation.message} ${DEPLOY_KEY_STRANDED_REMEDIATION}`;
+    this.name = 'Ledger8DeployUnconfirmedError';
   }
 }
 

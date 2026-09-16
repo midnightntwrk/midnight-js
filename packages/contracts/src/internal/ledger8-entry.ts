@@ -69,9 +69,8 @@ import {
   IncompleteCallTxPrivateStateConfig,
   IncompleteDeployContractPrivateStateConfig,
   Ledger8CallTxFailedError,
-  Ledger8DeployRecordEraError,
-  Ledger8DeployRecordUnavailableError,
   Ledger8DeployTxFailedError,
+  Ledger8DeployUnconfirmedError,
   Ledger8SeamFailedError,
   type SubmittedOperation
 } from '../errors';
@@ -1301,9 +1300,8 @@ export interface Ledger8DeployedState {
  * @throws Error if `privateStateId` is present with an undefined value, which is
  * a caller that believes it named an id.
  * @throws Ledger8DeployTxFailedError if the node recorded a non-success status.
- * @throws Ledger8DeployRecordEraError if the record's era is not the head's.
- * @throws Ledger8DeployRecordUnavailableError if the record cannot be read back
- * and attributed at all.
+ * @throws Ledger8DeployUnconfirmedError if the record cannot be read back and
+ * attributed to the head at all, the record's era included.
  * @throws Every error {@link runLedger8Deploy} raises.
  */
 export const submitLedger8DeployTx = async (
@@ -1357,12 +1355,10 @@ export const submitLedger8DeployTx = async (
   } catch (error) {
     // EVERY way this step can fail -- the read surface rejecting, a record from
     // the wrong era, a record with no readable tag at all -- leaves the same
-    // caller holding the same problem, so every one of them carries the key.
-    // The era arm keeps its own class so the violation, its seam and its
-    // registered code stay what a caller branches on.
-    throw error instanceof EraInvariantViolationError
-      ? new Ledger8DeployRecordEraError(deploy.contractAddress, deploy.signingKey, error)
-      : new Ledger8DeployRecordUnavailableError(deploy.contractAddress, deploy.signingKey, error);
+    // caller holding the same problem, so one class carries the key over all of
+    // them. The failure itself rides on `cause`, so an era violation keeps its
+    // seam and its registered code where a caller branches on them.
+    throw new Ledger8DeployUnconfirmedError(deploy.contractAddress, deploy.signingKey, error);
   }
   assertLedger8DeploySucceeded(deployTxData, deploy.contractAddress, deploy.signingKey);
 

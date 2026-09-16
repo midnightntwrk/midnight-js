@@ -189,12 +189,11 @@ export async function deployContract<C extends Contract.Any>(
  * @throws Ledger8DeployTxFailedError If the retained-era deployment was recorded with a non-success
  *                                    status. Carries the signing key, because a `FailFallible`
  *                                    deployment landed.
- * @throws Ledger8DeployRecordEraError If the record of a submitted retained-era deployment comes
- *                                     back from an era the head it composed on cannot have
- *                                     recorded. Carries the signing key.
- * @throws Ledger8DeployRecordUnavailableError If the record of a submitted retained-era deployment
- *                                             cannot be read back at all. Carries the signing key
- *                                             and the read surface's own rejection on `cause`.
+ * @throws Ledger8DeployUnconfirmedError If what the chain did with a submitted retained-era
+ *                                        deployment cannot be confirmed - the record unreadable, or
+ *                                        back from an era the head it composed on cannot have
+ *                                        recorded. Carries the signing key, and the underlying
+ *                                        failure on `cause`.
  * @throws IncompleteDeployContractPrivateStateConfig If an `initialPrivateState` reaches the
  *                                                    retained arm with no `privateStateId` to store
  *                                                    it under.

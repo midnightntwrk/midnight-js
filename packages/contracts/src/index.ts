@@ -140,7 +140,7 @@ export { type AnyEraFinalizedCallTxData, type AnyEraSubmittedCallTx, isLedger8Re
 // is how a caller declares the result it was handed, and `Ledger8.Contract` how it constrains a
 // helper of its own.
 //
-// One export rather than the forty-one it re-exports, because the retained era is transitional
+// One export rather than the forty it re-exports, because the retained era is transitional
 // and a flat family is not: see `docs/retained-era-namespace.md` for what qualifies for membership,
 // what deliberately stays flat, and how the whole surface is withdrawn in one step.
 export * as Ledger8 from './ledger8';

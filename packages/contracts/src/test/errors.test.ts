@@ -20,9 +20,10 @@ import {
   type FinalizedTxData,
   type FinalizedTxDataV8,
   SegmentFail,
-  SegmentSuccess
+  SegmentSuccess,
+  type TxStatus
 } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -33,6 +34,7 @@ import {
   IncompleteFindContractPrivateStateConfig,
   Ledger8CallTxFailedError,
   Ledger8DeployTxFailedError,
+  Ledger8DeployUnconfirmedError,
   TxFailedError
 } from '../errors';
 import { createMockFinalizedTxData } from './test-mocks';
@@ -41,8 +43,8 @@ import { createMockFinalizedTxData } from './test-mocks';
 // from the retained ledger module, which no unit test can construct and none
 // of these read -- every assertion here is about the tag and the members
 // around it. One cast, in one place, rather than one per call site.
-const v8FailedRecord = (): FinalizedTxDataV8 => ({
-  ...createMockFinalizedTxData(FailFallible),
+const v8FailedRecord = (status: TxStatus = FailFallible): FinalizedTxDataV8 => ({
+  ...createMockFinalizedTxData(status),
   version: 'v8',
   tx: undefined as unknown as FinalizedTxDataV8['tx']
 });
@@ -221,16 +223,8 @@ describe('Ledger8DeployTxFailedError', () => {
     // contract DID land, under the authority this key built. One message for both statuses told
     // that caller nothing local refers to the address, and it never went looking for the
     // deployment it now owns and cannot maintain.
-    const fallible = new Ledger8DeployTxFailedError(
-      { ...createMockFinalizedTxData(FailFallible), version: 'v8', tx: undefined as unknown as FinalizedTxDataV8['tx'] },
-      ADDRESS,
-      SIGNING_KEY
-    );
-    const entirely = new Ledger8DeployTxFailedError(
-      { ...createMockFinalizedTxData(FailEntirely), version: 'v8', tx: undefined as unknown as FinalizedTxDataV8['tx'] },
-      ADDRESS,
-      SIGNING_KEY
-    );
+    const fallible = new Ledger8DeployTxFailedError(v8FailedRecord(FailFallible), ADDRESS, SIGNING_KEY);
+    const entirely = new Ledger8DeployTxFailedError(v8FailedRecord(FailEntirely), ADDRESS, SIGNING_KEY);
 
     expect(fallible.message).toContain('LANDED');
     expect(entirely.message).toContain('Nothing was deployed');
@@ -245,6 +239,65 @@ describe('Ledger8DeployTxFailedError', () => {
     // The key is a SECRET. Named as a member to read, never rendered: an error message reaches
     // logs, crash reporters and issue trackers, and this one is the only copy of the authority
     // over the deployed contract.
+    expect(error.message).not.toContain(SIGNING_KEY);
+  });
+});
+
+describe('Ledger8DeployUnconfirmedError', () => {
+  const SIGNING_KEY = 'b2'.repeat(32);
+  const ADDRESS = '0300'.repeat(8);
+  const eraViolation = (): EraInvariantViolationError =>
+    new EraInvariantViolationError('watchForDeployTxData', undefined, 'v8', 'v9');
+
+  it('keeps the era violation on cause, so the condition and its registered code stay reachable', () => {
+    // The class no longer EXTENDS the violation, so `cause` is the only route left to the seam and
+    // the code a caller branches on. Dropping it would strand the original stack too.
+    const violation = eraViolation();
+
+    const error = new Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, violation);
+
+    expect(error.cause).toBe(violation);
+    expect(error.cause instanceof EraInvariantViolationError).toBe(true);
+    expect(hasErrorCode(error.cause, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
+  });
+
+  it('keeps a non-era rejection on cause too, unreplaced', () => {
+    const unreachable = new Error('indexer unreachable');
+
+    const error = new Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, unreachable);
+
+    expect(error.cause).toBe(unreachable);
+    expect(error.cause instanceof EraInvariantViolationError).toBe(false);
+  });
+
+  it('states per CONDITION why the deployment is unconfirmed, because the two reasons differ', () => {
+    // One class does not mean one message: a record that arrived from the wrong era and a record
+    // that never arrived send a reader to different places to find out what happened.
+    const mislabelled = new Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, eraViolation());
+    const unreadable = new Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, new Error('indexer unreachable'));
+
+    expect(mislabelled.message).toContain('watchForDeployTxData');
+    expect(unreadable.message).toContain('could not be read back');
+    expect(mislabelled.message).not.toBe(unreadable.message);
+  });
+
+  it('ends both conditions on the same remediation, because the caller does the same thing', () => {
+    const mislabelled = new Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, eraViolation());
+    const unreadable = new Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, new Error('indexer unreachable'));
+
+    expect(mislabelled.message).toContain('may still finalize');
+    expect(unreadable.message).toContain('may still finalize');
+  });
+
+  it('carries the signing key and says where to read it, without printing the key itself', () => {
+    const error = new Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, eraViolation());
+
+    expect(error.signingKey).toBe(SIGNING_KEY);
+    expect(error.contractAddress).toBe(ADDRESS);
+    expect(error.name).toBe('Ledger8DeployUnconfirmedError');
+    expect(error.message).toContain('signingKey');
+    // The key is a SECRET, and after submission this error holds the only copy. Named as a member
+    // to read, never rendered into text that reaches a log or an issue tracker.
     expect(error.message).not.toContain(SIGNING_KEY);
   });
 });
