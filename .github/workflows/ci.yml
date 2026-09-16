@@ -92,8 +92,10 @@ jobs:
     secrets:
       MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-  # The fork-crossing gate. Red on purpose until the keep-state partitioning is
-  # fixed -- see the comment on its own run step for why it is not hidden.
+  # The fork-crossing gate: blocking, and expected green -- a red shard is a
+  # regression to investigate, never a known state to wave through. The path
+  # filter below also means the lane is SKIPPED, not passing, on a range that
+  # touches neither `packages/**` nor `consumer-e2e/**`.
   hardfork:
     needs: ci
     name: Hard fork
