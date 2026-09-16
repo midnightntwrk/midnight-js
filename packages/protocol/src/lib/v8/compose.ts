@@ -15,13 +15,37 @@
 
 import type { AlignedValue } from '@midnightntwrk/ledger-v9';
 
+import { ComposeOptionError } from '../../errors';
 import type { UnprovenOffer } from '../../v8.js';
 import { assembleCallPrototype } from '../shared/assemble-call';
 import { assertComposeEnvelope } from '../shared/compose-options';
-import type { CallTranscriptSource, LedgerParametersOption } from '../shared/compose-types';
+import type {
+  CallTranscriptSource,
+  ComposeCallResultPojo,
+  LedgerParametersOption,
+  ZswapOfferFactory
+} from '../shared/compose-types';
 import { aggregateUnshieldedOffers } from '../shared/unshielded';
 import { entryPointName } from '../shared/verifier-keys';
 import type { ProtocolV8 } from './load';
+
+/**
+ * Reads a serialized Zswap offer into the v8 era, reporting bytes this era
+ * cannot decode as {@link ComposeOptionError}. An absent offer is the normal
+ * shape of a call that moved no shielded coins, and stays absent.
+ *
+ * @see {@link ComposeRefusalOrder}
+ */
+export const readZswapOffer = (raw: Uint8Array | undefined, v8: ProtocolV8): UnprovenOffer | undefined => {
+  if (raw === undefined) {
+    return undefined;
+  }
+  try {
+    return v8.ZswapOffer.deserialize('pre-proof', raw);
+  } catch (cause) {
+    throw new ComposeOptionError('v8', 'zswapOffer', cause);
+  }
+};
 
 /**
  * Everything {@link composeV8CallTx} needs to assemble one v8-native call
@@ -34,8 +58,9 @@ import type { ProtocolV8 } from './load';
  * The call's own inputs are carried as plain data rather than as a whole
  * execution transcript — never a live pre-fork handle.
  *
- * The two Zswap offers are v8-native offer HANDLES, not bytes. Absent offers
- * are the normal shape of a call that moved no shielded coins.
+ * `zswapOffer` is called back once the call has been split, with the partition
+ * to route against. Omitting it composes a transaction with no shielded offer,
+ * which is the normal shape of a call that moved no shielded coins.
  *
  * `networkId` and `ttl` carry the caller's policy decisions (which network,
  * how long the transaction lives); their well-formedness is checked here — see
@@ -63,8 +88,7 @@ export interface ComposeV8CallOptions {
   readonly ledgerParameters: LedgerParametersOption;
   readonly networkId: string;
   readonly ttl: Date;
-  readonly guaranteedZswapOffer?: UnprovenOffer;
-  readonly fallibleZswapOffer?: UnprovenOffer;
+  readonly zswapOffer?: ZswapOfferFactory;
 }
 
 /**
@@ -79,20 +103,20 @@ export interface ComposeV8CallOptions {
  * @param options The call's inputs, offers and envelope options.
  * @param v8 The v8 ledger module, as handed over by `loadLedger8`
  *   (`./load.ts`).
- * @returns The UNPROVEN, serialized call transaction.
- * @throws ComposeOptionError If `networkId` is empty or `ttl` is not a valid
- *   instant.
+ * @returns The UNPROVEN, serialized call transaction and the call's partition.
+ * @throws ComposeOptionError If `networkId` is empty, `ttl` is not a valid
+ *   instant, or the factory answered with offer bytes this era cannot read.
  * @throws ComposeFailedError If `contractState` has no registered operation for
  *   `circuitId` (stage `'call-operation'`), or the operation it does have
  *   carries no verifier key (stage `'call-verifier-key'`), plus every stage
  *   {@link assembleCallPrototype} and {@link aggregateUnshieldedOffers} raise.
  * @see {@link ComposeRefusalOrder}
  */
-export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): Uint8Array => {
-  const { contractAddress, contractState, networkId, ttl, guaranteedZswapOffer, fallibleZswapOffer } = options;
+export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): ComposeCallResultPojo => {
+  const { contractAddress, contractState, networkId, ttl, zswapOffer } = options;
   assertComposeEnvelope(options, 'v8');
 
-  const prototype = assembleCallPrototype(v8, {
+  const { prototype, partition } = assembleCallPrototype(v8, {
     circuitId: options.circuitId,
     contractAddress,
     transcript: options.transcript,
@@ -128,5 +152,14 @@ export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): 
     intent.fallibleUnshieldedOffer = unshielded.fallible;
   }
 
-  return v8.Transaction.fromPartsRandomized(networkId, guaranteedZswapOffer, fallibleZswapOffer, intent).serialize();
+  // Built only once the call is split, which is the whole point of taking a
+  // factory -- see ComposeRefusalOrder.
+  const offers = zswapOffer?.([partition]);
+  const guaranteedOffer = readZswapOffer(offers?.guaranteed, v8);
+  const fallibleOffer = readZswapOffer(offers?.fallible, v8);
+
+  return {
+    transaction: v8.Transaction.fromPartsRandomized(networkId, guaranteedOffer, fallibleOffer, intent).serialize(),
+    partitions: [partition]
+  };
 };

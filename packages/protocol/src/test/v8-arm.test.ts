@@ -205,7 +205,7 @@ describe('the v8 era arm', () => {
     const { entry, address } = await runIncrement();
     const ttl = new Date(Date.now() + 3_600_000);
 
-    const bytes = era.composeCallTx({ calls: [entry], networkId: NETWORK_ID, ttl });
+    const { transaction: bytes } = era.composeCallTx({ calls: [entry], networkId: NETWORK_ID, ttl });
 
     const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
     const intents = [...(back.intents?.values() ?? [])];
@@ -235,7 +235,7 @@ describe('the v8 era arm', () => {
     const owner = LedgerV8.sampleUserAddress();
     const token = LedgerV8.sampleRawTokenType();
 
-    const bytes = era.composeCallTx({
+    const { transaction: bytes } = era.composeCallTx({
       calls: [payingCallEntry(owner, token)],
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000)
@@ -297,12 +297,11 @@ describe('the v8 era arm', () => {
       return LedgerV8.ZswapOffer.fromOutput(output).serialize();
     };
 
-    const bytes = era.composeCallTx({
+    const { transaction: bytes } = era.composeCallTx({
       calls: [entry],
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
-      guaranteedZswapOffer: buildOffer(),
-      fallibleZswapOffer: buildOffer()
+      zswapOffer: () => ({ guaranteed: buildOffer(), fallible: buildOffer() })
     });
 
     const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
@@ -328,7 +327,7 @@ describe('the v8 era arm', () => {
         calls: [entry],
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000),
-        guaranteedZswapOffer: new Uint8Array([1, 2, 3])
+        zswapOffer: () => ({ guaranteed: new Uint8Array([1, 2, 3]) })
       });
     } catch (error) {
       caught = error;
@@ -352,7 +351,7 @@ describe('the v8 era arm', () => {
         calls: [entry],
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000),
-        fallibleZswapOffer: new Uint8Array([1, 2, 3])
+        zswapOffer: () => ({ fallible: new Uint8Array([1, 2, 3]) })
       })
     ).toThrowError(
       expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'zswapOffer', version: 'v8' })

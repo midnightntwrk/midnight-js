@@ -89,7 +89,7 @@ const optionsFor = (
 });
 
 const assembleWith = (address: string, partitionContext: PartitionContext): ledgerV9.ContractCallPrototype =>
-  assembleCallPrototype(ledgerV9, optionsFor(address, partitionContext));
+  assembleCallPrototype(ledgerV9, optionsFor(address, partitionContext)).prototype;
 
 const callIn = (prototype: ledgerV9.ContractCallPrototype): ledgerV9.ContractCall<ledgerV9.PreProof> => {
   const intent = ledgerV9.Intent.new(new Date(Date.now() + 3_600_000)).addCall(prototype);

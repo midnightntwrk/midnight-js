@@ -448,7 +448,8 @@ export const createReplayEngine = (
 export const recordEraCalls = (
   era: LedgerEra,
   log: OrchestrationLog,
-  onComposeCall?: (options: ComposeCallOptions) => void
+  onComposeCall?: (options: ComposeCallOptions) => void,
+  onZswapOffer?: (offers: { readonly guaranteed?: Uint8Array; readonly fallible?: Uint8Array }) => void
 ): LedgerEra => ({
   version: era.version,
   extractState: (raw) => {
@@ -462,14 +463,22 @@ export const recordEraCalls = (
   composeCallTx: (options) => {
     log.push(`era.${era.version}.composeCallTx`);
     onComposeCall?.(options);
-    return era.composeCallTx(options);
-  },
-  // Logged like every other seam, so a test can count partitions: the pipeline
-  // resolves the split once and hands the composer the result, and a second
-  // entry here would mean that stopped being true.
-  partitionCallTranscript: (options) => {
-    log.push(`era.${era.version}.partitionCallTranscript`);
-    return era.partitionCallTranscript(options);
+    const { zswapOffer } = options;
+    if (zswapOffer === undefined) {
+      return era.composeCallTx(options);
+    }
+    // Logged like every other seam, so a test can count how often the offer is
+    // built: the composer resolves the split once and calls back once, and a
+    // second entry here would mean that stopped being true.
+    return era.composeCallTx({
+      ...options,
+      zswapOffer: (partitions) => {
+        log.push(`era.${era.version}.zswapOffer`);
+        const offers = zswapOffer(partitions);
+        onZswapOffer?.(offers);
+        return offers;
+      }
+    });
   },
   composeDeployTx: (options) => {
     log.push(`era.${era.version}.composeDeployTx`);

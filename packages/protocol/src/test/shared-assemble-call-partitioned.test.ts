@@ -21,7 +21,7 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
-import { assembleCallPrototype, partitionCallTranscript } from '../lib/shared/assemble-call';
+import { assembleCallPrototype } from '../lib/shared/assemble-call';
 import type { CallTranscriptSource, LedgerParametersOption } from '../lib/shared/compose-types';
 import { emptyPartitionContext } from './fixtures';
 
@@ -101,7 +101,7 @@ const assembleWithParameters = (
     ledgerParameters,
     stage: 'call-operation',
     version: 'v9'
-  });
+  }).prototype;
 
 const assembleWith = (
   address: string,
@@ -122,7 +122,7 @@ const assembleWith = (
     ledgerParameters: 'initial',
     stage: 'call-operation',
     version: 'v9'
-  });
+  }).prototype;
 
 // The two shapes exist because neither leg subsumes the other: the retained
 // pre-fork execution leg hands over a raw public transcript it has not
@@ -220,12 +220,13 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
     expect(render(fromPartitioned)).toBe(render(fromUnpartitioned));
   });
 
-  // The claim the retained call pipeline rests on. It resolves the partition up
-  // front — it has to, because it routes a Zswap coin against the split before
-  // the offer becomes an option on the composition — and then hands the pair
-  // straight to the composer so the work is done ONCE. That is only safe if the
-  // standalone seam and the assembler's internal step are the same answer.
-  it('resolves the same pair the assembler resolves internally, so one partition serves both', () => {
+  // The retained pipeline routes a Zswap coin against the pair this function
+  // ANSWERS with, then lets the same call be recomposed from it. If the pair
+  // returned were not the one the prototype was built from, the coin would be
+  // routed against one split and the transaction recorded under another, and
+  // nothing would report it.
+  it('answers with the pair the prototype was built from, so recomposing from it yields the same call', () => {
+    // Arrange.
     const address = ledgerV9.sampleContractAddress();
     const randomness = ledgerV9.communicationCommitmentRandomness();
     const ttl = new Date(Date.now() + 3_600_000);
@@ -236,18 +237,24 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
       partitionContext: emptyPartitionContext()
     };
 
-    const [guaranteed, fallible] = partitionCallTranscript(ledgerV9, {
+    // Act.
+    const { partition } = assembleCallPrototype(ledgerV9, {
       circuitId: 'increment',
       contractAddress: address,
       transcript: unpartitioned,
-      // The same cost model `assembleWith` names, because that is what the two
-      // sides of this equality are being compared under.
+      privateTranscriptOutputs: [],
+      input: fieldValue(0x10),
+      output: fieldValue(0x20),
+      communicationCommitmentRandomness: randomness,
+      operations: contractStateWithOperation(),
       ledgerParameters: 'initial',
+      stage: 'call-operation',
       version: 'v9'
     });
+    const [guaranteed, fallible] = partition;
 
-    // Not vacuous: an all-`undefined` pair would make the comparison below hold
-    // for a seam that returned nothing at all.
+    // Assert: not vacuous -- an all-`undefined` pair would make the equality
+    // below hold for a function that answered with nothing at all.
     expect(guaranteed).toBeDefined();
     expect(fallible).toBeUndefined();
 
@@ -259,41 +266,6 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
     ).toBe(render(assembleWith(address, unpartitioned, contractStateWithOperation(), randomness)));
   });
 
-  // The seam reports the ledger's refusal as the composition would, rather than
-  // letting a raw wasm error out: a caller that partitions up front must be able
-  // to diagnose a bad parameter blob the same way it would from `composeCallTx`.
-  it('refuses a parameter blob this era cannot read, naming the option rather than the partition', () => {
-    let caught: unknown;
-    try {
-      partitionCallTranscript(ledgerV9, {
-        circuitId: 'increment',
-        contractAddress: ledgerV9.sampleContractAddress(),
-        transcript: {
-          kind: 'unpartitioned',
-          preState: PRE_STATE,
-          publicTranscript: PUBLIC_TRANSCRIPT,
-          partitionContext: emptyPartitionContext()
-        },
-        ledgerParameters: new Uint8Array([0x00, 0x01, 0x02]),
-        version: 'v9'
-      });
-    } catch (error) {
-      caught = error;
-    }
-
-    // Reported as a bad OPTION, exactly as the composition reports it, so a
-    // caller that partitions up front is sent to the bytes it passed rather
-    // than to the transcript -- and the ledger's own diagnosis survives on
-    // `cause`.
-    expect(caught).toBeInstanceOf(ComposeOptionError);
-    expect((caught as ComposeOptionError).option).toBe('ledgerParameters');
-    expect((caught as ComposeOptionError).version).toBe('v9');
-    expect((caught as ComposeOptionError).cause).toBeDefined();
-  });
-
-  // Proof the branch really is a branch: a ledger whose partitioner throws
-  // still assembles a partitioned call. Without the skip this would fail, and
-  // the previous test alone could not tell the two paths apart.
   it('never partitions again for a transcript that arrives partitioned', () => {
     const address = ledgerV9.sampleContractAddress();
     const [guaranteed, fallible] = partitionOf(address);
@@ -304,7 +276,7 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
       }
     };
 
-    const prototype = assembleCallPrototype(poisoned, {
+    const { prototype } = assembleCallPrototype(poisoned, {
       circuitId: 'increment',
       contractAddress: address,
       transcript: { kind: 'partitioned', guaranteed, fallible },
