@@ -52,9 +52,15 @@ the whole intent.
 What the ordering buys is worth more than what it costs. Bytes routed into the
 wrong segment are accepted by every check here and rejected by the wallet at
 balancing time, which reports them as `Wallet.InsufficientFunds` — a diagnosis
-that names neither the call nor the segment. Taking a factory makes the split
-the only thing an offer can be built from, so that failure is unreachable rather
-than merely documented.
+that names neither the call nor the segment. Taking a factory means an offer can
+no longer be built BEFORE the split exists, which is how that failure used to be
+reached: by omission, with no way to do otherwise.
+
+What the shape does not do is make the failure unreachable. The factory is
+HANDED the split; nothing in the type obliges it to route against it, and a
+factory that ignores its argument and answers with constant bytes composes
+exactly as before. The guarantee is that the split is always available at the
+moment the offer is built — not that it was used.
 
 ## The one deliberate ordering difference
 
@@ -105,10 +111,13 @@ That option error is deliberately not the class `extractEncodedStateValue`
 that cannot be READ is a different fault from an option that cannot be USED, and
 the two carry different remediations.
 
-Inside a v8-native leg the offers are v8-native offer HANDLES rather than bytes:
-that leg runs inside the retained era with the module already in hand, so the
-era arm that read the caller's offer bytes hands the decoded offer straight
-over — exactly as it already does for `contractState`.
+Inside the v8-native DEPLOY leg the offer is a v8-native offer HANDLE rather
+than bytes: that leg runs inside the retained era with the module already in
+hand, so the era arm that read the caller's offer bytes hands the decoded offer
+straight over — exactly as it already does for `contractState`. The v8-native
+CALL leg takes the `zswapOffer` factory unchanged and decodes the bytes it
+answers with itself, because the split it must be handed does not exist until
+that leg has assembled the call.
 
 ## One call per v8 transaction
 

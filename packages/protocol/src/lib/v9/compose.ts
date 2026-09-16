@@ -99,12 +99,6 @@ export const composeV9CallTx = (options: ComposeCallOptions): ComposeCallResultP
     intent = intent.addCall(prototype);
   }
 
-  // Built only once every call is split, which is the whole point of taking a
-  // factory -- see ComposeRefusalOrder.
-  const offers = zswapOffer?.(partitions);
-  const guaranteedOffer = readZswapOffer(offers?.guaranteed);
-  const fallibleOffer = readZswapOffer(offers?.fallible);
-
   // Read the partitioned pairs back off the intent rather than re-deriving
   // them -- see ComposeRefusalOrder.
   const unshielded = aggregateUnshieldedOffers(
@@ -124,6 +118,14 @@ export const composeV9CallTx = (options: ComposeCallOptions): ComposeCallResultP
   if (unshielded.fallible !== undefined) {
     intent.fallibleUnshieldedOffer = unshielded.fallible;
   }
+
+  // LAST, after the unshielded payout has been aggregated off the assembled
+  // intent, because both steps refuse and the arms must refuse in one order --
+  // see ComposeRefusalOrder. Built only once every call is split, which is the
+  // whole point of taking a factory.
+  const offers = zswapOffer?.(partitions);
+  const guaranteedOffer = readZswapOffer(offers?.guaranteed);
+  const fallibleOffer = readZswapOffer(offers?.fallible);
 
   return {
     transaction: ledgerV9.Transaction.fromPartsRandomized(networkId, guaranteedOffer, fallibleOffer, intent).serialize(),

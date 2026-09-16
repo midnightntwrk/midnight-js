@@ -716,7 +716,53 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     expect(routed?.guaranteed).toBeUndefined();
   });
 
-  it('partitions the transcript once and hands the composer the pair it already resolved', async () => {
+  // `zswapOffer` is OPTIONAL on `ComposeCallOptions`, so an era that never calls
+  // it back is type-correct. The pipeline builds its offer only inside that
+  // callback, so such an era would compose a transaction carrying none of the
+  // circuit's coin movements -- and report `guaranteedZswapOffer: undefined`,
+  // which is also the honest shape of a call that moved nothing. Nothing
+  // downstream can tell the two apart, and the wallet reports the difference as
+  // `Wallet.InsufficientFunds`. So the pipeline refuses instead of reporting it.
+  it('refuses an era that composes without ever asking for the offer', async () => {
+    const log: OrchestrationLog = [];
+    const providers = createMockProviders();
+    providers.publicDataProvider.queryRawContractState = vi
+      .fn()
+      .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
+
+    const recorded = recordEraCalls(retainedEra, log);
+    const offerIgnoringEra: LedgerEra = {
+      ...recorded,
+      // Drops the factory on the floor, exactly as a third-party era that never
+      // read the seam's contract would.
+      composeCallTx: ({ zswapOffer: _ignored, ...rest }) => recorded.composeCallTx(rest)
+    };
+
+    await expect(
+      runLedger8CallPipeline<ReplayState>({
+        retainedEra,
+        era: offerIgnoringEra,
+        engine: createReplayEngine(recording, log),
+        publicDataProvider: providers.publicDataProvider,
+        head: 'v8',
+        contract,
+        contractAddress: recording.contractAddress,
+        circuitId: CIRCUIT_ID,
+        args: [recording.receivedCoin],
+        coinPublicKey: recording.coinPublicKey,
+        privateState: {},
+        localVerifierKey: STAND_IN_VERIFIER_KEY,
+        networkId: NETWORK_ID,
+        ttl: new Date(Date.now() + 3_600_000),
+        encryptionPublicKey: createEncryptionPublicKeyResolver(
+          recording.coinPublicKey,
+          providers.walletProvider.getEncryptionPublicKey()
+        )
+      })
+    ).rejects.toThrowError(/did not build the call's Zswap offer/);
+  });
+
+  it('splits the transcript once, inside the composer, and routes the offer against that split', async () => {
     const log: OrchestrationLog = [];
     let composed: ComposeCallOptions | undefined;
     const providers = createMockProviders();

@@ -321,6 +321,47 @@ describe('composeV9CallTx', () => {
     ]);
   });
 
+  // The offer is routed against these partitions, and a caller reads them back
+  // off the result to report what each call recorded. Both uses are positional,
+  // so the ORDER is load-bearing: one entry per call, in `calls` order. Tied to
+  // the calls by object identity rather than by length, because a length-only
+  // check survives a reversed list -- which would route the transaction's coins
+  // against the callee's split and report the root call's under the callee.
+  it('answers with one partition per call, in calls order, and hands the factory that same list', () => {
+    // Arrange.
+    const calleeGuaranteed = payingTranscript(USER, 5n);
+    const rootGuaranteed = payingTranscript(USER, 37n);
+    const routed: (readonly [unknown, unknown])[] = [];
+    let invocations = 0;
+    const options = callOptions({
+      // Execution-trace order: cross-contract callee first, root call last.
+      calls: [
+        callEntry({
+          contractAddress: ledgerV9.sampleContractAddress(),
+          communicationCommitmentRandomness: ledgerV9.communicationCommitmentRandomness(),
+          transcript: { kind: 'partitioned', guaranteed: calleeGuaranteed }
+        }),
+        callEntry({ transcript: { kind: 'partitioned', guaranteed: rootGuaranteed } })
+      ],
+      zswapOffer: (partitions) => {
+        invocations += 1;
+        routed.push(...partitions);
+        return {};
+      }
+    });
+
+    // Act.
+    const result = composeV9CallTx(options);
+
+    // Assert: once per composition, not once per call.
+    expect(invocations).toBe(1);
+    expect(result.partitions).toHaveLength(2);
+    expect(result.partitions[0][0]).toBe(calleeGuaranteed);
+    expect(result.partitions[1][0]).toBe(rootGuaranteed);
+    // The factory routed against exactly what the caller reads back.
+    expect(routed).toEqual(result.partitions);
+  });
+
   it('refuses an empty network id rather than baking it into the transaction', () => {
     const error = caught(() => composeV9CallTx(callOptions({ networkId: '' })));
 

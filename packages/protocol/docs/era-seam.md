@@ -163,4 +163,6 @@ The split is on the answer because it is also on the way in: a call's Zswap
 offer arrives as a factory the composer calls back with that split, never as
 ready-made bytes. A coin has to be routed into the segment its movement belongs
 to, and until the transcripts are split there is no segment to route by — so
-there is deliberately no shape of this call that builds an offer without one.
+there is deliberately no shape of this call that builds an offer before one
+exists. Being handed the split is what the seam guarantees; using it remains the
+factory's own responsibility.

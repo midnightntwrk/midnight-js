@@ -611,6 +611,35 @@ describe('the two ledger eras run the same scenario', () => {
     );
   });
 
+  // The offer is the LAST thing either call leg reads, which only stays true if
+  // it is read after the unshielded payout is aggregated off the assembled
+  // intent. Both of those steps throw, so a call carrying an unpayable payout
+  // AND unreadable offer bytes is the one input that can tell the two orders
+  // apart -- each single-fault check above arms only one of them and stays
+  // green either way.
+  it.each(ERAS)('names the unshielded payout ahead of unreadable offer bytes on %s', async (version) => {
+    const era = await loadLedgerEra(version);
+    const payee = FIXTURES[version].samplePayee();
+    const options = callOptionsFor(version);
+
+    expect(() =>
+      era.composeCallTx({
+        ...options,
+        calls: [
+          { ...options.calls[0], transcript: unpayableTranscriptSource(payee, { tag: 'shielded', raw: payee.token }) }
+        ],
+        zswapOffer: () => ({ guaranteed: new Uint8Array([1, 2, 3]) })
+      })
+    ).toThrowError(
+      expect.objectContaining({
+        code: PROTOCOL_ERROR_CODES.COMPOSE_FAILED,
+        stage: 'call-unsupported-payout',
+        version,
+        circuitId: 'increment'
+      })
+    );
+  });
+
   // Each of the checks above passes exactly one bad option, which is why the
   // arms could report a DIFFERENT option for the same input while both of those
   // stayed green: the v8 arm used to reach its own era-specific refusals before

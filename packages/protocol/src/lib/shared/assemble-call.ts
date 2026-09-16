@@ -102,7 +102,7 @@ export interface CallAssemblyLedger<
  * Spelled as its own type so the split step names exactly what it reads: no
  * operation registry, no private outputs, no transaction envelope.
  */
-export type PartitionCallOptions = Pick<
+type PartitionCallOptions = Pick<
   AssembleCallOptions<never>,
   'circuitId' | 'contractAddress' | 'transcript' | 'ledgerParameters' | 'version'
 >;
