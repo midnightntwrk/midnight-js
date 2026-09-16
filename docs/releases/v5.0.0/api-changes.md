@@ -275,16 +275,32 @@ Internally the provider was split into 7 layered files (#960): `config.ts`, `tra
 // Coded-error registry and guard (#1204). Prefer hasErrorCode over instanceof
 // across a package boundary.
 export const CONTRACTS_ERROR_CODES: Readonly<{ ERA_INVARIANT_VIOLATION: string }>;
+// Declared in `@midnight-ntwrk/midnight-js-types` and also readable from its
+// `./errors` leaf subpath; re-exported here, so either import works.
 export const PROVIDER_ERROR_CODES: Readonly<{
   V8_PAYLOAD_UNSUPPORTED: string; UNTAGGED_PAYLOAD: string;
   ERA_UNSUPPORTED: string; ERA_UNRESOLVABLE: string;
+  SEAM_ERA_UNSUPPORTED: string;
 }>;
 export type ContractsErrorCode = /* union of the above values */;
 export type ProviderErrorCode = /* union of the above values */;
 export type MidnightJsErrorCode = ProtocolErrorCode | ContractsErrorCode | ProviderErrorCode;
 export const MIDNIGHT_JS_ERROR_CODES: readonly MidnightJsErrorCode[];
 export function hasErrorCode(error: unknown): error is Error & { code: MidnightJsErrorCode };
-export function hasErrorCode<C extends string>(error: unknown, code: C): error is Error & { code: C };
+// `code` must be one of this framework's own codes, so a typo is a compile
+// error rather than a guard that silently never matches.
+export function hasErrorCode<C extends MidnightJsErrorCode>(
+  error: unknown, code: C
+): error is Error & { code: C };
+
+// The same comparison for a code this framework does NOT own (Node's
+// ECONNREFUSED, a driver's own vocabulary). Refuses a member of
+// MidnightJsErrorCode at compile time, and throws on any code carrying the
+// MIDNIGHT_JS_ prefix — a misspelling of one of ours reaches this form and
+// would otherwise answer false forever.
+export function hasForeignErrorCode<C extends string>(
+  error: unknown, code: C extends MidnightJsErrorCode ? never : C
+): error is Error & { code: C };
 
 // Exhaustiveness guard for the version-tagged unions (#1254). Closes the
 // `default` arm of a `switch` so a future era arm cannot fall through unhandled.
