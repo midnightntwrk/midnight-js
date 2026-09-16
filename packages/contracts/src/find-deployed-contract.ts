@@ -327,14 +327,24 @@ export interface FoundContract<C extends Contract.Any> {
  * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
- * A READ path, so it composes and submits nothing. It still resolves the head era, dates the
- * fetched state's envelope against it, and byte-matches every local verifier key against the slot
- * the chain holds — the checks that make a later call against this contract safe, done once here
- * so a mis-dispatch is caught at attach time rather than at the first call.
+ * Nothing is COMPOSED and nothing is submitted: no transaction leaves this call. It resolves the
+ * head era, dates the fetched state's envelope against it, and byte-matches every local verifier
+ * key against the slot the chain holds — the checks that make a later call against this contract
+ * safe, done once here so a mis-dispatch is caught at attach time rather than at the first call.
+ *
+ * It does write LOCALLY. Supplying `initialPrivateState` alongside `privateStateId` names the
+ * contract address on the private-state provider and stores that state under the id, so the calls
+ * made through `callTx` read it back. Supplying it with no id is a caller error —
+ * `IncompleteFindContractPrivateStateConfig` — because there is nowhere to put the state, and so
+ * is writing `privateStateId` with an undefined value. Naming an id the provider holds nothing
+ * under is refused too, rather than attaching against a state the contract never had.
  *
  * The deploy record is returned VERSION-TAGGED rather than narrowed to the current era: a
  * retained-era contract was deployed in whichever era was current at the time, and refusing the
  * pre-fork arm would refuse exactly the contracts this arm exists to keep callable.
+ *
+ * @throws IncompleteFindContractPrivateStateConfig if an `initialPrivateState` is supplied with no
+ *         `privateStateId` to store it under.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
@@ -420,7 +430,7 @@ export async function findDeployedContract<C extends Contract.Any>(
     // the process touched last -- and a later call, which names this address itself, would read its
     // own key, find nothing, and report nothing.
     providers.privateStateProvider.setContractAddress(options.contractAddress);
-    // The result is DISCARDED on purpose. This call is here to apply the five-case rule -- seed the
+    // The result is DISCARDED on purpose. This call is here to apply the six-case rule -- seed the
     // named id, or refuse a configuration that cannot be honoured -- not to report a state:
     // `Ledger8FoundContract` publishes no private-state member, and a caller that wants the state
     // reads it back from the provider under the id it just named. What the read buys is the refusal

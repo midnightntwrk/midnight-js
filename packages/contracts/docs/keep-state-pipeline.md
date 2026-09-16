@@ -443,10 +443,3 @@ A CALL only reads. `Ledger8CallTxOptions` carries a `privateStateId` and no
 `initialPrivateState`, so `readLedger8PrivateState` either finds a state under
 the named id or refuses — it has nothing to create one from, and the failure
 mode recorded above is why passing `undefined` down instead is not an option.
-
-The refusal's own remediation is now behind the code it describes. It says the
-find AND call options carry no `initialPrivateState`, which stopped being true
-of find, and it names only the direct write —
-`privateStateProvider.set(privateStateId, state)` — which does still work. A
-deploy or an attach naming the same id is the route the message does not
-mention.

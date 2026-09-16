@@ -8,10 +8,10 @@ The fork window is transitional; a duplicated public interface is not. This
 package dispatches two Compact toolchains, so it carries two families of nearly
 the same types -- `FoundContract` and `Ledger8FoundContract`, `CallTxOptions`
 and `Ledger8CallTxOptions`. The current era's family is permanent. The retained
-era's family -- 29 types, 7 error classes and one interface factory, 37 names --
+era's family -- 31 types, 9 error classes and one interface factory, 41 names --
 goes when the window closes.
 
-Published flat, side by side, those 37 would be 37 published API names, and
+Published flat, side by side, those 41 would be 41 published API names, and
 removing them would be a second breaking change after the one this release
 already makes. They are published as ONE name instead:
 
@@ -140,7 +140,7 @@ arms on `submitCallTx`, `submitCallTxAsync`, `findDeployedContract` and
 
 No current-era NAME changes, and no consumer that never touched the retained era
 has an import to rewrite. That is the property the flat family did not have: it
-would have removed 37 published names instead of one.
+would have removed 41 published names instead of one.
 
 ## What guards it
 
