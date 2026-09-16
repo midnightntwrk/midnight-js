@@ -81,10 +81,15 @@ describe('executeConstructor (fake runtime — plumbing only, no WASM execution)
   // constructor is injected, so the statics that class also declares are out
   // of scope here.
   class FakeMaintenanceAuthority {
+    // `counter` is OPTIONAL, defaulting to `0n`, because the retained runtime's own
+    // `ContractMaintenanceAuthority` declares it that way. A required parameter here is not
+    // merely stricter than the real class -- it makes this fake unassignable to the constructor
+    // signature the engine injects, which `yarn typecheck:tests` refuses even though vitest runs
+    // the suite green.
     constructor(
       readonly committee: string[],
       readonly threshold: number,
-      readonly counter: bigint
+      readonly counter = 0n
     ) {}
 
     serialize(): Uint8Array {
