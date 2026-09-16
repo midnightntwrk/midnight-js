@@ -978,16 +978,18 @@ const readLedger8PrivateState = async (
   }
   const privateState = await privateStateProvider.get(privateStateId);
   // The current era raises the same first sentence from `get-states.ts`, and the
-  // REMEDIATION is appended rather than replacing it: this arm has no
-  // `initialPrivateState` to seed through, so a caller restoring on a new device
-  // has no API-level way to create the state and would otherwise be told only
-  // that it is missing.
+  // REMEDIATION is appended rather than replacing it: a CALL cannot seed the id
+  // it was handed - its options carry no `initialPrivateState` - so the state
+  // must already have been written by an earlier operation, and naming which
+  // operations those are is what separates "nothing is stored under this id"
+  // from "there is no way to store anything under it".
   assertDefined(
     privateState,
-    `No private state found at private state ID '${privateStateId}'. The retained-era arm cannot ` +
-      'seed one - its find and call options carry no `initialPrivateState` - so write it directly ' +
-      'with `privateStateProvider.set(privateStateId, state)` before calling, or omit ' +
-      '`privateStateId` for a contract that carries no private state.'
+    `No private state found at private state ID '${privateStateId}'. A retained-era call cannot ` +
+      'seed one - only `deployContract` and `findDeployedContract` take an `initialPrivateState`, ' +
+      'each alongside the `privateStateId` it is stored under - so seed it at deploy time or at ' +
+      'attach time, or write it directly with `privateStateProvider.set(privateStateId, state)` ' +
+      'before calling, or omit `privateStateId` for a contract that carries no private state.'
   );
   return privateState;
 };

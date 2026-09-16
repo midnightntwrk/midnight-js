@@ -2118,13 +2118,15 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 });
 
 /**
- * Attaching to an already-deployed retained-era contract — a READ path, so it
- * composes nothing and submits nothing.
+ * Deploying a retained-era contract through the public `deployContract` — a
+ * WRITE path, so it composes, submits and waits for the record.
  *
- * It gets the same treatment as the two write arms because it makes the same
- * two safety claims they do, and neither is free: that a mis-dispatched
- * artifact is caught at ATTACH time rather than at the first call, and that the
- * whole attach runs against ONE chain snapshot.
+ * Every assertion below is newly reachable: the arm refused unconditionally
+ * until a maintenance authority was set on the constructed state, so nothing
+ * downstream of the constructor had ever run through this entry point. On top
+ * of the claims the call arm makes, it owns two of its own: that the address
+ * the deploy minted is the one the private state is written under, and that the
+ * chain's deploy record is checked BEFORE anything local is stored.
  */
 describe('deploying a retained-era contract through deployContract', () => {
   let recording: CoinReceiverRecording;
@@ -2144,6 +2146,16 @@ describe('deploying a retained-era contract through deployContract', () => {
     setNetworkId(NETWORK_ID);
     engineSlot.engine = createReplayEngine(loadCoinReceiverRecording(), [], v6Envelope);
   });
+
+  /**
+   * The state a doubled constructor that ADVANCED its input answers with.
+   *
+   * Distinct from every `initialPrivateState` supplied below, because a
+   * faithful double threads its input back unchanged: without a value the
+   * caller never passed, "stored the constructor's output" and "stored the
+   * caller's input" are the same assertion.
+   */
+  const ADVANCED_PRIVATE_STATE = { advancedByConstructor: true };
 
   /**
    * The provider set every deploy below starts from: a pre-fork head, a deploy
@@ -2173,7 +2185,11 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(deployed.initialState).toBeInstanceOf(Uint8Array);
     // The LIVE handle beside the bytes, as the retained constructor built it.
     expect(deployed.initialContractState.serialize()).toEqual(v6Envelope);
-    expect(deployed.initialPrivateState).toEqual({});
+    // This deploy named no private state, so the constructor was handed
+    // `undefined` and threaded it back. Presence is asserted separately: a
+    // handle that dropped the member entirely would otherwise read the same.
+    expect('initialPrivateState' in deployed).toBe(true);
+    expect(deployed.initialPrivateState).toBeUndefined();
     expect(deployed.initialZswapState.outputs).toEqual([]);
     expect(deployed.deployTxData.version).toBe('v8');
     expect(deployed.deployTxData.txId).toBe(retainedEraRecord().txId);
@@ -2307,6 +2323,12 @@ describe('deploying a retained-era contract through deployContract', () => {
 
   it('stores the private state the CONSTRUCTOR produced, and only after the record has been checked', async () => {
     const providers = deployProviders();
+    // A constructor that ADVANCED what it was handed. The double otherwise
+    // threads the input back, and then an arm that stored `options.initialPrivateState`
+    // instead of the constructor's result passes this test unchanged.
+    engineSlot.engine = createReplayEngine(recording, [], v6Envelope, {
+      advancedConstructorPrivateState: ADVANCED_PRIVATE_STATE
+    });
 
     await deployContract(providers, {
       compiledContract: contract,
@@ -2316,7 +2338,10 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     // The constructor's OWN output, as the current era stores it too -- not the
     // caller's input, which the constructor may have advanced.
-    expect(providers.privateStateProvider.set).toHaveBeenCalledWith('retained-private-state', {});
+    expect(providers.privateStateProvider.set).toHaveBeenCalledWith(
+      'retained-private-state',
+      ADVANCED_PRIVATE_STATE
+    );
     expect(callOrder(providers.publicDataProvider.watchForDeployTxData)).toBeLessThan(
       callOrder(providers.privateStateProvider.set)
     );
@@ -2353,7 +2378,10 @@ describe('deploying a retained-era contract through deployContract', () => {
     // `{}` rather than a populated state because this fixture DECLARES no
     // private state; the pair that matters here is supplied-versus-absent, and
     // the absent half is the test below.
-    engineSlot.engine = createReplayEngine(recording, [], v6Envelope, { constructorPrivateState: {} });
+    engineSlot.engine = createReplayEngine(recording, [], v6Envelope, {
+      constructorPrivateState: {},
+      advancedConstructorPrivateState: ADVANCED_PRIVATE_STATE
+    });
 
     await deployContract(providers, {
       compiledContract: contract,
@@ -2361,7 +2389,13 @@ describe('deploying a retained-era contract through deployContract', () => {
       initialPrivateState: {}
     });
 
-    expect(providers.privateStateProvider.set).toHaveBeenCalledWith('retained-private-state', {});
+    // The deploy ran to completion on the state the engine accepted: the write
+    // carries the constructor's ADVANCED output, which no value the caller
+    // passed could have produced.
+    expect(providers.privateStateProvider.set).toHaveBeenCalledWith(
+      'retained-private-state',
+      ADVANCED_PRIVATE_STATE
+    );
   });
 
   it('hands the constructor UNDEFINED when the caller supplied no initial private state', async () => {
@@ -2374,7 +2408,12 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     const deployed = await deployContract(providers, { compiledContract: contract });
 
-    expect(deployed.initialPrivateState).toEqual({});
+    // The engine expectation above is the measurement; this is the visible half
+    // of it. The 0.16 runtime threads its input straight back, so an
+    // `undefined` in is an `undefined` out -- and the member being absent from
+    // the handle altogether is ruled out separately.
+    expect('initialPrivateState' in deployed).toBe(true);
+    expect(deployed.initialPrivateState).toBeUndefined();
   });
 
   it('refuses a retained-era deploy against a POST-FORK head, before the constructor runs', async () => {
@@ -2407,6 +2446,15 @@ describe('deploying a retained-era contract through deployContract', () => {
   });
 });
 
+/**
+ * Attaching to an already-deployed retained-era contract — a READ path, so it
+ * composes nothing and submits nothing.
+ *
+ * It gets the same treatment as the two write arms because it makes the same
+ * two safety claims they do, and neither is free: that a mis-dispatched
+ * artifact is caught at ATTACH time rather than at the first call, and that the
+ * whole attach runs against ONE chain snapshot.
+ */
 describe('attaching to a retained-era contract already on chain', () => {
   let recording: CoinReceiverRecording;
   let contract: CoinReceiver016Contract;

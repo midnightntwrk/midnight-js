@@ -25,7 +25,6 @@ export type {
   ExecuteCircuitOptions,
   ExecuteConstructorOptions,
   Ledger8ChargedState,
-  Ledger8ConstructedContractState,
   Ledger8DeployableContractState,
   Ledger8Engine,
   Ledger8SigningKey,

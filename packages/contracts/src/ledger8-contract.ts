@@ -606,6 +606,13 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
    * era-independent, so nothing about the retained ledger prevents it. Store
    * the key yourself, through the private-state provider, if you need it for a
    * retained-era contract in the meantime.
+   *
+   * The key this field would take is the one
+   * {@link Ledger8DeployedContract.signingKey} reports, which the deploy arm
+   * samples when the caller named none and persists nowhere. So the deploy ->
+   * attach round trip is not supported in either direction: the deploy does not
+   * store the key, and this field does not read one back. A caller that never
+   * copied it off the deploy handle cannot maintain that contract again.
    */
   readonly signingKey?: Ledger8SigningKey;
 }
@@ -660,6 +667,24 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
  * answers with.
  */
 export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledger8FoundContract<C> {
+  /**
+   * The key the deployed contract's maintenance authority was built from: ONE
+   * verifying key at threshold 1, so this single key is the whole authority.
+   *
+   * SAMPLED here when the caller named none on the deploy options, and stored
+   * NOWHERE by this framework — not in the private-state provider, not on
+   * chain, and not recoverable from either. This handle is the only place a
+   * sampled key ever appears, so a caller that wants it later has to persist it
+   * itself, before the handle goes out of scope.
+   *
+   * Lost, the authority is unreachable for good: no verifier key can be
+   * inserted, removed or replaced on that contract by anyone. Attaching again
+   * does not recover it — see
+   * {@link Ledger8FindDeployedContractOptions.signingKey}, which is not a route
+   * back in.
+   *
+   * @remarks **Privacy-sensitive.** Signing-key material.
+   */
   readonly signingKey: Ledger8SigningKey;
   /**
    * The state the contract was deployed with, as the LIVE handle the retained

@@ -344,6 +344,17 @@ export interface ReplayExpectations {
    */
   readonly constructorPrivateState?: unknown;
   /**
+   * The private state the CONSTRUCTOR arm answers with, standing in for a
+   * constructor that ADVANCED the state it was handed.
+   *
+   * Omitted, the double threads its input straight back, which is what the real
+   * 0.16 runtime does: `{}` in gives `{}` out and `undefined` in gives
+   * `undefined` out. That fidelity is also what makes this member necessary —
+   * threaded through, the constructor's output and the caller's input are the
+   * same value, so a test cannot pin WHICH of the two the pipeline stored.
+   */
+  readonly advancedConstructorPrivateState?: unknown;
+  /**
    * The Zswap local state the CONSTRUCTOR arm answers with. Defaults to an
    * empty one — the ordinary constructor mints nothing — so a test that wants a
    * minting constructor says so here rather than the fixture pretending to one.
@@ -434,7 +445,13 @@ export const createReplayEngine = (
       // a deploy composed from it must be given a key map naming exactly that
       // entry point — which is the validation the deploy composition performs.
       contractState: { serialize: (): Uint8Array => constructedState },
-      privateState: {},
+      // Threaded back, as the real 0.16 runtime threads it: a constructor that
+      // writes no private state hands its input out again, so `undefined` in is
+      // `undefined` out and not an empty object conjured by the double.
+      privateState:
+        expectations !== undefined && 'advancedConstructorPrivateState' in expectations
+          ? expectations.advancedConstructorPrivateState
+          : options.privateState,
       zswapLocalState: expectations?.constructorZswapLocalState ?? {
         coinPublicKey: recording.coinPublicKey,
         currentIndex: 0n,

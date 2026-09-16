@@ -23,7 +23,6 @@ import {
   type ConstructorResultPojo,
   executeConstructor,
   type ExecuteConstructorOptions,
-  type Ledger8ConstructedContractState,
   type Ledger8ConstructorRuntime,
   type Ledger8DeployableContractState,
   type Ledger8SigningKey
@@ -46,7 +45,6 @@ export type {
   ExecuteCircuitOptions,
   ExecuteConstructorOptions,
   Ledger8ChargedState,
-  Ledger8ConstructedContractState,
   Ledger8DeployableContractState,
   Ledger8SigningKey,
   Ledger8StateValue,
