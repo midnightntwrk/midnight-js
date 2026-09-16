@@ -474,12 +474,11 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       'era.v8.decodeContractState',
       'engine.downConvertForExecution',
       'engine.executeCircuit',
-      // Between execution and composition, and it has to be: the Zswap offer is
-      // routed against this split, and it becomes an option on the composition.
-      // The RETAINED era draws it here because on this arm it is also the one
-      // that composes -- the log names the era so that stays checked.
-      'era.v8.partitionCallTranscript',
-      'era.v8.composeCallTx'
+      'era.v8.composeCallTx',
+      // INSIDE the composition, not before it: the composer resolves the split
+      // and only then asks for the offer to route against it. The RETAINED era
+      // does both on this arm -- the log names the era so that stays checked.
+      'era.v8.zswapOffer'
     ]);
     expect(result.txBytes).toBeInstanceOf(Uint8Array);
     // Exactly ONE call: the retained era has no call tree to express, and a
@@ -488,10 +487,9 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     // The state handed to the composition is the RAW envelope as read from
     // chain, which is what carries the registered operation and its key.
     expect(composed?.calls[0]?.contractState).toBe(v6Envelope);
-    // ALREADY partitioned: the pipeline resolved the split above to route the
-    // offer, and hands the composer that pair rather than making it repeat the
-    // work on the raw op sequence.
-    expect(composed?.calls[0]?.transcript.kind).toBe('partitioned');
+    // UNPARTITIONED: the split is the composer's to draw, once, and it hands it
+    // back through the offer factory. The pipeline no longer draws its own.
+    expect(composed?.calls[0]?.transcript.kind).toBe('unpartitioned');
   });
 
   it('carries the post-call Zswap local state, and the coins the call minted to the CALLER', async () => {
@@ -635,7 +633,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
 
   it('carries the recorded coin movement in the GUARANTEED segment, with the fallible segment empty', async () => {
     const log: OrchestrationLog = [];
-    let composed: ComposeCallOptions | undefined;
+    let routed: { readonly guaranteed?: Uint8Array; readonly fallible?: Uint8Array } | undefined;
     const providers = createMockProviders();
     providers.publicDataProvider.queryRawContractState = vi
       .fn()
@@ -643,8 +641,8 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
 
     const result = await runLedger8CallPipeline<ReplayState>({
       retainedEra,
-      era: recordEraCalls(retainedEra, log, (options) => {
-        composed = options;
+      era: recordEraCalls(retainedEra, log, undefined, (offers) => {
+        routed = offers;
       }),
       engine: createReplayEngine(recording, log),
       publicDataProvider: providers.publicDataProvider,
@@ -673,8 +671,10 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     // offer. See 'routes a coin the partition places in the fallible half'.
     expect(result.guaranteedZswapOffer).toBeInstanceOf(Uint8Array);
     expect(result.fallibleZswapOffer).toBeUndefined();
-    expect(composed?.guaranteedZswapOffer).toBe(result.guaranteedZswapOffer);
-    expect(composed?.fallibleZswapOffer).toBeUndefined();
+    // The offer the composer was handed is the one the pipeline reports, so the
+    // routing survives the hand-off rather than being re-decided.
+    expect(routed?.guaranteed).toBe(result.guaranteedZswapOffer);
+    expect(routed?.fallible).toBeUndefined();
   });
 
   // The regression #731/#877 named, on the arm that did not have it. Before the
@@ -691,26 +691,35 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
   // than the offer keeps the routing decision under test the pipeline's own.
   it('routes a coin the partition places in the fallible half into the fallible offer', async () => {
     const log: OrchestrationLog = [];
-    let composed: ComposeCallOptions | undefined;
+    let routed: { readonly guaranteed?: Uint8Array; readonly fallible?: Uint8Array } | undefined;
     const providers = createMockProviders();
     providers.publicDataProvider.queryRawContractState = vi
       .fn()
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
-    const recorded = recordEraCalls(retainedEra, log, (options) => {
-      composed = options;
+    const recorded = recordEraCalls(retainedEra, log, undefined, (offers) => {
+      routed = offers;
     });
     const fallibleOnlyEra: LedgerEra = {
       ...recorded,
-      partitionCallTranscript: (options) => {
-        const [guaranteed, fallible] = recorded.partitionCallTranscript(options);
-        // The real halves, swapped into the fallible slot. Asserted rather than
-        // assumed: if the recording ever stops partitioning into a guaranteed
-        // transcript this test would silently stop exercising the route.
-        if (guaranteed === undefined || fallible !== undefined) {
-          throw new Error('expected the recording to partition into a guaranteed transcript only');
+      composeCallTx: (options) => {
+        const { zswapOffer } = options;
+        if (zswapOffer === undefined) {
+          throw new Error('expected the pipeline to route its offer through the composer');
         }
-        return [undefined, guaranteed];
+        return recorded.composeCallTx({
+          ...options,
+          // The real halves, swapped into the fallible slot before the pipeline's
+          // own factory ever sees them. Asserted rather than assumed: if the
+          // recording ever stops partitioning into a guaranteed transcript this
+          // test would silently stop exercising the route.
+          zswapOffer: ([[guaranteed, fallible]]) => {
+            if (guaranteed === undefined || fallible !== undefined) {
+              throw new Error('expected the recording to partition into a guaranteed transcript only');
+            }
+            return zswapOffer([[undefined, guaranteed]]);
+          }
+        });
       }
     };
 
@@ -741,11 +750,57 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     expect(result.guaranteedZswapOffer).toBeUndefined();
     // The offer the composer received is the one the pipeline reports, so the
     // routing survives the hand-off rather than being re-decided.
-    expect(composed?.fallibleZswapOffer).toBe(result.fallibleZswapOffer);
-    expect(composed?.guaranteedZswapOffer).toBeUndefined();
+    expect(routed?.fallible).toBe(result.fallibleZswapOffer);
+    expect(routed?.guaranteed).toBeUndefined();
   });
 
-  it('partitions the transcript once and hands the composer the pair it already resolved', async () => {
+  // `zswapOffer` is OPTIONAL on `ComposeCallOptions`, so an era that never calls
+  // it back is type-correct. The pipeline builds its offer only inside that
+  // callback, so such an era would compose a transaction carrying none of the
+  // circuit's coin movements -- and report `guaranteedZswapOffer: undefined`,
+  // which is also the honest shape of a call that moved nothing. Nothing
+  // downstream can tell the two apart, and the wallet reports the difference as
+  // `Wallet.InsufficientFunds`. So the pipeline refuses instead of reporting it.
+  it('refuses an era that composes without ever asking for the offer', async () => {
+    const log: OrchestrationLog = [];
+    const providers = createMockProviders();
+    providers.publicDataProvider.queryRawContractState = vi
+      .fn()
+      .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
+
+    const recorded = recordEraCalls(retainedEra, log);
+    const offerIgnoringEra: LedgerEra = {
+      ...recorded,
+      // Drops the factory on the floor, exactly as a third-party era that never
+      // read the seam's contract would.
+      composeCallTx: ({ zswapOffer: _ignored, ...rest }) => recorded.composeCallTx(rest)
+    };
+
+    await expect(
+      runLedger8CallPipeline<ReplayState>({
+        retainedEra,
+        era: offerIgnoringEra,
+        engine: createReplayEngine(recording, log),
+        publicDataProvider: providers.publicDataProvider,
+        head: 'v8',
+        contract,
+        contractAddress: recording.contractAddress,
+        circuitId: CIRCUIT_ID,
+        args: [recording.receivedCoin],
+        coinPublicKey: recording.coinPublicKey,
+        privateState: {},
+        localVerifierKey: STAND_IN_VERIFIER_KEY,
+        networkId: NETWORK_ID,
+        ttl: new Date(Date.now() + 3_600_000),
+        encryptionPublicKey: createEncryptionPublicKeyResolver(
+          recording.coinPublicKey,
+          providers.walletProvider.getEncryptionPublicKey()
+        )
+      })
+    ).rejects.toThrowError(/did not build the call's Zswap offer/);
+  });
+
+  it('splits the transcript once, inside the composer, and routes the offer against that split', async () => {
     const log: OrchestrationLog = [];
     let composed: ComposeCallOptions | undefined;
     const providers = createMockProviders();
@@ -776,14 +831,16 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       )
     });
 
-    // Exactly one. The offer has to be routed against the split, and the
-    // composer needs the split too; resolving it twice would leave two answers
-    // that must agree with nothing checking that they do.
-    expect(log.filter((entry) => entry === 'era.v8.partitionCallTranscript')).toHaveLength(1);
-    // And this is what makes one enough: the composer is handed the resolved
-    // pair, not the raw op sequence. `resolvePartition` returns a caller-supplied
-    // pair untouched, so it cannot partition again.
-    expect(composed?.calls[0]?.transcript.kind).toBe('partitioned');
+    // Exactly one composition, and exactly one offer built inside it. The offer
+    // has to be routed against the split and the composer needs the split too;
+    // drawing it twice would leave two answers that must agree with nothing
+    // checking that they do.
+    expect(log.filter((entry) => entry === 'era.v8.composeCallTx')).toHaveLength(1);
+    expect(log.filter((entry) => entry === 'era.v8.zswapOffer')).toHaveLength(1);
+    // And this is what makes one enough: the raw op sequence goes to the
+    // composer, which splits it once and hands that split to the factory. There
+    // is no second split for the two to disagree about.
+    expect(composed?.calls[0]?.transcript.kind).toBe('unpartitioned');
   });
 
   it("encrypts a user-owned output to the RECIPIENT's key, asking the resolver for that recipient", async () => {

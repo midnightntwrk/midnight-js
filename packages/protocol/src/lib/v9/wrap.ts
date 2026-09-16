@@ -65,7 +65,7 @@ export interface WrapKeepStateCallOptions {
  */
 export const wrapKeepStateCall = (options: WrapKeepStateCallOptions): ledgerV9.ContractCallPrototype => {
   const { transcript, contractAddress, contractState, ledgerParameters } = options;
-  return assembleCallPrototype(ledgerV9, {
+  const { prototype } = assembleCallPrototype(ledgerV9, {
     circuitId: transcript.circuitId,
     contractAddress,
     // The retained execution leg partitions nothing: it always submits the raw
@@ -84,4 +84,6 @@ export const wrapKeepStateCall = (options: WrapKeepStateCallOptions): ledgerV9.C
     stage: 'wrap-call',
     version: 'v9'
   });
+
+  return prototype;
 };
