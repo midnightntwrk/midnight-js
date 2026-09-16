@@ -417,15 +417,36 @@ constructor runtime slice now carries the same decoder the execution leg uses,
 and `runLedger8DeployPipeline` routes the decoded state into the deploy's
 guaranteed offer.
 
-### Seeding a retained-era private state
+## Seeding a retained-era private state
 
-This arm has no `initialPrivateState`, on either the find options or the call
-options, so there is no API-level way to CREATE a private state for a
-retained-era contract. A caller restoring on a new device has nothing stored and
-nothing to store it with.
+Two of the three retained-era arms can CREATE a private state. The third still
+only reads one, and that asymmetry is the whole of what a caller has to know.
 
-Until the options are widened, the refusal names the way through: write the
-state directly with `privateStateProvider.set(privateStateId, state)` before
-calling. That is why the message adds a remediation to the sentence the current
-era raises — the current era can seed through `findDeployedContract`, and this
-arm cannot, so the same first sentence leaves a retained-era caller stuck.
+A DEPLOY seeds through `Ledger8DeployContractOptionsWithPrivateState`, which
+carries `privateStateId` and `initialPrivateState` together or neither — the
+same pairing the current era's `DeployContractOptionsWithPrivateState` makes,
+and an unpaired one is `IncompleteDeployContractPrivateStateConfig`, raised
+before any provider is touched. What is STORED is not what was supplied:
+`initialPrivateState` is the state the CONSTRUCTOR RUNS AGAINST, and what lands
+under the id is the state the constructor produced. The write happens only after
+the chain has recorded the deployment, in the order above.
+
+An ATTACH seeds through `Ledger8FindDeployedContractOptions.initialPrivateState`,
+by the CURRENT era's own rule rather than a second copy of it: both eras reach
+`setOrGetInitialPrivateState` in `find-deployed-contract.ts`, because
+client-side storage is era-independent and there is nothing about the retained
+ledger for the rule to differ on. It runs AFTER the attach has checked every
+declared circuit's key, so a state seeded for a contract whose keys turn out not
+to match does not outlive the find that failed.
+
+A CALL only reads. `Ledger8CallTxOptions` carries a `privateStateId` and no
+`initialPrivateState`, so `readLedger8PrivateState` either finds a state under
+the named id or refuses — it has nothing to create one from, and the failure
+mode recorded above is why passing `undefined` down instead is not an option.
+
+The refusal's own remediation is now behind the code it describes. It says the
+find AND call options carry no `initialPrivateState`, which stopped being true
+of find, and it names only the direct write —
+`privateStateProvider.set(privateStateId, state)` — which does still work. A
+deploy or an attach naming the same id is the route the message does not
+mention.

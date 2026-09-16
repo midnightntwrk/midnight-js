@@ -157,5 +157,5 @@ would have removed 37 published names instead of one.
 - `src/test/typecheck/ledger8-namespace.test-d.ts` asserts that what the entry
   points resolve to is namable THROUGH the namespace -- the other compile-level
   suites import the source modules, which a consumer cannot -- and compares all
-  29 type members against the declarations they rename, which is what catches a
+  31 type members against the declarations they rename, which is what catches a
   transposed pair in the rename table.
