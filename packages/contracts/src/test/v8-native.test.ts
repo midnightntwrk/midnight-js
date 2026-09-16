@@ -2330,7 +2330,7 @@ describe('deploying a retained-era contract through deployContract', () => {
       advancedConstructorPrivateState: ADVANCED_PRIVATE_STATE
     });
 
-    await deployContract(providers, {
+    const deployed = await deployContract(providers, {
       compiledContract: contract,
       privateStateId: 'retained-private-state',
       initialPrivateState: {}
@@ -2345,6 +2345,11 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(callOrder(providers.publicDataProvider.watchForDeployTxData)).toBeLessThan(
       callOrder(providers.privateStateProvider.set)
     );
+    // The caller's input here is `{}`, distinct from ADVANCED_PRIVATE_STATE, so
+    // this pins the returned handle to the constructor's output specifically --
+    // a check the `toBeUndefined()` tests below can't make, since both sides
+    // are `undefined` there and so indistinguishable.
+    expect(deployed.initialPrivateState).toBe(ADVANCED_PRIVATE_STATE);
   });
 
   it('leaves the private state untouched when the caller named no id', async () => {
@@ -2383,7 +2388,7 @@ describe('deploying a retained-era contract through deployContract', () => {
       advancedConstructorPrivateState: ADVANCED_PRIVATE_STATE
     });
 
-    await deployContract(providers, {
+    const deployed = await deployContract(providers, {
       compiledContract: contract,
       privateStateId: 'retained-private-state',
       initialPrivateState: {}
@@ -2396,6 +2401,11 @@ describe('deploying a retained-era contract through deployContract', () => {
       'retained-private-state',
       ADVANCED_PRIVATE_STATE
     );
+    // The caller's input here is `{}`, distinct from ADVANCED_PRIVATE_STATE, so
+    // this pins the returned handle to the constructor's output specifically --
+    // a check the `toBeUndefined()` tests below can't make, since both sides
+    // are `undefined` there and so indistinguishable.
+    expect(deployed.initialPrivateState).toBe(ADVANCED_PRIVATE_STATE);
   });
 
   it('hands the constructor UNDEFINED when the caller supplied no initial private state', async () => {
