@@ -135,7 +135,7 @@ export { type AnyEraFinalizedCallTxData, type AnyEraSubmittedCallTx, isLedger8Re
 //
 // One export rather than the thirty-nine it re-exports, because the retained era is transitional
 // and a flat family is not: see `docs/retained-era-namespace.md` for what qualifies for membership,
-// what is deliberately held back, and how the whole surface is withdrawn in one step.
+// what deliberately stays flat, and how the whole surface is withdrawn in one step.
 export * as Ledger8 from './ledger8';
 export { submitCallTx, submitCallTxAsync, type SubmitCallTxProviders } from './submit-call-tx';
 export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';

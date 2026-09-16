@@ -525,15 +525,9 @@ export interface SubmittedOperation {
 // thing to check, because "verify it did not finalize" is not an instruction a
 // caller with several operations in flight can act on otherwise.
 //
-// Only the `call` arm is reachable in production today. It is driven through
-// `submitCallTx`, and covered there. The `deploy` arm is DORMANT with
-// `runLedger8Deploy`: `kind: 'deploy'` is set at exactly one place, inside that
-// function, and no entry point invokes it -- `deployContract`'s retained arm
-// refuses unconditionally with `Ledger8DeployUnmaintainableError` before any head
-// is read. The text is written and tested against that internal function so it
-// is correct on the day the deploy arm is enabled, which is the day the era
-// seam carries a maintenance authority; it is NOT a message a consumer can
-// provoke through this package's public surface now.
+// Both arms are reachable in production: the `call` arm through `submitCallTx`,
+// the `deploy` arm through `deployContract`'s retained-era arm. `kind: 'deploy'`
+// is set at exactly one place, inside `runLedger8Deploy`.
 const STALE_HEAD_MESSAGES: Readonly<
   Record<StaleHeadOperationKind, (operation: SubmittedOperation, freshEra: LedgerVersion) => string>
 > = Object.freeze({
@@ -1151,48 +1145,6 @@ export class VerifierKeyMismatchError extends Error {
 }
 
 /**
- * An error indicating that a retained-era deploy was refused because this
- * pipeline does not set a maintenance authority on the contract it would
- * create.
- *
- * A retained constructor leaves behind an EMPTY committee with a threshold of
- * ONE — a rule set nothing can ever satisfy — so the deployed contract could
- * never have a verifier key inserted, removed or replaced, by anyone, its
- * deployer included. `packages/protocol/src/test/v8-deploy.test.ts` pins that
- * measurement.
- *
- * The refusal is about the AUTHORITY THIS PIPELINE SETS, not about a limit of
- * the retained era: the retained runtime exposes `sampleSigningKey`,
- * `signatureVerifyingKey` and a mutable `ContractState.maintenanceAuthority`,
- * and an authority written onto the constructor's own state survives into the
- * composed deploy. Lifting the refusal therefore means threading a signing key
- * through the retained execution leg in `packages/protocol` — not widening the
- * era seam, which already carries the serialized state the authority lives in.
- *
- * Carries no registered error code, deliberately: a code is a published
- * compatibility commitment, and this condition goes away when the authority is
- * threaded through. The exported CLASS is what a consumer needs in the
- * meantime — `instanceof` beats matching on a message that is expected to
- * change.
- *
- * @see {@link KeepStatePipeline} for the measurement in full.
- */
-export class Ledger8DeployUnmaintainableError extends Error {
-  constructor() {
-    super(
-      'A retained-era contract cannot be deployed by this release. The transaction composes, but this ' +
-        'pipeline sets no maintenance authority, and the authority a retained constructor leaves behind ' +
-        'is an empty committee with a threshold of one - which nothing can ever satisfy. The deployed ' +
-        'contract could never have a verifier key inserted, removed or replaced, by anyone, including ' +
-        'you. Deploy a contract produced by the current toolchain instead, and keep using the retained ' +
-        'artifact for calls against contracts that were deployed before the fork - see the ' +
-        'runtime-deploy chapter of the migration guide.'
-    );
-    this.name = 'Ledger8DeployUnmaintainableError';
-  }
-}
-
-/**
  * An error indicating that a retained-era call was recorded on chain with a
  * status other than `SucceedEntirely`.
  *
@@ -1200,11 +1152,10 @@ export class Ledger8DeployUnmaintainableError extends Error {
  * reused because it carries a current-era `FinalizedTxData` where a retained
  * call is recorded as a version-tagged {@link VersionedFinalizedTxData}.
  *
- * Carries no registered error code, for the same reason
- * {@link Ledger8DeployUnmaintainableError} does not: the code would be a
- * published commitment on an arm whose record type is expected to converge with
- * the current era's. The record itself is on {@link txData} so a caller can
- * branch on the status rather than read it out of the message.
+ * Carries no registered error code, deliberately: a code is a published
+ * compatibility commitment, and this arm's record type is expected to converge
+ * with the current era's. The record itself is on {@link txData} so a caller
+ * can branch on the status rather than read it out of the message.
  *
  * The message states the local-versus-chain consequence per STATUS, because the
  * two differ: with the whole transaction rejected nothing landed, but a
@@ -1227,6 +1178,45 @@ export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
             'state still matches it.')
     );
     this.name = 'Ledger8CallTxFailedError';
+  }
+
+  /** See {@link AnyEraTxFailedError.record}. Either arm on this class. */
+  get record(): VersionedFinalizedTxData {
+    return this.txData;
+  }
+}
+
+/**
+ * An error indicating that a retained-era DEPLOY was recorded on chain with a
+ * status other than `SucceedEntirely`.
+ *
+ * Separate from {@link Ledger8CallTxFailedError} because the remediation is,
+ * and for the same reason {@link StaleHeadError} writes a deploy's remediation
+ * separately: a failed call can simply be run again, while a failed deploy
+ * cannot be retried blindly. A deploy mints a fresh nonce, so a second attempt
+ * lands at a DIFFERENT address, and repeating one that in fact finalized leaves
+ * two copies of the contract on chain.
+ *
+ * Carries no registered error code, for the same reason its call-arm sibling
+ * does not.
+ *
+ * The signing key is named in the message because it is the one thing a caller
+ * cannot recover: a sampled key existed only on the result this refusal
+ * replaces.
+ */
+export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
+  constructor(
+    readonly txData: VersionedFinalizedTxData,
+    readonly contractAddress: string
+  ) {
+    super(
+      `The retained-era deployment of the contract at '${contractAddress}' was recorded on chain with ` +
+        `status '${txData.status}' rather than 'SucceedEntirely' (transaction id '${txData.txId}'). ` +
+        'No private state was stored and no signing key was returned, so nothing local refers to this ' +
+        'address. Check that address before deploying again: a deploy mints a fresh nonce, so a second ' +
+        'attempt lands at a different address and would leave two copies of the contract on chain.'
+    );
+    this.name = 'Ledger8DeployTxFailedError';
   }
 
   /** See {@link AnyEraTxFailedError.record}. Either arm on this class. */

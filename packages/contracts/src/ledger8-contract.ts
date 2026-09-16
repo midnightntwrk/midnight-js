@@ -656,13 +656,8 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
  * only the deployer has.
  *
  * Published under the retained-era namespace so a caller that receives one by
- * inference can also NAME it. `deployContract`'s retained-era arm still refuses
- * with `Ledger8DeployUnmaintainableError`, so nothing constructs a value of this
- * type yet; what it declares is what that arm answers with once the refusal is
- * lifted, and the pipeline under it already computes every member.
- *
- * @see {@link KeepStatePipeline} for the measurement behind the refusal and what
- *      lifting it requires.
+ * inference can also NAME it. This is what `deployContract`'s retained-era arm
+ * answers with.
  */
 export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledger8FoundContract<C> {
   readonly signingKey: Ledger8SigningKey;

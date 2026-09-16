@@ -32,6 +32,7 @@ import type {
   DeployResultPojo,
   DownConvertedState,
   EncodedStateValue,
+  Ledger8SigningKey,
   LedgerEra,
   LedgerVersion,
   TranscriptPojo
@@ -171,6 +172,16 @@ export interface Ledger8ConstructedState {
    * cannot balance.
    */
   readonly zswapLocalState: ZswapLocalState;
+  /**
+   * The key the deployed state's maintenance authority was built from: the
+   * caller's own when one was named, otherwise the one the engine sampled.
+   *
+   * REQUIRED, unlike the request's, and that asymmetry is the point — a sampled
+   * key exists nowhere else, so an engine that did not report it would leave
+   * the deployment as unmaintainable as the empty committee the retained
+   * constructor writes.
+   */
+  readonly signingKey: Ledger8SigningKey;
 }
 
 /** What {@link Ledger8ExecutionEngine.executeConstructor} is asked to run. */
@@ -179,6 +190,11 @@ export interface Ledger8ConstructRequest {
   readonly args: readonly unknown[];
   readonly privateState: unknown;
   readonly coinPk: string;
+  /**
+   * The key the contract's maintenance authority is built from. Optional: the
+   * engine samples one when it is absent, and reports whichever it used.
+   */
+  readonly signingKey?: Ledger8SigningKey;
 }
 
 /**
@@ -755,6 +771,12 @@ export interface Ledger8DeployPipelineRequest {
    * pipeline cannot derive on its own.
    */
   readonly encryptionPublicKey: EncryptionPublicKeyResolver;
+  /**
+   * The key to register as the deployed contract's maintenance authority.
+   * Optional here and reported back on the result, because a caller that names
+   * none gets a sampled key it could not have known in advance.
+   */
+  readonly signingKey?: Ledger8SigningKey;
 }
 
 /** What one retained-era deploy produced. */
@@ -782,6 +804,12 @@ export interface Ledger8DeployPipelineResult {
    * offer — when it minted none.
    */
   readonly guaranteedZswapOffer: Uint8Array | undefined;
+  /**
+   * The key the deployed contract's maintenance authority was built from, which
+   * only the deployer ever holds. The caller's own when one was named,
+   * otherwise the sampled one — and then this is its only copy.
+   */
+  readonly signingKey: Ledger8SigningKey;
 }
 
 /**
@@ -794,9 +822,11 @@ export interface Ledger8DeployPipelineResult {
  * is settled by the caller before it gets here.
  *
  * @param request The era and engine, the contract and its constructor
- * arguments, the verifier keys and the transaction envelope.
+ * arguments, the verifier keys, the transaction envelope and the optional
+ * signing key the maintenance authority is built from.
  * @returns The serialized unproven transaction, the address the deployment
- * will have, the initial state, and the private state the constructor produced.
+ * will have, the initial state, the private state the constructor produced,
+ * and the signing key its maintenance authority was built from.
  * @throws ComposeOptionError, ComposeFailedError if the era refuses the deploy —
  * including `option: 'verifierKeys'` for a map that does not name exactly the
  * state's declared entry points.
@@ -806,7 +836,8 @@ export const runLedger8DeployPipeline = (request: Ledger8DeployPipelineRequest):
     contract: request.contract,
     args: request.args,
     privateState: request.privateState,
-    coinPk: request.coinPublicKey
+    coinPk: request.coinPublicKey,
+    signingKey: request.signingKey
   });
 
   // Refused by name here rather than by a bare assertion inside the offer
@@ -838,6 +869,10 @@ export const runLedger8DeployPipeline = (request: Ledger8DeployPipelineRequest):
     initialContractState: constructed.contractState,
     nextPrivateState: constructed.privateState,
     initialZswapState: constructed.zswapLocalState,
-    guaranteedZswapOffer
+    guaranteedZswapOffer,
+    // Read off the CONSTRUCTOR's answer rather than echoed from the request:
+    // the two differ exactly when the caller named none, which is the case
+    // where losing the key loses the contract.
+    signingKey: constructed.signingKey
   };
 };

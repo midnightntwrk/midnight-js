@@ -20,24 +20,25 @@ import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
-import { CURRENT_PIPELINE_ERA } from './era';
-import { Ledger8DeployUnmaintainableError } from './errors';
+import { CURRENT_PIPELINE_ERA, RETAINED_PIPELINE_ERA } from './era';
 import type { FoundContract } from './find-deployed-contract';
 import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
 import { isLedger8Request, resolveArtifactEra } from './internal/era';
+import { submitLedger8DeployTx } from './internal/ledger8-entry';
 import {
   type AnyLedger8DeployContractOptions,
   type AnyLedger8DeployedContract,
   type Ledger8CircuitId,
   type Ledger8Contract,
   type Ledger8ContractProviders,
-  type Ledger8DeployContractOptions
+  type Ledger8DeployContractOptions,
+  type Ledger8DeployedContract
 } from './ledger8-contract';
 import { type DeployTxOptions, submitDeployTx } from './submit-deploy-tx';
-import { createCircuitCallTxInterface } from './tx-interfaces';
+import { createCircuitCallTxInterface, createLedger8CircuitCallTxInterface } from './tx-interfaces';
 import type { FinalizedDeployTxData } from './tx-model';
 
 /**
@@ -126,30 +127,20 @@ const createDeployTxOptions = <C extends Contract.Any>(
  * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
- * ALWAYS REFUSED, with `Ledger8DeployUnmaintainableError`, for a MEASURED reason about the
- * maintenance authority rather than about the era pairing: nothing on this path sets one, and the
- * authority a retained constructor leaves behind is an empty committee with a threshold of one, so
- * the deployed contract could never be maintained by anyone. The deploy TRANSACTION path itself
- * composes and submits correctly — this refusal is about the result.
+ * Reachable only on a PRE-FORK head: the retained era has no post-fork deployment, so a retained
+ * artifact against a post-fork head is refused with `Ledger8DeployOnV9Error`. Recompile with the
+ * current toolchain and deploy that artifact instead; the retained artifact keeps working for calls
+ * against contracts deployed before the fork.
  *
- * Typed `Promise<never>` because that is what an arm that only ever throws returns. It also keeps
- * the signature free of `Ledger8DeployedContract`, which is deliberately NOT exported: naming an
- * unexported type in a published signature gives a caller a value they cannot annotate.
- *
- * The refusal is unconditional and comes BEFORE the network head is read, so `Ledger8DeployOnV9Error`
- * — the era pairing table's refusal for a retained-era deploy against a post-fork head — is not
- * reachable through this entry point today. Do NOT branch on it here: through `deployContract` that
- * branch is never taken.
- *
- * @see {@link KeepStatePipeline} for the measurement, what it would take to lift the refusal, and
- *      the test that pins it.
+ * A verifier key is registered for every entry point the artifact declares, because a retained
+ * constructor builds every slot BLANK and the retained deploy registers none of its own.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
 export async function deployContract<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
   options: Ledger8DeployContractOptions<C>
-): Promise<never>;
+): Promise<Ledger8DeployedContract<C>>;
 
 /**
  * Deploys a contract that declares no private state, so no private state id is required.
@@ -190,7 +181,35 @@ export async function deployContract<C extends Contract.Any>(
 ): Promise<DeployedContract<C> | AnyLedger8DeployedContract> {
   const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
   if (isLedger8Request<AnyLedger8DeployContractOptions>(options, artifactEra)) {
-    throw new Ledger8DeployUnmaintainableError();
+    // `args`, `privateStateId` and `initialPrivateState` are CONDITIONAL members on the caller's
+    // type -- a nullary constructor carries no `args` at all, and the no-private-state arm carries
+    // neither of the other two -- so each is read with an `in` check rather than accessed.
+    const deployed = await submitLedger8DeployTx(providers, {
+      compiledContract: options.compiledContract,
+      args: 'args' in options ? options.args : [],
+      privateStateId: 'privateStateId' in options ? options.privateStateId : undefined,
+      initialPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
+      signingKey: options.signingKey
+    });
+    return {
+      era: RETAINED_PIPELINE_ERA,
+      compiledContract: options.compiledContract,
+      contractAddress: deployed.contractAddress,
+      deployTxData: deployed.deployTxData,
+      signingKey: deployed.signingKey,
+      initialState: deployed.initialState,
+      initialContractState: deployed.initialContractState,
+      initialPrivateState: deployed.initialPrivateState,
+      initialZswapState: deployed.initialZswapState,
+      // Built AFTER the chain has recorded the deployment, so a handle a caller receives names an
+      // address the chain actually holds a contract at.
+      callTx: createLedger8CircuitCallTxInterface(
+        providers,
+        options.compiledContract,
+        deployed.contractAddress,
+        'privateStateId' in options ? options.privateStateId : undefined
+      )
+    };
   }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
   return {

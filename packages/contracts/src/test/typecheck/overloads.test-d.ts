@@ -353,10 +353,6 @@ describe('every result names the pipeline that produced it', () => {
 });
 
 describe('the retained-era deploy publishes what it produced, and takes what a constructor needs', () => {
-  // NOT OBSERVABLE END TO END: `deployContract`'s retained arm refuses with
-  // `Ledger8DeployUnmaintainableError`, so nothing constructs a value of these
-  // types today. What they declare is what the arm will answer with when that
-  // refusal is lifted, and the pipeline under it already computes every member.
   interface SeededPrivateState {
     readonly seed: bigint;
   }
@@ -875,15 +871,16 @@ describe('submitCallTxAsync, deployContract and findDeployedContract resolve bot
     expectTypeOf(submitCallTxAsync(providers018, options018)).toEqualTypeOf<Promise<SubmittedCallTx<Twin018, 'increment'>>>();
   });
 
-  // `never`, not the retained deployed-contract type: this arm is refused
-  // unconditionally, so there is no value to describe. It also keeps
-  // `Ledger8DeployedContract` -- which the barrel deliberately holds back --
-  // out of a published signature, where it would name a type a caller can
-  // receive by inference and cannot annotate.
-  it('resolves a retained-era deployContract to never, because that arm only ever throws', () => {
+  // The retained DEPLOYED-contract type, not `never`: the arm composes and
+  // submits, so there is a value to describe -- and the type is reachable by
+  // name through the `Ledger8` namespace, so a caller that receives one by
+  // inference can also annotate it.
+  it('resolves a retained-era deployContract to the retained-era deployed-contract type', () => {
     const deployOptions: Ledger8DeployContractOptions<Counter016Contract> = { compiledContract: contract016 };
 
-    expectTypeOf(deployContract(providers016, deployOptions)).toEqualTypeOf<Promise<never>>();
+    expectTypeOf(deployContract(providers016, deployOptions)).toEqualTypeOf<
+      Promise<Ledger8DeployedContract<Counter016Contract>>
+    >();
   });
 
   it('resolves a current-era deployContract to the current-era deployed-contract type', () => {

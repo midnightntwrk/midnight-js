@@ -297,6 +297,16 @@ export const loadCoinReceiverRecording = (): CoinReceiverRecording => {
 };
 
 /**
+ * The key the doubled constructor hands back when the caller supplied none.
+ *
+ * The real `executeConstructor` samples one in that case and reports it,
+ * because a sampled key exists nowhere else. A fixed marker here is what lets a
+ * test tell "the caller's key was threaded through" from "a key was sampled" —
+ * two answers a randomly sampled key would make indistinguishable.
+ */
+export const SAMPLED_SIGNING_KEY = 'replay-sampled-signing-key';
+
+/**
  * The opaque marker the doubled engine hands back from its down-convert.
  *
  * The pipeline is generic in the down-converted state and never looks inside
@@ -326,6 +336,13 @@ export type OrchestrationLog = string[];
 export interface ReplayExpectations {
   /** The private state the pipeline must have handed the engine. */
   readonly privateState?: unknown;
+  /**
+   * The private state the pipeline must have handed the CONSTRUCTOR. Separate
+   * from the circuit's, because a deploy's is the caller's `initialPrivateState`
+   * — `undefined` when none was supplied — where a call's is what the provider
+   * held.
+   */
+  readonly constructorPrivateState?: unknown;
   /**
    * The Zswap local state the CONSTRUCTOR arm answers with. Defaults to an
    * empty one — the ordinary constructor mints nothing — so a test that wants a
@@ -400,12 +417,17 @@ export const createReplayEngine = (
     }
     return state.serialize();
   },
-  executeConstructor: (): Ledger8ConstructedState => {
+  executeConstructor: (options): Ledger8ConstructedState => {
     log.push('engine.executeConstructor');
     if (constructedState === undefined) {
       throw new Error('this replay engine was not given a constructed state to replay');
     }
+    if (expectations !== undefined && 'constructorPrivateState' in expectations) {
+      expect(options.privateState).toEqual(expectations.constructorPrivateState);
+    }
     return {
+      // Sampled when the caller named none, exactly as the real engine does.
+      signingKey: options.signingKey ?? SAMPLED_SIGNING_KEY,
       // The committed retained-era envelope for this same contract, which is a
       // real serialized retained `ContractState` built from the real
       // constructor's own primary state. It already DECLARES `receive_coin`, so

@@ -114,25 +114,16 @@ is a decision nobody has asked for yet. What this document must not do is claim
 the property it does not have: withdrawing the retained era is ONE step for the
 era's own family and a SECOND step for the fork-window group.
 
-## What is held back
+## The deploy arm's own members
 
-`Ledger8DeployedContract` is declared and NOT published, under the rule that a
-caller who can obtain a value must be able to name its type -- and no caller can
-obtain this one. `deployContract`'s retained arm refuses every retained-toolchain
-artifact with `Ledger8.DeployUnmaintainableError` before any transaction is
-composed or submitted (it does read the ZK config provider first, to establish
-the artifact's declared runtime version), so nothing constructs the type.
-Publishing it would document a handle nobody can hold and, because it extends
-`Ledger8FoundContract`, would make every later repair of that handle a breaking
-change to a published type with no users. Publish it in the commit that makes
-the deploy arm produce one.
+`Ledger8DeployedContract` is published, under the rule that a caller who can
+obtain a value must be able to name its type: `deployContract`'s retained arm
+composes, submits and hands one back.
 
-Both refusal ERRORS are published, but they are not in the same position:
-`Ledger8.DeployUnmaintainableError` is the refusal a caller actually receives,
-and `Ledger8.DeployOnV9Error` sits behind it in the era pairing table, so it is
-dormant -- unreachable through `deployContract` today. Do not write a `catch`
-for it; it is published for completeness and becomes reachable when the deploy
-arm is wired.
+`Ledger8.DeployOnV9Error` is the era pairing table's refusal for a retained
+artifact against a post-fork head, and it is reachable: it is what a caller
+receives once the network has crossed the fork. `Ledger8.DeployTxFailedError` is
+the refusal for a deployment the node recorded with a non-success status.
 
 The `AnyLedger8*` aliases stay internal: they widen the era-dispatching
 IMPLEMENTATION signatures and are never a signature a caller sees.

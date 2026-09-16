@@ -26,7 +26,7 @@
  * BOTH eras stay on the flat surface, so a consumer that only receives results
  * never imports the transitional half.
  *
- * @see {@link RetainedEraNamespace} for what qualifies, what is held back, and
+ * @see {@link RetainedEraNamespace} for what qualifies, what stays flat, and
  *      how the surface is withdrawn.
  */
 
@@ -34,7 +34,7 @@ export {
   Ledger8AmbiguousEntryPointError as AmbiguousEntryPointError,
   Ledger8CallTxFailedError as CallTxFailedError,
   Ledger8DeployOnV9Error as DeployOnV9Error,
-  Ledger8DeployUnmaintainableError as DeployUnmaintainableError,
+  Ledger8DeployTxFailedError as DeployTxFailedError,
   Ledger8RecipientUnmappableError as RecipientUnmappableError,
   Ledger8SeamFailedError as SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError as ShieldedSpendUnsupportedError

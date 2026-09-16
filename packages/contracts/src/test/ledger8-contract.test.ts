@@ -21,7 +21,7 @@ import type { ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { deployContract } from '../deploy-contract';
-import { EraArtifactMismatchError, Ledger8DeployUnmaintainableError } from '../errors';
+import { EraArtifactMismatchError, Ledger8DeployOnV9Error } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
 import type { Ledger8ContractProviders } from '../ledger8-contract';
 import type {
@@ -314,10 +314,11 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       );
     });
 
-    // The one arm that still refuses outright is the deploy. Its reason is measured and is nothing
-    // to do with the pipeline -- see `Ledger8DeployUnmaintainableError` for the measurement and what
-    // it would take to lift it.
-    it('refuses a retained-era deployContract, because the deployment would be unmaintainable', async () => {
+    // The deploy arm no longer refuses by artifact. It runs, and what decides it is the ERA PAIRING:
+    // the retained era has no post-fork deployment, so a retained artifact against a post-fork head
+    // is refused by the same table every other retained operation is measured against. This shared
+    // mock reports a post-fork head, which is the refusing cell.
+    it('routes a retained-era deployContract into the retained pipeline, where the era table refuses it', async () => {
       let caught: unknown;
       try {
         await deployContract(providers, { compiledContract: contract });
@@ -326,16 +327,12 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       }
 
       // The CLASS, not the message constant: asserting against the same string the production code
-      // throws can only fail if one file disagrees with itself, which it cannot. A stable fragment
-      // of the text is asserted separately so a message rewritten into something that no longer
-      // explains the refusal still fails here.
-      expect(caught).toBeInstanceOf(Ledger8DeployUnmaintainableError);
-      expect((caught as Error).message).toContain('verifier key inserted, removed or replaced');
-      // Refused BEFORE anything is read: the refusal is unconditional, so no head read and no state
-      // read should have happened. This is also what makes `Ledger8DeployOnV9Error` unreachable
-      // through this entry point.
-      expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
-      expect(providers.publicDataProvider.queryRawContractState).not.toHaveBeenCalled();
+      // throws can only fail if one file disagrees with itself, which it cannot.
+      expect(caught).toBeInstanceOf(Ledger8DeployOnV9Error);
+      // POSITIVE evidence that the arm REACHED the era gate rather than refusing in front of it:
+      // the head was read. A refusal raised before any provider was touched -- which is what stood
+      // here -- would leave this untouched.
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalled();
     });
 
     it('does NOT refuse a current-era deploy, so the era machinery cannot fire on the common path', async () => {
@@ -359,7 +356,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       expect((caught as Error).message).toMatch(/sampleSigningKey/);
       // And it is not an era refusal of any kind.
       expect(caught).not.toBeInstanceOf(EraArtifactMismatchError);
-      expect(caught).not.toBeInstanceOf(Ledger8DeployUnmaintainableError);
+      expect(caught).not.toBeInstanceOf(Ledger8DeployOnV9Error);
     });
 
   });
