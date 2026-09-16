@@ -52,14 +52,16 @@ which is not the order of importance, and was measured rather than assumed:
 
 1. **The circuit context**, and this is the one that actually fires for a real
    contract. `Ledger8Circuit` takes a `Ledger8CircuitContextArgument`, which
-   names only the members the RETAINED runtime's `CircuitContext` requires and
-   so has none of the members the current runtime's much larger one requires
-   (`callContext`, `queryContexts`, `gasCosts`, `callProofDataTrace`, `events`),
-   so a current-era circuit is not assignable to it on a CONTRAVARIANT
-   PARAMETER mismatch. The reverse fails the same way. This position is also
-   where #1312 was: it used to take the descriptive `Ledger8CircuitContext`,
-   whose `unknown` members are assignable in the wrong direction, so it rejected
-   every RETAINED-era contract too.
+   names the four members the RETAINED runtime's `CircuitContext` requires. The
+   current runtime's much larger one requires seven — `callContext`,
+   `queryContexts`, `gasCosts`, `zswapLocalStates`, `costModel`,
+   `callProofDataTrace`, `events` — of which only `costModel` is shared, so six
+   are absent and a current-era circuit is not assignable to it on a
+   CONTRAVARIANT PARAMETER mismatch. The reverse fails the same way. That
+   `costModel` is common to both eras is why it alone cannot discriminate them.
+   This position is also where #1312 was: it used to take the descriptive
+   `Ledger8CircuitContext`, whose `unknown` members are assignable in the wrong
+   direction, so it rejected every RETAINED-era contract too.
 2. **Sync versus async.** Retained-era circuit members and `initialState`
    return plain objects; the current era's return `Promise`s. A
    `Promise<CircuitResults<...>>` has none of the four members
@@ -153,10 +155,18 @@ TYPES to accept a real circuit.
 
 It is derived from `Ledger8CircuitContext` by a mapped type, so the two cannot
 drift on a member — and it still gives the family its second, independent reason
-to reject a current-era contract: it names only the retained runtime's required
-members, so it is missing every member the current runtime's much larger
-`CircuitContext` requires (`callContext`, `queryContexts`, `gasCosts`,
-`callProofDataTrace`, `events`).
+to reject a current-era contract: it names only the retained runtime's four
+required members, so six of the current runtime's seven are absent (see the list
+above; `costModel` is the one they share).
+
+Both directions are load-bearing, and each catches drift the other cannot. The
+descriptive shape requires the real context to HAVE its members, so a member
+removed upstream breaks the argument-stripping assertions; the argument shape
+requires the real context to have NO MORE required members than those, so a
+member added upstream breaks the conformance assertions. Because the member list
+is the descriptive type's, it must be exactly the runtime's REQUIRED set: naming
+a runtime-optional member (`gasLimit`) without `?` would silently collapse
+`Ledger8CircuitParameters` to `never[]` for every retained contract.
 
 The era-internal members of `Ledger8CircuitContext` — `currentQueryContext`,
 `currentZswapLocalState` and `costModel` — are `unknown` because they are live

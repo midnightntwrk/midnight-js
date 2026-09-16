@@ -39,10 +39,10 @@ import { createMockCompiledContract, createMockProviders } from './test-mocks';
 // asserts the exact structural facts the family encodes — facts a declaration file cannot state,
 // such as which members the constructor actually installs and whether they are async.
 //
-// The pairing is required, not optional. `typecheck/overloads.test-d.ts` proves the entry points'
-// overloads DISCRIMINATE the two eras; only this test proves the shape they discriminate on is the
-// shape a real retained-era contract actually has. Without it the family is an unverified guess and
-// the compile assertions prove nothing about a real contract.
+// The pairing is required, not optional. `typecheck/overloads.test-d.ts` proves the overloads
+// DISCRIMINATE the two eras and that the family accepts the artifact's own DECLARATIONS; only this
+// test proves those declarations describe the JavaScript that actually ships. Without it, both
+// generated files could agree with each other and disagree with reality.
 
 // The shared hard-fork fixture tree, which lives in `testkit-js` because that is where the
 // fixtures are produced and where the e2e suites consume them.
@@ -62,6 +62,21 @@ const TWIN_MODULE_TYPES = resolve(FIXTURES_DIR, 'twin-contract/compiled/contract
 // out rather than imported so this test asserts the brand's ABSENCE against the literal key, and
 // keeps asserting it if the vendor moves where the constant is exported from.
 const COMPILED_CONTRACT_BRAND = Symbol.for('compact-js/CompiledContract');
+
+/**
+ * The circuit ids a generated declaration file declares, read off its `ImpureCircuits` block.
+ *
+ * Scoped to that one block rather than the whole file: `Circuits` and `ProvableCircuits` repeat
+ * the same members, so matching file-wide would report each id three times and compare a list
+ * nothing installs.
+ */
+const declaredCircuitIds = (declarations: string): string[] => {
+  const block = /export type ImpureCircuits<PS> = \{([\s\S]*?)\n\}/.exec(declarations);
+  if (!block) {
+    throw new Error('the declaration file has no ImpureCircuits block');
+  }
+  return [...block[1].matchAll(/^\s{2}(\w+)\(context:/gm)].map((match) => match[1]).sort();
+};
 
 // The fixture's generated code opens with `checkRuntimeVersion('0.16.0')`, which the installed
 // (current) `@midnight-ntwrk/compact-runtime` rejects outright, and then builds type descriptors
@@ -163,21 +178,23 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
     //  - the declaration is there at all (it was deliberately not ported until #1312);
     //  - it names `compact-runtime-ledger8`, this repo's alias for the retained
     //    `@midnight-ntwrk/compact-runtime@0.16.0`. `compactc` emits the bare specifier, which the
-    //    root `resolutions` pin to 0.19.0 — so left alone it would silently type the retained
-    //    fixture against the CURRENT runtime's `CircuitContext` and the type test would be
-    //    checking the wrong era's shape. The one-line rewrite is documented in
-    //    `fixtures/hf/README.md` under `counter-016/`.
+    //    root `resolutions` pin to 0.19.0 — so left alone the retained fixture would be typed
+    //    against the CURRENT runtime's `CircuitContext`. That is loud rather than silent (the
+    //    conformance assertions in `typecheck/overloads.test-d.ts` go red), but it fails somewhere
+    //    that says nothing about a specifier, which is what this pins. The one-line rewrite is
+    //    documented in `fixtures/hf/README.md` under `counter-016/`.
     const counterTypes = readFileSync(resolve(COUNTER_016_DIR, 'index.d.ts'), 'utf8');
     expect(counterTypes).toContain("from 'compact-runtime-ledger8'");
     expect(counterTypes).not.toContain("from '@midnight-ntwrk/compact-runtime'");
     expect(counterTypes).toContain('export declare class Contract');
     expect(readFileSync(TWIN_MODULE_TYPES, 'utf8')).toContain('export declare class Contract');
 
-    // And the declaration belongs to THIS module: every circuit the constructed contract installs
-    // is declared in it. Regenerating one file without the other is the way the pairing breaks.
-    for (const circuitId of Object.keys(contract.impureCircuits)) {
-      expect(counterTypes).toContain(`${circuitId}(context:`);
-    }
+    // And the declaration belongs to THIS module. Strict equality in BOTH directions, not
+    // `toContain` per circuit: a one-directional check misses a circuit declared in the `.d.ts`
+    // that the module does not install, which is the direction that would make the type test
+    // assert about a circuit no caller can reach. Regenerating one file without the other is how
+    // the pairing breaks.
+    expect(declaredCircuitIds(counterTypes)).toEqual(Object.keys(contract.impureCircuits).sort());
   });
 
   it('exports no expectedVk, unlike the current era whose modules always do', () => {
@@ -190,8 +207,8 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
     // handling of real circuit ARGUMENTS to a real artifact. `coin-receiver-016`'s `receive_coin`
     // takes one (its own arity guard is `args_1.length !== 2`, against the counter's `!== 1`), and
     // `typecheck/overloads.test-d.ts` asserts the retained-era overload RESOLVES for it. These
-    // assertions are what keep the hand-written `CoinReceiver016Contract` tied to the generated
-    // code that type describes.
+    // assertions are what tie the generated DECLARATION `CoinReceiver016Contract` now comes from
+    // to the generated JavaScript beside it.
     let coinReceiver: CoinReceiver016Contract;
     let coinReceiverModule: CoinReceiver016Module;
 
@@ -217,10 +234,12 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       expect(asyncCircuitIds).toEqual([]);
     });
 
-    it('declares the coin argument with the field names and widths the hand-written type claims', () => {
-      // `CoinReceiver016Coin` is hand-written, and until now only its ARITY was tied to the
-      // artifact. Field names and byte widths are what a caller has to satisfy, and the generated
-      // source states them outright in its own type-error text, so pin them there.
+    it('declares the coin argument with the byte widths the DECLARATION cannot state', () => {
+      // `CoinReceiver016Coin` is now derived from the generated declaration, so field names and
+      // TypeScript types are tied to the artifact by the compiler. Byte widths are not: the
+      // declaration erases them to `Uint8Array` and `bigint`. The generated JavaScript states them
+      // outright in its own type-error text, which is the only place they can be pinned -- and it
+      // is also what cross-checks the two generated files against each other.
       const source = readFileSync(COIN_RECEIVER_016_MODULE, 'utf8');
 
       expect(source).toContain('nonce: Bytes<32>');
@@ -246,9 +265,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       expect(coinReceiverTypes).toContain("from 'compact-runtime-ledger8'");
       expect(coinReceiverTypes).not.toContain("from '@midnight-ntwrk/compact-runtime'");
       expect(coinReceiverTypes).toContain('export declare class Contract');
-      for (const circuitId of Object.keys(coinReceiver.impureCircuits)) {
-        expect(coinReceiverTypes).toContain(`${circuitId}(context:`);
-      }
+      expect(declaredCircuitIds(coinReceiverTypes)).toEqual(Object.keys(coinReceiver.impureCircuits).sort());
       expect('expectedVk' in coinReceiverModule).toBe(false);
     });
 

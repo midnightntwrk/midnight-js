@@ -79,7 +79,10 @@ import type {
   CoinReceiver016Coin,
   CoinReceiver016Contract,
   Counter016Contract,
-  Counter016PrivateState
+  Counter016PrivateState,
+  PrivateCounter016Contract,
+  PrivateCounter016PrivateState,
+  PrivateCounter016Witness
 } from '../ledger8-fixture-types';
 
 // These are compile-level tests: the property under test is that this file type-checks (or, for
@@ -90,10 +93,11 @@ import type {
 // at runtime is incidental — `expectTypeOf(...)` performs no runtime assertion.
 //
 // The retained-era ("0.16") side of every assertion is the hand-written family in
-// `../../ledger8-contract.ts`, described for this fixture in `../ledger8-fixture-types.ts`.
-// `../ledger8-contract.test.ts` is what proves that description matches the REAL generated
-// artifact — these assertions prove the OVERLOADS discriminate the two eras, not that either
-// description is true. Both halves are needed.
+// `../../ledger8-contract.ts`, checked here against the fixtures' own generated declarations
+// through `../ledger8-fixture-types.ts`. So these assertions prove two things: that the OVERLOADS
+// discriminate the two eras, and that the family accepts a real artifact at all.
+// `../ledger8-contract.test.ts` remains the other half — it proves the runtime facts no
+// declaration file states, such as which members the constructor installs and that none is async.
 
 type Twin018PrivateState = { readonly round: bigint };
 type Twin018 = Twin018Contract<Twin018PrivateState>;
@@ -135,12 +139,25 @@ describe('the retained-era contract type family pins the real 0.16 artifact shap
     // 0.31.1 declared, which names the retained runtime's own `CircuitContext` and knows nothing
     // about this family -- so this fails the moment the two drift apart.
     //
-    // They had drifted: `Ledger8CircuitContext` was missing `costModel`, a required member of
-    // `compact-runtime@0.16`'s `CircuitContext`, which put every real artifact outside
-    // `Ledger8Contract` and left every retained-era overload unreachable from TypeScript.
+    // They had drifted. The CAUSE was reusing the descriptive, `unknown`-membered
+    // `Ledger8CircuitContext` in the circuit's contravariant parameter position, where the
+    // assignability runs the other way; the missing `costModel` is merely the first error `tsc`
+    // prints, and adding it alone just moves the failure on to `currentZswapLocalState`. Either
+    // way no real artifact satisfied `Ledger8Contract` and every retained overload was unreachable.
     expectTypeOf<Counter016Contract>().toMatchTypeOf<Ledger8Contract<Counter016PrivateState>>();
     expectTypeOf<CoinReceiver016Contract>().toMatchTypeOf<Ledger8Contract>();
     expectTypeOf<Counter016Contract['impureCircuits']['increment']>().toMatchTypeOf<Ledger8Circuit>();
+  });
+
+  it('reads the fixture through the RETAINED runtime, so the assertions above cannot go vacuous', () => {
+    // The guard on the guard. `skipLibCheck` is on, so if `compact-runtime-ledger8` ever stops
+    // resolving from inside the committed declaration -- dropped, renamed, or compiled from a
+    // context that cannot see it -- every circuit signature in it degrades to `any`, and `any`
+    // satisfies `Ledger8Contract` trivially. The assertions above would then pass while proving
+    // nothing, with no diagnostic anywhere. `ledger8-contract.test.ts` pins the SPELLING of the
+    // specifier on the committed bytes; this pins that it actually resolved to something.
+    expectTypeOf<Parameters<Counter016Contract['impureCircuits']['increment']>[0]>().not.toBeAny();
+    expectTypeOf<Parameters<CoinReceiver016Contract['impureCircuits']['receive_coin']>[1]>().not.toBeAny();
   });
 
   it('reads the fixture circuit ids off the family rather than off the fixture declaration', () => {
@@ -178,19 +195,35 @@ describe('the retained-era contract type family pins the real 0.16 artifact shap
   });
 
   it('rejects a current-era contract instance', () => {
-    // The near-miss guard. The reason it is rejected is a CONTRAVARIANT PARAMETER mismatch: the
-    // family's circuit takes a `Ledger8CircuitContextArgument`, which names only the members of the
-    // RETAINED runtime's `CircuitContext` and so is missing every member the current runtime's much
-    // larger one requires (`callContext`, `queryContexts`, `gasCosts`, `callProofDataTrace`,
-    // `events`), so a current-era circuit is not assignable to `Ledger8Circuit`. It is NOT the
-    // sync/async split that fires here, even though that split is what the family is designed
-    // around — the next assertion anchors on that separately, so a later relaxation of
-    // `Ledger8CircuitContext` cannot quietly move this test onto the other reason.
-    // @ts-expect-error - a current-era contract's circuit context is not the retained era's
+    // The near-miss guard. Deliberately reason-BLIND: a bare `@ts-expect-error` is satisfied by any
+    // error at all, so on its own it says only that the two eras do not mix. The assertion that
+    // isolates WHICH reason fires is the next one; this one exists to pin the whole-contract case.
+    // @ts-expect-error - a current-era contract is not a retained-era one
     const notRetainedEra: Ledger8Contract = contract018;
     // `void`, not an `expectTypeOf` against its own annotation: that would assert nothing and read
     // as coverage. The directive above is the assertion.
     void notRetainedEra;
+  });
+
+  it('rejects a current-era circuit on the CONTEXT alone, with sync/async taken out of play', () => {
+    // What the `@ts-expect-error` guards above cannot say. Both of them pass if ANY reason rejects,
+    // and the sync/async split alone is enough -- so dropping the leading context from
+    // `Ledger8Circuit` entirely would leave both of them green and the contravariance guard gone.
+    //
+    // This circuit returns a PLAIN OBJECT satisfying `Ledger8CircuitResult`, so the sync/async
+    // discriminator cannot fire and the context is the only thing left that can reject it. The
+    // current runtime's `CircuitContext` requires seven members; `Ledger8CircuitContextArgument`
+    // names the retained runtime's four, of which only `costModel` is shared, so six required
+    // members are absent and the contravariant parameter check fails.
+    type CurrentEraContext = Parameters<Twin018['impureCircuits']['increment']>[0];
+    type SyncCurrentEraCircuit = (context: CurrentEraContext) => Ledger8CircuitResult;
+    expectTypeOf<SyncCurrentEraCircuit>().not.toMatchTypeOf<Ledger8Circuit>();
+
+    // ...and the mirror, on a real RETAINED circuit reduced to the same shape, so the context is
+    // again the only thing that can differ. It must still be ACCEPTED.
+    type RetainedEraContext = Parameters<Counter016Contract['impureCircuits']['increment']>[0];
+    type SyncRetainedEraCircuit = (context: RetainedEraContext) => Ledger8CircuitResult;
+    expectTypeOf<SyncRetainedEraCircuit>().toMatchTypeOf<Ledger8Circuit>();
   });
 
   it('rejects the async results the current era returns, independently of any context mismatch', () => {
@@ -225,7 +258,15 @@ describe('an argument-taking retained-era contract works, not just a zero-argume
   });
 
   it('reports a NON-EMPTY caller argument tuple, with the framework-built context stripped', () => {
+    // `CoinReceiver016Coin` is itself `Parameters<...>[1]`, so this compares a slice of the tuple
+    // against the tuple: it proves exactly one leading element was stripped, and nothing about the
+    // coin's shape.
     expectTypeOf<Ledger8CircuitParameters<CoinReceiver016Contract, 'receive_coin'>>().toEqualTypeOf<[coin: CoinReceiver016Coin]>();
+
+    // So pin the shape separately. A restatement is legitimate here precisely because it is NOT
+    // derived: `ledger8-contract.test.ts` pins the same three names and their byte widths against
+    // the generated JavaScript, so the two generated files are cross-checked rather than trusted.
+    expectTypeOf<CoinReceiver016Coin>().toEqualTypeOf<{ nonce: Uint8Array; color: Uint8Array; value: bigint }>();
   });
 
   it('carries args on its options, unlike the zero-argument fixture', () => {
@@ -959,6 +1000,23 @@ describe('the retained-era private state flows through the family', () => {
     // The variance check that makes the threading safe: `PS` is covariant here, so narrowing it on
     // a concrete contract does not push that contract out of `Ledger8Contract`.
     expectTypeOf<Ledger8Witness<Counter016PrivateState>>().toMatchTypeOf<Ledger8Witness>();
-    expectTypeOf<Counter016Contract>().toMatchTypeOf<Ledger8Contract<Counter016PrivateState>>();
+  });
+
+  it('accepts a REAL generated witness, which neither other fixture can show', () => {
+    // Every assertion above is written against a HAND-WRITTEN witness type, because both other
+    // fixtures emit `Witnesses<PS> = {}` -- so `Ledger8Witness` was a claim about generated code
+    // that no generated code ever met. That is #1312's shape one member over.
+    //
+    // `private-counter-016` declares `localIncrement(context: WitnessContext<Ledger, PS>):
+    // [PS, bigint]` and carries a real private state, so the claim is checkable.
+    expectTypeOf<PrivateCounter016Witness>().toMatchTypeOf<Ledger8Witness<PrivateCounter016PrivateState>>();
+    expectTypeOf<PrivateCounter016Contract>().toMatchTypeOf<Ledger8Contract<PrivateCounter016PrivateState>>();
+
+    // And the threading is real on a real artifact, not just on the hand-written type above: the
+    // same witness is NOT assignable when the private state is someone else's.
+    expectTypeOf<PrivateCounter016Witness>().not.toMatchTypeOf<Ledger8Witness<{ readonly other: bigint }>>();
+
+    // Guards against the whole block going vacuous if `compact-runtime-ledger8` stops resolving.
+    expectTypeOf<Parameters<PrivateCounter016Witness>[0]>().not.toBeAny();
   });
 });

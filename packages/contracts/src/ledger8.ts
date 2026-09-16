@@ -49,7 +49,6 @@ export type {
   Ledger8Circuit as Circuit,
   Ledger8CircuitCallTxInterface as CircuitCallTxInterface,
   Ledger8CircuitContext as CircuitContext,
-  Ledger8CircuitContextArgument as CircuitContextArgument,
   Ledger8CircuitId as CircuitId,
   Ledger8CircuitParameters as CircuitParameters,
   Ledger8CircuitResult as CircuitResult,
