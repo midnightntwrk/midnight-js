@@ -115,7 +115,7 @@ describe('createProofProviderFromArms', () => {
     expect(retained).not.toHaveBeenCalled();
   });
 
-  it('rejects the retained arm it was not given, with the registered code', async () => {
+  it('rejects the retained arm it was not given, with its stable code', async () => {
     const currentEra = vi.fn(async () => stubUnbound());
     const provider = createProofProviderFromArms({ currentEra });
 
@@ -203,6 +203,7 @@ describe('createWalletProviderFromArms', () => {
       (error: unknown) => error
     );
 
+    expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
     expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
     expect((rejection as V8PayloadUnsupportedError).seam).toBe('balanceTx');
     expect(currentEra).not.toHaveBeenCalled();
@@ -285,6 +286,7 @@ describe('createMidnightProviderFromArms', () => {
       (error: unknown) => error
     );
 
+    expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
     expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
     expect((rejection as V8PayloadUnsupportedError).seam).toBe('submitTx');
     expect(currentEra).not.toHaveBeenCalled();

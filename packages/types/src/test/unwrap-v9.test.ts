@@ -38,7 +38,7 @@ describe('unwrapV9', () => {
     expect(unwrapV9({ version: 'v9', tx: 'the-transaction' }, 'proveTx')).toBe('the-transaction');
   });
 
-  it('refuses the v8 arm with the registered code, naming the seam and the payload size', () => {
+  it('refuses the v8 arm with its stable code, naming the seam and the payload size', () => {
     const refusal = caught({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) });
 
     expect(refusal).toBeInstanceOf(V8PayloadUnsupportedError);

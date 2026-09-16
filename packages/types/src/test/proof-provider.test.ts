@@ -66,7 +66,7 @@ describe('createProofProvider', () => {
   });
 
   describe('v8 payload', () => {
-    it('rejects with the registered unsupported-payload code instead of proving anything', async () => {
+    it('rejects with its stable unsupported-payload code instead of proving anything', async () => {
       const provider = createProofProvider(stubProvingProvider, stubCostModel);
 
       const rejection = await provider
@@ -157,7 +157,7 @@ describe('createProofProvider', () => {
       // opposite of what happened.
       ['null', null, 'null'],
       ['a version string longer than the cap', { version: 'v'.repeat(80), tx: {} }, `'${'v'.repeat(32)}'… (80 chars)`]
-    ])('rejects %s with the registered untagged-payload code', async (_label, payload, received) => {
+    ])('rejects %s with its stable untagged-payload code', async (_label, payload, received) => {
       const rejection = await proveUntagged(payload);
 
       expect(rejection).toBeInstanceOf(UntaggedPayloadError);

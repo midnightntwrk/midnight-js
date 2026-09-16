@@ -73,7 +73,7 @@ describe('createWalletProvider', () => {
     expect(impl.balanceTx).toHaveBeenCalledWith(expect.anything(), ttl);
   });
 
-  it('rejects a v8 payload with the registered code, and never calls the implementation', async () => {
+  it('rejects a v8 payload with its stable code, and never calls the implementation', async () => {
     const impl = buildImpl(stubFinalized());
     const provider = createWalletProvider(impl);
 
@@ -131,7 +131,7 @@ describe('createMidnightProvider', () => {
     expect(txId).toBe('tx-id');
   });
 
-  it('rejects a v8 payload with the registered code, and never submits', async () => {
+  it('rejects a v8 payload with its stable code, and never submits', async () => {
     const submit = vi.fn(async () => 'tx-id' as TransactionId);
     const provider = createMidnightProvider(submit);
 
@@ -140,6 +140,7 @@ describe('createMidnightProvider', () => {
       (error: unknown) => error
     );
 
+    expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
     expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
     expect((rejection as V8PayloadUnsupportedError).seam).toBe('submitTx');
     expect(submit).not.toHaveBeenCalled();

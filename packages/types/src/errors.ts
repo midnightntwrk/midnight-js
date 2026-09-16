@@ -44,7 +44,8 @@ export type Seam = ProviderSeam | ReadSeam;
  * Stable error-code strings for the provider seams.
  *
  * Declared in this package because this is where the payload union they refuse
- * is defined, and where three of the five are thrown; the other two come from
+ * is defined, and where the classes for three of the five live; the other two
+ * come from
  * `@midnight-ntwrk/midnight-js-indexer-public-data-provider`, which depends on
  * this package. `@midnight-ntwrk/midnight-js-utils` re-exports the group and
  * folds it into the registry `hasErrorCode` consults.

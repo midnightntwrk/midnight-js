@@ -79,10 +79,10 @@ describe('assertSeamsSupportEra', () => {
     expect(refusalFrom('v8', seams(CURRENT_ONLY, CURRENT_ONLY, CURRENT_ONLY)).seam).toBe('proveTx');
   });
 
-  it('carries the registered error code', () => {
+  it('carries its stable error code', () => {
     const refusal = refusalFrom('v8', seams(CURRENT_ONLY, BOTH, BOTH));
 
-    expect((refusal as SeamEraUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.SEAM_ERA_UNSUPPORTED);
+    expect(refusal.code).toBe(PROVIDER_ERROR_CODES.SEAM_ERA_UNSUPPORTED);
   });
 
   it('names the era and the declaration in the message, so a report is actionable', () => {
