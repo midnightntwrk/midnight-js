@@ -239,8 +239,8 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // IDENTICAL to the retained arm's order, which is the claim: the two arms
     // differ only in which era object they are handed. `wrapKeepStateCall` is
     // not in it -- see this file's own header for why. The transcript crosses
-    // ALREADY partitioned: the pipeline resolves the split to route the Zswap
-    // offer, so the composition receives the pair rather than redrawing it.
+    // UNPARTITIONED: the composer draws the split once and hands it back through
+    // the offer factory, so there is no second split to disagree with it.
     // The order is the retained arm's, plus the one step that only keep-state
     // needs. Read the ERAS in it, not just the names: the two reads are the
     // RETAINED era's -- it is the only one that can read these bytes -- and
@@ -252,16 +252,16 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       'era.v8.decodeContractState',
       'engine.downConvertForExecution',
       'engine.executeCircuit',
-      // The CURRENT era's, like the composition below it: the pipeline
-      // partitions with the era it composes with, so the offer is routed
-      // against the same split the composer is handed. Pre-fork that is the
-      // retained era; here the two differ, which is why the era is pinned.
-      'era.v9.partitionCallTranscript',
       'engine.reexpressOperationsForCurrentEra',
-      'era.v9.composeCallTx'
+      'era.v9.composeCallTx',
+      // The CURRENT era's, inside its own composition: the split is drawn by the
+      // era that composes, so the offer is routed against the same pair the
+      // composer used. Pre-fork that is the retained era; here the two differ,
+      // which is why the era is pinned.
+      'era.v9.zswapOffer'
     ]);
     expect(composed?.calls).toHaveLength(1);
-    expect(composed?.calls[0]?.transcript.kind).toBe('partitioned');
+    expect(composed?.calls[0]?.transcript.kind).toBe('unpartitioned');
 
     // NOT the chain's own bytes: the current composer cannot deserialize a
     // retained envelope at all. What it gets is the operation registry
