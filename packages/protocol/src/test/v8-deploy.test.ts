@@ -102,6 +102,9 @@ describe('executeConstructor (fake runtime — plumbing only, no WASM execution)
   }
 
   const SAMPLED_SIGNING_KEY = 'sampled-by-the-runtime';
+  // A WELL-FORMED retained signing key: 32 bytes of hex, the shape
+  // `executeConstructor` now refuses anything but before it runs a constructor.
+  const CALLER_SIGNING_KEY = 'c5'.repeat(32);
   const verifyingKeyOf = (signingKey: Ledger8SigningKey): string => `vk:${signingKey}`;
 
   const encodedZswapLocalState: EncodedZswapLocalState = {
@@ -173,7 +176,7 @@ describe('executeConstructor (fake runtime — plumbing only, no WASM execution)
       args: ['seed'],
       privateState: { initial: true },
       coinPk: 'ca'.repeat(32),
-      signingKey: 'caller-signing-key'
+      signingKey: CALLER_SIGNING_KEY
     };
 
     const result = executeConstructor(options, runtime);
@@ -193,13 +196,13 @@ describe('executeConstructor (fake runtime — plumbing only, no WASM execution)
     // A supplied key is used as given and reported back unchanged, and nothing
     // is sampled: sampling over a supplied key would put an authority on chain
     // that the caller holds no key for.
-    expect(result.signingKey).toBe('caller-signing-key');
+    expect(result.signingKey).toBe(CALLER_SIGNING_KEY);
     expect(samples).toBe(0);
-    expect(capturedVerifyingKeyInput).toBe('caller-signing-key');
+    expect(capturedVerifyingKeyInput).toBe(CALLER_SIGNING_KEY);
 
     const authority = finalContractState.maintenanceAuthority;
     expect(authority).toBeInstanceOf(FakeMaintenanceAuthority);
-    expect(authority.committee).toEqual([verifyingKeyOf('caller-signing-key')]);
+    expect(authority.committee).toEqual([verifyingKeyOf(CALLER_SIGNING_KEY)]);
     expect(authority.threshold).toBe(1);
     expect(authority.counter).toBe(0n);
   });
@@ -234,6 +237,117 @@ describe('executeConstructor (fake runtime — plumbing only, no WASM execution)
     expect(samples).toBe(1);
     expect(result.signingKey).toBe(SAMPLED_SIGNING_KEY);
     expect(finalContractState.maintenanceAuthority.committee).toEqual([verifyingKeyOf(SAMPLED_SIGNING_KEY)]);
+  });
+
+  // The retained runtime's own refusals name neither the option, the era, nor the caller: a short
+  // key reads back as `failed to fill whole buffer`, a non-hex one as
+  // `Invalid character 'z' at position 0`. Measured against the pinned runtime, a signing key is
+  // 32 bytes written as 64 hex characters.
+  it.each([
+    ['empty', ''],
+    ['not hex', 'z'.repeat(64)],
+    ['too short', 'a1'.repeat(31)],
+    ['too long', 'a1'.repeat(33)],
+    ['odd length', `${'a1'.repeat(31)}a`]
+  ])('refuses a signing key that is %s, by name and before the constructor runs', (_label, signingKey) => {
+    let constructorRuns = 0;
+    const runtime: Ledger8ConstructorRuntime = {
+      createConstructorContext: () => ({ marker: 'constructor-context' }),
+      decodeZswapLocalState: () => decodedZswapLocalState,
+      sampleSigningKey: () => SAMPLED_SIGNING_KEY,
+      signatureVerifyingKey: verifyingKeyOf,
+      ContractMaintenanceAuthority: FakeMaintenanceAuthority
+    };
+    const contract: Ledger8ConstructorContractLike = {
+      initialState: (): Ledger8ConstructorResult => {
+        constructorRuns += 1;
+        return {
+          currentContractState: { serialize: () => new Uint8Array(), maintenanceAuthority: unsatisfiableAuthority() },
+          currentPrivateState: {},
+          currentZswapLocalState: encodedZswapLocalState
+        };
+      }
+    };
+
+    let caught: unknown;
+    try {
+      executeConstructor({ contract, args: [], privateState: {}, coinPk: 'ca'.repeat(32), signingKey }, runtime);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    expect((caught as ComposeOptionError).option).toBe('signingKey');
+    expect((caught as ComposeOptionError).version).toBe('v8');
+    expect((caught as ComposeOptionError).message).toContain('signingKey');
+    // Refused before the constructor is run, so nothing is executed on a key the authority could
+    // never have been built from.
+    expect(constructorRuns).toBe(0);
+  });
+
+  it('never renders the refused key, which is a secret', () => {
+    const runtime: Ledger8ConstructorRuntime = {
+      createConstructorContext: () => ({ marker: 'constructor-context' }),
+      decodeZswapLocalState: () => decodedZswapLocalState,
+      sampleSigningKey: () => SAMPLED_SIGNING_KEY,
+      signatureVerifyingKey: verifyingKeyOf,
+      ContractMaintenanceAuthority: FakeMaintenanceAuthority
+    };
+    const contract: Ledger8ConstructorContractLike = {
+      initialState: (): Ledger8ConstructorResult => ({
+        currentContractState: { serialize: () => new Uint8Array(), maintenanceAuthority: unsatisfiableAuthority() },
+        currentPrivateState: {},
+        currentZswapLocalState: encodedZswapLocalState
+      })
+    };
+    // A key that is malformed only by LENGTH, so its characters are the real thing: a message that
+    // echoed its input would put a live secret into whatever log or issue tracker the error
+    // reaches, and on the sampled path that is the only copy in existence.
+    const nearMiss = 'c5'.repeat(31);
+
+    let caught: unknown;
+    try {
+      executeConstructor(
+        { contract, args: [], privateState: {}, coinPk: 'ca'.repeat(32), signingKey: nearMiss },
+        runtime
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    expect((caught as ComposeOptionError).message).not.toContain(nearMiss.slice(0, 16));
+  });
+
+  it('accepts an UPPERCASE hex signing key, which the retained runtime accepts too', () => {
+    const finalContractState: Ledger8ConstructedContractState = {
+      serialize: () => new Uint8Array([1, 2, 3]),
+      maintenanceAuthority: unsatisfiableAuthority()
+    };
+    const runtime: Ledger8ConstructorRuntime = {
+      createConstructorContext: () => ({ marker: 'constructor-context' }),
+      decodeZswapLocalState: () => decodedZswapLocalState,
+      sampleSigningKey: () => SAMPLED_SIGNING_KEY,
+      signatureVerifyingKey: verifyingKeyOf,
+      ContractMaintenanceAuthority: FakeMaintenanceAuthority
+    };
+    const contract: Ledger8ConstructorContractLike = {
+      initialState: (): Ledger8ConstructorResult => ({
+        currentContractState: finalContractState,
+        currentPrivateState: {},
+        currentZswapLocalState: encodedZswapLocalState
+      })
+    };
+    const uppercase = 'AB'.repeat(32);
+
+    const result = executeConstructor(
+      { contract, args: [], privateState: {}, coinPk: 'ca'.repeat(32), signingKey: uppercase },
+      runtime
+    );
+
+    // A shape check tighter than the runtime's would refuse keys the chain accepts, which is a
+    // deployment path closed for no reason.
+    expect(result.signingKey).toBe(uppercase);
   });
 });
 

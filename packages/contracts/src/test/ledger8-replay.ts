@@ -344,6 +344,16 @@ export interface ReplayExpectations {
    */
   readonly constructorPrivateState?: unknown;
   /**
+   * The constructor ARGUMENTS the pipeline must have handed the engine.
+   *
+   * Separate from the circuit's `args`, which the recording pins for free: the
+   * recording answers whatever it is asked, so a deploy that forwarded `[]` in
+   * place of the caller's arguments composed and submitted with nothing
+   * failing. That is a contract seeded from default arguments, at an address
+   * that cannot be deployed over.
+   */
+  readonly constructorArgs?: readonly unknown[];
+  /**
    * The private state the CONSTRUCTOR arm answers with, standing in for a
    * constructor that ADVANCED the state it was handed.
    *
@@ -435,6 +445,9 @@ export const createReplayEngine = (
     }
     if (expectations !== undefined && 'constructorPrivateState' in expectations) {
       expect(options.privateState).toEqual(expectations.constructorPrivateState);
+    }
+    if (expectations !== undefined && 'constructorArgs' in expectations) {
+      expect(options.args).toEqual(expectations.constructorArgs);
     }
     return {
       // Sampled when the caller named none, exactly as the real engine does.

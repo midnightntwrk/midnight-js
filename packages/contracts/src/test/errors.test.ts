@@ -15,6 +15,7 @@
 
 import {
   type AnyProvableCircuitId,
+  FailEntirely,
   FailFallible,
   type FinalizedTxData,
   type FinalizedTxDataV8,
@@ -31,6 +32,7 @@ import {
   IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   Ledger8CallTxFailedError,
+  Ledger8DeployTxFailedError,
   TxFailedError
 } from '../errors';
 import { createMockFinalizedTxData } from './test-mocks';
@@ -187,6 +189,63 @@ describe('the incomplete private-state configuration refusals', () => {
       "'initialPrivateState' was defined for contract find while 'privateStateId' was undefined"
     );
     expect(deployRefusal.message).not.toBe(findRefusal.message);
+  });
+
+  it('carries its own name, so a handler that discriminates by name can tell the two apart', () => {
+    // `Error.name` defaults to `'Error'` on a subclass that does not set it, which makes
+    // name-based discrimination -- the route a serialized error across a worker or an IPC boundary
+    // leaves a caller -- report both of these, and every other `Error`, as the same condition.
+    expect(new IncompleteDeployContractPrivateStateConfig().name).toBe('IncompleteDeployContractPrivateStateConfig');
+    expect(new IncompleteFindContractPrivateStateConfig().name).toBe('IncompleteFindContractPrivateStateConfig');
+  });
+});
+
+describe('Ledger8DeployTxFailedError', () => {
+  const SIGNING_KEY = 'a1'.repeat(32);
+  const ADDRESS = '0200'.repeat(8);
+
+  it('reads the record through the era-agnostic member and names the address it composed', () => {
+    const record = v8FailedRecord();
+
+    const error = new Ledger8DeployTxFailedError(record, ADDRESS, SIGNING_KEY);
+
+    expect(error).toBeInstanceOf(AnyEraTxFailedError);
+    expect(error.record).toBe(record);
+    expect(error.txData).toBe(record);
+    expect(error.contractAddress).toBe(ADDRESS);
+    expect(error.record.version).toBe('v8');
+  });
+
+  it('states per STATUS what landed on chain, because the two statuses differ', () => {
+    // A `ContractDeploy` sits in the Intent -- the GUARANTEED part -- so on `FailFallible` the
+    // contract DID land, under the authority this key built. One message for both statuses told
+    // that caller nothing local refers to the address, and it never went looking for the
+    // deployment it now owns and cannot maintain.
+    const fallible = new Ledger8DeployTxFailedError(
+      { ...createMockFinalizedTxData(FailFallible), version: 'v8', tx: undefined as unknown as FinalizedTxDataV8['tx'] },
+      ADDRESS,
+      SIGNING_KEY
+    );
+    const entirely = new Ledger8DeployTxFailedError(
+      { ...createMockFinalizedTxData(FailEntirely), version: 'v8', tx: undefined as unknown as FinalizedTxDataV8['tx'] },
+      ADDRESS,
+      SIGNING_KEY
+    );
+
+    expect(fallible.message).toContain('LANDED');
+    expect(entirely.message).toContain('Nothing was deployed');
+    expect(fallible.message).not.toBe(entirely.message);
+  });
+
+  it('carries the signing key, and says where to read it, without printing the key itself', () => {
+    const error = new Ledger8DeployTxFailedError(v8FailedRecord(), ADDRESS, SIGNING_KEY);
+
+    expect(error.signingKey).toBe(SIGNING_KEY);
+    expect(error.message).toContain('signingKey');
+    // The key is a SECRET. Named as a member to read, never rendered: an error message reaches
+    // logs, crash reporters and issue trackers, and this one is the only copy of the authority
+    // over the deployed contract.
+    expect(error.message).not.toContain(SIGNING_KEY);
   });
 });
 

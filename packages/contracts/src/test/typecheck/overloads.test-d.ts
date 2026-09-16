@@ -106,6 +106,7 @@ declare const providers016: Ledger8ContractProviders<Counter016Contract, 'increm
 declare const options016: Ledger8CallTxOptionsBase<Counter016Contract, 'increment'>;
 declare const options016WithPrivateStateId: Ledger8CallTxOptionsWithPrivateStateId<Counter016Contract, 'increment'>;
 declare const contract016: Counter016Contract;
+declare const counter016PrivateState: Counter016PrivateState;
 
 // The ARGUMENT-TAKING retained-era fixture, which is what makes the family's contravariance
 // testable at all.
@@ -409,8 +410,61 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
     expectTypeOf<
       Ledger8DeployContractOptionsWithPrivateState<SeededContract>['initialPrivateState']
     >().toEqualTypeOf<SeededPrivateState>();
-    expectTypeOf<Ledger8DeployContractOptionsBase<SeededContract>>().not.toHaveProperty('privateStateId');
-    expectTypeOf<Ledger8DeployContractOptionsBase<SeededContract>>().not.toHaveProperty('initialPrivateState');
+    // Declared on the no-private-state arm as `never`, not absent from it. Absent, union
+    // excess-property checking admits a member declared on the SIBLING arm as long as one arm is
+    // satisfied -- and `compiledContract` alone satisfies this one -- so `{ compiledContract,
+    // privateStateId }` compiled, the constructor ran on `privateState: undefined`, and
+    // `undefined` was stored under the caller's id.
+    expectTypeOf<Ledger8DeployContractOptionsBase<SeededContract>['privateStateId']>().toEqualTypeOf<undefined>();
+    expectTypeOf<
+      Ledger8DeployContractOptionsBase<SeededContract>['initialPrivateState']
+    >().toEqualTypeOf<undefined>();
+  });
+
+  // THE FOUR SHAPES, as a table. The two arms are SIBLINGS rather than base-and-derived: a derived
+  // `privateStateId: PrivateStateId` over a base `privateStateId?: never` is an illegal extension,
+  // and for the intersection-shaped `args` variant it collapses the member to `never`.
+  it('admits the private-state PAIR, and refuses either half on its own', () => {
+    const neither: Ledger8DeployContractOptions<Counter016Contract> = { compiledContract: contract016 };
+    const both: Ledger8DeployContractOptions<Counter016Contract> = {
+      compiledContract: contract016,
+      privateStateId: 'counter',
+      initialPrivateState: counter016PrivateState
+    };
+
+    expectTypeOf(neither).toMatchTypeOf<Ledger8DeployContractOptions<Counter016Contract>>();
+    expectTypeOf(both).toMatchTypeOf<Ledger8DeployContractOptions<Counter016Contract>>();
+    // An id with nothing to store under it: the deploy would store `undefined` there and hand back
+    // a handle whose `initialPrivateState` is typed non-optional while actually undefined.
+    expectTypeOf<{
+      readonly compiledContract: Counter016Contract;
+      readonly privateStateId: PrivateStateId;
+    }>().not.toMatchTypeOf<Ledger8DeployContractOptions<Counter016Contract>>();
+    // A state with nowhere to go, which `IncompleteDeployContractPrivateStateConfig` reports at
+    // run time and this refuses at compile time.
+    expectTypeOf<{
+      readonly compiledContract: Counter016Contract;
+      readonly initialPrivateState: Counter016PrivateState;
+    }>().not.toMatchTypeOf<Ledger8DeployContractOptions<Counter016Contract>>();
+  });
+
+  // The same table again as DECLARATIONS, which is how a consumer writes them. `toMatchTypeOf`
+  // above is plain assignability; these are what tsc reports at a call site, excess-property
+  // checking included.
+  it('refuses either half on its own where a consumer actually writes it', () => {
+    // @ts-expect-error - a private state id with no state to store under it
+    const idAlone: Ledger8DeployContractOptions<Counter016Contract> = {
+      compiledContract: contract016,
+      privateStateId: 'counter'
+    };
+    // @ts-expect-error - a private state with no id naming where it goes
+    const stateAlone: Ledger8DeployContractOptions<Counter016Contract> = {
+      compiledContract: contract016,
+      initialPrivateState: counter016PrivateState
+    };
+
+    void idAlone;
+    void stateAlone;
   });
 
   it('types every retained signing key as the RETAINED runtime key', () => {

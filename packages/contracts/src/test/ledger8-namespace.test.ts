@@ -29,6 +29,8 @@ import {
   Ledger8AmbiguousEntryPointError,
   Ledger8CallTxFailedError,
   Ledger8DeployOnV9Error,
+  Ledger8DeployRecordEraError,
+  Ledger8DeployRecordUnavailableError,
   Ledger8DeployTxFailedError,
   Ledger8RecipientUnmappableError,
   Ledger8SeamFailedError,
@@ -50,6 +52,8 @@ const RETAINED_ERA_MEMBERS = [
   'AmbiguousEntryPointError',
   'CallTxFailedError',
   'DeployOnV9Error',
+  'DeployRecordEraError',
+  'DeployRecordUnavailableError',
   'DeployTxFailedError',
   'RecipientUnmappableError',
   'SeamFailedError',
@@ -107,7 +111,7 @@ describe('the retained era is published as one namespace', () => {
     // Matched on CONTAINING the era name rather than starting with it, so a helper named
     // `createLedger8...` is caught too.
     //
-    // RUNTIME names only: `Object.keys` sees bindings, and 31 of the 39 members are types, which
+    // RUNTIME names only: `Object.keys` sees bindings, and 31 of the 41 members are types, which
     // have none. A flat retained-era TYPE re-export is caught by the strict list in
     // `contracts-type-acl.test.ts` instead -- that suite is the other half of this guard, and
     // narrowing it would reopen the larger half of the hole.
@@ -123,6 +127,8 @@ describe('the retained era is published as one namespace', () => {
     expect(Ledger8.AmbiguousEntryPointError).toBe(Ledger8AmbiguousEntryPointError);
     expect(Ledger8.CallTxFailedError).toBe(Ledger8CallTxFailedError);
     expect(Ledger8.DeployOnV9Error).toBe(Ledger8DeployOnV9Error);
+    expect(Ledger8.DeployRecordEraError).toBe(Ledger8DeployRecordEraError);
+    expect(Ledger8.DeployRecordUnavailableError).toBe(Ledger8DeployRecordUnavailableError);
     expect(Ledger8.DeployTxFailedError).toBe(Ledger8DeployTxFailedError);
     expect(Ledger8.RecipientUnmappableError).toBe(Ledger8RecipientUnmappableError);
     expect(Ledger8.SeamFailedError).toBe(Ledger8SeamFailedError);

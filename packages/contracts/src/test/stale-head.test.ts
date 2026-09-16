@@ -580,7 +580,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
         contract,
         args: [],
         privateState: {},
-        verifierKeys: new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]])
+        resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
       });
     } catch (error) {
       caught = error;
