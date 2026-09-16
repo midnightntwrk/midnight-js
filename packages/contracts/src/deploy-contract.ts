@@ -135,6 +135,13 @@ const createDeployTxOptions = <C extends Contract.Any>(
  * A verifier key is registered for every entry point the artifact declares, because a retained
  * constructor builds every slot BLANK and the retained deploy registers none of its own.
  *
+ * KEEP THE SIGNING KEY THE RESULT CARRIES. This arm registers a maintenance authority of one key
+ * at threshold 1, sampling that key when `options.signingKey` names none, and this framework
+ * stores it nowhere — not in the private-state provider, not on chain. It appears once, on
+ * `Ledger8DeployedContract.signingKey`, and a contract whose key was never copied off that handle
+ * can never have a verifier key inserted, removed or replaced by anyone. Decide where the key is
+ * going before calling this, not after.
+ *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
 export async function deployContract<C extends Ledger8Contract>(
@@ -166,7 +173,9 @@ export async function deployContract<C extends Contract.Any>(
  * @param options Configuration.
  *
  * @throws DeployTxFailedError If the transaction is submitted successfully but produces an error
- *                             when executed by the node.
+ *                             when executed by the node. Current-era arms only; the retained arm
+ *                             raises `Ledger8DeployTxFailedError`, which carries a version-tagged
+ *                             record and the signing key, instead.
  * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, is
  *                                  a raw current-era contract instance passed instead of its
  *                                  `CompiledContract` container, or its artifacts declare no
@@ -174,6 +183,21 @@ export async function deployContract<C extends Contract.Any>(
  *                                  built or submitted; the ZK config provider is asked for the
  *                                  artifacts' declared runtime version, and no other provider is
  *                                  consulted.
+ * @throws Ledger8DeployOnV9Error If a retained-era artifact is deployed against a post-fork head.
+ *                                Raised before the constructor runs and before any verifier key is
+ *                                fetched.
+ * @throws Ledger8DeployTxFailedError If the retained-era deployment was recorded with a non-success
+ *                                    status. Carries the signing key, because a `FailFallible`
+ *                                    deployment landed.
+ * @throws Ledger8DeployRecordEraError If the record of a submitted retained-era deployment comes
+ *                                     back from an era the head it composed on cannot have
+ *                                     recorded. Carries the signing key.
+ * @throws Ledger8DeployRecordUnavailableError If the record of a submitted retained-era deployment
+ *                                             cannot be read back at all. Carries the signing key
+ *                                             and the read surface's own rejection on `cause`.
+ * @throws IncompleteDeployContractPrivateStateConfig If an `initialPrivateState` reaches the
+ *                                                    retained arm with no `privateStateId` to store
+ *                                                    it under.
  */
 export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
@@ -182,13 +206,19 @@ export async function deployContract<C extends Contract.Any>(
   const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
   if (isLedger8Request<AnyLedger8DeployContractOptions>(options, artifactEra)) {
     // `args`, `privateStateId` and `initialPrivateState` are CONDITIONAL members on the caller's
-    // type -- a nullary constructor carries no `args` at all, and the no-private-state arm carries
-    // neither of the other two -- so each is read with an `in` check rather than accessed.
+    // type -- a nullary constructor carries no `args` at all, and the no-private-state arm admits
+    // only `undefined` for the other two -- so each is read with an `in` check rather than accessed.
+    //
+    // The two private-state members are FORWARDED BY KEY, not by value: the layer below reads both
+    // off their key, so writing `privateStateId: undefined` here would turn a caller that named an
+    // undefined id -- which is refused, because it believes it named one -- into a caller that
+    // named none, and turn an `initialPrivateState: undefined` -- a legitimate private state --
+    // into a caller that supplied none.
     const deployed = await submitLedger8DeployTx(providers, {
       compiledContract: options.compiledContract,
       args: 'args' in options ? options.args : [],
-      privateStateId: 'privateStateId' in options ? options.privateStateId : undefined,
-      initialPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
+      ...('privateStateId' in options ? { privateStateId: options.privateStateId } : {}),
+      ...('initialPrivateState' in options ? { initialPrivateState: options.initialPrivateState } : {}),
       signingKey: options.signingKey
     });
     return {

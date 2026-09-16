@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import type { Ledger8SigningKey, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type {
   AnyProvableCircuitId,
@@ -1049,11 +1049,18 @@ export class IncompleteCallTxPrivateStateConfig extends Error {
  * An error indicating that an initial private state was specified for a contract deploy while a
  * private state ID was not. We can't store the initial private state if we don't have a private state ID,
  * and we need to let the user know that.
+ *
+ * Raised by the RETAINED-era deploy arm, which is its only throw site today. It stays on the flat
+ * surface rather than under the `Ledger8` namespace because it is the deploy member of the
+ * three-refusal family `IncompleteCallTxPrivateStateConfig` and
+ * {@link IncompleteFindContractPrivateStateConfig} belong to — one client-side rule per entry
+ * point, and client-side storage is era-independent.
  */
 export class IncompleteDeployContractPrivateStateConfig extends Error {
   constructor() {
     super('Incorrect deploy contract configuration');
     this.message = "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined";
+    this.name = 'IncompleteDeployContractPrivateStateConfig';
   }
 }
 
@@ -1066,6 +1073,7 @@ export class IncompleteFindContractPrivateStateConfig extends Error {
   constructor() {
     super('Incorrect find contract configuration');
     this.message = "'initialPrivateState' was defined for contract find while 'privateStateId' was undefined";
+    this.name = 'IncompleteFindContractPrivateStateConfig';
   }
 }
 
@@ -1200,21 +1208,44 @@ export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
  * Carries no registered error code, for the same reason its call-arm sibling
  * does not.
  *
- * The signing key is named in the message because it is the one thing a caller
- * cannot recover: a sampled key existed only on the result this refusal
- * replaces.
+ * The message states the local-versus-chain consequence per STATUS, because the
+ * two differ, and the difference is the whole remediation. A `ContractDeploy`
+ * sits in the Intent — the GUARANTEED part — so on `FailFallible` the contract
+ * DID land, under the maintenance authority built from
+ * {@link Ledger8DeployTxFailedError.signingKey}. A single message saying nothing
+ * local refers to the address let that caller conclude nothing happened, and
+ * never go looking for a deployment it owns and cannot maintain.
+ *
+ * {@link Ledger8DeployTxFailedError.signingKey} is NAMED but never rendered: it
+ * is a secret, and an error message reaches logs and issue trackers, while this
+ * is the only copy of the authority over a deployment that landed.
  */
 export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
+  /**
+   * @param txData The record the read surface reported.
+   * @param contractAddress The address this deployment composed.
+   * @param signingKey The key the deployment's maintenance authority was built
+   * from — sampled when the caller named none, and then this is its only copy.
+   */
   constructor(
     readonly txData: VersionedFinalizedTxData,
-    readonly contractAddress: string
+    readonly contractAddress: string,
+    readonly signingKey: Ledger8SigningKey
   ) {
     super(
       `The retained-era deployment of the contract at '${contractAddress}' was recorded on chain with ` +
         `status '${txData.status}' rather than 'SucceedEntirely' (transaction id '${txData.txId}'). ` +
-        'No private state was stored and no signing key was returned, so nothing local refers to this ' +
-        'address. Check that address before deploying again: a deploy mints a fresh nonce, so a second ' +
-        'attempt lands at a different address and would leave two copies of the contract on chain.'
+        (txData.status === 'FailFallible'
+          ? 'The deployment itself LANDED - a contract deployment sits in the guaranteed phase - so the ' +
+            'contract exists on chain, under the maintenance authority built from this error\'s ' +
+            "'signingKey'. Keep that key: nothing else holds a copy, and without it the contract can never " +
+            'be maintained. No private state was stored locally, so reconcile the local state against the ' +
+            'chain before calling this contract.'
+          : "Nothing was deployed and no private state was stored. This error's 'signingKey' carries the " +
+            'key this attempt would have used, so an address that turns out to hold a contract after all ' +
+            'is still maintainable.') +
+        ' Check that address before deploying again: a deploy mints a fresh nonce, so a second attempt ' +
+        'lands at a different address and would leave two copies of the contract on chain.'
     );
     this.name = 'Ledger8DeployTxFailedError';
   }
@@ -1222,6 +1253,91 @@ export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
   /** See {@link AnyEraTxFailedError.record}. Either arm on this class. */
   get record(): VersionedFinalizedTxData {
     return this.txData;
+  }
+}
+
+/**
+ * The sentence every post-submission retained-era deploy refusal ends on.
+ *
+ * One text rather than one per class: the two refusals below differ in WHY the
+ * deployment could not be confirmed, and not at all in what the caller has to
+ * do about the key.
+ */
+const DEPLOY_KEY_STRANDED_REMEDIATION =
+  "The deploy transaction was SUBMITTED and may still finalize. This error's 'signingKey' is the key its " +
+  'maintenance authority was built from - keep it, because nothing else holds a copy, and a deployment ' +
+  'that does land without it is an address nobody can ever maintain. Check that address before deploying ' +
+  'again: a deploy mints a fresh nonce, so a second attempt lands at a different one.';
+
+/**
+ * An error indicating that a retained-era deployment was submitted, but the
+ * record the chain made of it could not be read back and attributed.
+ *
+ * Covers every way that step fails EXCEPT a readable record from the wrong era,
+ * which keeps its own class: the read surface rejecting, and a record whose
+ * version tag is missing or unrecognised.
+ *
+ * Wraps the underlying failure on `cause` rather than replacing it: the reason
+ * the record could not be established - an unreachable indexer, a timeout, an
+ * untagged payload - is what a caller acts on, and this class adds the one fact
+ * that failure cannot carry, which is the signing key the submitted deployment
+ * was built with.
+ *
+ * Reachable only AFTER submission. Every refusal ahead of it is raised with no
+ * key having been sampled.
+ *
+ * Carries no registered error code, for the same reason
+ * {@link Ledger8DeployTxFailedError} does not.
+ */
+export class Ledger8DeployRecordUnavailableError extends Error {
+  /**
+   * @param contractAddress The address the submitted deployment composed.
+   * @param signingKey The key that deployment's maintenance authority was built
+   * from - sampled when the caller named none, and then this is its only copy.
+   * @param cause The read surface's own rejection.
+   */
+  constructor(
+    readonly contractAddress: string,
+    readonly signingKey: Ledger8SigningKey,
+    cause: unknown
+  ) {
+    super(
+      `The retained-era deployment of the contract at '${contractAddress}' was submitted, but the record ` +
+        "the chain made of it could not be read back and attributed - see this error's cause for what " +
+        `failed. ${DEPLOY_KEY_STRANDED_REMEDIATION}`,
+      { cause }
+    );
+    this.name = 'Ledger8DeployRecordUnavailableError';
+  }
+}
+
+/**
+ * An error indicating that the record of a SUBMITTED retained-era deployment
+ * came back from an era the head that deployment composed on cannot have
+ * recorded.
+ *
+ * An {@link EraInvariantViolationError}, and deliberately still one: the
+ * violation, its seam and its registered code are what a caller branches on,
+ * and this arm adds a fact rather than replacing a condition. The fact is the
+ * signing key - sampled inside the composition and, before this class existed,
+ * discarded by every refusal raised after submission.
+ */
+export class Ledger8DeployRecordEraError extends EraInvariantViolationError {
+  /**
+   * @param contractAddress The address the submitted deployment composed.
+   * @param signingKey The key that deployment's maintenance authority was built
+   * from - sampled when the caller named none, and then this is its only copy.
+   * @param violation The era violation this refusal reports, whose seam, eras
+   * and message are carried through unchanged.
+   */
+  constructor(
+    readonly contractAddress: string,
+    readonly signingKey: Ledger8SigningKey,
+    violation: EraInvariantViolationError
+  ) {
+    super(violation.seam, violation.circuitId, violation.expected, violation.received);
+    this.name = 'Ledger8DeployRecordEraError';
+    this.message = `${violation.message} ${DEPLOY_KEY_STRANDED_REMEDIATION}`;
   }
 }
 

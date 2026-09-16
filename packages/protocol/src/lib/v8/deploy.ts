@@ -165,6 +165,9 @@ export interface ConstructorResultPojo {
  *
  * @param options The compiled contract module, constructor arguments, private
  *   state, coin public key and optional signing key.
+ * @throws ComposeOptionError naming option `'signingKey'` when a supplied key
+ *   is not the 32 bytes of hex the retained runtime reads, raised before the
+ *   constructor runs.
  * @param runtime The injected pre-fork glue slice used to build the
  *   constructor context and the authority.
  * @returns The freshly built contract state, the resulting private state and
@@ -175,8 +178,28 @@ export interface ConstructorResultPojo {
  *   authority is written before that, so it travels with those bytes.
  * @see {@link RetainedEraExecution}
  */
+/**
+ * The shape the retained runtime reads a signing key in: 32 bytes written in
+ * hex, either case.
+ *
+ * MEASURED against the pinned runtime rather than guessed. `sampleSigningKey()`
+ * answers 64 lowercase hex characters; an uppercase key of the same length is
+ * accepted, a shorter or longer one fails with `failed to fill whole buffer`
+ * and a non-hex one with `Invalid character 'z' at position 0`. The value being
+ * a valid Schnorr scalar is a cryptographic property this cannot check, and the
+ * runtime's own `Malformed Schnorr signing key` already names it.
+ */
+const LEDGER8_SIGNING_KEY_PATTERN = /^[0-9a-fA-F]{64}$/;
+
 export const executeConstructor = (options: ExecuteConstructorOptions, runtime: Ledger8ConstructorRuntime): ConstructorResultPojo => {
   const { contract, args, privateState, coinPk } = options;
+  // BEFORE the constructor is run, so nothing is executed against a key the
+  // maintenance authority could never have been built from, and the refusal
+  // names the option rather than leaving the runtime's own buffer message to
+  // stand for it.
+  if (options.signingKey !== undefined && !LEDGER8_SIGNING_KEY_PATTERN.test(options.signingKey)) {
+    throw new ComposeOptionError('v8', 'signingKey');
+  }
   const constructorContext = runtime.createConstructorContext(privateState, coinPk);
   const result = contract.initialState(constructorContext, ...args);
   const signingKey = options.signingKey ?? runtime.sampleSigningKey();

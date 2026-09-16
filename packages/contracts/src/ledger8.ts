@@ -34,6 +34,8 @@ export {
   Ledger8AmbiguousEntryPointError as AmbiguousEntryPointError,
   Ledger8CallTxFailedError as CallTxFailedError,
   Ledger8DeployOnV9Error as DeployOnV9Error,
+  Ledger8DeployRecordEraError as DeployRecordEraError,
+  Ledger8DeployRecordUnavailableError as DeployRecordUnavailableError,
   Ledger8DeployTxFailedError as DeployTxFailedError,
   Ledger8RecipientUnmappableError as RecipientUnmappableError,
   Ledger8SeamFailedError as SeamFailedError,

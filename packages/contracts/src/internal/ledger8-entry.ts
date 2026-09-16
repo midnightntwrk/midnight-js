@@ -69,6 +69,8 @@ import {
   IncompleteCallTxPrivateStateConfig,
   IncompleteDeployContractPrivateStateConfig,
   Ledger8CallTxFailedError,
+  Ledger8DeployRecordEraError,
+  Ledger8DeployRecordUnavailableError,
   Ledger8DeployTxFailedError,
   Ledger8SeamFailedError,
   type SubmittedOperation
@@ -675,8 +677,18 @@ export interface Ledger8DeployRequest {
   readonly contract: Ledger8ContractSlice;
   readonly args: readonly unknown[];
   readonly privateState: unknown;
-  /** One entry per entry point the constructor's state will declare. */
-  readonly verifierKeys: ReadonlyMap<string, Uint8Array>;
+  /**
+   * Fetches one verifier key per entry point the constructor's state will
+   * declare.
+   *
+   * A RESOLVER rather than the map itself, because an argument is evaluated
+   * before the call it is an argument to: a map built inline was fetched ahead
+   * of the era and seam gates below, so a retained artifact on a post-fork head
+   * - whose ZK config an ordinary browser no longer serves after the fork - got
+   * the provider's fetch rejection in place of `Ledger8DeployOnV9Error`, which
+   * is the reason a caller can act on.
+   */
+  readonly resolveVerifierKeys: () => Promise<ReadonlyMap<string, Uint8Array>>;
   /**
    * The key to register as the deployed contract's maintenance authority. A
    * caller that names none gets a sampled one, reported on the result.
@@ -720,22 +732,33 @@ export const runLedger8Deploy = async (
     logger: providers.loggerProvider
   });
 
+  // AFTER the gates above, never as an argument to the composition below: an
+  // argument is evaluated before its call, which put this fetch ahead of the
+  // very refusals that exist to be raised first. See the field's own comment.
+  const verifierKeys = await request.resolveVerifierKeys();
+
+  // Read ONCE. The call arm forbids the second read for the reason that applies
+  // here unchanged: a resolver built against a different key than the one the
+  // constructor executed under is exactly the mismatch that mis-encrypts a coin
+  // the constructor minted. Normalized once too, so both uses get the same
+  // form rather than relying on the resolver normalizing again internally.
+  const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId());
+
   const deploy = runLedger8DeployPipeline({
     era: resolved.era,
     engine,
     contract: request.contract,
     args: request.args,
     privateState: request.privateState,
-    // Normalized for the same reason the call arm normalizes it.
-    coinPublicKey: parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()),
-    verifierKeys: request.verifierKeys,
+    coinPublicKey,
+    verifierKeys,
     signingKey: request.signingKey,
     networkId: getNetworkId(),
     ttl: ttlOneHour(),
     // Built the same way the call arm builds it, so a coin a constructor mints
     // is encrypted to the same key a coin a circuit mints would be.
     encryptionPublicKey: createEncryptionPublicKeyResolver(
-      providers.walletProvider.getCoinPublicKey(),
+      coinPublicKey,
       providers.walletProvider.getEncryptionPublicKey()
     )
   });
@@ -891,13 +914,21 @@ const assertLedger8TxSucceeded = (record: VersionedFinalizedTxData, circuitId: s
  * @param record The finalized record the read surface reported.
  * @param contractAddress The address this deployment composed, which is the
  * one thing a caller has to reconcile before deploying again.
+ * @param signingKey The key the deployment's maintenance authority was built
+ * from. Carried onto the refusal because a `FailFallible` deployment LANDED -
+ * a contract deployment sits in the guaranteed phase - and a sampled key
+ * discarded there leaves an address nobody can maintain.
  * @throws Ledger8DeployTxFailedError if the recorded status is not `SucceedEntirely`.
  */
-const assertLedger8DeploySucceeded = (record: VersionedFinalizedTxData, contractAddress: string): void => {
+const assertLedger8DeploySucceeded = (
+  record: VersionedFinalizedTxData,
+  contractAddress: string,
+  signingKey: Ledger8SigningKey
+): void => {
   if (record.status === SucceedEntirely) {
     return;
   }
-  throw new Ledger8DeployTxFailedError(record, contractAddress);
+  throw new Ledger8DeployTxFailedError(record, contractAddress, signingKey);
 };
 
 /**
@@ -1240,7 +1271,7 @@ export interface Ledger8DeployedState {
   readonly signingKey: Ledger8SigningKey;
   readonly initialState: Uint8Array;
   readonly initialContractState: Ledger8ConstructedState['contractState'];
-  /** The private state the CONSTRUCTOR produced, which is also what was stored. */
+  /** The private state the CONSTRUCTOR produced. */
   readonly initialPrivateState: unknown;
   readonly initialZswapState: Ledger8DeployPipelineResult['initialZswapState'];
 }
@@ -1267,19 +1298,36 @@ export interface Ledger8DeployedState {
  * everything the constructor produced.
  * @throws IncompleteDeployContractPrivateStateConfig if an `initialPrivateState`
  * is supplied with no `privateStateId` to store it under.
+ * @throws Error if `privateStateId` is present with an undefined value, which is
+ * a caller that believes it named an id.
  * @throws Ledger8DeployTxFailedError if the node recorded a non-success status.
- * @throws EraInvariantViolationError if the record's era is not the head's.
+ * @throws Ledger8DeployRecordEraError if the record's era is not the head's.
+ * @throws Ledger8DeployRecordUnavailableError if the record cannot be read back
+ * and attributed at all.
  * @throws Every error {@link runLedger8Deploy} raises.
  */
 export const submitLedger8DeployTx = async (
   providers: Ledger8DeployEntryProviders,
   options: Ledger8DeployEntryOptions
 ): Promise<Ledger8DeployedState> => {
-  // Before any provider is touched: there is nowhere to put the state, so it
-  // would be silently dropped -- and a caller that supplied one believes it was
-  // stored. An id WRITTEN as undefined reaches this too, which is a caller that
-  // believes it named one.
-  if (options.initialPrivateState !== undefined && options.privateStateId === undefined) {
+  // Before any provider is touched, and read off the KEY rather than the value,
+  // exactly as the attach arm reads it. `undefined` is a legitimate private
+  // state -- a contract that declares none stores exactly that -- but no id is a
+  // usable id: a caller that wrote `privateStateId: cfg.someId` with an
+  // undefined `someId` BELIEVES it named one, and reading that as "no id given"
+  // stores nothing and hands `callTx` an undefined id, so every later call
+  // proves against a state the contract never had and writes nothing back.
+  const namesPrivateStateId = 'privateStateId' in options;
+  const privateStateId = namesPrivateStateId ? options.privateStateId : undefined;
+  if (namesPrivateStateId) {
+    assertDefined(
+      privateStateId,
+      "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
+        'for a contract that stores no private state.'
+    );
+  } else if ('initialPrivateState' in options) {
+    // There is nowhere to put the state, so it would be silently dropped -- and
+    // a caller that supplied one believes it was stored.
     throw new IncompleteDeployContractPrivateStateConfig();
   }
 
@@ -1287,28 +1335,45 @@ export const submitLedger8DeployTx = async (
     contract: options.compiledContract,
     args: options.args ?? [],
     privateState: options.initialPrivateState,
-    verifierKeys: new Map(
-      await providers.zkConfigProvider.getVerifierKeys(Object.keys(options.compiledContract.impureCircuits))
-    ),
+    // Handed as a THUNK, so the fetch runs behind the era and seam gates rather
+    // than ahead of them.
+    resolveVerifierKeys: async () =>
+      new Map(await providers.zkConfigProvider.getVerifierKeys(Object.keys(options.compiledContract.impureCircuits))),
     signingKey: options.signingKey
   });
 
-  // The ADDRESS, not the transaction id: a deployment is recorded against the
-  // contract it created, and `watchForDeployTxData` is the read surface's own
-  // arm for that.
-  const deployTxData = await providers.publicDataProvider.watchForDeployTxData(deploy.contractAddress);
-  // Attribute the record BEFORE reading anything off it -- see the helper.
-  assertLedger8RecordEra(deployTxData, head, 'initialState', 'watchForDeployTxData');
-  assertLedger8DeploySucceeded(deployTxData, deploy.contractAddress);
+  // PAST THIS POINT the transaction is on the network and may finalize whatever
+  // happens here, so every refusal below carries the signing key. A sampled key
+  // discarded here leaves a contract on chain that nobody can ever maintain,
+  // which is the harm this arm exists to remove.
+  let deployTxData: VersionedFinalizedTxData;
+  try {
+    // The ADDRESS, not the transaction id: a deployment is recorded against the
+    // contract it created, and `watchForDeployTxData` is the read surface's own
+    // arm for that.
+    deployTxData = await providers.publicDataProvider.watchForDeployTxData(deploy.contractAddress);
+    // Attribute the record BEFORE reading anything off it -- see the helper.
+    assertLedger8RecordEra(deployTxData, head, 'initialState', 'watchForDeployTxData');
+  } catch (error) {
+    // EVERY way this step can fail -- the read surface rejecting, a record from
+    // the wrong era, a record with no readable tag at all -- leaves the same
+    // caller holding the same problem, so every one of them carries the key.
+    // The era arm keeps its own class so the violation, its seam and its
+    // registered code stay what a caller branches on.
+    throw error instanceof EraInvariantViolationError
+      ? new Ledger8DeployRecordEraError(deploy.contractAddress, deploy.signingKey, error)
+      : new Ledger8DeployRecordUnavailableError(deploy.contractAddress, deploy.signingKey, error);
+  }
+  assertLedger8DeploySucceeded(deployTxData, deploy.contractAddress, deploy.signingKey);
 
-  if (options.privateStateId !== undefined) {
+  if (privateStateId !== undefined) {
     // FIRST the address. A provider namespaces every entry by the address last
     // named and refuses a write before any has been named, so the write below
     // would otherwise either throw or land under whichever contract the process
     // touched last -- and a later call, which names this address itself, would
     // read its own key, find nothing, and report nothing.
     providers.privateStateProvider.setContractAddress(deploy.contractAddress);
-    await providers.privateStateProvider.set(options.privateStateId, deploy.nextPrivateState);
+    await providers.privateStateProvider.set(privateStateId, deploy.nextPrivateState);
   }
 
   return {

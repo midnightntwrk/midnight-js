@@ -502,9 +502,15 @@ export type Ledger8ConstructorParameters<C extends Ledger8Contract> =
   Parameters<C['initialState']> extends [unknown, ...infer A] ? A : never[];
 
 /**
- * Base configuration for deploying a retained-era contract.
+ * What both retained-era deploy arms carry, and nothing either arm decides.
+ *
+ * NOT published, and neither arm extends the other. An arm declaring
+ * `privateStateId: PrivateStateId` over a base declaring `privateStateId?:
+ * never` is an illegal extension, and under the `args` intersection below it
+ * collapses the member to `never` — so the pairing rule can only be stated by
+ * making the two arms siblings over this.
  */
-export interface Ledger8DeployContractOptionsBase<C extends Ledger8Contract> {
+interface Ledger8DeployContractOptionsShared<C extends Ledger8Contract> {
   readonly compiledContract: C;
   /**
    * The signing key to register as the deployed contract's maintenance
@@ -514,16 +520,45 @@ export interface Ledger8DeployContractOptionsBase<C extends Ledger8Contract> {
 }
 
 /**
+ * The deploy arm for a retained-era contract whose private state is stored
+ * NOWHERE: the constructor runs against `undefined` and nothing is written.
+ *
+ * The other arm is {@link Ledger8DeployContractOptionsWithPrivateState}.
+ */
+export interface Ledger8DeployContractOptionsBase<C extends Ledger8Contract>
+  extends Ledger8DeployContractOptionsShared<C> {
+  /**
+   * DECLARED on this arm, and only ever `undefined`.
+   *
+   * Left off the arm entirely, `{ compiledContract, privateStateId: 'x' }`
+   * compiled: union excess-property checking admits a member declared on the
+   * SIBLING arm as long as one arm is satisfied, and `compiledContract` alone
+   * satisfies this one. The constructor then ran against `undefined`,
+   * `undefined` was stored under the caller's id, and the handle reported an
+   * `initialPrivateState` typed non-optional while actually undefined.
+   */
+  readonly privateStateId?: never;
+  /**
+   * DECLARED on this arm, and only ever `undefined` — see
+   * {@link Ledger8DeployContractOptionsBase.privateStateId} for why the member
+   * is present rather than absent.
+   */
+  readonly initialPrivateState?: never;
+}
+
+/**
  * Deploy configuration for a retained-era contract that carries private state,
  * naming where the state the constructor produces is stored.
  *
  * Both members together or neither: a state with no id has nowhere to go, and
- * that pairing is what `IncompleteDeployContractPrivateStateConfig` reports.
- * The current era's `DeployContractOptionsWithPrivateState` is the same shape
- * for the same reason.
+ * an id with no state stores `undefined` under a name a later call will read
+ * back. `IncompleteDeployContractPrivateStateConfig` reports the first pairing
+ * at run time for a caller that reached it through an untyped route; the type
+ * refuses both. The current era's `DeployContractOptionsWithPrivateState` is
+ * the same shape for the same reason.
  */
 export interface Ledger8DeployContractOptionsWithPrivateState<C extends Ledger8Contract>
-  extends Ledger8DeployContractOptionsBase<C> {
+  extends Ledger8DeployContractOptionsShared<C> {
   /** An identifier for the private state of the contract being deployed. */
   readonly privateStateId: PrivateStateId;
   /**
@@ -581,7 +616,7 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
    * The private state to store at {@link Ledger8FindDeployedContractOptions.privateStateId},
    * overwriting whatever is held there.
    *
-   * Honoured by the same five-case rule the current era's `findDeployedContract`
+   * Honoured by the same six-case rule the current era's `findDeployedContract`
    * applies, and it is the same rule rather than a second copy of it. Supplying
    * this without an id is a caller error: there is nowhere to put the state, and
    * `IncompleteFindContractPrivateStateConfig` says so rather than the state
@@ -603,9 +638,13 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
    * The field is retained rather than removed so this arm's options stay the
    * shape the current era's are, and so it can start being honoured without a
    * change to the type: honouring it is client-side storage, which is
-   * era-independent, so nothing about the retained ledger prevents it. Store
-   * the key yourself, through the private-state provider, if you need it for a
-   * retained-era contract in the meantime.
+   * era-independent, so nothing about the retained ledger prevents it.
+   *
+   * There is NO framework storage a retained key fits today, and none to fall
+   * back on: `PrivateStateProvider.setSigningKey` takes the CURRENT era's
+   * `{ tag, value }` key, while {@link Ledger8SigningKey} is a bare string, so
+   * handing one to that method does not compile. A caller that needs the key
+   * keeps it itself, outside this framework.
    *
    * The key this field would take is the one
    * {@link Ledger8DeployedContract.signingKey} reports, which the deploy arm
@@ -651,9 +690,29 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
    * produced the objects below.
    */
   readonly era: RetainedPipelineEra;
+  /** The artifact this handle was built from: the caller's own contract instance, unchanged. */
   readonly compiledContract: C;
+  /** The address on chain every call made through {@link Ledger8FoundContract.callTx} targets. */
   readonly contractAddress: ContractAddress;
+  /**
+   * The record of the transaction that DEPLOYED this contract, version-tagged
+   * because a retained-era contract was deployed in whichever era was current
+   * at the time — narrow it with `switch (deployTxData.version)`.
+   *
+   * SHAPED DIFFERENTLY from the current era's `FoundContract.deployTxData`,
+   * which is a `FinalizedDeployTxData` whose transaction id sits under
+   * `.public`. Here the record is the read surface's own
+   * `VersionedFinalizedTxData`, so `txId`, `status` and the rest are top-level
+   * members. Code written against one era does not read the other's record
+   * unchanged.
+   */
   readonly deployTxData: VersionedFinalizedTxData;
+  /**
+   * One function per circuit the artifact declares, each bound to
+   * {@link Ledger8FoundContract.contractAddress} and to the private state id
+   * the attach or the deploy named — so a call needs only the circuit's own
+   * arguments.
+   */
   readonly callTx: Ledger8CircuitCallTxInterface<C>;
 }
 
