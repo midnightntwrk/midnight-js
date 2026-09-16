@@ -14,10 +14,14 @@
  */
 
 import { ComposeFailedError, ComposeOptionError, NO_CIRCUIT } from '../../errors';
-import type { UnprovenOffer } from '../../v8.js';
 import { assertComposeEnvelope } from '../shared/compose-options';
-import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from '../shared/compose-types';
-import { composeV8CallTx } from './compose';
+import type {
+  ComposeCallOptions,
+  ComposeCallResultPojo,
+  ComposeDeployOptions,
+  DeployResultPojo
+} from '../shared/compose-types';
+import { composeV8CallTx, readZswapOffer } from './compose';
 import { composeV8DeployTx } from './deploy';
 import type { ProtocolV8 } from './load';
 
@@ -35,24 +39,6 @@ const readContractState = (raw: Uint8Array, v8: ProtocolV8): InstanceType<Protoc
 };
 
 /**
- * Reads a serialized Zswap offer into the v8 era, reporting bytes this era
- * cannot decode as {@link ComposeOptionError}. An absent offer is the normal
- * shape of a call that moved no shielded coins, and stays absent.
- *
- * @see {@link ComposeRefusalOrder}
- */
-const readZswapOffer = (raw: Uint8Array | undefined, v8: ProtocolV8): UnprovenOffer | undefined => {
-  if (raw === undefined) {
-    return undefined;
-  }
-  try {
-    return v8.ZswapOffer.deserialize('pre-proof', raw);
-  } catch (cause) {
-    throw new ComposeOptionError('v8', 'zswapOffer', cause);
-  }
-};
-
-/**
  * Maps the era-facade's call options onto the v8-native composition leg
  * (`./compose.ts`).
  *
@@ -62,7 +48,7 @@ const readZswapOffer = (raw: Uint8Array | undefined, v8: ProtocolV8): UnprovenOf
  * @param options The era-facade call options.
  * @param v8 The v8 ledger module, as handed over by `loadLedger8`
  *   (`./load.ts`).
- * @returns The UNPROVEN, serialized call transaction.
+ * @returns The UNPROVEN, serialized call transaction and the call's partition.
  * @throws ComposeOptionError If an option cannot be used: a malformed envelope
  *   option, unreadable offer or contract-state bytes, or more than one entry in
  *   `calls`.
@@ -71,18 +57,14 @@ const readZswapOffer = (raw: Uint8Array | undefined, v8: ProtocolV8): UnprovenOf
  * @see {@link ComposeRefusalOrder}
  * @see {@link EraSeam}
  */
-export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8): Uint8Array => {
-  const { calls, networkId, ttl, guaranteedZswapOffer, fallibleZswapOffer } = options;
+export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8): ComposeCallResultPojo => {
+  const { calls, networkId, ttl, zswapOffer } = options;
   // Checked here, not left to the inner leg, so both arms refuse in the same
   // order; the re-check in the leg is idempotent -- see ComposeRefusalOrder.
   assertComposeEnvelope(options, 'v8');
   if (calls.length === 0) {
     throw new ComposeFailedError('v8', 'call-empty', NO_CIRCUIT);
   }
-  // Both offers are read before anything is composed -- see
-  // ComposeRefusalOrder.
-  const guaranteedOffer = readZswapOffer(guaranteedZswapOffer, v8);
-  const fallibleOffer = readZswapOffer(fallibleZswapOffer, v8);
   if (calls.length > 1) {
     throw new ComposeOptionError('v8', 'calls');
   }
@@ -104,8 +86,7 @@ export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8):
       ledgerParameters: call.ledgerParameters,
       networkId,
       ttl,
-      guaranteedZswapOffer: guaranteedOffer,
-      fallibleZswapOffer: fallibleOffer
+      zswapOffer
     },
     v8
   );

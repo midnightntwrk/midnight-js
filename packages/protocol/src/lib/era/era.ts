@@ -15,13 +15,7 @@
 
 import type { EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
-import type {
-  ComposeCallOptions,
-  ComposeDeployOptions,
-  DeployResultPojo,
-  EraPartitionCallOptions,
-  PartitionedCallTranscript
-} from '../shared/compose-types';
+import type { ComposeCallOptions, ComposeCallResultPojo, ComposeDeployOptions, DeployResultPojo } from '../shared/compose-types';
 import type { ContractStatePojo } from '../shared/contract-state';
 import type { LedgerVersion } from '../shared/ledger-version';
 
@@ -92,8 +86,14 @@ export interface LedgerEra {
    * contract cannot emit. The refusal is raised, never worked around. A Zswap
    * offer is NOT refused on either era.
    *
+   * A call's Zswap offer is supplied as a factory rather than as ready-made
+   * bytes: a coin has to be routed into the segment its movement belongs to,
+   * and the segment boundary is not known until this method has split the
+   * transcripts. The factory is handed that split, and the same split comes
+   * back on the result.
+   *
    * @param options The calls to compose and the transaction-wide envelope.
-   * @returns The serialized UNPROVEN transaction.
+   * @returns The serialized UNPROVEN transaction and each call's partition.
    * @throws ComposeOptionError if an option is unusable on this era — an
    * empty `networkId`, an invalid `ttl`, undecodable offer or state bytes, or
    * a call tree with more than one entry on the retained pre-fork era.
@@ -102,7 +102,7 @@ export interface LedgerEra {
    * @see {@link ComposeRefusalOrder}
    * @see {@link EraSeam}
    */
-  composeCallTx(options: ComposeCallOptions): Uint8Array;
+  composeCallTx(options: ComposeCallOptions): ComposeCallResultPojo;
 
   /**
    * Composes an UNPROVEN deploy transaction and returns it together with the
@@ -127,22 +127,4 @@ export interface LedgerEra {
    * @see {@link ComposeRefusalOrder}
    */
   composeDeployTx(options: ComposeDeployOptions): DeployResultPojo;
-
-  /**
-   * Resolves one call's guaranteed/fallible transcript pair, without composing
-   * a transaction.
-   *
-   * PROTOTYPE SEAM. A caller that has to route a Zswap coin into the right
-   * segment needs the partition BEFORE it builds the offer, and `composeCallTx`
-   * computes the partition only after the offer has been handed to it as an
-   * option. Without this the retained-era pipeline places every coin movement
-   * in the guaranteed segment and the wallet cannot balance the result.
-   *
-   * @param options The call's transcript source, address, circuit and the
-   * chain's own serialized ledger parameters.
-   * @returns The `[guaranteed, fallible]` pair, either member possibly absent.
-   * @throws ComposeFailedError, ComposeOptionError as `composeCallTx` does for
-   * the same inputs.
-   */
-  partitionCallTranscript(options: EraPartitionCallOptions): PartitionedCallTranscript;
 }

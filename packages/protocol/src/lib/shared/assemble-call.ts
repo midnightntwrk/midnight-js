@@ -29,7 +29,8 @@ import {
   type CallTranscriptSource,
   INITIAL_LEDGER_PARAMETERS,
   type LedgerParametersOption,
-  type PartitionContext
+  type PartitionContext,
+  type PartitionedCallTranscript
 } from './compose-types';
 import type { LedgerVersion } from './ledger-version';
 
@@ -98,12 +99,10 @@ export interface CallAssemblyLedger<
  * The inputs partitioning a call's transcript needs, which are a subset of what
  * assembling the whole call does.
  *
- * Spelled as its own type so the partition can be resolved WITHOUT the rest of
- * a call's inputs -- a caller that has to know the guaranteed/fallible split
- * before it builds something else (a Zswap offer, say) has no operation
- * registry to offer yet, and should not have to invent one.
+ * Spelled as its own type so the split step names exactly what it reads: no
+ * operation registry, no private outputs, no transaction envelope.
  */
-export type PartitionCallOptions = Pick<
+type PartitionCallOptions = Pick<
   AssembleCallOptions<never>,
   'circuitId' | 'contractAddress' | 'transcript' | 'ledgerParameters' | 'version'
 >;
@@ -294,7 +293,8 @@ const resolvePartition = <
  * against.
  * @param options The call's own inputs, the operation registry to resolve
  * `circuitId` against, and the era to name in a failure.
- * @returns The module's own `ContractCallPrototype` for this call.
+ * @returns The module's own `ContractCallPrototype` for this call, and the
+ * guaranteed/fallible pair it was built from.
  * @throws ComposeFailedError naming `version` and `circuitId`, at
  * `options.stage` when `operations` has no registered operation for
  * `circuitId`; at `'call-verifier-key'` when the resolved operation carries no
@@ -318,7 +318,7 @@ export const assembleCallPrototype = <
 >(
   ledger: CallAssemblyLedger<TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TOperation, TPrototype>,
   options: AssembleCallOptions<TOperation>
-): TPrototype => {
+): { readonly prototype: TPrototype; readonly partition: PartitionedCallTranscript } => {
   const { circuitId, contractAddress, operations, stage, version } = options;
 
   const op = operations.operation(circuitId);
@@ -332,8 +332,9 @@ export const assembleCallPrototype = <
   const [guaranteed, fallible] = resolvePartition(ledger, options);
 
   // Wrapped as one step rather than per argument -- see ComposeRefusalOrder.
+  let prototype: TPrototype;
   try {
-    return new ledger.ContractCallPrototype(
+    prototype = new ledger.ContractCallPrototype(
       contractAddress,
       circuitId,
       op,
@@ -354,43 +355,9 @@ export const assembleCallPrototype = <
   } catch (cause) {
     throw new ComposeFailedError(version, 'call-prototype', circuitId, cause);
   }
-};
 
-/**
- * Resolves a call's guaranteed/fallible transcript pair against a ledger
- * module, without assembling the call.
- *
- * PROTOTYPE SEAM. It exists because the retained-era pipeline has to know the
- * partition BEFORE it builds the call's Zswap offer, and until now the only way
- * to obtain one was to compose the whole transaction -- by which point the
- * offer has already been handed over as an option. Routing a coin against a
- * partition that does not exist yet places every movement in the guaranteed
- * segment, which the wallet then cannot balance.
- *
- * Same inputs, same failures and same order as the partition step inside
- * {@link assembleCallPrototype}; that function now delegates here rather than
- * keeping a second copy.
- *
- * @param ledger The ledger module (ledger-v8 or ledger-v9) to partition against.
- * @param options The call's transcript source, address, circuit and the
- * chain's own serialized ledger parameters.
- * @returns The `[guaranteed, fallible]` pair, either member possibly absent.
- * @throws ComposeFailedError at `'call-transcript-empty'`,
- * `'call-contract-state'`, `'call-partition-context'` or `'call-partition'`.
- * @throws ComposeOptionError at `'ledgerParameters'` for a parameter blob this
- * era cannot read.
- * @see {@link ComposeRefusalOrder}
- */
-export const partitionCallTranscript = <
-  TStateValue,
-  TChargedState,
-  TQueryContext extends PartitionableQueryContext<TQueryContext>,
-  TPreTranscript,
-  TParams,
-  TOperation,
-  TPrototype
->(
-  ledger: CallAssemblyLedger<TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TOperation, TPrototype>,
-  options: PartitionCallOptions
-): readonly [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined] =>
-  resolvePartition(ledger, options);
+  // Copied into a mutable pair rather than handed on: the partitioner answers
+  // with a readonly tuple, and the ledger's own `PartitionedTranscript` --
+  // which is what every consumer of this pair is typed against -- is not.
+  return { prototype, partition: [guaranteed, fallible] };
+};
