@@ -45,7 +45,8 @@ import {
   type Ledger8Contract,
   type Ledger8ContractProviders,
   type Ledger8FindDeployedContractOptions,
-  type Ledger8FoundContract
+  type Ledger8FoundContract,
+  type Ledger8PrivateState
 } from './ledger8-contract';
 import {
   type CircuitCallTxInterface,
@@ -95,7 +96,8 @@ interface FindContractPrivateStateConfig<PS> {
  *
  * `undefined` is a legitimate private state — a contract that declares none stores exactly that —
  * so `initialPrivateState: undefined` means "store that", not "supplied nothing". `privateStateId`
- * is read the other way, off its value, because there `undefined` is no id at all.
+ * is read off its key the same way, but an undefined VALUE there is refused rather than stored
+ * under, because no id is a usable id.
  */
 const hasInitialPrivateState = <PS>(
   options: FindContractPrivateStateConfig<PS> & object
@@ -107,26 +109,39 @@ const setOrGetInitialPrivateState = async <PS>(
   options: FindContractPrivateStateConfig<PS> & object
 ): Promise<PS> => {
   /**
-   * If both 'privateStateId' and 'initialPrivateState' are defined,
+   * "Given" below means the PROPERTY IS PRESENT, not that its value is defined. The two differ,
+   * and each difference is handled explicitly at the branch it belongs to.
+   *
+   * If both 'privateStateId' and 'initialPrivateState' are given,
    * then 'initialPrivateState' is stored in private state provider at 'privateStateId'.
    *
-   * If 'privateStateId' is defined and 'initialPrivateState' is undefined,
+   * If 'privateStateId' is given and 'initialPrivateState' is not,
    * and the private state provider has an entry at 'privateStateId',
    * then the find reports the stored private state as the initialPrivateState.
    *
-   * If 'privateStateId' is defined and 'initialPrivateState' is undefined,
+   * If 'privateStateId' is given and 'initialPrivateState' is not,
    * and the private state provider does not have an entry at 'privateStateId',
    * then an error is returned.
    *
-   * If 'privateStateId' is undefined and 'initialPrivateState' is defined,
+   * If 'privateStateId' is given as undefined, then an error is returned, whether or not
+   * an 'initialPrivateState' accompanies it.
+   *
+   * If 'privateStateId' is not given and 'initialPrivateState' is,
    * then an error is returned.
    *
-   * If 'privateStateId' is undefined and 'initialPrivateState' is undefined,
-   * then no private state is stored.
+   * If neither is given, then no private state is stored.
    */
-  const { privateStateId } = options;
-
-  if (privateStateId !== undefined) {
+  if ('privateStateId' in options) {
+    const { privateStateId } = options;
+    // Read off the KEY above and the VALUE here, rather than off the value alone. A caller that
+    // wrote `privateStateId: cfg.someId` with an undefined `someId` BELIEVES it named one, and
+    // reading that as "no id given" would attach against no state at all and leave every later
+    // call running on a state the contract never had. Refused instead, at the configuration.
+    assertDefined(
+      privateStateId,
+      "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
+        'for a contract that carries no private state.'
+    );
     if (hasInitialPrivateState(options)) {
       await privateStateProvider.set(privateStateId, options.initialPrivateState);
       return options.initialPrivateState;
@@ -398,7 +413,27 @@ export async function findDeployedContract<C extends Contract.Any>(
     //
     // AFTER the attach, for the order the current-era arm below uses: a state seeded for a contract
     // whose verifier keys turn out not to match would outlive a find that failed.
-    await setOrGetInitialPrivateState<unknown>(providers.privateStateProvider, options);
+    //
+    // FIRST the address, as the current-era arm and the retained CALL path both do. A provider
+    // namespaces every entry by the address last named and refuses an operation before any has
+    // been named, so the write below would otherwise either throw or land under whichever contract
+    // the process touched last -- and a later call, which names this address itself, would read its
+    // own key, find nothing, and report nothing.
+    providers.privateStateProvider.setContractAddress(options.contractAddress);
+    // The result is DISCARDED on purpose. This call is here to apply the five-case rule -- seed the
+    // named id, or refuse a configuration that cannot be honoured -- not to report a state:
+    // `Ledger8FoundContract` publishes no private-state member, and a caller that wants the state
+    // reads it back from the provider under the id it just named. What the read buys is the refusal
+    // arriving at ATTACH time rather than at the first call.
+    //
+    // At the era top type, which is what `Ledger8PrivateState<Ledger8Contract>` resolves to: the
+    // implementation signature has already widened the retained options to
+    // `AnyLedger8FindDeployedContractOptions`, so no narrower private state is in scope here. The
+    // overloads above are what type the caller.
+    await setOrGetInitialPrivateState<Ledger8PrivateState<Ledger8Contract>>(
+      providers.privateStateProvider,
+      options
+    );
     return {
       era: RETAINED_PIPELINE_ERA,
       compiledContract: options.compiledContract,

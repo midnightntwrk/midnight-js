@@ -65,7 +65,7 @@ import {
   type VersionedTx,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined, CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -2183,11 +2183,54 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
 
-  // SEEDING, which is the attach's one write. Everything else on this path is a read, and the four
-  // cases below are the current era's rule applied unchanged: the two arms that act, and the two
-  // configurations that are refused rather than guessed at. The rule itself lives in one place --
+  // SEEDING, which is the attach's one write. Everything else on this path is a read, and the cases
+  // below are the current era's rule applied unchanged: the two configurations that act, and the
+  // three that are refused rather than guessed at. The rule itself lives in one place --
   // `setOrGetInitialPrivateState` in `find-deployed-contract.ts` -- so what these pin is that the
   // retained arm reaches it, not a second copy of the rule.
+  //
+  // `callOrder` reads vitest's global invocation counter, which is what makes the "before" claims
+  // below real claims. `toHaveBeenCalled` alone cannot see an ordering defect, and the ordering is
+  // the whole of what `setContractAddress` buys.
+  const callOrder = (mock: (...args: never[]) => unknown): number => {
+    const [first] = vi.mocked(mock).mock.invocationCallOrder;
+    // `toBeLessThan(undefined)` does not fail -- it reports a passing comparison against NaN -- so
+    // an uncalled mock has to be caught here rather than left to the matcher.
+    assertDefined(first, 'expected the mock to have been called at least once');
+    return first;
+  };
+
+  it('names the contract address before it writes, so the seed lands in this contract namespace', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    await findDeployedContract(providers, {
+      ...attachOptions(),
+      privateStateId: 'retained-private-state',
+      initialPrivateState: {}
+    });
+
+    expect(providers.privateStateProvider.setContractAddress).toHaveBeenCalledWith(recording.contractAddress);
+    // A provider namespaces every entry by the address last named, and a real one REFUSES a write
+    // before any has been named. Written first, the seed lands under whichever address the process
+    // happened to touch last -- and the retained CALL path, which names the address itself, then
+    // reads its own key and finds nothing, with no error at any stage.
+    expect(callOrder(providers.privateStateProvider.setContractAddress)).toBeLessThan(
+      callOrder(providers.privateStateProvider.set)
+    );
+  });
+
+  it('names the contract address before it reads', async () => {
+    const providers = attachProviders(v6Envelope);
+    providers.privateStateProvider.get = vi.fn().mockResolvedValue({ storedBefore: true });
+
+    await findDeployedContract(providers, { ...attachOptions(), privateStateId: 'retained-private-state' });
+
+    expect(providers.privateStateProvider.setContractAddress).toHaveBeenCalledWith(recording.contractAddress);
+    expect(callOrder(providers.privateStateProvider.setContractAddress)).toBeLessThan(
+      callOrder(providers.privateStateProvider.get)
+    );
+  });
+
   it('stores the initial private state at the named id', async () => {
     const providers = attachProviders(v6Envelope);
     const initialPrivateState = {};
@@ -2213,15 +2256,19 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
 
-  it('refuses when the named id holds nothing, rather than attaching against a default state', async () => {
+  it('refuses the ATTACH when the named id holds nothing, rather than the first call', async () => {
     const providers = attachProviders(v6Envelope);
 
     // The mock provider answers `undefined` by default, which is the condition under test: an id
-    // the caller believes is populated and is not. Attaching anyway would run every later call
-    // against a state the contract never had.
+    // the caller believes is populated and is not. This read exists for exactly this refusal --
+    // nothing on `Ledger8FoundContract` carries the state it returns -- so what it buys is the
+    // error arriving at attach time instead of at the first call, against a state the contract
+    // never had.
     await expect(
       findDeployedContract(providers, { ...attachOptions(), privateStateId: 'retained-private-state' })
     ).rejects.toThrow("No private state found at private state ID 'retained-private-state'");
+    // No handle was built, so there is no `callTx` for a caller to reach the missing state through.
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
 
   it('refuses an initial private state with no id to store it under', async () => {
@@ -2233,14 +2280,40 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
 
+  it('refuses a privateStateId written as undefined, rather than reading it as no id at all', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    // `{ privateStateId: cfg.somethingUndefined }` is an ordinary way for a JavaScript consumer to
+    // reach this, and it means the caller BELIEVES it named an id. Treating the key's presence as
+    // "no id given" would attach against no state and leave every later call running on one the
+    // contract never had.
+    await expect(
+      findDeployedContract(providers, { ...attachOptions(), privateStateId: undefined })
+    ).rejects.toThrow("'privateStateId' was given as undefined");
+    expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  it('refuses an undefined privateStateId even when an initial private state is supplied', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    // The other direction, and the one that used to WRITE: the id was passed straight through to
+    // the provider, storing the state under an id of `undefined`.
+    await expect(
+      findDeployedContract(providers, { ...attachOptions(), privateStateId: undefined, initialPrivateState: {} })
+    ).rejects.toThrow("'privateStateId' was given as undefined");
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
   it('touches the private-state provider not at all when the caller gives neither', async () => {
     const providers = attachProviders(v6Envelope);
 
     await findDeployedContract(providers, attachOptions());
 
-    // Stated at the ATTACH rather than after a call, because the attach is now a writer: the test
-    // above that makes a call through the handle would keep passing if the attach itself seeded an
-    // unnamed state and the call then read it back.
+    // OMITTING the key stays legal, where writing it as `undefined` is refused above: a retained-era
+    // contract may genuinely carry no private state. Stated at the ATTACH rather than after a call,
+    // because the attach is now a writer: the test above that makes a call through the handle would
+    // keep passing if the attach itself seeded an unnamed state and the call then read it back.
     expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });

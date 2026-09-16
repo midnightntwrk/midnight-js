@@ -570,10 +570,11 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
    * Where the calls made through {@link Ledger8FoundContract.callTx} read and
    * store this contract's private state.
    *
-   * Optional because a retained-era contract may genuinely carry none: naming
-   * no id means nothing is read and nothing is written. Naming one the provider
-   * holds nothing under is a caller error and is refused, rather than executing
-   * against a default state.
+   * Optional because a retained-era contract may genuinely carry none: OMITTING
+   * the property means nothing is read and nothing is written. Naming one the
+   * provider holds nothing under is a caller error and is refused, rather than
+   * executing against a default state — and so is writing the property with an
+   * undefined value, which is a caller that believes it named an id.
    */
   readonly privateStateId?: PrivateStateId;
   /**
