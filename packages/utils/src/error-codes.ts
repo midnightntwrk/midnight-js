@@ -23,11 +23,12 @@ import { PROTOCOL_ERROR_CODES, type ProtocolErrorCode } from '@midnight-ntwrk/mi
 import { PROVIDER_ERROR_CODES, type ProviderErrorCode } from '@midnight-ntwrk/midnight-js-types/errors';
 
 // Declared here, above the package that throws them, because the no-argument
-// `hasErrorCode` needs a COMPLETE registry and is consulted from `contracts`
-// (`internal/ledger8-entry.ts`, `internal/transaction.ts`) and by
-// `src/test/troubleshooting-coverage.test.ts`. Both sit at or above `utils`, so
-// the registry cannot move up with them. Every other group is imported from its
-// owner. Add a constant here in the same change that first throws with it.
+// `hasErrorCode` needs a COMPLETE registry. That form is called from `contracts`
+// (`internal/ledger8-entry.ts`, `internal/transaction.ts`), and the registry
+// itself is read by `src/test/troubleshooting-coverage.test.ts`. All three sit
+// at or above `utils`, so the registry cannot move up with them. Every other
+// group is imported from its owner. Add a constant here in the same change that
+// first throws with it.
 export const CONTRACTS_ERROR_CODES = Object.freeze({
   ERA_INVARIANT_VIOLATION: 'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION',
   ERA_ARTIFACT_MISMATCH: 'MIDNIGHT_JS_C_ERA_ARTIFACT_MISMATCH',
@@ -76,8 +77,22 @@ export const MIDNIGHT_JS_ERROR_CODES: readonly MidnightJsErrorCode[] = Object.fr
 
 const MIDNIGHT_JS_ERROR_CODE_SET: ReadonlySet<string> = new Set(MIDNIGHT_JS_ERROR_CODES);
 
-const codeOf = (e: unknown): e is Error & { code: string } =>
+const isCodedError = (e: unknown): e is Error & { code: string } =>
   e instanceof Error && 'code' in e && typeof e.code === 'string';
+
+// The prefix every code in MIDNIGHT_JS_ERROR_CODES carries, pinned by
+// `src/test/error-codes.test.ts`. `hasForeignErrorCode` screens on it rather
+// than on registry membership, because a MISSPELLED framework code is absent
+// from the registry too — and that is the case worth catching.
+const OWN_CODE_PREFIX = 'MIDNIGHT_JS_';
+
+/**
+ * A code this framework does not own. Resolves to `never` for a member of
+ * {@link MidnightJsErrorCode}, so passing one is a compile error. A value typed
+ * merely as `string` still satisfies it: at that point the literal is unknown,
+ * and the runtime screen in {@link hasForeignErrorCode} is what remains.
+ */
+type ForeignErrorCode<C extends string> = C extends MidnightJsErrorCode ? never : C;
 
 /**
  * Type guard for "this is one of midnight-js's own coded errors" — narrows
@@ -91,12 +106,17 @@ export function hasErrorCode(e: unknown): e is Error & { code: MidnightJsErrorCo
  * `Error & { code: C }` when `e.code === code`.
  *
  * `code` must be one of this framework's own codes, so a typo is a compile
- * error rather than a guard that silently never matches. To compare against a
- * code this framework does not own, use {@link hasForeignErrorCode}.
+ * error rather than a guard that silently never matches.
+ *
+ * If a code you believe is ours does not compile here, it is misspelled or was
+ * never registered — check {@link MIDNIGHT_JS_ERROR_CODES}. Do NOT reach for
+ * {@link hasForeignErrorCode} to get it past the compiler; that guard refuses
+ * anything carrying this framework's prefix. It is for codes belonging to
+ * someone else, such as Node's `ECONNREFUSED`.
  */
 export function hasErrorCode<C extends MidnightJsErrorCode>(e: unknown, code: C): e is Error & { code: C };
 export function hasErrorCode<C extends MidnightJsErrorCode>(e: unknown, code?: C): boolean {
-  if (!codeOf(e)) {
+  if (!isCodedError(e)) {
     return false;
   }
   if (code === undefined) {
@@ -113,7 +133,33 @@ export function hasErrorCode<C extends MidnightJsErrorCode>(e: unknown, code?: C
  * Separate from {@link hasErrorCode} so that reaching outside this framework's
  * codes is deliberate and visible at the call site, instead of being the same
  * call that a typo degrades into.
+ *
+ * Foreignness is enforced twice, because one gate cannot see both cases:
+ *
+ * - A code this framework owns is rejected by the compiler, via
+ *   {@link ForeignErrorCode}.
+ * - A code that only LOOKS like one of ours — a misspelling, the case that
+ *   sends a caller here in the first place — satisfies that constraint, so it
+ *   is refused at runtime by its prefix. Answering `false` instead would be the
+ *   silent guard that constraining {@link hasErrorCode} set out to abolish,
+ *   reached through the other door.
+ *
+ * @throws Error if `code` carries this framework's own `MIDNIGHT_JS_` prefix.
+ *   That is a mistake at the call site, not a property of `e`, so it is raised
+ *   rather than reported as a non-match.
  */
-export function hasForeignErrorCode<C extends string>(e: unknown, code: C): e is Error & { code: C } {
-  return codeOf(e) && e.code === code;
+export function hasForeignErrorCode<C extends string>(
+  e: unknown,
+  code: ForeignErrorCode<C>
+): e is Error & { code: C };
+export function hasForeignErrorCode(e: unknown, code: string): boolean {
+  if (code.startsWith(OWN_CODE_PREFIX)) {
+    throw new Error(
+      `hasForeignErrorCode was given '${code}', which uses this framework's own ` +
+        `${OWN_CODE_PREFIX} prefix. Use hasErrorCode with a member of MidnightJsErrorCode. ` +
+        `If you believe '${code}' is a real midnight-js code, it is misspelled or was never ` +
+        `registered — check MIDNIGHT_JS_ERROR_CODES.`
+    );
+  }
+  return isCodedError(e) && e.code === code;
 }
