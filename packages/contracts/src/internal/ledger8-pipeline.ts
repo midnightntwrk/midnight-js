@@ -479,7 +479,9 @@ export interface Ledger8CallPipelineResult<TState> {
   readonly publicTranscript: Op<AlignedValue>[];
   /**
    * The guaranteed/fallible pair this call was composed against -- the same one
-   * the Zswap offer was routed with, resolved once above.
+   * the Zswap offer was routed with. The composer draws it once and hands it to
+   * the offer factory, so there is no second split for the two to disagree
+   * about.
    */
   readonly partitionedTranscript: PartitionedTranscript;
   /**
@@ -520,9 +522,9 @@ export interface Ledger8CallPipelineResult<TState> {
   readonly guaranteedZswapOffer: Uint8Array | undefined;
   /**
    * Present exactly when the call's own partition places a shielded movement in
-   * the fallible half. The pipeline resolves that partition before it builds
-   * the offer, so a movement the transcript places there is routed there rather
-   * than falling into the guaranteed segment.
+   * the fallible half. The offer is built from the split the composer hands
+   * back, so a movement the transcript places there is routed there rather than
+   * falling into the guaranteed segment.
    */
   readonly fallibleZswapOffer: Uint8Array | undefined;
 }
@@ -598,38 +600,6 @@ export const runLedger8CallPipeline = async <TState>(
   // inside the offer builder.
   assertRecipientsResolvable(transcript.zswapLocalState, request.encryptionPublicKey, circuitId);
 
-  // Resolved BEFORE the offer is built, which is what lets the offer be routed
-  // at all. Without it `zswapStateToSegmentedOffer`'s partition argument
-  // defaults to `[undefined, undefined]`, `segmentForMatch` takes its "no
-  // segment information" path, and every movement lands in the guaranteed
-  // segment -- unbalanceable for a circuit whose transcript is wholly fallible,
-  // which the wallet reports as `Wallet.InsufficientFunds`.
-  //
-  // Partitioned ONCE: the pair resolved here is handed to `composeCallTx` below
-  // as an already-partitioned transcript, so the composer does not repeat the
-  // work. Two partitions of the same transcript would have to agree, and
-  // nothing would notice if they stopped.
-  const partitionedTranscript = era.partitionCallTranscript({
-    circuitId,
-    contractAddress,
-    transcript: {
-      kind: 'unpartitioned',
-      preState: snapshot.encoded,
-      publicTranscript: transcript.publicTranscript,
-      partitionContext: transcript.partitionContext
-    },
-    ledgerParameters: snapshot.state.ledgerParameters
-  });
-
-  const offers = zswapStateToSegmentedOffer(
-    transcript.zswapLocalState,
-    request.encryptionPublicKey,
-    undefined,
-    partitionedTranscript
-  );
-  const guaranteedZswapOffer = offers.guaranteed?.serialize();
-  const fallibleZswapOffer = offers.fallible?.serialize();
-
   // WHICH BYTES THE COMPOSER GETS, and why it is not always the chain's own.
   //
   // This entry is an OPERATION REGISTRY: the composer reads one thing out of it, the
@@ -648,7 +618,13 @@ export const runLedger8CallPipeline = async <TState>(
   const registeredOperations =
     head === 'v9' ? engine.reexpressOperationsForCurrentEra(snapshot.decoded.entryPoints) : snapshot.state.raw;
 
-  const txBytes = era.composeCallTx({
+  // Undefined until the composer calls the factory back, which is the fact the
+  // refusal below rests on: an offer that is absent because the call moved no
+  // shielded coin is a `routed` whose halves are both undefined, and that is a
+  // different value from never having been asked at all.
+  let routed: { readonly guaranteed?: Uint8Array; readonly fallible?: Uint8Array } | undefined;
+
+  const composed = era.composeCallTx({
     calls: [
       {
         contractAddress,
@@ -659,17 +635,11 @@ export const runLedger8CallPipeline = async <TState>(
         // initial parameters partitions the transcript with a cost model the chain does not use,
         // and the node refuses the guaranteed segment for running out of gas.
         ledgerParameters: snapshot.state.ledgerParameters,
-        // Already split, above -- the same pair the offer was routed against, so
-        // the two cannot describe different partitions. Note what this does NOT
-        // claim: a caller-supplied pair is not passed through untouched, it is
-        // refused when it carries neither half. Why that refusal cannot reach
-        // the partitioner's own answer sent back through it is recorded under
-        // "Resolving a call's transcript pair" in
-        // `protocol/docs/compose-refusal-order.md`.
         transcript: {
-          kind: 'partitioned',
-          guaranteed: partitionedTranscript[0],
-          fallible: partitionedTranscript[1]
+          kind: 'unpartitioned',
+          preState: snapshot.encoded,
+          publicTranscript: transcript.publicTranscript,
+          partitionContext: transcript.partitionContext
         },
         privateTranscriptOutputs: transcript.privateTranscriptOutputs,
         input: transcript.input,
@@ -678,12 +648,58 @@ export const runLedger8CallPipeline = async <TState>(
     ],
     networkId: request.networkId,
     ttl: request.ttl,
-    guaranteedZswapOffer,
-    fallibleZswapOffer
+    // Called with the split the composer has just resolved, which is what lets
+    // the coin be routed into the segment its movement belongs to. Routing
+    // against a partition that does not exist yet puts every movement in the
+    // guaranteed segment -- unbalanceable for a circuit whose transcript is
+    // wholly fallible, which the wallet reports as `Wallet.InsufficientFunds`.
+    // The composer cannot hand this pipeline an offer built before the split
+    // exists; that the split is actually routed against is enforced here.
+    zswapOffer: (partitions) => {
+      // One call, so one partition. Checked rather than destructured blind: a
+      // composer that answered with fewer partitions than calls would hand
+      // `undefined` to the router below, whose own parameter then defaults to
+      // `[undefined, undefined]` and routes every movement into the guaranteed
+      // segment -- silently, which is the failure this seam exists to prevent.
+      const [partition] = partitions;
+      assertDefined(
+        partition,
+        `The ledger era composed circuit '${circuitId}' without a transcript partition to route its ` +
+          'Zswap offer against.'
+      );
+      const offers = zswapStateToSegmentedOffer(
+        transcript.zswapLocalState,
+        request.encryptionPublicKey,
+        undefined,
+        partition
+      );
+      // Captured so the result can report WHICH segment each movement was
+      // routed into; these are the report of the routing, not its input.
+      routed = { guaranteed: offers.guaranteed?.serialize(), fallible: offers.fallible?.serialize() };
+      return routed;
+    }
   });
 
+  // The factory is the ONLY place this pipeline builds its offer, and
+  // `zswapOffer` is optional on the seam -- so an era that never calls back
+  // composes a transaction carrying none of the circuit's coin movements, and
+  // reports offers indistinguishable from a call that legitimately moved none.
+  // The wallet would diagnose that as `Wallet.InsufficientFunds`, naming
+  // neither the call nor the segment. Refused here instead.
+  assertDefined(
+    routed,
+    `The ledger era composed circuit '${circuitId}' but did not build the call's Zswap offer: it never ` +
+      'called the supplied `zswapOffer` factory.'
+  );
+
+  const [partitionedTranscript] = composed.partitions;
+  assertDefined(
+    partitionedTranscript,
+    `The ledger era composed circuit '${circuitId}' without answering with its transcript partition.`
+  );
+
   return {
-    txBytes,
+    txBytes: composed.transaction,
     circuitId,
     nextPrivateState: transcript.privateStateAfter,
     result: transcript.result,
@@ -726,8 +742,8 @@ export const runLedger8CallPipeline = async <TState>(
     ],
     nextZswapLocalState: transcript.zswapLocalState,
     newCoins: zswapStateToNewCoins(request.coinPublicKey, transcript.zswapLocalState),
-    guaranteedZswapOffer,
-    fallibleZswapOffer
+    guaranteedZswapOffer: routed.guaranteed,
+    fallibleZswapOffer: routed.fallible
   };
 };
 
