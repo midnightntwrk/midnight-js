@@ -63,11 +63,14 @@ Two things to know about what ships:
   `ledger-v8`/`ledger-v9` devDependencies, which a consumer of the published
   package does not get. They stay a repo-only tool; see
   [Regenerating](#regenerating).
-- **The compiled contract files are data, not modules.** In particular
+- **The compiled contract MODULES are data, not modules.** In particular
   `counter-016/compiled/contract/index.js` expects
   `@midnight-ntwrk/compact-runtime@0.16`, which nothing in this repo installs
+  under that name
   (see [Version pin note](#version-pin-note-deviation-from-the-brief-with-evidence)).
-  Read these files, do not `import` them.
+  Read these files, do not `import` them. Their `index.d.ts` siblings are the
+  exception and ARE imported, type-only — see
+  [`counter-016/`](#counter-016).
 
 ## Fixtures
 
@@ -278,14 +281,26 @@ and `zkir/` — is now generated here rather than ported, because nothing can be
 proved or deployed on a pre-fork chain without the keys, which left the FR8
 end-to-end positive and the AC0 scenario gated at unit tier.
 
-**The declaration file is deliberately NOT committed.** `compactc 0.31.1` does
-emit `contract/index.d.ts`, so its absence here is a porting choice, not a
-property of the retained toolchain -- `packages/contracts/src/test/ledger8-contract.test.ts`
-carried a comment claiming the opposite, now corrected. Committing one would
-make that suite's assertion fail and would raise an MJS-02 question this fixture
-has no business answering: whether `contracts/src/ledger8-contract.ts`, which is
-hand-written today, should import the generated type instead. Flagged for the
-MJS-02 owner rather than decided here.
+**The declaration file IS committed, with one line changed.** `compactc 0.31.1`
+emits `contract/index.d.ts` beside the module; it was left uncommitted until
+#1312, which is the defect that decided the question. `contracts`'s retained-era
+type family is hand-written, and its compile-time tests used a hand-written
+stand-in for this artifact -- a stand-in written in terms of the family, so it
+agreed with the family whatever the family said and could not fail when the two
+drifted. They drifted: `Ledger8CircuitContext` was missing `costModel`, a
+required member of `compact-runtime@0.16`'s `CircuitContext`, and no real
+artifact satisfied `Ledger8Contract` at all. `packages/contracts/src/test/ledger8-fixture-types.ts`
+now imports these declarations instead.
+
+The one change is the import specifier: `@midnight-ntwrk/compact-runtime` ->
+`compact-runtime-ledger8`. It is not cosmetic and it is not optional. The root
+`resolutions` pin the bare name to the CURRENT era (`0.19.0`), so left as
+emitted the declarations would resolve to the wrong runtime's `CircuitContext`
+and the type test would silently check the wrong era's shape. The alias is this
+repo's own install of the same retained `@midnight-ntwrk/compact-runtime@0.16.0`
+(see `packages/protocol/package.json`), which is the only way to name 0.16 here.
+`ledger8-contract.test.ts` asserts both halves of that rewrite on the committed
+bytes.
 
 Regenerate with the same toolchain that produced the ported module:
 
@@ -564,11 +579,12 @@ compact compile --skip-zk \
 
 with `compact` on version **0.31.1**, which reports `language-version 0.23.0`
 and `runtime-version 0.16.0` — the same toolchain triple as `counter-016/`
-(and as the spike's own DAO artifact). Only `contract/index.js` and
-`compiler/contract-info.json` are committed: no `.d.ts` (the consuming test
-declares the slice it drives), no `keys/`, no `zkir/` (nothing here proves,
-and the call's key location hashes whichever registered key the test supplies
-— `twin-contract`'s `increment.verifier`).
+(and as the spike's own DAO artifact). `contract/index.js`,
+`contract/index.d.ts` and `compiler/contract-info.json` are committed: no
+`keys/`, no `zkir/` (nothing here proves, and the call's key location hashes
+whichever registered key the test supplies — `twin-contract`'s
+`increment.verifier`). The declaration carries the same one-line specifier
+rewrite as `counter-016/`'s, for the same reason.
 
 `compiler/contract-info.json` is committed **as a gate, not as decoration**:
 the test asserts `runtime-version: 0.16.0` and `compiler-version: 0.31.1` on

@@ -33,6 +33,7 @@ import type {
   Ledger8Circuit,
   Ledger8CircuitCallTxInterface,
   Ledger8CircuitContext,
+  Ledger8CircuitContextArgument,
   Ledger8CircuitId,
   Ledger8CircuitParameters,
   Ledger8CircuitResult,
@@ -83,13 +84,14 @@ describe('a consumer can name the retained era through the namespace alone', () 
 });
 
 describe('every namespace member is the declaration it renames', () => {
-  // One assertion per member, all 29 types, comparing `Ledger8.X` against the `Ledger8X` the source
+  // One assertion per member, all 30 types, comparing `Ledger8.X` against the `Ledger8X` the source
   // module declares. A swapped pair -- `Ledger8CallResultPrivate as CallResultPublic` and its
   // converse -- compiles, keeps both names on the surface, and is caught only here.
   it('renames the contract and circuit declarations', () => {
     expectTypeOf<Ledger8.Contract<PS>>().toEqualTypeOf<Ledger8Contract<PS>>();
     expectTypeOf<Ledger8.Circuit>().toEqualTypeOf<Ledger8Circuit>();
     expectTypeOf<Ledger8.CircuitContext<PS>>().toEqualTypeOf<Ledger8CircuitContext<PS>>();
+    expectTypeOf<Ledger8.CircuitContextArgument>().toEqualTypeOf<Ledger8CircuitContextArgument>();
     expectTypeOf<Ledger8.CircuitResult>().toEqualTypeOf<Ledger8CircuitResult>();
     expectTypeOf<Ledger8.Witness<PS>>().toEqualTypeOf<Ledger8Witness<PS>>();
     expectTypeOf<Ledger8.InitialStateResult<PS>>().toEqualTypeOf<Ledger8InitialStateResult<PS>>();

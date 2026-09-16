@@ -60,20 +60,39 @@ import type { Option } from 'effect';
 import type { RetainedPipelineEra } from './era';
 
 /**
- * The context a retained-era circuit receives as its first argument.
+ * The context a retained-era circuit receives as its first argument, as a
+ * caller READS it.
  *
- * Read off the real artifact, which rejects its first argument unless it is an
- * object carrying `currentQueryContext`, and reads `currentPrivateState` and
- * `currentZswapLocalState` off it.
+ * Every required member of the retained runtime's own `CircuitContext` is named
+ * here; `gasLimit`, the one optional member, is not. The era-internal members
+ * are `unknown`: they are live values of the previous runtime, and nothing
+ * outside that runtime may inspect them.
  *
- * The two era-internal members are `unknown`: they are live values of the
- * previous runtime, and nothing outside that runtime may inspect them.
+ * This is not the type that stands in a circuit's parameter position -- see
+ * {@link Ledger8CircuitContextArgument}.
+ *
+ * @see {@link OverloadTyping} for why the context needs two types.
  */
 export interface Ledger8CircuitContext<PS = unknown> {
   readonly currentQueryContext: unknown;
   readonly currentPrivateState: PS;
   readonly currentZswapLocalState: unknown;
+  readonly costModel: unknown;
 }
+
+/**
+ * The context in the position where a retained-era circuit ACCEPTS it.
+ *
+ * A parameter position is contravariant, so this type is the one that has to be
+ * assignable INTO the retained runtime's real `CircuitContext` -- the opposite
+ * direction from {@link Ledger8CircuitContext}. Every member is therefore
+ * `never`, and it is derived by a mapped type so the two cannot drift apart on
+ * a member.
+ *
+ * @see {@link OverloadTyping} for what this buys, and what broke when the
+ *      circuit took {@link Ledger8CircuitContext} here instead.
+ */
+export type Ledger8CircuitContextArgument = { readonly [K in keyof Ledger8CircuitContext]: never };
 
 /**
  * What a retained-era circuit member returns: a plain object, NOT a `Promise`.
@@ -93,12 +112,12 @@ export interface Ledger8CircuitResult {
  * A retained-era circuit member.
  *
  * Two things here are load-bearing and neither is cosmetic: the leading context is declared
- * EXPLICITLY, and the argument tail is `never[]` rather than `unknown[]`. Do not widen either for
- * readability.
+ * EXPLICITLY, and both it and the argument tail are bottom types rather than `unknown`. Do not
+ * widen either for readability.
  *
  * @see {@link OverloadTyping} for what each buys and what breaks without it.
  */
-export type Ledger8Circuit = (context: Ledger8CircuitContext<never>, ...args: never[]) => Ledger8CircuitResult;
+export type Ledger8Circuit = (context: Ledger8CircuitContextArgument, ...args: never[]) => Ledger8CircuitResult;
 
 /**
  * A retained-era witness implementation, which returns the next private state

@@ -21,8 +21,9 @@ import { describe, expectTypeOf, it } from 'vitest';
 
 // The current-era twin of the retained-era fixture. Imported TYPE-ONLY from the artifact's own
 // generated `index.d.ts`, so the current-era side of every assertion below is the real compiler's
-// view of real generated code rather than a restatement of it. The retained-era side has no
-// `.d.ts` to import (see `../ledger8-fixture-types.ts`).
+// view of real generated code rather than a restatement of it. The retained-era side is imported
+// the same way, from the declarations `compactc` 0.31.1 emitted beside the module the runtime test
+// loads (see `../ledger8-fixture-types.ts`).
 //
 // The twin is a `0.18.0-rc.1` artifact while the installed runtime is `0.19.0-rc.0` -- it was not
 // regenerated when the repo bumped. That does not weaken these assertions: the generated
@@ -50,6 +51,7 @@ import {
   type Ledger8CallTxOptionsBase,
   type Ledger8CallTxOptionsWithPrivateStateId,
   type Ledger8CallTxTarget,
+  type Ledger8Circuit,
   type Ledger8CircuitId,
   type Ledger8CircuitParameters,
   type Ledger8CircuitResult,
@@ -126,10 +128,22 @@ type NotTupleShapedCircuits = { readonly odd: (...args: never[]) => Ledger8Circu
 type NotTupleShaped = Ledger8Contract & { readonly impureCircuits: NotTupleShapedCircuits };
 
 describe('the retained-era contract type family pins the real 0.16 artifact shape', () => {
+  it('accepts a REAL generated retained-era contract, which is what #1312 found it did not', () => {
+    // The regression test for #1312, and the one assertion the earlier fixture could not make.
+    // `Counter016Contract` used to be hand-written in terms of `Ledger8CircuitContext`, so it
+    // agreed with the family whatever the family said. It is now the `Contract` class `compactc`
+    // 0.31.1 declared, which names the retained runtime's own `CircuitContext` and knows nothing
+    // about this family -- so this fails the moment the two drift apart.
+    //
+    // They had drifted: `Ledger8CircuitContext` was missing `costModel`, a required member of
+    // `compact-runtime@0.16`'s `CircuitContext`, which put every real artifact outside
+    // `Ledger8Contract` and left every retained-era overload unreachable from TypeScript.
+    expectTypeOf<Counter016Contract>().toMatchTypeOf<Ledger8Contract<Counter016PrivateState>>();
+    expectTypeOf<CoinReceiver016Contract>().toMatchTypeOf<Ledger8Contract>();
+    expectTypeOf<Counter016Contract['impureCircuits']['increment']>().toMatchTypeOf<Ledger8Circuit>();
+  });
+
   it('reads the fixture circuit ids off the family rather than off the fixture declaration', () => {
-    // Deliberately not `expectTypeOf<Counter016Contract>().toMatchTypeOf<Ledger8Contract>()`: the
-    // fixture is declared as `extends Ledger8Contract`, so that assertion cannot fail and proves
-    // nothing. This one goes through the family's own machinery and does fail if either side moves.
     expectTypeOf<Ledger8CircuitId<Counter016Contract>>().toEqualTypeOf<'increment'>();
   });
 
@@ -165,9 +179,10 @@ describe('the retained-era contract type family pins the real 0.16 artifact shap
 
   it('rejects a current-era contract instance', () => {
     // The near-miss guard. The reason it is rejected is a CONTRAVARIANT PARAMETER mismatch: the
-    // family's circuit takes a `Ledger8CircuitContext<never>`, which is missing the members of the
-    // current runtime's much larger `CircuitContext` (`callContext`, `queryContexts`, `gasCosts`,
-    // and the rest), so a current-era circuit is not assignable to `Ledger8Circuit`. It is NOT the
+    // family's circuit takes a `Ledger8CircuitContextArgument`, which names only the members of the
+    // RETAINED runtime's `CircuitContext` and so is missing every member the current runtime's much
+    // larger one requires (`callContext`, `queryContexts`, `gasCosts`, `callProofDataTrace`,
+    // `events`), so a current-era circuit is not assignable to `Ledger8Circuit`. It is NOT the
     // sync/async split that fires here, even though that split is what the family is designed
     // around — the next assertion anchors on that separately, so a later relaxation of
     // `Ledger8CircuitContext` cannot quietly move this test onto the other reason.

@@ -13,73 +13,46 @@
  * limitations under the License.
  */
 
-import type { Ledger8CircuitContext, Ledger8CircuitResult, Ledger8Contract } from '../ledger8-contract';
-
-// Not a `*.test.ts` file, so vitest does not collect it, and it sits under `test/`, which the
-// coverage config excludes.
+// The retained-era fixture contracts, typed from the artifacts' OWN generated declarations.
 //
-// This is the ONE place the retained-era fixture contract is described, because two tests need
-// the same description and they are only meaningful together:
+// Both fixtures ship a `contract/index.d.ts` that `compactc` 0.31.1 emitted beside the
+// `contract/index.js` the runtime tests load, so the two halves of the pairing now look at the
+// same artifact:
 //
-//  - `ledger8-contract.test.ts` loads the REAL generated artifact and asserts, at runtime, the
-//    structural facts this description claims: synchronous members throughout, and no
-//    current-era brand.
-//  - `typecheck/overloads.test-d.ts` uses this description as the compile-time stand-in for that
-//    artifact, because the retained toolchain emits no `.d.ts` to import a type from.
+//  - `ledger8-contract.test.ts` loads the generated JavaScript and asserts, at runtime, the
+//    structural facts the retained-era family in `../ledger8-contract.ts` encodes.
+//  - `typecheck/overloads.test-d.ts` asserts, at compile time, that the generated DECLARATIONS
+//    satisfy that family and that the retained-era overloads resolve for them.
 //
-// Written twice, the compile assertions could drift from what the runtime test verifies and
-// neither test would notice.
+// Nothing here restates a circuit signature. An earlier revision did, in terms of
+// `Ledger8CircuitContext`, which made the compile assertions unable to fail on the one axis that
+// mattered: a stand-in written in terms of the family agrees with the family whatever the family
+// says. It drifted exactly there -- see #1312, where `Ledger8CircuitContext` was missing
+// `costModel` and no real artifact satisfied `Ledger8Contract` at all.
 
-/** The witnesses the fixture contract is constructed with: the counter declares none. */
-export type Counter016Witnesses = Record<string, never>;
+import type * as CoinReceiver016 from '../../../../testkit-js/testkit-js/src/fixtures/hf/coin-receiver-016/compiled/contract/index.js';
+import type * as Counter016 from '../../../../testkit-js/testkit-js/src/fixtures/hf/counter-016/compiled/contract/index.js';
 
-/** The private state the fixture's circuits carry: the counter declares none. */
+/** The private state the counter's circuits carry: it declares none. */
 export type Counter016PrivateState = Record<string, never>;
 
 /**
- * The fixture's single circuit. It takes only the framework-built context, so a caller supplies
- * no arguments of its own, and it returns a plain object rather than a `Promise`.
+ * The zero-argument retained-era fixture contract.
  *
- * A type ALIAS rather than an interface, deliberately, for the implicit index signature the
- * family's circuit collections require. Generated Compact declarations are written the same way.
- *
- * @see {@link OverloadTyping} for the rule and why a consumer hits it too.
+ * Its `increment` takes only the framework-built context, which is what exercises
+ * `Ledger8CircuitParameters` at the empty tuple.
  */
-export type Counter016Circuits = {
-  readonly increment: (context: Ledger8CircuitContext<Counter016PrivateState>) => Ledger8CircuitResult;
-};
+export type Counter016Contract = Counter016.Contract<Counter016PrivateState>;
 
 /**
- * The retained runtime's constructor context. Opaque here: it is a live value of the previous
- * runtime, which nothing outside that runtime may inspect.
- */
-export type Ledger8ConstructorContextLike = { readonly initialZswapLocalState: unknown };
-
-/** What the fixture's `initialState` returns — a plain object, not a `Promise`. */
-export interface Counter016ConstructorResult {
-  readonly currentContractState: unknown;
-  readonly currentPrivateState: Counter016PrivateState;
-  readonly currentZswapLocalState: unknown;
-}
-
-/**
- * The retained-era fixture contract, described in terms of the hand-written family in
- * `../ledger8-contract.ts`.
+ * The shape of the counter's module.
  *
- * Every member is SYNCHRONOUS, which is what makes this shape distinguishable from the current
- * era's; `ledger8-contract.test.ts` asserts exactly that against the real artifact.
+ * `ledger` and `pureCircuits` are narrowed rather than taken from the generated declarations:
+ * both are VALUES, and this module imports the artifact type-only, so it cannot query their
+ * types. Nothing asserts on either -- the fixture's contract is what both tests are about.
  */
-export interface Counter016Contract extends Ledger8Contract<Counter016PrivateState> {
-  readonly witnesses: Counter016Witnesses;
-  readonly circuits: Counter016Circuits;
-  readonly impureCircuits: Counter016Circuits;
-  readonly provableCircuits: Counter016Circuits;
-  initialState(context: Ledger8ConstructorContextLike): Counter016ConstructorResult;
-}
-
-/** The shape of the fixture module itself. */
 export interface Counter016Module {
-  readonly Contract: new (witnesses: Counter016Witnesses) => Counter016Contract;
+  readonly Contract: new (witnesses: Counter016.Witnesses<Counter016PrivateState>) => Counter016Contract;
   readonly ledger: (stateOrChargedState: never) => unknown;
   readonly pureCircuits: Readonly<Record<string, unknown>>;
 }
@@ -97,58 +70,23 @@ export interface Counter016Module {
 // `coin-receiver-016` is a real `compact-runtime@0.16` artifact whose own arity guard is
 // `args_1.length !== 2` -- the context plus one argument -- against `counter-016`'s `!== 1`.
 
-/** The witnesses the coin receiver is constructed with: it declares none. */
-export type CoinReceiver016Witnesses = Record<string, never>;
-
 /** The private state the coin receiver's circuits carry: it declares none. */
 export type CoinReceiver016PrivateState = Record<string, never>;
 
-/**
- * The `ShieldedCoinInfo` the fixture's circuit takes, read off the artifact's own argument check:
- * a 32-byte nonce, a 32-byte colour, and an unsigned value.
- */
-export type CoinReceiver016Coin = {
-  readonly nonce: Uint8Array;
-  readonly color: Uint8Array;
-  readonly value: bigint;
-};
+/** The argument-taking retained-era fixture contract. */
+export type CoinReceiver016Contract = CoinReceiver016.Contract<CoinReceiver016PrivateState>;
 
 /**
- * The coin receiver's single circuit, which takes ONE real argument after the context.
- *
- * A type alias rather than an interface, for the implicit index signature — see
- * {@link Counter016Circuits}.
+ * The `ShieldedCoinInfo` the coin receiver's circuit takes, read off the circuit's own generated
+ * signature rather than restated: a 32-byte nonce, a 32-byte colour, and an unsigned value.
  */
-export type CoinReceiver016Circuits = {
-  readonly receive_coin: (
-    context: Ledger8CircuitContext<CoinReceiver016PrivateState>,
-    coin: CoinReceiver016Coin
-  ) => Ledger8CircuitResult;
-};
+export type CoinReceiver016Coin = Parameters<
+  CoinReceiver016.ImpureCircuits<CoinReceiver016PrivateState>['receive_coin']
+>[1];
 
-/** What the coin receiver's `initialState` returns — a plain object, not a `Promise`. */
-export interface CoinReceiver016ConstructorResult {
-  readonly currentContractState: unknown;
-  readonly currentPrivateState: CoinReceiver016PrivateState;
-  readonly currentZswapLocalState: unknown;
-}
-
-/**
- * The argument-taking retained-era fixture contract, described in terms of the same hand-written
- * family. `ledger8-contract.test.ts` asserts the structural facts against the real artifact, the
- * same way it does for the counter.
- */
-export interface CoinReceiver016Contract extends Ledger8Contract<CoinReceiver016PrivateState> {
-  readonly witnesses: CoinReceiver016Witnesses;
-  readonly circuits: CoinReceiver016Circuits;
-  readonly impureCircuits: CoinReceiver016Circuits;
-  readonly provableCircuits: CoinReceiver016Circuits;
-  initialState(context: Ledger8ConstructorContextLike): CoinReceiver016ConstructorResult;
-}
-
-/** The shape of the coin receiver's module. */
+/** The shape of the coin receiver's module -- narrowed for the same reason as the counter's. */
 export interface CoinReceiver016Module {
-  readonly Contract: new (witnesses: CoinReceiver016Witnesses) => CoinReceiver016Contract;
+  readonly Contract: new (witnesses: CoinReceiver016.Witnesses<CoinReceiver016PrivateState>) => CoinReceiver016Contract;
   readonly ledger: (stateOrChargedState: never) => unknown;
   readonly pureCircuits: Readonly<Record<string, unknown>>;
 }

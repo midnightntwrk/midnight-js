@@ -33,11 +33,11 @@ import type {
 import { createMockCompiledContract, createMockProviders } from './test-mocks';
 
 // The other half of `../ledger8-contract.ts`. That file hand-writes the retained-era
-// (`compact-runtime@0.16`) contract type family, because the retained toolchain emits
-// `contract/index.js` with no `index.d.ts` beside it — there is no declaration file to import a
-// type from. A hand-written type is a claim about generated code, and this test is what makes the
-// claim checkable: it loads the REAL generated artifact, constructs it, and asserts the exact
-// structural facts the family encodes.
+// (`compact-runtime@0.16`) contract type family: it describes generated code without being
+// generated from it. A hand-written type is a claim about generated code, and this test is what
+// makes the claim checkable at RUNTIME: it loads the REAL generated artifact, constructs it, and
+// asserts the exact structural facts the family encodes — facts a declaration file cannot state,
+// such as which members the constructor actually installs and whether they are async.
 //
 // The pairing is required, not optional. `typecheck/overloads.test-d.ts` proves the entry points'
 // overloads DISCRIMINATE the two eras; only this test proves the shape they discriminate on is the
@@ -155,18 +155,29 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
     expect('tag' in contract).toBe(false);
   });
 
-  it('ships no declaration file, which is why the family is hand-written rather than imported', () => {
-    // CORRECTION (2026-09-07): the retained toolchain DOES emit an `index.d.ts` --
-    // running `compactc 0.31.1` against this fixture's own source produces one. The
-    // absence asserted here is a property of what the fixture PORTED, not of the
-    // toolchain, and the earlier comment claiming otherwise was wrong.
+  it('ships the declaration file the type test imports, wired to the RETAINED runtime', () => {
+    // `../ledger8-fixture-types.ts` types both fixtures from these declarations, so the compile
+    // assertions and the runtime assertions look at one artifact. Two things have to hold for that
+    // to mean anything, and neither is visible from the type side:
     //
-    // The assertion is kept as-is because `../ledger8-contract.ts` is still
-    // hand-written and this pins the fixture it is written against. Whether to port
-    // the declaration and import the generated type instead is an MJS-02 decision,
-    // not a fixture one. See `fixtures/hf/README.md` under `counter-016/`.
-    expect(() => readFileSync(resolve(COUNTER_016_DIR, 'index.d.ts'))).toThrow();
+    //  - the declaration is there at all (it was deliberately not ported until #1312);
+    //  - it names `compact-runtime-ledger8`, this repo's alias for the retained
+    //    `@midnight-ntwrk/compact-runtime@0.16.0`. `compactc` emits the bare specifier, which the
+    //    root `resolutions` pin to 0.19.0 — so left alone it would silently type the retained
+    //    fixture against the CURRENT runtime's `CircuitContext` and the type test would be
+    //    checking the wrong era's shape. The one-line rewrite is documented in
+    //    `fixtures/hf/README.md` under `counter-016/`.
+    const counterTypes = readFileSync(resolve(COUNTER_016_DIR, 'index.d.ts'), 'utf8');
+    expect(counterTypes).toContain("from 'compact-runtime-ledger8'");
+    expect(counterTypes).not.toContain("from '@midnight-ntwrk/compact-runtime'");
+    expect(counterTypes).toContain('export declare class Contract');
     expect(readFileSync(TWIN_MODULE_TYPES, 'utf8')).toContain('export declare class Contract');
+
+    // And the declaration belongs to THIS module: every circuit the constructed contract installs
+    // is declared in it. Regenerating one file without the other is the way the pairing breaks.
+    for (const circuitId of Object.keys(contract.impureCircuits)) {
+      expect(counterTypes).toContain(`${circuitId}(context:`);
+    }
   });
 
   it('exports no expectedVk, unlike the current era whose modules always do', () => {
@@ -230,8 +241,14 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       expect('tag' in coinReceiver).toBe(false);
     });
 
-    it('ships no declaration file and exports no expectedVk, like the other retained artifact', () => {
-      expect(() => readFileSync(resolve(COIN_RECEIVER_016_DIR, 'index.d.ts'))).toThrow();
+    it('ships the same retained-runtime-wired declaration file, and exports no expectedVk', () => {
+      const coinReceiverTypes = readFileSync(resolve(COIN_RECEIVER_016_DIR, 'index.d.ts'), 'utf8');
+      expect(coinReceiverTypes).toContain("from 'compact-runtime-ledger8'");
+      expect(coinReceiverTypes).not.toContain("from '@midnight-ntwrk/compact-runtime'");
+      expect(coinReceiverTypes).toContain('export declare class Contract');
+      for (const circuitId of Object.keys(coinReceiver.impureCircuits)) {
+        expect(coinReceiverTypes).toContain(`${circuitId}(context:`);
+      }
       expect('expectedVk' in coinReceiverModule).toBe(false);
     });
 

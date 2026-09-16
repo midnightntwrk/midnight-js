@@ -188,6 +188,7 @@ describe('Contracts type ACL', () => {
       'Circuit',
       'CircuitCallTxInterface',
       'CircuitContext',
+      'CircuitContextArgument',
       'CircuitId',
       'CircuitParameters',
       'CircuitResult',
