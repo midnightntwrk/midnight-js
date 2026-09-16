@@ -1052,6 +1052,18 @@ export class IncompleteCallTxPrivateStateConfig extends Error {
 }
 
 /**
+ * An error indicating that an initial private state was specified for a contract deploy while a
+ * private state ID was not. We can't store the initial private state if we don't have a private state ID,
+ * and we need to let the user know that.
+ */
+export class IncompleteDeployContractPrivateStateConfig extends Error {
+  constructor() {
+    super('Incorrect deploy contract configuration');
+    this.message = "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined";
+  }
+}
+
+/**
  * An error indicating that an initial private state was specified for a contract find while a
  * private state ID was not. We can't store the initial private state if we don't have a private state ID,
  * and we need to let the user know that.

@@ -74,6 +74,7 @@ import {
   AnyEraTxFailedError,
   BlankVerifierKeySlotError,
   EraInvariantViolationError,
+  IncompleteFindContractPrivateStateConfig,
   Ledger8AmbiguousEntryPointError,
   Ledger8CallTxFailedError,
   Ledger8DeployOnV9Error,
@@ -2178,6 +2179,68 @@ describe('attaching to a retained-era contract already on chain', () => {
 
     // A retained-era contract may genuinely carry no private state, so naming
     // no id stays legal -- but then NOTHING is read and nothing is written.
+    expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  // SEEDING, which is the attach's one write. Everything else on this path is a read, and the four
+  // cases below are the current era's rule applied unchanged: the two arms that act, and the two
+  // configurations that are refused rather than guessed at. The rule itself lives in one place --
+  // `setOrGetInitialPrivateState` in `find-deployed-contract.ts` -- so what these pin is that the
+  // retained arm reaches it, not a second copy of the rule.
+  it('stores the initial private state at the named id', async () => {
+    const providers = attachProviders(v6Envelope);
+    const initialPrivateState = {};
+
+    await findDeployedContract(providers, {
+      ...attachOptions(),
+      privateStateId: 'retained-private-state',
+      initialPrivateState
+    });
+
+    expect(providers.privateStateProvider.set).toHaveBeenCalledWith('retained-private-state', initialPrivateState);
+    // Stored, not merged with whatever was there: the caller said what the state is.
+    expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
+  });
+
+  it('reads the state already stored at the named id when the caller supplies none', async () => {
+    const providers = attachProviders(v6Envelope);
+    providers.privateStateProvider.get = vi.fn().mockResolvedValue({ storedBefore: true });
+
+    await findDeployedContract(providers, { ...attachOptions(), privateStateId: 'retained-private-state' });
+
+    expect(providers.privateStateProvider.get).toHaveBeenCalledWith('retained-private-state');
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  it('refuses when the named id holds nothing, rather than attaching against a default state', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    // The mock provider answers `undefined` by default, which is the condition under test: an id
+    // the caller believes is populated and is not. Attaching anyway would run every later call
+    // against a state the contract never had.
+    await expect(
+      findDeployedContract(providers, { ...attachOptions(), privateStateId: 'retained-private-state' })
+    ).rejects.toThrow("No private state found at private state ID 'retained-private-state'");
+  });
+
+  it('refuses an initial private state with no id to store it under', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    await expect(
+      findDeployedContract(providers, { ...attachOptions(), initialPrivateState: {} })
+    ).rejects.toBeInstanceOf(IncompleteFindContractPrivateStateConfig);
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  it('touches the private-state provider not at all when the caller gives neither', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    await findDeployedContract(providers, attachOptions());
+
+    // Stated at the ATTACH rather than after a call, because the attach is now a writer: the test
+    // above that makes a call through the handle would keep passing if the attach itself seeded an
+    // unnamed state and the call then read it back.
     expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });

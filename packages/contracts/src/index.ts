@@ -76,6 +76,7 @@ export {
   type EraSeam,
   HeadStateEraMismatchError,
   IncompleteCallTxPrivateStateConfig,
+  IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   IndexerInconsistencyError,
   MixedEraScopeError,
@@ -132,7 +133,7 @@ export { type AnyEraFinalizedCallTxData, type AnyEraSubmittedCallTx, isLedger8Re
 // is how a caller declares the result it was handed, and `Ledger8.Contract` how it constrains a
 // helper of its own.
 //
-// One export rather than the thirty-seven it re-exports, because the retained era is transitional
+// One export rather than the thirty-nine it re-exports, because the retained era is transitional
 // and a flat family is not: see `docs/retained-era-namespace.md` for what qualifies for membership,
 // what is deliberately held back, and how the whole surface is withdrawn in one step.
 export * as Ledger8 from './ledger8';

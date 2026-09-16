@@ -60,6 +60,8 @@ export type {
   Ledger8ContractProviders as ContractProviders,
   Ledger8DeployContractOptions as DeployContractOptions,
   Ledger8DeployContractOptionsBase as DeployContractOptionsBase,
+  Ledger8DeployContractOptionsWithPrivateState as DeployContractOptionsWithPrivateState,
+  Ledger8DeployedContract as DeployedContract,
   Ledger8FinalizedCallTxData as FinalizedCallTxData,
   Ledger8FinalizedCallTxPublicData as FinalizedCallTxPublicData,
   Ledger8FindDeployedContractOptions as FindDeployedContractOptions,

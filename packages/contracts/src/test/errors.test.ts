@@ -28,6 +28,8 @@ import {
   AnyEraTxFailedError,
   CallTxFailedError,
   EraInvariantViolationError,
+  IncompleteDeployContractPrivateStateConfig,
+  IncompleteFindContractPrivateStateConfig,
   Ledger8CallTxFailedError,
   TxFailedError
 } from '../errors';
@@ -167,6 +169,24 @@ describe('EraInvariantViolationError', () => {
   // reading as it did: those flows submit and accept v9 and nothing else.
   it('defaults the accepted era to the current one', () => {
     expect(new EraInvariantViolationError('proveTx').expected).toBe('v9');
+  });
+});
+
+describe('the incomplete private-state configuration refusals', () => {
+  // These two are told apart by their message alone -- neither carries a code, and both are plain
+  // `Error` subclasses -- so the message is the whole of what a caller has to work with. A deploy
+  // that reported the FIND wording would send the reader to the wrong entry point.
+  it('names the entry point whose configuration was incomplete', () => {
+    const deployRefusal = new IncompleteDeployContractPrivateStateConfig();
+    const findRefusal = new IncompleteFindContractPrivateStateConfig();
+
+    expect(deployRefusal.message).toBe(
+      "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined"
+    );
+    expect(findRefusal.message).toBe(
+      "'initialPrivateState' was defined for contract find while 'privateStateId' was undefined"
+    );
+    expect(deployRefusal.message).not.toBe(findRefusal.message);
   });
 });
 

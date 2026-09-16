@@ -71,10 +71,41 @@ const setOrGetInitialSigningKey = async <C extends Contract.Any>(
   return freshSigningKey;
 };
 
-const setOrGetInitialPrivateState = async <C extends Contract.Any>(
-  privateStateProvider: PrivateStateProvider<PrivateStateId, Contract.PrivateState<C>>,
-  options: FindDeployedContractOptions<C>
-): Promise<Contract.PrivateState<C>> => {
+/**
+ * The private-state half of a find's configuration, as the rule below reads it.
+ *
+ * Structural rather than either era's own options type, because the rule is ONE rule and the
+ * retained arm reaches it holding a `Ledger8FindDeployedContractOptions`. Both members are optional
+ * because the current era's three option interfaces differ in which of them they declare, and the
+ * retained era's declares both as optional.
+ *
+ * The `& object` on every use is load-bearing. With both members optional this is a WEAK type, and
+ * TypeScript refuses a source that shares no property with it — which is exactly the current era's
+ * `FindDeployedContractOptionsBase`, the commonest find of all. Intersecting with `object` adds no
+ * member and disables no check other than that one.
+ */
+interface FindContractPrivateStateConfig<PS> {
+  readonly privateStateId?: PrivateStateId;
+  readonly initialPrivateState?: PS;
+}
+
+/**
+ * Narrows to a configuration that CARRIES an initial private state, on the key's presence rather
+ * than on its value.
+ *
+ * `undefined` is a legitimate private state — a contract that declares none stores exactly that —
+ * so `initialPrivateState: undefined` means "store that", not "supplied nothing". `privateStateId`
+ * is read the other way, off its value, because there `undefined` is no id at all.
+ */
+const hasInitialPrivateState = <PS>(
+  options: FindContractPrivateStateConfig<PS> & object
+): options is FindContractPrivateStateConfig<PS> & { readonly initialPrivateState: PS } =>
+  'initialPrivateState' in options;
+
+const setOrGetInitialPrivateState = async <PS>(
+  privateStateProvider: PrivateStateProvider<PrivateStateId, PS>,
+  options: FindContractPrivateStateConfig<PS> & object
+): Promise<PS> => {
   /**
    * If both 'privateStateId' and 'initialPrivateState' are defined,
    * then 'initialPrivateState' is stored in private state provider at 'privateStateId'.
@@ -93,24 +124,23 @@ const setOrGetInitialPrivateState = async <C extends Contract.Any>(
    * If 'privateStateId' is undefined and 'initialPrivateState' is undefined,
    * then no private state is stored.
    */
-  const hasPrivateStateId = 'privateStateId' in options;
-  const hasInitialPrivateState = 'initialPrivateState' in options;
+  const { privateStateId } = options;
 
-  if (hasPrivateStateId) {
-    if (hasInitialPrivateState) {
-      await privateStateProvider.set(options.privateStateId, options.initialPrivateState);
+  if (privateStateId !== undefined) {
+    if (hasInitialPrivateState(options)) {
+      await privateStateProvider.set(privateStateId, options.initialPrivateState);
       return options.initialPrivateState;
     }
-    const currentPrivateState = await privateStateProvider.get(options.privateStateId);
-    assertDefined(currentPrivateState, `No private state found at private state ID '${options.privateStateId}'`);
+    const currentPrivateState = await privateStateProvider.get(privateStateId);
+    assertDefined(currentPrivateState, `No private state found at private state ID '${privateStateId}'`);
     return currentPrivateState;
   }
-  if (hasInitialPrivateState) {
+  if (hasInitialPrivateState(options)) {
     throw new IncompleteFindContractPrivateStateConfig();
   }
-  // Cast to 'PrivateState<C>' because if we've reached this point, the private state of
+  // Cast to 'PS' because if we've reached this point, the private state of
   // the contract should be 'undefined'.
-  return undefined as Contract.PrivateState<C>;
+  return undefined as PS;
 };
 
 /**
@@ -361,6 +391,14 @@ export async function findDeployedContract<C extends Contract.Any>(
       // what this costs and why both eras pay it.
       circuitIds: Object.keys(options.compiledContract.impureCircuits)
     });
+    // Seeded HERE rather than inside `findLedger8Contract`, which takes a three-member `Pick` of the
+    // providers and is a pure READ path -- widening it to write would put the one storage decision
+    // this arm makes behind the era-specific chain reads. Client-side storage is era-independent,
+    // so both eras reach the same rule from this file.
+    //
+    // AFTER the attach, for the order the current-era arm below uses: a state seeded for a contract
+    // whose verifier keys turn out not to match would outlive a find that failed.
+    await setOrGetInitialPrivateState<unknown>(providers.privateStateProvider, options);
     return {
       era: RETAINED_PIPELINE_ERA,
       compiledContract: options.compiledContract,
