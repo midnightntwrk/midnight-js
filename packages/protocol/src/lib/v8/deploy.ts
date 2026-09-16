@@ -37,9 +37,31 @@ import type { ProtocolV8 } from './load';
  */
 export type Ledger8DeployableContractState = Pick<OnchainRuntimeV3.ContractState, 'serialize'>;
 
+/**
+ * A pre-fork signing key, under a name a consumer can write. The retained
+ * runtime's own alias, not a mirror of it: the current era's signing key is a
+ * different shape, so the two must never be spelled the same way here.
+ */
+export type Ledger8SigningKey = OnchainRuntimeV3.SigningKey;
+
+/**
+ * The state a retained constructor hands back, as {@link executeConstructor}
+ * uses it: `.serialize()` to cross the era boundary by bytes, and
+ * `.maintenanceAuthority` to write the authority the constructor itself leaves
+ * unsatisfiable.
+ *
+ * Wider than {@link Ledger8DeployableContractState} on purpose — the authority
+ * is set before the state is ever serialized, so nothing downstream of those
+ * bytes needs the member.
+ */
+export type Ledger8ConstructedContractState = Pick<
+  OnchainRuntimeV3.ContractState,
+  'serialize' | 'maintenanceAuthority'
+>;
+
 /** What a pre-fork `contract.initialState(constructorContext, ...args)` call returns. */
 export interface Ledger8ConstructorResult {
-  readonly currentContractState: Ledger8DeployableContractState;
+  readonly currentContractState: Ledger8ConstructedContractState;
   readonly currentPrivateState: unknown;
   /**
    * The Zswap local state the constructor ended on, still ENCODED. A
@@ -76,6 +98,17 @@ export interface Ledger8ConstructorRuntime {
    * encoded form, and only the decoded one can be turned into an offer.
    */
   readonly decodeZswapLocalState: (state: EncodedZswapLocalState) => ZswapLocalState;
+  /**
+   * The maintenance-authority slice. The retained constructor leaves an
+   * authority nothing can satisfy, so {@link executeConstructor} replaces it —
+   * which needs a key source, a verifying-key derivation and the authority
+   * class itself.
+   */
+  readonly sampleSigningKey: typeof OnchainRuntimeV3.sampleSigningKey;
+  readonly signatureVerifyingKey: typeof OnchainRuntimeV3.signatureVerifyingKey;
+  readonly ContractMaintenanceAuthority: new (
+    ...args: ConstructorParameters<typeof OnchainRuntimeV3.ContractMaintenanceAuthority>
+  ) => OnchainRuntimeV3.ContractMaintenanceAuthority;
 }
 
 /** Everything {@link executeConstructor} needs to run one contract constructor. */
@@ -84,6 +117,13 @@ export interface ExecuteConstructorOptions {
   readonly args: readonly unknown[];
   readonly privateState: unknown;
   readonly coinPk: string;
+  /**
+   * The key the deployed contract's maintenance authority is built from. A
+   * caller that omits it gets a freshly sampled one, reported back on
+   * {@link ConstructorResultPojo.signingKey} — the only copy that will ever
+   * exist, so it has to be kept.
+   */
+  readonly signingKey?: Ledger8SigningKey;
 }
 
 /**
@@ -100,6 +140,13 @@ export interface ConstructorResultPojo {
    * the outputs for one that does, which is what lets the deploy be balanced.
    */
   readonly zswapLocalState: ZswapLocalState;
+  /**
+   * The key the state's maintenance authority was built from — the caller's
+   * own when one was supplied, otherwise the sampled one. Reported because a
+   * sampled key exists nowhere else: without it the deployment is as
+   * unmaintainable as the empty committee the constructor left.
+   */
+  readonly signingKey: Ledger8SigningKey;
 }
 
 /**
@@ -107,25 +154,47 @@ export interface ConstructorResultPojo {
  * (`initialState`) and packages the result into a
  * {@link ConstructorResultPojo}.
  *
+ * Also sets the state's maintenance authority to a one-key committee over the
+ * caller's signing key. The retained constructor leaves an EMPTY committee with
+ * a threshold of one — one signature from a set of zero keys, which nothing can
+ * satisfy — so a deployment left on it could never have a verifier key
+ * inserted, removed or replaced, nor its authority updated, because updating it
+ * is itself a rule change. Nothing else on the retained path offers a place to
+ * put a key: `createConstructorContext` takes none, and `ComposeV8DeployOptions`
+ * carries none.
+ *
  * @param options The compiled contract module, constructor arguments, private
- *   state and coin public key.
+ *   state, coin public key and optional signing key.
  * @param runtime The injected pre-fork glue slice used to build the
- *   constructor context.
- * @returns The freshly built contract state and the resulting private state.
- *   The state is a pre-fork HANDLE, so it does not go straight into a deploy:
- *   both {@link composeV8DeployTx} and the era facade's `composeDeployTx` take
- *   it as BYTES, which is what `.serialize()` on that handle produces.
+ *   constructor context and the authority.
+ * @returns The freshly built contract state, the resulting private state and
+ *   the signing key the authority was built from. The state is a pre-fork
+ *   HANDLE, so it does not go straight into a deploy: both
+ *   {@link composeV8DeployTx} and the era facade's `composeDeployTx` take it as
+ *   BYTES, which is what `.serialize()` on that handle produces — and the
+ *   authority is written before that, so it travels with those bytes.
  * @see {@link RetainedEraExecution}
  */
 export const executeConstructor = (options: ExecuteConstructorOptions, runtime: Ledger8ConstructorRuntime): ConstructorResultPojo => {
   const { contract, args, privateState, coinPk } = options;
   const constructorContext = runtime.createConstructorContext(privateState, coinPk);
   const result = contract.initialState(constructorContext, ...args);
+  const signingKey = options.signingKey ?? runtime.sampleSigningKey();
+
+  // `counter` is `0n` because the retained runtime documents it as `0n` at
+  // deployment; every later update sets it to exactly one more than the
+  // current value.
+  result.currentContractState.maintenanceAuthority = new runtime.ContractMaintenanceAuthority(
+    [runtime.signatureVerifyingKey(signingKey)],
+    1,
+    0n
+  );
 
   return {
     contractState: result.currentContractState,
     privateState: result.currentPrivateState,
-    zswapLocalState: runtime.decodeZswapLocalState(result.currentZswapLocalState)
+    zswapLocalState: runtime.decodeZswapLocalState(result.currentZswapLocalState),
+    signingKey
   };
 };
 

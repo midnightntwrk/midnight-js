@@ -110,11 +110,21 @@ describe('Protocol type ACL', () => {
       // is a `Ledger8ChargedState` and `.data.state` a `Ledger8StateValue`, and
       // neither was nameable outside the package that declares them.
       'Ledger8ChargedState',
+      // The state a retained constructor hands back, with the maintenance
+      // authority `executeConstructor` writes on it. Published so a caller
+      // outside this package can declare a contract's `initialState` return
+      // type without importing the retained runtime itself.
+      'Ledger8ConstructedContractState',
       // Named by `ConstructorResultPojo.contractState`, which this barrel
       // publishes: the state a retained constructor built, as the handle it is.
       'Ledger8DeployableContractState',
       'Ledger8Engine',
       'Ledger8InstanceAxis',
+      // Named by `ExecuteConstructorOptions.signingKey` and reported back on
+      // `ConstructorResultPojo`. The retained era's signing key is a different
+      // shape from the current era's, so a consumer cannot name it by reusing
+      // the current-era one.
+      'Ledger8SigningKey',
       'Ledger8StateValue',
       'LedgerEra',
       'LedgerParametersOption',
@@ -146,8 +156,10 @@ describe('Protocol type ACL', () => {
       'ExecuteCircuitOptions',
       'ExecuteConstructorOptions',
       'Ledger8ChargedState',
+      'Ledger8ConstructedContractState',
       'Ledger8DeployableContractState',
       'Ledger8Engine',
+      'Ledger8SigningKey',
       'Ledger8StateValue',
       'TranscriptPojo',
       'WrapKeepStateCallOptions'

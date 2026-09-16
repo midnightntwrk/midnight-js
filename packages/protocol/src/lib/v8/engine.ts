@@ -23,8 +23,10 @@ import {
   type ConstructorResultPojo,
   executeConstructor,
   type ExecuteConstructorOptions,
+  type Ledger8ConstructedContractState,
   type Ledger8ConstructorRuntime,
-  type Ledger8DeployableContractState
+  type Ledger8DeployableContractState,
+  type Ledger8SigningKey
 } from './deploy';
 import {
   type DownConvertedState,
@@ -44,7 +46,9 @@ export type {
   ExecuteCircuitOptions,
   ExecuteConstructorOptions,
   Ledger8ChargedState,
+  Ledger8ConstructedContractState,
   Ledger8DeployableContractState,
+  Ledger8SigningKey,
   Ledger8StateValue,
   TranscriptPojo,
   WrapKeepStateCallOptions
@@ -117,9 +121,16 @@ export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
     createCircuitContext: glue.createCircuitContext,
     CostModel: glue.CostModel
   };
+  // The authority slice from ocrt3, the context builder from the glue: the
+  // same mixing the compact runtime above does, sound for the same reason --
+  // the authority is written onto a state the glue built, so the two must be
+  // one instance.
   const ledger8ConstructorRuntime: Ledger8ConstructorRuntime = {
     createConstructorContext: glue.createConstructorContext,
-    decodeZswapLocalState: glue.decodeZswapLocalState
+    decodeZswapLocalState: glue.decodeZswapLocalState,
+    sampleSigningKey: ocrt3.sampleSigningKey,
+    signatureVerifyingKey: ocrt3.signatureVerifyingKey,
+    ContractMaintenanceAuthority: ocrt3.ContractMaintenanceAuthority
   };
 
   return {

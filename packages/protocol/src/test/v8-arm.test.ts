@@ -46,12 +46,17 @@ vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-l
 // Both engine surfaces at once: the fixture is a real compiled pre-fork
 // contract, so it is simultaneously something `executeCircuit` can dispatch
 // through and something `executeConstructor` can build an initial state from.
-// `currentContractState` is declared with both members it really has — the
-// live `ChargedState` execution runs against, and the `serialize()` the deploy
-// leg bridges by.
+// `currentContractState` is declared with the members it really has that this
+// file's paths reach — the live `ChargedState` execution runs against, the
+// `serialize()` the deploy leg bridges by, and the `maintenanceAuthority`
+// `executeConstructor` writes the caller's signing key into.
 interface CompiledCounterContract extends Ledger8ContractLike {
   initialState(constructorContext: unknown): {
-    currentContractState: { data: ocrt3.ChargedState; serialize: () => Uint8Array };
+    currentContractState: {
+      data: ocrt3.ChargedState;
+      serialize: () => Uint8Array;
+      maintenanceAuthority: ocrt3.ContractMaintenanceAuthority;
+    };
     currentPrivateState: unknown;
     // The third member the artifact really returns, read since a constructor
     // that mints a coin needs it to compose a balanceable deploy.
