@@ -217,8 +217,9 @@ export const contractPackageManifest = (contract) => ({
 });
 
 /**
- * Retained-era packages this repository pins in its root `resolutions`, carried
- * into every persona. Read rather than restated, so a bump moves both together.
+ * Native packages this repository pins so that exactly one physical copy of each
+ * is installed, carried into every persona. Read rather than restated, so a bump
+ * moves both together.
  */
 export const PINNED_RETAINED_RUNTIME = (() => {
   const root = JSON.parse(readFileSync(path.join(REPOSITORY_ROOT, 'package.json'), 'utf8'));
@@ -227,22 +228,35 @@ export const PINNED_RETAINED_RUNTIME = (() => {
     throw new Error('The repository root does not pin @midnight-ntwrk/onchain-runtime-v3');
   }
 
+  const protocol = JSON.parse(
+    readFileSync(path.join(REPOSITORY_ROOT, 'packages', 'protocol', 'package.json'), 'utf8')
+  ).dependencies;
+
   // ledger-v8 is dual-published, and the two names are two physical packages:
   // `protocol` pins the new scope, while wallet-sdk 2.0.0-beta.3 reaches for the
   // old one. Installing both means two WASM instances, and an object minted by
   // either is refused by the other's classes ("expected instance of
   // LedgerParameters"). Aliasing the old name onto the new package collapses them
   // into one -- the same device `protocol` uses for `compact-runtime-ledger8`.
-  const ledger8 = JSON.parse(
-    readFileSync(path.join(REPOSITORY_ROOT, 'packages', 'protocol', 'package.json'), 'utf8')
-  ).dependencies?.['@midnightntwrk/ledger-v8'];
+  const ledger8 = protocol?.['@midnightntwrk/ledger-v8'];
   if (typeof ledger8 !== 'string') {
     throw new Error('packages/protocol does not pin @midnightntwrk/ledger-v8');
   }
 
+  // One name, but still two copies without this. `compact-js` asks for ledger-v9
+  // through a caret over a prerelease, and a persona installs into its own project
+  // where this repository's `resolutions` do not reach -- so the caret takes
+  // whichever rc was published last, next to the exact version the framework
+  // tarballs carry. Two instances again, failing the same `instanceof` checks.
+  const ledger9 = protocol?.['@midnightntwrk/ledger-v9'];
+  if (typeof ledger9 !== 'string') {
+    throw new Error('packages/protocol does not pin @midnightntwrk/ledger-v9');
+  }
+
   return {
     '@midnight-ntwrk/onchain-runtime-v3': pinned,
-    '@midnight-ntwrk/ledger-v8': `npm:@midnightntwrk/ledger-v8@${ledger8}`
+    '@midnight-ntwrk/ledger-v8': `npm:@midnightntwrk/ledger-v8@${ledger8}`,
+    '@midnightntwrk/ledger-v9': ledger9
   };
 })();
 
