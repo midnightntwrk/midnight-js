@@ -383,15 +383,28 @@ which is where the current era's deploy writes its own key too.
 One store holds both eras' keys, and its key type is the current era's
 `{ tag, value }` where the retained era's is a bare hex string. They are the same
 thing: both runtimes sample a 32-byte Schnorr key written as 64 hex characters,
-the retained runtime's `signatureVerifyingKey` accepts a current-era key's
-`value` verbatim, and `{ tag: 'schnorr', value: <retained key> }` satisfies
-`isValidSigningKey`. So `internal/ledger8-signing-key.ts` adds the wrapper on the
-way in and strips it on the way out, and nothing in `packages/types`, in the
-provider interface, or in the export/import format changes. That last agreement
-is the one a future change is most likely to break without noticing, so
-`src/test/ledger8-signing-key.test.ts` samples a key from the real retained
-runtime, wraps it and puts it through `isValidSigningKey` on every run: a rule
-that tightened would fail there rather than losing keys on a restore.
+and `{ tag: 'schnorr', value: <retained key> }` satisfies `isValidSigningKey`.
+(The retained runtime's `signatureVerifyingKey` also accepts a current-era key's
+`value` verbatim. That was measured by hand once, is asserted nowhere, and
+nothing in this pipeline depends on it -- the retained arm only ever hands the
+retained runtime a key the retained era produced.) So
+`internal/ledger8-signing-key.ts` adds the wrapper on the way in and strips it on
+the way out, and nothing in `packages/types`, in the provider interface, or in
+the export/import format changes. That last agreement is the one a future change
+is most likely to break without noticing, so
+`src/test/ledger8-signing-key.test.ts` samples a key from a retained runtime,
+wraps it and puts it through `isValidSigningKey` on every run: a rule that
+tightened would fail there rather than losing keys on a restore.
+
+The wrapper cannot say WHICH era wrote an entry. Both eras sample `schnorr`, and
+both arms write one address-keyed slot, so a current-era attach that sampled a
+fresh key into an empty slot would leave the retained arm reporting that key as
+the chain's authority. What prevents it today is ordering rather than a guard:
+`findDeployedContract` runs `verifyContractState` before it reaches the
+signing-key rule, so a current-era artifact pointed at a retained contract's
+address fails verification first. Changing the stored record's shape to separate
+the eras would change what `exportSigningKeys`/`importSigningKeys` round-trip,
+so it is recorded here rather than done alongside the persistence change.
 
 On the way OUT, an entry is used only if it is one this framework could have
 written: `'schnorr'`, and a value `isValidSigningKey` admits. A current-era
