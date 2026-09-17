@@ -27,6 +27,7 @@ export type {
   Ledger8ChargedState,
   Ledger8DeployableContractState,
   Ledger8Engine,
+  Ledger8SigningKey,
   Ledger8StateValue,
   TranscriptPojo,
   WrapKeepStateCallOptions

@@ -474,6 +474,7 @@ const OPTION_KEYS: Readonly<Record<ComposeOption, true>> = {
   contractState: true,
   ledgerParameters: true,
   networkId: true,
+  signingKey: true,
   ttl: true,
   verifierKeys: true,
   zswapOffer: true

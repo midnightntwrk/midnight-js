@@ -114,6 +114,11 @@ describe('Protocol type ACL', () => {
       'Ledger8DeployableContractState',
       'Ledger8Engine',
       'Ledger8InstanceAxis',
+      // Named by `ExecuteConstructorOptions.signingKey` and reported back on
+      // `ConstructorResultPojo`. The retained era's signing key is a different
+      // shape from the current era's, so a consumer cannot name it by reusing
+      // the current-era one.
+      'Ledger8SigningKey',
       'Ledger8StateValue',
       'LedgerEra',
       'LedgerParametersOption',
@@ -150,6 +155,7 @@ describe('Protocol type ACL', () => {
       'Ledger8ChargedState',
       'Ledger8DeployableContractState',
       'Ledger8Engine',
+      'Ledger8SigningKey',
       'Ledger8StateValue',
       'TranscriptPojo',
       'WrapKeepStateCallOptions'

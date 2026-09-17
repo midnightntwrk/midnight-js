@@ -44,6 +44,8 @@ import type {
   Ledger8ContractProviders,
   Ledger8DeployContractOptions,
   Ledger8DeployContractOptionsBase,
+  Ledger8DeployContractOptionsWithPrivateState,
+  Ledger8DeployedContract,
   Ledger8FinalizedCallTxData,
   Ledger8FinalizedCallTxPublicData,
   Ledger8FindDeployedContractOptions,
@@ -83,7 +85,7 @@ describe('a consumer can name the retained era through the namespace alone', () 
 });
 
 describe('every namespace member is the declaration it renames', () => {
-  // One assertion per member, all 29 types, comparing `Ledger8.X` against the `Ledger8X` the source
+  // One assertion per member, all 31 types, comparing `Ledger8.X` against the `Ledger8X` the source
   // module declares. A swapped pair -- `Ledger8CallResultPrivate as CallResultPublic` and its
   // converse -- compiles, keeps both names on the surface, and is caught only here.
   it('renames the contract and circuit declarations', () => {
@@ -125,6 +127,10 @@ describe('every namespace member is the declaration it renames', () => {
   it('renames the deploy and lookup declarations', () => {
     expectTypeOf<Ledger8.DeployContractOptions<C>>().toEqualTypeOf<Ledger8DeployContractOptions<C>>();
     expectTypeOf<Ledger8.DeployContractOptionsBase<C>>().toEqualTypeOf<Ledger8DeployContractOptionsBase<C>>();
+    expectTypeOf<Ledger8.DeployContractOptionsWithPrivateState<C>>().toEqualTypeOf<
+      Ledger8DeployContractOptionsWithPrivateState<C>
+    >();
+    expectTypeOf<Ledger8.DeployedContract<C>>().toEqualTypeOf<Ledger8DeployedContract<C>>();
     expectTypeOf<Ledger8.FindDeployedContractOptions<C>>().toEqualTypeOf<Ledger8FindDeployedContractOptions<C>>();
     expectTypeOf<Ledger8.FoundContract<C>>().toEqualTypeOf<Ledger8FoundContract<C>>();
   });

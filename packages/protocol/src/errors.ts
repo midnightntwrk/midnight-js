@@ -539,6 +539,7 @@ export type ComposeOption =
   | 'contractState'
   | 'ledgerParameters'
   | 'networkId'
+  | 'signingKey'
   | 'ttl'
   | 'verifierKeys'
   | 'zswapOffer';
@@ -594,6 +595,13 @@ export class ComposeOptionError extends Error {
       'Refusing to compose a transaction with an invalid time-to-live. An unparseable Date is recorded by ' +
       'the ledger as the Unix epoch, producing a transaction that has already expired. Pass a valid future ' +
       'instant as `ttl`.',
+    signingKey: (version) =>
+      `Refusing to run a ${version}-era constructor with a malformed \`signingKey\`. The key builds the ` +
+      "deployed contract's maintenance authority, and the runtime reads it as 32 bytes written in hex - so " +
+      'pass exactly 64 hexadecimal characters, which is what that era\'s `sampleSigningKey` produces. The ' +
+      'runtime itself reports a malformed key as `failed to fill whole buffer` or ' +
+      "`Invalid character 'z' at position 0`, naming neither the option nor the era. The key is not " +
+      'rendered here: it is a secret, and on the sampled path the only copy that will exist.',
     calls: (version) =>
       `Refusing to compose a ${version} call transaction from this call list: the era can compose exactly ` +
       'one call, and composing only the first would silently drop the rest. A cross-contract call is a ' +
