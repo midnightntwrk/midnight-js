@@ -71,6 +71,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@babel/code-frame@npm:^8.0.0":
+  version: 8.0.0
+  resolution: "@babel/code-frame@npm:8.0.0"
+  dependencies:
+    "@babel/helper-validator-identifier": "npm:^8.0.0"
+    js-tokens: "npm:^10.0.0"
+  checksum: 10/735b64f3ae476ec1841be118f79639d2ec99e2cc391a196b0160c53e4ed52253ee5c2170da510c00ea0f23faa26636364052ed507bfa4cd8caea87c5b1e8adad
+  languageName: node
+  linkType: hard
+
 "@babel/compat-data@npm:^7.29.7":
   version: 7.29.7
   resolution: "@babel/compat-data@npm:7.29.7"
@@ -209,6 +219,13 @@ __metadata:
   version: 7.29.7
   resolution: "@babel/helper-validator-identifier@npm:7.29.7"
   checksum: 10/2efa42701eb05babf26dff3332109c9e5e1a3400a71fb9e68ee27af28235036a2a72c2494c04bdab3f909075f42a58b2e8271074372bc7f8e79ec02bd364d7a7
+  languageName: node
+  linkType: hard
+
+"@babel/helper-validator-identifier@npm:^8.0.0":
+  version: 8.0.4
+  resolution: "@babel/helper-validator-identifier@npm:8.0.4"
+  checksum: 10/4b9d741e990a62d49d138e0b7205cd8d1bf9df87afdc20243a2053f411ae22cf327b00a06c4a1119a2d839c148f809500c04036e45ec8a382f0876a26556ee3d
   languageName: node
   linkType: hard
 
@@ -2047,7 +2064,7 @@ __metadata:
     pnpm: "npm:10.20.0"
     prettier: "npm:^3.9.4"
     rollup: "npm:^4.60.4"
-    rollup-plugin-dts: "npm:^6.4.1"
+    rollup-plugin-dts: "npm:^6.5.1"
     semver: "npm:^7.8.5"
     turbo: "npm:^2.9.16"
     typedoc: "npm:^0.28.19"
@@ -2096,7 +2113,7 @@ __metadata:
     eslint: "npm:^10.8.1"
     onchain-runtime-v3-test-only: "npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0"
     rollup: "npm:^4.60.4"
-    rollup-plugin-dts: "npm:^6.4.1"
+    rollup-plugin-dts: "npm:^6.5.1"
     typescript: "npm:^6.0.3"
     vitest: "npm:^4.1.7"
   languageName: unknown
@@ -2142,7 +2159,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@rollup/plugin-typescript": "npm:^12.3.0"
     rollup: "npm:^4.60.4"
-    rollup-plugin-dts: "npm:^6.4.1"
+    rollup-plugin-dts: "npm:^6.5.1"
     typescript: "npm:^6.0.3"
     vitest: "npm:^4.1.7"
   languageName: unknown
@@ -10891,22 +10908,26 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rollup-plugin-dts@npm:^6.4.1":
-  version: 6.4.1
-  resolution: "rollup-plugin-dts@npm:6.4.1"
+"rollup-plugin-dts@npm:^6.5.1":
+  version: 6.5.1
+  resolution: "rollup-plugin-dts@npm:6.5.1"
   dependencies:
-    "@babel/code-frame": "npm:^7.29.0"
+    "@babel/code-frame": "npm:^8.0.0"
     "@jridgewell/remapping": "npm:^2.3.5"
     "@jridgewell/sourcemap-codec": "npm:^1.5.5"
     convert-source-map: "npm:^2.0.0"
     magic-string: "npm:^0.30.21"
   peerDependencies:
-    rollup: ^3.29.4 || ^4
-    typescript: ^4.5 || ^5.0 || ^6.0
+    "@typescript/typescript6": ^6
+    rollup: ^3 || ^4
+    typescript: ^4.5 || ^5 || ^6 || ^7
   dependenciesMeta:
     "@babel/code-frame":
       optional: true
-  checksum: 10/a18685fde4c59339cacb47e084ff589b39fc680d186b496b83197370295002f748066e3c9c62ced2eca1af0bca77d3096bb24905c40c0478a6d845d63531293d
+  peerDependenciesMeta:
+    "@typescript/typescript6":
+      optional: true
+  checksum: 10/70861ff10daaf91872725e1d922749dc66ae078d9498beff2e6046b3cfff3afc81206fe63c7a19f5105cb025737013aded896d52a663ef758103d9c9c748c559
   languageName: node
   linkType: hard
 
