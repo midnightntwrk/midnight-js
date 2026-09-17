@@ -24,6 +24,17 @@ composeV8DeployTx) and the resulting private state.
 
 ***
 
+### signingKey
+
+> `readonly` **signingKey**: `string`
+
+The key the state's maintenance authority was built from — the caller's
+own when one was supplied, otherwise the sampled one. Reported because a
+sampled key exists nowhere else: without it the deployment is as
+unmaintainable as the empty committee the constructor left.
+
+***
+
 ### zswapLocalState
 
 > `readonly` **zswapLocalState**: `ZswapLocalState`

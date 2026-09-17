@@ -30,15 +30,22 @@ in the [MIDNIGHT\_JS\_ERROR\_CODES](../variables/MIDNIGHT_JS_ERROR_CODES.md) reg
 > **hasErrorCode**\<`C`\>(`e`, `code`): `e is Error & { code: C }`
 
 Type guard for "this error carries exactly `code`" — narrows to
-`Error & { code: C }` when `e.code === code`. `C` is not required to be a
-member of [MidnightJsErrorCode](../type-aliases/MidnightJsErrorCode.md), so this form also works for
-comparing against a specific foreign code.
+`Error & { code: C }` when `e.code === code`.
+
+`code` must be one of this framework's own codes, so a typo is a compile
+error rather than a guard that silently never matches.
+
+If a code you believe is ours does not compile here, it is misspelled or was
+never registered — check [MIDNIGHT\_JS\_ERROR\_CODES](../variables/MIDNIGHT_JS_ERROR_CODES.md). Do NOT reach for
+[hasForeignErrorCode](hasForeignErrorCode.md) to get it past the compiler; that guard refuses
+anything carrying this framework's prefix. It is for codes belonging to
+someone else, such as Node's `ECONNREFUSED`.
 
 ### Type Parameters
 
 #### C
 
-`C` *extends* `string`
+`C` *extends* [`MidnightJsErrorCode`](../type-aliases/MidnightJsErrorCode.md)
 
 ### Parameters
 

@@ -54,7 +54,7 @@ The offending payload. Only its `version` field is read;
 
 ### code
 
-> `readonly` **code**: `"MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD"` = `"MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD"`
+> `readonly` **code**: `"MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD"`
 
 ***
 

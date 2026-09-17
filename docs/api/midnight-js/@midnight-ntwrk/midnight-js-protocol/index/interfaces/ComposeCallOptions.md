@@ -11,12 +11,14 @@ Everything a call transaction needs.
 `calls` is in execution-trace order: cross-contract callees first, the root
 call last. A circuit with no cross-contract calls has a single entry.
 
-The two Zswap offers are serialized offer bytes. `networkId` and `ttl` carry
-the caller's policy decisions — which network, how long the transaction
-lives.
+`zswapOffer` is called back once every call has been assembled, with the
+partitions to route against; omitting it composes a transaction with no
+shielded offer. `networkId` and `ttl` carry the caller's policy decisions —
+which network, how long the transaction lives.
 
 ## See
 
+ - [ZswapOfferFactory](../type-aliases/ZswapOfferFactory.md)
  - [ComposeRefusalOrder](../../documents/ComposeRefusalOrder.md) for when the envelope options are checked.
  - [EraSeam](../../documents/EraSeam.md)
 
@@ -25,18 +27,6 @@ lives.
 ### calls
 
 > `readonly` **calls**: readonly [`ComposeCallEntry`](ComposeCallEntry.md)[]
-
-***
-
-### fallibleZswapOffer?
-
-> `readonly` `optional` **fallibleZswapOffer?**: `Uint8Array`\<`ArrayBufferLike`\>
-
-***
-
-### guaranteedZswapOffer?
-
-> `readonly` `optional` **guaranteedZswapOffer?**: `Uint8Array`\<`ArrayBufferLike`\>
 
 ***
 
@@ -49,3 +39,9 @@ lives.
 ### ttl
 
 > `readonly` **ttl**: `Date`
+
+***
+
+### zswapOffer?
+
+> `readonly` `optional` **zswapOffer?**: [`ZswapOfferFactory`](../type-aliases/ZswapOfferFactory.md)
