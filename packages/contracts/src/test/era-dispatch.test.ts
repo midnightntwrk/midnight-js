@@ -19,7 +19,12 @@ import { fileURLToPath } from 'node:url';
 
 import { type LedgerVersion, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import type { RawContractState } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode, TagParseError } from '@midnight-ntwrk/midnight-js-utils';
+import {
+  CONTRACTS_ERROR_CODES,
+  type ContractsErrorCode,
+  hasErrorCode,
+  TagParseError
+} from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it, type Mock, vi } from 'vitest';
 
 import {
@@ -249,7 +254,7 @@ const ACCEPTED_CELLS: readonly (DispatchCell & { readonly route: string })[] = [
 // Every cell it refuses, with the class and the registered code each refusal must carry.
 const REFUSED_CELLS: readonly (DispatchCell & {
   readonly errorClass: new (...args: never[]) => Error;
-  readonly code: string;
+  readonly code: ContractsErrorCode;
 })[] = [
   {
     artifact: 'current-era (0.18)',
