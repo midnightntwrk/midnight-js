@@ -108,11 +108,19 @@ current era unconditionally and reads no head — it does not even take a
 `PublicDataProvider`. When this ADR was written that was justified by there
 being no second era arm to choose between, so an era read there could only
 produce an earlier version of a refusal the v9-only flow already produced. That
-justification has expired: the second arm exists. What limits the exposure now
-is `deployContract`, which refuses a retained-era deploy outright with
-`Ledger8DeployUnmaintainableError`, so no caller can reach the retained deploy
-through the public surface and mis-era it. The gap is real, it is narrower than
-it was, and it is recorded here rather than closed.
+justification has expired: the second arm exists.
+
+`deployContract`'s retained-era arm is now wired through to the chain, and the
+gap recorded here is UNCHANGED in scope by that. The retained arm reads the head
+itself — `acquireLedger8Runtime` resolves it through `resolveOperationEra` and
+rules the `(artifact era, head era)` pair before the constructor runs — and it
+reaches `submitLedger8DeployTx`, never this function. The only arm that reaches
+`createUnprovenDeployTx` is the CURRENT era's, through `submitDeployTx`, which
+is the arm it has always served. So what is unguarded here is what was
+unguarded before: a current-era deploy against a PRE-FORK head, the one cell
+`ERA_PAIRING` rules (`'artifact-newer-than-head'`) and this path never consults.
+It fails late — at a provider seam or at the node — rather than at the table.
+The gap is real, it is unchanged, and it is recorded here rather than closed.
 
 ## Consequences
 
