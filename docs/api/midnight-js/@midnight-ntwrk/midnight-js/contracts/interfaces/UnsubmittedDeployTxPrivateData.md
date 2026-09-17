@@ -1,12 +1,10 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / UnsubmittedDeployTxPrivateData
 
 # Interface: UnsubmittedDeployTxPrivateData\<C\>
-
-Defined in: packages/contracts/dist/index.d.ts:500
 
 Base type for private data relevant to an unsubmitted deployment transaction.
 
@@ -30,15 +28,13 @@ object across a trust boundary.
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ## Properties
 
 ### initialPrivateState
 
-> `readonly` **initialPrivateState**: [`PrivateState`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
-
-Defined in: packages/contracts/dist/index.d.ts:509
+> `readonly` **initialPrivateState**: [`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 The initial private state of the contract deployed to the blockchain. This
 value is persisted if the transaction succeeds.
@@ -47,8 +43,6 @@ value is persisted if the transaction succeeds.
 
 ### signingKey
 
-> `readonly` **signingKey**: [`SigningKey`](../../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md)
-
-Defined in: packages/contracts/dist/index.d.ts:504
+> `readonly` **signingKey**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The signing key that was added as the deployed contract's maintenance authority.

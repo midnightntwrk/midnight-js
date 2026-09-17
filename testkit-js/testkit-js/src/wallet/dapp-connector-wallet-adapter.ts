@@ -40,14 +40,15 @@ import { firstValueFrom } from 'rxjs';
 
 import type { EnvironmentConfiguration } from '../test-environment/environment-configuration';
 import type { MidnightWalletProvider } from './midnight-wallet-provider';
+import { adoptFinalized, adoptUnbound } from './wallet-transaction';
 
 export class DAppConnectorWalletAdapter implements ConnectedAPI {
-  private readonly walletProvider: Pick<MidnightWalletProvider, 'wallet' | 'unshieldedKeystore' | 'zswapSecretKeys' | 'dustSecretKey'>;
+  private readonly walletProvider: Pick<MidnightWalletProvider, 'wallet' | 'unshieldedKeystore' | 'dustSecretKey'>;
   private readonly environmentConfiguration: EnvironmentConfiguration;
   private cachedDefaultKeyMaterialProvider?: ZkirKeyMaterialProvider;
 
   constructor(
-    walletProvider: Pick<MidnightWalletProvider, 'wallet' | 'unshieldedKeystore' | 'zswapSecretKeys' | 'dustSecretKey'>,
+    walletProvider: Pick<MidnightWalletProvider, 'wallet' | 'unshieldedKeystore' | 'dustSecretKey'>,
     environmentConfiguration: EnvironmentConfiguration,
   ) {
     this.walletProvider = walletProvider;
@@ -104,8 +105,7 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
     const unboundTx = LedgerTransaction.deserialize<SignatureEnabled, Proof, PreBinding>('signature', 'proof', 'pre-binding', fromHex(tx));
     const tokenKindsToBalance = options?.payFees === false ? (['shielded', 'unshielded'] as ('shielded' | 'unshielded')[]) : ('all' as const);
     const recipe = await this.walletProvider.wallet.balanceUnboundTransaction(
-      unboundTx,
-      this.secretKeys(),
+      await adoptUnbound(this.walletProvider.wallet, unboundTx),
       { ttl: ttlOneHour(), tokenKindsToBalance },
     );
     return this.signAndFinalize(recipe);
@@ -115,8 +115,7 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
     const finalizedTx = LedgerTransaction.deserialize<SignatureEnabled, Proof, Binding>('signature', 'proof', 'binding', fromHex(tx));
     const tokenKindsToBalance = options?.payFees === false ? (['shielded', 'unshielded'] as ('shielded' | 'unshielded')[]) : ('all' as const);
     const recipe = await this.walletProvider.wallet.balanceFinalizedTransaction(
-      finalizedTx,
-      this.secretKeys(),
+      await adoptFinalized(this.walletProvider.wallet, finalizedTx),
       { ttl: ttlOneHour(), tokenKindsToBalance },
     );
     return this.signAndFinalize(recipe);
@@ -124,7 +123,7 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
 
   async submitTransaction(tx: string): Promise<void> {
     const finalizedTx = LedgerTransaction.deserialize<SignatureEnabled, Proof, Binding>('signature', 'proof', 'binding', fromHex(tx));
-    await this.walletProvider.wallet.submitTransaction(finalizedTx);
+    await this.walletProvider.wallet.submitTransaction(await adoptFinalized(this.walletProvider.wallet, finalizedTx));
   }
 
   async signData(data: string, options: SignDataOptions): Promise<Signature> {
@@ -206,13 +205,6 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
 
   async getTxHistory(_pageNumber: number, _pageSize: number): Promise<HistoryEntry[]> {
     throw new Error('Not implemented in DAppConnectorWalletAdapter');
-  }
-
-  private secretKeys() {
-    return {
-      shieldedSecretKeys: this.walletProvider.zswapSecretKeys,
-      dustSecretKey: this.walletProvider.dustSecretKey,
-    };
   }
 
   private async signAndFinalize(recipe: BalancingRecipe): Promise<{ tx: string }> {

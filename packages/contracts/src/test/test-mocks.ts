@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { CompiledContract, type ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
   assert as compactAssert,
@@ -51,6 +51,8 @@ import {
   type ZswapChainState,
   type ZswapSecretKeys,
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
@@ -64,10 +66,12 @@ import {
   ZKConfigProvider,
   type ZKIR
 } from '@midnight-ntwrk/midnight-js-types';
+import { Option } from 'effect';
 
 import { type CallOptions, type CallOptionsWithPrivateState } from '../call';
 import { type ContractConstructorResult } from '../call-constructor';
 import type { ContractProviders } from '../contract-providers';
+import { CURRENT_PIPELINE_ERA } from '../era';
 import { type UnsubmittedCallTxData, type UnsubmittedDeployTxData } from '../tx-model';
 
 export const createMockContractAddress = () => sampleContractAddress();
@@ -247,8 +251,23 @@ export const createMockCoinInfo = (): ShieldedCoinInfo => ({
   value: 0n
 });
 
+/** Protocol-version integer of a node release whose ledger runtime is v9. */
+const MOCK_HEAD_PROTOCOL_VERSION = 2_000_000;
+
+/**
+ * What the three write seams declare here: BOTH eras, mirroring the testkit's
+ * real `MidnightWalletProvider`, which serves both.
+ *
+ * Declared once and shared by the three mocks, because a set where the seams
+ * disagree is the thing a test should have to say out loud. A test that wants a
+ * gap replaces one provider's declaration explicitly — see
+ * `seam-era-support.test.ts`.
+ */
+const MOCK_SUPPORTED_ERAS: readonly LedgerVersion[] = Object.freeze<LedgerVersion[]>(['v8', 'v9']);
+
 export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvableCircuitId, AnyPrivateState> => ({
   midnightProvider: {
+    supportedEras: MOCK_SUPPORTED_ERAS,
     submitTx: vi.fn()
   },
   publicDataProvider: {
@@ -264,7 +283,12 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
     watchForUnshieldedBalances: vi.fn(),
     unshieldedBalancesObservable: vi.fn(),
     queryContractEvents: vi.fn(),
-    contractEventsObservable: vi.fn()
+    contractEventsObservable: vi.fn(),
+    // The head-version read answers with the v9-era protocol version the rest
+    // of these mocks assume; the raw-state read reports "no state at this
+    // address" until a test overrides it.
+    queryLatestProtocolVersion: vi.fn().mockResolvedValue(MOCK_HEAD_PROTOCOL_VERSION),
+    queryRawContractState: vi.fn().mockResolvedValue(null)
   },
   privateStateProvider: {
     setContractAddress: vi.fn(),
@@ -282,6 +306,10 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
     importSigningKeys: vi.fn()
   },
   zkConfigProvider: {
+    // The CURRENT-era value, because this is the current-era provider set. A retained value here
+    // would be read by nothing today and would silently route a regression into the retained
+    // pipeline instead of failing at the era decision.
+    getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.19.0'),
     getVerifierKeys: vi.fn(),
     getZKIR: vi.fn(),
     getProverKey: vi.fn(),
@@ -290,16 +318,19 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
     asKeyMaterialProvider: vi.fn()
 },
   walletProvider: {
+    supportedEras: MOCK_SUPPORTED_ERAS,
     balanceTx: vi.fn(),
     getCoinPublicKey: createMockCoinPublicKey,
     getEncryptionPublicKey: createMockEncryptionPublicKey
   },
   proofProvider: {
+    supportedEras: MOCK_SUPPORTED_ERAS,
     proveTx: vi.fn()
   }
 });
 
 export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): FinalizedTxData => ({
+  version: 'v9',
   status: status,
   txId: 'test-tx-id',
   identifiers: ['test-tx-id-0', 'test-tx-id'],
@@ -315,7 +346,10 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
   blockTimestamp: 0,
   blockAuthor: null,
   indexerId: 0,
-  protocolVersion: 0,
+  // A node 2.x protocolVersion, so this fixture agrees with its own
+  // `version: 'v9'` under the resolver in `midnight-js-protocol`. A 0.x value
+  // maps to no era at all and would make the fixture self-contradictory.
+  protocolVersion: 2_000_000,
   fees: {
     paidFees: '',
     estimatedFees: ''
@@ -323,6 +357,7 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
 });
 
 export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDeployTxData<Contract.Any>> = {}): UnsubmittedDeployTxData<Contract.Any> => ({
+  era: CURRENT_PIPELINE_ERA,
   public: {
     contractAddress: createMockContractAddress(),
     initialContractState: createMockContractState()
@@ -337,9 +372,32 @@ export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDep
   ...overrides
 });
 
+export const createMockContractCall = (
+  overrides: Partial<ContractExecutable.ContractExecutable.ContractCall> = {}
+): ContractExecutable.ContractExecutable.ContractCall => ({
+  contractAddress:
+    overrides.contractAddress ?? PlatformContractAddress.ContractAddress(createMockContractAddress()),
+  circuitId: overrides.circuitId ?? 'testCircuit',
+  public: {
+    contractState: StateValue.newNull(),
+    publicTranscript: [] as Op<AlignedValue>[],
+    partitionedTranscript: [undefined, undefined],
+    ...overrides.public
+  },
+  private: {
+    input: {} as AlignedValue,
+    output: {} as AlignedValue,
+    privateTranscriptOutputs: [] as AlignedValue[],
+    ...overrides.private
+  },
+  communicationCommitment: overrides.communicationCommitment ?? Option.none()
+});
+
 export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>> = {}): UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
+    era: CURRENT_PIPELINE_ERA,
     public: {
       nextContractState: StateValue.newNull(),
+      nextContractStateEncoded: StateValue.newNull().encode(),
       publicTranscript: [
         { noop: { n: 1 } }
       ] as Op<AlignedValue>[],
@@ -380,6 +438,7 @@ export const createMockCallOptionsWithPrivateState = (overrides: Partial<CallOpt
 });
 
 export const createMockConstructorResult = (): ContractConstructorResult<Contract.Any> => ({
+  era: CURRENT_PIPELINE_ERA,
   nextContractState: createMockContractState(),
   nextPrivateState: { test: 'next-private-state' },
   nextZswapLocalState: createMockZswapLocalState(),

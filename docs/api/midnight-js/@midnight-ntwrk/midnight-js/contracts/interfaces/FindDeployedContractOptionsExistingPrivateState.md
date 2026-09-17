@@ -1,12 +1,10 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / FindDeployedContractOptionsExistingPrivateState
 
 # Interface: FindDeployedContractOptionsExistingPrivateState\<C\>
-
-Defined in: packages/contracts/dist/index.d.ts:892
 
 [findDeployedContract](../functions/findDeployedContract.md) base configuration that includes an initial private
 state to store and the private state ID at which to store it. Only used if
@@ -25,15 +23,13 @@ private state ID.
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ## Properties
 
 ### compiledContract
 
-> `readonly` **compiledContract**: [`CompiledContract`](../../../midnight-js-protocol/compact-js/namespaces/CompiledContract/interfaces/CompiledContract.md)\<`C`, `any`\>
-
-Defined in: packages/contracts/dist/index.d.ts:870
+> `readonly` **compiledContract**: [`CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
 
 The compiled contract to use to execute circuits.
 
@@ -47,8 +43,6 @@ The compiled contract to use to execute circuits.
 
 > `readonly` **contractAddress**: `string`
 
-Defined in: packages/contracts/dist/index.d.ts:874
-
 The address of a previously deployed contract.
 
 #### Inherited from
@@ -61,17 +55,13 @@ The address of a previously deployed contract.
 
 > `readonly` **privateStateId**: `string`
 
-Defined in: packages/contracts/dist/index.d.ts:896
-
 An identifier for the private state of the contract being found.
 
 ***
 
 ### signingKey?
 
-> `readonly` `optional` **signingKey?**: [`SigningKey`](../../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md)
-
-Defined in: packages/contracts/dist/index.d.ts:884
+> `readonly` `optional` **signingKey?**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The signing key to use to perform contract maintenance updates. If defined, the given signing
 key is stored for this contract address. This is useful when someone has already added the given signing

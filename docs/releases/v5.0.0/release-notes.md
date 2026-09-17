@@ -8,6 +8,38 @@ v5.0.0 is a major release. It retargets the framework's on-chain protocol bindin
 
 ## Breaking Changes
 
+### Version-tagged payloads at the provider seams and on the read surface (#1204)
+
+Every transaction crossing `proveTx`, `balanceTx` and `submitTx` now carries a
+`version` discriminant in both directions — `{ version: 'v9', tx }` for a live
+v9 ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes —
+and `watchForTxData` / `watchForDeployTxData` report a `version`-discriminated
+record. There is deliberately no untagged form, so a bare ledger object or a
+naked `Uint8Array` no longer type-checks at these seams.
+
+`unwrapV9(payload, seam)` in `midnight-js-types` is the one narrowing helper for
+the three transaction seams. The read surface is a separate union and is
+narrowed with a plain `switch (record.version)`.
+
+Implementations of `WalletProvider` and `MidnightProvider` must be updated:
+return types are covariant, so one still resolving an untagged transaction no
+longer satisfies the interface. `createWalletProvider` and
+`createMidnightProvider` wrap a v9-only implementation so the tag never enters
+your code.
+
+The discriminant on a read record is *derived* from the record's own
+`protocolVersion`, never asserted, and that same answer picks the ledger runtime
+that decodes the record — so a v8-era record is served on the `'v8'` arm rather
+than refused, with the pre-fork runtime acquired lazily on first use. What fails
+at the read boundary is a `protocolVersion` that maps to no era at all
+(`EraUnresolvableError`, an `IndexerError`), instead of returning a record that
+fails later inside the codec. Bytes that will not decode on the era selected for
+them stay the `DeserializationError` the runtime produced, which now names the
+era, the `protocolVersion`, the seam and the record.
+
+See [breaking-changes.md section 8](./breaking-changes.md) and
+[ADR 0006](../../adr/0006-version-tagged-payloads-at-provider-seams.md).
+
 ### Protocol swap to ledger-v9 / onchain-runtime-v4 under the `@midnightntwrk` scope (#970)
 
 `packages/protocol` now re-exports the new-scope protocol packages:
@@ -42,7 +74,7 @@ The testkit wallet stack moved to the 2.0.0 major beta line (`@midnightntwrk/wal
 
 ### ZK artifacts verified against the `compactc` integrity manifest (#1015)
 
-`FetchZkConfigProvider` and `NodeZkConfigProvider` now verify every ZK artifact they load against the `compactc`-emitted `contract-manifest.json` (in the `compiler/` directory). Verification is **fail-closed by default** (`verify: 'require'`): a missing manifest or a digest mismatch throws `ZkArtifactIntegrityError`. Opt down to `'warn'` or `'off'`, and pin `expectedManifestHash` (SHA-256 of the manifest bytes) to defend against a coordinated swap of both the artifacts and their co-located manifest. This is a breaking change for any deployment whose local artifacts are stale, partial, or missing the manifest. See [breaking-changes.md](./breaking-changes.md).
+`FetchZkConfigProvider` and `NodeZkConfigProvider` now verify every ZK artifact they load against the `compactc`-emitted `contract-manifest.json` (in the `compiler/` directory). Verification is **fail-closed by default** (`verify: 'require'`): a missing manifest or a digest mismatch throws `ZkArtifactIntegrityError`. Artifacts compiled before `compactc` 0.33 carry no manifest at all and cannot satisfy `require`; `'require-if-present'` is the mode for them — it tolerates a wholly absent manifest but still requires a manifest that does exist to cover the artifact. Opt further down to `'warn'` or `'off'`, and pin `expectedManifestHash` (SHA-256 of the manifest bytes) to defend against a coordinated swap of both the artifacts and their co-located manifest. This is a breaking change for any deployment whose local artifacts are stale, partial, or missing the manifest. See [breaking-changes.md](./breaking-changes.md).
 
 ## New Features
 
@@ -91,7 +123,7 @@ The indexer provider negotiates the `graphql-transport-ws+deflate` WebSocket sub
 
 ### ZK artifact integrity manifest module (#1015)
 
-A new `zk-artifact-manifest` module in `@midnight-ntwrk/midnight-js-utils` parses the `compactc` `contract-manifest.json`, exposing `ZkArtifactManifest`, `ZkConfigIntegrityOptions` (`verify`, `expectedManifestHash`, `onWarn`), `ZkArtifactIntegrityMode` (`'require' | 'warn' | 'off'`), and `ZkArtifactIntegrityError`. Both ZK config providers consume it (see Breaking Changes).
+A new `zk-artifact-manifest` module in `@midnight-ntwrk/midnight-js-utils` parses the `compactc` `contract-manifest.json`, exposing `ZkArtifactManifest`, `ZkConfigIntegrityOptions` (`verify`, `expectedManifestHash`, `onWarn`), `ZkArtifactIntegrityMode` (`'require' | 'require-if-present' | 'warn' | 'off'`), and `ZkArtifactIntegrityError`. Both ZK config providers consume it (see Breaking Changes).
 
 ### Disposable `IndexerPublicDataProvider` with structured config (#961)
 

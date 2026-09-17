@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -8,8 +8,6 @@
 
 > **All** = `object`
 
-Defined in: packages/types/dist/index.d.ts:863
-
 Streams all previous states of a contract.
 
 ## Properties
@@ -17,5 +15,3 @@ Streams all previous states of a contract.
 ### type
 
 > `readonly` **type**: `"all"`
-
-Defined in: packages/types/dist/index.d.ts:864

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -6,6 +6,4 @@
 
 # Type Alias: AnyPrivateState
 
-> **AnyPrivateState** = [`PrivateState`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<[`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)\>
-
-Defined in: packages/types/dist/index.d.ts:14
+> **AnyPrivateState** = [`Contract.PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<[`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)\>

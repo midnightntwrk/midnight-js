@@ -1,12 +1,10 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / SubmittedCallTx
 
 # Interface: SubmittedCallTx\<C, PCK\>
-
-Defined in: packages/contracts/dist/index.d.ts:674
 
 Data returned from an asynchronous call transaction submission.
 Contains the transaction ID and call transaction data without waiting for finalization.
@@ -20,25 +18,55 @@ serializing, or transmitting — read only `txId` or destructure specific
 non-sensitive fields rather than spreading or stringifying the whole
 object.
 
+## Extends
+
+- [`SubmittedCallTxBase`](../../types/interfaces/SubmittedCallTxBase.md)\<[`UnsubmittedCallTxData`](UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ### PCK
 
-`PCK` *extends* [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
+`PCK` *extends* [`Contract$1.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 ## Properties
 
 ### callTxData
 
-> `readonly` **callTxData**: [`UnsubmittedCallTxData`](UnsubmittedCallTxData.md)\<`C`, `PCK`\>
+> `readonly` **callTxData**: [`UnsubmittedCallTxData`](UnsubmittedCallTxData.md)
 
-Defined in: packages/contracts/dist/index.d.ts:682
+The execution data of the call that was submitted.
 
-The unproven call transaction data including private state.
+#### Remarks
+
+**Privacy-sensitive.** Carries the call's private half.
+
+#### Inherited from
+
+[`SubmittedCallTxBase`](../../types/interfaces/SubmittedCallTxBase.md).[`callTxData`](../../types/interfaces/SubmittedCallTxBase.md#calltxdata-1)
+
+***
+
+### circuitId
+
+> `readonly` **circuitId**: `PCK`
+
+See [FinalizedCallTxData.circuitId](FinalizedCallTxData.md#circuitid).
+
+***
+
+### era
+
+> `readonly` **era**: `"ledger9"`
+
+The pipeline that produced this result: always the current era here.
+
+Read off the compiled artifact, NEVER off a transaction record — the two
+facts disagree after the fork, and only this one says which module the
+objects in this result came from.
 
 ***
 
@@ -46,6 +74,8 @@ The unproven call transaction data including private state.
 
 > `readonly` **txId**: `string`
 
-Defined in: packages/contracts/dist/index.d.ts:678
-
 The transaction ID returned from submission.
+
+#### Inherited from
+
+[`SubmittedCallTxBase`](../../types/interfaces/SubmittedCallTxBase.md).[`txId`](../../types/interfaces/SubmittedCallTxBase.md#txid)

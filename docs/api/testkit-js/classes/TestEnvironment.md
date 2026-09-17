@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v5.0.0-beta.7**](../README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-beta.8**](../README.md)
 
 ***
 
@@ -7,6 +7,7 @@ Provides common functionality for managing test wallets and environments.
 
 ## Extended by
 
+- [`ForkTestEnvironment`](ForkTestEnvironment.md)
 - [`LocalTestEnvironment`](LocalTestEnvironment.md)
 - [`RemoteTestEnvironment`](RemoteTestEnvironment.md)
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -6,9 +6,7 @@
 
 # Variable: deserializeContractState
 
-> `const` **deserializeContractState**: (`bytes`, `ctx`) => [`ContractState`](../../../midnight-js-protocol/ledger/classes/ContractState.md)
-
-Defined in: packages/utils/dist/index.d.ts:136
+> `const` **deserializeContractState**: (`bytes`, `ctx`) => [`ContractState$1`](https://github.com/midnightntwrk/midnight-ledger)
 
 Deserialize a ledger LedgerContractState from raw bytes.
 
@@ -24,7 +22,7 @@ Deserialize a ledger LedgerContractState from raw bytes.
 
 ## Returns
 
-[`ContractState`](../../../midnight-js-protocol/ledger/classes/ContractState.md)
+[`ContractState$1`](https://github.com/midnightntwrk/midnight-ledger)
 
 ## Throws
 

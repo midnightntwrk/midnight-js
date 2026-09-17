@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v5.0.0-beta.7**](../README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-beta.8**](../README.md)
 
 ***
 
@@ -16,7 +16,7 @@
 
 ##### walletProvider
 
-`Pick`\<[`MidnightWalletProvider`](MidnightWalletProvider.md), `"wallet"` \| `"unshieldedKeystore"` \| `"zswapSecretKeys"` \| `"dustSecretKey"`\>
+`Pick`\<[`MidnightWalletProvider`](MidnightWalletProvider.md), `"wallet"` \| `"unshieldedKeystore"` \| `"dustSecretKey"`\>
 
 ##### environmentConfiguration
 

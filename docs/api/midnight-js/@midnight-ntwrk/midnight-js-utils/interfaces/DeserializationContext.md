@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
 
 ***
 
@@ -37,6 +37,20 @@ Fully-classified context attached to a `DeserializationError`.
 #### Inherited from
 
 [`DeserializationCallSite`](DeserializationCallSite.md).[`dataType`](DeserializationCallSite.md#datatype)
+
+***
+
+### details?
+
+> `readonly` `optional` **details?**: `Readonly`\<`Record`\<`string`, `string` \| `number`\>\>
+
+Facts identifying the particular read that failed, supplied by the caller
+and rendered verbatim. For diagnosis only: nothing here changes the
+classification or the mitigation.
+
+#### Inherited from
+
+[`DeserializationCallSite`](DeserializationCallSite.md).[`details`](DeserializationCallSite.md#details)
 
 ***
 

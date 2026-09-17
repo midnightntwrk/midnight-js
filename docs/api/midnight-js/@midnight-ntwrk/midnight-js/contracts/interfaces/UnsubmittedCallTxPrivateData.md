@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -6,49 +6,44 @@
 
 # Interface: UnsubmittedCallTxPrivateData\<C, PCK\>
 
-Defined in: packages/contracts/dist/index.d.ts:624
-
 The private data of an unsubmitted call transaction: the circuit execution's
-private result ([CallResultPrivate](CallResultPrivate.md)) combined with the unproven
+private result ([CallResultPrivate](../type-aliases/CallResultPrivate.md)) combined with the unproven
 transaction data ([UnsubmittedTxData](UnsubmittedTxData.md)).
 
 ## Extends
 
-- [`CallResultPrivate`](CallResultPrivate.md)\<`C`, `PCK`\>.[`UnsubmittedTxData`](UnsubmittedTxData.md)
+- [`CallResultPrivate`](../type-aliases/CallResultPrivate.md)\<`C`, `PCK`\>.[`UnsubmittedTxData`](UnsubmittedTxData.md)
 
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ### PCK
 
-`PCK` *extends* [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
+`PCK` *extends* [`Contract$1.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 ## Properties
 
 ### input
 
-> `readonly` **input**: [`AlignedValue`](../../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)
-
-Defined in: packages/contracts/dist/index.d.ts:98
+> `readonly` **input**: [`AlignedValue`](https://github.com/midnightntwrk/midnight-ledger)
 
 ZK representation of the circuit arguments.
 
 #### Inherited from
 
-[`CallResultPrivate`](CallResultPrivate.md).[`input`](CallResultPrivate.md#input)
+`CallResultPrivate.input`
 
 ***
 
 ### newCoins
 
-> `readonly` **newCoins**: [`ShieldedCoinInfo`](../../../midnight-js-protocol/ledger/type-aliases/ShieldedCoinInfo.md)[]
+> `readonly` **newCoins**: [`ShieldedCoinInfo`](https://github.com/midnightntwrk/midnight-ledger)[]
 
-Defined in: packages/contracts/dist/index.d.ts:471
-
-New coins created during the construction of the transaction.
+New coins created for the caller during the construction of the
+transaction. Empty when the call minted nothing to the caller's own key.
 
 #### Inherited from
 
@@ -58,79 +53,67 @@ New coins created during the construction of the transaction.
 
 ### nextPrivateState
 
-> `readonly` **nextPrivateState**: [`PrivateState`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
-
-Defined in: packages/contracts/dist/index.d.ts:114
+> `readonly` **nextPrivateState**: [`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)
 
 The private state resulting from executing the circuit.
 
 #### Inherited from
 
-[`CallResultPrivate`](CallResultPrivate.md).[`nextPrivateState`](CallResultPrivate.md#nextprivatestate)
+`CallResultPrivate.nextPrivateState`
 
 ***
 
 ### nextZswapLocalState
 
-> `readonly` **nextZswapLocalState**: [`ZswapLocalState`](../../../midnight-js-protocol/compact-runtime/interfaces/ZswapLocalState.md)
-
-Defined in: packages/contracts/dist/index.d.ts:118
+> `readonly` **nextZswapLocalState**: [`ZswapLocalState`](https://github.com/LFDT-Minokawa/compact)
 
 The Zswap local state resulting from executing the circuit.
 
 #### Inherited from
 
-[`CallResultPrivate`](CallResultPrivate.md).[`nextZswapLocalState`](CallResultPrivate.md#nextzswaplocalstate)
+[`CallResultPrivateBase`](../../types/interfaces/CallResultPrivateBase.md).[`nextZswapLocalState`](../../types/interfaces/CallResultPrivateBase.md#nextzswaplocalstate)
 
 ***
 
 ### output
 
-> `readonly` **output**: [`AlignedValue`](../../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)
-
-Defined in: packages/contracts/dist/index.d.ts:102
+> `readonly` **output**: [`AlignedValue`](https://github.com/midnightntwrk/midnight-ledger)
 
 ZK representation of the circuit result.
 
 #### Inherited from
 
-[`CallResultPrivate`](CallResultPrivate.md).[`output`](CallResultPrivate.md#output)
+`CallResultPrivate.output`
 
 ***
 
 ### privateTranscriptOutputs
 
-> `readonly` **privateTranscriptOutputs**: [`AlignedValue`](../../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)[]
+> `readonly` **privateTranscriptOutputs**: [`AlignedValue`](https://github.com/midnightntwrk/midnight-ledger)[]
 
-Defined in: packages/contracts/dist/index.d.ts:106
-
-ZK representation of the circuit witness call results.
+ZK representation of the circuit's witness call results.
 
 #### Inherited from
 
-[`CallResultPrivate`](CallResultPrivate.md).[`privateTranscriptOutputs`](CallResultPrivate.md#privatetranscriptoutputs)
+`CallResultPrivate.privateTranscriptOutputs`
 
 ***
 
 ### result
 
-> `readonly` **result**: [`CircuitReturnType`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/CircuitReturnType.md)\<`C`, `PCK`\>
+> `readonly` **result**: [`CircuitReturnType`](https://github.com/midnightntwrk/midnight-sdk)
 
-Defined in: packages/contracts/dist/index.d.ts:110
-
-The JS representation of the value returned by the circuit.
+The JS representation of the value the circuit returned.
 
 #### Inherited from
 
-[`CallResultPrivate`](CallResultPrivate.md).[`result`](CallResultPrivate.md#result)
+`CallResultPrivate.result`
 
 ***
 
 ### unprovenTx
 
-> `readonly` **unprovenTx**: [`UnprovenTransaction`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
-
-Defined in: packages/contracts/dist/index.d.ts:467
+> `readonly` **unprovenTx**: [`UnprovenTransaction`](https://github.com/midnightntwrk/midnight-ledger)
 
 The unproven ledger transaction produced.
 

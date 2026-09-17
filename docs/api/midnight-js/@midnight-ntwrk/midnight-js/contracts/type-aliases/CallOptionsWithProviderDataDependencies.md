@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -8,16 +8,14 @@
 
 > **CallOptionsWithProviderDataDependencies**\<`C`, `PCK`\> = [`CallOptionsWithArguments`](CallOptionsWithArguments.md)\<`C`, `PCK`\> & [`CallOptionsProviderDataDependencies`](../interfaces/CallOptionsProviderDataDependencies.md)
 
-Defined in: packages/contracts/dist/index.d.ts:65
-
 Call options with circuit arguments and data
 
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ### PCK
 
-`PCK` *extends* [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
+`PCK` *extends* [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>

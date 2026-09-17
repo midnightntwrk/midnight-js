@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: zkConfigToProvingKeyMaterial
 
 > `const` **zkConfigToProvingKeyMaterial**: \<`K`\>(`zkConfig`) => `object`
-
-Defined in: packages/types/dist/index.d.ts:87
 
 Converts a ZKConfig object to ProvingKeyMaterial format.
 

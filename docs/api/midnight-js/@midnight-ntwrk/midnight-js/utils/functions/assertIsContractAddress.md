@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Function: assertIsContractAddress()
 
 > **assertIsContractAddress**(`contractAddress`): `asserts contractAddress is string`
-
-Defined in: packages/utils/dist/index.d.ts:413
 
 **`Internal`**
 
@@ -29,4 +27,4 @@ The source string.
 ## Throws
 
 `TypeError`
-`contractAddress` is not a correctly formatted [ContractAddress](../../../midnight-js-protocol/onchain-runtime/type-aliases/ContractAddress.md).
+`contractAddress` is not a correctly formatted [ContractAddress](https://github.com/midnightntwrk/midnight-ledger).

@@ -38,7 +38,8 @@ build-tools/        # Build configuration
 Package layers (each layer depends on the one above):
 
 ```
-types                                          ← interfaces, no internal deps
+protocol                                       ← ledger/runtime bindings, era resolver
+types                                          ← provider interfaces (depends on protocol only)
 contracts, network-id, utils                   ← core logic
 provider implementations (6 packages)          ← concrete providers
 midnight-js                                    ← barrel re-export
@@ -50,10 +51,33 @@ IMPORTANT: `types/` defines all provider interfaces. Changing it breaks every pa
 Transaction flow:
 
 ```
-UnprovenTransaction → ProofProvider.proveTx() → UnboundTransaction
-  → WalletProvider.balanceTx() → FinalizedTransaction
+VersionedUnprovenTransaction → ProofProvider.proveTx() → VersionedUnboundTransaction
+  → WalletProvider.balanceTx() → VersionedFinalizedTransaction
   → MidnightProvider.submitTx() → TransactionId
 ```
+
+Every transaction crossing those three seams is version-tagged
+(`{ version: 'v9', tx }` / `{ version: 'v8', txBytes }`). Narrow one with
+`unwrapV9(payload, seam)` from `types`; `seam` is a `ProviderSeam`, so the
+helper covers those three methods only.
+
+The read surface (`watchForTxData`, `watchForDeployTxData`) reports a
+version-tagged *record*, `VersionedFinalizedTxData`. That is a different union —
+its v8 arm carries `tx`, not `txBytes` — so `unwrapV9` does not apply. Narrow it
+with a `switch (record.version)` closed by `assertNever(record, '<call site>')`
+from `utils`.
+
+Implementing `WalletProvider` or `MidnightProvider`? Use `createWalletProvider` /
+`createMidnightProvider` from `types` rather than tagging by hand. See
+[ADR 0006](./docs/adr/0006-version-tagged-payloads-at-provider-seams.md).
+
+Serving more than one era? Use `createProofProviderFromArms` /
+`createWalletProviderFromArms` / `createMidnightProviderFromArms` — one handler
+per era, with the routing, the tagging and the `supportedEras` declaration
+derived from the handlers. All three seams carry a required `supportedEras`, read
+before an operation starts so a set that cannot carry a transaction end to end is
+refused before the proof is paid for. See
+[ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-arms.md).
 
 ## CI Pipeline & PR Gates
 

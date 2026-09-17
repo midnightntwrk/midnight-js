@@ -13,16 +13,20 @@
  * limitations under the License.
  */
 
+import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { PayloadNotATransactionError, PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type ProverKey,
   type ProveTxConfig,
   type UnboundTransaction,
   type VerifierKey,
+  type VersionedUnprovenTransaction,
   ZKConfigProvider,
   type ZKIR
 } from '@midnight-ntwrk/midnight-js-types';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { ProvingProviderConfig } from '../http-client-proving-provider';
 
@@ -41,6 +45,23 @@ import { httpClientProofProvider } from '../http-client-proof-provider';
 import { DEFAULT_TIMEOUT, httpClientProvingProvider } from '../http-client-proving-provider';
 
 const mockedHttpClientProvingProvider = vi.mocked(httpClientProvingProvider);
+
+/**
+ * The `namespace:type-descriptor:` tag a serialized transaction opens with,
+ * read as a raw prefix. Never `parseSerializedTag`: that parser scans only the
+ * first 64 bytes for its second colon, and transaction tags run past that.
+ */
+const txTag = (bytes: Uint8Array): string => {
+  const head = Buffer.from(bytes.subarray(0, 96)).toString('latin1');
+  const end = head.indexOf('):');
+  // Without this, a vendor bump that pushed the terminator past 96 bytes would
+  // make `indexOf` return -1, collapse every tag to 'm', and let the assertions
+  // that use this pass while comparing nothing.
+  if (end === -1) {
+    throw new Error(`No transaction tag terminator within the first 96 bytes of a ${bytes.byteLength}-byte payload.`);
+  }
+  return head.slice(0, end + 2);
+};
 
 class MockZKConfigProvider extends ZKConfigProvider<'test-circuit'> {
   async getZKIR(_circuitId: 'test-circuit'): Promise<ZKIR> {
@@ -94,19 +115,21 @@ function wireMocks(): {
 }
 
 /**
- * Minimal typed transaction stub. `httpClientProofProvider` invokes `prove(provingProvider, ...)`,
- * so the stub drives that provider once — exactly as the real `UnprovenTransaction.prove` would —
- * to let the per-call timeout thread through to the underlying provider. `Partial<UnprovenTransaction>`
- * documents that only `prove` is exercised, keeping the single cast contained here.
+ * Minimal typed transaction stub, wrapped in the v9 arm of the versioned payload the provider
+ * seam takes. `httpClientProofProvider` invokes `prove(provingProvider, ...)` on the carried
+ * transaction, so the stub drives that provider once — exactly as the real
+ * `UnprovenTransaction.prove` would — to let the per-call timeout thread through to the
+ * underlying provider. `Partial<UnprovenTransaction>` documents that only `prove` is exercised,
+ * keeping the single cast contained here.
  */
-const stubTx = (): UnprovenTransaction => {
+const stubTx = (): VersionedUnprovenTransaction => {
   const partial: Partial<UnprovenTransaction> = {
     prove: vi.fn(async (provingProvider: ProvingProvider) => {
       await provingProvider.prove(new Uint8Array(), 'test-circuit');
       return {} as UnboundTransaction;
     }) as UnprovenTransaction['prove']
   };
-  return partial as UnprovenTransaction;
+  return { version: 'v9', tx: partial as UnprovenTransaction };
 };
 
 describe('httpClientProofProvider', () => {
@@ -120,10 +143,161 @@ describe('httpClientProofProvider', () => {
     expect(typeof provider.proveTx).toBe('function');
   });
 
+  // Set equality rather than `toContain`: this provider serves both eras, and
+  // an era silently dropped from the declaration would have a retained-era
+  // operation refused before it started -- which `toContain` would not catch.
+  test('declares both eras, matching the two arms it is built from', () => {
+    wireMocks();
+    const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
+    expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
+  });
+
   test('builds the underlying ProvingProvider exactly once at construction', () => {
     const { constructionConfigs } = wireMocks();
     httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
     expect(constructionConfigs).toHaveLength(1);
+  });
+
+  // The retained era crosses this seam as bytes in and bytes out. These cases
+  // drive the real retained runtime rather than a stub, because the two things
+  // that can go wrong here -- proving with the wrong era's cost model, and
+  // answering in the wrong arm -- are both invisible to a mocked ledger.
+  describe('v8 payload', () => {
+    let retainedEraTxBytes: Uint8Array;
+    let circuitDrivingTxBytes: Uint8Array;
+
+    beforeAll(async () => {
+      const v8 = await loadLedger8();
+      retainedEraTxBytes = v8.Transaction.fromParts('undeployed').serialize();
+
+      // Carries one Zswap output, so proving it actually drives the proving
+      // provider. The empty transaction above does not: it has nothing to
+      // prove, which is why it cannot show which provider was handed over.
+      const rawTokenType = v8.sampleRawTokenType();
+      const output = v8.ZswapOutput.new(
+        v8.createShieldedCoinInfo(rawTokenType, 100n),
+        1,
+        v8.sampleCoinPublicKey(),
+        v8.sampleEncryptionPublicKey()
+      );
+      circuitDrivingTxBytes = v8.Transaction.fromParts(
+        'undeployed',
+        v8.ZswapOffer.fromOutput(output, rawTokenType, 100n)
+      ).serialize();
+    });
+
+    test('answers the v8 arm with the PROVEN serialization of the transaction', async () => {
+      wireMocks();
+      const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
+
+      const result = await provider.proveTx({ version: 'v8', txBytes: retainedEraTxBytes });
+
+      // `requireV8` in `midnight-js-contracts` reads `txBytes` off this record
+      // and rejects the v9 arm, so answering in the wrong arm fails a submit
+      // half way through. Assert the arm before the payload.
+      expect(result.version).toBe('v8');
+      const returned = result.version === 'v8' ? result.txBytes : new Uint8Array();
+      expect(returned).toBeInstanceOf(Uint8Array);
+
+      // Proven, not merely round-tripped: the stage marker in the tag moves
+      // from `proof-preimage` to `proof` only when the transaction was proved.
+      // Derived from the input's own tag rather than spelled out; the literal
+      // itself is pinned once, in the protocol package's own suites.
+      const expectedTag = txTag(retainedEraTxBytes).replace('proof-preimage', 'proof');
+      // Without this, a vendor rename of the stage marker would make `replace`
+      // a no-op and invert the assertion below into "the same bytes came back".
+      expect(expectedTag).not.toBe(txTag(retainedEraTxBytes));
+      expect(txTag(returned)).toBe(expectedTag);
+    });
+
+    test('refuses a payload that is not a serialized transaction, with the registered code', async () => {
+      const { proveTimeouts } = wireMocks();
+      const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
+
+      const rejection = await provider.proveTx({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      expect(rejection).toBeInstanceOf(PayloadNotATransactionError);
+      expect(rejection).toHaveProperty('code', PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION);
+      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION)).toBe(true);
+      expect(proveTimeouts).toEqual([]);
+    });
+
+    test('drives the retained runtime through the PER-CALL proving provider', async () => {
+      const { proveTimeouts } = wireMocks();
+      const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider(), {
+        timeout: 1234
+      });
+
+      // The mocked circuit prover answers with bytes that are not a proof, so
+      // the retained runtime rejects afterwards. That is fine and beside the
+      // point: what this measures is which provider it was handed. Swap
+      // `perCallProvingProvider` for `baseProvingProvider` in the seam and the
+      // recorded override becomes `undefined` -- the per-call timeout silently
+      // stops applying to retained-era proving, with nothing else to notice it.
+      await provider
+        .proveTx({ version: 'v8', txBytes: circuitDrivingTxBytes }, { timeout: 4321 })
+        .catch(() => undefined);
+
+      expect(proveTimeouts).toEqual([4321]);
+    });
+  });
+
+  test('reports a payload with no version tag as UntaggedPayloadError, not a TypeError', async () => {
+    wireMocks();
+    const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
+
+    // Unrepresentable in TypeScript, and reachable anyway: from JavaScript, and
+    // from a consumer built against a pre-5.0.0 `midnight-js-types`. Dispatching
+    // on `.version` must not read through a null payload before the guard that
+    // turns this into a coded error a caller can act on.
+    const rejection = await provider.proveTx(null as unknown as VersionedUnprovenTransaction).then(
+      () => undefined,
+      (error: unknown) => error
+    );
+
+    expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
+  });
+
+  // This package does not delegate to `createProofProvider` — it has its own
+  // `proveTx` body — so the types-package tests of that helper cover none of
+  // this. Without these assertions, reverting the return to the untagged
+  // pre-5.0.0 `tx.prove(...)` passes the whole suite.
+  describe('the returned payload', () => {
+    const provenTx = {} as UnboundTransaction;
+
+    const stubTxProvingTo = (proven: UnboundTransaction): VersionedUnprovenTransaction => {
+      const partial: Partial<UnprovenTransaction> = {
+        prove: vi.fn(async (provingProvider: ProvingProvider) => {
+          await provingProvider.prove(new Uint8Array(), 'test-circuit');
+          return proven;
+        }) as UnprovenTransaction['prove']
+      };
+      return { version: 'v9', tx: partial as UnprovenTransaction };
+    };
+
+    test('is tagged as the v9 arm', async () => {
+      wireMocks();
+      const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
+
+      const result = await provider.proveTx(stubTxProvingTo(provenTx));
+
+      expect(result.version).toBe('v9');
+    });
+
+    test('carries the proved transaction itself, not a copy of it', async () => {
+      wireMocks();
+      const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
+
+      const result = await provider.proveTx(stubTxProvingTo(provenTx));
+
+      // Identity, not structural equality: the premise of the versioned seam
+      // is that ledger objects from different WASM instances must never be
+      // conflated, and `toEqual` would pass for any empty object.
+      expect(result.version === 'v9' && result.tx).toBe(provenTx);
+    });
   });
 
   describe('per-call timeout precedence (issue #974)', () => {

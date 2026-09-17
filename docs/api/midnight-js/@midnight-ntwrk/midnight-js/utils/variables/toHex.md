@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: toHex
 
 > `const` **toHex**: (`bytes`) => `string`
-
-Defined in: packages/utils/dist/index.d.ts:272
 
 Converts a byte string into a hex string.
 

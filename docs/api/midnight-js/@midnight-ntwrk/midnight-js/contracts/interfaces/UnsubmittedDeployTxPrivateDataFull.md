@@ -1,12 +1,10 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / UnsubmittedDeployTxPrivateDataFull
 
 # Interface: UnsubmittedDeployTxPrivateDataFull\<C\>
-
-Defined in: packages/contracts/dist/index.d.ts:548
 
 The private data of an unsubmitted deployment transaction: the deploy-specific
 private data ([UnsubmittedDeployTxPrivateData](UnsubmittedDeployTxPrivateData.md)) combined with the
@@ -21,15 +19,13 @@ produced by running the contract constructor.
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ## Properties
 
 ### initialPrivateState
 
-> `readonly` **initialPrivateState**: [`PrivateState`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
-
-Defined in: packages/contracts/dist/index.d.ts:509
+> `readonly` **initialPrivateState**: [`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 The initial private state of the contract deployed to the blockchain. This
 value is persisted if the transaction succeeds.
@@ -42,9 +38,7 @@ value is persisted if the transaction succeeds.
 
 ### initialZswapState
 
-> `readonly` **initialZswapState**: [`ZswapLocalState`](../../../midnight-js-protocol/compact-runtime/interfaces/ZswapLocalState.md)
-
-Defined in: packages/contracts/dist/index.d.ts:553
+> `readonly` **initialZswapState**: [`ZswapLocalState`](https://github.com/LFDT-Minokawa/compact)
 
 The Zswap state produced as a result of running the contract constructor. Useful for when
 inputs or outputs are created in the contract constructor.
@@ -53,11 +47,10 @@ inputs or outputs are created in the contract constructor.
 
 ### newCoins
 
-> `readonly` **newCoins**: [`ShieldedCoinInfo`](../../../midnight-js-protocol/ledger/type-aliases/ShieldedCoinInfo.md)[]
+> `readonly` **newCoins**: [`ShieldedCoinInfo`](https://github.com/midnightntwrk/midnight-ledger)[]
 
-Defined in: packages/contracts/dist/index.d.ts:471
-
-New coins created during the construction of the transaction.
+New coins created for the caller during the construction of the
+transaction. Empty when the call minted nothing to the caller's own key.
 
 #### Inherited from
 
@@ -67,9 +60,7 @@ New coins created during the construction of the transaction.
 
 ### signingKey
 
-> `readonly` **signingKey**: [`SigningKey`](../../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md)
-
-Defined in: packages/contracts/dist/index.d.ts:504
+> `readonly` **signingKey**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The signing key that was added as the deployed contract's maintenance authority.
 
@@ -81,9 +72,7 @@ The signing key that was added as the deployed contract's maintenance authority.
 
 ### unprovenTx
 
-> `readonly` **unprovenTx**: [`UnprovenTransaction`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
-
-Defined in: packages/contracts/dist/index.d.ts:467
+> `readonly` **unprovenTx**: [`UnprovenTransaction`](https://github.com/midnightntwrk/midnight-ledger)
 
 The unproven ledger transaction produced.
 

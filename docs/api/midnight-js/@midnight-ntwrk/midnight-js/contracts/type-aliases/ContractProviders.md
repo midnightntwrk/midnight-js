@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -8,8 +8,6 @@
 
 > **ContractProviders**\<`C`, `PCK`, `PS`\> = [`MidnightProviders`](../../types/interfaces/MidnightProviders.md)\<`PCK`, [`PrivateStateId`](../../types/type-aliases/PrivateStateId.md), `PS`\>
 
-Defined in: packages/contracts/dist/index.d.ts:258
-
 Convenience type for representing the set of providers necessary to use
 a given contract.
 
@@ -17,12 +15,12 @@ a given contract.
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md) = [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk) = [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ### PCK
 
-`PCK` *extends* [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\> = [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
+`PCK` *extends* [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\> = [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 ### PS
 
-`PS` = [`PrivateState`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
+`PS` = [`Contract.PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>

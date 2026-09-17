@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -8,8 +8,6 @@
 
 > **UnshieldedUtxo** = `object`
 
-Defined in: packages/types/dist/index.d.ts:129
-
 Represents an unshielded UTXO (Unspent Transaction Output).
 Unshielded UTXOs are outputs that have not been shielded or encrypted, making them visible on the public ledger.
 
@@ -17,9 +15,7 @@ Unshielded UTXOs are outputs that have not been shielded or encrypted, making th
 
 ### intentHash
 
-> `readonly` **intentHash**: [`IntentHash`](../../../midnight-js-protocol/ledger/type-aliases/IntentHash.md)
-
-Defined in: packages/types/dist/index.d.ts:138
+> `readonly` **intentHash**: [`IntentHash`](https://github.com/midnightntwrk/midnight-ledger)
 
 The identifier of the intent associated with the unshielded UTXO.
 This is used to track the intent behind the creation or use of the UTXO.
@@ -28,9 +24,7 @@ This is used to track the intent behind the creation or use of the UTXO.
 
 ### owner
 
-> `readonly` **owner**: [`ContractAddress`](../../../midnight-js-protocol/ledger/type-aliases/ContractAddress.md)
-
-Defined in: packages/types/dist/index.d.ts:133
+> `readonly` **owner**: [`ContractAddress`](https://github.com/midnightntwrk/midnight-ledger)
 
 The unique identifier of the unshielded UTXO.
 
@@ -38,9 +32,7 @@ The unique identifier of the unshielded UTXO.
 
 ### tokenType
 
-> `readonly` **tokenType**: [`RawTokenType`](../../../midnight-js-protocol/ledger/type-aliases/RawTokenType.md)
-
-Defined in: packages/types/dist/index.d.ts:143
+> `readonly` **tokenType**: [`RawTokenType`](https://github.com/midnightntwrk/midnight-ledger)
 
 The type of token associated with the unshielded UTXO.
 This indicates the kind of asset or currency represented by the UTXO.
@@ -50,7 +42,5 @@ This indicates the kind of asset or currency represented by the UTXO.
 ### value
 
 > `readonly` **value**: `bigint`
-
-Defined in: packages/types/dist/index.d.ts:147
 
 The value of the unshielded UTXO, represented as a bigint.

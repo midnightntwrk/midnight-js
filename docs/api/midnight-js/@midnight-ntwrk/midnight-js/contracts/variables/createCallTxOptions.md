@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -8,25 +8,23 @@
 
 > `const` **createCallTxOptions**: \<`C`, `PCK`\>(`compiledContract`, `circuitId`, `contractAddress`, `privateStateId`, `additionalCoinEncPublicKeyMappings`, `args`) => [`CallTxOptions`](../type-aliases/CallTxOptions.md)\<`C`, `PCK`\>
 
-Defined in: packages/contracts/dist/index.d.ts:834
-
 Creates a [CallTxOptions](../type-aliases/CallTxOptions.md) object from various data.
 
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ### PCK
 
-`PCK` *extends* [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
+`PCK` *extends* [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 ## Parameters
 
 ### compiledContract
 
-[`CompiledContract`](../../../midnight-js-protocol/compact-js/namespaces/CompiledContract/interfaces/CompiledContract.md)\<`C`, `any`\>
+[`CompiledContract.CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
 
 ### circuitId
 
@@ -34,7 +32,7 @@ Creates a [CallTxOptions](../type-aliases/CallTxOptions.md) object from various 
 
 ### contractAddress
 
-[`ContractAddress`](../../../midnight-js-protocol/ledger/type-aliases/ContractAddress.md)
+[`ContractAddress$1`](https://github.com/midnightntwrk/midnight-ledger)
 
 ### privateStateId
 
@@ -42,11 +40,11 @@ Creates a [CallTxOptions](../type-aliases/CallTxOptions.md) object from various 
 
 ### additionalCoinEncPublicKeyMappings
 
-`ReadonlyMap`\<[`CoinPublicKey`](../../../midnight-js-protocol/ledger/type-aliases/CoinPublicKey.md), [`EncPublicKey`](../../../midnight-js-protocol/ledger/type-aliases/EncPublicKey.md)\> \| `undefined`
+`ReadonlyMap`\<[`CoinPublicKey$1`](https://github.com/midnightntwrk/midnight-ledger), [`EncPublicKey`](https://github.com/midnightntwrk/midnight-ledger)\> \| `undefined`
 
 ### args
 
-[`CircuitParameters`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/CircuitParameters.md)\<`C`, `PCK`\>
+[`Contract.CircuitParameters`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `PCK`\>
 
 ## Returns
 

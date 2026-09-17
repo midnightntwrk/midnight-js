@@ -18,7 +18,7 @@ import { sampleContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledg
 import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it, vi } from 'vitest';
 
-import { makeCalleeStateResolver } from '../../utils';
+import { makeCalleeStateResolver } from '../../internal/utils';
 
 const BLOCK_HASH = 'ab'.repeat(32);
 const OTHER_BLOCK_HASH = 'cd'.repeat(32);

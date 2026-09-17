@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -8,8 +8,6 @@
 
 > **DeployContractOptionsWithPrivateState**\<`C`\> = [`DeployContractOptionsBase`](DeployContractOptionsBase.md)\<`C`\> & `object`
 
-Defined in: packages/contracts/dist/index.d.ts:969
-
 [deployContract](../functions/deployContract.md) base options with information needed to store private states;
 only used if the contract being deployed has a private state.
 
@@ -17,7 +15,7 @@ only used if the contract being deployed has a private state.
 
 ### initialPrivateState
 
-> `readonly` **initialPrivateState**: [`PrivateState`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
+> `readonly` **initialPrivateState**: [`Contract.PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 The private state to run the circuit against.
 
@@ -31,4 +29,4 @@ An identifier for the private state of the contract being found.
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)

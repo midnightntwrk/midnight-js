@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -6,19 +6,17 @@
 
 # Interface: TransactionContext\<C, PCK\>
 
-Defined in: packages/contracts/dist/index.d.ts:709
-
 Encapsulates the context for managing a scoped contract transaction.
 
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ### PCK
 
-`PCK` *extends* [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\> = [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
+`PCK` *extends* [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\> = [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 ## Properties
 
@@ -26,13 +24,11 @@ Encapsulates the context for managing a scoped contract transaction.
 
 > `readonly` **\[CacheStates\]**: (`states`, `identity`, `blockHash`) => `void`
 
-Defined in: packages/contracts/dist/index.d.ts:713
-
 #### Parameters
 
 ##### states
 
-[`PublicContractStates`](PublicContractStates.md) \| [`ContractStates`](ContractStates.md)\<[`PrivateState`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>\>
+[`PublicContractStates`](PublicContractStates.md) \| [`ContractStates`](ContractStates.md)\<[`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\>
 
 ##### identity
 
@@ -50,9 +46,7 @@ Defined in: packages/contracts/dist/index.d.ts:713
 
 ### \[GetCurrentStatesForIdentity\]
 
-> `readonly` **\[GetCurrentStatesForIdentity\]**: (`identity`) => `PinnedContractStates`\<[`PrivateState`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>\> \| `undefined`
-
-Defined in: packages/contracts/dist/index.d.ts:714
+> `readonly` **\[GetCurrentStatesForIdentity\]**: (`identity`) => `PinnedContractStates`\<[`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> \| `undefined`
 
 #### Parameters
 
@@ -62,15 +56,13 @@ Defined in: packages/contracts/dist/index.d.ts:714
 
 #### Returns
 
-`PinnedContractStates`\<[`PrivateState`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>\> \| `undefined`
+`PinnedContractStates`\<[`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> \| `undefined`
 
 ***
 
 ### \[MergeUnsubmittedCallTxData\]
 
 > `readonly` **\[MergeUnsubmittedCallTxData\]**: (`circuitId`, `callData`, `privateStateId?`) => `void`
-
-Defined in: packages/contracts/dist/index.d.ts:712
 
 #### Parameters
 
@@ -96,8 +88,6 @@ Defined in: packages/contracts/dist/index.d.ts:712
 
 > `readonly` **\[Submit\]**: () => `Promise`\<[`FinalizedCallTxData`](FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:711
-
 #### Returns
 
 `Promise`\<[`FinalizedCallTxData`](FinalizedCallTxData.md)\<`C`, `PCK`\>\>
@@ -108,38 +98,32 @@ Defined in: packages/contracts/dist/index.d.ts:711
 
 > `readonly` **\[TypeId\]**: *typeof* `TypeId`
 
-Defined in: packages/contracts/dist/index.d.ts:710
-
 ## Methods
 
 ### getAdditionalMappings()
 
 > **getAdditionalMappings**(): `ReadonlyMap`\<`string`, `string`\> \| `undefined`
 
-Defined in: packages/contracts/dist/index.d.ts:721
-
-Gets the additional scoped [CoinPublicKey](../../../midnight-js-protocol/onchain-runtime/type-aliases/CoinPublicKey.md) to [EncPublicKey](../../../midnight-js-protocol/ledger/type-aliases/EncPublicKey.md) mappings.
+Gets the additional scoped [CoinPublicKey](https://github.com/midnightntwrk/midnight-ledger) to [EncPublicKey](https://github.com/midnightntwrk/midnight-ledger) mappings.
 
 #### Returns
 
 `ReadonlyMap`\<`string`, `string`\> \| `undefined`
 
-A `ReadonlyMap`<[CoinPublicKey](../../../midnight-js-protocol/onchain-runtime/type-aliases/CoinPublicKey.md), [EncPublicKey](../../../midnight-js-protocol/ledger/type-aliases/EncPublicKey.md)> instance, or `undefined` if no additional
+A `ReadonlyMap`<[CoinPublicKey](https://github.com/midnightntwrk/midnight-ledger), [EncPublicKey](https://github.com/midnightntwrk/midnight-ledger)> instance, or `undefined` if no additional
 mappings were specified for the current transaction context.
 
 ***
 
 ### getCurrentStates()
 
-> **getCurrentStates**(): [`PublicContractStates`](PublicContractStates.md) \| [`ContractStates`](ContractStates.md)\<[`PrivateState`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>\> \| `undefined`
-
-Defined in: packages/contracts/dist/index.d.ts:731
+> **getCurrentStates**(): [`PublicContractStates`](PublicContractStates.md) \| [`ContractStates`](ContractStates.md)\<[`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> \| `undefined`
 
 Gets the current cached contract states within the transaction context.
 
 #### Returns
 
-[`PublicContractStates`](PublicContractStates.md) \| [`ContractStates`](ContractStates.md)\<[`PrivateState`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>\> \| `undefined`
+[`PublicContractStates`](PublicContractStates.md) \| [`ContractStates`](ContractStates.md)\<[`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> \| `undefined`
 
 A cached [ContractStates](ContractStates.md) instance, or `undefined` if circuit calls are yet to be made.
 
@@ -153,8 +137,6 @@ reflecting any unsubmitted circuit calls made to the contract during the scope o
 ### getLastUnsubmittedCallTxDataToTransact()
 
 > **getLastUnsubmittedCallTxDataToTransact**(): \[[`UnsubmittedCallTxData`](UnsubmittedCallTxData.md)\<`C`, `PCK`\>, `string`?\] \| `undefined`
-
-Defined in: packages/contracts/dist/index.d.ts:738
 
 Gets the last unsubmitted call transaction data.
 

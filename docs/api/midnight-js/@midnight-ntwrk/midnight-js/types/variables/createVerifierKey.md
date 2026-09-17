@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: createVerifierKey
 
 > `const` **createVerifierKey**: (`uint8Array`) => [`VerifierKey`](../type-aliases/VerifierKey.md)
-
-Defined in: packages/types/dist/index.d.ts:45
 
 Creates a branded verifier key representation from a verifier key binary.
 

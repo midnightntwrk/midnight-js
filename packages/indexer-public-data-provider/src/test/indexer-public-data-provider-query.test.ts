@@ -14,17 +14,40 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { DocumentNode } from 'graphql';
 import { describe, expect, test, vi } from 'vitest';
 
+import { IndexerDataError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
-import { BLOCK_QUERY, CONTRACT_AND_ZSWAP_STATE_QUERY } from '../query-definitions';
+import { BLOCK_QUERY, CONTRACT_AND_ZSWAP_STATE_QUERY, HEAD_PROTOCOL_VERSION_QUERY } from '../query-definitions';
 import type { ApolloHandle } from '../transport';
+import { V9_ERA_PROTOCOL_VERSION } from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
 
 /** Builds a provider whose Apollo client's `query` is the supplied mock. */
 const providerWithQuery = (query: ReturnType<typeof vi.fn>): IndexerPublicDataProvider =>
   new IndexerPublicDataProvider({ client: { query } } as unknown as ApolloHandle, 1000);
+
+type QueryRequest = { readonly query: DocumentNode };
+
+/**
+ * A `query` mock that answers per document, so a method issuing more than one
+ * request can be driven (and counted) without depending on call order.
+ * An unregistered document is a test-setup mistake and fails loudly rather
+ * than resolving to `undefined`.
+ */
+const dispatchingQuery = (responses: ReadonlyMap<DocumentNode, unknown>): ReturnType<typeof vi.fn> =>
+  vi.fn().mockImplementation(({ query }: QueryRequest) => {
+    if (!responses.has(query)) {
+      return Promise.reject(new Error('test setup: no response registered for the requested document'));
+    }
+    return Promise.resolve(responses.get(query));
+  });
+
+const headResponse = (protocolVersion: number | null): unknown => ({
+  data: { block: protocolVersion === null ? null : { protocolVersion } }
+});
 
 describe('IndexerPublicDataProvider query methods', () => {
   describe('queryBlock', () => {
@@ -104,6 +127,42 @@ describe('IndexerPublicDataProvider query methods', () => {
       });
 
       expect(await providerWithQuery(query).queryZSwapAndContractState(ADDRESS)).toBeNull();
+    });
+  });
+  describe('queryLatestProtocolVersion', () => {
+    test('reads the version off the head block, asking for no offset so the indexer serves the latest', async () => {
+      const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]]));
+
+      const version = await providerWithQuery(query).queryLatestProtocolVersion();
+
+      expect(version).toBe(V9_ERA_PROTOCOL_VERSION);
+      expect(query).toHaveBeenCalledWith(
+        expect.objectContaining({ query: HEAD_PROTOCOL_VERSION_QUERY, fetchPolicy: 'no-cache' })
+      );
+    });
+
+    test('fails fast when the indexer reports no head block at all', async () => {
+      const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(null)]]));
+
+      const rejection = await providerWithQuery(query)
+        .queryLatestProtocolVersion()
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+      expect(rejection).toBeInstanceOf(IndexerDataError);
+      expect((rejection as IndexerDataError).context).toEqual({ kind: 'missing-head-block' });
+    });
+
+    test('issues a request on every call, whatever era the head reports', async () => {
+      const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]]));
+      const provider = providerWithQuery(query);
+
+      await provider.queryLatestProtocolVersion();
+      await provider.queryLatestProtocolVersion();
+
+      expect(query).toHaveBeenCalledTimes(2);
     });
   });
 });

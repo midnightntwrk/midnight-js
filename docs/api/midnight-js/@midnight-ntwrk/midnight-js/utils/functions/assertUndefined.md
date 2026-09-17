@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Function: assertUndefined()
 
 > **assertUndefined**\<`A`\>(`value`, `message?`): asserts value is null \| undefined
-
-Defined in: packages/utils/dist/index.d.ts:23
 
 Asserts that the given value is null or undefined.
 

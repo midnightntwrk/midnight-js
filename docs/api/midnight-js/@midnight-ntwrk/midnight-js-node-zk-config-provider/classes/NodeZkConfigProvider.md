@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
 
 ***
 
@@ -94,6 +94,49 @@ The circuit ID of the artifacts to retrieve.
 #### Inherited from
 
 [`ZKConfigProvider`](../../midnight-js/types/classes/ZKConfigProvider.md).[`get`](../../midnight-js/types/classes/ZKConfigProvider.md#get)
+
+***
+
+### getArtifactRuntimeVersion()
+
+> **getArtifactRuntimeVersion**(): `Promise`\<`string`\>
+
+Reports the `compact-runtime` this bundle was built against, preferring the source an
+application can anchor to a hash it controls.
+
+The INTEGRITY MANIFEST is consulted first, because `expectedManifestHash` pins it to a digest
+the application supplies at build time, while everything else in the bundle is fetched from the
+same place as the artifacts it describes. This value selects which ledger pipeline executes the
+call, so whoever serves the artifacts must not be the one who decides it.
+
+`compiler/contract-info.json` is the fallback, for bundles that carry no manifest at all --
+`compactc` only began emitting one in 0.33, which is exactly the retained-era case. It is put
+through the same integrity gate as every key and ZKIR, so under the default `require` an
+unvouched-for description is refused rather than trusted.
+
+Cached per provider instance, like the manifest and for the same reason: the answer is one
+statement about the whole bundle. A FAILED read is not cached.
+
+#### Returns
+
+`Promise`\<`string`\>
+
+The declared runtime version, verbatim.
+
+#### Throws
+
+ZkArtifactContractInfoError if the description is absent or declares no runtime version.
+Absence is a refusal rather than a default: this framework cannot name an artifact set's era on
+its behalf.
+
+#### Throws
+
+ZkArtifactIntegrityError if the description is not covered by the manifest under a mode
+that requires it.
+
+#### Overrides
+
+[`ZKConfigProvider`](../../midnight-js/types/classes/ZKConfigProvider.md).[`getArtifactRuntimeVersion`](../../midnight-js/types/classes/ZKConfigProvider.md#getartifactruntimeversion)
 
 ***
 

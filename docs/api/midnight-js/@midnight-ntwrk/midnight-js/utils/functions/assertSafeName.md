@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Function: assertSafeName()
 
 > **assertSafeName**(`name`, `label`): `void`
-
-Defined in: packages/utils/dist/index.d.ts:361
 
 Asserts that `name` is safe to use as a single path segment or URL path
 component. Rejects traversal payloads (`.`, `..`, separators), URL-encoded

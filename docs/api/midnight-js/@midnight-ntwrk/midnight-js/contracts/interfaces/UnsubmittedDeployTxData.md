@@ -1,12 +1,10 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / UnsubmittedDeployTxData
 
 # Interface: UnsubmittedDeployTxData\<C\>
-
-Defined in: packages/contracts/dist/index.d.ts:555
 
 Base type for data relevant to an unsubmitted deployment transaction.
 
@@ -30,15 +28,29 @@ read only the `public` field or destructure specific non-sensitive fields
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ## Properties
+
+### era
+
+> `readonly` **era**: `"ledger9"`
+
+The pipeline that produced this result: always the current era here.
+
+Read off the compiled artifact, NEVER off a transaction record — the two
+facts disagree after the fork, and only this one says which module the
+objects in this result came from.
+
+#### Inherited from
+
+[`UnsubmittedDeployTxDataBase`](UnsubmittedDeployTxDataBase.md).[`era`](UnsubmittedDeployTxDataBase.md#era)
+
+***
 
 ### private
 
 > `readonly` **private**: [`UnsubmittedDeployTxPrivateDataFull`](UnsubmittedDeployTxPrivateDataFull.md)\<`C`\>
-
-Defined in: packages/contracts/dist/index.d.ts:559
 
 The data of this transaction that is only visible on the user device.
 
@@ -51,8 +63,6 @@ The data of this transaction that is only visible on the user device.
 ### public
 
 > `readonly` **public**: [`UnsubmittedDeployTxPublicData`](UnsubmittedDeployTxPublicData.md)
-
-Defined in: packages/contracts/dist/index.d.ts:525
 
 The public data (data that will be revealed upon tx submission) relevant to the deployment transaction.
 

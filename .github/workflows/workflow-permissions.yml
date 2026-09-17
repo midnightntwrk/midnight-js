@@ -1,0 +1,66 @@
+name: Workflow Permissions
+
+# This gate must NOT live inside the call chain it validates.
+#
+# A reusable workflow that asks for more than its caller grants does not fail a
+# job -- GitHub refuses to start the whole run, producing zero jobs and no
+# annotation. A gate hosted inside `ci.yml -> ci-midnight-js.yml -> ci-base.yml`
+# would therefore be deleted by the very fault it exists to report: the run that
+# was supposed to carry the diagnosis is the run that never starts.
+#
+# So this workflow calls no reusable workflow, and installs no workspace. The
+# workspace install needs a GitHub Packages token, and a gate that depends on a
+# secret stops working exactly where an unprivileged run needs it most. It stays
+# able to speak when every other run has been refused.
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workflow-permissions-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: Check reusable-workflow permissions
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # ratchet:actions/setup-node@v7.0.0
+        with:
+          node-version-file: '.nvmrc'
+
+      # `yaml` is public and dependency-free, so it needs no registry auth. The
+      # range is read out of package.json rather than repeated here, so the gate
+      # and the workspace cannot drift apart; removing the devDependency fails
+      # this step loudly instead of silently resolving something else.
+      #
+      # Installed under a prefix OUTSIDE the checkout, then linked in: `npm install`
+      # run at the root of a Yarn workspace tries to resolve the whole monorepo and
+      # dies on peer conflicts. Node's ESM resolver ignores NODE_PATH, so the link
+      # is what makes `import { parse } from 'yaml'` resolve.
+      - name: Install the YAML parser
+        env:
+          PARSER_DIR: ${{ runner.temp }}/yaml-parser
+        run: |
+          set -euo pipefail
+          range="$(node -p "require('./package.json').devDependencies.yaml ?? ''")"
+          if [ -z "$range" ]; then
+            echo "::error::root package.json no longer declares a 'yaml' devDependency"
+            exit 1
+          fi
+          mkdir -p "$PARSER_DIR" node_modules
+          npm install --prefix "$PARSER_DIR" --no-save --no-package-lock --no-audit --no-fund "yaml@${range}"
+          ln -s "$PARSER_DIR/node_modules/yaml" node_modules/yaml
+
+      - name: Check reusable-workflow permissions
+        run: node .github/scripts/check-workflow-permissions.mjs

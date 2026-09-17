@@ -17,8 +17,9 @@
 // committed as lower-case hex text (no whitespace, no trailing newline) so it
 // can be diffed and reviewed like source code.
 
-import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const HERE = dirname(fileURLToPath(import.meta.url));
@@ -48,3 +49,26 @@ export const asciiPrefix = (bytes, n = 32) =>
   Array.from(bytes.slice(0, n))
     .map((b) => (b >= 32 && b < 127 ? String.fromCharCode(b) : '.'))
     .join('');
+
+// Digest over a directory's committed bytes: every file's relative POSIX path,
+// length and content, in sorted order, folded into one SHA-256.
+//
+// Mirrors `digestDirectory` in ../../../../test/cross-window.ut.test.ts, and is
+// duplicated for the same reason `readHexFixture` above is: these are plain
+// Node scripts and cannot import the TypeScript suite without a build. Drift
+// between the two cannot pass unnoticed -- the suite compares its own digest
+// against the one ENVELOPE.md records, so a generator computing this
+// differently fails the very next run rather than recording a wrong value.
+export const digestDirectory = (root) => {
+  const walk = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = resolve(dir, entry.name);
+      return entry.isDirectory() ? walk(full) : [relative(root, full).split(sep).join('/')];
+    });
+  const digest = createHash('sha256');
+  for (const member of walk(root).sort()) {
+    const bytes = readFileSync(resolve(root, member));
+    digest.update(member).update('\0').update(String(bytes.length)).update('\0').update(bytes);
+  }
+  return digest.digest('hex');
+};

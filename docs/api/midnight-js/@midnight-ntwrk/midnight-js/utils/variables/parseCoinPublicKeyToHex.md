@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: parseCoinPublicKeyToHex
 
 > `const` **parseCoinPublicKeyToHex**: (`possibleBech32`, `zswapNetworkId`) => `string`
-
-Defined in: packages/utils/dist/index.d.ts:315
 
 Parses a coin public key (in Bech32m format or hex) into a hex formatted string.
 

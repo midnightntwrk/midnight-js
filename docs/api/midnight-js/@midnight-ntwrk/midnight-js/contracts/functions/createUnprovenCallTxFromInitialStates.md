@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -10,13 +10,11 @@
 
 > **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`, `crossContract?`): `Promise`\<[`UnsubmittedCallTxData`](../interfaces/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:783
-
 ### Type Parameters
 
 #### C
 
-`C` *extends* [`Contract`](../../../midnight-js-protocol/compact-js/interfaces/Contract.md)\<`undefined`, [`Witnesses`](../../../midnight-js-protocol/compact-js/type-aliases/Witnesses.md)\<`undefined`\>\>
+`C` *extends* [`Contract`](https://github.com/midnightntwrk/midnight-sdk)\<`undefined`, [`Witnesses`](https://github.com/midnightntwrk/midnight-sdk)\<`undefined`\>\>
 
 #### PCK
 
@@ -38,7 +36,7 @@ Defined in: packages/contracts/dist/index.d.ts:783
 
 #### crossContract?
 
-`CrossContractConfig`
+[`CrossContractConfig`](../interfaces/CrossContractConfig.md)
 
 ### Returns
 
@@ -48,13 +46,11 @@ Defined in: packages/contracts/dist/index.d.ts:783
 
 > **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`, `crossContract?`): `Promise`\<[`UnsubmittedCallTxData`](../interfaces/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
-Defined in: packages/contracts/dist/index.d.ts:784
-
 ### Type Parameters
 
 #### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 #### PCK
 
@@ -76,7 +72,7 @@ Defined in: packages/contracts/dist/index.d.ts:784
 
 #### crossContract?
 
-`CrossContractConfig`
+[`CrossContractConfig`](../interfaces/CrossContractConfig.md)
 
 ### Returns
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,7 +7,5 @@
 # Type Alias: PrivateStateImportErrorCause
 
 > **PrivateStateImportErrorCause** = `"decryption_failed"` \| `"invalid_format"` \| `"conflict"` \| `"unknown"`
-
-Defined in: packages/types/dist/index.d.ts:377
 
 Cause types for private state import errors.

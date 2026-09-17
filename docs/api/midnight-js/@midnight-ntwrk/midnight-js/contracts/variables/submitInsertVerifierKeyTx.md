@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: submitInsertVerifierKeyTx
 
 > `const` **submitInsertVerifierKeyTx**: \<`C`\>(`providers`, `compiledContract`, `contractAddress`, `circuitId`, `newVk`) => `Promise`\<[`FinalizedTxData`](../../types/interfaces/FinalizedTxData.md)\>
-
-Defined in: packages/contracts/dist/index.d.ts:1138
 
 Constructs and submits a transaction that adds a new verifier key to the
 blockchain for the given circuit ID at the given contract address.
@@ -37,7 +35,7 @@ Midnight transactions execute in two phases:
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ## Parameters
 
@@ -49,21 +47,21 @@ The providers to use to manage the transaction lifecycle.
 
 ### compiledContract
 
-[`CompiledContract`](../../../midnight-js-protocol/compact-js/namespaces/CompiledContract/interfaces/CompiledContract.md)\<`C`, `any`\>
+[`CompiledContract.CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
 
 The compiled contract for which the maintenance authority
                         should be updated.
 
 ### contractAddress
 
-[`ContractAddress`](../../../midnight-js-protocol/ledger/type-aliases/ContractAddress.md)
+[`ContractAddress$1`](https://github.com/midnightntwrk/midnight-ledger)
 
 The address of the contract containing the circuit for which
                        the verifier key should be inserted.
 
 ### circuitId
 
-[`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
+[`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 The circuit for which the verifier key should be inserted.
 

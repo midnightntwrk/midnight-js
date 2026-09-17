@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: isValidSigningKey
 
 > `const` **isValidSigningKey**: (`value`) => `boolean`
-
-Defined in: packages/utils/dist/index.d.ts:401
 
 Determines whether `value` is a structurally valid signing key of the shape
 `{ tag: 'schnorr' | 'ecdsa', value: <hex> }`, where `value` is a non-empty,

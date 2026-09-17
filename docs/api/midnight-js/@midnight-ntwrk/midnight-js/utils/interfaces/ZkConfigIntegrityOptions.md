@@ -1,12 +1,10 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [utils](../README.md) / ZkConfigIntegrityOptions
 
 # Interface: ZkConfigIntegrityOptions
-
-Defined in: packages/utils/dist/index.d.ts:422
 
 Integrity options shared by both ZK config providers' constructor option bags.
 
@@ -20,8 +18,6 @@ Integrity options shared by both ZK config providers' constructor option bags.
 
 > `readonly` `optional` **expectedManifestHash?**: `string`
 
-Defined in: packages/utils/dist/index.d.ts:437
-
 SHA-256 hex of the manifest file's bytes, pinned by the application at build time. This is the
 only mode that resists a coordinated swap of the artifacts and their co-located manifest: it
 anchors the whole chain to a hash the application controls rather than one fetched alongside the
@@ -32,8 +28,6 @@ artifacts it certifies.
 ### onWarn?
 
 > `readonly` `optional` **onWarn?**: (`message`) => `void`
-
-Defined in: packages/utils/dist/index.d.ts:439
 
 Warning sink for `warn` mode. Default: `console.warn`.
 
@@ -53,10 +47,8 @@ Warning sink for `warn` mode. Default: `console.warn`.
 
 > `readonly` `optional` **verify?**: [`ZkArtifactIntegrityMode`](../type-aliases/ZkArtifactIntegrityMode.md)
 
-Defined in: packages/utils/dist/index.d.ts:430
-
 Default `'require'` (fail-closed). Trust boundary: without [expectedManifestHash](#expectedmanifesthash) the
-manifest is loaded from the same base location as the artifacts, so `require`/`warn` detect
+manifest is loaded from the same base location as the artifacts, so every verifying mode detects
 corruption (partial deploy, truncation, a stale or wrong artifact set) but NOT an adversary who
 can rewrite both the artifacts and the co-located manifest. Set [expectedManifestHash](#expectedmanifesthash) to
 defend against that coordinated substitution.

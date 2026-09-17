@@ -30,7 +30,7 @@ vi.mock('../call-constructor', () => ({
   callContractConstructor: vi.fn()
 }));
 
-vi.mock('../utils', () => ({
+vi.mock('../internal/utils', () => ({
   createUnprovenLedgerDeployTx: vi.fn().mockReturnValue([
     'mock-contract-address',
     { test: 'initial-contract-state' },

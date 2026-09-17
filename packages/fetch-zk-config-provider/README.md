@@ -47,12 +47,23 @@ The provider expects the following URL structure on the server:
 
 ```
 {baseURL}/
+├── compiler/
+│   ├── contract-manifest.json  # Integrity manifest (compactc 0.33 and later)
+│   └── contract-info.json      # Compiler description, carries runtime-version
 ├── keys/
 │   ├── {circuitId}.prover      # Prover key (binary)
 │   └── {circuitId}.verifier    # Verifier key (binary)
 └── zkir/
     └── {circuitId}.bzkir       # ZK intermediate representation (binary)
 ```
+
+`compiler/` is what lets the framework establish which ledger era a contract's
+artifacts belong to. The integrity manifest is preferred, because
+`expectedManifestHash` pins it to a digest the application controls;
+`contract-info.json` is the fallback for bundles built before compactc emitted a
+manifest, and it is verified against the manifest whenever one is present. A
+bundle that ships neither can still serve keys and ZKIR, but cannot be used with
+retained-era (pre-fork) contracts.
 
 ## Exports
 

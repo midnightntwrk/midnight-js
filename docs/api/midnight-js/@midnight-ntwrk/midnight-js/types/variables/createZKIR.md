@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Variable: createZKIR
 
 > `const` **createZKIR**: (`uint8Array`) => [`ZKIR`](../type-aliases/ZKIR.md)
-
-Defined in: packages/types/dist/index.d.ts:60
 
 Creates a branded ZKIR representation from a ZKIR binary.
 

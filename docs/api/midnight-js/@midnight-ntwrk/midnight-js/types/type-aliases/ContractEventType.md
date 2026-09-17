@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -7,8 +7,6 @@
 # Type Alias: ContractEventType
 
 > **ContractEventType** = `"ShieldedSpend"` \| `"ShieldedReceive"` \| `"ShieldedMint"` \| `"ShieldedBurn"` \| `"UnshieldedSpend"` \| `"UnshieldedReceive"` \| `"UnshieldedMint"` \| `"UnshieldedBurn"` \| `"Paused"` \| `"Unpaused"` \| `"Misc"`
-
-Defined in: packages/types/dist/index.d.ts:937
 
 The eleven contract event variants surfaced by the indexer (MIP-0002 public
 contract log emission). The variant *set* is identical to compact-js's

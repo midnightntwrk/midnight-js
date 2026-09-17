@@ -14,9 +14,13 @@
  */
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { UntaggedPayloadError } from '@midnight-ntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ContractTypeError, EraInvariantViolationError } from '../errors';
 import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
 import {
   createMockCompiledContract,
@@ -63,6 +67,12 @@ describe('findDeployedContract', () => {
 
   const expectBasicResult = (result: FoundContract<Contract.Any>) => {
     expect(result).toBeDefined();
+    // IDENTITY, not shape: the handle promises the artifact the caller passed
+    // and the address it asked for. A key-set parity gate proves both members
+    // exist and cannot tell either from a copy, or from the address the
+    // indexer happened to echo back on the deploy record.
+    expect(result.compiledContract).toBe(compiledContract);
+    expect(result.contractAddress).toBe(contractAddress);
     expect(result.deployTxData).toBeDefined();
     expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
     expect(result.deployTxData.public.initialContractState).toBe(contractState);
@@ -87,6 +97,44 @@ describe('findDeployedContract', () => {
     verifierKeys = createMockVerifierKeys();
 
     setupCommonMocks();
+  });
+
+  // The only `requireV9Record` call site outside `submit-tx`, and the only one
+  // that passes no `circuitId` — so the seam string is all that distinguishes
+  // its error from the four others.
+  describe('a deploy record from an era this flow cannot handle', () => {
+    const rejectionOf = async (): Promise<unknown> =>
+      findDeployedContract(providers, { compiledContract, contractAddress }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+    it('rejects a v8-tagged deploy record and never queries the contract state', async () => {
+      vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue({
+        ...finalizedTxData,
+        version: 'v8'
+      } as unknown as midnightJsTypes.FinalizedTxData);
+
+      const rejection = await rejectionOf();
+
+      expect(rejection).toBeInstanceOf(EraInvariantViolationError);
+      expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
+      expect((rejection as EraInvariantViolationError).seam).toBe('watchForDeployTxData');
+      expect(providers.publicDataProvider.queryDeployContractState).not.toHaveBeenCalled();
+    });
+
+    it('rejects an untagged deploy record, the pre-5.0.0 shape', async () => {
+      const { version: _dropped, ...untaggedRecord } = finalizedTxData;
+      vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(
+        untaggedRecord as unknown as midnightJsTypes.FinalizedTxData
+      );
+
+      const rejection = await rejectionOf();
+
+      expect(rejection).toBeInstanceOf(UntaggedPayloadError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
+      expect((rejection as UntaggedPayloadError).seam).toBe('watchForDeployTxData');
+    });
   });
 
   it('should find deployed contract without private state', async () => {
@@ -198,5 +246,35 @@ describe('findDeployedContract', () => {
     expect(providers.publicDataProvider.queryDeployContractState).toHaveBeenCalledWith(contractAddress);
     expect(providers.publicDataProvider.queryContractState).not.toHaveBeenCalled();
     expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
+  });
+
+  it('should throw when the deployed state registers no operation for a circuit', async () => {
+    vi.mocked(contractState.operation).mockReturnValue(undefined);
+
+    await expect(findDeployedContract(providers, { compiledContract, contractAddress })).rejects.toThrow(
+      ContractTypeError
+    );
+
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  // A default-constructed operation is exactly the keyless shape: registered on the state, but
+  // carrying no verifier key.
+  it('should throw when the deployed operation carries no verifier key', async () => {
+    vi.mocked(contractState.operation).mockReturnValue(new ContractOperation());
+
+    let thrown: unknown;
+    try {
+      await findDeployedContract(providers, { compiledContract, contractAddress });
+    } catch (error) {
+      thrown = error;
+    }
+
+    assert(thrown instanceof ContractTypeError);
+    expect(thrown.keylessCircuitIds).toEqual(['testCircuit']);
+    expect(thrown.contractAddress).toBe(contractAddress);
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
 });

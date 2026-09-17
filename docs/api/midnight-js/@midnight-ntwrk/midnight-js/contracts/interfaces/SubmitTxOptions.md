@@ -1,12 +1,10 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / SubmitTxOptions
 
 # Interface: SubmitTxOptions\<PCK\>
-
-Defined in: packages/contracts/dist/index.d.ts:374
 
 Configuration for [submitTx](../variables/submitTx.md).
 
@@ -22,8 +20,6 @@ Configuration for [submitTx](../variables/submitTx.md).
 
 > `readonly` `optional` **circuitId?**: `PCK` \| `PCK`[]
 
-Defined in: packages/contracts/dist/index.d.ts:387
-
 A circuit identifier to use to fetch the ZK artifacts needed to prove the
 transaction. Only defined if a call transaction is being submitted.
 
@@ -36,8 +32,6 @@ context), this may be an array of circuit IDs.
 
 ### unprovenTx
 
-> `readonly` **unprovenTx**: [`UnprovenTransaction`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
-
-Defined in: packages/contracts/dist/index.d.ts:378
+> `readonly` **unprovenTx**: [`UnprovenTransaction`](https://github.com/midnightntwrk/midnight-ledger)
 
 The transaction to prove, balance, and submit.

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../README.md)
 
 ***
 
@@ -8,6 +8,8 @@
 
 ## Classes
 
+- [EraUnresolvableError](classes/EraUnresolvableError.md)
+- [EraUnsupportedError](classes/EraUnsupportedError.md)
 - [IndexerDataError](classes/IndexerDataError.md)
 - [IndexerError](classes/IndexerError.md)
 - [IndexerFormattedError](classes/IndexerFormattedError.md)
@@ -19,6 +21,7 @@
 
 ## Type Aliases
 
+- [EnvelopeUpperBound](type-aliases/EnvelopeUpperBound.md)
 - [IndexerDataErrorContext](type-aliases/IndexerDataErrorContext.md)
 - [IndexerProviderConfig](type-aliases/IndexerProviderConfig.md)
 - [IndexerSubscriptionField](type-aliases/IndexerSubscriptionField.md)

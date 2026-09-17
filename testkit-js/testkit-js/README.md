@@ -238,6 +238,12 @@ Library is provided with set of predefined environment configurations i.e.:
 - PreprodTestEnvironment
 
 By using `getTestEnvironment(logger);` based on environment variable MN_TEST_ENVIRONMENT test environment configuration is provided.
+
+`ForkTestEnvironment` is a fourth environment, and deliberately not one of the above: it stands up a
+chain that crosses the ledger-8 to ledger-9 boundary and `getTestEnvironment` never returns it. A
+test that wants it constructs it directly (`new ForkTestEnvironment(logger)`), then calls
+`enactFork()` to move the chain across. It does not support wallets. See
+`docs/architecture/fork-e2e-environment.md`.
 However, you can either create your own class defining the environment endpoints or use below enviroment variables.
 
 Here's an example of fully customized endpoints of the test environment, that you can provide using environment variables:

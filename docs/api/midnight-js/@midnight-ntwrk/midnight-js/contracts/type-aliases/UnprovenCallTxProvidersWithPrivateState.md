@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -8,8 +8,6 @@
 
 > **UnprovenCallTxProvidersWithPrivateState**\<`C`\> = [`UnprovenCallTxProvidersBase`](UnprovenCallTxProvidersBase.md) & `Pick`\<[`ContractProviders`](ContractProviders.md)\<`C`\>, `"privateStateProvider"`\>
 
-Defined in: packages/contracts/dist/index.d.ts:817
-
 Same providers as [UnprovenCallTxProvidersBase](UnprovenCallTxProvidersBase.md) with an additional private
 state provider to store the new private state resulting from the circuit call -
 only used when creating a call transaction for a contract with a private state.
@@ -18,4 +16,4 @@ only used when creating a call transaction for a contract with a private state.
 
 ### C
 
-`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
