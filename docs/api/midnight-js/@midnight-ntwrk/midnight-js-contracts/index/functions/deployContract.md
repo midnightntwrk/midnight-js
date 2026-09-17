@@ -64,6 +64,14 @@ IncompleteDeployContractPrivateStateConfig If an `initialPrivateState` reaches t
                                                    retained arm with no `privateStateId` to store
                                                    it under.
 
+## Throws
+
+Error If `privateStateId` is present with an undefined value, which is a caller that
+              believes it named an id. Raised on both eras, before any transaction is built.
+              NOT raised for a `privateStateId` present with a usable value and no
+              `initialPrivateState` beside it: the option types refuse that pairing, so only a
+              caller the compiler never checked can reach it, and it deploys as it always did.
+
 ## Call Signature
 
 > **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`DeployedContract`](../namespaces/Ledger8/interfaces/DeployedContract.md)\<`C`\>\>
@@ -79,12 +87,13 @@ against contracts deployed before the fork.
 A verifier key is registered for every entry point the artifact declares, because a retained
 constructor builds every slot BLANK and the retained deploy registers none of its own.
 
-KEEP THE SIGNING KEY THE RESULT CARRIES. This arm registers a maintenance authority of one key
-at threshold 1, sampling that key when `options.signingKey` names none, and this framework
-stores it nowhere — not in the private-state provider, not on chain. It appears once, on
-`Ledger8DeployedContract.signingKey`, and a contract whose key was never copied off that handle
-can never have a verifier key inserted, removed or replaced by anyone. Decide where the key is
-going before calling this, not after.
+A maintenance authority of one key at threshold 1 is registered, that key being
+`options.signingKey` or a freshly sampled one. Once the chain has recorded the deployment the key
+is stored against the minted address through `providers.privateStateProvider`, exactly as the
+current era's deploy stores its own, and it is reported on `Ledger8DeployedContract.signingKey`.
+That provider is the only copy besides the returned handle: the key is not on chain and not
+derivable from anything that is, so a store that is lost or cleared leaves a contract on which no
+verifier key can ever be inserted, removed or replaced by anyone.
 
 ### Type Parameters
 

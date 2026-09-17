@@ -10,12 +10,14 @@
 
 - [AmbiguousEntryPointError](classes/AmbiguousEntryPointError.md)
 - [CallTxFailedError](classes/CallTxFailedError.md)
+- [DeployNotStoredError](classes/DeployNotStoredError.md)
 - [DeployOnV9Error](classes/DeployOnV9Error.md)
 - [DeployTxFailedError](classes/DeployTxFailedError.md)
 - [DeployUnconfirmedError](classes/DeployUnconfirmedError.md)
 - [RecipientUnmappableError](classes/RecipientUnmappableError.md)
 - [SeamFailedError](classes/SeamFailedError.md)
 - [ShieldedSpendUnsupportedError](classes/ShieldedSpendUnsupportedError.md)
+- [SigningKeyUnusableError](classes/SigningKeyUnusableError.md)
 
 ## Interfaces
 

@@ -6,9 +6,14 @@
 
 # Interface: DeployedContract\<C\>
 
-A retained-era contract deployed by the caller, which additionally holds the
-signing key registered as the contract's maintenance authority — something
-only the deployer has.
+A retained-era contract deployed by the caller.
+
+It differs from [Ledger8FoundContract](FoundContract.md) in ONE thing: its
+[Ledger8DeployedContract.signingKey](#signingkey) is REQUIRED where the found
+handle's may be `undefined`. The key itself is no longer something only a
+deployer has -- the deploy stores it, and an attach through the same provider
+reports it back -- so what a deploy guarantees is that there IS one, not that
+nobody else could hold it.
 
 Published under the retained-era namespace so a caller that receives one by
 inference can also NAME it. This is what `deployContract`'s retained-era arm
@@ -155,17 +160,21 @@ The key the deployed contract's maintenance authority was built from: ONE
 verifying key at threshold 1, so this single key is the whole authority.
 
 SAMPLED here when the caller named none on the deploy options, and stored
-NOWHERE by this framework — not in the private-state provider, not on
-chain, and not recoverable from either. This handle is the only place a
-sampled key ever appears, so a caller that wants it later has to persist it
-itself, before the handle goes out of scope.
+against [Ledger8FoundContract.contractAddress](FoundContract.md#contractaddress) in the private-state
+provider once the chain has recorded the deployment — the same storage and
+the same moment the current era's deploy writes its own key to. Attaching
+to the same address through the same provider reports it again on
+[Ledger8FoundContract.signingKey](FoundContract.md#signingkey).
 
-Lost, the authority is unreachable for good: no verifier key can be
-inserted, removed or replaced on that contract by anyone. Attaching again
-does not recover it — see
-[Ledger8FindDeployedContractOptions.signingKey](FindDeployedContractOptions.md#signingkey), which is not a route
-back in.
+The provider is the ONLY copy besides this handle. It is not on chain and
+not derivable from anything that is, so a store that is lost, cleared or
+never persisted takes the authority with it: no verifier key can then be
+inserted, removed or replaced on that contract by anyone.
 
 #### Remarks
 
 **Privacy-sensitive.** Signing-key material.
+
+#### Overrides
+
+[`FoundContract`](FoundContract.md).[`signingKey`](FoundContract.md#signingkey)

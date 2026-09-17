@@ -98,6 +98,7 @@
 - [CurrentPipelineEra](type-aliases/CurrentPipelineEra.md)
 - [DeployContractOptions](type-aliases/DeployContractOptions.md)
 - [DeployContractOptionsBase](type-aliases/DeployContractOptionsBase.md)
+- [DeployContractOptionsShared](type-aliases/DeployContractOptionsShared.md)
 - [DeployContractOptionsWithPrivateState](type-aliases/DeployContractOptionsWithPrivateState.md)
 - [DeployTxOptions](type-aliases/DeployTxOptions.md)
 - [DeployTxOptionsBase](type-aliases/DeployTxOptionsBase.md)
