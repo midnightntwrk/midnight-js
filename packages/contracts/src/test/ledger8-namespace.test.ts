@@ -29,7 +29,8 @@ import {
   Ledger8AmbiguousEntryPointError,
   Ledger8CallTxFailedError,
   Ledger8DeployOnV9Error,
-  Ledger8DeployUnmaintainableError,
+  Ledger8DeployTxFailedError,
+  Ledger8DeployUnconfirmedError,
   Ledger8RecipientUnmappableError,
   Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError
@@ -50,7 +51,8 @@ const RETAINED_ERA_MEMBERS = [
   'AmbiguousEntryPointError',
   'CallTxFailedError',
   'DeployOnV9Error',
-  'DeployUnmaintainableError',
+  'DeployTxFailedError',
+  'DeployUnconfirmedError',
   'RecipientUnmappableError',
   'SeamFailedError',
   'ShieldedSpendUnsupportedError',
@@ -107,7 +109,7 @@ describe('the retained era is published as one namespace', () => {
     // Matched on CONTAINING the era name rather than starting with it, so a helper named
     // `createLedger8...` is caught too.
     //
-    // RUNTIME names only: `Object.keys` sees bindings, and 29 of the 37 members are types, which
+    // RUNTIME names only: `Object.keys` sees bindings, and 31 of the 40 members are types, which
     // have none. A flat retained-era TYPE re-export is caught by the strict list in
     // `contracts-type-acl.test.ts` instead -- that suite is the other half of this guard, and
     // narrowing it would reopen the larger half of the hole.
@@ -123,7 +125,8 @@ describe('the retained era is published as one namespace', () => {
     expect(Ledger8.AmbiguousEntryPointError).toBe(Ledger8AmbiguousEntryPointError);
     expect(Ledger8.CallTxFailedError).toBe(Ledger8CallTxFailedError);
     expect(Ledger8.DeployOnV9Error).toBe(Ledger8DeployOnV9Error);
-    expect(Ledger8.DeployUnmaintainableError).toBe(Ledger8DeployUnmaintainableError);
+    expect(Ledger8.DeployTxFailedError).toBe(Ledger8DeployTxFailedError);
+    expect(Ledger8.DeployUnconfirmedError).toBe(Ledger8DeployUnconfirmedError);
     expect(Ledger8.RecipientUnmappableError).toBe(Ledger8RecipientUnmappableError);
     expect(Ledger8.SeamFailedError).toBe(Ledger8SeamFailedError);
     expect(Ledger8.ShieldedSpendUnsupportedError).toBe(Ledger8ShieldedSpendUnsupportedError);
@@ -159,5 +162,6 @@ describe('the retained era is published as one namespace', () => {
     // the base catches it, at any depth. `TxFailedError extends AnyEraTxFailedError` shows an
     // intermediate base is an established shape here, and inserting one must not fail this test.
     expect(Ledger8.CallTxFailedError.prototype instanceof AnyEraTxFailedError).toBe(true);
+    expect(Ledger8.DeployTxFailedError.prototype instanceof AnyEraTxFailedError).toBe(true);
   });
 });

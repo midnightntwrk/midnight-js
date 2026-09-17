@@ -28,9 +28,11 @@ import {
   composeV8DeployTx,
   executeConstructor,
   type ExecuteConstructorOptions,
+  type Ledger8ConstructedContractState,
   type Ledger8ConstructorContractLike,
   type Ledger8ConstructorResult,
-  type Ledger8ConstructorRuntime
+  type Ledger8ConstructorRuntime,
+  type Ledger8SigningKey
 } from '../lib/v8/deploy';
 import { V8_UNPROVEN_TX_TAG } from './fixtures';
 
@@ -74,26 +76,68 @@ describe('entryPointName', () => {
 });
 
 describe('executeConstructor (fake runtime — plumbing only, no WASM execution)', () => {
+  // A structural stand-in for the retained runtime's authority class: it
+  // declares no private members, so a plain class satisfies it. Only the
+  // constructor is injected, so the statics that class also declares are out
+  // of scope here.
+  class FakeMaintenanceAuthority {
+    // `counter` is OPTIONAL, defaulting to `0n`, because the retained runtime's own
+    // `ContractMaintenanceAuthority` declares it that way. A required parameter here is not
+    // merely stricter than the real class -- it makes this fake unassignable to the constructor
+    // signature the engine injects, which `yarn typecheck:tests` refuses even though vitest runs
+    // the suite green.
+    constructor(
+      readonly committee: string[],
+      readonly threshold: number,
+      readonly counter = 0n
+    ) {}
+
+    serialize(): Uint8Array {
+      return new Uint8Array();
+    }
+
+    toString(): string {
+      return `${this.threshold}-of-${this.committee.length}`;
+    }
+  }
+
+  const SAMPLED_SIGNING_KEY = 'sampled-by-the-runtime';
+  // A WELL-FORMED retained signing key: 32 bytes of hex, the shape
+  // `executeConstructor` now refuses anything but before it runs a constructor.
+  const CALLER_SIGNING_KEY = 'c5'.repeat(32);
+  const verifyingKeyOf = (signingKey: Ledger8SigningKey): string => `vk:${signingKey}`;
+
+  const encodedZswapLocalState: EncodedZswapLocalState = {
+    coinPublicKey: { bytes: new Uint8Array(32) },
+    currentIndex: 0n,
+    inputs: [],
+    outputs: []
+  };
+  const decodedZswapLocalState: ZswapLocalState = {
+    coinPublicKey: 'ca'.repeat(32),
+    currentIndex: 0n,
+    inputs: [],
+    outputs: []
+  };
+
+  // What the retained constructor itself leaves behind: an EMPTY committee
+  // with a threshold of one. Every fake state starts on it, so an
+  // `executeConstructor` that never assigned would be caught reading this
+  // back rather than reading `undefined`.
+  const unsatisfiableAuthority = (): FakeMaintenanceAuthority => new FakeMaintenanceAuthority([], 1, 0n);
+
   it('builds the constructor context, invokes initialState with the given args, and packages a ConstructorResultPojo', () => {
-    const finalContractState = { serialize: () => new Uint8Array([1, 2, 3]) };
+    const finalContractState: Ledger8ConstructedContractState = {
+      serialize: () => new Uint8Array([1, 2, 3]),
+      maintenanceAuthority: unsatisfiableAuthority()
+    };
     let capturedPrivateState: unknown;
     let capturedCoinPk: unknown;
     let capturedArgs: unknown;
     let capturedContext: unknown;
-
-    const encodedZswapLocalState: EncodedZswapLocalState = {
-      coinPublicKey: { bytes: new Uint8Array(32) },
-      currentIndex: 0n,
-      inputs: [],
-      outputs: []
-    };
-    const decodedZswapLocalState: ZswapLocalState = {
-      coinPublicKey: 'ca'.repeat(32),
-      currentIndex: 0n,
-      inputs: [],
-      outputs: []
-    };
     let capturedEncodedZswap: unknown;
+    let capturedVerifyingKeyInput: unknown;
+    let samples = 0;
 
     const runtime: Ledger8ConstructorRuntime = {
       createConstructorContext: (privateState, coinPk) => {
@@ -104,7 +148,16 @@ describe('executeConstructor (fake runtime — plumbing only, no WASM execution)
       decodeZswapLocalState: (state) => {
         capturedEncodedZswap = state;
         return decodedZswapLocalState;
-      }
+      },
+      sampleSigningKey: () => {
+        samples += 1;
+        return SAMPLED_SIGNING_KEY;
+      },
+      signatureVerifyingKey: (signingKey) => {
+        capturedVerifyingKeyInput = signingKey;
+        return verifyingKeyOf(signingKey);
+      },
+      ContractMaintenanceAuthority: FakeMaintenanceAuthority
     };
     const contract: Ledger8ConstructorContractLike = {
       initialState: (constructorContext, ...args): Ledger8ConstructorResult => {
@@ -122,7 +175,8 @@ describe('executeConstructor (fake runtime — plumbing only, no WASM execution)
       contract,
       args: ['seed'],
       privateState: { initial: true },
-      coinPk: 'ca'.repeat(32)
+      coinPk: 'ca'.repeat(32),
+      signingKey: CALLER_SIGNING_KEY
     };
 
     const result = executeConstructor(options, runtime);
@@ -138,6 +192,162 @@ describe('executeConstructor (fake runtime — plumbing only, no WASM execution)
     expect(capturedCoinPk).toBe('ca'.repeat(32));
     expect(capturedArgs).toEqual(['seed']);
     expect(capturedContext).toEqual({ marker: 'constructor-context' });
+
+    // A supplied key is used as given and reported back unchanged, and nothing
+    // is sampled: sampling over a supplied key would put an authority on chain
+    // that the caller holds no key for.
+    expect(result.signingKey).toBe(CALLER_SIGNING_KEY);
+    expect(samples).toBe(0);
+    expect(capturedVerifyingKeyInput).toBe(CALLER_SIGNING_KEY);
+
+    const authority = finalContractState.maintenanceAuthority;
+    expect(authority).toBeInstanceOf(FakeMaintenanceAuthority);
+    expect(authority.committee).toEqual([verifyingKeyOf(CALLER_SIGNING_KEY)]);
+    expect(authority.threshold).toBe(1);
+    expect(authority.counter).toBe(0n);
+  });
+
+  it('samples a signing key when the caller supplies none, and builds the committee from the sampled key', () => {
+    const finalContractState: Ledger8ConstructedContractState = {
+      serialize: () => new Uint8Array([1, 2, 3]),
+      maintenanceAuthority: unsatisfiableAuthority()
+    };
+    let samples = 0;
+
+    const runtime: Ledger8ConstructorRuntime = {
+      createConstructorContext: () => ({ marker: 'constructor-context' }),
+      decodeZswapLocalState: () => decodedZswapLocalState,
+      sampleSigningKey: () => {
+        samples += 1;
+        return SAMPLED_SIGNING_KEY;
+      },
+      signatureVerifyingKey: verifyingKeyOf,
+      ContractMaintenanceAuthority: FakeMaintenanceAuthority
+    };
+    const contract: Ledger8ConstructorContractLike = {
+      initialState: (): Ledger8ConstructorResult => ({
+        currentContractState: finalContractState,
+        currentPrivateState: {},
+        currentZswapLocalState: encodedZswapLocalState
+      })
+    };
+
+    const result = executeConstructor({ contract, args: [], privateState: {}, coinPk: 'ca'.repeat(32) }, runtime);
+
+    expect(samples).toBe(1);
+    expect(result.signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect(finalContractState.maintenanceAuthority.committee).toEqual([verifyingKeyOf(SAMPLED_SIGNING_KEY)]);
+  });
+
+  // The retained runtime's own refusals name neither the option, the era, nor the caller: a short
+  // key reads back as `failed to fill whole buffer`, a non-hex one as
+  // `Invalid character 'z' at position 0`. Measured against the pinned runtime, a signing key is
+  // 32 bytes written as 64 hex characters.
+  it.each([
+    ['empty', ''],
+    ['not hex', 'z'.repeat(64)],
+    ['too short', 'a1'.repeat(31)],
+    ['too long', 'a1'.repeat(33)],
+    ['odd length', `${'a1'.repeat(31)}a`]
+  ])('refuses a signing key that is %s, by name and before the constructor runs', (_label, signingKey) => {
+    let constructorRuns = 0;
+    const runtime: Ledger8ConstructorRuntime = {
+      createConstructorContext: () => ({ marker: 'constructor-context' }),
+      decodeZswapLocalState: () => decodedZswapLocalState,
+      sampleSigningKey: () => SAMPLED_SIGNING_KEY,
+      signatureVerifyingKey: verifyingKeyOf,
+      ContractMaintenanceAuthority: FakeMaintenanceAuthority
+    };
+    const contract: Ledger8ConstructorContractLike = {
+      initialState: (): Ledger8ConstructorResult => {
+        constructorRuns += 1;
+        return {
+          currentContractState: { serialize: () => new Uint8Array(), maintenanceAuthority: unsatisfiableAuthority() },
+          currentPrivateState: {},
+          currentZswapLocalState: encodedZswapLocalState
+        };
+      }
+    };
+
+    let caught: unknown;
+    try {
+      executeConstructor({ contract, args: [], privateState: {}, coinPk: 'ca'.repeat(32), signingKey }, runtime);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    expect((caught as ComposeOptionError).option).toBe('signingKey');
+    expect((caught as ComposeOptionError).version).toBe('v8');
+    expect((caught as ComposeOptionError).message).toContain('signingKey');
+    // Refused before the constructor is run, so nothing is executed on a key the authority could
+    // never have been built from.
+    expect(constructorRuns).toBe(0);
+  });
+
+  it('never renders the refused key, which is a secret', () => {
+    const runtime: Ledger8ConstructorRuntime = {
+      createConstructorContext: () => ({ marker: 'constructor-context' }),
+      decodeZswapLocalState: () => decodedZswapLocalState,
+      sampleSigningKey: () => SAMPLED_SIGNING_KEY,
+      signatureVerifyingKey: verifyingKeyOf,
+      ContractMaintenanceAuthority: FakeMaintenanceAuthority
+    };
+    const contract: Ledger8ConstructorContractLike = {
+      initialState: (): Ledger8ConstructorResult => ({
+        currentContractState: { serialize: () => new Uint8Array(), maintenanceAuthority: unsatisfiableAuthority() },
+        currentPrivateState: {},
+        currentZswapLocalState: encodedZswapLocalState
+      })
+    };
+    // A key that is malformed only by LENGTH, so its characters are the real thing: a message that
+    // echoed its input would put a live secret into whatever log or issue tracker the error
+    // reaches, and on the sampled path that is the only copy in existence.
+    const nearMiss = 'c5'.repeat(31);
+
+    let caught: unknown;
+    try {
+      executeConstructor(
+        { contract, args: [], privateState: {}, coinPk: 'ca'.repeat(32), signingKey: nearMiss },
+        runtime
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    expect((caught as ComposeOptionError).message).not.toContain(nearMiss.slice(0, 16));
+  });
+
+  it('accepts an UPPERCASE hex signing key, which the retained runtime accepts too', () => {
+    const finalContractState: Ledger8ConstructedContractState = {
+      serialize: () => new Uint8Array([1, 2, 3]),
+      maintenanceAuthority: unsatisfiableAuthority()
+    };
+    const runtime: Ledger8ConstructorRuntime = {
+      createConstructorContext: () => ({ marker: 'constructor-context' }),
+      decodeZswapLocalState: () => decodedZswapLocalState,
+      sampleSigningKey: () => SAMPLED_SIGNING_KEY,
+      signatureVerifyingKey: verifyingKeyOf,
+      ContractMaintenanceAuthority: FakeMaintenanceAuthority
+    };
+    const contract: Ledger8ConstructorContractLike = {
+      initialState: (): Ledger8ConstructorResult => ({
+        currentContractState: finalContractState,
+        currentPrivateState: {},
+        currentZswapLocalState: encodedZswapLocalState
+      })
+    };
+    const uppercase = 'AB'.repeat(32);
+
+    const result = executeConstructor(
+      { contract, args: [], privateState: {}, coinPk: 'ca'.repeat(32), signingKey: uppercase },
+      runtime
+    );
+
+    // A shape check tighter than the runtime's would refuse keys the chain accepts, which is a
+    // deployment path closed for no reason.
+    expect(result.signingKey).toBe(uppercase);
   });
 });
 
@@ -164,16 +374,26 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     readonly ledger: (state: ocrt3.StateValue | ocrt3.ChargedState) => CompiledCounterLedger;
   }
 
+  // The retained glue and `onchain-runtime-v3` resolve to ONE instance here,
+  // the same premise `createLedger8Engine` asserts before mixing them: the
+  // authority written with an `ocrt3` class lands on a state the glue built.
+  const realConstructorRuntime = async (): Promise<Ledger8ConstructorRuntime> => {
+    const ledger8Runtime = await import('compact-runtime-ledger8');
+    return {
+      createConstructorContext: ledger8Runtime.createConstructorContext,
+      decodeZswapLocalState: ledger8Runtime.decodeZswapLocalState,
+      sampleSigningKey: ocrt3.sampleSigningKey,
+      signatureVerifyingKey: ocrt3.signatureVerifyingKey,
+      ContractMaintenanceAuthority: ocrt3.ContractMaintenanceAuthority
+    };
+  };
+
   it('runs the counter constructor, producing a contract state with round 0 and a blank increment operation slot', async () => {
     const { Contract, ledger } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
-    const ledger8Runtime = await import('compact-runtime-ledger8');
 
     const initialPrivateState: Record<string, never> = {};
     const contract = new Contract(initialPrivateState);
-    const runtime: Ledger8ConstructorRuntime = {
-      createConstructorContext: ledger8Runtime.createConstructorContext,
-      decodeZswapLocalState: ledger8Runtime.decodeZswapLocalState
-    };
+    const runtime = await realConstructorRuntime();
 
     const result = executeConstructor({ contract, args: [], privateState: initialPrivateState, coinPk: SAMPLE_COIN_PUBLIC_KEY }, runtime);
 
@@ -199,48 +419,52 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
   });
 
   // MEASURED, and load-bearing well outside this package: a caller of the
-  // retained-era deploy has to be told that the contract it would put on chain
-  // can never be maintained by anyone.
+  // retained-era deploy has to be able to maintain the contract it puts on
+  // chain.
   //
-  // Neither half of the retained deploy path accepts a maintenance authority --
-  // `createConstructorContext(initialPrivateState, coinPublicKey)` takes no key,
-  // and `ComposeDeployOptions` carries none -- so the authority is whatever the
-  // retained constructor leaves behind. What it leaves behind is an EMPTY
-  // committee with a threshold of ONE: a rule change needs one signature from a
-  // set of zero keys, which nothing can ever satisfy. So no verifier key could
-  // ever be inserted, removed or replaced on such a contract, and the authority
-  // itself could never be updated either, because updating it is a rule change.
+  // Left alone, the retained constructor leaves an EMPTY committee with a
+  // threshold of ONE: a rule change needing one signature from a set of zero
+  // keys, which nothing can ever satisfy -- no verifier key could be inserted,
+  // removed or replaced afterwards, and the authority itself could never be
+  // updated either, because updating it is a rule change. Neither half of the
+  // retained path offers a place to put a key:
+  // `createConstructorContext(initialPrivateState, coinPublicKey)` takes none,
+  // and `ComposeDeployOptions` carries none. So `executeConstructor` writes the
+  // authority itself, onto the state the constructor just built, before anyone
+  // serializes it.
   //
-  // Contrast the current era, whose constructor registers the signing key it is
-  // given, which is what makes its `DeployedContract.signingKey` a true
-  // statement about who can maintain the deployment.
-  //
-  // This is why the retained-era arm of `deployContract`
-  // (`packages/contracts/src/deploy-contract.ts`) refuses rather than offering
-  // a deploy whose result is permanently unmaintainable. If a future retained
-  // runtime or era seam gains an authority, THIS is the test that will say so,
-  // and the refusal can be lifted the moment it does.
-  it('leaves an UNSATISFIABLE maintenance authority: an empty committee with a threshold of one', async () => {
+  // Both ends are measured, because only the second shows the authority is
+  // durable: the state the constructor handed back, and the state the DEPLOY
+  // derived its address from -- the one a caller stores and later calls
+  // against. Between them sit `.serialize()`, the bridge into the v8
+  // `ContractState` and `ContractDeploy`, each of which rebuilds the state from
+  // bytes. A retained runtime that stopped honouring the setter, or a deploy
+  // leg that rebuilt the state from anything other than these bytes, would show
+  // up here as the empty committee coming back -- and the retained-era arm of
+  // `deployContract` (`packages/contracts/src/deploy-contract.ts`) would again
+  // be offering permanently unmaintainable deployments.
+  it('sets the maintenance authority to the supplied signing key, and that authority survives into the composed deploy', async () => {
     const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
-    const ledger8Runtime = await import('compact-runtime-ledger8');
     const contract = new Contract({});
-    const runtime: Ledger8ConstructorRuntime = {
-      createConstructorContext: ledger8Runtime.createConstructorContext,
-      decodeZswapLocalState: ledger8Runtime.decodeZswapLocalState
-    };
+    const runtime = await realConstructorRuntime();
+    const signingKey = ocrt3.sampleSigningKey();
 
-    const result = executeConstructor({ contract, args: [], privateState: {}, coinPk: SAMPLE_COIN_PUBLIC_KEY }, runtime);
+    const result = executeConstructor(
+      { contract, args: [], privateState: {}, coinPk: SAMPLE_COIN_PUBLIC_KEY, signingKey },
+      runtime
+    );
     const constructedBytes = result.contractState.serialize();
 
-    // The authority the constructor itself left.
+    expect(result.signingKey).toBe(signingKey);
+
+    // The authority on the constructor's own state.
     const constructed = LedgerV8.ContractState.deserialize(constructedBytes).maintenanceAuthority;
-    expect(constructed.committee).toEqual([]);
+    expect(constructed.committee).toEqual([ocrt3.signatureVerifyingKey(signingKey)]);
     expect(constructed.threshold).toBe(1);
     expect(constructed.counter).toBe(0n);
 
     // And the authority the DEPLOY hands back on the state it derived the
-    // address from -- the state a caller would go on to call against. The
-    // deploy leg does not repair it, and must not invent one.
+    // address from.
     const deployed = composeV8DeployTx(
       {
         contractState: constructedBytes,
@@ -251,9 +475,35 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
       LedgerV8
     );
     const initial = LedgerV8.ContractState.deserialize(deployed.initialState).maintenanceAuthority;
-    expect(initial.committee).toEqual([]);
+    expect(initial.committee).toEqual([ocrt3.signatureVerifyingKey(signingKey)]);
     expect(initial.threshold).toBe(1);
     expect(initial.counter).toBe(0n);
+  });
+
+  // The sampled key is random, so only the RELATIONSHIP between the reported
+  // key and the committee is assertable. Two runs are needed to say it was
+  // really sampled: a constant returned in place of a sample would satisfy the
+  // relationship on its own, while handing every caller in the process the same
+  // authority.
+  it('samples a signing key when none is supplied, reports it, and builds the committee from that key', async () => {
+    const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
+    const runtime = await realConstructorRuntime();
+
+    const first = executeConstructor(
+      { contract: new Contract({}), args: [], privateState: {}, coinPk: SAMPLE_COIN_PUBLIC_KEY },
+      runtime
+    );
+    const firstBytes = first.contractState.serialize();
+    const second = executeConstructor(
+      { contract: new Contract({}), args: [], privateState: {}, coinPk: SAMPLE_COIN_PUBLIC_KEY },
+      runtime
+    );
+
+    expect(first.signingKey).not.toBe(second.signingKey);
+    const authority = LedgerV8.ContractState.deserialize(firstBytes).maintenanceAuthority;
+    expect(authority.committee).toEqual([ocrt3.signatureVerifyingKey(first.signingKey)]);
+    expect(authority.threshold).toBe(1);
+    expect(authority.counter).toBe(0n);
   });
 });
 

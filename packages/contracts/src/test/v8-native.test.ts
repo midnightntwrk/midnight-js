@@ -65,18 +65,24 @@ import {
   type VersionedTx,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined, CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { deployContract } from '../deploy-contract';
+import { RETAINED_PIPELINE_ERA } from '../era';
 import { isLedger8Result } from '../era-results';
 import {
   AnyEraTxFailedError,
   BlankVerifierKeySlotError,
   EraInvariantViolationError,
+  IncompleteDeployContractPrivateStateConfig,
+  IncompleteFindContractPrivateStateConfig,
   Ledger8AmbiguousEntryPointError,
   Ledger8CallTxFailedError,
   Ledger8DeployOnV9Error,
+  Ledger8DeployTxFailedError,
+  Ledger8DeployUnconfirmedError,
   Ledger8RecipientUnmappableError,
   Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
@@ -98,11 +104,20 @@ import {
 } from '../internal/utils';
 import type {
   Ledger8CallTxOptions,
+  Ledger8Contract,
   Ledger8ContractProviders,
   Ledger8FindDeployedContractOptions
 } from '../ledger8-contract';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
-import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
+import type {
+  CoinReceiver016Circuits,
+  CoinReceiver016ConstructorResult,
+  CoinReceiver016Contract,
+  CoinReceiver016Module,
+  CoinReceiver016PrivateState,
+  CoinReceiver016Witnesses,
+  Ledger8ConstructorContextLike
+} from './ledger8-fixture-types';
 import {
   type CoinReceiverRecording,
   createReplayEngine,
@@ -114,6 +129,7 @@ import {
   recordEraCalls,
   type ReplayState,
   RETAINED_ERA_TX_TAG,
+  SAMPLED_SIGNING_KEY,
   txTagPrefix
 } from './ledger8-replay';
 import { createMockFinalizedTxData, createMockProviders } from './test-mocks';
@@ -312,6 +328,28 @@ const retainedEraRecord = (status?: TxStatus): VersionedFinalizedTxData => ({
   tx: undefined as never
 });
 
+/**
+ * The position of a mock's FIRST call in vitest's global invocation counter,
+ * which is what makes a "before" claim a real claim: `toHaveBeenCalled` alone
+ * cannot see an ordering defect, and the ordering is the whole of what
+ * `setContractAddress` buys — and the whole of what keeps a failed deploy from
+ * leaving a local private state ahead of the chain.
+ *
+ * Module scope, shared by the attach and deploy suites: both make the same kind
+ * of claim, and a second copy would drift.
+ *
+ * @param mock The mock whose first invocation is being placed.
+ * @returns Its position in the global invocation order.
+ */
+const callOrder = (mock: (...args: never[]) => unknown): number => {
+  const [first] = vi.mocked(mock).mock.invocationCallOrder;
+  // Left to the matcher, an uncalled mock does fail -- vitest's `assertTypes` rejects `undefined`
+  // before it compares -- but it fails as a type complaint naming neither the mock nor the claim
+  // being made about it. Caught here instead, so the report says which ordering went unmeasured.
+  assertDefined(first, 'expected the mock to have been called at least once');
+  return first;
+};
+
 const retainedProviders = (recording: CoinReceiverRecording, envelope: Uint8Array): RetainedProviders => {
   // The retained overload's own provider type, keyed by the fixture's own
   // circuit id. `createMockProviders`'s `zkConfigProvider` is keyed by `string`
@@ -436,12 +474,11 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       'era.v8.decodeContractState',
       'engine.downConvertForExecution',
       'engine.executeCircuit',
-      // Between execution and composition, and it has to be: the Zswap offer is
-      // routed against this split, and it becomes an option on the composition.
-      // The RETAINED era draws it here because on this arm it is also the one
-      // that composes -- the log names the era so that stays checked.
-      'era.v8.partitionCallTranscript',
-      'era.v8.composeCallTx'
+      'era.v8.composeCallTx',
+      // INSIDE the composition, not before it: the composer resolves the split
+      // and only then asks for the offer to route against it. The RETAINED era
+      // does both on this arm -- the log names the era so that stays checked.
+      'era.v8.zswapOffer'
     ]);
     expect(result.txBytes).toBeInstanceOf(Uint8Array);
     // Exactly ONE call: the retained era has no call tree to express, and a
@@ -450,10 +487,9 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     // The state handed to the composition is the RAW envelope as read from
     // chain, which is what carries the registered operation and its key.
     expect(composed?.calls[0]?.contractState).toBe(v6Envelope);
-    // ALREADY partitioned: the pipeline resolved the split above to route the
-    // offer, and hands the composer that pair rather than making it repeat the
-    // work on the raw op sequence.
-    expect(composed?.calls[0]?.transcript.kind).toBe('partitioned');
+    // UNPARTITIONED: the split is the composer's to draw, once, and it hands it
+    // back through the offer factory. The pipeline no longer draws its own.
+    expect(composed?.calls[0]?.transcript.kind).toBe('unpartitioned');
   });
 
   it('carries the post-call Zswap local state, and the coins the call minted to the CALLER', async () => {
@@ -597,7 +633,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
 
   it('carries the recorded coin movement in the GUARANTEED segment, with the fallible segment empty', async () => {
     const log: OrchestrationLog = [];
-    let composed: ComposeCallOptions | undefined;
+    let routed: { readonly guaranteed?: Uint8Array; readonly fallible?: Uint8Array } | undefined;
     const providers = createMockProviders();
     providers.publicDataProvider.queryRawContractState = vi
       .fn()
@@ -605,8 +641,8 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
 
     const result = await runLedger8CallPipeline<ReplayState>({
       retainedEra,
-      era: recordEraCalls(retainedEra, log, (options) => {
-        composed = options;
+      era: recordEraCalls(retainedEra, log, undefined, (offers) => {
+        routed = offers;
       }),
       engine: createReplayEngine(recording, log),
       publicDataProvider: providers.publicDataProvider,
@@ -635,8 +671,10 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     // offer. See 'routes a coin the partition places in the fallible half'.
     expect(result.guaranteedZswapOffer).toBeInstanceOf(Uint8Array);
     expect(result.fallibleZswapOffer).toBeUndefined();
-    expect(composed?.guaranteedZswapOffer).toBe(result.guaranteedZswapOffer);
-    expect(composed?.fallibleZswapOffer).toBeUndefined();
+    // The offer the composer was handed is the one the pipeline reports, so the
+    // routing survives the hand-off rather than being re-decided.
+    expect(routed?.guaranteed).toBe(result.guaranteedZswapOffer);
+    expect(routed?.fallible).toBeUndefined();
   });
 
   // The regression #731/#877 named, on the arm that did not have it. Before the
@@ -653,26 +691,35 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
   // than the offer keeps the routing decision under test the pipeline's own.
   it('routes a coin the partition places in the fallible half into the fallible offer', async () => {
     const log: OrchestrationLog = [];
-    let composed: ComposeCallOptions | undefined;
+    let routed: { readonly guaranteed?: Uint8Array; readonly fallible?: Uint8Array } | undefined;
     const providers = createMockProviders();
     providers.publicDataProvider.queryRawContractState = vi
       .fn()
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
-    const recorded = recordEraCalls(retainedEra, log, (options) => {
-      composed = options;
+    const recorded = recordEraCalls(retainedEra, log, undefined, (offers) => {
+      routed = offers;
     });
     const fallibleOnlyEra: LedgerEra = {
       ...recorded,
-      partitionCallTranscript: (options) => {
-        const [guaranteed, fallible] = recorded.partitionCallTranscript(options);
-        // The real halves, swapped into the fallible slot. Asserted rather than
-        // assumed: if the recording ever stops partitioning into a guaranteed
-        // transcript this test would silently stop exercising the route.
-        if (guaranteed === undefined || fallible !== undefined) {
-          throw new Error('expected the recording to partition into a guaranteed transcript only');
+      composeCallTx: (options) => {
+        const { zswapOffer } = options;
+        if (zswapOffer === undefined) {
+          throw new Error('expected the pipeline to route its offer through the composer');
         }
-        return [undefined, guaranteed];
+        return recorded.composeCallTx({
+          ...options,
+          // The real halves, swapped into the fallible slot before the pipeline's
+          // own factory ever sees them. Asserted rather than assumed: if the
+          // recording ever stops partitioning into a guaranteed transcript this
+          // test would silently stop exercising the route.
+          zswapOffer: ([[guaranteed, fallible]]) => {
+            if (guaranteed === undefined || fallible !== undefined) {
+              throw new Error('expected the recording to partition into a guaranteed transcript only');
+            }
+            return zswapOffer([[undefined, guaranteed]]);
+          }
+        });
       }
     };
 
@@ -703,11 +750,57 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     expect(result.guaranteedZswapOffer).toBeUndefined();
     // The offer the composer received is the one the pipeline reports, so the
     // routing survives the hand-off rather than being re-decided.
-    expect(composed?.fallibleZswapOffer).toBe(result.fallibleZswapOffer);
-    expect(composed?.guaranteedZswapOffer).toBeUndefined();
+    expect(routed?.fallible).toBe(result.fallibleZswapOffer);
+    expect(routed?.guaranteed).toBeUndefined();
   });
 
-  it('partitions the transcript once and hands the composer the pair it already resolved', async () => {
+  // `zswapOffer` is OPTIONAL on `ComposeCallOptions`, so an era that never calls
+  // it back is type-correct. The pipeline builds its offer only inside that
+  // callback, so such an era would compose a transaction carrying none of the
+  // circuit's coin movements -- and report `guaranteedZswapOffer: undefined`,
+  // which is also the honest shape of a call that moved nothing. Nothing
+  // downstream can tell the two apart, and the wallet reports the difference as
+  // `Wallet.InsufficientFunds`. So the pipeline refuses instead of reporting it.
+  it('refuses an era that composes without ever asking for the offer', async () => {
+    const log: OrchestrationLog = [];
+    const providers = createMockProviders();
+    providers.publicDataProvider.queryRawContractState = vi
+      .fn()
+      .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
+
+    const recorded = recordEraCalls(retainedEra, log);
+    const offerIgnoringEra: LedgerEra = {
+      ...recorded,
+      // Drops the factory on the floor, exactly as a third-party era that never
+      // read the seam's contract would.
+      composeCallTx: ({ zswapOffer: _ignored, ...rest }) => recorded.composeCallTx(rest)
+    };
+
+    await expect(
+      runLedger8CallPipeline<ReplayState>({
+        retainedEra,
+        era: offerIgnoringEra,
+        engine: createReplayEngine(recording, log),
+        publicDataProvider: providers.publicDataProvider,
+        head: 'v8',
+        contract,
+        contractAddress: recording.contractAddress,
+        circuitId: CIRCUIT_ID,
+        args: [recording.receivedCoin],
+        coinPublicKey: recording.coinPublicKey,
+        privateState: {},
+        localVerifierKey: STAND_IN_VERIFIER_KEY,
+        networkId: NETWORK_ID,
+        ttl: new Date(Date.now() + 3_600_000),
+        encryptionPublicKey: createEncryptionPublicKeyResolver(
+          recording.coinPublicKey,
+          providers.walletProvider.getEncryptionPublicKey()
+        )
+      })
+    ).rejects.toThrowError(/did not build the call's Zswap offer/);
+  });
+
+  it('splits the transcript once, inside the composer, and routes the offer against that split', async () => {
     const log: OrchestrationLog = [];
     let composed: ComposeCallOptions | undefined;
     const providers = createMockProviders();
@@ -738,14 +831,16 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       )
     });
 
-    // Exactly one. The offer has to be routed against the split, and the
-    // composer needs the split too; resolving it twice would leave two answers
-    // that must agree with nothing checking that they do.
-    expect(log.filter((entry) => entry === 'era.v8.partitionCallTranscript')).toHaveLength(1);
-    // And this is what makes one enough: the composer is handed the resolved
-    // pair, not the raw op sequence. `resolvePartition` returns a caller-supplied
-    // pair untouched, so it cannot partition again.
-    expect(composed?.calls[0]?.transcript.kind).toBe('partitioned');
+    // Exactly one composition, and exactly one offer built inside it. The offer
+    // has to be routed against the split and the composer needs the split too;
+    // drawing it twice would leave two answers that must agree with nothing
+    // checking that they do.
+    expect(log.filter((entry) => entry === 'era.v8.composeCallTx')).toHaveLength(1);
+    expect(log.filter((entry) => entry === 'era.v8.zswapOffer')).toHaveLength(1);
+    // And this is what makes one enough: the raw op sequence goes to the
+    // composer, which splits it once and hands that split to the factory. There
+    // is no second split for the two to disagree about.
+    expect(composed?.calls[0]?.transcript.kind).toBe('unpartitioned');
   });
 
   it("encrypts a user-owned output to the RECIPIENT's key, asking the resolver for that recipient", async () => {
@@ -1096,7 +1191,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       contract,
       args: [],
       privateState: {},
-      verifierKeys: new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]])
+      resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
     });
 
     expect(deployed.txId).toBe('retained-era-tx-id');
@@ -1106,6 +1201,40 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(deployed.deploy.contractAddress.length).toBeGreaterThan(0);
     expect(txTagPrefix(deployed.deploy.txBytes, RETAINED_ERA_TX_TAG)).toBe(RETAINED_ERA_TX_TAG);
     expect(providers.seen.proveTx?.version).toBe('v8');
+  });
+
+  it('hands the constructor the caller own signing key, and reports the key the authority was built from', async () => {
+    const providers = preForkProviders(v6Envelope);
+
+    const deployed = await runLedger8Deploy(providers, {
+      contract,
+      args: [],
+      privateState: {},
+      resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]])),
+      signingKey: 'caller-own-signing-key'
+    });
+
+    // The key the caller named, not a sampled one: a caller supplies its own
+    // precisely so two contracts can share one maintenance authority, and a
+    // pipeline that sampled anyway would register an authority the caller
+    // cannot sign for.
+    expect(deployed.deploy.signingKey).toBe('caller-own-signing-key');
+  });
+
+  it('reports the SAMPLED signing key when the caller named none, which exists nowhere else', async () => {
+    const providers = preForkProviders(v6Envelope);
+
+    const deployed = await runLedger8Deploy(providers, {
+      contract,
+      args: [],
+      privateState: {},
+      resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
+    });
+
+    // Dropping this member would leave the deployment as unmaintainable as the
+    // empty committee the retained constructor writes: the only copy of a
+    // sampled key is the one the constructor reported.
+    expect(deployed.deploy.signingKey).toBe(SAMPLED_SIGNING_KEY);
   });
 
   it('routes a coin the CONSTRUCTOR minted into the deploy own guaranteed offer', async () => {
@@ -1129,7 +1258,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       contract,
       args: [],
       privateState: {},
-      verifierKeys: new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]])
+      resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
     });
 
     expect(deployed.deploy.guaranteedZswapOffer).toBeInstanceOf(Uint8Array);
@@ -1144,7 +1273,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       contract,
       args: [],
       privateState: {},
-      verifierKeys: new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]])
+      resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
     });
 
     // Absent rather than an empty offer: an offer with no outputs is a
@@ -1167,7 +1296,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
         contract,
         args: [],
         privateState: {},
-        verifierKeys: new Map()
+        resolveVerifierKeys: () => Promise.resolve(new Map())
       });
     } catch (error) {
       caught = error;
@@ -1189,7 +1318,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
         contract,
         args: [],
         privateState: {},
-        verifierKeys: new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]])
+        resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
       })
     ).rejects.toBeInstanceOf(Ledger8DeployOnV9Error);
     // Refused before ANY work: no constructor executed, nothing composed.
@@ -2057,6 +2186,597 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 });
 
 /**
+ * Deploying a retained-era contract through the public `deployContract` — a
+ * WRITE path, so it composes, submits and waits for the record.
+ *
+ * Every assertion below is newly reachable: the arm refused unconditionally
+ * until a maintenance authority was set on the constructed state, so nothing
+ * downstream of the constructor had ever run through this entry point. On top
+ * of the claims the call arm makes, it owns two of its own: that the address
+ * the deploy minted is the one the private state is written under, and that the
+ * chain's deploy record is checked BEFORE anything local is stored.
+ */
+describe('deploying a retained-era contract through deployContract', () => {
+  let recording: CoinReceiverRecording;
+  let contract: CoinReceiver016Contract;
+  let v6Envelope: Uint8Array;
+
+  beforeAll(async () => {
+    recording = loadCoinReceiverRecording();
+    v6Envelope = readHfHexFixture('coin-receiver-016', 'state-v6-envelope.hex');
+    const module: CoinReceiver016Module = await import(
+      /* @vite-ignore */ hfFixturePath('coin-receiver-016', 'compiled', 'contract', 'index.js')
+    );
+    contract = new module.Contract({});
+  });
+
+  beforeEach(() => {
+    setNetworkId(NETWORK_ID);
+    engineSlot.engine = createReplayEngine(loadCoinReceiverRecording(), [], v6Envelope);
+  });
+
+  /**
+   * The state a doubled constructor that ADVANCED its input answers with.
+   *
+   * Distinct from every `initialPrivateState` supplied below, because a
+   * faithful double threads its input back unchanged: without a value the
+   * caller never passed, "stored the constructor's output" and "stored the
+   * caller's input" are the same assertion.
+   */
+  const ADVANCED_PRIVATE_STATE = { advancedByConstructor: true };
+
+  /**
+   * The coin receiver's artifact, described as though its CONSTRUCTOR took an
+   * argument of its own.
+   *
+   * The fixture's real `initialState` takes only the context, and so does every
+   * other retained artifact in the tree — which left `deployContract`'s `args`
+   * hop measurable nowhere. The replay engine never invokes `initialState`, so
+   * the runtime object stays the real artifact and only the TYPE has to admit
+   * the argument.
+   */
+  interface SeededCoinReceiver016Contract extends Ledger8Contract<CoinReceiver016PrivateState> {
+    readonly witnesses: CoinReceiver016Witnesses;
+    readonly circuits: CoinReceiver016Circuits;
+    readonly impureCircuits: CoinReceiver016Circuits;
+    readonly provableCircuits: CoinReceiver016Circuits;
+    initialState(context: Ledger8ConstructorContextLike, seed: bigint): CoinReceiver016ConstructorResult;
+  }
+
+  interface SeededCoinReceiver016Module {
+    readonly Contract: new (witnesses: CoinReceiver016Witnesses) => SeededCoinReceiver016Contract;
+  }
+
+  /**
+   * The provider set every deploy below starts from: a pre-fork head, a deploy
+   * record the pre-fork head could have produced, and a key for every entry
+   * point the constructed state declares.
+   */
+  const deployProviders = (): RetainedProviders => {
+    const providers = retainedProviders(recording, v6Envelope);
+    providers.publicDataProvider.watchForDeployTxData = vi.fn().mockResolvedValue(retainedEraRecord());
+    providers.zkConfigProvider.getVerifierKeys = vi.fn().mockResolvedValue([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]);
+    return providers;
+  };
+
+  it('composes, submits and hands back a handle carrying everything the constructor produced', async () => {
+    const providers = deployProviders();
+
+    const deployed = await deployContract(providers, { compiledContract: contract });
+
+    expect(deployed.era).toBe(RETAINED_PIPELINE_ERA);
+    expect(deployed.compiledContract).toBe(contract);
+    // READ OFF the composition record: a deploy mints a fresh nonce, so the
+    // same initial state deploys to a different address every time.
+    expect(typeof deployed.contractAddress).toBe('string');
+    expect(deployed.contractAddress.length).toBeGreaterThan(0);
+    // The key the authority was built from, which only the deployer ever holds.
+    expect(deployed.signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect(deployed.initialState).toBeInstanceOf(Uint8Array);
+    // The LIVE handle beside the bytes, as the retained constructor built it.
+    expect(deployed.initialContractState.serialize()).toEqual(v6Envelope);
+    // This deploy named no private state, so the constructor was handed
+    // `undefined` and threaded it back. Presence is asserted separately: a
+    // handle that dropped the member entirely would otherwise read the same.
+    expect('initialPrivateState' in deployed).toBe(true);
+    expect(deployed.initialPrivateState).toBeUndefined();
+    expect(deployed.initialZswapState.outputs).toEqual([]);
+    expect(deployed.deployTxData.version).toBe('v8');
+    expect(deployed.deployTxData.txId).toBe(retainedEraRecord().txId);
+    expect(Object.keys(deployed.callTx)).toEqual([CIRCUIT_ID]);
+    // The retained tag on the bytes that crossed the write seams, which is what
+    // says the RETAINED ledger composed this deployment.
+    expect(providers.seen.proveTx?.version).toBe('v8');
+  });
+
+  it('reports the caller own signing key when one is supplied, rather than sampling over it', async () => {
+    const providers = deployProviders();
+
+    const deployed = await deployContract(providers, {
+      compiledContract: contract,
+      signingKey: 'caller-own-signing-key'
+    });
+
+    expect(deployed.signingKey).toBe('caller-own-signing-key');
+  });
+
+  it('asks for a verifier key for EVERY entry point the artifact declares', async () => {
+    const providers = deployProviders();
+
+    await deployContract(providers, { compiledContract: contract });
+
+    // Off the ARTIFACT, the same source the attach path reads. A retained
+    // constructor builds every entry-point slot BLANK and the retained deploy
+    // registers no keys of its own, so a map naming anything but exactly these
+    // puts a contract on chain that nothing can call.
+    expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(Object.keys(contract.impureCircuits));
+  });
+
+  it('refuses at the composer when the key map does not name what the state declares', async () => {
+    const providers = deployProviders();
+    providers.zkConfigProvider.getVerifierKeys = vi.fn().mockResolvedValue([]);
+
+    let caught: unknown;
+    try {
+      await deployContract(providers, { compiledContract: contract });
+    } catch (error) {
+      caught = error;
+    }
+
+    // POSITIVE evidence that the fetched map is the one the composer checks:
+    // an arm that built its own map, or dropped the caller's, would compose.
+    expect(caught).toBeInstanceOf(ComposeFailedError);
+    expect((caught as ComposeFailedError).stage).toBe('deploy-verifier-key');
+  });
+
+  it('watches for the deploy record under the address it just minted, not for a transaction id', async () => {
+    const providers = deployProviders();
+
+    const deployed = await deployContract(providers, { compiledContract: contract });
+
+    expect(providers.publicDataProvider.watchForDeployTxData).toHaveBeenCalledWith(deployed.contractAddress);
+    expect(providers.publicDataProvider.watchForTxData).not.toHaveBeenCalled();
+  });
+
+  it('REFUSES a deploy record from an era the head it composed on cannot have recorded', async () => {
+    const providers = deployProviders();
+    // The shared fixture is `'v9'`-tagged, which on a pre-fork head describes a
+    // transaction this operation cannot have produced.
+    providers.publicDataProvider.watchForDeployTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
+
+    const caught: unknown = await deployContract(providers, {
+      compiledContract: contract,
+      privateStateId: 'retained-private-state',
+      initialPrivateState: {}
+    }).catch((error: unknown) => error);
+
+    expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
+    expect((caught as Ledger8DeployUnconfirmedError).cause).toBeInstanceOf(EraInvariantViolationError);
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    // The namespace switch too, not only the write: moved ahead of the assertions, a refused
+    // deploy would leave the provider pointed at an address holding nothing, and the next
+    // unnamespaced read on that process would answer out of it.
+    expect(providers.privateStateProvider.setContractAddress).not.toHaveBeenCalled();
+  });
+
+  it('reports the era fault AHEAD of the status, when a record is both mislabelled and failing', async () => {
+    const providers = deployProviders();
+    providers.publicDataProvider.watchForDeployTxData = vi
+      .fn()
+      .mockResolvedValue(createMockFinalizedTxData(FailEntirely));
+
+    // `status` is a field of the very record whose provenance is in doubt, so
+    // the era is settled first and the refusal names the cause a caller can act
+    // on. Read off `cause`: the refusal carries the era violation there, and a
+    // status refusal would carry none.
+    const caught: unknown = await deployContract(providers, { compiledContract: contract }).catch(
+      (error: unknown) => error
+    );
+
+    expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
+    expect((caught as Ledger8DeployUnconfirmedError).cause).toBeInstanceOf(EraInvariantViolationError);
+  });
+
+  it('refuses a deploy the node recorded with a non-success status, and stores nothing', async () => {
+    const providers = deployProviders();
+    providers.publicDataProvider.watchForDeployTxData = vi.fn().mockResolvedValue(retainedEraRecord(FailEntirely));
+
+    let caught: unknown;
+    try {
+      await deployContract(providers, {
+        compiledContract: contract,
+        privateStateId: 'retained-private-state',
+        initialPrivateState: {}
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8DeployTxFailedError);
+    expect(caught).toBeInstanceOf(AnyEraTxFailedError);
+    expect((caught as Ledger8DeployTxFailedError).txData.status).toBe(FailEntirely);
+    // The whole point of checking the record before storing: a deploy the chain
+    // refused must leave no local private state ahead of it.
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.setContractAddress).not.toHaveBeenCalled();
+  });
+
+  it('names the minted address before it writes, so the state lands in this contract namespace', async () => {
+    const providers = deployProviders();
+
+    const deployed = await deployContract(providers, {
+      compiledContract: contract,
+      privateStateId: 'retained-private-state',
+      initialPrivateState: {}
+    });
+
+    // A provider namespaces every entry by the address last named, and a real
+    // one REFUSES a write before any has been named. Written first, the state
+    // lands under whichever address the process happened to touch last -- and a
+    // later call, which names this address itself, reads its own key, finds
+    // nothing, and reports nothing.
+    expect(providers.privateStateProvider.setContractAddress).toHaveBeenCalledWith(deployed.contractAddress);
+    expect(callOrder(providers.privateStateProvider.setContractAddress)).toBeLessThan(
+      callOrder(providers.privateStateProvider.set)
+    );
+  });
+
+  it('stores the private state the CONSTRUCTOR produced, and only after the record has been checked', async () => {
+    const providers = deployProviders();
+    // A constructor that ADVANCED what it was handed. The double otherwise
+    // threads the input back, and then an arm that stored `options.initialPrivateState`
+    // instead of the constructor's result passes this test unchanged.
+    engineSlot.engine = createReplayEngine(recording, [], v6Envelope, {
+      advancedConstructorPrivateState: ADVANCED_PRIVATE_STATE
+    });
+
+    const deployed = await deployContract(providers, {
+      compiledContract: contract,
+      privateStateId: 'retained-private-state',
+      initialPrivateState: {}
+    });
+
+    // The constructor's OWN output, as the current era stores it too -- not the
+    // caller's input, which the constructor may have advanced.
+    expect(providers.privateStateProvider.set).toHaveBeenCalledWith(
+      'retained-private-state',
+      ADVANCED_PRIVATE_STATE
+    );
+    expect(callOrder(providers.publicDataProvider.watchForDeployTxData)).toBeLessThan(
+      callOrder(providers.privateStateProvider.set)
+    );
+    // The caller's input here is `{}`, distinct from ADVANCED_PRIVATE_STATE, so
+    // this pins the returned handle to the constructor's output specifically --
+    // a check the `toBeUndefined()` tests below can't make, since both sides
+    // are `undefined` there and so indistinguishable.
+    expect(deployed.initialPrivateState).toBe(ADVANCED_PRIVATE_STATE);
+  });
+
+  it('leaves the private state untouched when the caller named no id', async () => {
+    const providers = deployProviders();
+
+    await deployContract(providers, { compiledContract: contract });
+
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  it('refuses an initial private state with no id to store it under', async () => {
+    const providers = deployProviders();
+
+    // There is nowhere to put the state, so it would be silently dropped -- and
+    // a caller that supplied one believes it was stored. The TYPE refuses this shape too, which
+    // is what the directive below records; the run-time guard is what a JavaScript caller, or one
+    // that built its options dynamically, still reaches.
+    await expect(
+      // @ts-expect-error - a private state with no id naming where it goes
+      deployContract(providers, { compiledContract: contract, initialPrivateState: {} })
+    ).rejects.toBeInstanceOf(IncompleteDeployContractPrivateStateConfig);
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    // Refused before anything is composed or submitted.
+    expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+  });
+
+  it('hands the constructor the initial private state the caller supplied', async () => {
+    const providers = deployProviders();
+    // The engine is told what the arm MUST have handed it. Asserting only that
+    // the deploy succeeded leaves `privateState: undefined` fully green, because
+    // the constructor replays regardless -- and that is the failure this names:
+    // a contract seeded from a state it never saw.
+    //
+    // `{}` rather than a populated state because this fixture DECLARES no
+    // private state; the pair that matters here is supplied-versus-absent, and
+    // the absent half is the test below.
+    engineSlot.engine = createReplayEngine(recording, [], v6Envelope, {
+      constructorPrivateState: {},
+      advancedConstructorPrivateState: ADVANCED_PRIVATE_STATE
+    });
+
+    const deployed = await deployContract(providers, {
+      compiledContract: contract,
+      privateStateId: 'retained-private-state',
+      initialPrivateState: {}
+    });
+
+    // The deploy ran to completion on the state the engine accepted: the write
+    // carries the constructor's ADVANCED output, which no value the caller
+    // passed could have produced.
+    expect(providers.privateStateProvider.set).toHaveBeenCalledWith(
+      'retained-private-state',
+      ADVANCED_PRIVATE_STATE
+    );
+    // The caller's input here is `{}`, distinct from ADVANCED_PRIVATE_STATE, so
+    // this pins the returned handle to the constructor's output specifically --
+    // a check the `toBeUndefined()` tests below can't make, since both sides
+    // are `undefined` there and so indistinguishable.
+    expect(deployed.initialPrivateState).toBe(ADVANCED_PRIVATE_STATE);
+  });
+
+  it('hands the constructor UNDEFINED when the caller supplied no initial private state', async () => {
+    const providers = deployProviders();
+    // THE MEASUREMENT this arm owes: a caller on the no-private-state arm has
+    // nothing to pass, so the retained constructor is handed `undefined` rather
+    // than an empty object. Asserted on what the engine RECEIVED, because the
+    // deploy composes either way and the difference is invisible downstream.
+    engineSlot.engine = createReplayEngine(recording, [], v6Envelope, { constructorPrivateState: undefined });
+
+    const deployed = await deployContract(providers, { compiledContract: contract });
+
+    // The engine expectation above is the measurement; this is the visible half
+    // of it. The 0.16 runtime threads its input straight back, so an
+    // `undefined` in is an `undefined` out -- and the member being absent from
+    // the handle altogether is ruled out separately.
+    expect('initialPrivateState' in deployed).toBe(true);
+    expect(deployed.initialPrivateState).toBeUndefined();
+  });
+
+  it('refuses a retained-era deploy against a POST-FORK head, before the constructor runs', async () => {
+    const providers = deployProviders();
+    providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(POST_FORK_PROTOCOL_VERSION);
+    const log: OrchestrationLog = [];
+    engineSlot.engine = createReplayEngine(recording, log, v6Envelope);
+
+    // Reachable through this entry point at last: the unconditional refusal
+    // that stood in front of it is gone, so the era pairing table decides.
+    await expect(deployContract(providers, { compiledContract: contract })).rejects.toBeInstanceOf(
+      Ledger8DeployOnV9Error
+    );
+    expect(log).toEqual([]);
+    expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+  });
+
+  it('hands back a callTx interface bound to the address the deploy minted', async () => {
+    const providers = deployProviders();
+
+    const deployed = await deployContract(providers, { compiledContract: contract });
+    // The state read the call makes is what says WHICH address the handle
+    // carries. Asserting only that `callTx` has the right keys would keep
+    // passing for a handle built against the wrong contract entirely.
+    providers.publicDataProvider.queryRawContractState = vi.fn().mockResolvedValue(null);
+    engineSlot.engine = createReplayEngine(recording, [], v6Envelope);
+
+    await expect(deployed.callTx[CIRCUIT_ID](recording.receivedCoin)).rejects.toThrow(deployed.contractAddress);
+    expect(providers.publicDataProvider.queryRawContractState).toHaveBeenCalledWith(deployed.contractAddress);
+  });
+
+  it('runs a call made through the deploy handle against the STORED private state', async () => {
+    const providers = deployProviders();
+    // What the provider answers the CALL with, distinct from everything the deploy wrote, so the
+    // read is observable at all -- the default mock answers `undefined`.
+    providers.privateStateProvider.get = vi.fn().mockResolvedValue({ storedBefore: true });
+    // The engine is told what the CALL must have been handed. Asserting only that the call ran
+    // leaves `privateState: undefined` fully green, because the recording replays regardless --
+    // and that is the failure this names: a handle that dropped the id proves against a default
+    // state and writes nothing back, with nothing erroring at any stage.
+    const freshRecording = loadCoinReceiverRecording();
+    engineSlot.engine = createReplayEngine(freshRecording, [], v6Envelope, {
+      privateState: { storedBefore: true },
+      advancedConstructorPrivateState: ADVANCED_PRIVATE_STATE
+    });
+
+    const deployed = await deployContract(providers, {
+      compiledContract: contract,
+      privateStateId: 'retained-private-state',
+      initialPrivateState: {}
+    });
+
+    // The call cannot COMPLETE here, and the reason is the deploy's own: the committed transcript
+    // was recorded against the recording's address, a deploy mints a fresh one, and the ledger
+    // refuses to split a transcript against a query context bound to a different address. Every
+    // step this test measures -- the read, and what the engine executed on -- runs before that.
+    await expect(deployed.callTx[CIRCUIT_ID](freshRecording.receivedCoin)).rejects.toBeInstanceOf(
+      ComposeFailedError
+    );
+    expect(providers.privateStateProvider.get).toHaveBeenCalledWith('retained-private-state');
+    // And the deploy's own write is still the constructor's output, under the same id.
+    expect(providers.privateStateProvider.set).toHaveBeenCalledWith(
+      'retained-private-state',
+      ADVANCED_PRIVATE_STATE
+    );
+  });
+
+  it('forwards the constructor arguments the caller supplied, rather than a default empty list', async () => {
+    const providers = deployProviders();
+    // The fixture's own `initialState` takes no argument of its own, and nothing else in the tree
+    // declares a retained artifact whose constructor does -- so the entry point's `args` hop was
+    // measured nowhere. The replay double never invokes `initialState`, so the runtime object is
+    // the real artifact and only the TYPE has to admit the argument.
+    const seededModule: SeededCoinReceiver016Module = await import(
+      /* @vite-ignore */ hfFixturePath('coin-receiver-016', 'compiled', 'contract', 'index.js')
+    );
+    const seededContract = new seededModule.Contract({});
+    engineSlot.engine = createReplayEngine(recording, [], v6Envelope, { constructorArgs: [7n] });
+
+    const deployed = await deployContract(providers, { compiledContract: seededContract, args: [7n] });
+
+    // The engine expectation above is the measurement; this is what says the deploy reached it.
+    expect(deployed.contractAddress.length).toBeGreaterThan(0);
+  });
+
+  it('reads the wallet coin public key ONCE, so one key feeds both the constructor and the encryption resolver', async () => {
+    const providers = deployProviders();
+    const getCoinPublicKey = vi.fn().mockReturnValue(recording.coinPublicKey);
+    providers.walletProvider.getCoinPublicKey = getCoinPublicKey;
+
+    await deployContract(providers, { compiledContract: contract });
+
+    // The call arm forbids exactly this: a resolver built against a different key than the one the
+    // circuit executed under is the mismatch that mis-encrypts a minted coin. Two reads of a
+    // provider method are two chances to answer differently.
+    expect(getCoinPublicKey).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads the network head ONCE for the whole deploy', async () => {
+    const providers = deployProviders();
+
+    await deployContract(providers, { compiledContract: contract });
+
+    // The head the deploy composed on is passed down to the finalizing step rather than re-read:
+    // a second read could answer differently and attribute the record against a head the
+    // transaction was never built for.
+    expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses a privateStateId written as undefined, rather than deploying against no state at all', async () => {
+    const providers = deployProviders();
+
+    // A caller that wrote `privateStateId: cfg.someId` with an undefined `someId` BELIEVES it named
+    // one. Read as "no id given", the deploy stores nothing and hands `callTx` an undefined id, so
+    // every later call proves against a state the contract never had and writes nothing back --
+    // with nothing erroring. The attach arm refuses exactly this shape.
+    await expect(
+      deployContract(providers, { compiledContract: contract, privateStateId: undefined })
+    ).rejects.toThrow("'privateStateId' was given as undefined");
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+  });
+
+  it('refuses a POST-FORK head before the ZK config provider is asked for a single key', async () => {
+    const providers = deployProviders();
+    providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(POST_FORK_PROTOCOL_VERSION);
+    // The ordinary browser case after a fork: the retained artifact's ZK config is no longer
+    // served. Fetched ahead of the era gate, the caller is handed the provider's fetch rejection
+    // instead of the reason it can act on.
+    providers.zkConfigProvider.getVerifierKeys = vi
+      .fn()
+      .mockRejectedValue(new Error('retained-era ZK config is no longer served'));
+
+    await expect(deployContract(providers, { compiledContract: contract })).rejects.toBeInstanceOf(
+      Ledger8DeployOnV9Error
+    );
+    expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
+  });
+
+  it('refuses a wallet that cannot carry the era before the ZK config provider is asked for a single key', async () => {
+    const base = deployProviders();
+    // A v9-only wallet on a pre-fork head. A proof is the expensive step and the first of the
+    // three, so a seam that cannot take this payload has to be found before one is paid for -- and
+    // before anything is fetched on its behalf.
+    const providers: RetainedProviders = {
+      ...base,
+      walletProvider: createWalletProvider({
+        balanceTx: () => Promise.reject(new Error('never reached')),
+        getCoinPublicKey: () => recording.coinPublicKey,
+        getEncryptionPublicKey: () => base.walletProvider.getEncryptionPublicKey()
+      })
+    };
+    providers.zkConfigProvider.getVerifierKeys = vi
+      .fn()
+      .mockRejectedValue(new Error('retained-era ZK config is no longer served'));
+
+    await expect(deployContract(providers, { compiledContract: contract })).rejects.toBeInstanceOf(
+      SeamEraUnsupportedError
+    );
+    expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
+  });
+
+  it('carries the signing key on a status refusal, so a deployment that DID land is still maintainable', async () => {
+    const providers = deployProviders();
+    // `FailFallible`, specifically: a `ContractDeploy` sits in the Intent -- the GUARANTEED part --
+    // so the contract landed, under the authority built from this key. Discarded, that address is
+    // one nobody can ever maintain, which is the harm this arm exists to remove.
+    providers.publicDataProvider.watchForDeployTxData = vi.fn().mockResolvedValue(retainedEraRecord(FailFallible));
+
+    let caught: unknown;
+    try {
+      await deployContract(providers, { compiledContract: contract });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8DeployTxFailedError);
+    expect((caught as Ledger8DeployTxFailedError).signingKey).toBe(SAMPLED_SIGNING_KEY);
+    // And the message has to say the contract landed. A caller told "nothing local refers to this
+    // address" concludes nothing happened and never looks for the deployment.
+    expect((caught as Ledger8DeployTxFailedError).message).toContain('LANDED');
+  });
+
+  it('carries the signing key when the record cannot be attributed to the head it composed on', async () => {
+    const providers = deployProviders();
+    providers.publicDataProvider.watchForDeployTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
+
+    let caught: unknown;
+    try {
+      await deployContract(providers, { compiledContract: contract });
+    } catch (error) {
+      caught = error;
+    }
+
+    // One refusal for every way the record fails to arrive usable, with the era violation kept on
+    // `cause` -- so the condition a caller branches on, its seam and its registered code are all
+    // still reachable, and the original stack is not thrown away.
+    expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
+    const cause = (caught as Ledger8DeployUnconfirmedError).cause;
+    expect(cause).toBeInstanceOf(EraInvariantViolationError);
+    expect(hasErrorCode(cause, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
+    expect((cause as EraInvariantViolationError).seam).toBe('watchForDeployTxData');
+    // The transaction is already on the network by the time this is raised, so discarding the key
+    // here leaves whatever does finalize permanently unmaintainable.
+    expect((caught as Ledger8DeployUnconfirmedError).signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect((caught as Ledger8DeployUnconfirmedError).contractAddress).toMatch(/^[0-9a-f]+$/);
+  });
+
+  it('carries the signing key when the record cannot be read back at all, keeping the rejection on cause', async () => {
+    const providers = deployProviders();
+    const unreachable = new Error('indexer unreachable');
+    providers.publicDataProvider.watchForDeployTxData = vi.fn().mockRejectedValue(unreachable);
+
+    let caught: unknown;
+    try {
+      await deployContract(providers, { compiledContract: contract });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
+    expect((caught as Ledger8DeployUnconfirmedError).signingKey).toBe(SAMPLED_SIGNING_KEY);
+    // The reason the record is unreadable is what the caller acts on, so it is kept rather than
+    // replaced -- this class adds the one fact a provider rejection cannot carry.
+    expect((caught as Ledger8DeployUnconfirmedError).cause).toBe(unreachable);
+  });
+
+  it('carries the signing key when the record comes back with no readable era tag', async () => {
+    const providers = deployProviders();
+    // The third way this step fails, alongside a rejected read and a record from the wrong era.
+    // All three strand the same key, so all three carry it -- an untagged record left it behind
+    // while the other two did not.
+    providers.publicDataProvider.watchForDeployTxData = vi
+      .fn()
+      .mockResolvedValue({ ...createMockFinalizedTxData(), version: undefined });
+
+    let caught: unknown;
+    try {
+      await deployContract(providers, { compiledContract: contract });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
+    expect((caught as Ledger8DeployUnconfirmedError).signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect((caught as Ledger8DeployUnconfirmedError).cause).toBeInstanceOf(UntaggedPayloadError);
+  });
+});
+
+/**
  * Attaching to an already-deployed retained-era contract — a READ path, so it
  * composes nothing and submits nothing.
  *
@@ -2178,6 +2898,130 @@ describe('attaching to a retained-era contract already on chain', () => {
 
     // A retained-era contract may genuinely carry no private state, so naming
     // no id stays legal -- but then NOTHING is read and nothing is written.
+    expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  // SEEDING, which is the attach's one write. Everything else on this path is a read, and the cases
+  // below are the current era's rule applied unchanged: the two configurations that act, and the
+  // three that are refused rather than guessed at. The rule itself lives in one place --
+  // `setOrGetInitialPrivateState` in `find-deployed-contract.ts` -- so what these pin is that the
+  // retained arm reaches it, not a second copy of the rule.
+  //
+  it('names the contract address before it writes, so the seed lands in this contract namespace', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    await findDeployedContract(providers, {
+      ...attachOptions(),
+      privateStateId: 'retained-private-state',
+      initialPrivateState: {}
+    });
+
+    expect(providers.privateStateProvider.setContractAddress).toHaveBeenCalledWith(recording.contractAddress);
+    // A provider namespaces every entry by the address last named, and a real one REFUSES a write
+    // before any has been named. Written first, the seed lands under whichever address the process
+    // happened to touch last -- and the retained CALL path, which names the address itself, then
+    // reads its own key and finds nothing, with no error at any stage.
+    expect(callOrder(providers.privateStateProvider.setContractAddress)).toBeLessThan(
+      callOrder(providers.privateStateProvider.set)
+    );
+  });
+
+  it('names the contract address before it reads', async () => {
+    const providers = attachProviders(v6Envelope);
+    providers.privateStateProvider.get = vi.fn().mockResolvedValue({ storedBefore: true });
+
+    await findDeployedContract(providers, { ...attachOptions(), privateStateId: 'retained-private-state' });
+
+    expect(providers.privateStateProvider.setContractAddress).toHaveBeenCalledWith(recording.contractAddress);
+    expect(callOrder(providers.privateStateProvider.setContractAddress)).toBeLessThan(
+      callOrder(providers.privateStateProvider.get)
+    );
+  });
+
+  it('stores the initial private state at the named id', async () => {
+    const providers = attachProviders(v6Envelope);
+    const initialPrivateState = {};
+
+    await findDeployedContract(providers, {
+      ...attachOptions(),
+      privateStateId: 'retained-private-state',
+      initialPrivateState
+    });
+
+    expect(providers.privateStateProvider.set).toHaveBeenCalledWith('retained-private-state', initialPrivateState);
+    // Stored, not merged with whatever was there: the caller said what the state is.
+    expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
+  });
+
+  it('reads the state already stored at the named id when the caller supplies none', async () => {
+    const providers = attachProviders(v6Envelope);
+    providers.privateStateProvider.get = vi.fn().mockResolvedValue({ storedBefore: true });
+
+    await findDeployedContract(providers, { ...attachOptions(), privateStateId: 'retained-private-state' });
+
+    expect(providers.privateStateProvider.get).toHaveBeenCalledWith('retained-private-state');
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  it('refuses the ATTACH when the named id holds nothing, rather than the first call', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    // The mock provider answers `undefined` by default, which is the condition under test: an id
+    // the caller believes is populated and is not. This read exists for exactly this refusal --
+    // nothing on `Ledger8FoundContract` carries the state it returns -- so what it buys is the
+    // error arriving at attach time instead of at the first call, against a state the contract
+    // never had.
+    await expect(
+      findDeployedContract(providers, { ...attachOptions(), privateStateId: 'retained-private-state' })
+    ).rejects.toThrow("No private state found at private state ID 'retained-private-state'");
+    // No handle was built, so there is no `callTx` for a caller to reach the missing state through.
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  it('refuses an initial private state with no id to store it under', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    await expect(
+      findDeployedContract(providers, { ...attachOptions(), initialPrivateState: {} })
+    ).rejects.toBeInstanceOf(IncompleteFindContractPrivateStateConfig);
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  it('refuses a privateStateId written as undefined, rather than reading it as no id at all', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    // `{ privateStateId: cfg.somethingUndefined }` is an ordinary way for a JavaScript consumer to
+    // reach this, and it means the caller BELIEVES it named an id. Treating the key's presence as
+    // "no id given" would attach against no state and leave every later call running on one the
+    // contract never had.
+    await expect(
+      findDeployedContract(providers, { ...attachOptions(), privateStateId: undefined })
+    ).rejects.toThrow("'privateStateId' was given as undefined");
+    expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  it('refuses an undefined privateStateId even when an initial private state is supplied', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    // The other direction, and the one that used to WRITE: the id was passed straight through to
+    // the provider, storing the state under an id of `undefined`.
+    await expect(
+      findDeployedContract(providers, { ...attachOptions(), privateStateId: undefined, initialPrivateState: {} })
+    ).rejects.toThrow("'privateStateId' was given as undefined");
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  it('touches the private-state provider not at all when the caller gives neither', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    await findDeployedContract(providers, attachOptions());
+
+    // OMITTING the key stays legal, where writing it as `undefined` is refused above: a retained-era
+    // contract may genuinely carry no private state. Stated at the ATTACH rather than after a call,
+    // because the attach is now a writer: the test above that makes a call through the handle would
+    // keep passing if the attach itself seeded an unnamed state and the call then read it back.
     expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });

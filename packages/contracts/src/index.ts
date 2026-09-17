@@ -60,6 +60,13 @@ export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // head era that composes only one call per transaction, and a retained-toolchain call cannot join
 // a scope at all.
 //
+// The three `Incomplete*PrivateStateConfig` refusals are one family stating one client-side rule
+// per entry point -- call, deploy, find -- and they stay together on the flat surface even though
+// only the retained-era deploy arm raises the deploy one today. Client-side private-state storage
+// is era-independent, which is why the find rule is already one rule serving both eras; splitting
+// the family across the flat surface and the `Ledger8` namespace would make three related refusals
+// importable from two places.
+//
 // Deliberately no test-file names here: which suite exercises what is the kind of claim that rots
 // the first time a test moves.
 export {
@@ -76,6 +83,7 @@ export {
   type EraSeam,
   HeadStateEraMismatchError,
   IncompleteCallTxPrivateStateConfig,
+  IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   IndexerInconsistencyError,
   MixedEraScopeError,
@@ -132,9 +140,9 @@ export { type AnyEraFinalizedCallTxData, type AnyEraSubmittedCallTx, isLedger8Re
 // is how a caller declares the result it was handed, and `Ledger8.Contract` how it constrains a
 // helper of its own.
 //
-// One export rather than the thirty-seven it re-exports, because the retained era is transitional
+// One export rather than the forty it re-exports, because the retained era is transitional
 // and a flat family is not: see `docs/retained-era-namespace.md` for what qualifies for membership,
-// what is deliberately held back, and how the whole surface is withdrawn in one step.
+// what deliberately stays flat, and how the whole surface is withdrawn in one step.
 export * as Ledger8 from './ledger8';
 export { submitCallTx, submitCallTxAsync, type SubmitCallTxProviders } from './submit-call-tx';
 export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';

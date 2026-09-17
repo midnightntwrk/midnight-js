@@ -199,6 +199,8 @@ describe('Contracts type ACL', () => {
       'ContractProviders',
       'DeployContractOptions',
       'DeployContractOptionsBase',
+      'DeployContractOptionsWithPrivateState',
+      'DeployedContract',
       'FinalizedCallTxData',
       'FinalizedCallTxPublicData',
       'FindDeployedContractOptions',

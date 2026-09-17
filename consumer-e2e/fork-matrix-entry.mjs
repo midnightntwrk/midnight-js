@@ -23,14 +23,12 @@
 // between two legs of ONE session rather than between two runs.
 
 import { Buffer } from 'node:buffer';
-import { readdirSync, readFileSync } from 'node:fs';
-import path from 'node:path';
 import { createInterface } from 'node:readline';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { deployContract, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
-import { loadLedger8Engine, loadLedgerEra, networkHeadVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import { loadLedgerEra, networkHeadVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 
 const config = JSON.parse(process.env.FORK_CONFIG ?? '{}');
@@ -47,7 +45,6 @@ const config = JSON.parse(process.env.FORK_CONFIG ?? '{}');
 const SELECTED = config.contracts ?? {};
 const covers = (selected, key) => selected === undefined || selected.includes(key);
 const CIRCUIT_ID = 'increment';
-const NETWORK_ID = 'undeployed';
 
 /** A ceiling on one leg, so a wedged prover or a lost subscription costs one row rather than the run. */
 const LEG_TIMEOUT = 8 * 60_000;
@@ -637,52 +634,41 @@ const retainedProvidersFor = (era, wallet, key) =>
     zkConfigIntegrity: { verify: 'warn' }
   });
 
-/** Every verifier key the twin ships, so the deployed contract can answer for any of its circuits. */
-const verifierKeysFor = (zkConfigPath) => {
-  const keyDir = path.join(zkConfigPath, 'keys');
-  const suffix = '.verifier';
-  return new Map(
-    readdirSync(keyDir)
-      .filter((file) => file.endsWith(suffix))
-      .map((file) => [file.slice(0, -suffix.length), new Uint8Array(readFileSync(path.join(keyDir, file)))])
-  );
-};
-
 /**
- * Deploys one retained twin on the pre-fork chain, through protocol's era facade.
+ * Deploys one retained twin on the pre-fork chain, through the public entry point.
  *
- * The same route the counter takes, and for the same reason: `deployContract`'s
- * retained arm refuses unconditionally before any head is read, and the working
- * pipeline is in `contracts/src/internal` where a consumer cannot reach it. This
- * stands in for the pre-fork dApp that would already have deployed the contract.
+ * `deployContract`'s retained arm, which is the surface a consumer has. This
+ * used to hand-roll the deploy against protocol's era facade, because the arm
+ * refused unconditionally: that route measured `protocol` and left a regression
+ * in the public arm invisible to every twin in the matrix.
+ *
+ * Options read exactly like `callRetained`'s: `compiledContract` takes the RAW
+ * instance -- the retained era has no `CompiledContract` container -- and every
+ * twin's constructor is nullary, so the options carry no `args` member at all.
+ *
+ * No `privateStateId`/`initialPrivateState` pair. Not an omission: none of these
+ * twins' constructors reads a witness, and the retained runtime passes an absent
+ * private state straight through to `currentPrivateState` rather than refusing
+ * it -- measured against the real 0.16 runtime, where `undefined` is what comes
+ * back and `{}` is only what a replay double answers. `callRetained` names no
+ * store either, so a state written here is one nothing would ever read.
+ *
+ * The arm resolves a verifier key per entry point the artifact declares, so the
+ * `keys/*.verifier` sweep this used to do by hand is gone. Same set either way:
+ * every twin circuit is an `export circuit`, so each one lands in
+ * `impureCircuits` AND ships a key on disk.
  */
-const deployRetained = async (key, providers, wallet) => {
-  const zkConfigPath = retainedZkConfigPath(key);
+const deployRetained = async (key, providers) => {
   const { Contract } = await import(`@midnight-ntwrk/fork-retained-${key}`);
-  const [engine, era] = await Promise.all([loadLedger8Engine(), loadLedgerEra('v8')]);
+  const deployed = await deployContract(providers, { compiledContract: new Contract({}) });
+  const state = await waitForContract(providers.publicDataProvider, deployed.contractAddress, 5 * 60_000);
 
-  const constructed = engine.executeConstructor({
-    contract: new Contract({}),
-    args: [],
-    privateState: {},
-    coinPk: wallet.getCoinPublicKey()
-  });
-
-  const composed = era.composeDeployTx({
-    contractState: constructed.contractState.serialize(),
-    verifierKeys: verifierKeysFor(zkConfigPath),
-    networkId: NETWORK_ID,
-    ttl: new Date(Date.now() + 60 * 60_000)
-  });
-
-  const proven = await providers.proofProvider.proveTx({ version: 'v8', txBytes: composed.transaction });
-  const balanced = await providers.walletProvider.balanceTx(proven);
-  const txId = await providers.midnightProvider.submitTx(balanced);
-  const state = await waitForContract(providers.publicDataProvider, composed.contractAddress, 5 * 60_000);
-
+  // `deployTxData` is a `VersionedFinalizedTxData`, which carries `txId` at the
+  // top level on BOTH arms -- not under `.public`, which is where the CURRENT
+  // era's `DeployedContract` puts it. The two results differ exactly here.
   return {
-    txId,
-    contractAddress: composed.contractAddress,
+    txId: deployed.deployTxData.txId,
+    contractAddress: deployed.contractAddress,
     indexedAs: state.version,
     envelope: envelopeTag(state.raw)
   };
@@ -843,51 +829,32 @@ let deployment;
 
 await leg('pre-fork head era', () => networkHeadVersion(session.providers.publicDataProvider));
 
-// The retained contract reaches the chain through protocol's era facade, not
-// through `deployContract`: that entry point's retained arm refuses
-// unconditionally before any head is read (`Ledger8DeployOnV9Error`, which the
-// source calls dormant), and the working pipeline lives in `contracts/src/internal`
-// where a consumer cannot reach it. This stands in for the pre-fork dApp that
-// would already have deployed the contract on the previous framework major. It is
-// NOT a claim that a consumer can deploy a retained contract today.
+// The contract every leg below the boundary is measured against, deployed
+// through `deployContract`'s retained arm -- the entry point a consumer has, and
+// the one the rest of the file then calls, finds and reads. It stands in for the
+// pre-fork dApp that would already have deployed on the previous framework
+// major, and it is now also the run's only coverage of that arm: the arm is
+// reachable ONLY against a pre-fork head, and refuses a post-fork one with
+// `Ledger8DeployOnV9Error`, so nothing after the boundary can exercise it.
+//
+// This leg used to compose the deploy by hand against protocol's era facade,
+// because the arm refused before reading any head. That made the deploy a
+// measurement of `protocol` rather than of `contracts`.
 await leg('pre-fork retained deploy', async () => {
   const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
-  const [engine, era] = await Promise.all([loadLedger8Engine(), loadLedgerEra('v8')]);
+  // Raw instance, no `args`, no private-state pair -- `deployRetained` carries
+  // why each of the three is written the way it is.
+  const deployed = await deployContract(session.providers, { compiledContract: new Contract({}) });
 
-  const constructed = engine.executeConstructor({
-    contract: new Contract({}),
-    args: [],
-    privateState: {},
-    // Passed through exactly as the internal pipeline does. Re-encoding it here
-    // produced `Not all bytes read, 32 bytes remaining` from the composer.
-    coinPk: session.wallet.getCoinPublicKey()
-  });
-
-  const verifierKeys = new Map([
-    [CIRCUIT_ID, new Uint8Array(readFileSync(path.join(config.retainedZkConfigPath, 'keys', `${CIRCUIT_ID}.verifier`)))]
-  ]);
-
-  const composed = era.composeDeployTx({
-    contractState: constructed.contractState.serialize(),
-    verifierKeys,
-    networkId: NETWORK_ID,
-    ttl: new Date(Date.now() + 60 * 60_000)
-  });
-
-  const { proofProvider, walletProvider, midnightProvider } = session.providers;
-  const proven = await proofProvider.proveTx({ version: 'v8', txBytes: composed.transaction });
-  const balanced = await walletProvider.balanceTx(proven);
-  const txId = await midnightProvider.submitTx(balanced);
-
-  deployment = { contractAddress: composed.contractAddress, privateState: constructed.privateState };
+  deployment = { contractAddress: deployed.contractAddress };
   // Announced so the driver can ask the NODE about the same contract. The
   // indexer's answer alone cannot separate "the ledger did not migrate" from
   // "the indexer serves the bytes of the last pre-fork action".
-  process.stdout.write(`FORK_CONTRACT ${composed.contractAddress}\n`);
-  const state = await waitForContract(session.providers.publicDataProvider, composed.contractAddress, 5 * 60_000);
+  process.stdout.write(`FORK_CONTRACT ${deployed.contractAddress}\n`);
+  const state = await waitForContract(session.providers.publicDataProvider, deployed.contractAddress, 5 * 60_000);
   return {
-    txId,
-    contractAddress: composed.contractAddress,
+    txId: deployed.deployTxData.txId,
+    contractAddress: deployed.contractAddress,
     indexedAs: state.version,
     envelope: envelopeTag(state.raw)
   };
@@ -919,7 +886,7 @@ await leg('pre-fork retained call', async () => {
 for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retained, candidate.key))) {
   await leg(`pre-fork retained ${entry.key}`, async () => {
     const providers = retainedProvidersFor('v8', session.wallet, entry.key);
-    const deployed = await deployRetained(entry.key, providers, session.wallet);
+    const deployed = await deployRetained(entry.key, providers);
     retainedDeployments.set(entry.key, deployed);
 
     const context = await retainedContext(entry.key);
