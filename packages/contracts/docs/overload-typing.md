@@ -277,3 +277,56 @@ shares no property with a weak type — which is exactly
 Hence the `& object` on every use. It adds no member and disables no check other
 than that one. Removing it does not loosen the type; it breaks the ordinary
 current-era find.
+
+## Two type-level tricks in the shared result unions
+
+### `any` is restated as `unknown`, and that is not a restriction
+
+`Contract.Any` is `Contract<any>`, so `Contract.PrivateState<Contract.Any>` and
+`Contract.CircuitReturnType<Contract.Any, string>` both resolve to `any`.
+Published unnarrowed, that hands a shared handler two members with checking
+switched off — and a shared handler is precisely what these unions exist for.
+
+`WithOpaqueCircuitValues` restates both as `unknown`. The retained arm answers
+`unknown` for them already, so this puts the two arms on the same footing rather
+than restricting one. A concrete result stays assignable, since every `Result`
+and `PrivateState` is assignable to `unknown`. Narrow to one era, or to a
+concrete instantiation, to get the precise types back.
+
+### Why the retained narrowing falls back to an intersection
+
+`Extract` is the right answer for a UNION, and the only answer that removes the
+other era's arm. It is the wrong answer for a value whose `era` is the whole
+`PipelineEra` union rather than one literal: there is no member to pick, so it
+collapses to `never` and rejects every property access in the true branch.
+`PipelineEra` is published, so that is a parameter callers write —
+`NarrowedToRetained` falls back to an intersection in exactly that case.
+
+The tuple wrapper around the `extends` is what stops the conditional
+distributing. Without it the conditional evaluates once per union member and
+takes the fallback for all of them.
+
+## The call entry point's provider set has two arms
+
+`SubmitCallTxProviders` names two arms because a call does not always need
+private state. `SubmitTxProviders` is `ContractProviders` without
+`privateStateProvider`, so a contract that declares no private state can be
+called with a set that has none. Naming only `ContractProviders` would demand a
+provider such a caller has no reason to build.
+
+The arm without the provider is valid only for options that name no
+`privateStateId`. That pairing cannot be stated in the type, so it is enforced at
+run time: naming an id without a `privateStateProvider` is refused with
+`IncompleteCallTxPrivateStateConfig` before any provider is touched. That refusal
+is what makes the narrowing inside these functions sound — remove it and the
+narrowing becomes an unchecked assumption.
+
+## Why the scope-context guard is type-parameterised
+
+`isTransactionContext` takes type parameters so a caller can narrow to ITS OWN
+context type instead of the widest one. Both default to the widest, so a caller
+that supplies none behaves exactly as it did before the parameters existed.
+
+The internal call sites do supply them. Their parameter union already names one
+concrete context type, and narrowing to the widest there hands the widest onward
+— which stopped type-checking as soon as `FinalizedCallTxData` named its circuit.

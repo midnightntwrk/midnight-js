@@ -852,19 +852,13 @@ export const findLedger8Contract = async (
  * Refuses a retained-era transaction the node recorded with a non-success
  * status.
  *
- * A bare `Error` rather than {@link CallTxFailedError}, and the reason is a
- * type boundary rather than an oversight: that class carries a
- * current-era-only `FinalizedTxData`, and a retained-era record is the OTHER
- * arm of the read surface's union, which is not assignable to it. Narrowing
- * that class's property to the union would break every consumer that reads
- * `finalizedTxData.tx` today. The failure surface for this arm is settled
- * together with the submit-rejection handler that replaces this propagation,
- * so this fails closed and names the status in the meantime rather than
- * returning a record that reads as a success.
+ * Raises the retained arm's own class rather than {@link CallTxFailedError},
+ * which carries a current-era-only `FinalizedTxData`.
  *
  * @param record The finalized record the read surface reported.
  * @param circuitId The circuit this flow ran.
  * @throws Ledger8CallTxFailedError if the recorded status is not `SucceedEntirely`.
+ * @see {@link ErrorTaxonomy} for why the two eras cannot share a record type.
  */
 const assertLedger8TxSucceeded = (record: VersionedFinalizedTxData, circuitId: string): void => {
   if (record.status === SucceedEntirely) {
@@ -906,24 +900,13 @@ const assertLedger8DeploySucceeded = (
  * Refuses a finalized record the head this operation resolved cannot have
  * recorded.
  *
- * `version` on the record SELECTS the runtime of the live `tx` handle beside
- * it, so a mislabelled record does not fail loudly: a caller that narrows on
- * it reaches into the other ledger module and is handed a plausible wrong
- * value. The current era refuses the mirror of this at the same seam, through
- * `requireV9Record`. This is the retained arm's half, and it compares the
- * record against the HEAD rather than against a fixed era, because a
- * retained-era call is legitimately recorded by EITHER era -- which is why the
- * result type keeps `version` a union in the first place.
+ * Compares the record against the HEAD, not against a fixed era. It does NOT
+ * assert that the result's `era` and the record's `version` agree: those
+ * legitimately disagree, since `era: 'ledger8'` with `version: 'v9'` IS a
+ * keep-state transaction.
  *
- * What this does NOT assert is that the result's `era` and the record's
- * `version` agree. They legitimately disagree: `era: 'ledger8'` with
- * `version: 'v9'` IS a keep-state transaction. The agreement that has to hold
- * is between the record and the head the operation started on.
- *
- * Checked BEFORE the status, because `status` is a field of the very record
- * whose provenance is in doubt. A call that both failed and came back
- * mislabelled therefore reports the era fault, which is the one naming a cause
- * a caller can act on.
+ * KEEP THIS AHEAD OF THE STATUS CHECK. `status` is a field of the very record
+ * whose provenance is in doubt.
  *
  * @param record The finalized record the read surface returned.
  * @param head The era the network head was on when this operation started.
@@ -933,6 +916,8 @@ const assertLedger8DeploySucceeded = (
  * for its transaction id, a deploy for its address. Named rather than fixed so
  * the refusal points a caller at the method that actually answered.
  * @throws EraInvariantViolationError if the record's era is not the head's.
+ * @see {@link EraDispatch} for why a mislabelled record fails silently without
+ * this, and why the check precedes the status read.
  */
 const assertLedger8RecordEra = (
   record: VersionedFinalizedTxData,
@@ -1269,9 +1254,7 @@ export interface Ledger8DeployedState {
  * attempt lands at a different address.
  *
  * The verifier keys are fetched for EVERY entry point the artifact declares,
- * off the artifact rather than off any state: a retained constructor builds
- * every slot blank and the retained deploy registers no keys of its own, so a
- * map naming anything else puts a contract on chain that nothing can call.
+ * off the artifact rather than off any state.
  *
  * @param providers The provider set.
  * @param options The deployment the entry point received.
@@ -1288,6 +1271,8 @@ export interface Ledger8DeployedState {
  * private-state provider then refused to store the signing key or the initial
  * private state. It carries the key either way.
  * @throws Every error {@link runLedger8Deploy} raises.
+ * @see {@link KeepStatePipeline} for why every slot has to be registered, and
+ * for the order after submission.
  */
 export const submitLedger8DeployTx = async (
   providers: Ledger8DeployEntryProviders,

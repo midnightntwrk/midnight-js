@@ -21,31 +21,16 @@ import type { ContractEntryPointPojo } from '../shared/contract-state';
 /**
  * Re-expresses a retained-era contract's entry points as a CURRENT-era contract state.
  *
- * WHY THIS EXISTS. The fork does not rewrite a contract's stored state: a contract deployed before
- * it and dormant across it is served, indefinitely, carrying its retained-era envelope. The current
- * ledger's composer cannot deserialize those bytes — it accepts only its own envelope — so a
- * keep-state call had nothing to hand it and could not be composed at all.
- *
- * WHAT THE COMPOSER ACTUALLY WANTS. The `contractState` a composition takes is NOT the state being
- * proven. `assembleCallPrototype` uses it for exactly one thing: looking up the `ContractOperation`
- * for the circuit, to read its verifier key. The state the call is bound to travels separately, as
- * the transcript's `preState`. So what has to cross the era boundary here is the OPERATION
- * REGISTRY, not the state.
- *
- * WHY THIS IS FAITHFUL, NOT A SUBSTITUTION. The verifier keys come from the chain's own state, read
- * through the retained decoder, and the caller has already checked its local artifact against them.
- * The current ledger models retained-era operations natively — `ContractOperationVersion` carries a
- * `'v3'` arm precisely for them — so a key preserved across the fork is a value this ledger is built
- * to hold. Nothing is minted here: every key written out is one the chain already holds.
- *
- * The primary state is deliberately left at its default. A caller that needed the state itself would
- * be reading it from {@link ContractStatePojo.state}, not from this registry.
+ * What crosses the era boundary here is the OPERATION REGISTRY, not the state. The primary state is
+ * deliberately left at its default: a caller that needs the state itself reads it from
+ * {@link ContractStatePojo.state}.
  *
  * @param entryPoints The entry points a retained-era contract state declared, as the retained
  * decoder read them.
  * @returns The serialized current-era contract state, carrying those entry points and their keys.
- * @throws ComposeOptionError if no entry point carries a key, since the registry would then answer
- * for nothing and the composer's own refusal would name a circuit rather than the empty state.
+ * @throws ComposeOptionError if no entry point carries a key.
+ * @see {@link CrossEraOperationRegistry} for why re-expressing the operations is faithful rather
+ * than a substitution, and why the empty registry is refused here rather than one layer down.
  */
 export const reexpressOperationsForCurrentEra = (entryPoints: readonly ContractEntryPointPojo[]): Uint8Array => {
   const state = new ledgerV9.ContractState();
