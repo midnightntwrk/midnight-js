@@ -69,6 +69,7 @@ import {
   IncompleteCallTxPrivateStateConfig,
   IncompleteDeployContractPrivateStateConfig,
   Ledger8CallTxFailedError,
+  Ledger8DeployNotStoredError,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
   Ledger8SeamFailedError,
@@ -1313,6 +1314,9 @@ export interface Ledger8DeployedState {
  * @throws Ledger8DeployTxFailedError if the node recorded a non-success status.
  * @throws Ledger8DeployUnconfirmedError if the record cannot be read back and
  * attributed to the head at all, the record's era included.
+ * @throws Ledger8DeployNotStoredError if the deployment was CONFIRMED and the
+ * private-state provider then refused to store the signing key or the initial
+ * private state. It carries the key either way.
  * @throws Every error {@link runLedger8Deploy} raises.
  */
 export const submitLedger8DeployTx = async (
@@ -1375,35 +1379,51 @@ export const submitLedger8DeployTx = async (
 
   // FIRST the address, for the PRIVATE-STATE write below and for that one
   // only. A provider namespaces every private-state entry by the address last
-  // named and refuses a write before any has been named, so a `set` made first
-  // would either throw or land under whichever contract the process touched
-  // last -- and a later call, which names this address itself, would read its
-  // own key, find nothing, and report nothing.
+  // named and refuses a `get` or a `set` before any has been named, so a `set`
+  // made first would either throw or land under whichever contract the process
+  // touched last -- and a later call, which names this address itself, would
+  // read its own key, find nothing, and report nothing.
   //
   // `setSigningKey` does NOT depend on it: it takes the address as an argument
-  // and the level-backed provider keys the entry with it directly. Its
-  // interface says so in `@remarks`
-  // (`packages/types/src/private-state-provider.ts`), which is what makes this
-  // ordering a property of `set` rather than of the provider.
+  // and the level-backed provider keys the entry with it directly. The
+  // interface states that for `getSigningKey`, whose `@remarks` in
+  // `packages/types/src/private-state-provider.ts` say it does not require
+  // `setContractAddress` first; `setSigningKey` carries no `@remarks` of its
+  // own, and what actually settles it for both is that the address is an
+  // argument rather than ambient state.
   //
   // Named unconditionally rather than only alongside a private state, matching
   // `submit-deploy-tx.ts`: after a deploy, the provider's current namespace is
   // the contract just deployed, whether or not this deployment stored a state
   // under it.
   providers.privateStateProvider.setContractAddress(deploy.contractAddress);
-  if (privateStateId !== undefined) {
-    await providers.privateStateProvider.set(privateStateId, deploy.nextPrivateState);
+  // THE SIGNING KEY FIRST, before the private state. It is the sole backing of a
+  // one-key authority at threshold 1, so a sampled key that reached only the
+  // returned handle left an address nobody could ever maintain. It has no
+  // ordering dependency of its own -- see above -- so nothing forced it to go
+  // second, and going second is a window in which the private-state write
+  // rejects and the only copy of the key dies with this call frame.
+  //
+  // BOTH writes are wrapped, so the region's promise holds to its last
+  // statement: past the confirmation above, every refusal carries the key. A raw
+  // store rejection here reads to a caller as "the deploy failed, retry", and a
+  // retry mints a fresh nonce and a SECOND contract at a different address while
+  // the first sits on chain unmaintainable.
+  try {
+    await providers.privateStateProvider.setSigningKey(
+      deploy.contractAddress,
+      toStoredLedger8SigningKey(deploy.signingKey)
+    );
+  } catch (error) {
+    throw new Ledger8DeployNotStoredError(deploy.contractAddress, deploy.signingKey, 'signing-key', error);
   }
-  // The sole backing of a one-key authority at threshold 1, so a sampled key
-  // that reached only the returned handle left an address nobody could ever
-  // maintain. Stored HERE, in the same after-success region as the private
-  // state and for the same reason: a deploy the chain refused must leave no
-  // local state claiming it succeeded, and the refusals above carry the key
-  // instead.
-  await providers.privateStateProvider.setSigningKey(
-    deploy.contractAddress,
-    toStoredLedger8SigningKey(deploy.signingKey)
-  );
+  if (privateStateId !== undefined) {
+    try {
+      await providers.privateStateProvider.set(privateStateId, deploy.nextPrivateState);
+    } catch (error) {
+      throw new Ledger8DeployNotStoredError(deploy.contractAddress, deploy.signingKey, 'private-state', error);
+    }
+  }
 
   return {
     contractAddress: deploy.contractAddress,

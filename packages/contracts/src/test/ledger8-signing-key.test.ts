@@ -27,22 +27,44 @@
  *   provider validates an IMPORT against, so a wrapped key that fails it is one
  *   a restore silently drops.
  *
- * Nothing else asserts that agreement. Every other fixture in this package
- * hands the wrapper a placeholder, so a rule that tightened -- to the 3-byte
- * version prefix the retained runtime's own typings claim, say -- would break
- * restores with every test in `packages/contracts` still green.
+ * Nothing else asserts that agreement: every other fixture in this package
+ * hands the wrapper a placeholder.
  *
- * The key here is SAMPLED FROM THE REAL RETAINED RUNTIME rather than written
- * down. A literal would only re-state what this file was told; a sampled key
- * re-measures it on every run, and a vendor bump that changed the shape shows
- * up here.
+ * WHAT THIS GATE ACTUALLY CATCHES, stated exactly, because an earlier version
+ * of this comment claimed more:
+ *
+ * - a TIGHTENING of `isValidSigningKey` -- the real risk, since that rule lives
+ *   in another package and a wrapped key it stopped admitting is one a restore
+ *   drops without a word;
+ * - a change in the LENGTH a retained sampler answers, which is what the
+ *   assertion against `RETAINED_SIGNING_KEY_HEX_LENGTH` measures.
+ *
+ * It does NOT catch a vendor shape change on its own. `isValidSigningKey`
+ * admits any even-length hex string of six characters or more, so the
+ * 70-character version-prefixed value the `onchain-runtime-v3` typings describe
+ * would pass it unremarked. The length assertion is the half that would see
+ * such a change; the predicate cannot.
+ *
+ * THE SAMPLER HERE IS A SUBSTITUTE, and that is a measurement rather than an
+ * assumption. The deploy arm samples through `onchain-runtime-v3`; this file
+ * samples through `loadLedger8()`, which resolves `@midnightntwrk/ledger-v8` --
+ * a different package on its own release train. Eslint bans a direct
+ * `onchain-runtime-v3` import outside `packages/protocol`, so the facade is the
+ * only sampler reachable from here. Measured by hand before the substitution
+ * was accepted: both samplers answer 64-character hex, and each runtime accepts
+ * the other's key. A shape change confined to `onchain-runtime-v3` therefore
+ * does NOT show up in this file.
  */
 
 import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
 import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { fromStoredLedger8SigningKey, toStoredLedger8SigningKey } from '../internal/ledger8-signing-key';
+import {
+  fromStoredLedger8SigningKey,
+  RETAINED_SIGNING_KEY_HEX_LENGTH,
+  toStoredLedger8SigningKey
+} from '../internal/ledger8-signing-key';
 import { createMockContractAddress } from './test-mocks';
 
 const CONTRACT_ADDRESS: string = createMockContractAddress();
@@ -77,5 +99,25 @@ describe('a retained-era signing key crossing the private-state provider', () =>
     expect(fromStoredLedger8SigningKey(toStoredLedger8SigningKey(retainedKey), CONTRACT_ADDRESS, undefined)).toBe(
       retainedKey
     );
+  });
+
+  it('sizes the read length rule off a key a retained runtime actually sampled', () => {
+    // The rule in the source is a number, and a number written down only restates what that source
+    // was told. This is where it is measured. A sampler that changed length fails here, rather than
+    // the read admitting an entry the retained runtime cannot build an authority from.
+    expect(retainedKey).toHaveLength(RETAINED_SIGNING_KEY_HEX_LENGTH);
+  });
+
+  it.each([
+    ['two characters short', (key: string): string => key.slice(0, -2)],
+    ['two characters long', (key: string): string => `${key}00`]
+  ])('reads an entry %s as absent, where the import rule alone admits it', (_case, reshape) => {
+    const entry = toStoredLedger8SigningKey(reshape(retainedKey));
+
+    // The first assertion is the reason the second one is not redundant: the import rule admits any
+    // even-length hex of six characters or more, so it says nothing about this era's key length --
+    // and `signatureVerifyingKey()` on a truncated key answers an authority nobody holds.
+    expect(isValidSigningKey(entry)).toBe(true);
+    expect(fromStoredLedger8SigningKey(entry, CONTRACT_ADDRESS, undefined)).toBeUndefined();
   });
 });

@@ -138,7 +138,8 @@ const ALL_PIPELINES: Record<PipelineEra, PipelineEra> = {
 type SigningKeyEntryOutcome = RetainedSigningKeyEntryBreadcrumb['outcome'];
 const ALL_SIGNING_KEY_ENTRY_OUTCOMES: Record<SigningKeyEntryOutcome, SigningKeyEntryOutcome> = {
   'other-signature-kind': 'other-signature-kind',
-  'malformed-value': 'malformed-value'
+  'malformed-value': 'malformed-value',
+  'unreadable-entry': 'unreadable-entry'
 };
 
 type DebugSpy = Mock<(breadcrumb: DispatchBreadcrumb, message: string) => void>;

@@ -153,8 +153,15 @@ export interface RetainedSigningKeyEntryBreadcrumb {
   readonly outcome:
     /** It names the other signature kind, which the current era legitimately stores. */
     | 'other-signature-kind'
-    /** Its value is not the shape `isValidSigningKey` admits. */
-    | 'malformed-value';
+    /** Its value is not the shape a retained-era key has. */
+    | 'malformed-value'
+    /**
+     * The entry could not be READ at all -- `getSigningKey` rejected. A wrong
+     * store password, a rotation-lock timeout and store I/O all land here, and
+     * the underlying message is deliberately NOT carried: it may name store
+     * paths and OS-level metadata, which its own interface says to redact.
+     */
+    | 'unreadable-entry';
   /** The address the entry was stored against, so an operator can find it. */
   readonly contractAddress: string;
 }

@@ -25,8 +25,11 @@
  *   which is 32 bytes;
  * - the current `sampleSigningKey()` answers `{ tag: 'schnorr', value }` whose
  *   `value` is the same 64 characters;
- * - the retained runtime's `signatureVerifyingKey()` ACCEPTS a current-era
- *   key's `value` verbatim;
+ * - the retained runtime's `signatureVerifyingKey()` accepts a current-era
+ *   key's `value` verbatim. MEASURED BY HAND, once, and asserted nowhere in
+ *   this repo -- treat it as an observation about the runtimes pinned today,
+ *   not as a standing guarantee. Nothing below depends on it: this module only
+ *   ever hands the retained runtime a key the retained era produced;
  * - `{ tag: 'schnorr', value: <retained key> }` satisfies `isValidSigningKey`,
  *   which is what the level-backed provider validates imports against. That
  *   last one is re-measured on every run rather than trusted as written here:
@@ -57,8 +60,41 @@ import { type BreadcrumbSink, emitRetainedSigningKeyEntry } from './breadcrumbs'
 const RETAINED_SIGNING_KEY_TAG: SigningKey['tag'] = 'schnorr';
 
 /**
+ * How many hex characters a retained-era key is: 32 bytes, so 64.
+ *
+ * Its own rule rather than {@link isValidSigningKey}'s, which is the
+ * IMPORT-FORMAT rule and admits any even-length hex string of six characters or
+ * more. A 62-character entry -- a truncated or half-written one -- passes that
+ * predicate, and `signatureVerifyingKey()` on it answers a maintenance
+ * authority nobody holds, with nothing erroring at any stage.
+ *
+ * The number is MEASURED rather than declared: `src/test/ledger8-signing-key.test.ts`
+ * samples a key from a retained runtime and asserts its length against this
+ * constant, so a sampler that changed length fails there.
+ */
+export const RETAINED_SIGNING_KEY_HEX_LENGTH = 64;
+
+/**
  * Wraps a retained-era key in the shape `PrivateStateProvider.setSigningKey`
  * takes.
+ *
+ * THE SLOT IS SHARED WITH THE CURRENT ERA, and this wrapper cannot separate
+ * them. Both eras sample `schnorr`, and both arms write ONE address-keyed slot,
+ * so a stored entry does not record which era wrote it. An address whose slot
+ * the current-era arm filled -- it SAMPLES a fresh key when it finds none --
+ * would be read back by the retained arm as that contract's authority, when it
+ * is a key the chain never heard of.
+ *
+ * What stands between the two today is an ORDERING and not a guard:
+ * `find-deployed-contract.ts` runs `verifyContractState` BEFORE it reaches the
+ * signing-key rule, so a current-era artifact pointed at a retained contract's
+ * address fails verification first and never reaches the sample-and-store. Move
+ * the key rule ahead of the verification and the confusion becomes reachable.
+ *
+ * DOCUMENTED rather than fixed here on purpose: an address-prefixed record, or
+ * any other change to the stored shape, changes what
+ * `exportSigningKeys`/`importSigningKeys` round-trip, and that is its own change
+ * with its own compatibility story.
  *
  * @param signingKey The retained-era key to store.
  * @returns The same key, as the store's structured key.
@@ -80,9 +116,14 @@ export const toStoredLedger8SigningKey = (signingKey: Ledger8SigningKey): Signin
  *   an `ecdsa` key's `value` would be handed to the retained runtime and built
  *   into a maintenance authority whose verifying key nobody holds, with
  *   nothing erroring at any stage.
- * - a VALUE that is not the shape the store validates an import against. An
- *   entry that was hand-edited or half-written would otherwise be reported on
- *   the handle as a usable key.
+ * - a VALUE that is not a retained-era key's. TWO rules, because one does not
+ *   cover the other: {@link isValidSigningKey} is the shape the level-backed
+ *   provider validates an IMPORT against, so an entry this read admits is one a
+ *   restore will too -- but it is the import-format rule and admits any
+ *   even-length hex of six characters or more, which a truncated 62-character
+ *   entry satisfies. {@link RETAINED_SIGNING_KEY_HEX_LENGTH} is this era's own
+ *   rule, and without it `signatureVerifyingKey()` on such an entry answers an
+ *   authority nobody holds, silently.
  *
  * ABSENT rather than a throw, and that is a deliberate choice about blast
  * radius. This read sits on `findDeployedContract`, whose result is used to
@@ -112,10 +153,11 @@ export const fromStoredLedger8SigningKey = (
     emitRetainedSigningKeyEntry(sink, contractAddress, 'other-signature-kind');
     return undefined;
   }
-  // The WHOLE entry and not just its value: `isValidSigningKey` is the rule the
-  // level-backed provider validates an import against, so an entry this read
-  // admits is one a restore will too.
-  if (!isValidSigningKey(stored)) {
+  // The WHOLE entry through `isValidSigningKey`, and not just its value: that is
+  // the rule the level-backed provider validates an import against, so an entry
+  // this read admits is one a restore will too. The length is checked SEPARATELY
+  // because that rule is the import format's and not this era's -- see above.
+  if (!isValidSigningKey(stored) || stored.value.length !== RETAINED_SIGNING_KEY_HEX_LENGTH) {
     emitRetainedSigningKeyEntry(sink, contractAddress, 'malformed-value');
     return undefined;
   }
