@@ -21,6 +21,7 @@
 - [EraInvariantViolationError](classes/EraInvariantViolationError.md)
 - [HeadStateEraMismatchError](classes/HeadStateEraMismatchError.md)
 - [IncompleteCallTxPrivateStateConfig](classes/IncompleteCallTxPrivateStateConfig.md)
+- [IncompleteDeployContractPrivateStateConfig](classes/IncompleteDeployContractPrivateStateConfig.md)
 - [IncompleteFindContractPrivateStateConfig](classes/IncompleteFindContractPrivateStateConfig.md)
 - [IndexerInconsistencyError](classes/IndexerInconsistencyError.md)
 - [InsertVerifierKeyTxFailedError](classes/InsertVerifierKeyTxFailedError.md)

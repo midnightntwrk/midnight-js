@@ -176,6 +176,12 @@ Re-exports [hasErrorCode](../../utils/functions/hasErrorCode.md)
 
 ***
 
+### hasForeignErrorCode
+
+Re-exports [hasForeignErrorCode](../../utils/functions/hasForeignErrorCode.md)
+
+***
+
 ### isDeserializationError
 
 Re-exports [isDeserializationError](../../utils/variables/isDeserializationError.md)
