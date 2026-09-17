@@ -6,10 +6,14 @@
 
 # Type Alias: DeployContractOptionsWithPrivateState\<C\>
 
-> **DeployContractOptionsWithPrivateState**\<`C`\> = [`DeployContractOptionsBase`](DeployContractOptionsBase.md)\<`C`\> & `object`
+> **DeployContractOptionsWithPrivateState**\<`C`\> = [`DeployContractOptionsShared`](DeployContractOptionsShared.md)\<`C`\> & `object`
 
-[deployContract](../functions/deployContract.md) base options with information needed to store private states;
+[deployContract](../functions/deployContract.md) options with information needed to store private states;
 only used if the contract being deployed has a private state.
+
+Both members together or neither: a state with no id has nowhere to go, and
+an id with no state stores `undefined` under a name a later call will read
+back.
 
 ## Type Declaration
 
@@ -23,7 +27,7 @@ The private state to run the circuit against.
 
 > `readonly` **privateStateId**: [`PrivateStateId`](../../types/type-aliases/PrivateStateId.md)
 
-An identifier for the private state of the contract being found.
+An identifier for the private state of the contract being deployed.
 
 ## Type Parameters
 

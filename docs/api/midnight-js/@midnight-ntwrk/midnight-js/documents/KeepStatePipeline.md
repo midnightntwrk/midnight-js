@@ -378,9 +378,49 @@ era seam needed no new field: `ComposeDeployOptions` already carries the
 serialized `contractState`, which is where the authority lives.
 
 The key is the caller's own when one is supplied, and a freshly sampled one
-otherwise. Either way it is reported on `Ledger8DeployedContract.signingKey`,
-and in the sampled case that is its ONLY copy — which is why the refusal on a
-non-success record says so.
+otherwise. Either way it is reported on `Ledger8DeployedContract.signingKey` and
+stored against the minted address through `privateStateProvider.setSigningKey`,
+which is where the current era's deploy writes its own key too.
+
+One store holds both eras' keys, and its key type is the current era's
+`{ tag, value }` where the retained era's is a bare hex string. They are the same
+thing: both runtimes sample a 32-byte Schnorr key written as 64 hex characters,
+and `{ tag: 'schnorr', value: <retained key> }` satisfies `isValidSigningKey`.
+(The retained runtime's `signatureVerifyingKey` also accepts a current-era key's
+`value` verbatim. That was measured by hand once, is asserted nowhere, and
+nothing in this pipeline depends on it -- the retained arm only ever hands the
+retained runtime a key the retained era produced.) So
+`internal/ledger8-signing-key.ts` adds the wrapper on the way in and strips it on
+the way out, and nothing in `packages/types`, in the provider interface, or in
+the export/import format changes. That last agreement is the one a future change
+is most likely to break without noticing, so
+`src/test/ledger8-signing-key.test.ts` samples a key from a retained runtime,
+wraps it and puts it through `isValidSigningKey` on every run: a rule that
+tightened would fail there rather than losing keys on a restore.
+
+The wrapper cannot say WHICH era wrote an entry. Both eras sample `schnorr`, and
+both arms write one address-keyed slot, so a current-era attach that sampled a
+fresh key into an empty slot would leave the retained arm reporting that key as
+the chain's authority. What prevents it today is ordering rather than a guard:
+`findDeployedContract` runs `verifyContractState` before it reaches the
+signing-key rule, so a current-era artifact pointed at a retained contract's
+address fails verification first. Changing the stored record's shape to separate
+the eras would change what `exportSigningKeys`/`importSigningKeys` round-trip,
+so it is recorded here rather than done alongside the persistence change.
+
+On the way OUT, an entry is used only if it is one this framework could have
+written: `'schnorr'`, and a value `isValidSigningKey` admits. A current-era
+entry at the same address may legitimately be `ecdsa`, and unwrapped blindly
+that value would build an authority whose verifying key nobody holds. Anything
+else reads as ABSENT rather than failing the read — nothing on the retained arm
+consumes the key, so a circuit call must not stop working over a value it never
+looks at — and each such case leaves a `retained-signing-key-entry` breadcrumb,
+which is what keeps absent from meaning silent.
+
+The write happens only after the chain has recorded the deployment, alongside the
+private state and in the order below. Before that point the refusals carry the
+key themselves, and in the sampled case they hold its ONLY copy — which is why
+they say so.
 
 ### The verifier keys
 
@@ -445,3 +485,20 @@ A CALL only reads. `Ledger8CallTxOptions` carries a `privateStateId` and no
 `initialPrivateState`, so `readLedger8PrivateState` either finds a state under
 the named id or refuses — it has nothing to create one from, and the failure
 mode recorded above is why passing `undefined` down instead is not an option.
+
+## The signing key on the attach arm
+
+`Ledger8FindDeployedContractOptions.signingKey` is honoured: a key supplied there
+is stored against the contract address, and `Ledger8FoundContract.signingKey`
+reports whatever is then held — the key a deploy on this machine persisted, when
+the caller supplies none. `undefined` there means either nothing stored or an
+entry this framework did not write; the breadcrumb above is what separates the
+two.
+
+It diverges from the current era in one case, deliberately. Where
+`setOrGetInitialSigningKey` samples a fresh key when the store holds none, the
+retained arm reports `undefined`. A key sampled at attach time bears no relation
+to the authority the chain already holds for a contract this caller did not
+deploy, and the retained era has no governance arm at all, so there is no
+maintenance interface on `Ledger8FoundContract` for such a key to be used
+through. Storing one would put a key on record that can maintain nothing.
