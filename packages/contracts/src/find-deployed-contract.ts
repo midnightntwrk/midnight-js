@@ -37,6 +37,7 @@ import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
+import type { BreadcrumbSink } from './internal/breadcrumbs';
 import { isLedger8Request, requireV9Record, resolveArtifactEra } from './internal/era';
 import { findLedger8Contract } from './internal/ledger8-entry';
 import { fromStoredLedger8SigningKey, toStoredLedger8SigningKey } from './internal/ledger8-signing-key';
@@ -77,9 +78,11 @@ const setOrGetInitialSigningKey = async <C extends Contract.Any>(
 /**
  * The RETAINED era's half of the same rule, and it differs in exactly one case.
  *
- * Supplied key: stored, as the current era stores one. Nothing supplied and something stored: that
- * key is reported, unwrapped back to the bare string the retained runtime takes. Nothing supplied
- * and nothing stored: NOTHING is sampled, where the current era samples a fresh key.
+ * Supplied key: stored, as the current era stores one. Nothing supplied and a retained-era entry
+ * stored: that key is reported, unwrapped back to the bare string the retained runtime takes.
+ * Nothing supplied and nothing stored: NOTHING is sampled, where the current era samples a fresh
+ * key. Nothing supplied and an entry this framework did not write: reported as nothing stored,
+ * with a breadcrumb.
  *
  * That last divergence is deliberate. A key sampled at attach time bears no relation to the
  * maintenance authority the chain already holds for a contract this caller did not deploy, and
@@ -90,13 +93,16 @@ const setOrGetInitialSigningKey = async <C extends Contract.Any>(
  * @param privateStateProvider The signing-key half of the private-state provider.
  * @param contractAddress The address the key is stored against.
  * @param signingKey The key the caller supplied on the attach options, if any.
- * @returns The key now held for that address, or `undefined` when none is.
- * @throws Error if the stored entry is not of the retained era's signature kind.
+ * @param sink The configured logger, or `undefined`.
+ * @returns The key now held for that address, or `undefined` when none usable is — see
+ * {@link fromStoredLedger8SigningKey} for the entries that read as absent rather than failing the
+ * attach.
  */
 const setOrGetLedger8SigningKey = async (
   privateStateProvider: Pick<PrivateStateProvider, 'getSigningKey' | 'setSigningKey'>,
   contractAddress: ContractAddress,
-  signingKey: Ledger8SigningKey | undefined
+  signingKey: Ledger8SigningKey | undefined,
+  sink: BreadcrumbSink | undefined
 ): Promise<Ledger8SigningKey | undefined> => {
   if (signingKey !== undefined) {
     await privateStateProvider.setSigningKey(contractAddress, toStoredLedger8SigningKey(signingKey));
@@ -108,7 +114,7 @@ const setOrGetLedger8SigningKey = async (
   if (!stored) {
     return undefined;
   }
-  return fromStoredLedger8SigningKey(stored, contractAddress);
+  return fromStoredLedger8SigningKey(stored, contractAddress, sink);
 };
 
 /**
@@ -486,7 +492,8 @@ export async function findDeployedContract<C extends Contract.Any>(
     const signingKey = await setOrGetLedger8SigningKey(
       providers.privateStateProvider,
       options.contractAddress,
-      options.signingKey
+      options.signingKey,
+      providers.loggerProvider
     );
     return {
       era: RETAINED_PIPELINE_ERA,

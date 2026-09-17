@@ -28,7 +28,11 @@
  * - the retained runtime's `signatureVerifyingKey()` ACCEPTS a current-era
  *   key's `value` verbatim;
  * - `{ tag: 'schnorr', value: <retained key> }` satisfies `isValidSigningKey`,
- *   which is what the level-backed provider validates imports against.
+ *   which is what the level-backed provider validates imports against. That
+ *   last one is re-measured on every run rather than trusted as written here:
+ *   `src/test/ledger8-signing-key.test.ts` samples a key from the real
+ *   retained runtime and puts the wrapper through the predicate, so a rule
+ *   that tightened would fail there instead of losing keys on a restore.
  *
  * So it is one 32-byte Schnorr key in two wrappers, and adding or stripping the
  * wrapper here is the whole of the era crossing. Nothing in `packages/types`,
@@ -42,6 +46,9 @@
 
 import type { Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
+
+import { type BreadcrumbSink, emitRetainedSigningKeyEntry } from './breadcrumbs';
 
 /**
  * The signature kind a retained-era key is, and the only kind that may be read
@@ -62,32 +69,55 @@ export const toStoredLedger8SigningKey = (signingKey: Ledger8SigningKey): Signin
 });
 
 /**
- * Reads a stored key back as the bare string the retained runtime takes,
- * refusing an entry of the other signature kind.
+ * Reads a stored entry back as the bare string the retained runtime takes, or
+ * reports ABSENT for an entry this framework did not write.
  *
- * The refusal is the point of the function. One store holds both eras' keys
- * under the same addresses, and the current era's may legitimately be `ecdsa` —
- * `isValidSigningKey` admits both kinds. Unwrapped without the check, an
- * `ecdsa` key's `value` would be handed to the retained runtime and built into
- * a maintenance authority whose verifying key nobody holds, with nothing
- * erroring at any stage.
+ * TWO ways an entry is not this era's key, and both read as absent:
+ *
+ * - the OTHER SIGNATURE KIND. One store holds both eras' keys under the same
+ *   addresses, and the current era's may legitimately be `ecdsa` —
+ *   {@link isValidSigningKey} admits both kinds. Unwrapped without the check,
+ *   an `ecdsa` key's `value` would be handed to the retained runtime and built
+ *   into a maintenance authority whose verifying key nobody holds, with
+ *   nothing erroring at any stage.
+ * - a VALUE that is not the shape the store validates an import against. An
+ *   entry that was hand-edited or half-written would otherwise be reported on
+ *   the handle as a usable key.
+ *
+ * ABSENT rather than a throw, and that is a deliberate choice about blast
+ * radius. This read sits on `findDeployedContract`, whose result is used to
+ * call circuits; the retained arm exposes no maintenance interface, so nothing
+ * on that path consumes the key. A throw here would fail every attach to the
+ * address — circuit calls included — over a value none of them reads. The
+ * caller's remedy is unchanged: supply the retained key on the attach options,
+ * or remove the entry with `privateStateProvider.removeSigningKey(address)`.
+ *
+ * Absent must not mean SILENT, so each case emits a breadcrumb. The breadcrumb
+ * names the member and the address and never the stored value: the value is
+ * secret material, and a log line is read by more people than a return value
+ * is.
  *
  * @param stored The entry the private-state provider returned.
- * @param contractAddress The address it was stored against, named in the
- * refusal so a caller knows which entry to correct.
- * @returns The retained-era key.
- * @throws Error if the entry is not of the retained era's signature kind.
+ * @param contractAddress The address it was stored against, carried on the
+ * breadcrumb so an operator knows which entry to correct.
+ * @param sink The configured logger, or `undefined`.
+ * @returns The retained-era key, or `undefined` for an entry that is not one.
  */
-export const fromStoredLedger8SigningKey = (stored: SigningKey, contractAddress: string): Ledger8SigningKey => {
+export const fromStoredLedger8SigningKey = (
+  stored: SigningKey,
+  contractAddress: string,
+  sink: BreadcrumbSink | undefined
+): Ledger8SigningKey | undefined => {
   if (stored.tag !== RETAINED_SIGNING_KEY_TAG) {
-    throw new Error(
-      `The signing key stored for the contract at '${contractAddress}' is a '${stored.tag}' key, and a ` +
-        `retained-era maintenance authority is built from a '${RETAINED_SIGNING_KEY_TAG}' key. One store holds ` +
-        'both eras\' keys, so an entry written for a current-era contract at this address reads back here. ' +
-        "Supply the retained-era key on this call's 'signingKey', or remove the entry with " +
-        "'privateStateProvider.removeSigningKey(address)' first. The stored key is not rendered: it is secret " +
-        'material, and an error message reaches logs.'
-    );
+    emitRetainedSigningKeyEntry(sink, contractAddress, 'other-signature-kind');
+    return undefined;
+  }
+  // The WHOLE entry and not just its value: `isValidSigningKey` is the rule the
+  // level-backed provider validates an import against, so an entry this read
+  // admits is one a restore will too.
+  if (!isValidSigningKey(stored)) {
+    emitRetainedSigningKeyEntry(sink, contractAddress, 'malformed-value');
+    return undefined;
   }
   return stored.value;
 };

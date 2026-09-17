@@ -387,10 +387,20 @@ the retained runtime's `signatureVerifyingKey` accepts a current-era key's
 `value` verbatim, and `{ tag: 'schnorr', value: <retained key> }` satisfies
 `isValidSigningKey`. So `internal/ledger8-signing-key.ts` adds the wrapper on the
 way in and strips it on the way out, and nothing in `packages/types`, in the
-provider interface, or in the export/import format changes. It refuses an entry
-whose tag is not `'schnorr'` on the way out, because a current-era entry at the
-same address may legitimately be `ecdsa`, and unwrapped blindly that value would
-build an authority whose verifying key nobody holds.
+provider interface, or in the export/import format changes. That last agreement
+is the one a future change is most likely to break without noticing, so
+`src/test/ledger8-signing-key.test.ts` samples a key from the real retained
+runtime, wraps it and puts it through `isValidSigningKey` on every run: a rule
+that tightened would fail there rather than losing keys on a restore.
+
+On the way OUT, an entry is used only if it is one this framework could have
+written: `'schnorr'`, and a value `isValidSigningKey` admits. A current-era
+entry at the same address may legitimately be `ecdsa`, and unwrapped blindly
+that value would build an authority whose verifying key nobody holds. Anything
+else reads as ABSENT rather than failing the read — nothing on the retained arm
+consumes the key, so a circuit call must not stop working over a value it never
+looks at — and each such case leaves a `retained-signing-key-entry` breadcrumb,
+which is what keeps absent from meaning silent.
 
 The write happens only after the chain has recorded the deployment, alongside the
 private state and in the order below. Before that point the refusals carry the
@@ -466,7 +476,9 @@ mode recorded above is why passing `undefined` down instead is not an option.
 `Ledger8FindDeployedContractOptions.signingKey` is honoured: a key supplied there
 is stored against the contract address, and `Ledger8FoundContract.signingKey`
 reports whatever is then held — the key a deploy on this machine persisted, when
-the caller supplies none.
+the caller supplies none. `undefined` there means either nothing stored or an
+entry this framework did not write; the breadcrumb above is what separates the
+two.
 
 It diverges from the current era in one case, deliberately. Where
 `setOrGetInitialSigningKey` samples a fresh key when the store holds none, the

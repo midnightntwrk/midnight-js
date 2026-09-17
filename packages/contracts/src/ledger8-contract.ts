@@ -741,13 +741,32 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
   readonly callTx: Ledger8CircuitCallTxInterface<C>;
   /**
    * The key this framework holds for the contract's maintenance authority, or
-   * `undefined` when it holds none.
+   * `undefined` when it holds none it can use.
    *
    * OPTIONAL here and REQUIRED on {@link Ledger8DeployedContract}, which is the
    * difference between the two handles: a deploy always has a key, because it
    * built the authority; an attach has one only if a deploy on this machine
    * stored it, or the caller supplied one through
    * {@link Ledger8FindDeployedContractOptions.signingKey}.
+   *
+   * `undefined` COLLAPSES TWO CASES, and a caller that needs to tell them apart
+   * has to look at the provider rather than at this field:
+   *
+   * 1. nothing is stored for this address;
+   * 2. something is stored that this framework did not write — an entry naming
+   *    the other signature kind, which the CURRENT era legitimately stores
+   *    under the same address in the same provider, or one whose value is not
+   *    the shape a signing key has. Neither fails the attach, because nothing
+   *    on this arm consumes the key: the retained era exposes no maintenance
+   *    interface, so a circuit call would otherwise stop working over a value
+   *    it never reads. Case 2 is reported to the logger provider as a
+   *    DEBUG-level dispatch breadcrumb, which is the only place the two cases
+   *    are distinguishable.
+   *
+   * The remedy for case 2 is the caller's either way: pass the retained-era key
+   * on {@link Ledger8FindDeployedContractOptions.signingKey}, which replaces the
+   * entry, or remove the entry with
+   * `privateStateProvider.removeSigningKey(address)` first.
    *
    * @remarks **Privacy-sensitive.** Signing-key material.
    */

@@ -1373,15 +1373,23 @@ export const submitLedger8DeployTx = async (
   }
   assertLedger8DeploySucceeded(deployTxData, deploy.contractAddress, deploy.signingKey);
 
-  // FIRST the address. A provider namespaces every entry by the address last
-  // named and refuses a write before any has been named, so a write made first
+  // FIRST the address, for the PRIVATE-STATE write below and for that one
+  // only. A provider namespaces every private-state entry by the address last
+  // named and refuses a write before any has been named, so a `set` made first
   // would either throw or land under whichever contract the process touched
   // last -- and a later call, which names this address itself, would read its
   // own key, find nothing, and report nothing.
   //
-  // Named unconditionally, where it used to be named only alongside a private
-  // state: the key below is written on every deployment, and the current era's
-  // deploy arm names the address for the same pair of writes.
+  // `setSigningKey` does NOT depend on it: it takes the address as an argument
+  // and the level-backed provider keys the entry with it directly. Its
+  // interface says so in `@remarks`
+  // (`packages/types/src/private-state-provider.ts`), which is what makes this
+  // ordering a property of `set` rather than of the provider.
+  //
+  // Named unconditionally rather than only alongside a private state, matching
+  // `submit-deploy-tx.ts`: after a deploy, the provider's current namespace is
+  // the contract just deployed, whether or not this deployment stored a state
+  // under it.
   providers.privateStateProvider.setContractAddress(deploy.contractAddress);
   if (privateStateId !== undefined) {
     await providers.privateStateProvider.set(privateStateId, deploy.nextPrivateState);

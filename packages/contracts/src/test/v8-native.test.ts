@@ -89,6 +89,7 @@ import {
   VerifierKeyMismatchError
 } from '../errors';
 import { findDeployedContract } from '../find-deployed-contract';
+import { DISPATCH_BREADCRUMB_MESSAGE } from '../internal/breadcrumbs';
 import { resolveArtifactEra } from '../internal/era';
 import { findLedger8Contract, runLedger8Deploy, submitLedger8CallTx } from '../internal/ledger8-entry';
 import {
@@ -2807,17 +2808,6 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
   });
 
-  it('names the minted address before it writes the key', async () => {
-    const providers = deployProviders();
-
-    const deployed = await deployContract(providers, { compiledContract: contract });
-
-    expect(providers.privateStateProvider.setContractAddress).toHaveBeenCalledWith(deployed.contractAddress);
-    expect(callOrder(providers.privateStateProvider.setContractAddress)).toBeLessThan(
-      callOrder(providers.privateStateProvider.setSigningKey)
-    );
-  });
-
 });
 
 /**
@@ -3193,28 +3183,53 @@ describe('attaching to a retained-era contract already on chain', () => {
   // THE SIGNING KEY. The deploy arm persists it against the address it minted, so this arm is the
   // side of that round trip that reads it back -- and the field that used to be documented as
   // discarded is now the way to seed a key the deploy happened elsewhere.
+  //
+  // The three constants below are 32 bytes written as hex, which is the shape `isValidSigningKey`
+  // reads and the shape the retained runtime takes. One repeated byte each, so they are shapes and
+  // not keys: `ledger8-signing-key.test.ts` measures the shape against the REAL retained sampler,
+  // and this suite only needs entries that get past the read's validation.
+  const STORED_KEY_SHAPE = '11'.repeat(32);
+  const SUPPLIED_KEY_SHAPE = '22'.repeat(32);
+  const CURRENT_ERA_KEY_SHAPE = '33'.repeat(32);
+
+  /**
+   * The attach provider set with a breadcrumb sink on it.
+   *
+   * @param stored What `getSigningKey` answers for the attached address.
+   * @returns The providers and the sink's `debug` spy.
+   */
+  const attachProvidersLogging = (
+    stored: unknown
+  ): { readonly providers: RetainedProviders; readonly debug: ReturnType<typeof vi.fn> } => {
+    const debug = vi.fn();
+    const providers: RetainedProviders = {
+      ...attachProviders(v6Envelope),
+      loggerProvider: { debug, isLevelEnabled: (): boolean => true }
+    };
+    providers.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(stored);
+    return { providers, debug };
+  };
+
   it('stores a signing key the caller supplies, and reports it back', async () => {
     const providers = attachProviders(v6Envelope);
 
-    const found = await findDeployedContract(providers, { ...attachOptions(), signingKey: 'caller-own-signing-key' });
+    const found = await findDeployedContract(providers, { ...attachOptions(), signingKey: SUPPLIED_KEY_SHAPE });
 
     expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(recording.contractAddress, {
       tag: 'schnorr',
-      value: 'caller-own-signing-key'
+      value: SUPPLIED_KEY_SHAPE
     });
-    expect(found.signingKey).toBe('caller-own-signing-key');
+    expect(found.signingKey).toBe(SUPPLIED_KEY_SHAPE);
   });
 
   it('reports the key a deploy persisted when the caller supplies none', async () => {
     const providers = attachProviders(v6Envelope);
-    providers.privateStateProvider.getSigningKey = vi
-      .fn()
-      .mockResolvedValue({ tag: 'schnorr', value: 'stored-retained-signing-key' });
+    providers.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue({ tag: 'schnorr', value: STORED_KEY_SHAPE });
 
     const found = await findDeployedContract(providers, attachOptions());
 
     // Unwrapped back to the bare string the retained runtime takes.
-    expect(found.signingKey).toBe('stored-retained-signing-key');
+    expect(found.signingKey).toBe(STORED_KEY_SHAPE);
     // KEPT, not written over: a caller that attaches without naming a key is asking what is held,
     // not replacing it.
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
@@ -3237,21 +3252,71 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
   });
 
-  it('refuses a stored key of the other signature kind rather than handing it to the retained runtime', async () => {
-    const providers = attachProviders(v6Envelope);
-    // The store is shared with the current era, whose keys may legitimately be `ecdsa`. Unwrapped
-    // blindly, that value would be handed to the retained runtime as a maintenance key nobody
-    // holds the verifying key for.
-    providers.privateStateProvider.getSigningKey = vi
-      .fn()
-      .mockResolvedValue({ tag: 'ecdsa', value: 'other-kind-key-material' });
+  // The store is shared with the current era, whose keys may legitimately be `ecdsa`, and a stored
+  // entry can also have been hand-edited or half-written. Neither may FAIL the attach: the key is
+  // reported on the handle and consumed by nothing on this arm, so a circuit call that never looks
+  // at it would otherwise stop working because of an entry it does not read. Both read as ABSENT,
+  // and the breadcrumb is what keeps absent from meaning silent.
+  it('reports no key, and still attaches, when the stored entry is of the other signature kind', async () => {
+    const { providers, debug } = attachProvidersLogging({ tag: 'ecdsa', value: CURRENT_ERA_KEY_SHAPE });
 
-    const caught = await findDeployedContract(providers, attachOptions()).catch((error: unknown) => error);
+    const found = await findDeployedContract(providers, attachOptions());
 
-    expect(caught).toBeInstanceOf(Error);
-    expect((caught as Error).message).toContain('ecdsa');
-    // Named, never rendered: the value is secret material and an error message reaches logs.
-    expect((caught as Error).message).not.toContain('other-kind-key-material');
+    // `toBeUndefined` alone cannot tell "the guard rejected the entry" from "the read never
+    // happened", so the breadcrumb below is what says which of the two this was.
+    expect('signingKey' in found).toBe(true);
+    expect(found.signingKey).toBeUndefined();
+    expect(debug).toHaveBeenCalledWith(
+      {
+        decision: 'retained-signing-key-entry',
+        source: 'private-state-provider',
+        outcome: 'other-signature-kind',
+        contractAddress: recording.contractAddress
+      },
+      DISPATCH_BREADCRUMB_MESSAGE
+    );
+    // Named, never rendered: the value is secret material and a breadcrumb reaches logs.
+    expect(JSON.stringify(debug.mock.calls)).not.toContain(CURRENT_ERA_KEY_SHAPE);
+    // The attach itself completed -- the handle carries the callable circuits.
+    expect(Object.keys(found.callTx)).toEqual([CIRCUIT_ID]);
+  });
+
+  it.each([
+    ['empty', ''],
+    ['odd-length hex', '1'.repeat(63)],
+    ['non-hex', 'z'.repeat(64)],
+    ['not a string', 42]
+  ])('reports no key, and still attaches, when the stored value is %s', async (_case, value) => {
+    const { providers, debug } = attachProvidersLogging({ tag: 'schnorr', value });
+
+    const found = await findDeployedContract(providers, attachOptions());
+
+    expect('signingKey' in found).toBe(true);
+    expect(found.signingKey).toBeUndefined();
+    expect(debug).toHaveBeenCalledWith(
+      {
+        decision: 'retained-signing-key-entry',
+        source: 'private-state-provider',
+        outcome: 'malformed-value',
+        contractAddress: recording.contractAddress
+      },
+      DISPATCH_BREADCRUMB_MESSAGE
+    );
+    expect(Object.keys(found.callTx)).toEqual([CIRCUIT_ID]);
+  });
+
+  it('breadcrumbs nothing when the stored entry is one this framework wrote', async () => {
+    const { providers, debug } = attachProvidersLogging({ tag: 'schnorr', value: STORED_KEY_SHAPE });
+
+    const found = await findDeployedContract(providers, attachOptions());
+
+    expect(found.signingKey).toBe(STORED_KEY_SHAPE);
+    // The other direction of the same claim: a breadcrumb on every read would drown the one case
+    // an operator has to see.
+    expect(debug).not.toHaveBeenCalledWith(
+      expect.objectContaining({ decision: 'retained-signing-key-entry' }),
+      DISPATCH_BREADCRUMB_MESSAGE
+    );
   });
 
 });
