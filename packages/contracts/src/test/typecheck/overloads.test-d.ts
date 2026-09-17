@@ -531,6 +531,12 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
     expectTypeOf<Ledger8FindDeployedContractOptions<Counter016Contract>['signingKey']>().toEqualTypeOf<
       Ledger8SigningKey | undefined
     >();
+    // The member this arm persists a key INTO, and the one omitted when this assertion was
+    // written: widened to the current era's wrapped `SigningKey | undefined`, every other gate in
+    // this package still compiled and passed.
+    expectTypeOf<Ledger8FoundContract<Counter016Contract>['signingKey']>().toEqualTypeOf<
+      Ledger8SigningKey | undefined
+    >();
   });
 
   it('accepts the retained key on the deploy and find options, and refuses a current-era one', () => {

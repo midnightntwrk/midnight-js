@@ -663,11 +663,21 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
    * The key to record as this contract's maintenance authority key, for a
    * caller that holds one and deployed the contract somewhere else.
    *
+   * VALIDATED BEFORE IT IS STORED, and a key this framework could not store and
+   * read back is refused with `Ledger8SigningKeyUnusableError` rather than
+   * written. A retained-era key is exactly 64 hexadecimal characters, which is
+   * what that era's `sampleSigningKey` produces; this type is `string`, so a
+   * shorter one type-checks. Stored unchecked, it would be reported on the
+   * attach that supplied it and read as ABSENT on the next one -- and the entry
+   * it replaced would already be gone. Nothing is written when it is refused.
+   *
    * Stored against {@link Ledger8FindDeployedContractOptions.contractAddress}
    * in the private-state provider, which is the same storage
-   * {@link Ledger8DeployedContract.signingKey} is written to — so a key
-   * supplied here replaces whatever is held for that address, and is what
-   * {@link Ledger8FoundContract.signingKey} then reports.
+   * {@link Ledger8DeployedContract.signingKey} is written to -- so a key
+   * supplied here REPLACES whatever is held for that address, and is what
+   * {@link Ledger8FoundContract.signingKey} then reports. Replacing is the
+   * documented remedy for an entry this framework cannot use, so it wins over a
+   * stored entry rather than falling back to one.
    *
    * OMITTING it reports the key already stored, and stores nothing. Where the
    * current era's `findDeployedContract` samples a fresh key when none is
@@ -743,25 +753,33 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
    * The key this framework holds for the contract's maintenance authority, or
    * `undefined` when it holds none it can use.
    *
-   * OPTIONAL here and REQUIRED on {@link Ledger8DeployedContract}, which is the
+   * ALWAYS PRESENT and possibly `undefined`, rather than optional. The member is
+   * written on every attach, `exactOptionalPropertyTypes` is off in this
+   * package, and an optional member invites `found.signingKey!` at a call site
+   * where the absent case is the ordinary one.
+   *
+   * REQUIRED on {@link Ledger8DeployedContract}, and that is the whole
    * difference between the two handles: a deploy always has a key, because it
    * built the authority; an attach has one only if a deploy on this machine
    * stored it, or the caller supplied one through
    * {@link Ledger8FindDeployedContractOptions.signingKey}.
    *
-   * `undefined` COLLAPSES TWO CASES, and a caller that needs to tell them apart
-   * has to look at the provider rather than at this field:
+   * `undefined` COLLAPSES THREE CASES, and a caller that needs to tell them
+   * apart has to look at the logger rather than at this field:
    *
    * 1. nothing is stored for this address;
-   * 2. something is stored that this framework did not write — an entry naming
+   * 2. something is stored that this framework did not write -- an entry naming
    *    the other signature kind, which the CURRENT era legitimately stores
    *    under the same address in the same provider, or one whose value is not
-   *    the shape a signing key has. Neither fails the attach, because nothing
-   *    on this arm consumes the key: the retained era exposes no maintenance
-   *    interface, so a circuit call would otherwise stop working over a value
-   *    it never reads. Case 2 is reported to the logger provider as a
-   *    DEBUG-level dispatch breadcrumb, which is the only place the two cases
-   *    are distinguishable.
+   *    the shape a retained-era key has;
+   * 3. the entry could not be READ at all, because `getSigningKey` rejected: a
+   *    wrong store password, a rotation-lock timeout, store I/O.
+   *
+   * Neither 2 nor 3 fails the attach, because nothing on this arm consumes the
+   * key: the retained era exposes no maintenance interface, so a circuit call
+   * would otherwise stop working over a value it never reads. Both are reported
+   * to the logger provider as a DEBUG-level dispatch breadcrumb, which is the
+   * only place the three cases are distinguishable.
    *
    * The remedy for case 2 is the caller's either way: pass the retained-era key
    * on {@link Ledger8FindDeployedContractOptions.signingKey}, which replaces the
@@ -770,13 +788,18 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
    *
    * @remarks **Privacy-sensitive.** Signing-key material.
    */
-  readonly signingKey?: Ledger8SigningKey;
+  readonly signingKey: Ledger8SigningKey | undefined;
 }
 
 /**
- * A retained-era contract deployed by the caller, which additionally holds the
- * signing key registered as the contract's maintenance authority — something
- * only the deployer has.
+ * A retained-era contract deployed by the caller.
+ *
+ * It differs from {@link Ledger8FoundContract} in ONE thing: its
+ * {@link Ledger8DeployedContract.signingKey} is REQUIRED where the found
+ * handle's may be `undefined`. The key itself is no longer something only a
+ * deployer has -- the deploy stores it, and an attach through the same provider
+ * reports it back -- so what a deploy guarantees is that there IS one, not that
+ * nobody else could hold it.
  *
  * Published under the retained-era namespace so a caller that receives one by
  * inference can also NAME it. This is what `deployContract`'s retained-era arm
