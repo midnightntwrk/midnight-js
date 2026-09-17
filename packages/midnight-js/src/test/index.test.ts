@@ -144,10 +144,14 @@ describe('ledger version failures', () => {
     ).toBe(true);
     // Both negatives are load-bearing, not decoration. A renamed member is a
     // compile error, but two members that accidentally share one string are
-    // not, and `hasErrorCode(e, code)` falls back to "carries any registered
-    // code" when `code` is `undefined`. Each member therefore appears once
-    // expected true and once expected false, which neither a shared literal
-    // nor an `undefined` can satisfy at the same time.
+    // not. Each member therefore appears once expected true and once expected
+    // false, which a shared literal cannot satisfy at the same time.
+    //
+    // The same pairing used to guard a second case, `code` arriving as
+    // `undefined` and degrading the call to "carries any registered code".
+    // `hasErrorCode` now takes `C extends MidnightJsErrorCode`, so neither
+    // public overload admits `undefined` and a TypeScript caller cannot reach
+    // that branch at all.
     expect(
       midnightJs.utils.hasErrorCode(fromRead, midnightJs.PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT)
     ).toBe(false);

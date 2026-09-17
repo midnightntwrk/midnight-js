@@ -13,10 +13,9 @@
  * limitations under the License.
  */
 
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
-import { UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
+import { PROVIDER_ERROR_CODES, UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
 import { unwrapV9 } from '../unwrap-v9';
 import type { VersionedTx } from '../versioned';
 
@@ -39,11 +38,11 @@ describe('unwrapV9', () => {
     expect(unwrapV9({ version: 'v9', tx: 'the-transaction' }, 'proveTx')).toBe('the-transaction');
   });
 
-  it('refuses the v8 arm with the registered code, naming the seam and the payload size', () => {
+  it('refuses the v8 arm with its stable code, naming the seam and the payload size', () => {
     const refusal = caught({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) });
 
     expect(refusal).toBeInstanceOf(V8PayloadUnsupportedError);
-    expect(hasErrorCode(refusal, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
+    expect((refusal as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
     expect((refusal as V8PayloadUnsupportedError).seam).toBe('proveTx');
     expect((refusal as V8PayloadUnsupportedError).byteLength).toBe(3);
   });

@@ -14,10 +14,9 @@
  */
 
 import type { CostModel, ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import { UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
+import { PROVIDER_ERROR_CODES, UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
 import {
   createProofProvider,
   type UnboundTransaction,
@@ -67,7 +66,7 @@ describe('createProofProvider', () => {
   });
 
   describe('v8 payload', () => {
-    it('rejects with the registered unsupported-payload code instead of proving anything', async () => {
+    it('rejects with its stable unsupported-payload code instead of proving anything', async () => {
       const provider = createProofProvider(stubProvingProvider, stubCostModel);
 
       const rejection = await provider
@@ -78,7 +77,7 @@ describe('createProofProvider', () => {
         );
 
       expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
+      expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
     });
 
     it('names the seam that received the payload so the caller can tell which call failed', async () => {
@@ -158,11 +157,11 @@ describe('createProofProvider', () => {
       // opposite of what happened.
       ['null', null, 'null'],
       ['a version string longer than the cap', { version: 'v'.repeat(80), tx: {} }, `'${'v'.repeat(32)}'… (80 chars)`]
-    ])('rejects %s with the registered untagged-payload code', async (_label, payload, received) => {
+    ])('rejects %s with its stable untagged-payload code', async (_label, payload, received) => {
       const rejection = await proveUntagged(payload);
 
       expect(rejection).toBeInstanceOf(UntaggedPayloadError);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
+      expect((rejection as UntaggedPayloadError).code).toBe(PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD);
       expect((rejection as UntaggedPayloadError).seam).toBe('proveTx');
       expect((rejection as UntaggedPayloadError).received).toBe(received);
     });

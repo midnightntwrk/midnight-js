@@ -19,10 +19,9 @@ import type {
   FinalizedTransaction,
   TransactionId
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import { UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
+import { PROVIDER_ERROR_CODES, UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
 import { createMidnightProvider } from '../midnight-provider';
 import type { UnboundTransaction, VersionedUnboundTransaction } from '../proof-provider';
 import { createWalletProvider, type VersionedFinalizedTransaction } from '../wallet-provider';
@@ -74,7 +73,7 @@ describe('createWalletProvider', () => {
     expect(impl.balanceTx).toHaveBeenCalledWith(expect.anything(), ttl);
   });
 
-  it('rejects a v8 payload with the registered code, and never calls the implementation', async () => {
+  it('rejects a v8 payload with its stable code, and never calls the implementation', async () => {
     const impl = buildImpl(stubFinalized());
     const provider = createWalletProvider(impl);
 
@@ -84,7 +83,7 @@ describe('createWalletProvider', () => {
     );
 
     expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-    expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
+    expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
     expect((rejection as V8PayloadUnsupportedError).seam).toBe('balanceTx');
     expect(impl.balanceTx).not.toHaveBeenCalled();
   });
@@ -132,7 +131,7 @@ describe('createMidnightProvider', () => {
     expect(txId).toBe('tx-id');
   });
 
-  it('rejects a v8 payload with the registered code, and never submits', async () => {
+  it('rejects a v8 payload with its stable code, and never submits', async () => {
     const submit = vi.fn(async () => 'tx-id' as TransactionId);
     const provider = createMidnightProvider(submit);
 
@@ -141,7 +140,8 @@ describe('createMidnightProvider', () => {
       (error: unknown) => error
     );
 
-    expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
+    expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
+    expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
     expect((rejection as V8PayloadUnsupportedError).seam).toBe('submitTx');
     expect(submit).not.toHaveBeenCalled();
   });

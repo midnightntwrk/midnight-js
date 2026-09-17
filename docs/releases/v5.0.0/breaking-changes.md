@@ -399,9 +399,24 @@ See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-arms.md).
 `CurrentLedgerVersion`, `RETAINED_LEDGER_VERSIONS`, `RetainedLedgerVersion`, on
 the barrel and on the `./version` subpath.
 
+**`@midnight-ntwrk/midnight-js-types`** — added: `PROVIDER_ERROR_CODES` and
+`ProviderErrorCode`, on the barrel and on a new `./errors` leaf subpath. That
+subpath imports nothing, so reading a code string does not pull `effect` or the
+protocol ledger namespace the way the root barrel does.
+
 **`@midnight-ntwrk/midnight-js-utils`** — added: `hasErrorCode`,
-`MIDNIGHT_JS_ERROR_CODES`, `MidnightJsErrorCode`, `CONTRACTS_ERROR_CODES`,
-`ContractsErrorCode`, `PROVIDER_ERROR_CODES`, `ProviderErrorCode`.
+`hasForeignErrorCode`, `MIDNIGHT_JS_ERROR_CODES`, `MidnightJsErrorCode`,
+`CONTRACTS_ERROR_CODES`, `ContractsErrorCode`, `PROVIDER_ERROR_CODES`,
+`ProviderErrorCode`. `PROVIDER_ERROR_CODES` and `ProviderErrorCode` are declared
+in `midnight-js-types` and re-exported here, so both import paths work.
+
+`hasErrorCode(error, code)` does **not** accept an arbitrary string as `code`:
+it takes `C extends MidnightJsErrorCode`, so a misspelled code is a compile
+error instead of a guard that silently never matches. Compare against a code
+this framework does not own with `hasForeignErrorCode`, which refuses one of our
+own codes at compile time and throws on anything carrying the `MIDNIGHT_JS_`
+prefix — a misspelling of one of ours lands there, and answering `false` would
+put the silent guard back.
 
 **`@midnight-ntwrk/midnight-js-contracts`** — added:
 `EraInvariantViolationError` (code `MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION`,

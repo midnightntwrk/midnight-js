@@ -2107,7 +2107,6 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-types@workspace:packages/types"
   dependencies:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     effect: "npm:^3.22.1"
     pino: "npm:^10.3.1"
     rollup: "npm:^4.60.4"
@@ -2123,6 +2122,7 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
+    "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnightntwrk/wallet-sdk-address-format": "npm:4.0.0-beta.3"
     "@noble/hashes": "npm:^2.2.0"
     "@types/node": "npm:^24.0.0"
