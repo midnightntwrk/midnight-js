@@ -17,6 +17,7 @@ import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/e
 import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
@@ -42,12 +43,19 @@ import { createCircuitCallTxInterface, createLedger8CircuitCallTxInterface } fro
 import type { FinalizedDeployTxData } from './tx-model';
 
 /**
- * Base type for configuration for {@link deployContract}; identical to
- * {@link ContractConstructorOptionsWithArguments} except the `signingKey` is
- * now optional, since {@link deployContract} will generate a fresh signing key
- * in the event that `signingKey` is undefined.
+ * What both {@link deployContract} option arms carry, and nothing either arm
+ * decides. Identical to {@link ContractConstructorOptionsWithArguments} except
+ * the `signingKey` is now optional, since {@link deployContract} will generate a
+ * fresh signing key in the event that `signingKey` is undefined.
+ *
+ * NOT published, and neither arm extends the other. An arm declaring
+ * `privateStateId: PrivateStateId` over a base declaring `privateStateId?:
+ * never` collapses that member to `never`, leaving the private-state arm
+ * uninhabitable — so the pairing rule can only be stated by making the two arms
+ * siblings over this. The retained era's
+ * `Ledger8DeployContractOptionsShared` is the same type for the same reason.
  */
-export type DeployContractOptionsBase<C extends Contract.Any> = ContractConstructorOptionsWithArguments<C> & {
+type DeployContractOptionsShared<C extends Contract.Any> = ContractConstructorOptionsWithArguments<C> & {
   /**
    * An optional mapping of {@link CoinPublicKey} to {@link EncPublicKey} that can be used to resolve encryption
    * keys for coins created in the contract constructor. This is useful in cases where the constructor creates
@@ -66,10 +74,40 @@ export type DeployContractOptionsBase<C extends Contract.Any> = ContractConstruc
 };
 
 /**
- * {@link deployContract} base options with information needed to store private states;
- * only used if the contract being deployed has a private state.
+ * The {@link deployContract} arm for a contract whose private state is stored
+ * NOWHERE: the constructor runs against `undefined` and nothing is written.
+ *
+ * The other arm is {@link DeployContractOptionsWithPrivateState}.
  */
-export type DeployContractOptionsWithPrivateState<C extends Contract.Any> = DeployContractOptionsBase<C> & {
+export type DeployContractOptionsBase<C extends Contract.Any> = DeployContractOptionsShared<C> & {
+  /**
+   * DECLARED on this arm, and only ever `undefined`.
+   *
+   * Left off the arm entirely, `{ compiledContract, privateStateId: 'x' }`
+   * compiled: union excess-property checking admits a member declared on the
+   * SIBLING arm as long as one arm is satisfied, and `compiledContract` alone
+   * satisfies this one. The constructor then ran against `undefined`,
+   * `undefined` was stored under the caller's id, and the handle reported an
+   * `initialPrivateState` typed non-optional while actually undefined.
+   */
+  readonly privateStateId?: never;
+  /**
+   * DECLARED on this arm, and only ever `undefined` — see
+   * {@link DeployContractOptionsBase.privateStateId} for why the member is
+   * present rather than absent.
+   */
+  readonly initialPrivateState?: never;
+};
+
+/**
+ * {@link deployContract} options with information needed to store private states;
+ * only used if the contract being deployed has a private state.
+ *
+ * Both members together or neither: a state with no id has nowhere to go, and
+ * an id with no state stores `undefined` under a name a later call will read
+ * back.
+ */
+export type DeployContractOptionsWithPrivateState<C extends Contract.Any> = DeployContractOptionsShared<C> & {
   /**
    * An identifier for the private state of the contract being found.
    */
@@ -100,21 +138,48 @@ export interface DeployedContract<C extends Contract.Any> extends FoundContract<
   readonly deployTxData: FinalizedDeployTxData<C>;
 }
 
+/**
+ * Narrows to the arm that carries a private state configuration, on the id's KEY rather than on
+ * its value — the value is checked separately, because an undefined id is refused rather than read
+ * as "no id given".
+ *
+ * The key alone names the arm: the two arms are siblings that declare the id and the state
+ * together or neither, so a configuration carrying the id carries the state.
+ */
+const namesPrivateState = <C extends Contract.Any>(
+  options: DeployContractOptions<C>
+): options is DeployContractOptionsWithPrivateState<C> => 'privateStateId' in options;
+
 const createDeployTxOptions = <C extends Contract.Any>(
   deployContractOptions: DeployContractOptions<C>
 ): DeployTxOptions<C> => {
-  const deployTxOptionsBase = {
-    ...deployContractOptions,
-    signingKey: deployContractOptions.signingKey ?? sampleSigningKey()
-  };
+  const signingKey = deployContractOptions.signingKey ?? sampleSigningKey();
 
-  return 'privateStateId' in deployContractOptions
-    ? ({
-        ...deployTxOptionsBase,
-        privateStateId: deployContractOptions.privateStateId,
-        initialPrivateState: deployContractOptions.initialPrivateState
-      } as DeployTxOptions<C>)
-    : deployTxOptionsBase;
+  if (!namesPrivateState(deployContractOptions)) {
+    return { ...deployContractOptions, signingKey };
+  }
+  const { privateStateId } = deployContractOptions;
+  // Read off the KEY above and the VALUE here, exactly as `find-deployed-contract.ts` and the
+  // retained arm read it. A caller that wrote `privateStateId: cfg.someId` with an undefined
+  // `someId` BELIEVES it named one, and reading that as "no id given" would deploy the contract,
+  // store nothing, and hand `callTx` an undefined id — so every later call proves against a state
+  // the contract never had. Refused at the configuration instead, before anything is built.
+  assertDefined(
+    privateStateId,
+    "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
+      'for a contract that stores no private state.'
+  );
+  // Cast, as this branch already did before the arms became siblings: spreading a value whose type
+  // is an intersection over a CONDITIONAL type -- which `args` makes this one -- leaves TypeScript
+  // unable to compute the result, so it sees neither the explicit members below nor the ones the
+  // spread carries in. All of them are present: the narrowing above supplies the private-state
+  // pair, and `signingKey` is resolved at the top of this function.
+  return {
+    ...deployContractOptions,
+    signingKey,
+    privateStateId,
+    initialPrivateState: deployContractOptions.initialPrivateState
+  } as DeployTxOptions<C>;
 };
 
 /*
@@ -197,6 +262,9 @@ export async function deployContract<C extends Contract.Any>(
  * @throws IncompleteDeployContractPrivateStateConfig If an `initialPrivateState` reaches the
  *                                                    retained arm with no `privateStateId` to store
  *                                                    it under.
+ * @throws Error If `privateStateId` is present with an undefined value, which is a caller that
+ *               believes it named an id. Raised on both eras, before anything is built or
+ *               submitted.
  */
 export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,

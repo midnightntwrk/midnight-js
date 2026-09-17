@@ -30,6 +30,7 @@ import {
   type PrivateStateId,
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
+import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 
 export const stateValueEqual = (a: StateValue, b: StateValue): boolean => {
   return a.toString(false) === b.toString(false);
@@ -127,10 +128,16 @@ export const expectSuccessfulDeployTx = async <C extends Contract.Any>(
     // We only test contracts that pass 'initialPrivateState' through the contract constructor unchanged
     // so this equality comparison is justified.
     if ('privateStateId' in deployTxOptions && 'initialPrivateState' in deployTxOptions) {
-      expect(deployTxData.private.initialPrivateState).toEqual(deployTxOptions.initialPrivateState);
-      const storedPrivateState = await providers.privateStateProvider.get(deployTxOptions.privateStateId);
+      // Both members are DECLARED on the no-private-state deploy arm too, as `undefined`, so these
+      // `in` checks narrow to the pair's PRESENCE and not to its value. An id given as undefined is
+      // a caller error rather than a contract that carries no private state, and `deployContract`
+      // refuses it -- so a deploy that reached this assertion named a real one.
+      const { privateStateId, initialPrivateState } = deployTxOptions;
+      assertDefined(privateStateId, "'privateStateId' was given as undefined");
+      expect(deployTxData.private.initialPrivateState).toEqual(initialPrivateState);
+      const storedPrivateState = await providers.privateStateProvider.get(privateStateId);
       expect(storedPrivateState).toBeDefined();
-      expect(storedPrivateState).toEqual(deployTxOptions.initialPrivateState);
+      expect(storedPrivateState).toEqual(initialPrivateState);
     }
   }
 };
