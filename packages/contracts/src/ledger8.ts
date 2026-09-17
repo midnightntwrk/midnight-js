@@ -33,12 +33,14 @@
 export {
   Ledger8AmbiguousEntryPointError as AmbiguousEntryPointError,
   Ledger8CallTxFailedError as CallTxFailedError,
+  Ledger8DeployNotStoredError as DeployNotStoredError,
   Ledger8DeployOnV9Error as DeployOnV9Error,
   Ledger8DeployTxFailedError as DeployTxFailedError,
   Ledger8DeployUnconfirmedError as DeployUnconfirmedError,
   Ledger8RecipientUnmappableError as RecipientUnmappableError,
   Ledger8SeamFailedError as SeamFailedError,
-  Ledger8ShieldedSpendUnsupportedError as ShieldedSpendUnsupportedError
+  Ledger8ShieldedSpendUnsupportedError as ShieldedSpendUnsupportedError,
+  Ledger8SigningKeyUnusableError as SigningKeyUnusableError
 } from './errors';
 export type {
   Ledger8CallResultPrivate as CallResultPrivate,

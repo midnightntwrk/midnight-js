@@ -17,18 +17,22 @@
  * The DISPATCH BREADCRUMBS: what an operator can see about which era an
  * operation ran against, and why.
  *
- * Three decisions get a breadcrumb, and they are the three this package
- * actually makes:
+ * Four decisions get a breadcrumb, and they are the four this package actually
+ * makes:
  *
  * 1. HEAD RESOLUTION -- the head integer read and the era it resolved to.
  * 2. PIPELINE SELECTION -- the artifact's pipeline paired with that head era.
  * 3. ENCODING -- the era the fetched contract state's envelope tag declares.
+ * 4. RETAINED SIGNING-KEY ENTRY -- a stored key the retained era could not read
+ *    as its own, and so reported as none held.
  *
  * Several era decisions a reader might expect are REFUSALS rather than
  * choices, and a refusal already carries a registered error code and
  * remediation text, so it is not breadcrumbed a second time: the retained-era
  * deploy arm refuses, a scope on a pre-fork head refuses, and a provider that
- * answers on the wrong era's arm refuses.
+ * answers on the wrong era's arm refuses. The fourth decision is the inverse
+ * case, and the reason it needs a breadcrumb: it refuses nothing and returns
+ * nothing, so an operator has no other way to see it happened.
  *
  * Every assertion here is a STRICT equality on the whole breadcrumb, not a
  * subset match, because the second thing these tests guard is privacy: a
@@ -55,8 +59,14 @@ import {
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation
 } from '../errors';
-import type { DispatchBreadcrumb, HeadReadingProvenance } from '../internal/breadcrumbs';
-import { DISPATCH_BREADCRUMB_MESSAGE, emitEncoding, emitHeadResolution, emitPipelineSelection } from '../internal/breadcrumbs';
+import type { DispatchBreadcrumb, HeadReadingProvenance, RetainedSigningKeyEntryBreadcrumb } from '../internal/breadcrumbs';
+import {
+  DISPATCH_BREADCRUMB_MESSAGE,
+  emitEncoding,
+  emitHeadResolution,
+  emitPipelineSelection,
+  emitRetainedSigningKeyEntry
+} from '../internal/breadcrumbs';
 import { type PipelineEra, resolveContractStateEra, resolveOperationEra } from '../internal/era';
 import { acquireLedger8Runtime, findLedger8Contract, type Ledger8RuntimeProviders } from '../internal/ledger8-entry';
 import { handleSubmitRejection } from '../internal/stale-head';
@@ -124,6 +134,14 @@ const ALL_PIPELINES: Record<PipelineEra, PipelineEra> = {
   ledger9: 'ledger9'
 };
 
+/** The same exhaustive-by-compilation shape, over why a stored signing-key entry was unusable. */
+type SigningKeyEntryOutcome = RetainedSigningKeyEntryBreadcrumb['outcome'];
+const ALL_SIGNING_KEY_ENTRY_OUTCOMES: Record<SigningKeyEntryOutcome, SigningKeyEntryOutcome> = {
+  'other-signature-kind': 'other-signature-kind',
+  'malformed-value': 'malformed-value',
+  'unreadable-entry': 'unreadable-entry'
+};
+
 type DebugSpy = Mock<(breadcrumb: DispatchBreadcrumb, message: string) => void>;
 
 const createSink = (): { readonly debug: DebugSpy } => ({
@@ -173,7 +191,10 @@ const rawState = (raw: Uint8Array, protocolVersion: number, version: LedgerVersi
 const REQUIRED_FIELDS: Readonly<Record<DispatchBreadcrumb['decision'], readonly string[]>> = {
   'head-resolution': ['decision', 'version', 'protocolVersion', 'source', 'readingProvenance'],
   'pipeline-selection': ['decision', 'version', 'protocolVersion', 'source', 'readingProvenance', 'path'],
-  encoding: ['decision', 'version', 'source']
+  encoding: ['decision', 'version', 'source'],
+  // No `version`: the decision name already says which era the read was made
+  // for, and a field that can only ever hold one value states nothing.
+  'retained-signing-key-entry': ['decision', 'source', 'outcome', 'contractAddress']
 };
 
 // Present only when the operation has a value for them. `contractAddress` is
@@ -181,7 +202,10 @@ const REQUIRED_FIELDS: Readonly<Record<DispatchBreadcrumb['decision'], readonly 
 const OPTIONAL_FIELDS: Readonly<Record<DispatchBreadcrumb['decision'], readonly string[]>> = {
   'head-resolution': [],
   'pipeline-selection': ['contractAddress'],
-  encoding: []
+  encoding: [],
+  // `contractAddress` is REQUIRED above rather than optional here: this
+  // decision is only ever made about a named contract.
+  'retained-signing-key-entry': []
 };
 
 /**
@@ -302,12 +326,37 @@ describe('the breadcrumb emitters', () => {
     ]);
   });
 
+  it.each(Object.values(ALL_SIGNING_KEY_ENTRY_OUTCOMES))(
+    'reports a stored signing-key entry the retained era could not use, as %s',
+    (outcome) => {
+      const sink = createSink();
+
+      emitRetainedSigningKeyEntry(sink, CONTRACT_ADDRESS, outcome);
+
+      // The whole breadcrumb, so the assertion also says what is NOT on it: no
+      // stored value, and no `tag` read off the entry -- a hand-edited entry's
+      // `tag` is arbitrary text, and this decision is the one made ABOUT such
+      // an entry.
+      const [breadcrumb] = emitted(sink);
+      expect(breadcrumb).toBeDefined();
+      expect([breadcrumb]).toStrictEqual([
+        {
+          decision: 'retained-signing-key-entry',
+          source: 'private-state-provider',
+          outcome,
+          contractAddress: CONTRACT_ADDRESS
+        }
+      ]);
+    }
+  );
+
   it('does nothing at all when no logger is configured', () => {
     // The logger provider is OPTIONAL on every provider set, so this is the
     // ordinary case and must not be a throw.
     expect(() => emitHeadResolution(undefined, { head: 'v9', headProtocolVersion: V9_HEAD }, 'operation-start')).not.toThrow();
     expect(() => emitPipelineSelection(undefined, { head: 'v9', headProtocolVersion: V9_HEAD }, 'ledger9')).not.toThrow();
     expect(() => emitEncoding(undefined, 'v9')).not.toThrow();
+    expect(() => emitRetainedSigningKeyEntry(undefined, CONTRACT_ADDRESS, 'malformed-value')).not.toThrow();
   });
 
   it('does nothing when the configured logger implements no debug level', () => {
@@ -372,7 +421,11 @@ describe('head resolution leaves a breadcrumb naming the integer AND the era', (
     await resolveOperationEra(pdp, sink);
     await resolveOperationEra(pdp, sink);
 
-    expect(emitted(sink).map((breadcrumb) => breadcrumb.version)).toEqual<LedgerVersion[]>(['v8', 'v9']);
+    // Not every decision carries an era name, so the head readings are selected rather than
+    // assumed -- and the count is asserted too, so the selection cannot quietly drop one.
+    const headReadings = emitted(sink).filter((breadcrumb) => breadcrumb.decision === 'head-resolution');
+    expect(headReadings).toHaveLength(emitted(sink).length);
+    expect(headReadings.map((breadcrumb) => breadcrumb.version)).toEqual<LedgerVersion[]>(['v8', 'v9']);
     expect(pdp.queryLatestProtocolVersion).toHaveBeenCalledTimes(2);
   });
 

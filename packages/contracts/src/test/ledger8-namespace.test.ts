@@ -28,12 +28,14 @@ import { describe, expect, it } from 'vitest';
 import {
   Ledger8AmbiguousEntryPointError,
   Ledger8CallTxFailedError,
+  Ledger8DeployNotStoredError,
   Ledger8DeployOnV9Error,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
   Ledger8RecipientUnmappableError,
   Ledger8SeamFailedError,
-  Ledger8ShieldedSpendUnsupportedError
+  Ledger8ShieldedSpendUnsupportedError,
+  Ledger8SigningKeyUnusableError
 } from '../errors';
 // Imported from the package BARREL, because the barrel is what this suite is about: the retained
 // era reaches a consumer through ONE name, and everything it publishes is reachable under it.
@@ -50,12 +52,14 @@ import { createLedger8CircuitCallTxInterface } from '../tx-interfaces';
 const RETAINED_ERA_MEMBERS = [
   'AmbiguousEntryPointError',
   'CallTxFailedError',
+  'DeployNotStoredError',
   'DeployOnV9Error',
   'DeployTxFailedError',
   'DeployUnconfirmedError',
   'RecipientUnmappableError',
   'SeamFailedError',
   'ShieldedSpendUnsupportedError',
+  'SigningKeyUnusableError',
   'createCircuitCallTxInterface'
 ];
 
@@ -124,12 +128,14 @@ describe('the retained era is published as one namespace', () => {
     // points a member at the wrong declaration -- the one failure mode the key list cannot see.
     expect(Ledger8.AmbiguousEntryPointError).toBe(Ledger8AmbiguousEntryPointError);
     expect(Ledger8.CallTxFailedError).toBe(Ledger8CallTxFailedError);
+    expect(Ledger8.DeployNotStoredError).toBe(Ledger8DeployNotStoredError);
     expect(Ledger8.DeployOnV9Error).toBe(Ledger8DeployOnV9Error);
     expect(Ledger8.DeployTxFailedError).toBe(Ledger8DeployTxFailedError);
     expect(Ledger8.DeployUnconfirmedError).toBe(Ledger8DeployUnconfirmedError);
     expect(Ledger8.RecipientUnmappableError).toBe(Ledger8RecipientUnmappableError);
     expect(Ledger8.SeamFailedError).toBe(Ledger8SeamFailedError);
     expect(Ledger8.ShieldedSpendUnsupportedError).toBe(Ledger8ShieldedSpendUnsupportedError);
+    expect(Ledger8.SigningKeyUnusableError).toBe(Ledger8SigningKeyUnusableError);
     expect(Ledger8.createCircuitCallTxInterface).toBe(createLedger8CircuitCallTxInterface);
   });
 

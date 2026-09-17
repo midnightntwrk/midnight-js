@@ -660,32 +660,33 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
    */
   readonly initialPrivateState?: Ledger8PrivateState<C>;
   /**
-   * NOT HONOURED on this arm: a key supplied here is DISCARDED.
+   * The key to record as this contract's maintenance authority key, for a
+   * caller that holds one and deployed the contract somewhere else.
    *
-   * The current era's `findDeployedContract` stores this key against the
-   * contract address in the private-state provider, so a caller that deployed
-   * the contract elsewhere can still issue maintenance transactions for it.
-   * The retained arm stores nothing, so passing a key here has no effect —
-   * which is recorded at the field rather than left for a caller to discover,
-   * because a silently discarded key reads as a stored one.
+   * VALIDATED BEFORE IT IS STORED, and a key this framework could not store and
+   * read back is refused with `Ledger8SigningKeyUnusableError` rather than
+   * written. A retained-era key is exactly 64 hexadecimal characters, which is
+   * what that era's `sampleSigningKey` produces; this type is `string`, so a
+   * shorter one type-checks. Stored unchecked, it would be reported on the
+   * attach that supplied it and read as ABSENT on the next one -- and the entry
+   * it replaced would already be gone. Nothing is written when it is refused.
    *
-   * The field is retained rather than removed so this arm's options stay the
-   * shape the current era's are, and so it can start being honoured without a
-   * change to the type: honouring it is client-side storage, which is
-   * era-independent, so nothing about the retained ledger prevents it.
+   * Stored against {@link Ledger8FindDeployedContractOptions.contractAddress}
+   * in the private-state provider, which is the same storage
+   * {@link Ledger8DeployedContract.signingKey} is written to -- so a key
+   * supplied here REPLACES whatever is held for that address, and is what
+   * {@link Ledger8FoundContract.signingKey} then reports. Replacing is the
+   * documented remedy for an entry this framework cannot use, so it wins over a
+   * stored entry rather than falling back to one.
    *
-   * There is NO framework storage a retained key fits today, and none to fall
-   * back on: `PrivateStateProvider.setSigningKey` takes the CURRENT era's
-   * `{ tag, value }` key, while {@link Ledger8SigningKey} is a bare string, so
-   * handing one to that method does not compile. A caller that needs the key
-   * keeps it itself, outside this framework.
+   * OMITTING it reports the key already stored, and stores nothing. Where the
+   * current era's `findDeployedContract` samples a fresh key when none is
+   * stored, this arm reports none: a sampled key bears no relation to the
+   * authority the chain holds for a contract this caller did not deploy, and
+   * {@link Ledger8FoundContract} carries no maintenance interface for one to be
+   * used through.
    *
-   * The key this field would take is the one
-   * {@link Ledger8DeployedContract.signingKey} reports, which the deploy arm
-   * samples when the caller named none and persists nowhere. So the deploy ->
-   * attach round trip is not supported in either direction: the deploy does not
-   * store the key, and this field does not read one back. A caller that never
-   * copied it off the deploy handle cannot maintain that contract again.
+   * @remarks **Privacy-sensitive.** Signing-key material.
    */
   readonly signingKey?: Ledger8SigningKey;
 }
@@ -748,12 +749,57 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
    * arguments.
    */
   readonly callTx: Ledger8CircuitCallTxInterface<C>;
+  /**
+   * The key this framework holds for the contract's maintenance authority, or
+   * `undefined` when it holds none it can use.
+   *
+   * ALWAYS PRESENT and possibly `undefined`, rather than optional. The member is
+   * written on every attach, `exactOptionalPropertyTypes` is off in this
+   * package, and an optional member invites `found.signingKey!` at a call site
+   * where the absent case is the ordinary one.
+   *
+   * REQUIRED on {@link Ledger8DeployedContract}, and that is the whole
+   * difference between the two handles: a deploy always has a key, because it
+   * built the authority; an attach has one only if a deploy on this machine
+   * stored it, or the caller supplied one through
+   * {@link Ledger8FindDeployedContractOptions.signingKey}.
+   *
+   * `undefined` COLLAPSES THREE CASES, and a caller that needs to tell them
+   * apart has to look at the logger rather than at this field:
+   *
+   * 1. nothing is stored for this address;
+   * 2. something is stored that this framework did not write -- an entry naming
+   *    the other signature kind, which the CURRENT era legitimately stores
+   *    under the same address in the same provider, or one whose value is not
+   *    the shape a retained-era key has;
+   * 3. the entry could not be READ at all, because `getSigningKey` rejected: a
+   *    wrong store password, a rotation-lock timeout, store I/O.
+   *
+   * Neither 2 nor 3 fails the attach, because nothing on this arm consumes the
+   * key: the retained era exposes no maintenance interface, so a circuit call
+   * would otherwise stop working over a value it never reads. Both are reported
+   * to the logger provider as a DEBUG-level dispatch breadcrumb, which is the
+   * only place the three cases are distinguishable.
+   *
+   * The remedy for case 2 is the caller's either way: pass the retained-era key
+   * on {@link Ledger8FindDeployedContractOptions.signingKey}, which replaces the
+   * entry, or remove the entry with
+   * `privateStateProvider.removeSigningKey(address)` first.
+   *
+   * @remarks **Privacy-sensitive.** Signing-key material.
+   */
+  readonly signingKey: Ledger8SigningKey | undefined;
 }
 
 /**
- * A retained-era contract deployed by the caller, which additionally holds the
- * signing key registered as the contract's maintenance authority — something
- * only the deployer has.
+ * A retained-era contract deployed by the caller.
+ *
+ * It differs from {@link Ledger8FoundContract} in ONE thing: its
+ * {@link Ledger8DeployedContract.signingKey} is REQUIRED where the found
+ * handle's may be `undefined`. The key itself is no longer something only a
+ * deployer has -- the deploy stores it, and an attach through the same provider
+ * reports it back -- so what a deploy guarantees is that there IS one, not that
+ * nobody else could hold it.
  *
  * Published under the retained-era namespace so a caller that receives one by
  * inference can also NAME it. This is what `deployContract`'s retained-era arm
@@ -765,16 +811,16 @@ export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledg
    * verifying key at threshold 1, so this single key is the whole authority.
    *
    * SAMPLED here when the caller named none on the deploy options, and stored
-   * NOWHERE by this framework — not in the private-state provider, not on
-   * chain, and not recoverable from either. This handle is the only place a
-   * sampled key ever appears, so a caller that wants it later has to persist it
-   * itself, before the handle goes out of scope.
+   * against {@link Ledger8FoundContract.contractAddress} in the private-state
+   * provider once the chain has recorded the deployment — the same storage and
+   * the same moment the current era's deploy writes its own key to. Attaching
+   * to the same address through the same provider reports it again on
+   * {@link Ledger8FoundContract.signingKey}.
    *
-   * Lost, the authority is unreachable for good: no verifier key can be
-   * inserted, removed or replaced on that contract by anyone. Attaching again
-   * does not recover it — see
-   * {@link Ledger8FindDeployedContractOptions.signingKey}, which is not a route
-   * back in.
+   * The provider is the ONLY copy besides this handle. It is not on chain and
+   * not derivable from anything that is, so a store that is lost, cleared or
+   * never persisted takes the authority with it: no verifier key can then be
+   * inserted, removed or replaced on that contract by anyone.
    *
    * @remarks **Privacy-sensitive.** Signing-key material.
    */

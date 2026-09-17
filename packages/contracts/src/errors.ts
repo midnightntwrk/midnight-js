@@ -1388,3 +1388,96 @@ export class Ledger8RecipientUnmappableError extends Error {
     this.name = 'Ledger8RecipientUnmappableError';
   }
 }
+
+/**
+ * An error indicating that a retained-era deployment was CONFIRMED on chain,
+ * but the private-state provider refused to record it locally.
+ *
+ * Distinct from {@link Ledger8DeployUnconfirmedError}, which covers the window
+ * where the chain's answer is unknown. Here the answer arrived and it was
+ * success, so the contract exists, its maintenance authority is built from this
+ * error's key, and deploying again is the one thing a caller must not do.
+ *
+ * Carries the signing key over BOTH writes even though only one of them can
+ * strand it, because one class over the whole after-success region is what
+ * makes the region's guarantee checkable: no `await` in it may reject without
+ * the key riding along.
+ *
+ * {@link Ledger8DeployNotStoredError.signingKey} is NAMED but never rendered,
+ * for the reason {@link Ledger8DeployTxFailedError} states.
+ *
+ * Carries no registered error code of its own, for the same reason
+ * {@link Ledger8DeployUnconfirmedError} does not.
+ */
+export class Ledger8DeployNotStoredError extends Error {
+  /**
+   * @param contractAddress The address the confirmed deployment created.
+   * @param signingKey The key that deployment's maintenance authority was built
+   * from - sampled when the caller named none.
+   * @param stage Which write the store refused. `'signing-key'` means this
+   * error holds the only copy of the key; `'private-state'` means the key was
+   * already stored and the local state is what is missing.
+   * @param cause What the private-state provider rejected with.
+   */
+  constructor(
+    readonly contractAddress: string,
+    readonly signingKey: Ledger8SigningKey,
+    readonly stage: 'signing-key' | 'private-state',
+    cause: unknown
+  ) {
+    super(
+      `The retained-era deployment of the contract at '${contractAddress}' was CONFIRMED on chain, but the ` +
+        'private-state provider refused to record it locally. ' +
+        (stage === 'signing-key'
+          ? "The SIGNING KEY could not be stored, so this error's 'signingKey' is the only copy that now " +
+            'exists. The contract is on chain under a maintenance authority built from it, and without it ' +
+            'no verifier key can ever be inserted, removed or replaced there. Keep it, fix what the store ' +
+            "refused - see this error's cause - and write it back with " +
+            "`privateStateProvider.setSigningKey(address, { tag: 'schnorr', value: <key> })`."
+          : "The INITIAL PRIVATE STATE could not be stored. The signing key was written first and is held " +
+            "by the provider, and is on this error's 'signingKey' as well. Reconcile the local state " +
+            "against the chain before calling this contract - see this error's cause for what the store " +
+            'refused.') +
+        ' Do NOT deploy again: this contract exists, and a deploy mints a fresh nonce, so a second attempt ' +
+        'lands at a different address and leaves two copies on chain.',
+      { cause }
+    );
+    this.name = 'Ledger8DeployNotStoredError';
+  }
+}
+
+/**
+ * An error indicating that the `signingKey` supplied on a retained-era attach
+ * is not one this framework can store and read back.
+ *
+ * Refused BEFORE the write rather than after it. Stored unchecked, a key the
+ * read rejects is reported on the attach that supplied it and read as ABSENT on
+ * every later one - the same store answering two different things about the
+ * same address, with nothing erroring - and the bad entry has by then already
+ * replaced whatever was held there.
+ *
+ * A refusal is cheap here in a way it is not on the READ path, which reports an
+ * unusable stored entry as absent instead: this value came from the caller, in
+ * this call, so the caller can correct it.
+ *
+ * The key is not rendered, and is not carried as a member either: the caller
+ * already holds it.
+ *
+ * Carries no registered error code of its own, for the same reason
+ * {@link Ledger8DeployUnconfirmedError} does not.
+ */
+export class Ledger8SigningKeyUnusableError extends Error {
+  /**
+   * @param contractAddress The address the key was supplied for.
+   */
+  constructor(readonly contractAddress: string) {
+    super(
+      `The 'signingKey' supplied for the retained-era contract at '${contractAddress}' is not a key this ` +
+        'framework can store and read back, so it was not stored. A retained-era key is exactly 64 ' +
+        "hexadecimal characters - 32 bytes - which is what that era's `sampleSigningKey` produces. The " +
+        'supplied value is not rendered here: it is secret material, and an error message reaches logs and ' +
+        'issue trackers.'
+    );
+    this.name = 'Ledger8SigningKeyUnusableError';
+  }
+}
