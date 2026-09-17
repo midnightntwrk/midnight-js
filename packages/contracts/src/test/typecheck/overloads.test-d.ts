@@ -531,6 +531,12 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
     expectTypeOf<Ledger8FindDeployedContractOptions<Counter016Contract>['signingKey']>().toEqualTypeOf<
       Ledger8SigningKey | undefined
     >();
+    // The member this arm persists a key INTO, and the one omitted when this assertion was
+    // written: widened to the current era's wrapped `SigningKey | undefined`, every other gate in
+    // this package still compiled and passed.
+    expectTypeOf<Ledger8FoundContract<Counter016Contract>['signingKey']>().toEqualTypeOf<
+      Ledger8SigningKey | undefined
+    >();
   });
 
   it('accepts the retained key on the deploy and find options, and refuses a current-era one', () => {
@@ -849,6 +855,18 @@ describe('both eras answer with the SAME contract-handle structure', () => {
     | 'initialPrivateState'
     | 'initialZswapState';
 
+  /**
+   * Members the retained era's FOUND contract carries at the top level and the
+   * current era carries under `deployTxData` instead.
+   *
+   * The same path disagreement {@link RetainedEraOnlyDeployedMembers} records,
+   * reaching the attach arm for the same reason: the current era nests the
+   * resolved key under `deployTxData.private.signingKey`, while the retained
+   * arm's `deployTxData` is the read surface's own `VersionedFinalizedTxData`,
+   * which carries no private half to nest anything in.
+   */
+  type RetainedEraOnlyFoundMembers = 'signingKey';
+
   type CurrentFound = FoundContract<Twin018>;
   type RetainedFound = Ledger8FoundContract<Counter016Contract>;
   type CurrentDeployed = DeployedContract<Twin018>;
@@ -861,6 +879,7 @@ describe('both eras answer with the SAME contract-handle structure', () => {
     // EXISTING.
     expectTypeOf<CurrentFound>().toHaveProperty('circuitMaintenanceTx');
     expectTypeOf<CurrentFound>().toHaveProperty('contractMaintenanceTx');
+    expectTypeOf<RetainedFound>().toHaveProperty('signingKey');
     expectTypeOf<RetainedDeployed>().toHaveProperty('signingKey');
     expectTypeOf<RetainedDeployed>().toHaveProperty('initialContractState');
     expectTypeOf<RetainedDeployed>().toHaveProperty('initialState');
@@ -869,7 +888,9 @@ describe('both eras answer with the SAME contract-handle structure', () => {
   });
 
   it('carries the same members on a FOUND contract in BOTH eras, apart from the maintenance pair', () => {
-    expectTypeOf<Exclude<keyof CurrentFound, CurrentEraOnlyFoundMembers>>().toEqualTypeOf<keyof RetainedFound>();
+    expectTypeOf<Exclude<keyof CurrentFound, CurrentEraOnlyFoundMembers>>().toEqualTypeOf<
+      Exclude<keyof RetainedFound, RetainedEraOnlyFoundMembers>
+    >();
   });
 
   it('carries the same members on a DEPLOYED contract in BOTH eras, apart from the two lists above', () => {

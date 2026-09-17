@@ -821,9 +821,14 @@ export interface Ledger8DeployPipelineResult {
    */
   readonly guaranteedZswapOffer: Uint8Array | undefined;
   /**
-   * The key the deployed contract's maintenance authority was built from, which
-   * only the deployer ever holds. The caller's own when one was named,
-   * otherwise the sampled one — and then this is its only copy.
+   * The key the deployed contract's maintenance authority was built from. The
+   * caller's own when one was named, otherwise the sampled one.
+   *
+   * At THIS point in the deploy -- composition finished, nothing stored yet --
+   * a sampled key exists only here, which is why every refusal between here and
+   * the store carries it. It stops being the only copy a few statements later:
+   * `submitLedger8DeployTx` writes it to the private-state provider once the
+   * chain has confirmed the deployment.
    */
   readonly signingKey: Ledger8SigningKey;
 }

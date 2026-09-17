@@ -69,6 +69,7 @@ import {
   IncompleteCallTxPrivateStateConfig,
   IncompleteDeployContractPrivateStateConfig,
   Ledger8CallTxFailedError,
+  Ledger8DeployNotStoredError,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
   Ledger8SeamFailedError,
@@ -101,6 +102,7 @@ import {
   runLedger8CallPipeline,
   runLedger8DeployPipeline
 } from './ledger8-pipeline';
+import { toStoredLedger8SigningKey } from './ledger8-signing-key';
 import { handleSubmitRejection } from './stale-head';
 import { createEncryptionPublicKeyResolver } from './utils';
 
@@ -984,6 +986,16 @@ const assertLedger8RecordEra = (
 export type Ledger8PrivateStateSurface = Pick<PrivateStateProvider, 'get' | 'set' | 'setContractAddress'>;
 
 /**
+ * The private-state members a retained-era DEPLOY reads and writes: the call
+ * arm's, plus the signing-key write only a deployer ever makes.
+ *
+ * Widened here rather than on {@link Ledger8PrivateStateSurface} so a reader —
+ * and a test — can see that a CALL never writes a signing key.
+ */
+export type Ledger8DeployPrivateStateSurface = Ledger8PrivateStateSurface &
+  Pick<PrivateStateProvider, 'setSigningKey'>;
+
+/**
  * Reads the private state a retained-era call runs against, or `undefined`
  * when the caller named no private-state id.
  *
@@ -1259,7 +1271,7 @@ export interface Ledger8DeployEntryOptions {
  * guard.
  */
 export interface Ledger8DeployEntryProviders extends Ledger8EntryProviders {
-  readonly privateStateProvider: Ledger8PrivateStateSurface;
+  readonly privateStateProvider: Ledger8DeployPrivateStateSurface;
 }
 
 /** Everything one retained-era deployment produced that a caller is handed. */
@@ -1277,14 +1289,14 @@ export interface Ledger8DeployedState {
 
 /**
  * Deploys a retained-era contract and waits for the chain to record it, storing
- * the private state only once it has.
+ * the private state and the signing key only once it has.
  *
  * The ORDER below is the whole of what this function adds over
  * {@link runLedger8Deploy}, and it mirrors {@link submitLedger8CallTx}: watch,
  * attribute the record against the head, refuse a non-success status, and only
- * then store. A deploy that the chain refused must leave no local private state
- * ahead of it — and on this arm that matters more than on the call arm, because
- * a second attempt lands at a different address.
+ * then store. A deploy that the chain refused must leave no local state ahead of
+ * it — and on this arm that matters more than on the call arm, because a second
+ * attempt lands at a different address.
  *
  * The verifier keys are fetched for EVERY entry point the artifact declares,
  * off the artifact rather than off any state: a retained constructor builds
@@ -1293,8 +1305,8 @@ export interface Ledger8DeployedState {
  *
  * @param providers The provider set.
  * @param options The deployment the entry point received.
- * @returns The minted address, the finalized record, the signing key and
- * everything the constructor produced.
+ * @returns The minted address, the finalized record, the signing key now stored
+ * against that address, and everything the constructor produced.
  * @throws IncompleteDeployContractPrivateStateConfig if an `initialPrivateState`
  * is supplied with no `privateStateId` to store it under.
  * @throws Error if `privateStateId` is present with an undefined value, which is
@@ -1302,6 +1314,9 @@ export interface Ledger8DeployedState {
  * @throws Ledger8DeployTxFailedError if the node recorded a non-success status.
  * @throws Ledger8DeployUnconfirmedError if the record cannot be read back and
  * attributed to the head at all, the record's era included.
+ * @throws Ledger8DeployNotStoredError if the deployment was CONFIRMED and the
+ * private-state provider then refused to store the signing key or the initial
+ * private state. It carries the key either way.
  * @throws Every error {@link runLedger8Deploy} raises.
  */
 export const submitLedger8DeployTx = async (
@@ -1362,14 +1377,52 @@ export const submitLedger8DeployTx = async (
   }
   assertLedger8DeploySucceeded(deployTxData, deploy.contractAddress, deploy.signingKey);
 
+  // FIRST the address, for the PRIVATE-STATE write below and for that one
+  // only. A provider namespaces every private-state entry by the address last
+  // named and refuses a `get` or a `set` before any has been named, so a `set`
+  // made first would either throw or land under whichever contract the process
+  // touched last -- and a later call, which names this address itself, would
+  // read its own key, find nothing, and report nothing.
+  //
+  // `setSigningKey` does NOT depend on it: it takes the address as an argument
+  // and the level-backed provider keys the entry with it directly. The
+  // interface states that for `getSigningKey`, whose `@remarks` in
+  // `packages/types/src/private-state-provider.ts` say it does not require
+  // `setContractAddress` first; `setSigningKey` carries no `@remarks` of its
+  // own, and what actually settles it for both is that the address is an
+  // argument rather than ambient state.
+  //
+  // Named unconditionally rather than only alongside a private state, matching
+  // `submit-deploy-tx.ts`: after a deploy, the provider's current namespace is
+  // the contract just deployed, whether or not this deployment stored a state
+  // under it.
+  providers.privateStateProvider.setContractAddress(deploy.contractAddress);
+  // THE SIGNING KEY FIRST, before the private state. It is the sole backing of a
+  // one-key authority at threshold 1, so a sampled key that reached only the
+  // returned handle left an address nobody could ever maintain. It has no
+  // ordering dependency of its own -- see above -- so nothing forced it to go
+  // second, and going second is a window in which the private-state write
+  // rejects and the only copy of the key dies with this call frame.
+  //
+  // BOTH writes are wrapped, so the region's promise holds to its last
+  // statement: past the confirmation above, every refusal carries the key. A raw
+  // store rejection here reads to a caller as "the deploy failed, retry", and a
+  // retry mints a fresh nonce and a SECOND contract at a different address while
+  // the first sits on chain unmaintainable.
+  try {
+    await providers.privateStateProvider.setSigningKey(
+      deploy.contractAddress,
+      toStoredLedger8SigningKey(deploy.signingKey)
+    );
+  } catch (error) {
+    throw new Ledger8DeployNotStoredError(deploy.contractAddress, deploy.signingKey, 'signing-key', error);
+  }
   if (privateStateId !== undefined) {
-    // FIRST the address. A provider namespaces every entry by the address last
-    // named and refuses a write before any has been named, so the write below
-    // would otherwise either throw or land under whichever contract the process
-    // touched last -- and a later call, which names this address itself, would
-    // read its own key, find nothing, and report nothing.
-    providers.privateStateProvider.setContractAddress(deploy.contractAddress);
-    await providers.privateStateProvider.set(privateStateId, deploy.nextPrivateState);
+    try {
+      await providers.privateStateProvider.set(privateStateId, deploy.nextPrivateState);
+    } catch (error) {
+      throw new Ledger8DeployNotStoredError(deploy.contractAddress, deploy.signingKey, 'private-state', error);
+    }
   }
 
   return {

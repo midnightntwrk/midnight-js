@@ -80,15 +80,18 @@ import {
   IncompleteFindContractPrivateStateConfig,
   Ledger8AmbiguousEntryPointError,
   Ledger8CallTxFailedError,
+  Ledger8DeployNotStoredError,
   Ledger8DeployOnV9Error,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
   Ledger8RecipientUnmappableError,
   Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
+  Ledger8SigningKeyUnusableError,
   VerifierKeyMismatchError
 } from '../errors';
 import { findDeployedContract } from '../find-deployed-contract';
+import { DISPATCH_BREADCRUMB_MESSAGE } from '../internal/breadcrumbs';
 import { resolveArtifactEra } from '../internal/era';
 import { findLedger8Contract, runLedger8Deploy, submitLedger8CallTx } from '../internal/ledger8-entry';
 import {
@@ -2410,11 +2413,11 @@ describe('deploying a retained-era contract through deployContract', () => {
       initialPrivateState: {}
     });
 
-    // A provider namespaces every entry by the address last named, and a real
-    // one REFUSES a write before any has been named. Written first, the state
-    // lands under whichever address the process happened to touch last -- and a
-    // later call, which names this address itself, reads its own key, finds
-    // nothing, and reports nothing.
+    // A provider namespaces every PRIVATE-STATE entry by the address last named, and a real one
+    // refuses `get`/`set` before any has been named -- `setSigningKey` takes the address as an
+    // argument and needs none of that. Written first, the state lands under whichever address the
+    // process happened to touch last, and a later call, which names this address itself, reads its
+    // own key, finds nothing, and reports nothing.
     expect(providers.privateStateProvider.setContractAddress).toHaveBeenCalledWith(deployed.contractAddress);
     expect(callOrder(providers.privateStateProvider.setContractAddress)).toBeLessThan(
       callOrder(providers.privateStateProvider.set)
@@ -2774,6 +2777,112 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect((caught as Ledger8DeployUnconfirmedError).signingKey).toBe(SAMPLED_SIGNING_KEY);
     expect((caught as Ledger8DeployUnconfirmedError).cause).toBeInstanceOf(UntaggedPayloadError);
   });
+
+  it('persists the signing key against the address it minted, in the shape the store takes', async () => {
+    const providers = deployProviders();
+
+    const deployed = await deployContract(providers, { compiledContract: contract });
+
+    // The store is the CURRENT era's and its key is `{ tag, value }`, where the retained era's is
+    // the bare hex string. Both runtimes sample the same 32-byte Schnorr key and the retained one
+    // reads a current-era key's `value` verbatim, so the wrapper is the whole difference -- which
+    // is why this arm adds it here instead of widening the provider interface.
+    //
+    // No private state is named by this deploy, so the write is pinned on the arm that has no
+    // private-state write to ride along with.
+    // Against the FIXTURE rather than against `deployed.signingKey`: read off the handle, this
+    // cannot tell "stored the sampled key" from "stored and reported the same wrong value".
+    expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(deployed.contractAddress, {
+      tag: 'schnorr',
+      value: SAMPLED_SIGNING_KEY
+    });
+    expect(deployed.signingKey).toBe(SAMPLED_SIGNING_KEY);
+  });
+
+  it('writes the key only after the chain record has been checked', async () => {
+    const providers = deployProviders();
+    providers.publicDataProvider.watchForDeployTxData = vi.fn().mockResolvedValue(retainedEraRecord(FailEntirely));
+
+    await expect(deployContract(providers, { compiledContract: contract })).rejects.toBeInstanceOf(
+      Ledger8DeployTxFailedError
+    );
+
+    // The same order the private-state write already holds to: a deploy the chain refused must
+    // leave no local state claiming it succeeded. The refusal carries the key instead, which is
+    // the only copy that then exists.
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+  });
+
+  it('names the minted address even when the deploy stores no private state', async () => {
+    const providers = deployProviders();
+
+    const deployed = await deployContract(providers, { compiledContract: contract });
+
+    // UNCONDITIONAL, matching `submit-deploy-tx.ts`: after a deploy the provider's namespace is the
+    // contract just deployed, whether or not this deployment stored a state under it. Moved back
+    // inside the private-state branch it would leave the namespace pointing at whichever contract
+    // the process touched last, and the caller's next unnamespaced `get`/`set` would hit that one.
+    expect(providers.privateStateProvider.setContractAddress).toHaveBeenCalledWith(deployed.contractAddress);
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  it('writes the signing key BEFORE the private state, so a refused state write cannot strand it', async () => {
+    const providers = deployProviders();
+
+    await deployContract(providers, {
+      compiledContract: contract,
+      privateStateId: 'retained-private-state',
+      initialPrivateState: {}
+    });
+
+    // The key has no `setContractAddress` dependency -- it takes the address as an argument -- so
+    // nothing forces it to go second, and going second is what leaves a window where the state
+    // write rejects and the only copy of the key dies with the call frame.
+    expect(callOrder(providers.privateStateProvider.setSigningKey)).toBeLessThan(
+      callOrder(providers.privateStateProvider.set)
+    );
+  });
+
+  it('carries the signing key when the store refuses to hold it, keeping the rejection on cause', async () => {
+    const providers = deployProviders();
+    const refused = new Error('signing-key sublevel is read-only');
+    providers.privateStateProvider.setSigningKey = vi.fn().mockRejectedValue(refused);
+
+    const caught: unknown = await deployContract(providers, { compiledContract: contract }).catch(
+      (error: unknown) => error
+    );
+
+    // The deployment is CONFIRMED by this point. A raw rejection here drops the only copy of an
+    // authority the chain already holds, and reads to the caller as "deploy failed, retry" -- which
+    // mints a second contract at a different address.
+    expect(caught).toBeInstanceOf(Ledger8DeployNotStoredError);
+    expect((caught as Ledger8DeployNotStoredError).signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect((caught as Ledger8DeployNotStoredError).stage).toBe('signing-key');
+    expect((caught as Ledger8DeployNotStoredError).cause).toBe(refused);
+    expect((caught as Ledger8DeployNotStoredError).contractAddress).toMatch(/^[0-9a-f]+$/);
+  });
+
+  it('carries the signing key when the private-state write is refused instead', async () => {
+    const providers = deployProviders();
+    const refused = new Error('level store closed');
+    providers.privateStateProvider.set = vi.fn().mockRejectedValue(refused);
+
+    const caught: unknown = await deployContract(providers, {
+      compiledContract: contract,
+      privateStateId: 'retained-private-state',
+      initialPrivateState: {}
+    }).catch((error: unknown) => error);
+
+    // The key IS stored by the time this rejects -- the order above guarantees it -- and the error
+    // says so rather than claiming the key is stranded. It still carries the key: one class over
+    // the whole after-success region is what makes "every refusal here carries the key" checkable.
+    expect(caught).toBeInstanceOf(Ledger8DeployNotStoredError);
+    expect((caught as Ledger8DeployNotStoredError).signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect((caught as Ledger8DeployNotStoredError).stage).toBe('private-state');
+    expect((caught as Ledger8DeployNotStoredError).cause).toBe(refused);
+    expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledTimes(1);
+  });
+
 });
 
 /**
@@ -3013,7 +3122,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
 
-  it('touches the private-state provider not at all when the caller gives neither', async () => {
+  it('reads and writes no private state at all when the caller gives neither', async () => {
     const providers = attachProviders(v6Envelope);
 
     await findDeployedContract(providers, attachOptions());
@@ -3145,4 +3254,227 @@ describe('attaching to a retained-era contract already on chain', () => {
       expect(found.deployTxData.version).toBe(version);
     }
   });
+
+  // THE SIGNING KEY. The deploy arm persists it against the address it minted, so this arm is the
+  // side of that round trip that reads it back -- and the field that used to be documented as
+  // discarded is now the way to seed a key the deploy happened elsewhere.
+  //
+  // The three constants below are 32 bytes written as hex, which is the shape `isValidSigningKey`
+  // reads and the shape the retained runtime takes. One repeated byte each, so they are shapes and
+  // not keys: `ledger8-signing-key.test.ts` measures the shape against the REAL retained sampler,
+  // and this suite only needs entries that get past the read's validation.
+  const STORED_KEY_SHAPE = '11'.repeat(32);
+  const SUPPLIED_KEY_SHAPE = '22'.repeat(32);
+  const CURRENT_ERA_KEY_SHAPE = '33'.repeat(32);
+
+  /**
+   * The attach provider set with a breadcrumb sink on it.
+   *
+   * @param stored What `getSigningKey` answers for the attached address.
+   * @returns The providers and the sink's `debug` spy.
+   */
+  const attachProvidersLogging = (
+    stored: unknown
+  ): { readonly providers: RetainedProviders; readonly debug: ReturnType<typeof vi.fn> } => {
+    const debug = vi.fn();
+    const providers: RetainedProviders = {
+      ...attachProviders(v6Envelope),
+      loggerProvider: { debug, isLevelEnabled: (): boolean => true }
+    };
+    providers.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(stored);
+    return { providers, debug };
+  };
+
+  it('stores a signing key the caller supplies, and reports it back', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    const found = await findDeployedContract(providers, { ...attachOptions(), signingKey: SUPPLIED_KEY_SHAPE });
+
+    expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(recording.contractAddress, {
+      tag: 'schnorr',
+      value: SUPPLIED_KEY_SHAPE
+    });
+    expect(found.signingKey).toBe(SUPPLIED_KEY_SHAPE);
+  });
+
+  it('reports the key a deploy persisted when the caller supplies none', async () => {
+    const providers = attachProviders(v6Envelope);
+    providers.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue({ tag: 'schnorr', value: STORED_KEY_SHAPE });
+
+    const found = await findDeployedContract(providers, attachOptions());
+
+    // Unwrapped back to the bare string the retained runtime takes.
+    expect(found.signingKey).toBe(STORED_KEY_SHAPE);
+    // KEPT, not written over: a caller that attaches without naming a key is asking what is held,
+    // not replacing it.
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+  });
+
+  it('reports no key, and samples none, when the provider holds none for the address', async () => {
+    const providers = attachProviders(v6Envelope);
+    providers.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(null);
+
+    const found = await findDeployedContract(providers, attachOptions());
+
+    // The member is PRESENT and undefined, not dropped: a handle missing it entirely reads the
+    // same at a call site that only checks the value.
+    expect('signingKey' in found).toBe(true);
+    expect(found.signingKey).toBeUndefined();
+    // The current era samples a fresh key in this case. The retained era must not: a sampled key
+    // bears no relation to the authority the chain holds for a contract deployed by someone else,
+    // and this arm carries no maintenance interface for one to be used through, so storing it
+    // would report a key that can maintain nothing.
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+  });
+
+  // The store is shared with the current era, whose keys may legitimately be `ecdsa`, and a stored
+  // entry can also have been hand-edited or half-written. Neither may FAIL the attach: the key is
+  // reported on the handle and consumed by nothing on this arm, so a circuit call that never looks
+  // at it would otherwise stop working because of an entry it does not read. Both read as ABSENT,
+  // and the breadcrumb is what keeps absent from meaning silent.
+  it('reports no key, and still attaches, when the stored entry is of the other signature kind', async () => {
+    const { providers, debug } = attachProvidersLogging({ tag: 'ecdsa', value: CURRENT_ERA_KEY_SHAPE });
+
+    const found = await findDeployedContract(providers, attachOptions());
+
+    // `toBeUndefined` alone cannot tell "the guard rejected the entry" from "the read never
+    // happened", so the breadcrumb below is what says which of the two this was.
+    expect('signingKey' in found).toBe(true);
+    expect(found.signingKey).toBeUndefined();
+    expect(debug).toHaveBeenCalledWith(
+      {
+        decision: 'retained-signing-key-entry',
+        source: 'private-state-provider',
+        outcome: 'other-signature-kind',
+        contractAddress: recording.contractAddress
+      },
+      DISPATCH_BREADCRUMB_MESSAGE
+    );
+    // Named, never rendered: the value is secret material and a breadcrumb reaches logs.
+    expect(JSON.stringify(debug.mock.calls)).not.toContain(CURRENT_ERA_KEY_SHAPE);
+    // The attach itself completed -- the handle carries the callable circuits.
+    expect(Object.keys(found.callTx)).toEqual([CIRCUIT_ID]);
+  });
+
+  it.each([
+    ['empty', ''],
+    ['odd-length hex', '1'.repeat(63)],
+    ['non-hex', 'z'.repeat(64)],
+    ['not a string', 42]
+  ])('reports no key, and still attaches, when the stored value is %s', async (_case, value) => {
+    const { providers, debug } = attachProvidersLogging({ tag: 'schnorr', value });
+
+    const found = await findDeployedContract(providers, attachOptions());
+
+    expect('signingKey' in found).toBe(true);
+    expect(found.signingKey).toBeUndefined();
+    expect(debug).toHaveBeenCalledWith(
+      {
+        decision: 'retained-signing-key-entry',
+        source: 'private-state-provider',
+        outcome: 'malformed-value',
+        contractAddress: recording.contractAddress
+      },
+      DISPATCH_BREADCRUMB_MESSAGE
+    );
+    expect(Object.keys(found.callTx)).toEqual([CIRCUIT_ID]);
+  });
+
+  it('asks the provider for the key stored against the address being attached to', async () => {
+    const providers = attachProviders(v6Envelope);
+    providers.privateStateProvider.getSigningKey = vi
+      .fn()
+      .mockResolvedValue({ tag: 'schnorr', value: STORED_KEY_SHAPE });
+
+    await findDeployedContract(providers, attachOptions());
+
+    // `mockResolvedValue` ignores its arguments, so without this a read of a DIFFERENT address
+    // reports another contract's key on this handle with every other assertion still green.
+    expect(providers.privateStateProvider.getSigningKey).toHaveBeenCalledWith(recording.contractAddress);
+  });
+
+  it('prefers the key the caller supplies over the one already stored, which is the documented remedy', async () => {
+    const providers = attachProviders(v6Envelope);
+    providers.privateStateProvider.getSigningKey = vi
+      .fn()
+      .mockResolvedValue({ tag: 'schnorr', value: STORED_KEY_SHAPE });
+
+    const found = await findDeployedContract(providers, { ...attachOptions(), signingKey: SUPPLIED_KEY_SHAPE });
+
+    // The ONLY test that arranges both halves at once. Inverted, the stored entry would win, the
+    // supplied key would become a fallback, and "pass the retained-era key, which replaces the
+    // entry" -- the documented remedy for a bad entry -- would silently stop working.
+    expect(found.signingKey).toBe(SUPPLIED_KEY_SHAPE);
+    expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(recording.contractAddress, {
+      tag: 'schnorr',
+      value: SUPPLIED_KEY_SHAPE
+    });
+  });
+
+  it.each([
+    ['empty', ''],
+    ['odd-length hex', '2'.repeat(63)],
+    ['non-hex', 'z'.repeat(64)],
+    ['half the length of a retained key', '22'.repeat(16)]
+  ])('refuses a supplied signing key that is %s, storing nothing', async (_case, supplied) => {
+    const providers = attachProviders(v6Envelope);
+
+    const caught: unknown = await findDeployedContract(providers, {
+      ...attachOptions(),
+      signingKey: supplied
+    }).catch((error: unknown) => error);
+
+    // Stored unchecked, such a key is reported on THIS attach and read as absent on the next one,
+    // out of the same store, with nothing erroring either time -- and the good entry it replaced
+    // is already gone. The caller passed this value in this call, so a refusal is cheap here in a
+    // way it is not on the read path.
+    expect(caught).toBeInstanceOf(Ledger8SigningKeyUnusableError);
+    expect((caught as Ledger8SigningKeyUnusableError).contractAddress).toBe(recording.contractAddress);
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+  });
+
+  it('reports no key, and still attaches, when the stored entry cannot be READ at all', async () => {
+    const { providers, debug } = attachProvidersLogging(undefined);
+    const storePath = '/home/operator/.midnight/private-state';
+    providers.privateStateProvider.getSigningKey = vi
+      .fn()
+      .mockRejectedValue(new Error(`decryption failed for ${storePath}`));
+
+    const found = await findDeployedContract(providers, attachOptions());
+
+    // `getSigningKey` is documented as THROWING -- a wrong store password, a rotation-lock timeout,
+    // store I/O -- so propagated, a store written under a different password would fail EVERY
+    // retained attach to this address and make its circuit calls unreachable over a value none of
+    // them reads. That is the blast radius the entry's own unusable cases already refuse to take.
+    expect('signingKey' in found).toBe(true);
+    expect(found.signingKey).toBeUndefined();
+    expect(Object.keys(found.callTx)).toEqual([CIRCUIT_ID]);
+    expect(debug).toHaveBeenCalledWith(
+      {
+        decision: 'retained-signing-key-entry',
+        source: 'private-state-provider',
+        outcome: 'unreadable-entry',
+        contractAddress: recording.contractAddress
+      },
+      DISPATCH_BREADCRUMB_MESSAGE
+    );
+    // The provider's own interface says store I/O messages carry paths and OS metadata that must
+    // be redacted before they reach a user-facing surface, and a breadcrumb reaches logs.
+    expect(JSON.stringify(debug.mock.calls)).not.toContain(storePath);
+  });
+
+  it('breadcrumbs nothing when the stored entry is one this framework wrote', async () => {
+    const { providers, debug } = attachProvidersLogging({ tag: 'schnorr', value: STORED_KEY_SHAPE });
+
+    const found = await findDeployedContract(providers, attachOptions());
+
+    expect(found.signingKey).toBe(STORED_KEY_SHAPE);
+    // The other direction of the same claim: a breadcrumb on every read would drown the one case
+    // an operator has to see.
+    expect(debug).not.toHaveBeenCalledWith(
+      expect.objectContaining({ decision: 'retained-signing-key-entry' }),
+      DISPATCH_BREADCRUMB_MESSAGE
+    );
+  });
+
 });
