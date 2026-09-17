@@ -30,6 +30,7 @@ against, and it needs narrowing on `version` before `tx` is touched.
 
 - [`TxFailedError`](TxFailedError.md)
 - [`CallTxFailedError`](../namespaces/Ledger8/classes/CallTxFailedError.md)
+- [`DeployTxFailedError`](../namespaces/Ledger8/classes/DeployTxFailedError.md)
 
 ## Constructors
 

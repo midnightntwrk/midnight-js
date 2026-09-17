@@ -19,24 +19,31 @@ declarations themselves live in `packages/contracts/src/ledger8-contract.ts`.
 
 ## Why the retained-era types are hand-written
 
-The retained toolchain emits `contract/index.js` with **no `index.d.ts`** beside
-it, so there is no declaration file to import a type from — unlike the current
-toolchain, whose output ships one. Every retained-era declaration is therefore
-written from the real generated JavaScript, and is only as true as that reading.
+They are not imported from the retained toolchain's output, even though it does
+emit a `contract/index.d.ts`. That file describes ONE contract; this family is a
+top type over every retained-era contract, and it has to be written in terms a
+published package can carry — the generated declarations name
+`@midnight-ntwrk/compact-runtime@0.16`, which this package does not depend on
+and consumers are not required to install. So every retained-era declaration is
+written from the real generated output, and is only as true as that reading.
 
-That is why the declarations are paired with a RUNTIME test,
-`packages/contracts/src/test/ledger8-contract.test.ts`, which loads the real
-generated artifact and asserts the structural facts the declarations encode. The
-two halves are one unit:
+That is why the family is pinned from both sides, and the two halves are one
+unit:
 
 - the compile assertions in
   `packages/contracts/src/test/typecheck/overloads.test-d.ts` prove the overloads
-  discriminate the two eras;
-- the runtime test proves the type they discriminate on is the shape the real
-  artifact actually has.
+  discriminate the two eras, and that a real artifact's own generated
+  declarations satisfy the family. They are typed from the `index.d.ts` shipped
+  beside the fixture modules, so the family is checked against the compiler's
+  view of real generated code rather than against a restatement of it;
+- the runtime test, `packages/contracts/src/test/ledger8-contract.test.ts`,
+  loads the real generated artifact and asserts what a declaration file cannot
+  state: which members the constructor installs, and that none of them is async.
 
-Without the runtime half the family is an unverified guess, and the compile
-assertions prove nothing about a real contract.
+Neither half is optional. Without the runtime half the family is an unverified
+guess about the emitted JavaScript. Without the compile half typed from the real
+declarations, the family can drift from the runtime it describes and nothing
+notices — which is exactly what #1312 was.
 
 ## What separates the two eras at the type level
 
@@ -44,11 +51,17 @@ Three things do, and they are listed in the order the COMPILER reaches them —
 which is not the order of importance, and was measured rather than assumed:
 
 1. **The circuit context**, and this is the one that actually fires for a real
-   contract. `Ledger8Circuit` takes a `Ledger8CircuitContext<never>`, which has
-   none of the members of the current runtime's much larger `CircuitContext`
-   (`callContext`, `queryContexts`, `gasCosts`, `zswapLocalStates`, and more),
-   so a current-era circuit is not assignable to it on a CONTRAVARIANT
-   PARAMETER mismatch. The reverse fails the same way.
+   contract. `Ledger8Circuit` takes a `Ledger8CircuitContextArgument`, which
+   names the four members the RETAINED runtime's `CircuitContext` requires. The
+   current runtime's much larger one requires seven — `callContext`,
+   `queryContexts`, `gasCosts`, `zswapLocalStates`, `costModel`,
+   `callProofDataTrace`, `events` — of which only `costModel` is shared, so six
+   are absent and a current-era circuit is not assignable to it on a
+   CONTRAVARIANT PARAMETER mismatch. The reverse fails the same way. That
+   `costModel` is common to both eras is why it alone cannot discriminate them.
+   This position is also where #1312 was: it used to take the descriptive
+   `Ledger8CircuitContext`, whose `unknown` members are assignable in the wrong
+   direction, so it rejected every RETAINED-era contract too.
 2. **Sync versus async.** Retained-era circuit members and `initialState`
    return plain objects; the current era's return `Promise`s. A
    `Promise<CircuitResults<...>>` has none of the four members
@@ -56,7 +69,7 @@ which is not the order of importance, and was measured rather than assumed:
    are DESIGNED around and the one the runtime predicate uses, but at the type
    level it is second in queue — it only gets a chance once the contexts agree.
    `overloads.test-d.ts` anchors it separately, in both directions, so
-   relaxing `Ledger8CircuitContext` cannot quietly leave nothing holding the
+   relaxing either context type cannot quietly leave nothing holding the
    line.
 3. **`impureCircuits` against the vendor top type.** The vendor's `Contract`
    interface declares only `witnesses`, `circuits`, `provableCircuits` and
@@ -121,17 +134,44 @@ interface. A consumer who writes `interface MyCircuits { ... }` gets
 eras — and because the failure is on the CONSTRAINT, the call then falls
 through to the current-era arms and reports something about `CompiledContract`
 instead. Generated Compact declarations are written as aliases already, so this
-matches real generated code; the fixtures in
-`packages/contracts/src/test/ledger8-fixture-types.ts` follow the same rule.
+matches real generated code, and the fixtures in
+`packages/contracts/src/test/ledger8-fixture-types.ts` are now typed from the
+generated declarations themselves rather than restating them.
 
-The context is `Ledger8CircuitContext<never>` for the same contravariance
-reason: `never` is assignable to every private state, so a concrete circuit
-declared over a real one satisfies this, and the context gives the family a
-second, independent reason to reject a current-era contract.
+**The context has TWO types, and the split is the same contravariance
+argument.** `Ledger8CircuitContext` is the descriptive shape: its era-internal
+members are `unknown`, so every real retained-era context is assignable TO it,
+which is what `Ledger8CircuitParameters` needs in order to strip the leading
+context off `Parameters<...>`. `Ledger8CircuitContextArgument` is what stands in
+the circuit's PARAMETER position, where the assignability runs the other way:
+the declared parameter must be assignable INTO the runtime's real
+`CircuitContext`. `unknown` goes one way only, so reusing the descriptive shape
+there meant no real artifact ever satisfied `Ledger8Contract` and every
+retained-era overload was unreachable — the defect reported as #1312, which the
+member list made visible (`costModel` was missing) but did not cause. Every
+member of the argument type is `never`, which is assignable to whatever the
+runtime declares, so the family does not have to restate the runtime's member
+TYPES to accept a real circuit.
 
-The two era-internal members of `Ledger8CircuitContext` — `currentQueryContext`
-and `currentZswapLocalState` — are `unknown` because they are live values of the
-previous runtime, and nothing outside that runtime may inspect them. Unchanged by
+It is derived from `Ledger8CircuitContext` by a mapped type, so the two cannot
+drift on a member — and it still gives the family its second, independent reason
+to reject a current-era contract: it names only the retained runtime's four
+required members, so six of the current runtime's seven are absent (see the list
+above; `costModel` is the one they share).
+
+Both directions are load-bearing, and each catches drift the other cannot. The
+descriptive shape requires the real context to HAVE its members, so a member
+removed upstream breaks the argument-stripping assertions; the argument shape
+requires the real context to have NO MORE required members than those, so a
+member added upstream breaks the conformance assertions. Because the member list
+is the descriptive type's, it must be exactly the runtime's REQUIRED set: naming
+a runtime-optional member (`gasLimit`) without `?` would silently collapse
+`Ledger8CircuitParameters` to `never[]` for every retained contract.
+
+The era-internal members of `Ledger8CircuitContext` — `currentQueryContext`,
+`currentZswapLocalState` and `costModel` — are `unknown` because they are live
+values of the previous runtime, and nothing outside that runtime may inspect
+them. Unchanged by
 ADR-0010, which publishes handles a caller RECEIVES: these are values the
 framework builds and hands the runtime, and a caller has no way to construct one.
 The same reasoning is

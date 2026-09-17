@@ -25,13 +25,13 @@
 
 - [ComposeCallEntry](interfaces/ComposeCallEntry.md)
 - [ComposeCallOptions](interfaces/ComposeCallOptions.md)
+- [ComposeCallResultPojo](interfaces/ComposeCallResultPojo.md)
 - [ComposeDeployOptions](interfaces/ComposeDeployOptions.md)
 - [ConstructorResultPojo](interfaces/ConstructorResultPojo.md)
 - [ContractEntryPointPojo](interfaces/ContractEntryPointPojo.md)
 - [ContractStatePojo](interfaces/ContractStatePojo.md)
 - [DeployResultPojo](interfaces/DeployResultPojo.md)
 - [DownConvertedState](interfaces/DownConvertedState.md)
-- [EraPartitionCallOptions](interfaces/EraPartitionCallOptions.md)
 - [ExecuteCircuitOptions](interfaces/ExecuteCircuitOptions.md)
 - [ExecuteConstructorOptions](interfaces/ExecuteConstructorOptions.md)
 - [Ledger8Engine](interfaces/Ledger8Engine.md)
@@ -52,6 +52,7 @@
 - [Ledger8ChargedState](type-aliases/Ledger8ChargedState.md)
 - [Ledger8DeployableContractState](type-aliases/Ledger8DeployableContractState.md)
 - [Ledger8InstanceAxis](type-aliases/Ledger8InstanceAxis.md)
+- [Ledger8SigningKey](type-aliases/Ledger8SigningKey.md)
 - [Ledger8StateValue](type-aliases/Ledger8StateValue.md)
 - [LedgerParametersOption](type-aliases/LedgerParametersOption.md)
 - [LedgerVersion](type-aliases/LedgerVersion.md)
@@ -62,6 +63,7 @@
 - [RetainedEraSubpath](type-aliases/RetainedEraSubpath.md)
 - [RetainedLedgerVersion](type-aliases/RetainedLedgerVersion.md)
 - [VersionResolutionPath](type-aliases/VersionResolutionPath.md)
+- [ZswapOfferFactory](type-aliases/ZswapOfferFactory.md)
 
 ## Variables
 

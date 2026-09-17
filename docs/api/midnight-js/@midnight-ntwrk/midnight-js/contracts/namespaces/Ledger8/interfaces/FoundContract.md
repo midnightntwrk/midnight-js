@@ -16,6 +16,10 @@ The maintenance interfaces the current era's `FoundContract` also carries are
 NOT here: the retained era has no governance arm at all, so there is nothing
 for them to reach.
 
+## Extended by
+
+- [`DeployedContract`](DeployedContract.md)
+
 ## Type Parameters
 
 ### C
@@ -28,11 +32,18 @@ for them to reach.
 
 > `readonly` **callTx**: [`CircuitCallTxInterface`](../type-aliases/CircuitCallTxInterface.md)\<`C`\>
 
+One function per circuit the artifact declares, each bound to
+[Ledger8FoundContract.contractAddress](#contractaddress) and to the private state id
+the attach or the deploy named — so a call needs only the circuit's own
+arguments.
+
 ***
 
 ### compiledContract
 
 > `readonly` **compiledContract**: `C`
+
+The artifact this handle was built from: the caller's own contract instance, unchanged.
 
 ***
 
@@ -40,11 +51,24 @@ for them to reach.
 
 > `readonly` **contractAddress**: `string`
 
+The address on chain every call made through [Ledger8FoundContract.callTx](#calltx) targets.
+
 ***
 
 ### deployTxData
 
 > `readonly` **deployTxData**: [`VersionedFinalizedTxData`](../../../../types/type-aliases/VersionedFinalizedTxData.md)
+
+The record of the transaction that DEPLOYED this contract, version-tagged
+because a retained-era contract was deployed in whichever era was current
+at the time — narrow it with `switch (deployTxData.version)`.
+
+SHAPED DIFFERENTLY from the current era's `FoundContract.deployTxData`,
+which is a `FinalizedDeployTxData` whose transaction id sits under
+`.public`. Here the record is the read surface's own
+`VersionedFinalizedTxData`, so `txId`, `status` and the rest are top-level
+members. Code written against one era does not read the other's record
+unchanged.
 
 ***
 

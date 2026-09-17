@@ -78,6 +78,7 @@
 - [deserializeZswapChainState](functions/deserializeZswapChainState.md)
 - [fromHex](functions/fromHex.md)
 - [hasErrorCode](functions/hasErrorCode.md)
+- [hasForeignErrorCode](functions/hasForeignErrorCode.md)
 - [isDeserializationError](functions/isDeserializationError.md)
 - [isHex](functions/isHex.md)
 - [isValidSigningKey](functions/isValidSigningKey.md)
