@@ -50,12 +50,8 @@ describe('the current-era deploy options pair a private state id with a private 
     expectTypeOf<
       DeployContractOptionsWithPrivateState<Twin018>['initialPrivateState']
     >().toEqualTypeOf<Twin018PrivateState>();
-    // DECLARED on the no-private-state arm as `never`, not absent from it. Absent, union
-    // excess-property checking admits a member declared on the SIBLING arm as long as one arm is
-    // satisfied -- and `compiledContract` alone satisfies this one -- so `{ compiledContract,
-    // privateStateId }` compiled, the constructor ran on `privateState: undefined`, `undefined`
-    // was stored under the caller's id, and the handle reported an `initialPrivateState` typed
-    // non-optional while actually undefined.
+    // DECLARED on the no-private-state arm as `never`, not absent from it -- see the member's own
+    // TSDoc in `deploy-contract.ts` for why absence was the bug.
     expectTypeOf<DeployContractOptionsBase<Twin018>['privateStateId']>().toEqualTypeOf<undefined>();
     expectTypeOf<DeployContractOptionsBase<Twin018>['initialPrivateState']>().toEqualTypeOf<undefined>();
   });
@@ -119,8 +115,13 @@ describe('the current-era deploy options pair a private state id with a private 
     void stateAlone;
   });
 
-  // The union above is what a consumer annotates with; this is what a consumer actually calls. The
-  // overload set has to refuse the half-shapes too, or the type is only advisory.
+  // NOT a regression guard for the pairing rule, and it should not be read as one: both half-shapes
+  // were already refused here before the arms became siblings. An inline literal is FRESH, so
+  // ordinary excess-property checking bites against a single-arm overload parameter; the hole
+  // #1321 describes needs the UNION as the target, which is the `it` above. On top of that,
+  // `Twin018` declares a private state, so it cannot select the no-private-state overload at all,
+  // and the id-alone shape cannot satisfy the private-state one, which requires
+  // `initialPrivateState`. This block locks in current behaviour, nothing more.
   it('refuses either half at the deployContract call site', () => {
     void deployContract(providers018, {
       compiledContract: compiledContract018,

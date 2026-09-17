@@ -37,6 +37,7 @@ export {
   deployContract,
   DeployContractOptions,
   DeployContractOptionsBase,
+  DeployContractOptionsShared,
   DeployContractOptionsWithPrivateState,
   DeployedContract
 } from './deploy-contract';
