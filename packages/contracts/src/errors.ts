@@ -351,19 +351,11 @@ export class IndexerInconsistencyError extends Error {
  * An error indicating that the read surface served a contract state without the block's ledger
  * parameters, so a call cannot be composed against the cost model the chain is running.
  *
- * `RawContractState.ledgerParameters` is optional — a provider that cannot serve them is still a
- * usable provider, and the bundled indexer provider always does serve them. This pipeline, though,
- * has just read the chain, so an absent parameter set here is a provider that did not serve them
- * rather than a caller with no read surface.
+ * A caller that genuinely cannot read the chain selects the compatibility path by name — see
+ * `INITIAL_LEDGER_PARAMETERS` in `midnight-js-protocol`.
  *
- * Raised instead of substituting the ledger's initial parameters, which is what happened before and
- * is the failure this error exists to replace: the partitioner drew the guaranteed/fallible boundary
- * from a cost model the chain does not run, the caller paid to prove the result, and the node then
- * refused the guaranteed segment with `Transcript(Execution(OutOfGas))`. Nothing in that path named
- * the cost model, so the diagnosis was unreachable from the error.
- *
- * The compatibility path still exists for a caller that genuinely cannot read the chain, but it has
- * to be selected by name — see `INITIAL_LEDGER_PARAMETERS` in `midnight-js-protocol`.
+ * @see {@link ErrorTaxonomy} for why this refuses rather than substituting the ledger's initial
+ * parameters.
  */
 export class LedgerParametersUnservedError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED;
@@ -390,20 +382,12 @@ export class LedgerParametersUnservedError extends Error {
  * contract already holds on chain, which this pipeline structurally cannot
  * compose.
  *
- * Building the transaction's Zswap offer for such a spend needs the contract's
- * Zswap CHAIN state, to locate the coin's commitment in the chain's Merkle tree
- * — and the retained-era pipeline does not read one. A coin the same call
- * produced needs no chain state (it is paired with its own output as a
- * transient), which is why only spends of previously held coins are refused.
+ * A coin the same call produced is NOT refused: it is paired with its own
+ * output as a transient and needs no chain state. Only spends of previously
+ * held coins are.
  *
- * Raised BEFORE the offer is built rather than left to fail deeper: without
- * this the condition surfaced as a bare assertion inside the offer builder,
- * naming neither the era nor the circuit, which told a caller nothing about
- * why its call could not be composed.
- *
- * The fix is to supply the retained arm with a Zswap chain state, which is
- * tracked separately; until then this refuses in the caller's own test run
- * rather than in production.
+ * @see {@link ErrorTaxonomy} for what the retained arm is missing and why this
+ * refuses before the offer is built.
  */
 export class Ledger8ShieldedSpendUnsupportedError extends Error {
   readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SHIELDED_SPEND_UNSUPPORTED;
@@ -665,15 +649,14 @@ const undiagnosedErrors = (rejection: unknown, undiagnosed: SubmitRejectionUndia
  * An error indicating that a submission was rejected and that whether the
  * network crossed the ledger fork under it could not be established.
  *
- * An `AggregateError` because nothing may be dropped: the submission rejection
- * is what happened to the transaction, and {@link reason} is why no diagnosis
- * could be made. `cause` names the proximate failure so a consumer walking only
- * cause chains still lands somewhere useful.
+ * An `AggregateError`: the submission rejection is what happened to the
+ * transaction and is always the FIRST entry of `errors`, {@link reason} is why
+ * no diagnosis could be made, and `cause` names the proximate failure.
  *
- * DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own for
- * a reason.
+ * DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own.
  *
- * @see {@link StaleHeadRemediation} for that reason, and for the two arms.
+ * @see {@link ErrorTaxonomy} for why the two codes name different things.
+ * @see {@link StaleHeadRemediation} for the two arms.
  */
 export class SubmitRejectionUndiagnosedError extends AggregateError {
   readonly code = CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED;
@@ -751,31 +734,22 @@ export class UnrecognisedResultEraError extends Error {
  * A transaction this framework submitted that the chain recorded with a
  * non-success status, in EITHER era. The one class to catch.
  *
- * The two eras cannot share a record TYPE. The current era submits and accepts
- * only v9, so its record is `FinalizedTxData`. A retained-era call is recorded
- * by whichever era the network head is on, so its record is the version-tagged
- * union -- which is not assignable to the v9 arm, and narrowing the current
- * era's member to the union would change a type consumers already read. That
- * is why the retained era has a class of its own rather than extending
- * `TxFailedError`, and why this base declares the union.
- *
  * Each subclass keeps its own historical member -- `finalizedTxData` on the
  * current era's, `txData` on the retained one -- so nothing reading those
  * breaks. {@link AnyEraTxFailedError.record} is the member to write new code
  * against, and it needs narrowing on `version` before `tx` is touched.
+ *
+ * @see {@link ErrorTaxonomy} for why the two eras cannot share a record type.
  */
 export abstract class AnyEraTxFailedError extends Error {
   /**
    * The one code every recorded-failure class in this package answers to.
    *
-   * `instanceof` is the idiom this hierarchy is built for, but it is identity-
-   * based: with two copies of this package resolved in one process it returns
-   * `false` and a failed transaction walks past a correctly written handler.
-   * A consumer that cannot import these classes, or cannot rely on there being
-   * one copy of them, branches on this instead. Subclasses inherit it rather
-   * than each declaring their own -- what a caller needs to distinguish is
-   * WHICH transaction failed, which the class and the record answer, not a
-   * finer code.
+   * Branch on this rather than `instanceof` where these classes cannot be
+   * imported, or where there may be more than one copy of this package in the
+   * process. Subclasses inherit it rather than each declaring their own.
+   *
+   * @see {@link ErrorTaxonomy} for why the code sits on the base.
    */
   readonly code = CONTRACTS_ERROR_CODES.TX_FAILED;
 
@@ -974,14 +948,13 @@ export class ContractTypeError extends TypeError {
  * network head is on a ledger era that has no way to express one.
  *
  * The pre-fork era composes exactly one call per transaction, which leaves a
- * pre-fork scope nothing to batch into.
+ * pre-fork scope nothing to batch into. The message names both ways forward,
+ * because the caller's batching intent cannot be honoured either way.
  *
  * Raised when the scope is CREATED, and from the head READING alone — before
  * that era's runtime is acquired. Both are load-bearing; do not move it later.
  *
- * Both ways forward are named in the message, because the caller's batching
- * intent cannot be honoured either way and it needs to choose.
- *
+ * @see {@link ErrorTaxonomy} for the refuse-before-you-pay placement rule.
  * @see {@link StaleHeadRemediation} for what each placement property prevents.
  */
 export class ScopedTxEraUnsupportedError extends Error {
@@ -1160,16 +1133,12 @@ export class VerifierKeyMismatchError extends Error {
  * reused because it carries a current-era `FinalizedTxData` where a retained
  * call is recorded as a version-tagged {@link VersionedFinalizedTxData}.
  *
- * Carries no registered error code, deliberately: a code is a published
- * compatibility commitment, and this arm's record type is expected to converge
- * with the current era's. The record itself is on {@link txData} so a caller
- * can branch on the status rather than read it out of the message.
+ * Carries no registered error code of its own. Branch on the class, or on the
+ * inherited {@link AnyEraTxFailedError.code}, and read the record off
+ * {@link txData} rather than out of the message.
  *
- * The message states the local-versus-chain consequence per STATUS, because the
- * two differ: with the whole transaction rejected nothing landed, but a
- * fallible-phase failure keeps every guaranteed effect — and this pipeline
- * places every movement it makes in the guaranteed segment, so the chain moved
- * while the private state was not stored.
+ * @see {@link ErrorTaxonomy} for why this arm registers no code, and for the
+ * local-versus-chain consequence the message states per status.
  */
 export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
   constructor(
@@ -1198,27 +1167,19 @@ export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
  * An error indicating that a retained-era DEPLOY was recorded on chain with a
  * status other than `SucceedEntirely`.
  *
- * Separate from {@link Ledger8CallTxFailedError} because the remediation is,
- * and for the same reason {@link StaleHeadError} writes a deploy's remediation
- * separately: a failed call can simply be run again, while a failed deploy
- * cannot be retried blindly. A deploy mints a fresh nonce, so a second attempt
- * lands at a DIFFERENT address, and repeating one that in fact finalized leaves
- * two copies of the contract on chain.
+ * DO NOT DEPLOY AGAIN on seeing this. A `ContractDeploy` sits in the Intent —
+ * the GUARANTEED part — so on `FailFallible` the contract DID land, under the
+ * maintenance authority built from
+ * {@link Ledger8DeployTxFailedError.signingKey}. Check the address first.
  *
- * Carries no registered error code, for the same reason its call-arm sibling
- * does not.
+ * {@link Ledger8DeployTxFailedError.signingKey} is NAMED but never rendered
+ * into the message: it is the only copy of the authority over a deployment that
+ * may have landed.
  *
- * The message states the local-versus-chain consequence per STATUS, because the
- * two differ, and the difference is the whole remediation. A `ContractDeploy`
- * sits in the Intent — the GUARANTEED part — so on `FailFallible` the contract
- * DID land, under the maintenance authority built from
- * {@link Ledger8DeployTxFailedError.signingKey}. A single message saying nothing
- * local refers to the address let that caller conclude nothing happened, and
- * never go looking for a deployment it owns and cannot maintain.
+ * Carries no registered error code of its own.
  *
- * {@link Ledger8DeployTxFailedError.signingKey} is NAMED but never rendered: it
- * is a secret, and an error message reaches logs and issue trackers, while this
- * is the only copy of the authority over a deployment that landed.
+ * @see {@link ErrorTaxonomy} for why a failed deploy is a separate class from a
+ * failed call, why no code is registered, and why the key is never rendered.
  */
 export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
   /**
@@ -1274,26 +1235,25 @@ const DEPLOY_KEY_STRANDED_REMEDIATION =
  * the chain did with it could not be confirmed.
  *
  * Covers every way that step fails: the read surface rejecting, a record whose
- * version tag is missing or unrecognised, and a record that arrives from an era
- * the head this deployment composed on cannot have recorded. One class over all
- * of them because the caller's action is the same in each - the transaction may
- * still finalize, this error holds the only copy of the signing key, and the
- * address has to be checked before deploying again. One class does not mean one
- * message: the wording states which condition was hit.
+ * version tag is missing or unrecognised, and a record arriving from an era the
+ * head this deployment composed on cannot have recorded. The message states
+ * which condition was hit.
  *
- * Wraps the underlying failure on `cause` rather than replacing it: the reason
- * the deployment is unconfirmed - an unreachable indexer, a timeout, an
- * untagged payload, an era violation - is what a caller branches on, and this
- * class adds the one fact that failure cannot carry, which is the key the
- * submitted deployment was built with. An era violation reaching `cause`
- * unchanged is what keeps `cause instanceof EraInvariantViolationError`, its
- * seam and its registered code reachable.
+ * DO NOT DEPLOY AGAIN on seeing this. The transaction may still finalize, this
+ * error holds the only copy of the signing key, and the address has to be
+ * checked first.
+ *
+ * Branch on `cause` for the underlying failure — an unreachable indexer, a
+ * timeout, an untagged payload, an era violation. It is wrapped rather than
+ * replaced, so `cause instanceof EraInvariantViolationError`, its seam and its
+ * registered code all stay reachable.
  *
  * Reachable only AFTER submission. Every refusal ahead of it is raised with no
  * key having been sampled.
  *
- * Carries no registered error code of its own, for the same reason
- * {@link Ledger8DeployTxFailedError} does not.
+ * Carries no registered error code of its own.
+ *
+ * @see {@link ErrorTaxonomy} for why one class covers the whole window.
  */
 export class Ledger8DeployUnconfirmedError extends Error {
   /**
@@ -1395,19 +1355,19 @@ export class Ledger8RecipientUnmappableError extends Error {
  *
  * Distinct from {@link Ledger8DeployUnconfirmedError}, which covers the window
  * where the chain's answer is unknown. Here the answer arrived and it was
- * success, so the contract exists, its maintenance authority is built from this
- * error's key, and deploying again is the one thing a caller must not do.
+ * success, so the contract EXISTS and its maintenance authority is built from
+ * this error's key. DO NOT DEPLOY AGAIN.
  *
- * Carries the signing key over BOTH writes even though only one of them can
- * strand it, because one class over the whole after-success region is what
- * makes the region's guarantee checkable: no `await` in it may reject without
- * the key riding along.
+ * Carries the signing key over both writes, and {@link stage} says which one
+ * the store refused.
  *
- * {@link Ledger8DeployNotStoredError.signingKey} is NAMED but never rendered,
- * for the reason {@link Ledger8DeployTxFailedError} states.
+ * {@link Ledger8DeployNotStoredError.signingKey} is NAMED but never rendered
+ * into the message.
  *
- * Carries no registered error code of its own, for the same reason
- * {@link Ledger8DeployUnconfirmedError} does not.
+ * Carries no registered error code of its own.
+ *
+ * @see {@link ErrorTaxonomy} for the after-submission region this closes and
+ * why the key rides along even where only one write can strand it.
  */
 export class Ledger8DeployNotStoredError extends Error {
   /**
