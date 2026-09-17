@@ -71,26 +71,15 @@ const { V8_PAYLOAD_UNSUPPORTED, UNTAGGED_PAYLOAD, SEAM_ERA_UNSUPPORTED } = PROVI
  * handed the v8 arm of a versioned transaction payload — serialized,
  * tag-prefixed bytes instead of a live v9 transaction object.
  *
- * Which providers raise this, and why, differs — the distinction matters at the
- * point of failure:
+ * Catching this does NOT mean "the framework cannot do it yet". It means the
+ * specific implementation on that seam does not serve the v8 arm — permanently
+ * for the lifting adapters, contingently for a concrete provider.
  *
- * - `createProofProvider`, `createWalletProvider` and `createMidnightProvider`
- *   raise it PERMANENTLY. Each lifts a v9-only implementation into the
- *   version-tagged interface, so refusing the v8 arm is the adapter reporting
- *   what it actually wraps. Supply a `WalletProvider` or `MidnightProvider`
- *   implementing the interface directly to serve the v8 arm.
- * - Concrete providers may or may not implement it.
- *   `httpClientProofProvider` and `dappConnectorProofProvider` both DO, taking
- *   and returning serialized bytes; other implementations that have not been
- *   widened still raise this.
+ * Catch it via its stable `code`, using `hasErrorCode` from
+ * `@midnight-ntwrk/midnight-js-utils`.
  *
- * So catching this does not mean "the framework cannot do it yet" — it means
- * the specific implementation on that seam does not serve the v8 arm.
- *
- * Lives in this package (rather than in each provider package) because the
- * payload union it rejects is defined here, on the provider interfaces every
- * implementation shares. Catch it via its stable `code`, using `hasErrorCode`
- * from `@midnight-ntwrk/midnight-js-utils`.
+ * @see {@link SeamEraDeclarations} for which providers raise it and why, and for
+ * how it differs from {@link SeamEraUnsupportedError}.
  */
 export class V8PayloadUnsupportedError extends Error {
   readonly code = V8_PAYLOAD_UNSUPPORTED;

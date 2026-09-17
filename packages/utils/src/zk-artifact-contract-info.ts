@@ -36,19 +36,18 @@ export class ZkArtifactContractInfoError extends Error {
 /**
  * Reads the `runtime-version` a `compactc` `contract-info.json` declares.
  *
- * Only the runtime version is returned, because it is the only member callers act on: it names the
- * `compact-runtime` the artifact set was compiled against, which is what places the artifact on the
- * ledger-era timeline. Every other member of the file is the contract's own description and belongs
- * to the toolchain, not to this framework.
+ * Only the runtime version is returned. It names the `compact-runtime` the artifact set was
+ * compiled against, which is what places the artifact on the ledger-era timeline.
  *
- * Fail-closed throughout: a missing, empty or non-string `runtime-version` throws rather than
- * answering `undefined`, because an absent answer here is indistinguishable from an artifact set
- * that declares nothing, and a caller cannot act on either.
+ * FAIL-CLOSED: a missing, empty or non-string `runtime-version` throws rather than answering
+ * `undefined`.
  *
  * @param rawJson The file's bytes, decoded as UTF-8 text.
  * @returns The declared runtime version, verbatim.
  * @throws ZkArtifactContractInfoError if the text is not a JSON object, or declares no usable
  * `runtime-version`.
+ * @see {@link ArtifactRuntimeVersion} for why only this member is read, and why absence is a
+ * refusal rather than a default.
  */
 export function parseZkArtifactRuntimeVersion(rawJson: string): string {
   let root: unknown;
