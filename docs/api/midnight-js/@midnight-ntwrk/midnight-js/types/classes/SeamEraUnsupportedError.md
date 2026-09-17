@@ -76,7 +76,7 @@ What that provider does declare. An empty list is the
 
 ### code
 
-> `readonly` **code**: `"MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED"` = `"MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED"`
+> `readonly` **code**: `"MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED"`
 
 ***
 

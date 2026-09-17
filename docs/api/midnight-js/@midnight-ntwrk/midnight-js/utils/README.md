@@ -90,6 +90,7 @@
 - [assertSemVer](functions/assertSemVer.md)
 - [assertUndefined](functions/assertUndefined.md)
 - [hasErrorCode](functions/hasErrorCode.md)
+- [hasForeignErrorCode](functions/hasForeignErrorCode.md)
 - [parseZkArtifactManifest](functions/parseZkArtifactManifest.md)
 - [parseZkArtifactRuntimeVersion](functions/parseZkArtifactRuntimeVersion.md)
 - [verifyZkArtifactIntegrity](functions/verifyZkArtifactIntegrity.md)

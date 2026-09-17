@@ -30,21 +30,39 @@ retained-execution transcript natively onto the current ledger-v9 axis instead.
 ## Refusal order on both era arms
 
 Both arms refuse a caller's options in the SAME order: the envelope, then the
-call list, then the offers, then the era's own limits, then the state. A caller
-handing both an empty network id and unreadable offer bytes has one defect to
-fix per era, not a different one per era.
+call list, then the era's own limits, then the state, and last the offers. A
+caller handing both an empty network id and unreadable offer bytes has one
+defect to fix per era, not a different one per era.
 
 Holding that order is why the v8 era arm checks the envelope and the call list
 itself rather than leaving either to the inner v8 leg it delegates to. The inner
 leg checks the envelope again; the check is idempotent, and leaving it there is
 what keeps `composeV8CallTx` and `composeV8DeployTx` safe to call directly.
 
-Both offers are read before anything is composed, so a caller handed bad offer
-bytes learns that instead of paying for a full assembly first. On the v9 call
-leg the transaction-wide options are all checked up front in the same way, while
-each call's own contract state is read as that call is assembled — so a bad
-state late in a call tree is reported after the earlier calls have already been
-built. Nothing is emitted either way: the throw discards the whole intent.
+The call legs read their offers LAST, and cannot do otherwise: an offer arrives
+as a factory (`ComposeCallOptions.zswapOffer`) that is handed every call's
+guaranteed/fallible split, and the split does not exist until the calls have
+been assembled. A caller handing bad offer bytes therefore learns it after the
+assembly rather than before. The deploy legs keep the old order — a deploy has
+no transcript to split, so its offer is still plain bytes read before anything
+is composed. On the v9 call leg the remaining transaction-wide options are all
+checked up front, while each call's own contract state is read as that call is
+assembled — so a bad state late in a call tree is reported after the earlier
+calls have already been built. Nothing is emitted either way: the throw discards
+the whole intent.
+
+What the ordering buys is worth more than what it costs. Bytes routed into the
+wrong segment are accepted by every check here and rejected by the wallet at
+balancing time, which reports them as `Wallet.InsufficientFunds` — a diagnosis
+that names neither the call nor the segment. Taking a factory means an offer can
+no longer be built BEFORE the split exists, which is how that failure used to be
+reached: by omission, with no way to do otherwise.
+
+What the shape does not do is make the failure unreachable. The factory is
+HANDED the split; nothing in the type obliges it to route against it, and a
+factory that ignores its argument and answers with constant bytes composes
+exactly as before. The guarantee is that the split is always available at the
+moment the offer is built — not that it was used.
 
 ## The one deliberate ordering difference
 
@@ -76,15 +94,16 @@ targets and how long a transaction should live remain the caller's decisions.
 
 A Zswap offer is not refused on either era. The retained era executes
 coin-moving circuits and hands their post-call Zswap local state back on the
-transcript, which is what a caller turns into the offer it passes here
-(`zswapStateToSegmentedOffer`,
+transcript, which is what a caller turns into the offer its factory
+answers with (`zswapStateToSegmentedOffer`,
 `packages/contracts/src/internal/utils/zswap-utils.ts`). Refusing the offer on the
 retained era would take away the only way to attach those coin movements to the
 transaction that carries the call.
 
-An absent offer is the normal shape of a call that moved no shielded coins, and
-stays absent. Bytes an era cannot decode are reported as `ComposeOptionError`
-with option `'zswapOffer'` — the same wrapping the other arm applies to the
+An absent offer is the normal shape of a call that moved no shielded coins: a
+call omits the factory, and a factory may answer with either half absent. Bytes
+an era cannot decode are reported as `ComposeOptionError` with option
+`'zswapOffer'` — the same wrapping the other arm applies to the
 identical call. The same symmetry holds for the contract state: both arms wrap a
 rejected state as `ComposeOptionError` with option `'contractState'` rather than
 letting a raw decoder failure escape.
@@ -94,10 +113,13 @@ That option error is deliberately not the class `extractEncodedStateValue`
 that cannot be READ is a different fault from an option that cannot be USED, and
 the two carry different remediations.
 
-Inside a v8-native leg the offers are v8-native offer HANDLES rather than bytes:
-that leg runs inside the retained era with the module already in hand, so the
-era arm that read the caller's offer bytes hands the decoded offer straight
-over — exactly as it already does for `contractState`.
+Inside the v8-native DEPLOY leg the offer is a v8-native offer HANDLE rather
+than bytes: that leg runs inside the retained era with the module already in
+hand, so the era arm that read the caller's offer bytes hands the decoded offer
+straight over — exactly as it already does for `contractState`. The v8-native
+CALL leg takes the `zswapOffer` factory unchanged and decodes the bytes it
+answers with itself, because the split it must be handed does not exist until
+that leg has assembled the call.
 
 ## One call per v8 transaction
 
@@ -166,29 +188,6 @@ it. A partitioned source carrying neither half is different — it is a caller
 with nothing to compose, and a prototype built from it would claim a circuit ran
 while recording no operations, the same silent no-op `'call-empty'` refuses one
 level up.
-
-That distinction acquired a second producer when the retained call pipeline
-began resolving its own split: it needs the pair BEFORE it builds a Zswap offer,
-because the offer has to be routed against it, and it then hands the composer
-that same pair as a partitioned source. So a pair the module's own partitioner
-produced now arrives dressed as a caller-supplied one, and the emptiness refusal
-above would apply to it.
-
-It cannot fire, and the reason is a property of the compiler rather than a
-convention. Only a circuit carrying a verifier key can be a registered entry
-point, and the retained pipeline checks that key before it partitions anything.
-`compactc` emits a key only for a circuit it marks `proof: true`, which it does
-only for a circuit that interacts with ledger state or the kernel — measured on
-0.31.1: a pure circuit, and an impure one whose only effect is a witness read,
-both compile to `proof: false` with no keys at all, and that holds per circuit
-even in a contract whose siblings are provable. A circuit reaching the partition
-step therefore has transcript operations by construction, and its pair carries at
-least one half.
-
-Should that ever stop holding — a runtime that partitions a provable circuit into
-an empty pair — the failure is not silent: composition refuses with
-`'call-transcript-empty'`, whose message blames a caller that did nothing wrong.
-Treat such a refusal as a signal about this argument, not about the call site.
 
 An unpartitioned source is bridged into the module's own `QueryContext` and
 split there, in two steps: the state crosses as an envelope, then the context

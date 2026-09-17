@@ -482,6 +482,18 @@ Re-exports [ProveTxConfig](../../types/interfaces/ProveTxConfig.md)
 
 ***
 
+### PROVIDER\_ERROR\_CODES
+
+Re-exports [PROVIDER_ERROR_CODES](../../types/variables/PROVIDER_ERROR_CODES.md)
+
+***
+
+### ProviderErrorCode
+
+Re-exports [ProviderErrorCode](../../types/type-aliases/ProviderErrorCode.md)
+
+***
+
 ### ProviderSeam
 
 Re-exports [ProviderSeam](../../types/type-aliases/ProviderSeam.md)

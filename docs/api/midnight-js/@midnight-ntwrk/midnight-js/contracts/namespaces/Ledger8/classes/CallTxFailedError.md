@@ -13,11 +13,10 @@ The retained-era counterpart of [CallTxFailedError](../../../classes/CallTxFaile
 reused because it carries a current-era `FinalizedTxData` where a retained
 call is recorded as a version-tagged [VersionedFinalizedTxData](../../../../types/type-aliases/VersionedFinalizedTxData.md).
 
-Carries no registered error code, for the same reason
-[Ledger8DeployUnmaintainableError](DeployUnmaintainableError.md) does not: the code would be a
-published commitment on an arm whose record type is expected to converge with
-the current era's. The record itself is on [txData](#txdata) so a caller can
-branch on the status rather than read it out of the message.
+Carries no registered error code, deliberately: a code is a published
+compatibility commitment, and this arm's record type is expected to converge
+with the current era's. The record itself is on [txData](#txdata) so a caller
+can branch on the status rather than read it out of the message.
 
 The message states the local-versus-chain consequence per STATUS, because the
 two differ: with the whole transaction rejected nothing landed, but a
