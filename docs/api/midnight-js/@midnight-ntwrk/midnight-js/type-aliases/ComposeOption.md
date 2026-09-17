@@ -6,7 +6,7 @@
 
 # Type Alias: ComposeOption
 
-> **ComposeOption** = `"calls"` \| `"contractState"` \| `"ledgerParameters"` \| `"networkId"` \| `"ttl"` \| `"verifierKeys"` \| `"zswapOffer"`
+> **ComposeOption** = `"calls"` \| `"contractState"` \| `"ledgerParameters"` \| `"networkId"` \| `"signingKey"` \| `"ttl"` \| `"verifierKeys"` \| `"zswapOffer"`
 
 Which option handed to a composition leg was unusable:
 - `'contractState'` — the state could not be bridged into the target

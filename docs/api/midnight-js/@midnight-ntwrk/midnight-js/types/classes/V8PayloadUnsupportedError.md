@@ -77,7 +77,7 @@ Size of the rejected payload, recorded so a report of
 
 ### code
 
-> `readonly` **code**: `"MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED"` = `"MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED"`
+> `readonly` **code**: `"MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED"`
 
 ***
 

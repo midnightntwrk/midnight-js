@@ -464,6 +464,12 @@ Re-exports [IncompleteCallTxPrivateStateConfig](../../contracts/classes/Incomple
 
 ***
 
+### IncompleteDeployContractPrivateStateConfig
+
+Re-exports [IncompleteDeployContractPrivateStateConfig](../../contracts/classes/IncompleteDeployContractPrivateStateConfig.md)
+
+***
+
 ### IncompleteFindContractPrivateStateConfig
 
 Re-exports [IncompleteFindContractPrivateStateConfig](../../contracts/classes/IncompleteFindContractPrivateStateConfig.md)
