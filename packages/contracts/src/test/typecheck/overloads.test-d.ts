@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-import type { Ledger8DeployableContractState } from '@midnight-ntwrk/midnight-js-protocol';
+import type { Ledger8DeployableContractState, Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
 import type { CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import type { ContractAddress, LogEvent } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractAddress, LogEvent, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 // The current-era twin of the retained-era fixture. Imported TYPE-ONLY from the artifact's own
@@ -57,6 +58,8 @@ import {
   type Ledger8ContractCall,
   type Ledger8ContractProviders,
   type Ledger8DeployContractOptions,
+  type Ledger8DeployContractOptionsBase,
+  type Ledger8DeployContractOptionsWithPrivateState,
   type Ledger8DeployedContract,
   type Ledger8FinalizedCallTxData,
   type Ledger8FindDeployedContractOptions,
@@ -103,6 +106,7 @@ declare const providers016: Ledger8ContractProviders<Counter016Contract, 'increm
 declare const options016: Ledger8CallTxOptionsBase<Counter016Contract, 'increment'>;
 declare const options016WithPrivateStateId: Ledger8CallTxOptionsWithPrivateStateId<Counter016Contract, 'increment'>;
 declare const contract016: Counter016Contract;
+declare const counter016PrivateState: Counter016PrivateState;
 
 // The ARGUMENT-TAKING retained-era fixture, which is what makes the family's contravariance
 // testable at all.
@@ -118,6 +122,12 @@ declare const contract018: Twin018;
 
 // An object matching NEITHER era: not a container, not a retained-era instance.
 declare const neitherShapeContract: { readonly nonsense: true };
+
+// Signing-key material for the two eras. They are DIFFERENT SHAPES -- the retained runtime's key is
+// a bare string, the current era's a `{ tag, value }` record -- which is the only reason the
+// retained arms can be pinned to one of them at all.
+declare const retainedSigningKey: Ledger8SigningKey;
+declare const currentSigningKey: SigningKey;
 
 // A retained-era contract whose circuit is NOT tuple-shaped, so `Ledger8CircuitParameters`
 // cannot destructure a leading context off it. Real 0.16 codegen never emits this; the type
@@ -344,10 +354,6 @@ describe('every result names the pipeline that produced it', () => {
 });
 
 describe('the retained-era deploy publishes what it produced, and takes what a constructor needs', () => {
-  // NOT OBSERVABLE END TO END: `deployContract`'s retained arm refuses with
-  // `Ledger8DeployUnmaintainableError`, so nothing constructs a value of these
-  // types today. What they declare is what the arm will answer with when that
-  // refusal is lifted, and the pipeline under it already computes every member.
   interface SeededPrivateState {
     readonly seed: bigint;
   }
@@ -364,6 +370,136 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
     expectTypeOf<Ledger8DeployContractOptions<SeededContract>>().toHaveProperty('args');
     expectTypeOf<Ledger8DeployContractOptions<SeededContract>['args']>().toEqualTypeOf<[seed: bigint]>();
     expectTypeOf<Ledger8DeployContractOptions<Counter016Contract>>().not.toHaveProperty('args');
+  });
+
+  it('demands constructor args on BOTH deploy-option arms, and on neither for a nullary constructor', () => {
+    type SeededArgs = { readonly args: [seed: bigint] };
+
+    // Each arm of the union, with the conditional applied. A conditional that stopped DISTRIBUTING
+    // over the union would leave one of these two unsatisfiable, and `toHaveProperty('args')` on
+    // the union alone cannot see that: `keyof` a union already intersects the arms' keys, so an arm
+    // that lost `args` and an arm that never had it read the same.
+    expectTypeOf<Ledger8DeployContractOptionsBase<SeededContract> & SeededArgs>().toMatchTypeOf<
+      Ledger8DeployContractOptions<SeededContract>
+    >();
+    expectTypeOf<Ledger8DeployContractOptionsWithPrivateState<SeededContract> & SeededArgs>().toMatchTypeOf<
+      Ledger8DeployContractOptions<SeededContract>
+    >();
+    expectTypeOf<Ledger8DeployContractOptionsBase<SeededContract>>().not.toMatchTypeOf<
+      Ledger8DeployContractOptions<SeededContract>
+    >();
+    expectTypeOf<Ledger8DeployContractOptionsWithPrivateState<SeededContract>>().not.toMatchTypeOf<
+      Ledger8DeployContractOptions<SeededContract>
+    >();
+
+    // The zero-argument constructor: both arms stand as they are, and neither carries the member.
+    expectTypeOf<Ledger8DeployContractOptionsBase<Counter016Contract>>().toMatchTypeOf<
+      Ledger8DeployContractOptions<Counter016Contract>
+    >();
+    expectTypeOf<Ledger8DeployContractOptionsWithPrivateState<Counter016Contract>>().toMatchTypeOf<
+      Ledger8DeployContractOptions<Counter016Contract>
+    >();
+    expectTypeOf<Ledger8DeployContractOptionsBase<Counter016Contract>>().not.toHaveProperty('args');
+    expectTypeOf<Ledger8DeployContractOptionsWithPrivateState<Counter016Contract>>().not.toHaveProperty('args');
+  });
+
+  it('names where the constructor private state is stored, on the private-state arm alone', () => {
+    expectTypeOf<
+      Ledger8DeployContractOptionsWithPrivateState<SeededContract>['privateStateId']
+    >().toEqualTypeOf<PrivateStateId>();
+    expectTypeOf<
+      Ledger8DeployContractOptionsWithPrivateState<SeededContract>['initialPrivateState']
+    >().toEqualTypeOf<SeededPrivateState>();
+    // Declared on the no-private-state arm as `never`, not absent from it. Absent, union
+    // excess-property checking admits a member declared on the SIBLING arm as long as one arm is
+    // satisfied -- and `compiledContract` alone satisfies this one -- so `{ compiledContract,
+    // privateStateId }` compiled, the constructor ran on `privateState: undefined`, and
+    // `undefined` was stored under the caller's id.
+    expectTypeOf<Ledger8DeployContractOptionsBase<SeededContract>['privateStateId']>().toEqualTypeOf<undefined>();
+    expectTypeOf<
+      Ledger8DeployContractOptionsBase<SeededContract>['initialPrivateState']
+    >().toEqualTypeOf<undefined>();
+  });
+
+  // THE FOUR SHAPES, as a table. The two arms are SIBLINGS rather than base-and-derived: a derived
+  // `privateStateId: PrivateStateId` over a base `privateStateId?: never` is an illegal extension,
+  // and for the intersection-shaped `args` variant it collapses the member to `never`.
+  it('admits the private-state PAIR, and refuses either half on its own', () => {
+    const neither: Ledger8DeployContractOptions<Counter016Contract> = { compiledContract: contract016 };
+    const both: Ledger8DeployContractOptions<Counter016Contract> = {
+      compiledContract: contract016,
+      privateStateId: 'counter',
+      initialPrivateState: counter016PrivateState
+    };
+
+    expectTypeOf(neither).toMatchTypeOf<Ledger8DeployContractOptions<Counter016Contract>>();
+    expectTypeOf(both).toMatchTypeOf<Ledger8DeployContractOptions<Counter016Contract>>();
+    // An id with nothing to store under it: the deploy would store `undefined` there and hand back
+    // a handle whose `initialPrivateState` is typed non-optional while actually undefined.
+    expectTypeOf<{
+      readonly compiledContract: Counter016Contract;
+      readonly privateStateId: PrivateStateId;
+    }>().not.toMatchTypeOf<Ledger8DeployContractOptions<Counter016Contract>>();
+    // A state with nowhere to go, which `IncompleteDeployContractPrivateStateConfig` reports at
+    // run time and this refuses at compile time.
+    expectTypeOf<{
+      readonly compiledContract: Counter016Contract;
+      readonly initialPrivateState: Counter016PrivateState;
+    }>().not.toMatchTypeOf<Ledger8DeployContractOptions<Counter016Contract>>();
+  });
+
+  // The same table again as DECLARATIONS, which is how a consumer writes them. `toMatchTypeOf`
+  // above is plain assignability; these are what tsc reports at a call site, excess-property
+  // checking included.
+  it('refuses either half on its own where a consumer actually writes it', () => {
+    // @ts-expect-error - a private state id with no state to store under it
+    const idAlone: Ledger8DeployContractOptions<Counter016Contract> = {
+      compiledContract: contract016,
+      privateStateId: 'counter'
+    };
+    // @ts-expect-error - a private state with no id naming where it goes
+    const stateAlone: Ledger8DeployContractOptions<Counter016Contract> = {
+      compiledContract: contract016,
+      initialPrivateState: counter016PrivateState
+    };
+
+    void idAlone;
+    void stateAlone;
+  });
+
+  it('types every retained signing key as the RETAINED runtime key', () => {
+    expectTypeOf<Ledger8DeployContractOptionsBase<Counter016Contract>['signingKey']>().toEqualTypeOf<
+      Ledger8SigningKey | undefined
+    >();
+    expectTypeOf<Ledger8DeployedContract<Counter016Contract>['signingKey']>().toEqualTypeOf<Ledger8SigningKey>();
+    expectTypeOf<Ledger8FindDeployedContractOptions<Counter016Contract>['signingKey']>().toEqualTypeOf<
+      Ledger8SigningKey | undefined
+    >();
+  });
+
+  it('accepts the retained key on the deploy and find options, and refuses a current-era one', () => {
+    const deployWithKey: Ledger8DeployContractOptionsBase<Counter016Contract> = {
+      compiledContract: contract016,
+      signingKey: retainedSigningKey
+    };
+    const findWithKey: Ledger8FindDeployedContractOptions<Counter016Contract> = {
+      compiledContract: contract016,
+      contractAddress,
+      signingKey: retainedSigningKey
+    };
+
+    expectTypeOf(deployWithKey.signingKey).toEqualTypeOf<Ledger8SigningKey | undefined>();
+    expectTypeOf(findWithKey.signingKey).toEqualTypeOf<Ledger8SigningKey | undefined>();
+    // A key sampled from the CURRENT runtime -- which is what every other entry point in this
+    // package takes -- cannot reach a retained arm by accident.
+    expectTypeOf(currentSigningKey).not.toMatchTypeOf<Ledger8SigningKey>();
+
+    const refusedKey: Ledger8DeployContractOptionsBase<Counter016Contract> = {
+      compiledContract: contract016,
+      // @ts-expect-error - a current-era `{ tag, value }` key is not the retained runtime's
+      signingKey: currentSigningKey
+    };
+    void refusedKey;
   });
 
   it('publishes the constructor result, as a handle AND as the bytes the address came from', () => {
@@ -384,6 +520,18 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
     expectTypeOf<
       Ledger8DeployedContract<Counter016Contract>['initialContractState']
     >().toEqualTypeOf<Ledger8DeployableContractState>();
+  });
+});
+
+describe('the retained-era find takes the private-state configuration the current era takes', () => {
+  it('takes an optional initial private state alongside the id it is stored under', () => {
+    expectTypeOf<Ledger8FindDeployedContractOptions<Counter016Contract>>().toHaveProperty('initialPrivateState');
+    expectTypeOf<Ledger8FindDeployedContractOptions<Counter016Contract>['initialPrivateState']>().toEqualTypeOf<
+      Counter016PrivateState | undefined
+    >();
+    expectTypeOf<Ledger8FindDeployedContractOptions<Counter016Contract>['privateStateId']>().toEqualTypeOf<
+      PrivateStateId | undefined
+    >();
   });
 });
 
@@ -777,15 +925,16 @@ describe('submitCallTxAsync, deployContract and findDeployedContract resolve bot
     expectTypeOf(submitCallTxAsync(providers018, options018)).toEqualTypeOf<Promise<SubmittedCallTx<Twin018, 'increment'>>>();
   });
 
-  // `never`, not the retained deployed-contract type: this arm is refused
-  // unconditionally, so there is no value to describe. It also keeps
-  // `Ledger8DeployedContract` -- which the barrel deliberately holds back --
-  // out of a published signature, where it would name a type a caller can
-  // receive by inference and cannot annotate.
-  it('resolves a retained-era deployContract to never, because that arm only ever throws', () => {
+  // The retained DEPLOYED-contract type, not `never`: the arm composes and
+  // submits, so there is a value to describe -- and the type is reachable by
+  // name through the `Ledger8` namespace, so a caller that receives one by
+  // inference can also annotate it.
+  it('resolves a retained-era deployContract to the retained-era deployed-contract type', () => {
     const deployOptions: Ledger8DeployContractOptions<Counter016Contract> = { compiledContract: contract016 };
 
-    expectTypeOf(deployContract(providers016, deployOptions)).toEqualTypeOf<Promise<never>>();
+    expectTypeOf(deployContract(providers016, deployOptions)).toEqualTypeOf<
+      Promise<Ledger8DeployedContract<Counter016Contract>>
+    >();
   });
 
   it('resolves a current-era deployContract to the current-era deployed-contract type', () => {

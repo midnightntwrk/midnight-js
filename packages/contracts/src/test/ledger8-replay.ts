@@ -297,6 +297,16 @@ export const loadCoinReceiverRecording = (): CoinReceiverRecording => {
 };
 
 /**
+ * The key the doubled constructor hands back when the caller supplied none.
+ *
+ * The real `executeConstructor` samples one in that case and reports it,
+ * because a sampled key exists nowhere else. A fixed marker here is what lets a
+ * test tell "the caller's key was threaded through" from "a key was sampled" —
+ * two answers a randomly sampled key would make indistinguishable.
+ */
+export const SAMPLED_SIGNING_KEY = 'replay-sampled-signing-key';
+
+/**
  * The opaque marker the doubled engine hands back from its down-convert.
  *
  * The pipeline is generic in the down-converted state and never looks inside
@@ -326,6 +336,34 @@ export type OrchestrationLog = string[];
 export interface ReplayExpectations {
   /** The private state the pipeline must have handed the engine. */
   readonly privateState?: unknown;
+  /**
+   * The private state the pipeline must have handed the CONSTRUCTOR. Separate
+   * from the circuit's, because a deploy's is the caller's `initialPrivateState`
+   * — `undefined` when none was supplied — where a call's is what the provider
+   * held.
+   */
+  readonly constructorPrivateState?: unknown;
+  /**
+   * The constructor ARGUMENTS the pipeline must have handed the engine.
+   *
+   * Separate from the circuit's `args`, which the recording pins for free: the
+   * recording answers whatever it is asked, so a deploy that forwarded `[]` in
+   * place of the caller's arguments composed and submitted with nothing
+   * failing. That is a contract seeded from default arguments, at an address
+   * that cannot be deployed over.
+   */
+  readonly constructorArgs?: readonly unknown[];
+  /**
+   * The private state the CONSTRUCTOR arm answers with, standing in for a
+   * constructor that ADVANCED the state it was handed.
+   *
+   * Omitted, the double threads its input straight back, which is what the real
+   * 0.16 runtime does: `{}` in gives `{}` out and `undefined` in gives
+   * `undefined` out. That fidelity is also what makes this member necessary —
+   * threaded through, the constructor's output and the caller's input are the
+   * same value, so a test cannot pin WHICH of the two the pipeline stored.
+   */
+  readonly advancedConstructorPrivateState?: unknown;
   /**
    * The Zswap local state the CONSTRUCTOR arm answers with. Defaults to an
    * empty one — the ordinary constructor mints nothing — so a test that wants a
@@ -400,19 +438,33 @@ export const createReplayEngine = (
     }
     return state.serialize();
   },
-  executeConstructor: (): Ledger8ConstructedState => {
+  executeConstructor: (options): Ledger8ConstructedState => {
     log.push('engine.executeConstructor');
     if (constructedState === undefined) {
       throw new Error('this replay engine was not given a constructed state to replay');
     }
+    if (expectations !== undefined && 'constructorPrivateState' in expectations) {
+      expect(options.privateState).toEqual(expectations.constructorPrivateState);
+    }
+    if (expectations !== undefined && 'constructorArgs' in expectations) {
+      expect(options.args).toEqual(expectations.constructorArgs);
+    }
     return {
+      // Sampled when the caller named none, exactly as the real engine does.
+      signingKey: options.signingKey ?? SAMPLED_SIGNING_KEY,
       // The committed retained-era envelope for this same contract, which is a
       // real serialized retained `ContractState` built from the real
       // constructor's own primary state. It already DECLARES `receive_coin`, so
       // a deploy composed from it must be given a key map naming exactly that
       // entry point — which is the validation the deploy composition performs.
       contractState: { serialize: (): Uint8Array => constructedState },
-      privateState: {},
+      // Threaded back, as the real 0.16 runtime threads it: a constructor that
+      // writes no private state hands its input out again, so `undefined` in is
+      // `undefined` out and not an empty object conjured by the double.
+      privateState:
+        expectations !== undefined && 'advancedConstructorPrivateState' in expectations
+          ? expectations.advancedConstructorPrivateState
+          : options.privateState,
       zswapLocalState: expectations?.constructorZswapLocalState ?? {
         coinPublicKey: recording.coinPublicKey,
         currentIndex: 0n,
