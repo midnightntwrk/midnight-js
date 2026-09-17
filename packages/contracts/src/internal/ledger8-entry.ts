@@ -179,20 +179,10 @@ export interface Ledger8Runtime {
  * `(retained artifact, head era)` pairings that cannot run and the provider
  * sets that cannot carry a retained-era transaction.
  *
- * The two acquisitions are independent and are started together; keep them
- * that way, because neither needs the other's answer.
- *
- * Every retained-era operation funnels through here — the call arm and the
- * deploy arm both — which is why the seam check belongs here rather than in
- * each of them.
- *
- * The era checked is `resolved.head`, because that is what picks the seam arm
- * in {@link submitLedger8Tx}: a pre-fork head crosses as `{ version: 'v8',
- * txBytes }` and a post-fork head as `{ version: 'v9', tx }`, since the tag
- * names the runtime that produced the bytes and keep-state composes on the
- * CURRENT era. Checking the artifact's era instead would refuse every keep-state
- * operation whose wallet serves only the current era — which is the ordinary
- * post-fork wallet.
+ * The two acquisitions are independent and are started together; keep them that
+ * way. Every retained-era operation funnels through here — the call arm and the
+ * deploy arm both — so the seam check belongs here rather than in each of them.
+ * The era checked is `resolved.head`, not the artifact's.
  *
  * @param providers The provider set, for the one head read and for the three
  * write seams' era declarations.
@@ -207,7 +197,9 @@ export interface Ledger8Runtime {
  * @throws Ledger8RuntimeMissingError if the retained runtime cannot be acquired.
  * @throws SeamEraUnsupportedError if a write seam does not serve the era this
  * operation's payloads will carry, which is the head era.
- * @see {@link EraDispatch} for the pairing table.
+ * @see {@link EraDispatch} for the pairing table, and for why the seam check
+ * reads the head era rather than the artifact's.
+ * @see {@link KeepStatePipeline} for why both acquisitions start together.
  */
 export const acquireLedger8Runtime = async (
   providers: Ledger8RuntimeProviders,
@@ -237,27 +229,15 @@ export const acquireLedger8Runtime = async (
  * message: a long run of hex, a long run of base64 or base64url, or a long list
  * of decimal byte values.
  *
- * Matched by SHAPE rather than by any provider's message format, because the
- * set of providers is open. Each alternative is deliberately narrow:
+ * Matched by SHAPE, not by any provider's message format. Every floor and every
+ * lookahead here is load-bearing: each one keeps a high-value diagnostic — a
+ * URL path, a class name — from being eaten as if it were a payload. DO NOT
+ * widen or "simplify" an alternative without reading why its floor is where it
+ * is. A secret shorter than 12 bytes is NOT redacted; see
+ * {@link Ledger8SeamFailedError} for why this is best effort, not a guarantee.
  *
- * - HEX at 24 characters and up, which is a 12-byte value. The floor is not
- *   lower because a run of hex-alphabet characters can be an ordinary word
- *   (`decade`, `defaced`); at 24 it cannot be. A secret shorter than 12 bytes
- *   is NOT redacted — see {@link Ledger8SeamFailedError} for why this is stated
- *   as best effort rather than as a guarantee.
- * - BASE64 / BASE64URL at 40 characters and up, and only when the run mixes
- *   lower case, upper case and a digit. That mixture is what separates an
- *   encoded payload from a URL path or a long class name, both of which are
- *   high-value diagnostics: `com/api/v1/graphql/subscriptions` has no upper
- *   case, and `ContractStateDeserializationFailed` has no digit, so neither is
- *   eaten. Do not drop the three lookaheads to "simplify" this — without them
- *   the endpoint a misconfiguration names is exactly what disappears.
- * - A DECIMAL BYTE LIST of 13 values or more, which is what
- *   `JSON.stringify(new Uint8Array(...))` and Node's own inspection of a typed
- *   array produce. Commas and spaces break the other two alternatives, so
- *   without this a payload rendered as numbers passes through untouched.
- *
- * @see {@link KeepStatePipeline} for what each alternative catches and misses.
+ * @see {@link KeepStatePipeline} for each alternative's floor, what it catches
+ * and what it misses.
  */
 const PAYLOAD_SHAPED = new RegExp(
   [
@@ -349,25 +329,15 @@ const redact = (text: string): string => {
  * Rebuilds an external failure as a plain {@link Error} carrying its class
  * name, a redacted message, a redacted stack and a redacted `cause` chain.
  *
- * The provider's ENUMERABLE PROPERTIES are dropped — that is where HTTP clients
- * keep echoed request bodies, and there is no shape-independent way to redact
- * an arbitrary object graph. Everything else is kept REDACTED rather than
- * dropped, because dropping it buys nothing the redaction does not already buy:
- *
- * - The `cause` CHAIN is where modern wrapping errors keep the diagnosis. A
- *   bare `fetch` failure is `Error: fetch failed` with the real reason — wrong
- *   port, DNS, TLS, connection refused — one or two links down. Truncating at
- *   depth one renders every one of those identically.
- * - The STACK is where a bug in the caller's OWN provider implementation is
- *   located. A fresh stack points at this function instead, which is the one
- *   place the answer certainly is not. Frames are paths and function names, and
- *   they go through the same redaction anyway.
+ * The provider's ENUMERABLE PROPERTIES are the one thing DROPPED. Everything
+ * else — class name, message, stack and `cause` chain — is kept REDACTED.
  *
  * @param cause Whatever the provider rejected with — `unknown`, because a
  * rejection is not obliged to be an `Error`.
  * @param depth How many links have already been rebuilt.
  * @returns A plain error safe to hand to a logger.
- * @see {@link KeepStatePipeline} for what is dropped and what is kept redacted.
+ * @see {@link KeepStatePipeline} for why that split is where it is, and why
+ * neither the stack nor the chain may be truncated.
  */
 const sanitizeSeamCause = (cause: unknown, depth = 0): Error => {
   const nested = isErrorLike(cause) ? (cause as Error).cause : undefined;

@@ -82,32 +82,15 @@ const setOrGetInitialSigningKey = async <C extends Contract.Any>(
 /**
  * The RETAINED era's half of the same rule. It differs in THREE ways, not one.
  *
- * Supplied key: VALIDATED through the read's own rule and then stored, where the current era
- * stores whatever it was handed. Nothing supplied and a retained-era entry stored: that key is
- * reported, unwrapped back to the bare string the retained runtime takes. Nothing supplied and
- * nothing stored: NOTHING is sampled, where the current era samples a fresh key. Nothing supplied
- * and an entry that is not usable, or one that cannot be read at all: reported as nothing stored,
- * with a breadcrumb, where the current era reports whatever the store answered unchecked.
+ * Supplied key: VALIDATED through the read's own rule and then stored. Nothing supplied and a
+ * retained-era entry stored: that key is reported, unwrapped back to the bare string the retained
+ * runtime takes. Nothing supplied and nothing stored: NOTHING is sampled. Nothing supplied and an
+ * entry that is not usable, or one that cannot be read at all: reported as nothing stored, with a
+ * breadcrumb.
  *
- * The three divergences, and why each is one:
- *
- * 1. NO SAMPLING. A key sampled at attach time bears no relation to the maintenance authority the
- *    chain already holds for a contract this caller did not deploy, and `Ledger8FoundContract`
- *    carries no maintenance interface for one to be used through -- the retained era has no
- *    governance arm at all. Storing one would put a key on record that can maintain nothing and
- *    report it as though it could.
- * 2. AN UNUSABLE OR UNREADABLE ENTRY READS AS ABSENT, and the attach still succeeds. See
- *    {@link fromStoredLedger8SigningKey} for the blast-radius argument the content half makes, and
- *    the catch below for the read half of it.
- * 3. A SUPPLIED KEY IS REFUSED rather than reported back. `Ledger8SigningKey` is `string`, so
- *    `signingKey: ''` type-checks; stored unchecked it is reported on THIS attach and read as
- *    absent on the next one, out of the same store, with nothing erroring either time -- and the
- *    entry it replaced is already gone. The caller passed this value in this call, so a refusal is
- *    cheap here in a way it is not in case 2.
- *
- * The supplied-key guard is `!== undefined` where the current era's rule above uses truthiness.
- * That difference is load-bearing: a falsy supplied key must reach the refusal, not fall through
- * to the read as though nothing had been supplied.
+ * The supplied-key guard is `!== undefined`, NOT truthiness. That difference is load-bearing: a
+ * falsy supplied key must reach the refusal, not fall through to the read as though nothing had
+ * been supplied.
  *
  * @param privateStateProvider The signing-key half of the private-state provider.
  * @param contractAddress The address the key is stored against.
@@ -116,6 +99,8 @@ const setOrGetInitialSigningKey = async <C extends Contract.Any>(
  * @returns The key now held for that address, or `undefined` when none usable is.
  * @throws Ledger8SigningKeyUnusableError If a supplied key is not one this framework can store and
  * read back. Raised BEFORE the write, so a refused key replaces nothing.
+ * @see {@link KeepStatePipeline} for the three ways this diverges from the current era's rule, and
+ * why each divergence is one.
  */
 const setOrGetLedger8SigningKey = async (
   privateStateProvider: Pick<PrivateStateProvider, 'getSigningKey' | 'setSigningKey'>,
@@ -169,14 +154,12 @@ const setOrGetLedger8SigningKey = async (
  * The private-state half of a find's configuration, as the rule below reads it.
  *
  * Structural rather than either era's own options type, because the rule is ONE rule and the
- * retained arm reaches it holding a `Ledger8FindDeployedContractOptions`. Both members are optional
- * because the current era's three option interfaces differ in which of them they declare, and the
- * retained era's declares both as optional.
+ * retained arm reaches it holding a `Ledger8FindDeployedContractOptions`.
  *
- * The `& object` on every use is load-bearing. With both members optional this is a WEAK type, and
- * TypeScript refuses a source that shares no property with it — which is exactly the current era's
- * `FindDeployedContractOptionsBase`, the commonest find of all. Intersecting with `object` adds no
- * member and disables no check other than that one.
+ * DO NOT DROP THE `& object` on any use of this type. Both members are optional, which makes this
+ * a weak type, and without the intersection the ordinary current-era find stops compiling.
+ *
+ * @see {@link OverloadTyping} for what the intersection does and does not disable.
  */
 interface FindContractPrivateStateConfig<PS> {
   readonly privateStateId?: PrivateStateId;
@@ -432,14 +415,14 @@ export interface FoundContract<C extends Contract.Any> {
  * is writing `privateStateId` with an undefined value. Naming an id the provider holds nothing
  * under is refused too, rather than attaching against a state the contract never had.
  *
- * The deploy record is returned VERSION-TAGGED rather than narrowed to the current era: a
- * retained-era contract was deployed in whichever era was current at the time, and refusing the
- * pre-fork arm would refuse exactly the contracts this arm exists to keep callable.
+ * The deploy record is returned VERSION-TAGGED rather than narrowed to the current era, so it needs
+ * narrowing on `version` before `tx` is touched.
  *
  * @throws IncompleteFindContractPrivateStateConfig if an `initialPrivateState` is supplied with no
  *         `privateStateId` to store it under.
  *
- * @see {@link OverloadTyping} for how the two eras are discriminated.
+ * @see {@link OverloadTyping} for how the two eras are discriminated, and why the record is
+ * version-tagged.
  */
 export async function findDeployedContract<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,

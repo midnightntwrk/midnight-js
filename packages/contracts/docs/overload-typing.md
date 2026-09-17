@@ -260,3 +260,20 @@ same version-tagged seam and serve both eras, which is why
 `Ledger8ContractProviders` is the ordinary provider set keyed by a retained-era
 circuit id, and why there is no separate retained-era provider surface. Both
 follow from `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`.
+
+## The weak-type trap in the shared options reader
+
+The private-state half of a find's configuration is read through a STRUCTURAL
+type, `FindContractPrivateStateConfig`, not through either era's own options
+type. The rule it feeds is one rule, and the retained arm reaches it holding a
+`Ledger8FindDeployedContractOptions`.
+
+Both of its members are optional, because the current era's three option
+interfaces differ in which of them they declare and the retained era's declares
+both as optional. That makes it a WEAK type, and TypeScript refuses a source that
+shares no property with a weak type — which is exactly
+`FindDeployedContractOptionsBase`, the commonest find of all.
+
+Hence the `& object` on every use. It adds no member and disables no check other
+than that one. Removing it does not loosen the type; it breaks the ordinary
+current-era find.
