@@ -80,6 +80,25 @@ export type CoinReceiver016Coin = Parameters<
   CoinReceiver016.ImpureCircuits<CoinReceiver016PrivateState>['receive_coin']
 >[1];
 
+/**
+ * The coin receiver's witnesses and circuit collection, named separately because
+ * `v8-native.test.ts` builds a SYNTHETIC variant of this contract whose constructor takes an
+ * argument -- no real retained artifact has one, so `deployContract`'s `args` hop is measurable
+ * nowhere else. Only the type varies there; the runtime object stays the real artifact.
+ *
+ * Derived rather than restated, like everything else here.
+ */
+export type CoinReceiver016Witnesses = CoinReceiver016.Witnesses<CoinReceiver016PrivateState>;
+export type CoinReceiver016Circuits = CoinReceiver016.ImpureCircuits<CoinReceiver016PrivateState>;
+
+/**
+ * The retained runtime's constructor context and result, read off the fixture's own
+ * `initialState` rather than described. Opaque by construction: they are live values of the
+ * previous runtime.
+ */
+export type Ledger8ConstructorContextLike = Parameters<CoinReceiver016Contract['initialState']>[0];
+export type CoinReceiver016ConstructorResult = ReturnType<CoinReceiver016Contract['initialState']>;
+
 /** The shape of the coin receiver's module. */
 export interface CoinReceiver016Module {
   readonly Contract: new (witnesses: CoinReceiver016.Witnesses<CoinReceiver016PrivateState>) => CoinReceiver016Contract;
