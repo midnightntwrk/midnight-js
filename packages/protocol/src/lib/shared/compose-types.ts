@@ -118,13 +118,11 @@ export type PartitionedCallTranscript = [
  * partition, in `calls` order. Returns serialized offer bytes per segment; an
  * absent member is the normal shape of a segment that moves no shielded coin.
  *
- * A function rather than ready-made bytes because a coin has to be routed into
- * the segment its movement belongs to, and the segment boundary is not known
- * until the transcripts are split -- which happens inside the composer. There
- * is deliberately no way to supply an offer without being handed the partition
- * it must be routed against.
+ * A function rather than ready-made bytes: there is deliberately no way to
+ * supply an offer without being handed the partition it must be routed against.
  *
- * @see {@link ComposeRefusalOrder}
+ * @see {@link ComposeRefusalOrder} for why the boundary is not known until the
+ * composer has split the transcripts.
  */
 export type ZswapOfferFactory = (partitions: readonly PartitionedCallTranscript[]) => {
   readonly guaranteed?: Uint8Array;

@@ -68,22 +68,14 @@ import { assertVerifierKeyMatches } from './verifier-key';
  * The transcript members this pipeline is entitled to read, narrowed off the
  * engine's own result type so the two cannot drift.
  *
- * `circuitId` is in the set but is not read: the pipeline names the circuit
- * from its own request, so reading it back off the transcript would let a
- * mismatched recording rename the call. It stays in the `Pick` because the
- * replay harness requires the fixture to carry it, which is what makes a
- * recording's own claim about which circuit it recorded checkable.
+ * `circuitId` is in the set but is NOT read: the pipeline names the circuit from
+ * its own request. It stays in the `Pick` because the replay harness requires
+ * the fixture to carry it.
  *
- * ONE member of the engine's result is deliberately left out:
- * `preContractState`, which is the same state this pipeline handed the engine
- * in the first place. `result` USED to be another: it was narrowed away here
- * and so could not reach a caller, even though the recording carried it and the
- * current era answers with it.
- *
- * `postContractState` is generic rather than picked off `TranscriptPojo`: it is
- * a live retained-runtime handle, which the replay double cannot mint, so the
- * double fills the parameter with its own marker while the real engine fills it
- * with `DownConvertedState`.
+ * One member of the engine's result is deliberately left out,
+ * `preContractState`. `postContractState` is generic rather than picked off
+ * `TranscriptPojo`, because it is a live retained-runtime handle the replay
+ * double cannot mint.
  *
  * @see {@link KeepStatePipeline} for what is left out and why nothing is lost.
  */
