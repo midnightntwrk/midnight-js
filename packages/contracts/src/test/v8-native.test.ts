@@ -2774,6 +2774,50 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect((caught as Ledger8DeployUnconfirmedError).signingKey).toBe(SAMPLED_SIGNING_KEY);
     expect((caught as Ledger8DeployUnconfirmedError).cause).toBeInstanceOf(UntaggedPayloadError);
   });
+
+  it('persists the signing key against the address it minted, in the shape the store takes', async () => {
+    const providers = deployProviders();
+
+    const deployed = await deployContract(providers, { compiledContract: contract });
+
+    // The store is the CURRENT era's and its key is `{ tag, value }`, where the retained era's is
+    // the bare hex string. Both runtimes sample the same 32-byte Schnorr key and the retained one
+    // reads a current-era key's `value` verbatim, so the wrapper is the whole difference -- which
+    // is why this arm adds it here instead of widening the provider interface.
+    //
+    // No private state is named by this deploy, so the write is pinned on the arm that has no
+    // private-state write to ride along with.
+    expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(deployed.contractAddress, {
+      tag: 'schnorr',
+      value: deployed.signingKey
+    });
+  });
+
+  it('writes the key only after the chain record has been checked', async () => {
+    const providers = deployProviders();
+    providers.publicDataProvider.watchForDeployTxData = vi.fn().mockResolvedValue(retainedEraRecord(FailEntirely));
+
+    await expect(deployContract(providers, { compiledContract: contract })).rejects.toBeInstanceOf(
+      Ledger8DeployTxFailedError
+    );
+
+    // The same order the private-state write already holds to: a deploy the chain refused must
+    // leave no local state claiming it succeeded. The refusal carries the key instead, which is
+    // the only copy that then exists.
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+  });
+
+  it('names the minted address before it writes the key', async () => {
+    const providers = deployProviders();
+
+    const deployed = await deployContract(providers, { compiledContract: contract });
+
+    expect(providers.privateStateProvider.setContractAddress).toHaveBeenCalledWith(deployed.contractAddress);
+    expect(callOrder(providers.privateStateProvider.setContractAddress)).toBeLessThan(
+      callOrder(providers.privateStateProvider.setSigningKey)
+    );
+  });
+
 });
 
 /**
@@ -3013,7 +3057,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
 
-  it('touches the private-state provider not at all when the caller gives neither', async () => {
+  it('reads and writes no private state at all when the caller gives neither', async () => {
     const providers = attachProviders(v6Envelope);
 
     await findDeployedContract(providers, attachOptions());
@@ -3145,4 +3189,69 @@ describe('attaching to a retained-era contract already on chain', () => {
       expect(found.deployTxData.version).toBe(version);
     }
   });
+
+  // THE SIGNING KEY. The deploy arm persists it against the address it minted, so this arm is the
+  // side of that round trip that reads it back -- and the field that used to be documented as
+  // discarded is now the way to seed a key the deploy happened elsewhere.
+  it('stores a signing key the caller supplies, and reports it back', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    const found = await findDeployedContract(providers, { ...attachOptions(), signingKey: 'caller-own-signing-key' });
+
+    expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(recording.contractAddress, {
+      tag: 'schnorr',
+      value: 'caller-own-signing-key'
+    });
+    expect(found.signingKey).toBe('caller-own-signing-key');
+  });
+
+  it('reports the key a deploy persisted when the caller supplies none', async () => {
+    const providers = attachProviders(v6Envelope);
+    providers.privateStateProvider.getSigningKey = vi
+      .fn()
+      .mockResolvedValue({ tag: 'schnorr', value: 'stored-retained-signing-key' });
+
+    const found = await findDeployedContract(providers, attachOptions());
+
+    // Unwrapped back to the bare string the retained runtime takes.
+    expect(found.signingKey).toBe('stored-retained-signing-key');
+    // KEPT, not written over: a caller that attaches without naming a key is asking what is held,
+    // not replacing it.
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+  });
+
+  it('reports no key, and samples none, when the provider holds none for the address', async () => {
+    const providers = attachProviders(v6Envelope);
+    providers.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(null);
+
+    const found = await findDeployedContract(providers, attachOptions());
+
+    // The member is PRESENT and undefined, not dropped: a handle missing it entirely reads the
+    // same at a call site that only checks the value.
+    expect('signingKey' in found).toBe(true);
+    expect(found.signingKey).toBeUndefined();
+    // The current era samples a fresh key in this case. The retained era must not: a sampled key
+    // bears no relation to the authority the chain holds for a contract deployed by someone else,
+    // and this arm carries no maintenance interface for one to be used through, so storing it
+    // would report a key that can maintain nothing.
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+  });
+
+  it('refuses a stored key of the other signature kind rather than handing it to the retained runtime', async () => {
+    const providers = attachProviders(v6Envelope);
+    // The store is shared with the current era, whose keys may legitimately be `ecdsa`. Unwrapped
+    // blindly, that value would be handed to the retained runtime as a maintenance key nobody
+    // holds the verifying key for.
+    providers.privateStateProvider.getSigningKey = vi
+      .fn()
+      .mockResolvedValue({ tag: 'ecdsa', value: 'other-kind-key-material' });
+
+    const caught = await findDeployedContract(providers, attachOptions()).catch((error: unknown) => error);
+
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).toContain('ecdsa');
+    // Named, never rendered: the value is secret material and an error message reaches logs.
+    expect((caught as Error).message).not.toContain('other-kind-key-material');
+  });
+
 });

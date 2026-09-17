@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
 import { type CompiledContract, type Contract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import {
   type ContractAddress,
@@ -38,6 +39,7 @@ import {
 } from './governance/tx-interfaces';
 import { isLedger8Request, requireV9Record, resolveArtifactEra } from './internal/era';
 import { findLedger8Contract } from './internal/ledger8-entry';
+import { fromStoredLedger8SigningKey, toStoredLedger8SigningKey } from './internal/ledger8-signing-key';
 import {
   type AnyLedger8FindDeployedContractOptions,
   type AnyLedger8FoundContract,
@@ -70,6 +72,43 @@ const setOrGetInitialSigningKey = async <C extends Contract.Any>(
   const freshSigningKey = sampleSigningKey();
   await privateStateProvider.setSigningKey(options.contractAddress, freshSigningKey);
   return freshSigningKey;
+};
+
+/**
+ * The RETAINED era's half of the same rule, and it differs in exactly one case.
+ *
+ * Supplied key: stored, as the current era stores one. Nothing supplied and something stored: that
+ * key is reported, unwrapped back to the bare string the retained runtime takes. Nothing supplied
+ * and nothing stored: NOTHING is sampled, where the current era samples a fresh key.
+ *
+ * That last divergence is deliberate. A key sampled at attach time bears no relation to the
+ * maintenance authority the chain already holds for a contract this caller did not deploy, and
+ * `Ledger8FoundContract` carries no maintenance interface for one to be used through — the retained
+ * era has no governance arm at all. Storing one would put a key on record that can maintain nothing
+ * and report it as though it could.
+ *
+ * @param privateStateProvider The signing-key half of the private-state provider.
+ * @param contractAddress The address the key is stored against.
+ * @param signingKey The key the caller supplied on the attach options, if any.
+ * @returns The key now held for that address, or `undefined` when none is.
+ * @throws Error if the stored entry is not of the retained era's signature kind.
+ */
+const setOrGetLedger8SigningKey = async (
+  privateStateProvider: Pick<PrivateStateProvider, 'getSigningKey' | 'setSigningKey'>,
+  contractAddress: ContractAddress,
+  signingKey: Ledger8SigningKey | undefined
+): Promise<Ledger8SigningKey | undefined> => {
+  if (signingKey !== undefined) {
+    await privateStateProvider.setSigningKey(contractAddress, toStoredLedger8SigningKey(signingKey));
+    return signingKey;
+  }
+  const stored = await privateStateProvider.getSigningKey(contractAddress);
+  // Truthiness rather than `=== null`: the interface answers `null` for "nothing stored", and a
+  // provider that simply returns nothing answers `undefined`. Both are the same fact here.
+  if (!stored) {
+    return undefined;
+  }
+  return fromStoredLedger8SigningKey(stored, contractAddress);
 };
 
 /**
@@ -444,11 +483,17 @@ export async function findDeployedContract<C extends Contract.Any>(
       providers.privateStateProvider,
       options
     );
+    const signingKey = await setOrGetLedger8SigningKey(
+      providers.privateStateProvider,
+      options.contractAddress,
+      options.signingKey
+    );
     return {
       era: RETAINED_PIPELINE_ERA,
       compiledContract: options.compiledContract,
       contractAddress: options.contractAddress,
       deployTxData: found.deployTxData,
+      signingKey,
       // Built AFTER the attach has checked every declared circuit's key, so a
       // handle a caller receives is one whose circuits the chain can serve.
       callTx: createLedger8CircuitCallTxInterface(
