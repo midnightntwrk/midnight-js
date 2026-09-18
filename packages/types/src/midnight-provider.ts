@@ -97,9 +97,7 @@ export const createMidnightProviderFromArms = (arms: MidnightProviderArms): Midn
  * {@link MidnightProvider} interface.
  *
  * The counterpart to `createWalletProvider`, and worth using for the same
- * reason: it keeps the `version` tag out of implementation code, so an
- * implementer never meets the parameter-mismatch error the tagged interface
- * otherwise produces.
+ * reason: it keeps the `version` tag out of implementation code.
  *
  * The returned provider serves the v9 arm only — `supportedEras` says so — and
  * that is permanent rather than a gap: it lifts a v9-only implementation. It
@@ -109,6 +107,7 @@ export const createMidnightProviderFromArms = (arms: MidnightProviderArms): Midn
  *
  * @param submitTx The v9-only submission function to wrap.
  * @returns A {@link MidnightProvider} that narrows inbound payloads.
+ * @see {@link SeamEraDeclarations} for the compiler error this avoids.
  *
  * @example
  * ```typescript

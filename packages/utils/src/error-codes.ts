@@ -131,22 +131,14 @@ export function hasErrorCode<C extends MidnightJsErrorCode>(e: unknown, code?: C
  * outside {@link MidnightJsErrorCode}.
  *
  * Separate from {@link hasErrorCode} so that reaching outside this framework's
- * codes is deliberate and visible at the call site, instead of being the same
- * call that a typo degrades into.
- *
- * Foreignness is enforced twice, because one gate cannot see both cases:
- *
- * - A code this framework owns is rejected by the compiler, via
- *   {@link ForeignErrorCode}.
- * - A code that only LOOKS like one of ours — a misspelling, the case that
- *   sends a caller here in the first place — satisfies that constraint, so it
- *   is refused at runtime by its prefix. Answering `false` instead would be the
- *   silent guard that constraining {@link hasErrorCode} set out to abolish,
- *   reached through the other door.
+ * codes is deliberate and visible at the call site. Foreignness is enforced
+ * twice: by the compiler via {@link ForeignErrorCode}, and at run time by prefix.
  *
  * @throws Error if `code` carries this framework's own `MIDNIGHT_JS_` prefix.
  *   That is a mistake at the call site, not a property of `e`, so it is raised
  *   rather than reported as a non-match.
+ * @see {@link ErrorVocabulary} for why the two guards are separate, and why one
+ *   gate cannot cover both cases.
  */
 export function hasForeignErrorCode<C extends string>(
   e: unknown,

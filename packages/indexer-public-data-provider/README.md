@@ -345,6 +345,22 @@ import {
 } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 ```
 
+## Architecture Documents
+
+The reasoning behind this package's shape lives in `docs/`, not in the source
+docstrings. Each file is registered with TypeDoc through `projectDocuments`, so
+it is a page in the generated API reference and `@see {@link Title}` in a
+docstring resolves to it.
+
+| Document | What it explains |
+|---|---|
+| [Subscription shapes](./docs/subscription-shapes.md) | What each `contractStateObservable` branch costs on the wire, and why the per-block and per-change subscriptions cannot be collapsed into one |
+| [Error boundaries](./docs/error-boundaries.md) | Why `IndexerError` is not exhaustive over a read, and what the two escaping failure classes actually report |
+
+Docstrings in `src/` carry the API contract: what a symbol does, its
+parameters, what it returns and what it throws. Anything that answers "why is
+it built this way" belongs in a document above, stated once.
+
 ## Resources
 
 - [Midnight Network](https://midnight.network)

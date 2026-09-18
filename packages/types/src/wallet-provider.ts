@@ -132,12 +132,9 @@ export interface V9WalletProvider {
  * Lifts a v9-only wallet implementation into the version-tagged
  * {@link WalletProvider} interface.
  *
- * Use this rather than tagging by hand. `balanceTx`'s return type is covariant,
- * so an implementation still resolving a bare `FinalizedTransaction` no longer
- * satisfies `WalletProvider` — and because TypeScript reports the *parameter*
- * mismatch first, the compiler error names the 20-odd ledger methods
- * `V8TxBytes` lacks rather than the missing `version` tag. This adapter keeps
- * the tag out of implementation code entirely, so that error never arises.
+ * USE THIS RATHER THAN TAGGING BY HAND. It keeps the `version` tag out of
+ * implementation code, where a hand-tagged implementation meets a compiler error
+ * that does not name the real problem.
  *
  * The returned provider serves the v9 arm only — `supportedEras` says so — and
  * that is permanent rather than a gap: it lifts a v9-only implementation. It
@@ -148,6 +145,8 @@ export interface V9WalletProvider {
  * @param impl The v9-only wallet implementation to wrap.
  * @returns A {@link WalletProvider} that narrows inbound payloads and tags
  *          outbound ones.
+ * @see {@link SeamEraDeclarations} for the compiler error this avoids, and for
+ * why serving the v9 arm only is permanent rather than a gap.
  *
  * @example
  * ```typescript
