@@ -18,7 +18,6 @@ import { HttpLink } from '@apollo/client/link/http';
 import { RetryLink } from '@apollo/client/link/retry';
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
 import { getMainDefinition } from '@apollo/client/utilities';
-import fetch from 'cross-fetch';
 import { createClient } from 'graphql-ws';
 
 import type { ValidatedConfig } from './config';
@@ -67,7 +66,10 @@ export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => 
    * vi.doMock can intercept it, making the Accept-Encoding header
    * untestable without a full integration setup.
    */
-  const httpLink = new HttpLink({ fetch, uri: validated.queryURLString });
+  const httpLink = new HttpLink({
+    fetch: validated.fetch ?? globalThis.fetch,
+    uri: validated.queryURLString
+  });
   const retryLink = new RetryLink({
     delay: {
       initial: 1000,
