@@ -343,97 +343,160 @@ The names come off the ARTIFACT rather than off the state, so a circuit the
 caller can call but the chain never registered is reported as a blank slot
 rather than silently skipped.
 
-## Why a retained-era deploy is refused
+## The retained-era deploy
 
-`deployContract`'s retained-era arm refuses with
-`Ledger8DeployUnmaintainableError`, and the reason was measured rather than
-assumed: **the contract this path would create would be permanently
-unmaintainable.**
+`deployContract`'s retained-era arm composes, submits and waits, and hands back a
+`Ledger8DeployedContract`. It is reachable only on a PRE-FORK head: the retained
+era has no post-fork deployment, so the era pairing table refuses a retained
+artifact against a post-fork head with `Ledger8DeployOnV9Error`, raised before
+the constructor runs.
 
-Nothing on this path sets a maintenance authority, so the authority a
-retained-era deployment carries is whatever the retained constructor left
-behind. What it leaves behind is an EMPTY committee with a threshold of ONE
-(`committee: []`, `threshold: 1`, `counter: 0n`), on both the constructor's own
-state and the state the deploy derives its address from. A rule change on such a
-contract needs one signature from a set of zero keys, which nothing can ever
-satisfy. No verifier key could ever be inserted, removed or replaced on it, and
+### The maintenance authority
+
+Left alone, a retained-era deployment carries whatever authority the retained
+constructor left behind, and what it leaves behind is an EMPTY committee with a
+threshold of ONE (`committee: []`, `threshold: 1`, `counter: 0n`). A rule change
+on such a contract needs one signature from a set of zero keys, which nothing can
+ever satisfy: no verifier key could be inserted, removed or replaced on it, and
 the authority itself could never be updated either, because updating it is a rule
-change. `packages/protocol/src/test/v8-deploy.test.ts` pins that measurement.
+change.
 
-### The refusal is about this pipeline, NOT about the retained era
+So `executeConstructor`, in `packages/protocol` — which is where the retained
+runtime is reachable from, and so where this belongs if `packages/contracts` is
+to keep taking no retained-runtime dependency — writes a one-key committee onto
+the constructor's own state before anything serializes it. The retained runtime
+exposes everything needed: `sampleSigningKey()`, `signatureVerifyingKey(sk)`, a
+public `ContractMaintenanceAuthority(committee, threshold, counter?)` whose own
+documentation states that `counter` must be `0n` at deployment, and a MUTABLE
+`ContractState.maintenanceAuthority`. An authority written there survives
+serialization, the bridge into the retained ledger's `ContractState`, and
+`ContractDeploy` — it is readable off the composed `initialState` afterwards,
+which `packages/protocol/src/test/v8-deploy.test.ts` measures at both ends. The
+era seam needed no new field: `ComposeDeployOptions` already carries the
+serialized `contractState`, which is where the authority lives.
 
-This distinction matters, because the obvious reading — that the retained era
-cannot express a maintenance authority — is wrong, and acting on it would leave
-the refusal in place forever.
+The key is the caller's own when one is supplied, and a freshly sampled one
+otherwise. Either way it is reported on `Ledger8DeployedContract.signingKey` and
+stored against the minted address through `privateStateProvider.setSigningKey`,
+which is where the current era's deploy writes its own key too.
 
-The retained runtime exposes everything needed:
+One store holds both eras' keys, and its key type is the current era's
+`{ tag, value }` where the retained era's is a bare hex string. They are the same
+thing: both runtimes sample a 32-byte Schnorr key written as 64 hex characters,
+and `{ tag: 'schnorr', value: <retained key> }` satisfies `isValidSigningKey`.
+(The retained runtime's `signatureVerifyingKey` also accepts a current-era key's
+`value` verbatim. That was measured by hand once, is asserted nowhere, and
+nothing in this pipeline depends on it -- the retained arm only ever hands the
+retained runtime a key the retained era produced.) So
+`internal/ledger8-signing-key.ts` adds the wrapper on the way in and strips it on
+the way out, and nothing in `packages/types`, in the provider interface, or in
+the export/import format changes. That last agreement is the one a future change
+is most likely to break without noticing, so
+`src/test/ledger8-signing-key.test.ts` samples a key from a retained runtime,
+wraps it and puts it through `isValidSigningKey` on every run: a rule that
+tightened would fail there rather than losing keys on a restore.
 
-- `sampleSigningKey()` and `signatureVerifyingKey(sk)`,
-- a public `ContractMaintenanceAuthority(committee, threshold, counter?)`
-  constructor, whose own documentation states that `counter` must be `0n` at
-  deployment,
-- and a MUTABLE `ContractState.maintenanceAuthority`.
+The wrapper cannot say WHICH era wrote an entry. Both eras sample `schnorr`, and
+both arms write one address-keyed slot, so a current-era attach that sampled a
+fresh key into an empty slot would leave the retained arm reporting that key as
+the chain's authority. What prevents it today is ordering rather than a guard:
+`findDeployedContract` runs `verifyContractState` before it reaches the
+signing-key rule, so a current-era artifact pointed at a retained contract's
+address fails verification first. Changing the stored record's shape to separate
+the eras would change what `exportSigningKeys`/`importSigningKeys` round-trip,
+so it is recorded here rather than done alongside the persistence change.
 
-An authority written onto the constructor's own state survives serialization,
-the bridge into the retained ledger's `ContractState`, and `ContractDeploy` — it
-is readable off the composed `initialState` afterwards. The era seam needs no
-new field either: `ComposeDeployOptions` already carries the serialized
-`contractState`, which is where the authority lives.
+On the way OUT, an entry is used only if it is one this framework could have
+written: `'schnorr'`, and a value `isValidSigningKey` admits. A current-era
+entry at the same address may legitimately be `ecdsa`, and unwrapped blindly
+that value would build an authority whose verifying key nobody holds. Anything
+else reads as ABSENT rather than failing the read — nothing on the retained arm
+consumes the key, so a circuit call must not stop working over a value it never
+looks at — and each such case leaves a `retained-signing-key-entry` breadcrumb,
+which is what keeps absent from meaning silent.
 
-So lifting the refusal is not "one line the day the seam carries an authority".
-It is three things, and they belong in `packages/protocol`, which is where the
-retained runtime is reachable from:
+The write happens only after the chain has recorded the deployment, alongside the
+private state and in the order below. Before that point the refusals carry the
+key themselves, and in the sampled case they hold its ONLY copy — which is why
+they say so.
 
-1. decide where the signing key comes from — the current era gets one back from
-   compact-js, which the retained path does not use,
-2. set the authority on the constructor's state inside the retained execution
-   leg, so `packages/contracts` still takes no retained-runtime dependency,
-3. return the key, filling in `Ledger8DeployedContract.signingKey`.
+### The verifier keys
 
-A FOURTH thing was missing from this list until it was fixed: the constructor's
-own Zswap local state. `executeConstructor` read two of the three members the
-artifact returns and dropped `currentZswapLocalState`, so a constructor that
-minted a coin composed a deploy carrying an output nothing funded — a
-transaction the ledger cannot balance. The constructor runtime slice now carries
-the same decoder the execution leg uses, and `runLedger8DeployPipeline` routes
-the decoded state into the deploy's guaranteed offer. Nothing about that fix is
-observable through `deployContract` while the refusal stands; it is pinned at
-the pipeline instead.
+A retained constructor builds every entry-point slot BLANK, and the retained
+deploy registers no keys of its own, so the key map is not optional on this arm:
+a deploy composed without it puts a contract on chain that nothing can ever call.
+The map is built from every entry point the ARTIFACT declares —
+`Object.keys(compiledContract.impureCircuits)`, the same source the attach path
+reads — and must name exactly what the constructed state declares, or the era
+refuses the compose with `option: 'verifierKeys'`.
 
-The current era does not have this problem because its constructor registers the
-signing key it is given, which is what makes its `DeployedContract.signingKey` a
-true statement about who can maintain the deployment. Reporting a key the
-retained path registered nowhere is not an option, which is why no signing key
-is sampled anywhere on this arm today.
+### The order after submission
 
-### Status of the deploy path
+The finalizing step mirrors the call arm's exactly: watch
+`watchForDeployTxData(contractAddress)` — the ADDRESS, because a deployment is
+recorded against the contract it created — attribute the record against the head
+this deploy composed on, refuse a non-success status, and only then store the
+private state. That order is load-bearing. A deploy the chain refused must leave
+no local private state ahead of it, and on this arm that matters more than on the
+call arm: a deploy mints a fresh nonce, so a second attempt lands at a DIFFERENT
+address, and repeating one that in fact finalized leaves two copies of the
+contract on chain. `Ledger8DeployTxFailedError` carries that remediation, which
+is why it is a separate class from `Ledger8CallTxFailedError`.
 
-`runLedger8Deploy` and `runLedger8DeployPipeline` are complete and correct as
-compositions, and are exercised directly by
-`packages/contracts/src/test/v8-native.test.ts`. No entry point calls them.
+The address is named on the private-state provider BEFORE the write. A provider
+namespaces every entry by the address last named and refuses a write before any
+has been named, so a write made first would either throw or land under whichever
+contract the process touched last — and a later call, which names this address
+itself, would read its own key, find nothing, and report nothing.
 
-They are kept rather than deleted because the MJS-02 plan asked for a working
-retained-era deploy on a pre-fork head, so this is that deliverable held one
-step short of being reachable — not an unimplemented stub, and not dead code
-that was never wanted. The refusal is what the measurement above justifies; the
-composition below it is what the plan asked for.
+The constructor's own Zswap local state travels with the deploy. `executeConstructor`
+read two of the three members the artifact returns and dropped
+`currentZswapLocalState`, so a constructor that minted a coin composed a deploy
+carrying an output nothing funded — a transaction the ledger cannot balance. The
+constructor runtime slice now carries the same decoder the execution leg uses,
+and `runLedger8DeployPipeline` routes the decoded state into the deploy's
+guaranteed offer.
 
-One consequence worth stating: because the refusal is unconditional and comes
-before the network head is read, `Ledger8DeployOnV9Error` — the era pairing
-table's refusal for a retained-era deploy against a post-fork head — is not
-reachable through `deployContract` today. It becomes reachable when the deploy
-arm is wired.
+## Seeding a retained-era private state
 
+Two of the three retained-era arms can CREATE a private state. The third still
+only reads one, and that asymmetry is the whole of what a caller has to know.
 
-### Seeding a retained-era private state
+A DEPLOY seeds through `Ledger8DeployContractOptionsWithPrivateState`, which
+carries `privateStateId` and `initialPrivateState` together or neither — the
+same pairing the current era's `DeployContractOptionsWithPrivateState` makes,
+and an unpaired one is `IncompleteDeployContractPrivateStateConfig`, raised
+before any provider is touched. What is STORED is not what was supplied:
+`initialPrivateState` is the state the CONSTRUCTOR RUNS AGAINST, and what lands
+under the id is the state the constructor produced. The write happens only after
+the chain has recorded the deployment, in the order above.
 
-This arm has no `initialPrivateState`, on either the find options or the call
-options, so there is no API-level way to CREATE a private state for a
-retained-era contract. A caller restoring on a new device has nothing stored and
-nothing to store it with.
+An ATTACH seeds through `Ledger8FindDeployedContractOptions.initialPrivateState`,
+by the CURRENT era's own rule rather than a second copy of it: both eras reach
+`setOrGetInitialPrivateState` in `find-deployed-contract.ts`, because
+client-side storage is era-independent and there is nothing about the retained
+ledger for the rule to differ on. It runs AFTER the attach has checked every
+declared circuit's key, so a state seeded for a contract whose keys turn out not
+to match does not outlive the find that failed.
 
-Until the options are widened, the refusal names the way through: write the
-state directly with `privateStateProvider.set(privateStateId, state)` before
-calling. That is why the message adds a remediation to the sentence the current
-era raises — the current era can seed through `findDeployedContract`, and this
-arm cannot, so the same first sentence leaves a retained-era caller stuck.
+A CALL only reads. `Ledger8CallTxOptions` carries a `privateStateId` and no
+`initialPrivateState`, so `readLedger8PrivateState` either finds a state under
+the named id or refuses — it has nothing to create one from, and the failure
+mode recorded above is why passing `undefined` down instead is not an option.
+
+## The signing key on the attach arm
+
+`Ledger8FindDeployedContractOptions.signingKey` is honoured: a key supplied there
+is stored against the contract address, and `Ledger8FoundContract.signingKey`
+reports whatever is then held — the key a deploy on this machine persisted, when
+the caller supplies none. `undefined` there means either nothing stored or an
+entry this framework did not write; the breadcrumb above is what separates the
+two.
+
+It diverges from the current era in one case, deliberately. Where
+`setOrGetInitialSigningKey` samples a fresh key when the store holds none, the
+retained arm reports `undefined`. A key sampled at attach time bears no relation
+to the authority the chain already holds for a contract this caller did not
+deploy, and the retained era has no governance arm at all, so there is no
+maintenance interface on `Ledger8FoundContract` for such a key to be used
+through. Storing one would put a key on record that can maintain nothing.

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
 
 ***
 
@@ -25,7 +25,7 @@ Several era decisions a reader might expect are REFUSALS rather than choices,
 and are not breadcrumbed a second time. Each already throws a registered,
 remediation-carrying error, which is a stronger signal than a debug line:
 
-- the retained-era deploy arm refuses;
+- the retained-era deploy arm refuses a POST-FORK head;
 - a scoped transaction on a pre-fork head refuses;
 - a provider answering on the other era's arm refuses;
 - a fetched state whose envelope disagrees with the head refuses.

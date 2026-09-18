@@ -21,7 +21,7 @@ import type { ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { deployContract } from '../deploy-contract';
-import { EraArtifactMismatchError, Ledger8DeployUnmaintainableError } from '../errors';
+import { EraArtifactMismatchError, Ledger8DeployOnV9Error } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
 import type { Ledger8ContractProviders } from '../ledger8-contract';
 import type {
@@ -33,16 +33,16 @@ import type {
 import { createMockCompiledContract, createMockProviders } from './test-mocks';
 
 // The other half of `../ledger8-contract.ts`. That file hand-writes the retained-era
-// (`compact-runtime@0.16`) contract type family, because the retained toolchain emits
-// `contract/index.js` with no `index.d.ts` beside it — there is no declaration file to import a
-// type from. A hand-written type is a claim about generated code, and this test is what makes the
-// claim checkable: it loads the REAL generated artifact, constructs it, and asserts the exact
-// structural facts the family encodes.
+// (`compact-runtime@0.16`) contract type family: it describes generated code without being
+// generated from it. A hand-written type is a claim about generated code, and this test is what
+// makes the claim checkable at RUNTIME: it loads the REAL generated artifact, constructs it, and
+// asserts the exact structural facts the family encodes — facts a declaration file cannot state,
+// such as which members the constructor actually installs and whether they are async.
 //
-// The pairing is required, not optional. `typecheck/overloads.test-d.ts` proves the entry points'
-// overloads DISCRIMINATE the two eras; only this test proves the shape they discriminate on is the
-// shape a real retained-era contract actually has. Without it the family is an unverified guess and
-// the compile assertions prove nothing about a real contract.
+// The pairing is required, not optional. `typecheck/overloads.test-d.ts` proves the overloads
+// DISCRIMINATE the two eras and that the family accepts the artifact's own DECLARATIONS; only this
+// test proves those declarations describe the JavaScript that actually ships. Without it, both
+// generated files could agree with each other and disagree with reality.
 
 // The shared hard-fork fixture tree, which lives in `testkit-js` because that is where the
 // fixtures are produced and where the e2e suites consume them.
@@ -62,6 +62,21 @@ const TWIN_MODULE_TYPES = resolve(FIXTURES_DIR, 'twin-contract/compiled/contract
 // out rather than imported so this test asserts the brand's ABSENCE against the literal key, and
 // keeps asserting it if the vendor moves where the constant is exported from.
 const COMPILED_CONTRACT_BRAND = Symbol.for('compact-js/CompiledContract');
+
+/**
+ * The circuit ids a generated declaration file declares, read off its `ImpureCircuits` block.
+ *
+ * Scoped to that one block rather than the whole file: `Circuits` and `ProvableCircuits` repeat
+ * the same members, so matching file-wide would report each id three times and compare a list
+ * nothing installs.
+ */
+const declaredCircuitIds = (declarations: string): string[] => {
+  const block = /export type ImpureCircuits<PS> = \{([\s\S]*?)\n\}/.exec(declarations);
+  if (!block) {
+    throw new Error('the declaration file has no ImpureCircuits block');
+  }
+  return [...block[1].matchAll(/^\s{2}(\w+)\(context:/gm)].map((match) => match[1]).sort();
+};
 
 // The fixture's generated code opens with `checkRuntimeVersion('0.16.0')`, which the installed
 // (current) `@midnight-ntwrk/compact-runtime` rejects outright, and then builds type descriptors
@@ -155,18 +170,31 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
     expect('tag' in contract).toBe(false);
   });
 
-  it('ships no declaration file, which is why the family is hand-written rather than imported', () => {
-    // CORRECTION (2026-09-07): the retained toolchain DOES emit an `index.d.ts` --
-    // running `compactc 0.31.1` against this fixture's own source produces one. The
-    // absence asserted here is a property of what the fixture PORTED, not of the
-    // toolchain, and the earlier comment claiming otherwise was wrong.
+  it('ships the declaration file the type test imports, wired to the RETAINED runtime', () => {
+    // `../ledger8-fixture-types.ts` types both fixtures from these declarations, so the compile
+    // assertions and the runtime assertions look at one artifact. Two things have to hold for that
+    // to mean anything, and neither is visible from the type side:
     //
-    // The assertion is kept as-is because `../ledger8-contract.ts` is still
-    // hand-written and this pins the fixture it is written against. Whether to port
-    // the declaration and import the generated type instead is an MJS-02 decision,
-    // not a fixture one. See `fixtures/hf/README.md` under `counter-016/`.
-    expect(() => readFileSync(resolve(COUNTER_016_DIR, 'index.d.ts'))).toThrow();
+    //  - the declaration is there at all (it was deliberately not ported until #1312);
+    //  - it names `compact-runtime-ledger8`, this repo's alias for the retained
+    //    `@midnight-ntwrk/compact-runtime@0.16.0`. `compactc` emits the bare specifier, which the
+    //    root `resolutions` pin to 0.19.0 — so left alone the retained fixture would be typed
+    //    against the CURRENT runtime's `CircuitContext`. That is loud rather than silent (the
+    //    conformance assertions in `typecheck/overloads.test-d.ts` go red), but it fails somewhere
+    //    that says nothing about a specifier, which is what this pins. The one-line rewrite is
+    //    documented in `fixtures/hf/README.md` under `counter-016/`.
+    const counterTypes = readFileSync(resolve(COUNTER_016_DIR, 'index.d.ts'), 'utf8');
+    expect(counterTypes).toContain("from 'compact-runtime-ledger8'");
+    expect(counterTypes).not.toContain("from '@midnight-ntwrk/compact-runtime'");
+    expect(counterTypes).toContain('export declare class Contract');
     expect(readFileSync(TWIN_MODULE_TYPES, 'utf8')).toContain('export declare class Contract');
+
+    // And the declaration belongs to THIS module. Strict equality in BOTH directions, not
+    // `toContain` per circuit: a one-directional check misses a circuit declared in the `.d.ts`
+    // that the module does not install, which is the direction that would make the type test
+    // assert about a circuit no caller can reach. Regenerating one file without the other is how
+    // the pairing breaks.
+    expect(declaredCircuitIds(counterTypes)).toEqual(Object.keys(contract.impureCircuits).sort());
   });
 
   it('exports no expectedVk, unlike the current era whose modules always do', () => {
@@ -179,8 +207,8 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
     // handling of real circuit ARGUMENTS to a real artifact. `coin-receiver-016`'s `receive_coin`
     // takes one (its own arity guard is `args_1.length !== 2`, against the counter's `!== 1`), and
     // `typecheck/overloads.test-d.ts` asserts the retained-era overload RESOLVES for it. These
-    // assertions are what keep the hand-written `CoinReceiver016Contract` tied to the generated
-    // code that type describes.
+    // assertions are what tie the generated DECLARATION `CoinReceiver016Contract` now comes from
+    // to the generated JavaScript beside it.
     let coinReceiver: CoinReceiver016Contract;
     let coinReceiverModule: CoinReceiver016Module;
 
@@ -206,10 +234,12 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       expect(asyncCircuitIds).toEqual([]);
     });
 
-    it('declares the coin argument with the field names and widths the hand-written type claims', () => {
-      // `CoinReceiver016Coin` is hand-written, and until now only its ARITY was tied to the
-      // artifact. Field names and byte widths are what a caller has to satisfy, and the generated
-      // source states them outright in its own type-error text, so pin them there.
+    it('declares the coin argument with the byte widths the DECLARATION cannot state', () => {
+      // `CoinReceiver016Coin` is now derived from the generated declaration, so field names and
+      // TypeScript types are tied to the artifact by the compiler. Byte widths are not: the
+      // declaration erases them to `Uint8Array` and `bigint`. The generated JavaScript states them
+      // outright in its own type-error text, which is the only place they can be pinned -- and it
+      // is also what cross-checks the two generated files against each other.
       const source = readFileSync(COIN_RECEIVER_016_MODULE, 'utf8');
 
       expect(source).toContain('nonce: Bytes<32>');
@@ -230,8 +260,12 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       expect('tag' in coinReceiver).toBe(false);
     });
 
-    it('ships no declaration file and exports no expectedVk, like the other retained artifact', () => {
-      expect(() => readFileSync(resolve(COIN_RECEIVER_016_DIR, 'index.d.ts'))).toThrow();
+    it('ships the same retained-runtime-wired declaration file, and exports no expectedVk', () => {
+      const coinReceiverTypes = readFileSync(resolve(COIN_RECEIVER_016_DIR, 'index.d.ts'), 'utf8');
+      expect(coinReceiverTypes).toContain("from 'compact-runtime-ledger8'");
+      expect(coinReceiverTypes).not.toContain("from '@midnight-ntwrk/compact-runtime'");
+      expect(coinReceiverTypes).toContain('export declare class Contract');
+      expect(declaredCircuitIds(coinReceiverTypes)).toEqual(Object.keys(coinReceiver.impureCircuits).sort());
       expect('expectedVk' in coinReceiverModule).toBe(false);
     });
 
@@ -314,10 +348,11 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       );
     });
 
-    // The one arm that still refuses outright is the deploy. Its reason is measured and is nothing
-    // to do with the pipeline -- see `Ledger8DeployUnmaintainableError` for the measurement and what
-    // it would take to lift it.
-    it('refuses a retained-era deployContract, because the deployment would be unmaintainable', async () => {
+    // The deploy arm no longer refuses by artifact. It runs, and what decides it is the ERA PAIRING:
+    // the retained era has no post-fork deployment, so a retained artifact against a post-fork head
+    // is refused by the same table every other retained operation is measured against. This shared
+    // mock reports a post-fork head, which is the refusing cell.
+    it('routes a retained-era deployContract into the retained pipeline, where the era table refuses it', async () => {
       let caught: unknown;
       try {
         await deployContract(providers, { compiledContract: contract });
@@ -326,16 +361,12 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       }
 
       // The CLASS, not the message constant: asserting against the same string the production code
-      // throws can only fail if one file disagrees with itself, which it cannot. A stable fragment
-      // of the text is asserted separately so a message rewritten into something that no longer
-      // explains the refusal still fails here.
-      expect(caught).toBeInstanceOf(Ledger8DeployUnmaintainableError);
-      expect((caught as Error).message).toContain('verifier key inserted, removed or replaced');
-      // Refused BEFORE anything is read: the refusal is unconditional, so no head read and no state
-      // read should have happened. This is also what makes `Ledger8DeployOnV9Error` unreachable
-      // through this entry point.
-      expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
-      expect(providers.publicDataProvider.queryRawContractState).not.toHaveBeenCalled();
+      // throws can only fail if one file disagrees with itself, which it cannot.
+      expect(caught).toBeInstanceOf(Ledger8DeployOnV9Error);
+      // POSITIVE evidence that the arm REACHED the era gate rather than refusing in front of it:
+      // the head was read. A refusal raised before any provider was touched -- which is what stood
+      // here -- would leave this untouched.
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalled();
     });
 
     it('does NOT refuse a current-era deploy, so the era machinery cannot fire on the common path', async () => {
@@ -359,7 +390,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       expect((caught as Error).message).toMatch(/sampleSigningKey/);
       // And it is not an era refusal of any kind.
       expect(caught).not.toBeInstanceOf(EraArtifactMismatchError);
-      expect(caught).not.toBeInstanceOf(Ledger8DeployUnmaintainableError);
+      expect(caught).not.toBeInstanceOf(Ledger8DeployOnV9Error);
     });
 
   });

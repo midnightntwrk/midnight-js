@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
 
 ***
 
@@ -156,6 +156,15 @@ would drop the rest without a word. The refusal is raised
 
 ## Unproven output only
 
-`composeCallTx` returns the bytes `Transaction.serialize()` produces before
-`.prove()` is ever called. Proving needs a proving provider and a running proof
-server, neither of which this seam has.
+`composeCallTx` answers with the bytes `Transaction.serialize()` produces before
+`.prove()` is ever called, alongside the guaranteed/fallible split each call was
+built from. Proving needs a proving provider and a running proof server, neither
+of which this seam has.
+
+The split is on the answer because it is also on the way in: a call's Zswap
+offer arrives as a factory the composer calls back with that split, never as
+ready-made bytes. A coin has to be routed into the segment its movement belongs
+to, and until the transcripts are split there is no segment to route by — so
+there is deliberately no shape of this call that builds an offer before one
+exists. Being handed the split is what the seam guarantees; using it remains the
+factory's own responsibility.

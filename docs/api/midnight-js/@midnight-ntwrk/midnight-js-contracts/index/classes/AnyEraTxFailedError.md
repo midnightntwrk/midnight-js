@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -30,6 +30,7 @@ against, and it needs narrowing on `version` before `tx` is touched.
 
 - [`TxFailedError`](TxFailedError.md)
 - [`CallTxFailedError`](../namespaces/Ledger8/classes/CallTxFailedError.md)
+- [`DeployTxFailedError`](../namespaces/Ledger8/classes/DeployTxFailedError.md)
 
 ## Constructors
 

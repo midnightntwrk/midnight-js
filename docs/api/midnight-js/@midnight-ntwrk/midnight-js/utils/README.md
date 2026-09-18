@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
 
 ***
 
@@ -90,6 +90,7 @@
 - [assertSemVer](functions/assertSemVer.md)
 - [assertUndefined](functions/assertUndefined.md)
 - [hasErrorCode](functions/hasErrorCode.md)
+- [hasForeignErrorCode](functions/hasForeignErrorCode.md)
 - [parseZkArtifactManifest](functions/parseZkArtifactManifest.md)
 - [parseZkArtifactRuntimeVersion](functions/parseZkArtifactRuntimeVersion.md)
 - [verifyZkArtifactIntegrity](functions/verifyZkArtifactIntegrity.md)

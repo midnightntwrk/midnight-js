@@ -407,3 +407,92 @@ Three points of this ADR are affected, none reversed:
 The stage-erasure risk that amendment records is NOT affected: `V8TxBytes` is
 still identical across the three seams. The arms narrow what an implementation
 sees, not what the union expresses.
+
+## Amendment — the provider codes move to the package that throws them (2026-09-16)
+
+The decision above stands: `types` still takes no internal runtime dependency.
+What changed is which package owns the provider error codes, and therefore the
+direction of the edge between `types` and `utils`. Point 8 described the old
+arrangement and is superseded by this note; point 5's parenthetical
+("declared locally, for the reason in point 8") should now be read as pointing
+here.
+
+**Point 8 as it stood.** The code strings behind the `types` error classes were
+re-declared as local literals in `packages/types`, because importing them from
+`packages/utils` would have inverted the layer order. `utils` held the registry,
+and its error-codes test pinned the same literals on that side, so the two
+copies could not drift apart unnoticed. `types` carried `utils` as a
+devDependency, for tests only.
+
+**What it is now.** `PROVIDER_ERROR_CODES` is declared once, in
+`packages/types/src/errors.ts`, and exported from a `./errors` leaf subpath.
+`utils` imports the group through that subpath, re-exports it so its own
+published surface is unchanged, and folds it into the registry `hasErrorCode`
+consults. There is one spelling of each code, not two.
+
+Three facts recorded here because they are not visible from the code alone:
+
+- **The duplication was growing, not stable.** Two literals when the first
+  version-tagged seams landed, three once `SEAM_ERA_UNSUPPORTED` arrived. Point
+  8's cross-check was a guard against a hazard that a single declaration removes
+  outright.
+- **The `types` -> `utils` devDependency had to go, not merely could.** Turbo's
+  build graph is topological over devDependencies, so keeping that edge beside
+  the new `utils` -> `types` one would be a cycle. It existed only to run the
+  cross-check this change makes unnecessary.
+- **The leaf subpath is load-bearing.** The `types` root barrel pulls `effect`
+  and the protocol ledger namespace; `packages/types/src/errors.ts` imports
+  nothing at all. Reading a code string must not cost a consumer either. This is
+  the same reasoning `utils` already applies to
+  `@midnight-ntwrk/midnight-js-protocol/errors`.
+
+**What holds the registry in step now.** `packages/utils/src/test/troubleshooting-coverage.test.ts`
+pins `MIDNIGHT_JS_ERROR_CODES` against the `TROUBLESHOOTING.md` table with
+strict equality in both directions, and additionally demands a remediation per
+entry. `TROUBLESHOOTING.md` is listed in `turbo.json`'s `globalDependencies`, so
+that gate cannot be replayed from cache. One guarantee was traded away and is
+worth naming: a code renamed in the registry and in the document within the same
+change now passes, where three independent spellings would have caught it.
+
+**`CONTRACTS_ERROR_CODES` did not move.** Its previous justification was
+circular. The real constraint is that the no-argument `hasErrorCode` needs a
+COMPLETE registry, and that form is called from `contracts` and the registry is
+read by the TROUBLESHOOTING gate — both at or above `utils`, so the registry
+cannot follow the codes up.
+
+### The guard is typed to the registry
+
+Recorded here rather than as its own ADR, because it is the same decision seen
+from the call site.
+
+`hasErrorCode(e, code)` took `C extends string`, so a misspelled code compiled
+and silently returned `false` forever. The loose parameter was deliberate — it
+let one call compare against a foreign code such as Node's `ECONNREFUSED` — but
+that escape hatch had no user anywhere in the tree.
+
+The two questions are now two names. `hasErrorCode` takes
+`C extends MidnightJsErrorCode`, so a typo is a compile error.
+`hasForeignErrorCode` serves the foreign comparison and enforces foreignness
+twice, because neither gate alone covers both cases:
+
+- A code this framework owns is refused by the compiler, through a conditional
+  constraint that resolves to `never` for a member of `MidnightJsErrorCode`.
+- A code that merely LOOKS like one of ours — a misspelling, which is exactly
+  what sends a caller to the foreign form — satisfies that constraint, so it is
+  refused at runtime by its `MIDNIGHT_JS_` prefix. Answering `false` would
+  reinstate the silent guard through the other door. The prefix every registered
+  code carries is pinned by `packages/utils/src/test/error-codes.test.ts`, so
+  the screen cannot quietly go incomplete.
+
+**Consequence, breaking.** A caller comparing against a code outside
+`MidnightJsErrorCode` must use `hasForeignErrorCode`. Packages were at
+`5.0.0-beta.8` when this landed, so it precedes the major.
+
+**Consequence for the `types` tests.** Those tests previously asserted a
+rejection's code through `hasErrorCode` against the `utils` registry. They now
+compare the class field against `PROVIDER_ERROR_CODES` directly, since `utils`
+can no longer be a devDependency of `types`. Two things follow: their names say
+"its stable code" rather than "the registered code", because nothing in `types`
+reaches the registry any more; and each such assertion is paired with
+`toBeInstanceOf`, which the guard used to supply. Without that pairing a
+rejection that stopped being an `Error` at all would have kept the suite green.

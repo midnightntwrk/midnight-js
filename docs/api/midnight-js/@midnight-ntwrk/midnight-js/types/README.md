@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
 
 ***
 
@@ -95,6 +95,7 @@
 - [PrivateStateId](type-aliases/PrivateStateId.md)
 - [PrivateStateImportErrorCause](type-aliases/PrivateStateImportErrorCause.md)
 - [ProverKey](type-aliases/ProverKey.md)
+- [ProviderErrorCode](type-aliases/ProviderErrorCode.md)
 - [ProviderSeam](type-aliases/ProviderSeam.md)
 - [ReadSeam](type-aliases/ReadSeam.md)
 - [RetainedEraBalancer](type-aliases/RetainedEraBalancer.md)
@@ -140,6 +141,7 @@
 - [MAX\_EXPORT\_SIGNING\_KEYS](variables/MAX_EXPORT_SIGNING_KEYS.md)
 - [MAX\_EXPORT\_STATES](variables/MAX_EXPORT_STATES.md)
 - [narrowToEraArm](variables/narrowToEraArm.md)
+- [PROVIDER\_ERROR\_CODES](variables/PROVIDER_ERROR_CODES.md)
 - [SegmentFail](variables/SegmentFail.md)
 - [SegmentSuccess](variables/SegmentSuccess.md)
 - [SucceedEntirely](variables/SucceedEntirely.md)

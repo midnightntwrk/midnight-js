@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../README.md)
 
 ***
 
@@ -78,6 +78,7 @@
 - [deserializeZswapChainState](functions/deserializeZswapChainState.md)
 - [fromHex](functions/fromHex.md)
 - [hasErrorCode](functions/hasErrorCode.md)
+- [hasForeignErrorCode](functions/hasForeignErrorCode.md)
 - [isDeserializationError](functions/isDeserializationError.md)
 - [isHex](functions/isHex.md)
 - [isValidSigningKey](functions/isValidSigningKey.md)

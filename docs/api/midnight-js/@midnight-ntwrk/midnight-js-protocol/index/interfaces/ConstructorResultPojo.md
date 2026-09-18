@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -21,6 +21,17 @@ composeV8DeployTx) and the resulting private state.
 ### privateState
 
 > `readonly` **privateState**: `unknown`
+
+***
+
+### signingKey
+
+> `readonly` **signingKey**: `string`
+
+The key the state's maintenance authority was built from — the caller's
+own when one was supplied, otherwise the sampled one. Reported because a
+sampled key exists nowhere else: without it the deployment is as
+unmaintainable as the empty committee the constructor left.
 
 ***
 

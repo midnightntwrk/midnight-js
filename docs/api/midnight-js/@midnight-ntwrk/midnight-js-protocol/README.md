@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../README.md)
 
 ***
 
@@ -140,7 +140,7 @@ The engine exposes `downConvertForExecution`, `executeCircuit`, `executeConstruc
 
 `migratedV9ContractState` passed to `wrapKeepStateCall` must be the migrated v9 state **as read from chain**, which is not `rawContractState` above: it is where the deployed operation and its verifier key come from, and the key location the prototype carries is derived from that key. A blank or constructor-built state throws `ComposeFailedError` (code `MIDNIGHT_JS_P_COMPOSE_FAILED`) with `stage` naming which lookup failed and `version` naming the ledger era it was composing for.
 
-Circuits with Zswap coin effects run on this leg like any other. The transcript carries `zswapLocalState` — the post-call Zswap local state, decoded into the runtime's public shape — which is what you turn into the transaction's segmented Zswap offer (`zswapStateToSegmentedOffer` in `@midnight-ntwrk/midnight-js-contracts`) and pass to `composeCallTx` as `guaranteedZswapOffer` / `fallibleZswapOffer`. Dropping it is what would leave you composing a transaction missing the coin movements the circuit recorded.
+Circuits with Zswap coin effects run on this leg like any other. The transcript carries `zswapLocalState` — the post-call Zswap local state, decoded into the runtime's public shape — which is what you turn into the transaction's segmented Zswap offer (`zswapStateToSegmentedOffer` in `@midnight-ntwrk/midnight-js-contracts`). You do not hand that offer to `composeCallTx` as ready-made bytes: you hand it a `zswapOffer` factory, which the composer calls back with each call's guaranteed/fallible split once it has drawn it. That split is the fourth argument `zswapStateToSegmentedOffer` routes by — without it every movement lands in the guaranteed segment, and a circuit whose transcript is wholly fallible produces an offer the wallet cannot balance. Omitting the factory altogether leaves you composing a transaction missing the coin movements the circuit recorded.
 
 The transcript also carries `partitionContext` — the block, the starting effects and the commitment indices the pre-fork query context recorded while the circuit ran. Pass it on unchanged: a transcript composed without it is partitioned against a context the circuit never ran on, and a circuit that RECEIVED a coin in-contract cannot be partitioned at all, because the index its commitment was registered at lives only in that context. `wrapKeepStateCall` carries it for you; a hand-built call entry has to supply it. A context the target era cannot read throws `ComposeFailedError` with `stage: 'call-partition-context'`.
 
@@ -157,7 +157,17 @@ const era = await loadLedgerEra(versionOfRecord(indexerRecord));
 
 const state = era.extractState(rawContractState);
 const decoded = era.decodeContractState(rawContractState);
-const callTx = era.composeCallTx({ calls, networkId, ttl });
+const { transaction, partitions } = era.composeCallTx({
+  calls,
+  networkId,
+  ttl,
+  // Called back ONCE, with one `[guaranteed, fallible]` pair per call, in
+  // `calls` order -- cross-contract callees first, the root call last. Route
+  // against all of them: a transaction carries one offer per segment, so
+  // destructuring the first pair alone would route the whole transaction
+  // against a callee's split and drop the root call's.
+  zswapOffer: (partitions) => buildSegmentedOfferBytes(partitions)
+});
 const deploy = era.composeDeployTx({ contractState, verifierKeys, networkId, ttl });
 ```
 
@@ -166,7 +176,7 @@ const deploy = era.composeDeployTx({ contractState, verifierKeys, networkId, ttl
 | `version` | The era this object is bound to — the value that was passed in |
 | `extractState` | Reads the primary state out of a raw contract-state envelope |
 | `decodeContractState` | Reads an envelope into its state plus the entry points it declares, each with its verifier key and that key's hash |
-| `composeCallTx` | Composes an UNPROVEN call transaction and serializes it |
+| `composeCallTx` | Composes an UNPROVEN call transaction and answers with its bytes plus each call's guaranteed/fallible split |
 | `composeDeployTx` | Composes an UNPROVEN deploy and returns it with the address it will have and the initial state that address came from |
 
 Derive the era with `versionOfRecord` or `networkHeadVersion` (see [Version Module](#version-module)) rather than writing the string by hand. An era string that is not `'v8'` or `'v9'` rejects with `UnknownLedgerVersionError`; the offending value is on the error's `requestedVersion` field, not in its message.
@@ -185,7 +195,7 @@ The same method names mostly mean the same capabilities. One thing the v8 arm re
 
 - **A call tree.** The v8 arm composes exactly one call. A cross-contract call is a ledger-9-only feature a pre-fork contract cannot emit, so that era has no call tree to express: a `calls` list longer than one throws `ComposeOptionError` with `option: 'calls'` rather than composing the first entry and dropping the rest.
 
-**A Zswap offer is not one of them.** Both eras read `guaranteedZswapOffer` / `fallibleZswapOffer` and carry the resulting offer into the transaction; both throw `ComposeOptionError` with `option: 'zswapOffer'` for bytes their own decoder rejects, with the decoder's failure on `cause`. A coin-moving call composes on either era.
+**A Zswap offer is not one of them.** Both eras call the `zswapOffer` factory back with the split they resolved and carry the offer it answers with into the transaction; both throw `ComposeOptionError` with `option: 'zswapOffer'` for bytes their own decoder rejects, with the decoder's failure on `cause`. Both read that offer LAST, after the call's unshielded payout has been aggregated, so a call with two faults is refused the same way on either era. A coin-moving call composes on either era.
 
 The v8 arm also *requires* `verifierKeys` on `composeDeployTx`, where the v9 arm accepts its omission in one case. The retained deploy leg registers the compiled contract's keys onto the initial state itself, so it always needs the map; omitting it throws `ComposeOptionError` with `option: 'verifierKeys'`. The v9 arm allows the omission only for a state that ALREADY carries its keys, and checks rather than assumes it: a state still declaring a blank-keyed entry point throws the same `ComposeOptionError` with the same `option`. So the two arms agree on every input except one — a pre-keyed state, which deploys as-is on v9 and needs its keys supplied again on v8.
 

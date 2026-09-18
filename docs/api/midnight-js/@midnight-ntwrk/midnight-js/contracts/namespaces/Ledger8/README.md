@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../../README.md)
 
 ***
 
@@ -20,18 +20,21 @@ never imports the transitional half.
 
 ## See
 
-[RetainedEraNamespace](../../../documents/RetainedEraNamespace.md) for what qualifies, what is held back, and
+[RetainedEraNamespace](../../../documents/RetainedEraNamespace.md) for what qualifies, what stays flat, and
      how the surface is withdrawn.
 
 ## Classes
 
 - [AmbiguousEntryPointError](classes/AmbiguousEntryPointError.md)
 - [CallTxFailedError](classes/CallTxFailedError.md)
+- [DeployNotStoredError](classes/DeployNotStoredError.md)
 - [DeployOnV9Error](classes/DeployOnV9Error.md)
-- [DeployUnmaintainableError](classes/DeployUnmaintainableError.md)
+- [DeployTxFailedError](classes/DeployTxFailedError.md)
+- [DeployUnconfirmedError](classes/DeployUnconfirmedError.md)
 - [RecipientUnmappableError](classes/RecipientUnmappableError.md)
 - [SeamFailedError](classes/SeamFailedError.md)
 - [ShieldedSpendUnsupportedError](classes/ShieldedSpendUnsupportedError.md)
+- [SigningKeyUnusableError](classes/SigningKeyUnusableError.md)
 
 ## Interfaces
 
@@ -44,6 +47,8 @@ never imports the transitional half.
 - [ContractCall](interfaces/ContractCall.md)
 - [ContractCallPublic](interfaces/ContractCallPublic.md)
 - [DeployContractOptionsBase](interfaces/DeployContractOptionsBase.md)
+- [DeployContractOptionsWithPrivateState](interfaces/DeployContractOptionsWithPrivateState.md)
+- [DeployedContract](interfaces/DeployedContract.md)
 - [FinalizedCallTxData](interfaces/FinalizedCallTxData.md)
 - [FindDeployedContractOptions](interfaces/FindDeployedContractOptions.md)
 - [FoundContract](interfaces/FoundContract.md)

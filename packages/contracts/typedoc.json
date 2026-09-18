@@ -12,7 +12,6 @@
   "intentionallyNotExported": [
     "TypeId",
     "SubmitCallTxProviders",
-    "CachedStateIdentity",
-    "Ledger8DeployedContract"
+    "CachedStateIdentity"
   ]
 }

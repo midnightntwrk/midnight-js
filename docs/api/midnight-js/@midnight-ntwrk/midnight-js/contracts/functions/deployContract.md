@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -8,25 +8,26 @@
 
 ## Call Signature
 
-> **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<`never`\>
+> **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`DeployedContract`](../namespaces/Ledger8/interfaces/DeployedContract.md)\<`C`\>\>
 
 The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
 
-ALWAYS REFUSED, with `Ledger8DeployUnmaintainableError`, for a MEASURED reason about the
-maintenance authority rather than about the era pairing: nothing on this path sets one, and the
-authority a retained constructor leaves behind is an empty committee with a threshold of one, so
-the deployed contract could never be maintained by anyone. The deploy TRANSACTION path itself
-composes and submits correctly — this refusal is about the result.
+Reachable only on a PRE-FORK head: the retained era has no post-fork deployment, so a retained
+artifact against a post-fork head is refused with `Ledger8DeployOnV9Error`. Recompile with the
+current toolchain and deploy that artifact instead; the retained artifact keeps working for calls
+against contracts deployed before the fork.
 
-Typed `Promise<never>` because that is what an arm that only ever throws returns. It also keeps
-the signature free of `Ledger8DeployedContract`, which is deliberately NOT exported: naming an
-unexported type in a published signature gives a caller a value they cannot annotate.
+A verifier key is registered for every entry point the artifact declares, because a retained
+constructor builds every slot BLANK and the retained deploy registers none of its own.
 
-The refusal is unconditional and comes BEFORE the network head is read, so `Ledger8DeployOnV9Error`
-— the era pairing table's refusal for a retained-era deploy against a post-fork head — is not
-reachable through this entry point today. Do NOT branch on it here: through `deployContract` that
-branch is never taken.
+A maintenance authority of one key at threshold 1 is registered, that key being
+`options.signingKey` or a freshly sampled one. Once the chain has recorded the deployment the key
+is stored against the minted address through `providers.privateStateProvider`, exactly as the
+current era's deploy stores its own, and it is reported on `Ledger8DeployedContract.signingKey`.
+That provider is the only copy besides the returned handle: the key is not on chain and not
+derivable from anything that is, so a store that is lost or cleared leaves a contract on which no
+verifier key can ever be inserted, removed or replaced by anyone.
 
 ### Type Parameters
 
@@ -46,13 +47,11 @@ branch is never taken.
 
 ### Returns
 
-`Promise`\<`never`\>
+`Promise`\<[`DeployedContract`](../namespaces/Ledger8/interfaces/DeployedContract.md)\<`C`\>\>
 
 ### See
 
- - [KeepStatePipeline](../../documents/KeepStatePipeline.md) for the measurement, what it would take to lift the refusal, and
-     the test that pins it.
- - [OverloadTyping](../../documents/OverloadTyping.md) for how the two eras are discriminated.
+[OverloadTyping](../../documents/OverloadTyping.md) for how the two eras are discriminated.
 
 ## Call Signature
 

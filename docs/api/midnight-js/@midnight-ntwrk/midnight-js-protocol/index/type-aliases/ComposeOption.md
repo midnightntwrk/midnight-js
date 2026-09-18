@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: ComposeOption
 
-> **ComposeOption** = `"calls"` \| `"contractState"` \| `"ledgerParameters"` \| `"networkId"` \| `"ttl"` \| `"verifierKeys"` \| `"zswapOffer"`
+> **ComposeOption** = `"calls"` \| `"contractState"` \| `"ledgerParameters"` \| `"networkId"` \| `"signingKey"` \| `"ttl"` \| `"verifierKeys"` \| `"zswapOffer"`
 
 Which option handed to a composition leg was unusable:
 - `'contractState'` — the state could not be bridged into the target

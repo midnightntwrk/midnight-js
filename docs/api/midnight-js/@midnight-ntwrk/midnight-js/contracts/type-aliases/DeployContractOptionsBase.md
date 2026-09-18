@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -6,32 +6,36 @@
 
 # Type Alias: DeployContractOptionsBase\<C\>
 
-> **DeployContractOptionsBase**\<`C`\> = [`ContractConstructorOptionsWithArguments`](ContractConstructorOptionsWithArguments.md)\<`C`\> & `object`
+> **DeployContractOptionsBase**\<`C`\> = [`DeployContractOptionsShared`](DeployContractOptionsShared.md)\<`C`\> & `object`
 
-Base type for configuration for [deployContract](../functions/deployContract.md); identical to
-[ContractConstructorOptionsWithArguments](ContractConstructorOptionsWithArguments.md) except the `signingKey` is
-now optional, since [deployContract](../functions/deployContract.md) will generate a fresh signing key
-in the event that `signingKey` is undefined.
+The [deployContract](../functions/deployContract.md) arm for a contract whose private state is stored
+NOWHERE: the constructor runs against `undefined` and nothing is written.
+
+The other arm is [DeployContractOptionsWithPrivateState](DeployContractOptionsWithPrivateState.md).
 
 ## Type Declaration
 
-### additionalCoinEncPublicKeyMappings?
+### initialPrivateState?
 
-> `readonly` `optional` **additionalCoinEncPublicKeyMappings?**: `ReadonlyMap`\<[`CoinPublicKey$1`](https://github.com/midnightntwrk/midnight-ledger), [`EncPublicKey`](https://github.com/midnightntwrk/midnight-ledger)\>
+> `readonly` `optional` **initialPrivateState?**: `never`
 
-An optional mapping of [CoinPublicKey](https://github.com/midnightntwrk/midnight-ledger) to [EncPublicKey](https://github.com/midnightntwrk/midnight-ledger) that can be used to resolve encryption
-keys for coins created in the contract constructor. This is useful in cases where the constructor creates
-outputs to addresses that don't belong to the current user.
+DECLARED on this arm, and only ever `undefined` — see
+DeployContractOptionsBase.privateStateId for why the member is
+present rather than absent.
 
-### signingKey?
+### privateStateId?
 
-> `readonly` `optional` **signingKey?**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
+> `readonly` `optional` **privateStateId?**: `never`
 
-The signing key to add as the to-be-deployed contract's maintenance authority.
-If undefined, a new signing key is sampled and used as the CMA then stored
-in the private state provider under the newly deployed contract's address.
-Otherwise, the passed signing key is added as the CMA. The second case is
-useful when you want to use the same CMA for two different contracts.
+DECLARED on this arm, and only ever `undefined`.
+
+Left off the arm entirely, `{ compiledContract, privateStateId: 'x' }`
+compiled: union excess-property checking admits a member declared on the
+SIBLING arm as long as one arm is satisfied, and `compiledContract` alone
+satisfies this one. The constructor then ran against `undefined`,
+`undefined` was stored under the caller's id, and
+`deployTxData.private.initialPrivateState` was typed non-optional while
+actually undefined.
 
 ## Type Parameters
 

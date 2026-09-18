@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
 
 ***
 
@@ -10,10 +10,10 @@ The fork window is transitional; a duplicated public interface is not. This
 package dispatches two Compact toolchains, so it carries two families of nearly
 the same types -- `FoundContract` and `Ledger8FoundContract`, `CallTxOptions`
 and `Ledger8CallTxOptions`. The current era's family is permanent. The retained
-era's family -- 29 types, 7 error classes and one interface factory, 37 names --
+era's family -- 31 types, 8 error classes and one interface factory, 40 names --
 goes when the window closes.
 
-Published flat, side by side, those 37 would be 37 published API names, and
+Published flat, side by side, those 40 would be 40 published API names, and
 removing them would be a second breaking change after the one this release
 already makes. They are published as ONE name instead:
 
@@ -116,25 +116,16 @@ is a decision nobody has asked for yet. What this document must not do is claim
 the property it does not have: withdrawing the retained era is ONE step for the
 era's own family and a SECOND step for the fork-window group.
 
-## What is held back
+## The deploy arm's own members
 
-`Ledger8DeployedContract` is declared and NOT published, under the rule that a
-caller who can obtain a value must be able to name its type -- and no caller can
-obtain this one. `deployContract`'s retained arm refuses every retained-toolchain
-artifact with `Ledger8.DeployUnmaintainableError` before any transaction is
-composed or submitted (it does read the ZK config provider first, to establish
-the artifact's declared runtime version), so nothing constructs the type.
-Publishing it would document a handle nobody can hold and, because it extends
-`Ledger8FoundContract`, would make every later repair of that handle a breaking
-change to a published type with no users. Publish it in the commit that makes
-the deploy arm produce one.
+`Ledger8DeployedContract` is published, under the rule that a caller who can
+obtain a value must be able to name its type: `deployContract`'s retained arm
+composes, submits and hands one back.
 
-Both refusal ERRORS are published, but they are not in the same position:
-`Ledger8.DeployUnmaintainableError` is the refusal a caller actually receives,
-and `Ledger8.DeployOnV9Error` sits behind it in the era pairing table, so it is
-dormant -- unreachable through `deployContract` today. Do not write a `catch`
-for it; it is published for completeness and becomes reachable when the deploy
-arm is wired.
+`Ledger8.DeployOnV9Error` is the era pairing table's refusal for a retained
+artifact against a post-fork head, and it is reachable: it is what a caller
+receives once the network has crossed the fork. `Ledger8.DeployTxFailedError` is
+the refusal for a deployment the node recorded with a non-success status.
 
 The `AnyLedger8*` aliases stay internal: they widen the era-dispatching
 IMPLEMENTATION signatures and are never a signature a caller sees.
@@ -151,7 +142,7 @@ arms on `submitCallTx`, `submitCallTxAsync`, `findDeployedContract` and
 
 No current-era NAME changes, and no consumer that never touched the retained era
 has an import to rewrite. That is the property the flat family did not have: it
-would have removed 37 published names instead of one.
+would have removed 40 published names instead of one.
 
 ## What guards it
 
@@ -168,5 +159,5 @@ would have removed 37 published names instead of one.
 - `src/test/typecheck/ledger8-namespace.test-d.ts` asserts that what the entry
   points resolve to is namable THROUGH the namespace -- the other compile-level
   suites import the source modules, which a consumer cannot -- and compares all
-  29 type members against the declarations they rename, which is what catches a
+  31 type members against the declarations they rename, which is what catches a
   transposed pair in the rename table.

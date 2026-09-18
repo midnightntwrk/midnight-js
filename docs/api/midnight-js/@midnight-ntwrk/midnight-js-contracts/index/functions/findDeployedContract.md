@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -63,10 +63,17 @@ EraArtifactMismatchError If `options.compiledContract` belongs to neither Compac
 The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
 
-A READ path, so it composes and submits nothing. It still resolves the head era, dates the
-fetched state's envelope against it, and byte-matches every local verifier key against the slot
-the chain holds — the checks that make a later call against this contract safe, done once here
-so a mis-dispatch is caught at attach time rather than at the first call.
+Nothing is COMPOSED and nothing is submitted: no transaction leaves this call. It resolves the
+head era, dates the fetched state's envelope against it, and byte-matches every local verifier
+key against the slot the chain holds — the checks that make a later call against this contract
+safe, done once here so a mis-dispatch is caught at attach time rather than at the first call.
+
+It does write LOCALLY. Supplying `initialPrivateState` alongside `privateStateId` names the
+contract address on the private-state provider and stores that state under the id, so the calls
+made through `callTx` read it back. Supplying it with no id is a caller error —
+`IncompleteFindContractPrivateStateConfig` — because there is nowhere to put the state, and so
+is writing `privateStateId` with an undefined value. Naming an id the provider holds nothing
+under is refused too, rather than attaching against a state the contract never had.
 
 The deploy record is returned VERSION-TAGGED rather than narrowed to the current era: a
 retained-era contract was deployed in whichever era was current at the time, and refusing the
@@ -91,6 +98,11 @@ pre-fork arm would refuse exactly the contracts this arm exists to keep callable
 ### Returns
 
 `Promise`\<[`FoundContract`](../namespaces/Ledger8/interfaces/FoundContract.md)\<`C`\>\>
+
+### Throws
+
+IncompleteFindContractPrivateStateConfig if an `initialPrivateState` is supplied with no
+        `privateStateId` to store it under.
 
 ### See
 

@@ -46,12 +46,17 @@ vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-l
 // Both engine surfaces at once: the fixture is a real compiled pre-fork
 // contract, so it is simultaneously something `executeCircuit` can dispatch
 // through and something `executeConstructor` can build an initial state from.
-// `currentContractState` is declared with both members it really has — the
-// live `ChargedState` execution runs against, and the `serialize()` the deploy
-// leg bridges by.
+// `currentContractState` is declared with the members it really has that this
+// file's paths reach — the live `ChargedState` execution runs against, the
+// `serialize()` the deploy leg bridges by, and the `maintenanceAuthority`
+// `executeConstructor` writes the caller's signing key into.
 interface CompiledCounterContract extends Ledger8ContractLike {
   initialState(constructorContext: unknown): {
-    currentContractState: { data: ocrt3.ChargedState; serialize: () => Uint8Array };
+    currentContractState: {
+      data: ocrt3.ChargedState;
+      serialize: () => Uint8Array;
+      maintenanceAuthority: ocrt3.ContractMaintenanceAuthority;
+    };
     currentPrivateState: unknown;
     // The third member the artifact really returns, read since a constructor
     // that mints a coin needs it to compose a balanceable deploy.
@@ -205,7 +210,7 @@ describe('the v8 era arm', () => {
     const { entry, address } = await runIncrement();
     const ttl = new Date(Date.now() + 3_600_000);
 
-    const bytes = era.composeCallTx({ calls: [entry], networkId: NETWORK_ID, ttl });
+    const { transaction: bytes } = era.composeCallTx({ calls: [entry], networkId: NETWORK_ID, ttl });
 
     const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
     const intents = [...(back.intents?.values() ?? [])];
@@ -235,7 +240,7 @@ describe('the v8 era arm', () => {
     const owner = LedgerV8.sampleUserAddress();
     const token = LedgerV8.sampleRawTokenType();
 
-    const bytes = era.composeCallTx({
+    const { transaction: bytes } = era.composeCallTx({
       calls: [payingCallEntry(owner, token)],
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000)
@@ -297,12 +302,11 @@ describe('the v8 era arm', () => {
       return LedgerV8.ZswapOffer.fromOutput(output).serialize();
     };
 
-    const bytes = era.composeCallTx({
+    const { transaction: bytes } = era.composeCallTx({
       calls: [entry],
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
-      guaranteedZswapOffer: buildOffer(),
-      fallibleZswapOffer: buildOffer()
+      zswapOffer: () => ({ guaranteed: buildOffer(), fallible: buildOffer() })
     });
 
     const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
@@ -328,7 +332,7 @@ describe('the v8 era arm', () => {
         calls: [entry],
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000),
-        guaranteedZswapOffer: new Uint8Array([1, 2, 3])
+        zswapOffer: () => ({ guaranteed: new Uint8Array([1, 2, 3]) })
       });
     } catch (error) {
       caught = error;
@@ -352,7 +356,7 @@ describe('the v8 era arm', () => {
         calls: [entry],
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000),
-        fallibleZswapOffer: new Uint8Array([1, 2, 3])
+        zswapOffer: () => ({ fallible: new Uint8Array([1, 2, 3]) })
       })
     ).toThrowError(
       expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'zswapOffer', version: 'v8' })

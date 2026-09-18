@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -54,7 +54,7 @@ The offending payload. Only its `version` field is read;
 
 ### code
 
-> `readonly` **code**: `"MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD"` = `"MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD"`
+> `readonly` **code**: `"MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD"`
 
 ***
 

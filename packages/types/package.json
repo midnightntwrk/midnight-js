@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
     }
   },
   "sideEffects": false,
@@ -31,7 +35,6 @@
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "rollup": "^4.60.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7"

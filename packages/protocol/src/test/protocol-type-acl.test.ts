@@ -83,6 +83,9 @@ describe('Protocol type ACL', () => {
       'CallTranscriptSource',
       'ComposeCallEntry',
       'ComposeCallOptions',
+      // Named by `composeCallTx`'s answer, which carries the split each call was
+      // built from alongside the transaction.
+      'ComposeCallResultPojo',
       'ComposeDeployOptions',
       'ComposeOption',
       'ComposeStage',
@@ -100,10 +103,6 @@ describe('Protocol type ACL', () => {
       'DownConvertedState',
       'DownConvertStage',
       'EncodedStateValue',
-      // The option, parameter and return vocabulary of the era facade's
-      // `partitionCallTranscript`. Publishing the method without them leaves a
-      // caller unable to name what it takes or answers with.
-      'EraPartitionCallOptions',
       'ExecuteCircuitOptions',
       'ExecuteConstructorOptions',
       // Named by the state handles the results carry: `DownConvertedState.data`
@@ -115,6 +114,11 @@ describe('Protocol type ACL', () => {
       'Ledger8DeployableContractState',
       'Ledger8Engine',
       'Ledger8InstanceAxis',
+      // Named by `ExecuteConstructorOptions.signingKey` and reported back on
+      // `ConstructorResultPojo`. The retained era's signing key is a different
+      // shape from the current era's, so a consumer cannot name it by reusing
+      // the current-era one.
+      'Ledger8SigningKey',
       'Ledger8StateValue',
       'LedgerEra',
       'LedgerParametersOption',
@@ -130,7 +134,10 @@ describe('Protocol type ACL', () => {
       'TranscriptPojo',
       'VersionedRecord',
       'VersionResolutionPath',
-      'WrapKeepStateCallOptions'
+      'WrapKeepStateCallOptions',
+      // Named by `ComposeCallOptions.zswapOffer`: a caller that cannot name the
+      // factory cannot declare one outside the call it passes it to.
+      'ZswapOfferFactory'
     ]);
   });
 
@@ -148,6 +155,7 @@ describe('Protocol type ACL', () => {
       'Ledger8ChargedState',
       'Ledger8DeployableContractState',
       'Ledger8Engine',
+      'Ledger8SigningKey',
       'Ledger8StateValue',
       'TranscriptPojo',
       'WrapKeepStateCallOptions'

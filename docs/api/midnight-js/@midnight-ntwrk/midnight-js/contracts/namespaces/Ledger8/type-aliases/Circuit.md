@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../../../README.md)
 
 ***
 
@@ -11,14 +11,14 @@
 A retained-era circuit member.
 
 Two things here are load-bearing and neither is cosmetic: the leading context is declared
-EXPLICITLY, and the argument tail is `never[]` rather than `unknown[]`. Do not widen either for
-readability.
+EXPLICITLY, and both it and the argument tail are bottom types rather than `unknown`. Do not
+widen either for readability.
 
 ## Parameters
 
 ### context
 
-[`CircuitContext`](../interfaces/CircuitContext.md)\<`never`\>
+`Ledger8CircuitContextArgument`
 
 ### args
 

@@ -14,11 +14,10 @@
  */
 
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 import { assertSeamsSupportEra, type TransactionSeams } from '../era-support';
-import { SeamEraUnsupportedError } from '../errors';
+import { PROVIDER_ERROR_CODES, SeamEraUnsupportedError } from '../errors';
 
 const declaring = (...eras: LedgerVersion[]) => ({ supportedEras: Object.freeze(eras) });
 
@@ -80,10 +79,10 @@ describe('assertSeamsSupportEra', () => {
     expect(refusalFrom('v8', seams(CURRENT_ONLY, CURRENT_ONLY, CURRENT_ONLY)).seam).toBe('proveTx');
   });
 
-  it('carries the registered error code', () => {
+  it('carries its stable error code', () => {
     const refusal = refusalFrom('v8', seams(CURRENT_ONLY, BOTH, BOTH));
 
-    expect(hasErrorCode(refusal, PROVIDER_ERROR_CODES.SEAM_ERA_UNSUPPORTED)).toBe(true);
+    expect(refusal.code).toBe(PROVIDER_ERROR_CODES.SEAM_ERA_UNSUPPORTED);
   });
 
   it('names the era and the declaration in the message, so a report is actionable', () => {

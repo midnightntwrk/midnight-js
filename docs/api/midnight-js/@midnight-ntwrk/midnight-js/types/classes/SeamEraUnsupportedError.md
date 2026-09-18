@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -76,7 +76,7 @@ What that provider does declare. An empty list is the
 
 ### code
 
-> `readonly` **code**: `"MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED"` = `"MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED"`
+> `readonly` **code**: `"MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED"`
 
 ***
 

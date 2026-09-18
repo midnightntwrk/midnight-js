@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -290,6 +290,12 @@ Re-exports [DeployContractOptionsBase](../../contracts/type-aliases/DeployContra
 
 ***
 
+### DeployContractOptionsShared
+
+Re-exports [DeployContractOptionsShared](../../contracts/type-aliases/DeployContractOptionsShared.md)
+
+***
+
 ### DeployContractOptionsWithPrivateState
 
 Re-exports [DeployContractOptionsWithPrivateState](../../contracts/type-aliases/DeployContractOptionsWithPrivateState.md)
@@ -461,6 +467,12 @@ Re-exports [HeadStateEraMismatchError](../../contracts/classes/HeadStateEraMisma
 ### IncompleteCallTxPrivateStateConfig
 
 Re-exports [IncompleteCallTxPrivateStateConfig](../../contracts/classes/IncompleteCallTxPrivateStateConfig.md)
+
+***
+
+### IncompleteDeployContractPrivateStateConfig
+
+Re-exports [IncompleteDeployContractPrivateStateConfig](../../contracts/classes/IncompleteDeployContractPrivateStateConfig.md)
 
 ***
 

@@ -52,6 +52,7 @@ const RUNTIME_EXPORTS: readonly string[] = [
   'EraInvariantViolationError',
   'HeadStateEraMismatchError',
   'IncompleteCallTxPrivateStateConfig',
+  'IncompleteDeployContractPrivateStateConfig',
   'IncompleteFindContractPrivateStateConfig',
   'IndexerInconsistencyError',
   'InsertVerifierKeyTxFailedError',

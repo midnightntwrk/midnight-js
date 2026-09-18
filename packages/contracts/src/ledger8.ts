@@ -26,18 +26,21 @@
  * BOTH eras stay on the flat surface, so a consumer that only receives results
  * never imports the transitional half.
  *
- * @see {@link RetainedEraNamespace} for what qualifies, what is held back, and
+ * @see {@link RetainedEraNamespace} for what qualifies, what stays flat, and
  *      how the surface is withdrawn.
  */
 
 export {
   Ledger8AmbiguousEntryPointError as AmbiguousEntryPointError,
   Ledger8CallTxFailedError as CallTxFailedError,
+  Ledger8DeployNotStoredError as DeployNotStoredError,
   Ledger8DeployOnV9Error as DeployOnV9Error,
-  Ledger8DeployUnmaintainableError as DeployUnmaintainableError,
+  Ledger8DeployTxFailedError as DeployTxFailedError,
+  Ledger8DeployUnconfirmedError as DeployUnconfirmedError,
   Ledger8RecipientUnmappableError as RecipientUnmappableError,
   Ledger8SeamFailedError as SeamFailedError,
-  Ledger8ShieldedSpendUnsupportedError as ShieldedSpendUnsupportedError
+  Ledger8ShieldedSpendUnsupportedError as ShieldedSpendUnsupportedError,
+  Ledger8SigningKeyUnusableError as SigningKeyUnusableError
 } from './errors';
 export type {
   Ledger8CallResultPrivate as CallResultPrivate,
@@ -60,6 +63,8 @@ export type {
   Ledger8ContractProviders as ContractProviders,
   Ledger8DeployContractOptions as DeployContractOptions,
   Ledger8DeployContractOptionsBase as DeployContractOptionsBase,
+  Ledger8DeployContractOptionsWithPrivateState as DeployContractOptionsWithPrivateState,
+  Ledger8DeployedContract as DeployedContract,
   Ledger8FinalizedCallTxData as FinalizedCallTxData,
   Ledger8FinalizedCallTxPublicData as FinalizedCallTxPublicData,
   Ledger8FindDeployedContractOptions as FindDeployedContractOptions,

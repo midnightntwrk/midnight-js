@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
 
 ***
 
@@ -479,6 +479,18 @@ Re-exports [ProverKey](../../types/type-aliases/ProverKey.md)
 ### ProveTxConfig
 
 Re-exports [ProveTxConfig](../../types/interfaces/ProveTxConfig.md)
+
+***
+
+### PROVIDER\_ERROR\_CODES
+
+Re-exports [PROVIDER_ERROR_CODES](../../types/variables/PROVIDER_ERROR_CODES.md)
+
+***
+
+### ProviderErrorCode
+
+Re-exports [ProviderErrorCode](../../types/type-aliases/ProviderErrorCode.md)
 
 ***
 

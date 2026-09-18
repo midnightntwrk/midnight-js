@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
 
 ***
 
@@ -21,6 +21,7 @@
 - [EraInvariantViolationError](classes/EraInvariantViolationError.md)
 - [HeadStateEraMismatchError](classes/HeadStateEraMismatchError.md)
 - [IncompleteCallTxPrivateStateConfig](classes/IncompleteCallTxPrivateStateConfig.md)
+- [IncompleteDeployContractPrivateStateConfig](classes/IncompleteDeployContractPrivateStateConfig.md)
 - [IncompleteFindContractPrivateStateConfig](classes/IncompleteFindContractPrivateStateConfig.md)
 - [IndexerInconsistencyError](classes/IndexerInconsistencyError.md)
 - [InsertVerifierKeyTxFailedError](classes/InsertVerifierKeyTxFailedError.md)
@@ -97,6 +98,7 @@
 - [CurrentPipelineEra](type-aliases/CurrentPipelineEra.md)
 - [DeployContractOptions](type-aliases/DeployContractOptions.md)
 - [DeployContractOptionsBase](type-aliases/DeployContractOptionsBase.md)
+- [DeployContractOptionsShared](type-aliases/DeployContractOptionsShared.md)
 - [DeployContractOptionsWithPrivateState](type-aliases/DeployContractOptionsWithPrivateState.md)
 - [DeployTxOptions](type-aliases/DeployTxOptions.md)
 - [DeployTxOptionsBase](type-aliases/DeployTxOptionsBase.md)
