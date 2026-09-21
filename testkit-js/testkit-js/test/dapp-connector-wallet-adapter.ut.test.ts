@@ -14,6 +14,7 @@
  */
 
 import type { ProvingProvider as ZkirProvingProvider } from '@midnight-ntwrk/zkir-v2';
+import { ErrorCodes } from '@midnightntwrk/dapp-connector-api';
 import { ProtocolVersion, WalletTransaction, WireFormatError } from '@midnightntwrk/wallet-sdk';
 import { of } from 'rxjs';
 
@@ -294,16 +295,6 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
         expect.objectContaining({ tokenKindsToBalance: ['shielded', 'unshielded'] }),
       );
     });
-
-    it('should propagate the wallet refusal of bytes written by the other ledger version', async () => {
-      const refusal = new WireFormatError({ message: 'not a transaction of this protocol version at stage Unbound' });
-      mockWalletFacade.adoptTransaction.mockImplementationOnce(() => {
-        throw refusal;
-      });
-
-      await expect(adapter.balanceUnsealedTransaction('abcd')).rejects.toBe(refusal);
-      expect(mockWalletFacade.balanceUnboundTransaction).not.toHaveBeenCalled();
-    });
   });
 
   describe('balanceSealedTransaction', () => {
@@ -332,6 +323,34 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
       const [handle] = mockWalletFacade.submitTransaction.mock.calls[0];
       expect(WalletTransaction.is(handle)).toBe(true);
       expect(handle).toMatchObject({ stage: 'Finalized', protocolVersion: ACTIVE_PROTOCOL_VERSION });
+    });
+  });
+
+  // Bytes a dApp authored on the other side of a protocol boundary. The wallet
+  // refuses them in its own vocabulary; what a connector's caller is entitled to
+  // is the connector's, so every entry point that reads dApp bytes is checked.
+  describe('bytes the wallet refuses to read', () => {
+    it.each([
+      ['balanceUnsealedTransaction', () => adapter.balanceUnsealedTransaction('abcd'), 'balanceUnboundTransaction'],
+      ['balanceSealedTransaction', () => adapter.balanceSealedTransaction('abcd'), 'balanceFinalizedTransaction'],
+      ['submitTransaction', () => adapter.submitTransaction('abcd'), 'submitTransaction'],
+    ] as const)('%s reports them as an invalid request and never reaches the wallet', async (_entryPoint, call, unreached) => {
+      const refusal = new WireFormatError({ message: 'not a transaction of this protocol version' });
+      mockWalletFacade.adoptTransaction.mockImplementationOnce(() => {
+        throw refusal;
+      });
+
+      const rejection = await call().then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+
+      expect(rejection).toMatchObject({
+        type: 'DAppConnectorAPIError',
+        code: ErrorCodes.InvalidRequest,
+        cause: refusal,
+      });
+      expect(mockWalletFacade[unreached]).not.toHaveBeenCalled();
     });
   });
 
