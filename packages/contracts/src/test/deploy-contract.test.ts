@@ -140,6 +140,21 @@ describe('deployContract', () => {
     );
   });
 
+  // #1321: `{ compiledContract, privateStateId }` used to compile, because union
+  // excess-property checking admits a member declared on the sibling arm. The type refuses that
+  // shape now, so the only way left to reach the entry point with an unusable id is to write the
+  // property with an undefined VALUE -- which the no-private-state arm still admits, and which is
+  // a caller that believes it named an id.
+  it('refuses a private state id written as undefined, before any transaction is built', async () => {
+    const options = { ...baseOptions, privateStateId: undefined };
+
+    await expect(deployContract(providers, options)).rejects.toThrow(
+      "'privateStateId' was given as undefined"
+    );
+
+    expect(mockSubmitDeployTx).not.toHaveBeenCalled();
+  });
+
   it('should deploy contract with private state', async () => {
     const initialPrivateState = { test: 'initial-private-state' };
     mockDeployTxData = createMockDeployTxData(initialPrivateState);

@@ -33,8 +33,10 @@ import {
   IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   Ledger8CallTxFailedError,
+  Ledger8DeployNotStoredError,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
+  Ledger8SigningKeyUnusableError,
   TxFailedError
 } from '../errors';
 import { createMockFinalizedTxData } from './test-mocks';
@@ -320,5 +322,76 @@ describe('the recorded-failure code', () => {
       CONTRACTS_ERROR_CODES.TX_FAILED,
       CONTRACTS_ERROR_CODES.TX_FAILED
     ]);
+  });
+});
+
+describe('Ledger8DeployNotStoredError', () => {
+  const SIGNING_KEY = 'c3'.repeat(32);
+  const ADDRESS = '0400'.repeat(8);
+
+  it('keeps the store rejection on cause, unreplaced', () => {
+    const refused = new Error('signing-key sublevel is read-only');
+
+    const error = new Ledger8DeployNotStoredError(ADDRESS, SIGNING_KEY, 'signing-key', refused);
+
+    // What the store refused is what an operator acts on; this class adds the one fact a store
+    // rejection cannot carry, which is the key the confirmed deployment's authority was built from.
+    expect(error.cause).toBe(refused);
+    expect(error.name).toBe('Ledger8DeployNotStoredError');
+  });
+
+  it('says which write was refused, because the two lose different things', () => {
+    const key = new Ledger8DeployNotStoredError(ADDRESS, SIGNING_KEY, 'signing-key', new Error('refused'));
+    const state = new Ledger8DeployNotStoredError(ADDRESS, SIGNING_KEY, 'private-state', new Error('refused'));
+
+    expect(key.stage).toBe('signing-key');
+    expect(state.stage).toBe('private-state');
+    expect(key.message).toContain('SIGNING KEY');
+    expect(state.message).toContain('INITIAL PRIVATE STATE');
+    expect(key.message).not.toBe(state.message);
+  });
+
+  it('tells the caller NOT to deploy again, because the contract already exists', () => {
+    // The harm this class exists to remove: read as "deploy failed, retry", a raw store rejection
+    // mints a SECOND contract at a different address while the first sits on chain unmaintainable.
+    const error = new Ledger8DeployNotStoredError(ADDRESS, SIGNING_KEY, 'signing-key', new Error('refused'));
+
+    expect(error.message).toContain('CONFIRMED on chain');
+    expect(error.message).toContain('Do NOT deploy again');
+  });
+
+  it('carries the signing key and says where to read it, without printing the key itself', () => {
+    const error = new Ledger8DeployNotStoredError(ADDRESS, SIGNING_KEY, 'signing-key', new Error('refused'));
+
+    expect(error.signingKey).toBe(SIGNING_KEY);
+    expect(error.contractAddress).toBe(ADDRESS);
+    expect(error.message).toContain('signingKey');
+    // The key is a SECRET, and on the refused-key arm this error holds the only copy of it.
+    expect(error.message).not.toContain(SIGNING_KEY);
+  });
+});
+
+describe('Ledger8SigningKeyUnusableError', () => {
+  const ADDRESS = '0500'.repeat(8);
+
+  it('names the address and the option, and says what a retained key looks like', () => {
+    const error = new Ledger8SigningKeyUnusableError(ADDRESS);
+
+    expect(error.contractAddress).toBe(ADDRESS);
+    expect(error.name).toBe('Ledger8SigningKeyUnusableError');
+    expect(error.message).toContain(ADDRESS);
+    expect(error.message).toContain('signingKey');
+    expect(error.message).toContain('64');
+  });
+
+  it('never renders the value it refused, and does not carry it as a member either', () => {
+    const supplied = 'd4'.repeat(20);
+
+    const error = new Ledger8SigningKeyUnusableError(ADDRESS);
+
+    // The caller already holds the value it passed, so this error has no reason to hold a second
+    // copy -- and an error message reaches logs and issue trackers.
+    expect(error.message).not.toContain(supplied);
+    expect('signingKey' in error).toBe(false);
   });
 });

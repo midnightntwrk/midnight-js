@@ -66,29 +66,32 @@ undefined value, which is a caller that believes it named an id.
 
 > `readonly` `optional` **signingKey?**: `string`
 
-NOT HONOURED on this arm: a key supplied here is DISCARDED.
+The key to record as this contract's maintenance authority key, for a
+caller that holds one and deployed the contract somewhere else.
 
-The current era's `findDeployedContract` stores this key against the
-contract address in the private-state provider, so a caller that deployed
-the contract elsewhere can still issue maintenance transactions for it.
-The retained arm stores nothing, so passing a key here has no effect —
-which is recorded at the field rather than left for a caller to discover,
-because a silently discarded key reads as a stored one.
+VALIDATED BEFORE IT IS STORED, and a key this framework could not store and
+read back is refused with `Ledger8SigningKeyUnusableError` rather than
+written. A retained-era key is exactly 64 hexadecimal characters, which is
+what that era's `sampleSigningKey` produces; this type is `string`, so a
+shorter one type-checks. Stored unchecked, it would be reported on the
+attach that supplied it and read as ABSENT on the next one -- and the entry
+it replaced would already be gone. Nothing is written when it is refused.
 
-The field is retained rather than removed so this arm's options stay the
-shape the current era's are, and so it can start being honoured without a
-change to the type: honouring it is client-side storage, which is
-era-independent, so nothing about the retained ledger prevents it.
+Stored against [Ledger8FindDeployedContractOptions.contractAddress](#contractaddress)
+in the private-state provider, which is the same storage
+[Ledger8DeployedContract.signingKey](DeployedContract.md#signingkey) is written to -- so a key
+supplied here REPLACES whatever is held for that address, and is what
+[Ledger8FoundContract.signingKey](FoundContract.md#signingkey) then reports. Replacing is the
+documented remedy for an entry this framework cannot use, so it wins over a
+stored entry rather than falling back to one.
 
-There is NO framework storage a retained key fits today, and none to fall
-back on: `PrivateStateProvider.setSigningKey` takes the CURRENT era's
-`{ tag, value }` key, while Ledger8SigningKey is a bare string, so
-handing one to that method does not compile. A caller that needs the key
-keeps it itself, outside this framework.
+OMITTING it reports the key already stored, and stores nothing. Where the
+current era's `findDeployedContract` samples a fresh key when none is
+stored, this arm reports none: a sampled key bears no relation to the
+authority the chain holds for a contract this caller did not deploy, and
+[Ledger8FoundContract](FoundContract.md) carries no maintenance interface for one to be
+used through.
 
-The key this field would take is the one
-[Ledger8DeployedContract.signingKey](DeployedContract.md#signingkey) reports, which the deploy arm
-samples when the caller named none and persists nowhere. So the deploy ->
-attach round trip is not supported in either direction: the deploy does not
-store the key, and this field does not read one back. A caller that never
-copied it off the deploy handle cannot maintain that contract again.
+#### Remarks
+
+**Privacy-sensitive.** Signing-key material.

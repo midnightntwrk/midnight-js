@@ -120,6 +120,7 @@ describe('Contracts type ACL', () => {
       'CurrentPipelineEra',
       'DeployContractOptions',
       'DeployContractOptionsBase',
+      'DeployContractOptionsShared',
       'DeployContractOptionsWithPrivateState',
       'DeployedContract',
       'DeployTxOptions',
