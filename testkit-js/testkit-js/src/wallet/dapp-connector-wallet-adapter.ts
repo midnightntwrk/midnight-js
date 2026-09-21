@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { type Binding, type PreBinding, type Proof, type SignatureEnabled, Transaction as LedgerTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { fromHex, toHex, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import {
   type KeyMaterialProvider as ZkirKeyMaterialProvider,
@@ -40,7 +39,6 @@ import { firstValueFrom } from 'rxjs';
 
 import type { EnvironmentConfiguration } from '../test-environment/environment-configuration';
 import type { MidnightWalletProvider } from './midnight-wallet-provider';
-import { adoptFinalized, adoptUnbound } from './wallet-transaction';
 
 export class DAppConnectorWalletAdapter implements ConnectedAPI {
   private readonly walletProvider: Pick<MidnightWalletProvider, 'wallet' | 'unshieldedKeystore' | 'dustSecretKey'>;
@@ -102,28 +100,25 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
   }
 
   async balanceUnsealedTransaction(tx: string, options?: { payFees?: boolean }): Promise<{ tx: string }> {
-    const unboundTx = LedgerTransaction.deserialize<SignatureEnabled, Proof, PreBinding>('signature', 'proof', 'pre-binding', fromHex(tx));
     const tokenKindsToBalance = options?.payFees === false ? (['shielded', 'unshielded'] as ('shielded' | 'unshielded')[]) : ('all' as const);
     const recipe = await this.walletProvider.wallet.balanceUnboundTransaction(
-      await adoptUnbound(this.walletProvider.wallet, unboundTx),
+      this.walletProvider.wallet.adoptTransaction(fromHex(tx), 'Unbound'),
       { ttl: ttlOneHour(), tokenKindsToBalance },
     );
     return this.signAndFinalize(recipe);
   }
 
   async balanceSealedTransaction(tx: string, options?: { payFees?: boolean }): Promise<{ tx: string }> {
-    const finalizedTx = LedgerTransaction.deserialize<SignatureEnabled, Proof, Binding>('signature', 'proof', 'binding', fromHex(tx));
     const tokenKindsToBalance = options?.payFees === false ? (['shielded', 'unshielded'] as ('shielded' | 'unshielded')[]) : ('all' as const);
     const recipe = await this.walletProvider.wallet.balanceFinalizedTransaction(
-      await adoptFinalized(this.walletProvider.wallet, finalizedTx),
+      this.walletProvider.wallet.adoptTransaction(fromHex(tx), 'Finalized'),
       { ttl: ttlOneHour(), tokenKindsToBalance },
     );
     return this.signAndFinalize(recipe);
   }
 
   async submitTransaction(tx: string): Promise<void> {
-    const finalizedTx = LedgerTransaction.deserialize<SignatureEnabled, Proof, Binding>('signature', 'proof', 'binding', fromHex(tx));
-    await this.walletProvider.wallet.submitTransaction(await adoptFinalized(this.walletProvider.wallet, finalizedTx));
+    await this.walletProvider.wallet.submitTransaction(this.walletProvider.wallet.adoptTransaction(fromHex(tx), 'Finalized'));
   }
 
   async signData(data: string, options: SignDataOptions): Promise<Signature> {

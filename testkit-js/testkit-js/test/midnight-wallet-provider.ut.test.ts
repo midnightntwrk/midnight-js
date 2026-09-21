@@ -26,7 +26,8 @@ import {
   ProtocolVersion,
   type UnboundTransactionRecipe,
   type UnshieldedKeystore,
-  type WalletFacade
+  type WalletFacade,
+  WalletTransaction
 } from '@midnightntwrk/wallet-sdk';
 import { pino } from 'pino';
 import * as Rx from 'rxjs';
@@ -35,13 +36,19 @@ import type { EnvironmentConfiguration } from '../src/test-environment/environme
 import { MidnightWalletProvider } from '../src/wallet/midnight-wallet-provider';
 import { FORK_SCHEDULE } from '../src/wallet/wallet-configuration-mapper';
 import { WalletSeeds } from '../src/wallet/wallet-seed';
-import { adoptFinalized, adoptUnbound } from '../src/wallet/wallet-transaction';
 
 // Two versions, one on each side of the fork. The retained one is what the
 // refusal-is-gone tests run at; the current one is what the v9 arm needs, since
 // a handle only unwraps within the epoch it was authored in.
 const RETAINED_VERSION = ProtocolVersion.ProtocolVersion(1_000_000n);
 const CURRENT_VERSION = FORK_SCHEDULE.v9;
+
+// The handle each assertion compares against, sealed here rather than through
+// the seam under test so that the comparison is independent of it.
+const adoptedAtCurrent = <TStage extends WalletTransaction.Stage>(
+  stage: TStage,
+  transaction: { readonly serialize: () => Uint8Array }
+): WalletTransaction<TStage> => WalletTransaction.adopt(stage, transaction, CURRENT_VERSION);
 
 const walletAt = (activeProtocolVersion: ProtocolVersion.ProtocolVersion): Pick<WalletFacade, 'state'> =>
   ({ state: () => Rx.of({ activeProtocolVersion }) }) as Pick<WalletFacade, 'state'>;
@@ -86,7 +93,7 @@ const createBalancingWallet = async (): Promise<BalancingWallet> => {
   const recipe = {} as UnboundTransactionRecipe;
   const signedRecipe = {} as BalancingRecipe;
   const finalized = { serialize: () => new Uint8Array([7, 7, 7]) };
-  const finalizedHandle = await adoptFinalized(walletAt(CURRENT_VERSION), finalized as never);
+  const finalizedHandle = adoptedAtCurrent('Finalized', finalized);
   const stub: Partial<WalletFacade> = {
     balanceUnboundTransaction: vi.fn(async () => recipe),
     signRecipe: vi.fn(async () => signedRecipe),
@@ -188,7 +195,7 @@ describe('MidnightWalletProvider', () => {
       // version-tagged wrapper, the handle carries the transaction the caller
       // passed, and it is stamped at the version the chain is actually at.
       expect(vi.mocked(wallet.balanceUnboundTransaction).mock.calls[0][0]).toEqual(
-        await adoptUnbound(walletAt(CURRENT_VERSION), unbound as never)
+        adoptedAtCurrent('Unbound', unbound)
       );
       // Identity for the rest, never structural equality: the recipes are opaque
       // markers, so `toHaveBeenCalledWith` would not tell one stage's output from
@@ -270,7 +277,7 @@ describe('MidnightWalletProvider', () => {
       const submitted = await provider.submitTx({ version: 'v9', tx: finalized as never });
 
       expect(vi.mocked(wallet.submitTransaction).mock.calls[0][0]).toEqual(
-        await adoptFinalized(walletAt(CURRENT_VERSION), finalized as never)
+        adoptedAtCurrent('Finalized', finalized)
       );
       expect(submitted).toBe(TRANSACTION_ID);
     });

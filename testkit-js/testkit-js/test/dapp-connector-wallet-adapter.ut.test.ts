@@ -14,7 +14,7 @@
  */
 
 import type { ProvingProvider as ZkirProvingProvider } from '@midnight-ntwrk/zkir-v2';
-import { ProtocolVersion, WalletTransaction } from '@midnightntwrk/wallet-sdk';
+import { ProtocolVersion, WalletTransaction, WireFormatError } from '@midnightntwrk/wallet-sdk';
 import { of } from 'rxjs';
 
 import type { EnvironmentConfiguration } from '../src/test-environment/environment-configuration';
@@ -49,12 +49,6 @@ vi.mock('@midnightntwrk/wallet-sdk-prover-client/effect', () => ({
   },
 }));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol/ledger', () => ({
-  Transaction: {
-    deserialize: vi.fn(),
-  },
-}));
-
 vi.mock('@midnight-ntwrk/midnight-js-utils', () => ({
   fromHex: vi.fn().mockReturnValue(new Uint8Array()),
   toHex: vi.fn().mockReturnValue('aabb'),
@@ -85,6 +79,9 @@ const mockFacadeState = {
 
 const mockWalletFacade = {
   state: vi.fn().mockReturnValue(of(mockFacadeState)),
+  adoptTransaction: vi.fn((bytes: Uint8Array, stage: WalletTransaction.Stage) =>
+    WalletTransaction.adopt(stage, { serialize: () => bytes }, ACTIVE_PROTOCOL_VERSION),
+  ),
   shielded: { state: of(mockShieldedState) },
   unshielded: { state: of(mockUnshieldedState) },
   dust: { state: of(mockDustState) },
@@ -269,15 +266,14 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
   });
 
   describe('balanceUnsealedTransaction', () => {
-    it('should deserialize as preBinding, balance, sign, finalize, and return hex transaction', async () => {
-      const { Transaction } = await import('@midnight-ntwrk/midnight-js-protocol/ledger');
+    it('should adopt the bytes as unbound, balance, sign, finalize, and return hex transaction', async () => {
       mockWalletFacade.balanceUnboundTransaction.mockResolvedValue({});
       mockWalletFacade.signRecipe.mockResolvedValue({});
       mockWalletFacade.finalizeRecipe.mockResolvedValue({ serialize: () => new Uint8Array() });
 
       const result = await adapter.balanceUnsealedTransaction('abcd');
 
-      expect(Transaction.deserialize).toHaveBeenCalledWith('signature', 'proof', 'pre-binding', expect.any(Uint8Array));
+      expect(mockWalletFacade.adoptTransaction).toHaveBeenCalledWith(expect.any(Uint8Array), 'Unbound');
       expect(mockWalletFacade.balanceUnboundTransaction).toHaveBeenCalled();
       const [handle, options] = mockWalletFacade.balanceUnboundTransaction.mock.calls[0];
       expect(WalletTransaction.is(handle)).toBe(true);
@@ -298,18 +294,27 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
         expect.objectContaining({ tokenKindsToBalance: ['shielded', 'unshielded'] }),
       );
     });
+
+    it('should propagate the wallet refusal of bytes written by the other ledger version', async () => {
+      const refusal = new WireFormatError({ message: 'not a transaction of this protocol version at stage Unbound' });
+      mockWalletFacade.adoptTransaction.mockImplementationOnce(() => {
+        throw refusal;
+      });
+
+      await expect(adapter.balanceUnsealedTransaction('abcd')).rejects.toBe(refusal);
+      expect(mockWalletFacade.balanceUnboundTransaction).not.toHaveBeenCalled();
+    });
   });
 
   describe('balanceSealedTransaction', () => {
-    it('should deserialize as binding, balance finalized, sign, finalize, and return hex transaction', async () => {
-      const { Transaction } = await import('@midnight-ntwrk/midnight-js-protocol/ledger');
+    it('should adopt the bytes as finalized, balance, sign, finalize, and return hex transaction', async () => {
       mockWalletFacade.balanceFinalizedTransaction.mockResolvedValue({});
       mockWalletFacade.signRecipe.mockResolvedValue({});
       mockWalletFacade.finalizeRecipe.mockResolvedValue({ serialize: () => new Uint8Array() });
 
       const result = await adapter.balanceSealedTransaction('abcd');
 
-      expect(Transaction.deserialize).toHaveBeenCalledWith('signature', 'proof', 'binding', expect.any(Uint8Array));
+      expect(mockWalletFacade.adoptTransaction).toHaveBeenCalledWith(expect.any(Uint8Array), 'Finalized');
       expect(mockWalletFacade.balanceFinalizedTransaction).toHaveBeenCalled();
       const [handle, options] = mockWalletFacade.balanceFinalizedTransaction.mock.calls[0];
       expect(WalletTransaction.is(handle)).toBe(true);
@@ -320,12 +325,10 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
   });
 
   describe('submitTransaction', () => {
-    it('should deserialize as binding and submit to wallet', async () => {
-      const { Transaction } = await import('@midnight-ntwrk/midnight-js-protocol/ledger');
-
+    it('should adopt the bytes as finalized and submit to wallet', async () => {
       await adapter.submitTransaction('abcd');
 
-      expect(Transaction.deserialize).toHaveBeenCalledWith('signature', 'proof', 'binding', expect.anything());
+      expect(mockWalletFacade.adoptTransaction).toHaveBeenCalledWith(expect.any(Uint8Array), 'Finalized');
       const [handle] = mockWalletFacade.submitTransaction.mock.calls[0];
       expect(WalletTransaction.is(handle)).toBe(true);
       expect(handle).toMatchObject({ stage: 'Finalized', protocolVersion: ACTIVE_PROTOCOL_VERSION });
