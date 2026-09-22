@@ -144,6 +144,11 @@ export default tseslint.config(
       // not control -- the `**/compiled/**` entry above covers the current-era
       // equivalents for the same reason.
       'consumer-e2e/.retained/**',
+      // Checkouts of this same repository, which `.gitignore` already excludes.
+      // Linting them offers a second copy of every source file and, because each
+      // carries its own `tsconfig.json`, leaves the type-aware parser with several
+      // candidate roots and no way to choose -- every file then fails to parse.
+      '.worktrees/**',
       '**/*.d.ts',
       '**/node_modules/**',
       '**/.yarn/**',
