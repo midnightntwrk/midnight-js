@@ -18,8 +18,19 @@ import { expect } from 'vitest';
 // A WASM handle survives `structuredClone` without throwing: the clone is
 // `{ __wbg_ptr: <number> }` and every member is gone. So "did not throw" is
 // not evidence the value crossed the boundary intact, and asserting it lets a
-// handle pass the very check meant to exclude it. These assertions compare the
-// clone's CONTENT against the original instead.
+// handle pass the very check meant to exclude it.
+//
+// A wasm-bindgen instance's real fields live behind prototype getters; its
+// only OWN property is `__wbg_ptr`. Both `structuredClone` and
+// `JSON.stringify` (which `canonical` wraps) copy only an object's own
+// enumerable properties, never prototype accessors, so a handle's clone and
+// the handle itself canonicalise to the same string. Content equality can
+// therefore never tell a handle apart from itself -- it is not a second line
+// of defence against handle leaks. It is kept below because it still catches
+// something else worth catching: ordinary decode-content regressions in
+// legitimate plain data. The actual rejection of a handle is done by
+// `hasWasmPointer`, which walks the value's own structure looking for an
+// object anywhere in the tree whose own properties include `__wbg_ptr`.
 const WASM_POINTER = '__wbg_ptr';
 
 const canonical = (value: unknown): string =>
@@ -33,6 +44,30 @@ const canonical = (value: unknown): string =>
           : inner
   );
 
+const hasWasmPointer = (value: unknown, seen: WeakSet<object> = new WeakSet()): boolean => {
+  if (value === null || typeof value !== 'object') {
+    return false;
+  }
+  if (seen.has(value)) {
+    return false;
+  }
+  seen.add(value);
+
+  if (Object.prototype.hasOwnProperty.call(value, WASM_POINTER)) {
+    return true;
+  }
+  if (value instanceof Uint8Array) {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.some((entry) => hasWasmPointer(entry, seen));
+  }
+  if (value instanceof Map) {
+    return Array.from(value).some(([key, entry]) => hasWasmPointer(key, seen) || hasWasmPointer(entry, seen));
+  }
+  return Object.values(value).some((entry) => hasWasmPointer(entry, seen));
+};
+
 /**
  * Asserts `value` is plain data that survives a structured clone with its
  * content intact, and carries no WASM handle at any depth.
@@ -41,5 +76,5 @@ export const expectStructuredCloneable = (value: unknown): void => {
   const clone = structuredClone(value);
 
   expect(canonical(clone)).toBe(canonical(value));
-  expect(canonical(value)).not.toContain(WASM_POINTER);
+  expect(hasWasmPointer(value)).toBe(false);
 };
