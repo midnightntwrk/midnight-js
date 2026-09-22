@@ -543,12 +543,6 @@ describe('the two ledger eras run the same scenario', () => {
     expect(shape.deployedVerifierKeyHashes).toEqual([hashVerifierKey(VERIFIER_KEY)]);
   });
 
-  // The boundary rule, DOCUMENTED across the surface: only plain data crosses
-  // the facade. Read what this does and does not catch before relying on it --
-  // a `wasm-bindgen` handle is a plain object whose only own property is a
-  // `__wbg_ptr` number, so it clones WITHOUT throwing and these assertions
-  // would pass one through. What they do catch is a value that genuinely
-  // refuses to clone, such as a function or a live proxy. See ADR-0010.
   // Parity of the happy path is the easy half. A caller writing era-agnostic
   // code also has to be able to handle a refusal the same way on both arms, so
   // the coded refusals for a malformed envelope are pinned per era too.
@@ -670,6 +664,13 @@ describe('the two ledger eras run the same scenario', () => {
     );
   });
 
+  // The boundary rule, MECHANISED: only plain data crosses the facade. A
+  // `wasm-bindgen` handle is a plain object whose only own property is a
+  // `__wbg_ptr` number, so it clones WITHOUT throwing -- "did not throw" is
+  // therefore no evidence at all, and the previous form of this test asserted
+  // exactly that. `expectStructuredCloneable` rejects a handle by walking the
+  // value's own structure for that pointer property; read its doc for what the
+  // walk does and does not reach. See ADR-0010.
   it.each(ERAS)('returns only structured-cloneable data from every %s method', async (version) => {
     const era = await loadLedgerEra(version);
     const golden = readHexFixture(FIXTURES[version].golden);
@@ -680,23 +681,48 @@ describe('the two ledger eras run the same scenario', () => {
     expectStructuredCloneable(era.composeDeployTx(deployOptionsFor(version)));
   });
 
-  // Guards the guard: if this ever passes, `expectStructuredCloneable` has
+  // Guards the guard: if this ever FAILS, `expectStructuredCloneable` has
   // stopped distinguishing a handle from plain data and every use of it above
   // has quietly become a no-op.
   //
-  // `plainResult` is plain data -- the test twelve lines above asserts exactly
-  // that -- and the pointer field is hand-built, not produced by a real WASM
-  // handle. This exercises a COLLAPSED-HANDLE SHAPE, i.e. what a live handle
-  // degrades to after `structuredClone` already ran (see `clone-assertions.ts`),
-  // not rejection of a live handle end to end. The proxy under test is the
-  // same either way, since it only ever sees the collapsed shape.
+  // `plainResult` is plain data -- the test named 'returns only
+  // structured-cloneable data from every %s method', directly above, asserts
+  // exactly that -- and the pointer field is hand-built, not produced by a real
+  // WASM handle. This exercises a COLLAPSED-HANDLE SHAPE, i.e. what a live
+  // handle degrades to after `structuredClone` already ran (see
+  // `clone-assertions.ts`), not rejection of a live handle end to end. The
+  // stand-in is faithful for the check under test because `__wbg_ptr` is an OWN
+  // property on a LIVE wasm-bindgen instance too, so the `hasOwnProperty` test
+  // the walk relies on fires identically on either shape.
+  //
+  // The MESSAGE is asserted, not merely "something threw": a bare `.toThrow()`
+  // is equally satisfied by a vitest AssertionError or by a TypeError raised
+  // somewhere else entirely, which would let the handle walk be completely dead
+  // while this test stayed green.
   it('rejects a collapsed-handle shape, which the previous "does not throw" form accepted', async () => {
     const era = await loadLedgerEra('v9');
     const plainResult = era.composeDeployTx(deployOptionsFor('v9'));
     const withCollapsedHandleShape = { ...plainResult, leaked: { __wbg_ptr: 1232224 } };
 
     expect(() => structuredClone(withCollapsedHandleShape)).not.toThrow();
-    expect(() => expectStructuredCloneable(withCollapsedHandleShape)).toThrow();
+    expect(() => expectStructuredCloneable(withCollapsedHandleShape)).toThrowError(
+      /carries a WASM handle \(own `__wbg_ptr`\) at value\.leaked$/
+    );
+  });
+
+  // `Object.entries(new Set([handle]))` is `[]`, so a `Set` walked by the generic own-property
+  // catch-all reports no members at all and a handle behind one passes silently. The walk carries
+  // an explicit `Set` branch for exactly this, mirroring its `Map` branch; this is what goes red if
+  // that branch is removed.
+  it('rejects a handle behind a Set, which an own-property catch-all cannot see', async () => {
+    const era = await loadLedgerEra('v9');
+    const plainResult = era.composeDeployTx(deployOptionsFor('v9'));
+    const withHandleInASet = { ...plainResult, leaked: new Set([{ __wbg_ptr: 1232224 }]) };
+
+    expect(() => structuredClone(withHandleInASet)).not.toThrow();
+    expect(() => expectStructuredCloneable(withHandleInASet)).toThrowError(
+      /carries a WASM handle \(own `__wbg_ptr`\) at value\.leaked<set entry 0>$/
+    );
   });
 
   // Both eras hand the offer factory the same split for the same call, and

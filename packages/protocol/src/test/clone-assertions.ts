@@ -13,73 +13,100 @@
  * limitations under the License.
  */
 
-import { expect } from 'vitest';
-
 // A WASM handle survives `structuredClone` without throwing: the clone is
 // `{ __wbg_ptr: <number> }` and every member is gone. So "did not throw" is
 // not evidence the value crossed the boundary intact, and asserting it lets a
 // handle pass the very check meant to exclude it.
 //
-// A wasm-bindgen instance's real fields live behind prototype getters; its
-// only OWN property is `__wbg_ptr`. Both `structuredClone` and
-// `JSON.stringify` (which `canonical` wraps) copy only an object's own
-// enumerable properties, never prototype accessors, so a handle's clone and
-// the handle itself canonicalise to the same string. Content equality can
-// therefore never tell a handle apart from itself -- it is not a second line
-// of defence against handle leaks. It is kept below because it still catches
-// something else worth catching: ordinary decode-content regressions in
-// legitimate plain data. The actual rejection of a handle is done by
-// `hasWasmPointer`, which walks the value's own structure looking for an
-// object anywhere in the tree whose own properties include `__wbg_ptr`.
-// Known limits, so the next caller reusing this helper does not have to rediscover them: it does
-// not special-case `Set` (a `Set` canonicalises as `{}`, losing its contents), it throws on a
-// circular reference (as `JSON.stringify` does), and it inherits `JSON.stringify`'s `-0`/`NaN`/
-// `undefined` handling (`-0` canonicalises as `0`, and `NaN`/`undefined` become `null` or vanish,
-// depending on position).
+// Comparing the clone's content against the original's cannot tell a handle
+// apart either, and that is not a shortcoming of any particular comparison: a
+// wasm-bindgen instance's real fields live behind PROTOTYPE getters, its only
+// own property is `__wbg_ptr`, and a content comparison necessarily reads the
+// same properties from both sides. It compares a value with its own clone, so
+// any regression that changes one changes the other identically. The rejection
+// of a handle is therefore done entirely by `findWasmPointer` below, which
+// walks the value's own structure for an object whose own properties include
+// `__wbg_ptr`.
 const WASM_POINTER = '__wbg_ptr';
 
-const canonical = (value: unknown): string | undefined =>
-  JSON.stringify(value, (_key, inner: unknown) =>
-    typeof inner === 'bigint'
-      ? `${inner.toString()}n`
-      : inner instanceof Uint8Array
-        ? Buffer.from(inner).toString('hex')
-        : inner instanceof Map
-          ? { __map: Array.from(inner) }
-          : inner
-  );
+type PathedEntry = readonly [path: string, entry: unknown];
 
-const hasWasmPointer = (value: unknown, seen: WeakSet<object> = new WeakSet()): boolean => {
-  if (value === null || typeof value !== 'object') {
-    return false;
+const childEntries = (value: object, path: string): readonly PathedEntry[] => {
+  if (Array.isArray(value)) {
+    return value.map((entry, index): PathedEntry => [`${path}[${index}]`, entry]);
   }
-  if (seen.has(value)) {
-    return false;
+  if (value instanceof Map) {
+    return Array.from(value).flatMap(([key, entry], index): PathedEntry[] => [
+      [`${path}<map key ${index}>`, key],
+      [`${path}<map value ${index}>`, entry]
+    ]);
+  }
+  // `Object.entries(new Set([handle]))` is `[]`, so a `Set` left to the catch-all below would hide
+  // every member it holds. Enumerated explicitly, exactly as `Map` is.
+  if (value instanceof Set) {
+    return Array.from(value).map((entry, index): PathedEntry => [`${path}<set entry ${index}>`, entry]);
+  }
+  // Own ENUMERABLE properties only -- see the limits listed on `expectStructuredCloneable`.
+  return Object.entries(value).map(([key, entry]): PathedEntry => [`${path}.${key}`, entry]);
+};
+
+const findWasmPointer = (value: unknown, path: string, seen: WeakSet<object>): string | undefined => {
+  if (value === null || typeof value !== 'object' || seen.has(value)) {
+    return undefined;
   }
   seen.add(value);
 
   if (Object.prototype.hasOwnProperty.call(value, WASM_POINTER)) {
-    return true;
+    return path;
   }
   if (value instanceof Uint8Array) {
-    return false;
+    return undefined;
   }
-  if (Array.isArray(value)) {
-    return value.some((entry) => hasWasmPointer(entry, seen));
+
+  for (const [entryPath, entry] of childEntries(value, path)) {
+    const found = findWasmPointer(entry, entryPath, seen);
+    if (found !== undefined) {
+      return found;
+    }
   }
-  if (value instanceof Map) {
-    return Array.from(value).some(([key, entry]) => hasWasmPointer(key, seen) || hasWasmPointer(entry, seen));
-  }
-  return Object.values(value).some((entry) => hasWasmPointer(entry, seen));
+  return undefined;
 };
 
 /**
- * Asserts `value` is plain data that survives a structured clone with its
- * content intact, and carries no WASM handle at any depth.
+ * Asserts that `value` is an object which carries no WASM handle at any depth and which
+ * `structuredClone` accepts.
+ *
+ * Precisely what is checked, and what is NOT:
+ *
+ * - The handle walk is the real line of defence, and it reads only OWN ENUMERABLE properties
+ *   (plus `Map`/`Set` members and array elements). A handle hidden behind a non-enumerable own
+ *   property, or behind a prototype getter -- which is the shape a wasm-bindgen instance's own
+ *   fields take -- is NOT seen. Closing that fully is not practical; the values guarded here are
+ *   decoded plain objects, whose members are ordinary own enumerable properties.
+ * - `structuredClone` is called for its own throw, which is genuine detection of a value that
+ *   truly cannot cross a boundary (a function, a live proxy). It is NOT evidence that content
+ *   survived: a handle clones without complaint.
+ * - Content is not compared at all. See the note at the top of this file for why such a
+ *   comparison cannot catch anything here.
+ * - A non-object is rejected up front, so `expectStructuredCloneable(undefined)` fails instead of
+ *   passing vacuously.
+ *
+ * @throws Error naming the path it found a handle at, or the non-object it was handed.
+ * @throws DOMException raised by `structuredClone` itself, for a value that truly cannot be cloned.
  */
 export const expectStructuredCloneable = (value: unknown): void => {
-  const clone = structuredClone(value);
+  if (value === null || typeof value !== 'object') {
+    throw new Error(
+      `expectStructuredCloneable: expected an object to inspect, got ${value === null ? 'null' : typeof value}`
+    );
+  }
 
-  expect(canonical(clone)).toBe(canonical(value));
-  expect(hasWasmPointer(value)).toBe(false);
+  // Before the clone, so a value that is both leaky and awkward to clone is reported as the leak
+  // it is rather than as an opaque clone failure.
+  const leaked = findWasmPointer(value, 'value', new WeakSet());
+  if (leaked !== undefined) {
+    throw new Error(`expectStructuredCloneable: value carries a WASM handle (own \`${WASM_POINTER}\`) at ${leaked}`);
+  }
+
+  structuredClone(value);
 };

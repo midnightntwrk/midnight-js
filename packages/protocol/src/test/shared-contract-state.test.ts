@@ -144,13 +144,21 @@ describe('decodeContractStateWith', () => {
     expect((caught as StateDecodeFailedError).cause).toBeInstanceOf(Error);
   });
 
-  // The facade's boundary rule, mechanised: only plain data crosses it. A live
-  // WASM handle does NOT make structuredClone throw, and content equality
-  // alone cannot tell it apart from its own clone either -- both silently
-  // degrade to `{ __wbg_ptr: <number> }` with every real field gone (see
-  // `clone-assertions.ts`). `expectStructuredCloneable` actually rejects a
-  // handle by walking the value's own structure for that pointer property, not
-  // by relying on a throw or a prototype mismatch.
+  // The facade's boundary rule, mechanised by two assertions that check
+  // DIFFERENT things. Both are wanted; neither subsumes the other.
+  //
+  // The prototype checks -- on the result and on every entry point -- pin that
+  // the decoder hands back object literals rather than class instances, so the
+  // value carries no methods and no identity a caller could come to depend on.
+  // They reach exactly two levels (the result, and each `entryPoints` member)
+  // and say nothing about anything nested deeper.
+  //
+  // `expectStructuredCloneable` is the handle check, and it is the one that
+  // goes all the way down. A live WASM handle does NOT make `structuredClone`
+  // throw, and comparing content cannot tell it apart from its own clone either
+  // -- both degrade to `{ __wbg_ptr: <number> }` with every real field gone
+  // (see `clone-assertions.ts`). It rejects a handle by walking the value's own
+  // structure for that pointer property at any depth.
   it('returns plain data a structured clone can carry across a boundary', () => {
     const pojo = decodeContractStateWith(readHexFixture('state-migrated-v9.hex'), 'v9', ledgerV9);
 
