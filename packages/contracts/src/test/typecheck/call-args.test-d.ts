@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { CallOptionsWithArguments } from '../../call';
@@ -23,10 +24,11 @@ import type {
 } from '../ledger8-fixture-types';
 
 // The current era's twin of `overloads.test-d.ts`'s retained-era assertions.
-// compact-js's own `CircuitParameters` degrades to `unknown[]` under the
+// compact-js's own `CircuitParameters` degrades to `never` under the
 // branded circuit id that `circuit()` and `getProvableCircuitIds()` both
 // produce (midnightntwrk/midnight-sdk#402), so without the local unbranding
-// these options accept any argument at all.
+// `never extends []` is trivially true and every circuit -- arg-taking or
+// not -- would look zero-argument.
 describe('CallOptionsWithArguments', () => {
   it('carries the circuit\'s real parameter tuple', () => {
     // `CoinReceiver016Coin` is read off the generated circuit signature rather than restated,
@@ -46,5 +48,16 @@ describe('CallOptionsWithArguments', () => {
     expectTypeOf<
       CallOptionsWithArguments<CoinReceiver016Contract, 'receive_coin'>['args']
     >().not.toEqualTypeOf<unknown[]>();
+  });
+
+  // The case real call sites produce. `getProvableCircuitIds()` and `circuit()` both hand back
+  // BRANDED ids, and indexing `provableCircuits` with the brand degrades the lookup to `never`.
+  // `never extends []` is trivially true, so without `CircuitKey` the options type would drop
+  // `args` entirely and every branded circuit would look zero-argument. The literal-keyed
+  // assertions above cannot catch that: no brand ever enters their computation.
+  it('carries the real tuple for the BRANDED id that call sites produce', () => {
+    type BrandedId = ProvableCircuitId<CoinReceiver016Contract, 'receive_coin'>;
+    expectTypeOf<CallOptionsWithArguments<CoinReceiver016Contract, BrandedId>['args']>()
+      .toEqualTypeOf<[CoinReceiver016Coin]>();
   });
 });
