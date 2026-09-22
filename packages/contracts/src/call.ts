@@ -29,6 +29,7 @@ import {
   type ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { CallResultPrivateBase, CallResultPublicBase } from '@midnight-ntwrk/midnight-js-types';
+import type { Brand } from 'effect';
 
 import type { CurrentPipelineEra } from './era';
 
@@ -58,17 +59,27 @@ export interface CallOptionsBase<C extends Contract.Any, PCK extends Contract.Pr
 }
 
 /**
+ * Recovers the plain circuit-id literal from a branded `ProvableCircuitId`.
+ *
+ * `CircuitParameters` indexes `provableCircuits` with the key it is handed, and the brand makes
+ * that key an intersection the indexed access cannot resolve -- so every parameter list degrades
+ * to `unknown[]`. The retained era avoids this by indexing with an unbranded key; this is the
+ * current era's equivalent. Tracked upstream as midnightntwrk/midnight-sdk#402.
+ */
+type CircuitKey<K> = Brand.Brand.Unbranded<K & Brand.Brand<'ProvableCircuitId'>>;
+
+/**
  * Conditional type that optionally adds the inferred circuit argument types to
  * the options for a circuit call.
  */
 export type CallOptionsWithArguments<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
-  Contract.CircuitParameters<C, PCK> extends []
+  Contract.CircuitParameters<C, CircuitKey<PCK>> extends []
     ? CallOptionsBase<C, PCK>
     : CallOptionsBase<C, PCK> & {
     /**
      * Arguments to pass to the circuit being called.
      */
-    readonly args: Contract.CircuitParameters<C, PCK>;
+    readonly args: Contract.CircuitParameters<C, CircuitKey<PCK>>;
   };
 
 /**

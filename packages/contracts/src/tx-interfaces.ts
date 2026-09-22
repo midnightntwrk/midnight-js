@@ -89,16 +89,16 @@ export const createCircuitCallTxInterface = <C extends Contract.Any>(
       [circuitId]: (...args: unknown[]) => {
         const txCtx = args.length > 0 && Transaction.isTransactionContext(args[0]) ? args[0] : undefined;
         const callArgs = txCtx ? args.slice(1) : args;
-        const callOptions = createCallTxOptions(
+        const callOptions = createCallTxOptions<C, Contract.ProvableCircuitId<C>>(
           compiledContract,
           circuitId,
           contractAddress,
           privateStateId,
           txCtx?.getAdditionalMappings(),
-          callArgs as Contract.CircuitParameters<C, typeof circuitId>
+          callArgs as Contract.CircuitParameters<C, Contract.ProvableCircuitId<C>>
         );
         return txCtx
-          ? submitCallTx(providers, callOptions as CallTxOptionsWithPrivateStateId<C, typeof circuitId>, txCtx)
+          ? submitCallTx(providers, callOptions as CallTxOptionsWithPrivateStateId<C, Contract.ProvableCircuitId<C>>, txCtx)
           : submitCallTx(providers, callOptions)
       }
     }),
