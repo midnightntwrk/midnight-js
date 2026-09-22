@@ -14,6 +14,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
@@ -28,7 +29,10 @@ import { describe, expect, it } from 'vitest';
 // should win" into something the build checks.
 const resolvedVersionsOf = (packageName: string): string[] => {
   const raw = execFileSync('yarn', ['info', packageName, '--json', '--all'], {
-    cwd: new URL('../../../../', import.meta.url).pathname,
+    // `URL#pathname` does not percent-decode, so a checkout under a path
+    // containing a space (or other percent-encoded character) would resolve
+    // to the wrong `cwd`. `fileURLToPath` decodes it correctly.
+    cwd: fileURLToPath(new URL('../../../../', import.meta.url)),
     encoding: 'utf8'
   });
   return raw

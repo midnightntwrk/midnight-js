@@ -683,13 +683,20 @@ describe('the two ledger eras run the same scenario', () => {
   // Guards the guard: if this ever passes, `expectStructuredCloneable` has
   // stopped distinguishing a handle from plain data and every use of it above
   // has quietly become a no-op.
-  it('rejects a live WASM handle, which the previous "does not throw" form accepted', async () => {
+  //
+  // `plainResult` is plain data -- the test twelve lines above asserts exactly
+  // that -- and the pointer field is hand-built, not produced by a real WASM
+  // handle. This exercises a COLLAPSED-HANDLE SHAPE, i.e. what a live handle
+  // degrades to after `structuredClone` already ran (see `clone-assertions.ts`),
+  // not rejection of a live handle end to end. The proxy under test is the
+  // same either way, since it only ever sees the collapsed shape.
+  it('rejects a collapsed-handle shape, which the previous "does not throw" form accepted', async () => {
     const era = await loadLedgerEra('v9');
-    const handle = era.composeDeployTx(deployOptionsFor('v9'));
-    const smuggled = { ...handle, leaked: { __wbg_ptr: 1232224 } };
+    const plainResult = era.composeDeployTx(deployOptionsFor('v9'));
+    const withCollapsedHandleShape = { ...plainResult, leaked: { __wbg_ptr: 1232224 } };
 
-    expect(() => structuredClone(smuggled)).not.toThrow();
-    expect(() => expectStructuredCloneable(smuggled)).toThrow();
+    expect(() => structuredClone(withCollapsedHandleShape)).not.toThrow();
+    expect(() => expectStructuredCloneable(withCollapsedHandleShape)).toThrow();
   });
 
   // Both eras hand the offer factory the same split for the same call, and

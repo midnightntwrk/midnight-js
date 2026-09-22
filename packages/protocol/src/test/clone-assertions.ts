@@ -31,9 +31,14 @@ import { expect } from 'vitest';
 // legitimate plain data. The actual rejection of a handle is done by
 // `hasWasmPointer`, which walks the value's own structure looking for an
 // object anywhere in the tree whose own properties include `__wbg_ptr`.
+// Known limits, so the next caller reusing this helper does not have to rediscover them: it does
+// not special-case `Set` (a `Set` canonicalises as `{}`, losing its contents), it throws on a
+// circular reference (as `JSON.stringify` does), and it inherits `JSON.stringify`'s `-0`/`NaN`/
+// `undefined` handling (`-0` canonicalises as `0`, and `NaN`/`undefined` become `null` or vanish,
+// depending on position).
 const WASM_POINTER = '__wbg_ptr';
 
-const canonical = (value: unknown): string =>
+const canonical = (value: unknown): string | undefined =>
   JSON.stringify(value, (_key, inner: unknown) =>
     typeof inner === 'bigint'
       ? `${inner.toString()}n`

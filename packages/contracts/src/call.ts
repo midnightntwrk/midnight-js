@@ -65,8 +65,12 @@ export interface CallOptionsBase<C extends Contract.Any, PCK extends Contract.Pr
  * that key an intersection the indexed access cannot resolve -- so every parameter list degrades
  * to `unknown[]`. The retained era avoids this by indexing with an unbranded key; this is the
  * current era's equivalent. Tracked upstream as midnightntwrk/midnight-sdk#402.
+ *
+ * Exported for `tx-interfaces.ts`, which needs the same unbranding on `createCallTxOptions`'s
+ * `args` parameter -- deliberately NOT re-exported from the package barrel (`index.ts`): it is an
+ * internal workaround, not public API.
  */
-type CircuitKey<K> = Brand.Brand.Unbranded<K & Brand.Brand<'ProvableCircuitId'>>;
+export type CircuitKey<K> = Brand.Brand.Unbranded<K & Brand.Brand<'ProvableCircuitId'>>;
 
 /**
  * Conditional type that optionally adds the inferred circuit argument types to

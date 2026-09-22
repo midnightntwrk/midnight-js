@@ -19,7 +19,7 @@ import type { CoinPublicKey, ContractAddress, EncPublicKey } from '@midnight-ntw
 import { type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type CallResult } from './call';
+import { type CallResult, type CircuitKey } from './call';
 import { type ContractProviders } from './contract-providers';
 import type {
   Ledger8CallTxOptions,
@@ -47,6 +47,14 @@ export type CircuitCallTxInterface<C extends Contract.Any> = {
 
 /**
  * Creates a {@link CallTxOptions} object from various data.
+ *
+ * `args` is indexed with {@link CircuitKey}-unbranded `PCK`, matching `call.ts`'s
+ * `CallOptionsWithArguments`: by the time a real call site (`circuit()`, `getProvableCircuitIds()`)
+ * reaches this function `PCK` is branded, and `Contract.CircuitParameters` resolves a branded key
+ * to `unknown[]` rather than the real tuple. Without the unbranding this parameter would accept
+ * any argument list while the return type -- `CallTxOptions<C, PCK>`, which is
+ * `CallOptionsWithArguments` underneath -- claims the real tuple: an unsound mismatch between what
+ * is checked and what is returned.
  */
 export const createCallTxOptions = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -54,7 +62,7 @@ export const createCallTxOptions = <C extends Contract.Any, PCK extends Contract
   contractAddress: ContractAddress,
   privateStateId: PrivateStateId | undefined,
   additionalCoinEncPublicKeyMappings: ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined,
-  args: Contract.CircuitParameters<C, PCK>
+  args: Contract.CircuitParameters<C, CircuitKey<PCK>>
 ): CallTxOptions<C, PCK> => {
   const callOptionsBase = {
     additionalCoinEncPublicKeyMappings,
@@ -95,7 +103,7 @@ export const createCircuitCallTxInterface = <C extends Contract.Any>(
           contractAddress,
           privateStateId,
           txCtx?.getAdditionalMappings(),
-          callArgs as Contract.CircuitParameters<C, Contract.ProvableCircuitId<C>>
+          callArgs as Contract.CircuitParameters<C, CircuitKey<Contract.ProvableCircuitId<C>>>
         );
         return txCtx
           ? submitCallTx(providers, callOptions as CallTxOptionsWithPrivateStateId<C, Contract.ProvableCircuitId<C>>, txCtx)

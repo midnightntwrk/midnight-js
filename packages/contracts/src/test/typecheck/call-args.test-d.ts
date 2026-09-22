@@ -13,10 +13,13 @@
  * limitations under the License.
  */
 
+import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { CallOptionsWithArguments } from '../../call';
+import { createCallTxOptions } from '../../tx-interfaces';
 import type {
   CoinReceiver016Coin,
   CoinReceiver016Contract,
@@ -24,11 +27,12 @@ import type {
 } from '../ledger8-fixture-types';
 
 // The current era's twin of `overloads.test-d.ts`'s retained-era assertions.
-// compact-js's own `CircuitParameters` degrades to `never` under the
-// branded circuit id that `circuit()` and `getProvableCircuitIds()` both
-// produce (midnightntwrk/midnight-sdk#402), so without the local unbranding
-// `never extends []` is trivially true and every circuit -- arg-taking or
-// not -- would look zero-argument.
+// compact-js's own `CircuitParameters` degrades to `unknown[]` -- not `never`
+// -- under the branded circuit id that `getProvableCircuitIds()` produces and
+// `circuit()` consumes (midnightntwrk/midnight-sdk#402). Because `unknown[]`
+// is a real, non-empty array type, `args` is NOT dropped: without the local
+// unbranding it stays present on every circuit, argument-taking or not, and
+// accepts any argument list at all.
 describe('CallOptionsWithArguments', () => {
   it('carries the circuit\'s real parameter tuple', () => {
     // `CoinReceiver016Coin` is read off the generated circuit signature rather than restated,
@@ -50,14 +54,44 @@ describe('CallOptionsWithArguments', () => {
     >().not.toEqualTypeOf<unknown[]>();
   });
 
-  // The case real call sites produce. `getProvableCircuitIds()` and `circuit()` both hand back
-  // BRANDED ids, and indexing `provableCircuits` with the brand degrades the lookup to `never`.
-  // `never extends []` is trivially true, so without `CircuitKey` the options type would drop
-  // `args` entirely and every branded circuit would look zero-argument. The literal-keyed
-  // assertions above cannot catch that: no brand ever enters their computation.
+  // The case real call sites produce. `getProvableCircuitIds()` is the only producer of a
+  // BRANDED id; `circuit()` consumes one, it does not hand one back. Indexing
+  // `provableCircuits` with the brand degrades the lookup to `unknown[]`, so without
+  // `CircuitKey` the options type would keep `args` on every branded circuit but type it as
+  // `unknown[]`, accepting any argument list. The literal-keyed assertions above cannot catch
+  // that: no brand ever enters their computation.
   it('carries the real tuple for the BRANDED id that call sites produce', () => {
     type BrandedId = ProvableCircuitId<CoinReceiver016Contract, 'receive_coin'>;
     expectTypeOf<CallOptionsWithArguments<CoinReceiver016Contract, BrandedId>['args']>()
       .toEqualTypeOf<[CoinReceiver016Coin]>();
+  });
+});
+
+type ReceiveCoinBrandedId = ProvableCircuitId<CoinReceiver016Contract, 'receive_coin'>;
+
+declare const compiledContract: CompiledContract.CompiledContract<CoinReceiver016Contract, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+declare const contractAddress: ContractAddress;
+declare const brandedCircuitId: ReceiveCoinBrandedId;
+
+// `createCallTxOptions` is the exported function `CallOptionsWithArguments` only describes the
+// shape of -- see F1 in the branch review. Before this fix its `args` parameter indexed
+// `CircuitParameters` with the branded `PCK` directly, so it stayed `unknown[]` even though
+// `CallOptionsWithArguments` above was already fixed: the function accepted any argument list
+// and handed back a value TypeScript believed carried the real tuple.
+describe('createCallTxOptions', () => {
+  it('exposes the real tuple and rejects a wrongly-typed argument list for a branded id', () => {
+    expectTypeOf(createCallTxOptions<CoinReceiver016Contract, ReceiveCoinBrandedId>)
+      .parameter(5)
+      .toEqualTypeOf<[CoinReceiver016Coin]>();
+
+    createCallTxOptions<CoinReceiver016Contract, ReceiveCoinBrandedId>(
+      compiledContract,
+      brandedCircuitId,
+      contractAddress,
+      undefined,
+      undefined,
+      // @ts-expect-error -- a branded id must reject a wrongly-typed argument list, not accept unknown[]
+      [1, 2, 3]
+    );
   });
 });
