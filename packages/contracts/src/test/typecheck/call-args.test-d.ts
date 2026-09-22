@@ -14,12 +14,18 @@
  */
 
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import type { Contract, ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { CallOptionsWithArguments } from '../../call';
-import { createCallTxOptions } from '../../tx-interfaces';
+import type { CallOptionsWithArguments, CallResult } from '../../call';
+import type { ContractProviders } from '../../contract-providers';
+import { submitCallTx } from '../../submit-call-tx';
+import type { TransactionContext } from '../../transaction';
+import { type CircuitCallTxInterface, createCallTxOptions, createCircuitCallTxInterface } from '../../tx-interfaces';
+import type { FinalizedCallTxData } from '../../tx-model';
+import type { CallTxOptions, CallTxOptionsWithPrivateStateId } from '../../unproven-call-tx';
 import type {
   CoinReceiver016Coin,
   CoinReceiver016Contract,
@@ -48,14 +54,16 @@ describe('CallOptionsWithArguments', () => {
     );
   });
 
-  it('does not accept an arbitrary argument list', () => {
+  it('does not degrade a LITERAL-keyed parameter tuple to unknown[]', () => {
     expectTypeOf<
       CallOptionsWithArguments<CoinReceiver016Contract, 'receive_coin'>['args']
     >().not.toEqualTypeOf<unknown[]>();
   });
 
-  // The case real call sites produce. `getProvableCircuitIds()` is the only producer of a
-  // BRANDED id; `circuit()` consumes one, it does not hand one back. Indexing
+  // The case real call sites produce. `getProvableCircuitIds()` is the producer real call sites
+  // in this package go through -- compact-js also exports a `ProvableCircuitId(id)` smart
+  // constructor that brands an id directly, so it is not the only one. `circuit()` consumes a
+  // branded id, it does not hand one back. Indexing
   // `provableCircuits` with the brand degrades the lookup to `unknown[]`, so without
   // `CircuitKey` the options type would keep `args` on every branded circuit but type it as
   // `unknown[]`, accepting any argument list. The literal-keyed assertions above cannot catch
@@ -93,5 +101,78 @@ describe('createCallTxOptions', () => {
       // @ts-expect-error -- a branded id must reject a wrongly-typed argument list, not accept unknown[]
       [1, 2, 3]
     );
+  });
+});
+
+// A DEFECT PIN: it deliberately asserts behaviour nobody wants.
+//
+// `CircuitKey` exists only because compact-js's `Contract.CircuitParameters` degrades to
+// `unknown[]` under a branded key (midnightntwrk/midnight-sdk#402). The workaround is idempotent,
+// so every other assertion in this file keeps passing once upstream fixes the defect and nothing
+// would ever say the workaround had become dead weight. This is the one assertion that goes RED on
+// that fix, and a red run here is the INSTRUCTION to delete `CircuitKey`, its use in
+// `tx-interfaces.ts` and this test -- NOT a regression to repair. `overloads.test-d.ts` pins the
+// era-agnostic `Contract.Any` widening the same way.
+describe('the upstream defect CircuitKey works around', () => {
+  it('still resolves a BRANDED key to unknown[] -- delete CircuitKey when this goes red', () => {
+    expectTypeOf<Contract.CircuitParameters<CoinReceiver016Contract, ReceiveCoinBrandedId>>().toEqualTypeOf<
+      unknown[]
+    >();
+  });
+});
+
+declare const providers: ContractProviders<CoinReceiver016Contract>;
+declare const privateStateId: PrivateStateId;
+declare const coin: CoinReceiver016Coin;
+declare const transactionContext: TransactionContext<CoinReceiver016Contract, ReceiveCoinBrandedId>;
+
+// `createCircuitCallTxInterface` is the one changed production path with no test of its own. Its
+// explicit type arguments and both `as` casts are ASSERTIONS -- a wrong one compiles -- and the
+// runtime tests mock `submitCallTx` and check only that arguments are passed through, so nothing
+// else pins the types the options reach it at. These assertions replicate both arms of the call it
+// makes, at the branded id a real call site carries.
+describe('createCircuitCallTxInterface', () => {
+  it('hands submitCallTx options carrying the circuit\'s real argument tuple', () => {
+    const callOptions = createCallTxOptions<CoinReceiver016Contract, ReceiveCoinBrandedId>(
+      compiledContract,
+      brandedCircuitId,
+      contractAddress,
+      privateStateId,
+      undefined,
+      [coin]
+    );
+
+    expectTypeOf(callOptions).toEqualTypeOf<CallTxOptions<CoinReceiver016Contract, ReceiveCoinBrandedId>>();
+    expectTypeOf<CallTxOptions<CoinReceiver016Contract, ReceiveCoinBrandedId>['args']>().toEqualTypeOf<
+      [CoinReceiver016Coin]
+    >();
+  });
+
+  it('resolves both submitCallTx arms to the results the interface promises', () => {
+    const callOptions = createCallTxOptions<CoinReceiver016Contract, ReceiveCoinBrandedId>(
+      compiledContract,
+      brandedCircuitId,
+      contractAddress,
+      privateStateId,
+      undefined,
+      [coin]
+    );
+    const scopedOptions = callOptions as CallTxOptionsWithPrivateStateId<
+      CoinReceiver016Contract,
+      ReceiveCoinBrandedId
+    >;
+
+    expectTypeOf(submitCallTx(providers, scopedOptions)).toEqualTypeOf<
+      Promise<FinalizedCallTxData<CoinReceiver016Contract, ReceiveCoinBrandedId>>
+    >();
+    expectTypeOf(submitCallTx(providers, scopedOptions, transactionContext)).toEqualTypeOf<
+      Promise<CallResult<CoinReceiver016Contract, ReceiveCoinBrandedId>>
+    >();
+  });
+
+  it('exposes the interface type it claims, not a widened one', () => {
+    expectTypeOf(
+      createCircuitCallTxInterface(providers, compiledContract, contractAddress, privateStateId)
+    ).toEqualTypeOf<CircuitCallTxInterface<CoinReceiver016Contract>>();
   });
 });

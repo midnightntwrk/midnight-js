@@ -55,6 +55,11 @@ export type CircuitCallTxInterface<C extends Contract.Any> = {
  * any argument list while the return type -- `CallTxOptions<C, PCK>`, which is
  * `CallOptionsWithArguments` underneath -- claims the real tuple: an unsound mismatch between what
  * is checked and what is returned.
+ *
+ * `circuitId` is constrained by `PCK extends Contract.ProvableCircuitId<C>`, which is the
+ * NAMESPACE member `keyof C['provableCircuits'] & string`. That `keyof` is what rejects a circuit
+ * id the contract does not declare; the brand plays no part in it, and a plain unbranded literal
+ * is accepted here.
  */
 export const createCallTxOptions = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -103,7 +108,9 @@ export const createCircuitCallTxInterface = <C extends Contract.Any>(
           contractAddress,
           privateStateId,
           txCtx?.getAdditionalMappings(),
-          callArgs as Contract.CircuitParameters<C, CircuitKey<Contract.ProvableCircuitId<C>>>
+          // `Contract.ProvableCircuitId<C>` is already the unbranded `keyof ... & string`, so no
+          // `CircuitKey` here: it would be a no-op that reads as if unbranding were load-bearing.
+          callArgs as Contract.CircuitParameters<C, Contract.ProvableCircuitId<C>>
         );
         return txCtx
           ? submitCallTx(providers, callOptions as CallTxOptionsWithPrivateStateId<C, Contract.ProvableCircuitId<C>>, txCtx)

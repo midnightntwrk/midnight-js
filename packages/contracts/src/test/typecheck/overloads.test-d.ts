@@ -262,7 +262,7 @@ describe('the retained-era contract type family pins the real 0.16 artifact shap
     //
     // Pinned as a positive assertion so that a future compact-js reverting to era-specific
     // contract types fails here loudly rather than silently restoring an assumption this file
-    // no longer makes. The three assertions above still pin the directional split.
+    // no longer makes. The four assertions above still pin the directional split.
     expectTypeOf<Counter016Contract>().toMatchTypeOf<Contract.Any>();
   });
 });
