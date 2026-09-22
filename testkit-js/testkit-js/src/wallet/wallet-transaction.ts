@@ -20,7 +20,6 @@ import { type FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/
 import type { FinalizedTransaction as V8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import {
   type ProviderSeam,
-  type UnboundTransaction,
   UntaggedPayloadError,
   type VersionedFinalizedTransaction,
   type VersionedUnboundTransaction
@@ -39,24 +38,8 @@ import { FORK_SCHEDULE } from './wallet-configuration-mapper';
 
 type VersionedWallet = Pick<WalletFacade, 'state'>;
 
-const LEDGER_V9_EPOCH = ProtocolVersion.epochOf(FORK_SCHEDULE.v9, FORK_SCHEDULE.v9);
-
 const activeProtocolVersion = async (wallet: VersionedWallet): Promise<ProtocolVersion.ProtocolVersion> =>
   (await Rx.firstValueFrom(wallet.state())).activeProtocolVersion;
-
-export const adoptUnbound = async (wallet: VersionedWallet, tx: UnboundTransaction): Promise<UnboundTx> =>
-  WalletTransaction.adopt('Unbound', tx, await activeProtocolVersion(wallet));
-
-export const adoptFinalized = async (wallet: VersionedWallet, tx: FinalizedTransaction): Promise<FinalizedTx> =>
-  WalletTransaction.adopt('Finalized', tx, await activeProtocolVersion(wallet));
-
-export const unwrapFinalized = (handle: FinalizedTx): FinalizedTransaction => {
-  const unwrapped = WalletTransaction.unwrapWithin<FinalizedTransaction>(handle, LEDGER_V9_EPOCH);
-  if (Either.isLeft(unwrapped)) {
-    throw unwrapped.left;
-  }
-  return unwrapped.right;
-};
 
 /**
  * The epoch the chain is in right now, which is the only one a wallet will
