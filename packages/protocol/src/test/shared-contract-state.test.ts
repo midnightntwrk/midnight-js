@@ -22,6 +22,7 @@ import { PROTOCOL_ERROR_CODES, StateDecodeFailedError } from '../errors';
 import { extractV9EncodedStateValue } from '../lib/era/envelope';
 import { type ContractStateDecoder, decodeContractStateWith } from '../lib/shared/contract-state';
 import { entryPointName } from '../lib/shared/verifier-keys';
+import { expectStructuredCloneable } from './clone-assertions';
 import { readHexFixture } from './fixtures';
 
 
@@ -151,7 +152,7 @@ describe('decodeContractStateWith', () => {
     const pojo = decodeContractStateWith(readHexFixture('state-migrated-v9.hex'), 'v9', ledgerV9);
 
     expect(Object.getPrototypeOf(pojo)).toBe(Object.prototype);
-    expect(() => structuredClone(pojo)).not.toThrow();
+    expectStructuredCloneable(pojo);
     for (const entry of pojo.entryPoints) {
       expect(Object.getPrototypeOf(entry)).toBe(Object.prototype);
     }

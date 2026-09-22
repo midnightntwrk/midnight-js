@@ -30,6 +30,7 @@ import type {
   PartitionedCallTranscript
 } from '../lib/shared/compose-types';
 import type { LedgerVersion } from '../lib/shared/ledger-version';
+import { expectStructuredCloneable } from './clone-assertions';
 import { emptyPartitionContext, fixturePath, readHexFixture } from './fixtures';
 
 // What parity means here, and what it deliberately does NOT mean.
@@ -673,10 +674,22 @@ describe('the two ledger eras run the same scenario', () => {
     const era = await loadLedgerEra(version);
     const golden = readHexFixture(FIXTURES[version].golden);
 
-    expect(() => structuredClone(era.extractState(golden))).not.toThrow();
-    expect(() => structuredClone(era.decodeContractState(golden))).not.toThrow();
-    expect(() => structuredClone(era.composeCallTx(callOptionsFor(version)))).not.toThrow();
-    expect(() => structuredClone(era.composeDeployTx(deployOptionsFor(version)))).not.toThrow();
+    expectStructuredCloneable(era.extractState(golden));
+    expectStructuredCloneable(era.decodeContractState(golden));
+    expectStructuredCloneable(era.composeCallTx(callOptionsFor(version)));
+    expectStructuredCloneable(era.composeDeployTx(deployOptionsFor(version)));
+  });
+
+  // Guards the guard: if this ever passes, `expectStructuredCloneable` has
+  // stopped distinguishing a handle from plain data and every use of it above
+  // has quietly become a no-op.
+  it('rejects a live WASM handle, which the previous "does not throw" form accepted', async () => {
+    const era = await loadLedgerEra('v9');
+    const handle = era.composeDeployTx(deployOptionsFor('v9'));
+    const smuggled = { ...handle, leaked: { __wbg_ptr: 1232224 } };
+
+    expect(() => structuredClone(smuggled)).not.toThrow();
+    expect(() => expectStructuredCloneable(smuggled)).toThrow();
   });
 
   // Both eras hand the offer factory the same split for the same call, and
