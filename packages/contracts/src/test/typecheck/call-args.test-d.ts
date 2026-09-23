@@ -48,7 +48,7 @@ describe('CallOptionsWithArguments', () => {
     >().toEqualTypeOf<[CoinReceiver016Coin]>();
   });
 
-  it('omits args entirely for a zero-argument circuit', () => {
+  it('omits args entirely for a LITERAL-keyed zero-argument circuit', () => {
     expectTypeOf<CallOptionsWithArguments<Counter016Contract, 'increment'>>().not.toHaveProperty(
       'args'
     );
@@ -72,6 +72,17 @@ describe('CallOptionsWithArguments', () => {
     type BrandedId = ProvableCircuitId<CoinReceiver016Contract, 'receive_coin'>;
     expectTypeOf<CallOptionsWithArguments<CoinReceiver016Contract, BrandedId>['args']>()
       .toEqualTypeOf<[CoinReceiver016Coin]>();
+  });
+
+  // The zero-argument arm of the same case, and the only assertion in this file that covers the
+  // half of the failure mode the header states: `args` staying present on a circuit that takes
+  // NONE. The literal-keyed omission assertion above cannot reach it -- no brand enters its
+  // computation, so it passes identically with and without `CircuitKey`. Drop the unbranding and
+  // the branded key resolves to `unknown[]`, which does NOT extend `[]`, so the conditional takes
+  // the wrong arm and this type gains a spurious REQUIRED `args`.
+  it('omits args for a zero-argument circuit at the BRANDED id too', () => {
+    type BrandedIncrementId = ProvableCircuitId<Counter016Contract, 'increment'>;
+    expectTypeOf<CallOptionsWithArguments<Counter016Contract, BrandedIncrementId>>().not.toHaveProperty('args');
   });
 });
 

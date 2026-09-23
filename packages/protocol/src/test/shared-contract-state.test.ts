@@ -164,6 +164,9 @@ describe('decodeContractStateWith', () => {
 
     expect(Object.getPrototypeOf(pojo)).toBe(Object.prototype);
     expectStructuredCloneable(pojo);
+    // Without this the loop below can run zero times and assert nothing: an empty `entryPoints`
+    // clones fine, so the per-entry half would be silently vacuous while the test stayed green.
+    expect(pojo.entryPoints.length).toBeGreaterThan(0);
     for (const entry of pojo.entryPoints) {
       expect(Object.getPrototypeOf(entry)).toBe(Object.prototype);
     }

@@ -725,6 +725,36 @@ describe('the two ledger eras run the same scenario', () => {
     );
   });
 
+  // The `Map` half of the same hole, and the half that matters more: `Object.entries(new Map(...))`
+  // is `[]` exactly as it is for a `Set`, but unlike `Set` a `Map` is a shape these methods really
+  // do return -- `claimedUnshieldedSpends` and `verifierKeys` above are both maps. Without these
+  // two the walk's `Map` branch could be deleted and every suite would stay green.
+  //
+  // Both halves the branch emits are pinned, because it enumerates keys AND values: a handle used
+  // as a key is as much of a leak as one used as a value, and only the value half would be caught
+  // by a branch that walked `map.values()` alone.
+  it('rejects a handle behind a Map value, the shape these methods really return', async () => {
+    const era = await loadLedgerEra('v9');
+    const plainResult = era.composeDeployTx(deployOptionsFor('v9'));
+    const withHandleAsMapValue = { ...plainResult, leaked: new Map([['increment', { __wbg_ptr: 1232224 }]]) };
+
+    expect(() => structuredClone(withHandleAsMapValue)).not.toThrow();
+    expect(() => expectStructuredCloneable(withHandleAsMapValue)).toThrowError(
+      /carries a WASM handle \(own `__wbg_ptr`\) at value\.leaked<map value 0>$/
+    );
+  });
+
+  it('rejects a handle used as a Map key', async () => {
+    const era = await loadLedgerEra('v9');
+    const plainResult = era.composeDeployTx(deployOptionsFor('v9'));
+    const withHandleAsMapKey = { ...plainResult, leaked: new Map([[{ __wbg_ptr: 1232224 }, 'increment']]) };
+
+    expect(() => structuredClone(withHandleAsMapKey)).not.toThrow();
+    expect(() => expectStructuredCloneable(withHandleAsMapKey)).toThrowError(
+      /carries a WASM handle \(own `__wbg_ptr`\) at value\.leaked<map key 0>$/
+    );
+  });
+
   // Both eras hand the offer factory the same split for the same call, and
   // answer with it. The retained CALL pipeline depends on exactly this: it can
   // only route a Zswap coin once it holds the split, and the factory is the
