@@ -41,11 +41,6 @@ jobs:
       # an undeclared binding shipped and cost a 13-minute shard to find (#1288,
       # fixed in `1d9d0ebc`).
       yarn_lint_paths: ./packages .github/scripts ./consumer-e2e
-      # ESLint used to be the ONLY static gate on `consumer-e2e/*.mjs`, and it
-      # does not know the framework's own types. This leg is where the typecheck
-      # belongs because it is the one that builds `packages/*/dist`, which is
-      # what those scripts resolve the framework through.
-      typecheck_consumer_e2e: true
     secrets: inherit
 
   cd-prerelease:

@@ -29,7 +29,10 @@ node consumer-e2e/fork-matrix-smoke.mjs pnp           # needs Docker
 ## These scripts are typechecked
 
 `yarn typecheck:consumer-e2e` runs `tsc` over every `.mjs` here through
-[`tsconfig.json`](./tsconfig.json), and CI runs it on the Midnight.js leg. It is
+[`tsconfig.json`](./tsconfig.json). CI runs it on the **Consumer E2E** lane,
+before the pack — that lane is the one with an unfiltered `yarn build`, and
+`fork-matrix-smoke.mjs` imports `@midnight-ntwrk/testkit-js` by name, so a leg
+that builds only `packages/*` cannot resolve what the check is checking. It is
 also in the pre-push hook, so a push carries it whether or not you remember.
 
 **Why it exists.** This directory is the only place a transaction crosses the
