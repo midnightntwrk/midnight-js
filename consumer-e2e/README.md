@@ -40,17 +40,27 @@ fork, and its call sites are the framework's own public entry points — but unt
 the check landed, the only static gate on them was ESLint, which does not know
 what `submitCallTx` takes. Two defects shipped through that gap and each cost a
 13-minute Hard fork shard to find: `contract` written for `compiledContract`, and
-an `args` member on a nullary circuit's options. Both now fail in seconds. That
-the gate still catches them is verified by mutation rather than assumed: reverting
-either one turns the lane red.
+an `args` member on a nullary circuit's options.
 
-**What it does and does not cover.** The framework's types are real, so options
-objects and result shapes are fully checked. The wrapped contracts are not: they
-are generated into the persona tree at run time and cannot be resolved from here,
+**The gate catches the first of those, and only that one is verified by mutation
+rather than assumed.** Reverting `compiledContract` to `contract` turns the lane
+red, as does reading a finalized record off the top level instead of `public`.
+The `args` defect it does NOT catch: a retained wrapper's `Contract` is declared
+`any` — necessarily, see `generated-personas.d.ts` — so `args: [1]` on a nullary
+retained circuit still typechecks. What rules that one out is the convention
+below, written at the call sites, not the type system. Do not read the check as
+covering it.
+
+**What it does and does not cover.** The framework's types are real, so result
+shapes are fully checked on both arms, and so is every member of a current-era
+options object. A retained options object is checked for its own members —
+`compiledContract` against `contract` is exactly that — but not for `circuitId`
+or `args`, which its `any` instance leaves open. The wrapped contracts cannot be
+resolved from here at all: they are generated into the persona tree at run time,
 so [`generated-personas.d.ts`](./generated-personas.d.ts) declares the shape they
-all share. That file carries what each declaration is allowed to assume and why
-the retained side is looser than the current one — read it before widening
-either.
+all share. That file carries what each declaration is allowed to assume, why the
+retained side is looser than the current one, and why nothing checks the file
+itself — read it before widening either.
 
 Two conventions follow from the check, both recorded at their call sites:
 
@@ -180,8 +190,9 @@ Each was hiding the next, which is why they are worth naming.
    wants `compiledContract`, not `contract`, and a nullary circuit's options
    carry no `args` at all. `.mjs` meant `tsc` never looked — which it now does,
    see [These scripts are typechecked](#these-scripts-are-typechecked). This is
-   the defect that check was built against, and reverting it is the mutation
-   that proves the check still works.
+   the defect that check was built against. Reverting the NAME half is the
+   mutation that proves the check still works; the `args` half it cannot see,
+   for the reason recorded there.
 4. **The deploy was not waited for.** The call leg ran before the indexer had
    served the new contract, which reads as `No contract deployed at ...` rather
    than as a race.

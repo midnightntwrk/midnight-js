@@ -25,16 +25,31 @@
  *
  * THE SUBJECT OF THE CHECK IS THE FRAMEWORK, not the codegen. `deployContract`,
  * `submitCallTx` and the records they answer with resolve against the real
- * workspace packages, and their options types are fully checked at every call
- * site here — a wrong option name or an unnarrowed result fails the lane. What
- * these declarations supply is only enough shape for those call sites to select
- * an overload at all.
+ * workspace packages, so a wrong option name or an unnarrowed result fails the
+ * lane at every call site here. What these declarations supply is only enough
+ * shape for those call sites to select an overload at all — and how much of the
+ * options object that leaves checked differs by arm. The current-era one is
+ * pinned, so its members are; the retained one is `any`, so `circuitId` and
+ * `args` are not. The `declare module` blocks below carry which is which.
  *
  * NO TOP-LEVEL `import`/`export` IN THIS FILE. It has to stay a script rather
  * than become a module, or the `declare module` blocks stop being ambient and
  * the wildcard specifiers go back to being unresolvable. Package types are
  * therefore reached through inline `import(...)` types, which do not change
  * that.
+ *
+ * NOTHING CHECKS THIS FILE, so an error written here does not fail the lane --
+ * it degrades to `any` and quietly takes call sites out of the check with it.
+ * `@tsconfig/node24` sets `skipLibCheck: true`, and a `.d.ts` is a lib file. It
+ * has already happened once: `Circuits<undefined>` and `ProvableCircuits<undefined>`
+ * were written for two types that take no parameter, so `provableCircuits`
+ * became `any` and the current-era `submitCallTx` options object stopped
+ * rejecting unknown members -- the very defect class this typecheck was built
+ * for. After editing a type reference below, run
+ *
+ *   tsc -p consumer-e2e/tsconfig.json --skipLibCheck false | grep generated-personas
+ *
+ * which is the only thing that reads them. Expect no output.
  */
 
 /**
@@ -65,8 +80,8 @@ type ForkCurrentContractCtor = new (
   witnesses: import('@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract').Witnesses<undefined>
 ) => {
   witnesses: import('@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract').Witnesses<undefined>;
-  circuits: import('@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract').Circuits<undefined>;
-  provableCircuits: import('@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract').ProvableCircuits<undefined>;
+  circuits: import('@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract').Circuits;
+  provableCircuits: import('@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract').ProvableCircuits;
   initialState(
     context: import('@midnight-ntwrk/midnight-js-protocol/compact-runtime').ConstructorContext<undefined>
   ): Promise<import('@midnight-ntwrk/midnight-js-protocol/compact-runtime').ConstructorResult<undefined>>;
