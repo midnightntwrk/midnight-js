@@ -248,10 +248,22 @@ describe('the retained-era contract type family pins the real 0.16 artifact shap
     expectTypeOf<Ledger8InitialStateResult>().not.toMatchTypeOf<ReturnType<Twin018['initialState']>>();
   });
 
-  it('is rejected BY the current era in turn, so neither shape is a subtype of the other', () => {
-    // @ts-expect-error - a retained-era contract's circuit context is not the current era's
-    const notCurrentEra: Contract.Any = contract016;
-    void notCurrentEra;
+  it('is accepted BY the current era since compact-js 3.0.0, which does not weaken era dispatch', () => {
+    // compact-js 3.0.0-rc.0 made `Contract` deliberately era-agnostic -- `Awaitable<A> = A | Promise<A>`
+    // and `CircuitContext = any` -- so a retained-era contract now satisfies `Contract.Any`. Before
+    // that bump this assignment was a type error, and this test asserted the two shapes were
+    // mutually exclusive.
+    //
+    // Nothing in this package depended on that exclusivity. Era selection is a RUNTIME decision:
+    // `resolveArtifactEra` (`../../internal/era.ts`) reads the artifact's shape and the
+    // compact-runtime version its own artifacts declare, and it is what catches a current-era
+    // contract passed raw with its `async` erased. `era-dispatch.test.ts` and
+    // `era-dispatch-ledger8.test.ts` cover that behaviour.
+    //
+    // Pinned as a positive assertion so that a future compact-js reverting to era-specific
+    // contract types fails here loudly rather than silently restoring an assumption this file
+    // no longer makes. The four assertions above still pin the directional split.
+    expectTypeOf<Counter016Contract>().toMatchTypeOf<Contract.Any>();
   });
 });
 

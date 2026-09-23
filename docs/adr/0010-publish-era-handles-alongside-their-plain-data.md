@@ -166,3 +166,52 @@ a type name are not on their own evidence that a value is plain —
   Rejected: it answers a different question. Freezing stops a caller mutating a
   value; it does nothing about module lifetime, cloneability or cross-era
   comparability, which are what the transport rule is for.
+
+## Amendment — the transport rule is now mechanised, not merely documented (2026-09-23)
+
+The decision above stands unchanged. This note records that the gap point 2
+left open has been closed.
+
+Point 2 closed with:
+
+> The `structuredClone` gate in
+> `packages/protocol/src/test/era-parity.test.ts` stays, but it DOCUMENTS the
+> rule rather than mechanising it: a `wasm-bindgen` instance is a plain object
+> with an own `__wbg_ptr` number, so it clones without throwing and the gate
+> records a meaningless value instead of failing. Closing that is its own
+> change; until then the rule rests on review, not on the gate.
+
+That change has landed. `expectStructuredCloneable`
+(`packages/protocol/src/test/clone-assertions.ts`) replaces
+`expect(() => structuredClone(x)).not.toThrow()` at every call site — the
+`LedgerEra` method sweep in `era-parity.test.ts` and the decoder result in
+`shared-contract-state.test.ts`. It walks the value's own structure for an
+object carrying an own `__wbg_ptr` and throws naming the path it found one at.
+A `wasm-bindgen` instance carries that property whether it is live or has
+already collapsed under a clone, so both shapes are rejected.
+
+Three things this does NOT change:
+
+- **`structuredClone` is still called**, and still for its own throw — a
+  function or a live proxy genuinely cannot cross a boundary. What is retired
+  is treating "did not throw" as evidence that anything crossed intact.
+- **The rule itself is unchanged.** Point 2 governs the `LedgerEra` facade, and
+  every member it names still carries plain data for the same reasons.
+- **The gate is a test, not a type.** It runs on the values these suites
+  actually produce; nothing stops a new member from carrying a handle until a
+  test exercises it.
+
+What is still NOT mechanised, and still rests on review: the walk reads own
+ENUMERABLE properties, plus `Map` and `Set` members and array elements. A
+handle behind a non-enumerable own property, or behind a prototype getter of a
+containing object, is not reached. The helper's own doc comment states this;
+closing it fully is not practical, and the values guarded here are decoded
+plain objects whose members are ordinary own enumerable properties.
+
+So point 2's sentence "the rule rests on review, not on the gate" should now be
+read as applying only to those unreachable shapes. For everything the walk
+reaches, deleting the plain-data guarantee makes a test fail. The walk is itself
+guarded: `era-parity.test.ts` asserts it rejects a collapsed-handle shape that
+the previous form accepted, and a handle behind a `Set`, behind a `Map` value,
+and used as a `Map` key — each with the path in the message, so a dead walk
+cannot stay green.
