@@ -68,14 +68,13 @@ The name of the circuit that was called to create the call
 
 The one code every recorded-failure class in this package answers to.
 
-`instanceof` is the idiom this hierarchy is built for, but it is identity-
-based: with two copies of this package resolved in one process it returns
-`false` and a failed transaction walks past a correctly written handler.
-A consumer that cannot import these classes, or cannot rely on there being
-one copy of them, branches on this instead. Subclasses inherit it rather
-than each declaring their own -- what a caller needs to distinguish is
-WHICH transaction failed, which the class and the record answer, not a
-finer code.
+Branch on this rather than `instanceof` where these classes cannot be
+imported, or where there may be more than one copy of this package in the
+process. Subclasses inherit it rather than each declaring their own.
+
+#### See
+
+[ErrorTaxonomy](../../documents/ErrorTaxonomy.md) for why the code sits on the base.
 
 #### Inherited from
 

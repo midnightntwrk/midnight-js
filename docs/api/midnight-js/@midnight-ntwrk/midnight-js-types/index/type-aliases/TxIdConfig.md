@@ -1,0 +1,25 @@
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-types](../../README.md) / [index](../README.md) / TxIdConfig
+
+# Type Alias: TxIdConfig
+
+> **TxIdConfig** = `object`
+
+Starts a contract state stream at the given transaction identifier.
+
+## Properties
+
+### txId
+
+> `readonly` **txId**: [`TransactionId`](https://github.com/midnightntwrk/midnight-ledger)
+
+The transaction identifier indicating where to begin the state stream.
+
+***
+
+### type
+
+> `readonly` **type**: `"txId"`
