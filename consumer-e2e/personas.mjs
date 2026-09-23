@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// @ts-check
+//
 // The two dApp personas the split-topology milestone is about, and the
 // declarations that make them different from each other.
 //

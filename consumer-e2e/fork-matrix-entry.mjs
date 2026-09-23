@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// @ts-check
+//
 // The fork-crossing scenario, run from inside an installed dApp.
 //
 // One process, one build, holding a contract from each ledger era and
@@ -27,9 +29,30 @@ import { createInterface } from 'node:readline';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
 
+// WHERE EACH NAME COMES FROM IS PART OF WHAT THIS FILE TESTS. A consumer holds
+// the published surface and nothing else, so reaching past it here would prove
+// the framework works through a door its users do not have.
+//
+// The entry points come off `contracts`, their own package. `networkHeadVersion`
+// and `CompiledContract` are published too, but on the BARREL -- `protocol`'s
+// root is not a consumer-facing import, and taking them off it made this file
+// look like it needed one. See `packages/midnight-js/src/index.ts` and
+// `src/protocol.ts` for the published set.
 import { deployContract, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
-import { loadLedgerEra, networkHeadVersion } from '@midnight-ntwrk/midnight-js-protocol';
-import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { networkHeadVersion, protocol } from '@midnight-ntwrk/midnight-js';
+// THE ONE IMPORT HERE THAT IS NOT CONSUMER-FACING, and it is a gap in
+// `contracts`, not a shortcut taken here. `readRetainedLedger` has to decode a
+// RETAINED-era contract state served by the indexer, and `contracts` publishes
+// no way to: `getStates`/`getPublicStates` decode with the current era and
+// refuse anything else, and the `Ledger8` namespace carries types and errors but
+// no decoder. The only public alternative is `nextContractStateEncoded` off a
+// call result -- the state the call computed LOCALLY, not the state the chain
+// stored, which is the whole of what the continuity assertions are about.
+// Tracked as the `getPublicStates` retained-arm gap; when that lands, this
+// import goes and `readRetainedLedger` moves onto it.
+import { loadLedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+
+const { CompiledContract } = protocol;
 
 const config = JSON.parse(process.env.FORK_CONFIG ?? '{}');
 
@@ -644,7 +667,10 @@ const retainedProvidersFor = (era, wallet, key) =>
  *
  * Options read exactly like `callRetained`'s: `compiledContract` takes the RAW
  * instance -- the retained era has no `CompiledContract` container -- and every
- * twin's constructor is nullary, so the options carry no `args` member at all.
+ * twin's constructor is nullary, so `args` is the empty tuple. Written out
+ * rather than omitted, for the reason `callRetained` records: an absent `args`
+ * and `args: []` are the same thing to both entry points, and only the second
+ * form typechecks from a helper this generic.
  *
  * No `privateStateId`/`initialPrivateState` pair. Not an omission: none of these
  * twins' constructors reads a witness, and the retained runtime passes an absent
@@ -660,7 +686,7 @@ const retainedProvidersFor = (era, wallet, key) =>
  */
 const deployRetained = async (key, providers) => {
   const { Contract } = await import(`@midnight-ntwrk/fork-retained-${key}`);
-  const deployed = await deployContract(providers, { compiledContract: new Contract({}) });
+  const deployed = await deployContract(providers, { compiledContract: new Contract({}), args: [] });
   const state = await waitForContract(providers.publicDataProvider, deployed.contractAddress, 5 * 60_000);
 
   // `deployTxData` is a `VersionedFinalizedTxData`, which carries `txId` at the
@@ -678,8 +704,19 @@ const deployRetained = async (key, providers) => {
  * Calls one circuit on a retained twin.
  *
  * `compiledContract` takes the raw instance -- the retained era has no
- * `CompiledContract` container -- and a nullary circuit's options carry no
- * `args` member at all.
+ * `CompiledContract` container.
+ *
+ * `args` is always PRESENT, and `[]` for a nullary circuit rather than absent.
+ * Behaviourally identical -- both entry points normalise an absent `args` with
+ * `'args' in options ? options.args : []` (`deploy-contract.ts`,
+ * `internal/ledger8-entry.ts`, `unproven-call-tx.ts`) -- and it is what lets
+ * this call site be TYPECHECKED. The options types make `args` conditional on
+ * the circuit's own parameter list, and a conditionally SPREAD member reaches
+ * the checker as optional, which no arm of that conditional accepts. This
+ * helper is deliberately generic over every twin and circuit, so it cannot
+ * satisfy the conditional by being specific; passing the empty tuple does it
+ * instead. `args: undefined` would NOT: `'args' in options` is then true and
+ * the normalisation hands `undefined` straight through.
  */
 const callRetained = async (key, providers, contractAddress, call, context) => {
   const { Contract } = await import(`@midnight-ntwrk/fork-retained-${key}`);
@@ -687,7 +724,7 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
     compiledContract: new Contract({}),
     contractAddress,
     circuitId: call.circuitId,
-    ...(call.args === undefined ? {} : { args: call.args(context) })
+    args: call.args === undefined ? [] : call.args(context)
   });
 
   // Read through the SAME shape the current-era arm answers with -- `public` for
@@ -751,6 +788,11 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
  *
  * Closing those three needs a circuit that does not exist in the source yet, so
  * it is a fixture change rather than a harness one.
+ *
+ * THE ONE FUNCTION HERE THAT REACHES PAST THE CONSUMER SURFACE, through
+ * `loadLedgerEra`. That is a gap in `contracts`, not a shortcut: see the import
+ * block at the top of this file for what was tried instead and why the public
+ * alternative would weaken every assertion built on this.
  */
 const readRetainedLedger = async (key, providers, contractAddress, read) => {
   const [{ ledger }, runtime, { utils }] = await Promise.all([
@@ -842,9 +884,9 @@ await leg('pre-fork head era', () => networkHeadVersion(session.providers.public
 // measurement of `protocol` rather than of `contracts`.
 await leg('pre-fork retained deploy', async () => {
   const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
-  // Raw instance, no `args`, no private-state pair -- `deployRetained` carries
+  // Raw instance, empty `args`, no private-state pair -- `deployRetained` carries
   // why each of the three is written the way it is.
-  const deployed = await deployContract(session.providers, { compiledContract: new Contract({}) });
+  const deployed = await deployContract(session.providers, { compiledContract: new Contract({}), args: [] });
 
   deployment = { contractAddress: deployed.contractAddress };
   // Announced so the driver can ask the NODE about the same contract. The
@@ -865,13 +907,17 @@ await leg('pre-fork retained call', async () => {
   const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
   const submitted = await submitCallTx(session.providers, {
     // `compiledContract`, not `contract`: the retained era has no CompiledContract
-    // container, so the instance is passed raw. And a nullary circuit's options
-    // carry no `args` at all -- `Ledger8CallTxOptionsBase` collapses to the target
-    // when the parameter list is empty. Both were wrong here and neither was
-    // caught, because this file is .mjs and never sees `tsc`.
+    // container, so the instance is passed raw. `increment` is nullary, so `args`
+    // is the EMPTY tuple -- not absent, and not arguments the circuit does not
+    // take. This call site once had the name wrong and the arguments wrong, and
+    // neither was caught because nothing typechecked this file.
+    // `consumer-e2e/tsconfig.json` is what now does: either mistake fails the
+    // `typecheck:consumer-e2e` lane in seconds instead of a Hard fork shard in
+    // thirteen minutes.
     compiledContract: new Contract({}),
     contractAddress: deployment.contractAddress,
-    circuitId: CIRCUIT_ID
+    circuitId: CIRCUIT_ID,
+    args: []
   });
   // The RETAINED arm resolves a `Ledger8FinalizedCallTxData` -- `{ circuitId,
   // public, private }` -- which now carries the finalized record on `public`
@@ -979,14 +1025,12 @@ await leg('envelope tag across the boundary', () =>
 await leg('post-fork keep-state call through the same call site', async () => {
   const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
   const submitted = await submitCallTx(session.providers, {
-    // `compiledContract`, not `contract`: the retained era has no CompiledContract
-    // container, so the instance is passed raw. And a nullary circuit's options
-    // carry no `args` at all -- `Ledger8CallTxOptionsBase` collapses to the target
-    // when the parameter list is empty. Both were wrong here and neither was
-    // caught, because this file is .mjs and never sees `tsc`.
+    // Written exactly as the pre-fork call above, which is the point of the leg:
+    // the SAME call site, unchanged, on the other side of the boundary.
     compiledContract: new Contract({}),
     contractAddress: deployment.contractAddress,
-    circuitId: CIRCUIT_ID
+    circuitId: CIRCUIT_ID,
+    args: []
   });
   // The RETAINED arm resolves a `Ledger8FinalizedCallTxData` -- `{ circuitId,
   // public, private }` -- which now carries the finalized record on `public`
@@ -1306,6 +1350,13 @@ const MATRIX = [
  */
 const compiledContractFor = async (entry, zkConfigPath) => {
   const module = await import(`@midnight-ntwrk/fork-current-${entry.key}`);
+  // Annotated, because the specifier is a template literal: a dynamic import
+  // resolves to `any` however the package is declared, and `make` would then
+  // infer `PS` as `unknown` and match no `deployContract` arm -- taking the
+  // whole leg's options object out of the check with it. `ForkCurrentContractCtor`
+  // carries what every wrapper in this matrix actually is; the `typeof` guard
+  // below is what makes the annotation honest at run time rather than asserted.
+  /** @type {ForkCurrentContractCtor} */
   const contract = module.Contract ?? module.default?.Contract;
   if (typeof contract !== 'function') {
     throw new Error(`@midnight-ntwrk/fork-current-${entry.key} exports no Contract`);
@@ -1348,7 +1399,12 @@ const runMatrixContract = async (entry) => {
         compiledContract,
         contractAddress,
         circuitId: call.circuitId,
-        ...(call.args === undefined ? {} : { args: call.args(context) })
+        // Always present, `[]` for a nullary circuit -- `callRetained` carries
+        // why, and it holds identically on this arm: `unproven-call-tx.ts`
+        // normalises an absent `args` to the empty tuple, and a conditionally
+        // SPREAD member reaches the checker as optional, which the options type
+        // does not admit.
+        args: call.args === undefined ? [] : call.args(context)
       });
       if (call.capture !== undefined) {
         context[call.capture] = submitted.private.result;

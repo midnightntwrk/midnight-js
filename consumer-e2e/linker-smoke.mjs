@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// @ts-check
+//
 // The isolated-linker install smoke (spec AC6, split-topology milestone).
 //
 // Builds each dApp persona outside the workspace, installs it from the packed

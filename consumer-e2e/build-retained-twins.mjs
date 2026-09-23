@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// @ts-check
+//
 // Retained-era twins of the e2e suite's contracts.
 //
 // The fork-crossing question -- deployed below the boundary, called above it -- can only be

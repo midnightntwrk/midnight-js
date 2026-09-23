@@ -26,6 +26,41 @@ node consumer-e2e/linker-smoke.mjs pnp retained
 node consumer-e2e/fork-matrix-smoke.mjs pnp           # needs Docker
 ```
 
+## These scripts are typechecked
+
+`yarn typecheck:consumer-e2e` runs `tsc` over every `.mjs` here through
+[`tsconfig.json`](./tsconfig.json), and CI runs it on the Midnight.js leg. It is
+also in the pre-push hook, so a push carries it whether or not you remember.
+
+**Why it exists.** This directory is the only place a transaction crosses the
+fork, and its call sites are the framework's own public entry points — but until
+the check landed, the only static gate on them was ESLint, which does not know
+what `submitCallTx` takes. Two defects shipped through that gap and each cost a
+13-minute Hard fork shard to find: `contract` written for `compiledContract`, and
+an `args` member on a nullary circuit's options. Both now fail in seconds. That
+the gate still catches them is verified by mutation rather than assumed: reverting
+either one turns the lane red.
+
+**What it does and does not cover.** The framework's types are real, so options
+objects and result shapes are fully checked. The wrapped contracts are not: they
+are generated into the persona tree at run time and cannot be resolved from here,
+so [`generated-personas.d.ts`](./generated-personas.d.ts) declares the shape they
+all share. That file carries what each declaration is allowed to assume and why
+the retained side is looser than the current one — read it before widening
+either.
+
+Two conventions follow from the check, both recorded at their call sites:
+
+- **`args` is always present**, and `[]` for a nullary circuit. Identical at run
+  time — every entry point normalises an absent `args` to the empty tuple — and
+  it is what lets a helper generic over many circuits typecheck at all.
+- **The framework is imported the way a consumer imports it.** Entry points come
+  off `@midnight-ntwrk/midnight-js-contracts`; `networkHeadVersion` and
+  `CompiledContract` come off the `@midnight-ntwrk/midnight-js` barrel, not
+  `protocol`'s root. The single remaining non-consumer import is
+  `loadLedgerEra`, and it is a gap in `contracts` rather than a shortcut taken
+  here — `readRetainedLedger` explains it.
+
 ## The personas
 
 `retained` and `current` each pin one Compact runtime and prove the framework
@@ -140,7 +175,10 @@ Each was hiding the next, which is why they are worth naming.
    for exactly this hazard.
 3. **`submitCallTx` was called with the wrong option names.** The retained arm
    wants `compiledContract`, not `contract`, and a nullary circuit's options
-   carry no `args` at all. `.mjs` means `tsc` never looked.
+   carry no `args` at all. `.mjs` meant `tsc` never looked — which it now does,
+   see [These scripts are typechecked](#these-scripts-are-typechecked). This is
+   the defect that check was built against, and reverting it is the mutation
+   that proves the check still works.
 4. **The deploy was not waited for.** The call leg ran before the indexer had
    served the new contract, which reads as `No contract deployed at ...` rather
    than as a race.

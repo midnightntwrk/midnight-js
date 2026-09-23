@@ -22,6 +22,15 @@ on:
         description: Optional paths to include when running 'yarn lint'' (i.e., ./packages)
         required: false
         default: ''
+      typecheck_consumer_e2e:
+        type: boolean
+        description: >-
+          Whether to typecheck consumer-e2e/*.mjs. Opt-in, and set only by the
+          midnight-js leg: the check resolves the framework through the
+          packages/*/dist that leg's build step produces, so running it anywhere
+          else would measure a tree that has not been built.
+        required: false
+        default: false
 
 jobs:
   ci:
@@ -63,6 +72,19 @@ jobs:
       # testkit workspaces are typechecked in their own leg.
       - name: Typecheck tests
         run: yarn typecheck:tests:core
+
+      # `consumer-e2e/*.mjs` is the ONLY place a transaction crosses the fork, and
+      # until this step it had no static gate but ESLint -- which does not know
+      # what `submitCallTx` takes. Two framework-API defects shipped through that
+      # gap and were found by running the scenario: `contract` written for
+      # `compiledContract`, and arguments on a nullary circuit's options
+      # (consumer-e2e/README.md, "Four harness defects"). Both fail here in
+      # seconds now, which is verified by mutation rather than assumed. Not part
+      # of `typecheck:tests:core`: that one walks `packages/*/tsconfig.json`, and
+      # this tree is not a workspace.
+      - name: Typecheck the consumer-e2e harness
+        if: ${{ inputs.typecheck_consumer_e2e }}
+        run: yarn typecheck:consumer-e2e
 
       # `.github/scripts` is not a workspace, so `turbo run test` never reaches it.
       # The gate these cover runs in `workflow-permissions.yml`, which deliberately
