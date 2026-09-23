@@ -1021,8 +1021,18 @@ const walletContext = async (wallet) => ({
   unshieldedAddress: new Uint8Array(Buffer.from((await wallet.wallet.unshielded.getAddress()).hexString, 'hex'))
 });
 
-/** How many calls the in-flight probe will drive before giving up on meeting the boundary. */
-const IN_FLIGHT_MAX_ATTEMPTS = 12;
+/**
+ * How many calls the in-flight probe will drive before giving up on meeting the boundary.
+ *
+ * MEASURED, not guessed. The first run of this probe reported
+ * `stoppedBecause: 'the attempt cap was reached before the fork landed'` at a cap
+ * of 12 -- twelve calls at roughly 18s each cover about 3m36s, and `enactFork()`
+ * closes the window in about 3m41s, so the probe fell silent moments before the
+ * one event it exists to observe. The cap is here to stop a runaway loop, not to
+ * end the probe early; at 20 the loop is bounded by the fork landing, with
+ * `IN_FLIGHT_DEADLINE` still behind it for a fork that never does.
+ */
+const IN_FLIGHT_MAX_ATTEMPTS = 20;
 /** Its own ceiling, so a fork that never lands cannot leave the loop running until `probe`'s deadline. */
 const IN_FLIGHT_DEADLINE = 6 * 60_000;
 
