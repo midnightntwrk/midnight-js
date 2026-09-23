@@ -179,20 +179,10 @@ export interface Ledger8Runtime {
  * `(retained artifact, head era)` pairings that cannot run and the provider
  * sets that cannot carry a retained-era transaction.
  *
- * The two acquisitions are independent and are started together; keep them
- * that way, because neither needs the other's answer.
- *
- * Every retained-era operation funnels through here — the call arm and the
- * deploy arm both — which is why the seam check belongs here rather than in
- * each of them.
- *
- * The era checked is `resolved.head`, because that is what picks the seam arm
- * in {@link submitLedger8Tx}: a pre-fork head crosses as `{ version: 'v8',
- * txBytes }` and a post-fork head as `{ version: 'v9', tx }`, since the tag
- * names the runtime that produced the bytes and keep-state composes on the
- * CURRENT era. Checking the artifact's era instead would refuse every keep-state
- * operation whose wallet serves only the current era — which is the ordinary
- * post-fork wallet.
+ * The two acquisitions are independent and are started together; keep them that
+ * way. Every retained-era operation funnels through here — the call arm and the
+ * deploy arm both — so the seam check belongs here rather than in each of them.
+ * The era checked is `resolved.head`, not the artifact's.
  *
  * @param providers The provider set, for the one head read and for the three
  * write seams' era declarations.
@@ -207,7 +197,9 @@ export interface Ledger8Runtime {
  * @throws Ledger8RuntimeMissingError if the retained runtime cannot be acquired.
  * @throws SeamEraUnsupportedError if a write seam does not serve the era this
  * operation's payloads will carry, which is the head era.
- * @see {@link EraDispatch} for the pairing table.
+ * @see {@link EraDispatch} for the pairing table, and for why the seam check
+ * reads the head era rather than the artifact's.
+ * @see {@link KeepStatePipeline} for why both acquisitions start together.
  */
 export const acquireLedger8Runtime = async (
   providers: Ledger8RuntimeProviders,
@@ -237,27 +229,15 @@ export const acquireLedger8Runtime = async (
  * message: a long run of hex, a long run of base64 or base64url, or a long list
  * of decimal byte values.
  *
- * Matched by SHAPE rather than by any provider's message format, because the
- * set of providers is open. Each alternative is deliberately narrow:
+ * Matched by SHAPE, not by any provider's message format. Every floor and every
+ * lookahead here is load-bearing: each one keeps a high-value diagnostic — a
+ * URL path, a class name — from being eaten as if it were a payload. DO NOT
+ * widen or "simplify" an alternative without reading why its floor is where it
+ * is. A secret shorter than 12 bytes is NOT redacted; see
+ * {@link Ledger8SeamFailedError} for why this is best effort, not a guarantee.
  *
- * - HEX at 24 characters and up, which is a 12-byte value. The floor is not
- *   lower because a run of hex-alphabet characters can be an ordinary word
- *   (`decade`, `defaced`); at 24 it cannot be. A secret shorter than 12 bytes
- *   is NOT redacted — see {@link Ledger8SeamFailedError} for why this is stated
- *   as best effort rather than as a guarantee.
- * - BASE64 / BASE64URL at 40 characters and up, and only when the run mixes
- *   lower case, upper case and a digit. That mixture is what separates an
- *   encoded payload from a URL path or a long class name, both of which are
- *   high-value diagnostics: `com/api/v1/graphql/subscriptions` has no upper
- *   case, and `ContractStateDeserializationFailed` has no digit, so neither is
- *   eaten. Do not drop the three lookaheads to "simplify" this — without them
- *   the endpoint a misconfiguration names is exactly what disappears.
- * - A DECIMAL BYTE LIST of 13 values or more, which is what
- *   `JSON.stringify(new Uint8Array(...))` and Node's own inspection of a typed
- *   array produce. Commas and spaces break the other two alternatives, so
- *   without this a payload rendered as numbers passes through untouched.
- *
- * @see {@link KeepStatePipeline} for what each alternative catches and misses.
+ * @see {@link KeepStatePipeline} for each alternative's floor, what it catches
+ * and what it misses.
  */
 const PAYLOAD_SHAPED = new RegExp(
   [
@@ -349,25 +329,15 @@ const redact = (text: string): string => {
  * Rebuilds an external failure as a plain {@link Error} carrying its class
  * name, a redacted message, a redacted stack and a redacted `cause` chain.
  *
- * The provider's ENUMERABLE PROPERTIES are dropped — that is where HTTP clients
- * keep echoed request bodies, and there is no shape-independent way to redact
- * an arbitrary object graph. Everything else is kept REDACTED rather than
- * dropped, because dropping it buys nothing the redaction does not already buy:
- *
- * - The `cause` CHAIN is where modern wrapping errors keep the diagnosis. A
- *   bare `fetch` failure is `Error: fetch failed` with the real reason — wrong
- *   port, DNS, TLS, connection refused — one or two links down. Truncating at
- *   depth one renders every one of those identically.
- * - The STACK is where a bug in the caller's OWN provider implementation is
- *   located. A fresh stack points at this function instead, which is the one
- *   place the answer certainly is not. Frames are paths and function names, and
- *   they go through the same redaction anyway.
+ * The provider's ENUMERABLE PROPERTIES are the one thing DROPPED. Everything
+ * else — class name, message, stack and `cause` chain — is kept REDACTED.
  *
  * @param cause Whatever the provider rejected with — `unknown`, because a
  * rejection is not obliged to be an `Error`.
  * @param depth How many links have already been rebuilt.
  * @returns A plain error safe to hand to a logger.
- * @see {@link KeepStatePipeline} for what is dropped and what is kept redacted.
+ * @see {@link KeepStatePipeline} for why that split is where it is, and why
+ * neither the stack nor the chain may be truncated.
  */
 const sanitizeSeamCause = (cause: unknown, depth = 0): Error => {
   const nested = isErrorLike(cause) ? (cause as Error).cause : undefined;
@@ -882,19 +852,13 @@ export const findLedger8Contract = async (
  * Refuses a retained-era transaction the node recorded with a non-success
  * status.
  *
- * A bare `Error` rather than {@link CallTxFailedError}, and the reason is a
- * type boundary rather than an oversight: that class carries a
- * current-era-only `FinalizedTxData`, and a retained-era record is the OTHER
- * arm of the read surface's union, which is not assignable to it. Narrowing
- * that class's property to the union would break every consumer that reads
- * `finalizedTxData.tx` today. The failure surface for this arm is settled
- * together with the submit-rejection handler that replaces this propagation,
- * so this fails closed and names the status in the meantime rather than
- * returning a record that reads as a success.
+ * Raises the retained arm's own class rather than {@link CallTxFailedError},
+ * which carries a current-era-only `FinalizedTxData`.
  *
  * @param record The finalized record the read surface reported.
  * @param circuitId The circuit this flow ran.
  * @throws Ledger8CallTxFailedError if the recorded status is not `SucceedEntirely`.
+ * @see {@link ErrorTaxonomy} for why the two eras cannot share a record type.
  */
 const assertLedger8TxSucceeded = (record: VersionedFinalizedTxData, circuitId: string): void => {
   if (record.status === SucceedEntirely) {
@@ -936,24 +900,13 @@ const assertLedger8DeploySucceeded = (
  * Refuses a finalized record the head this operation resolved cannot have
  * recorded.
  *
- * `version` on the record SELECTS the runtime of the live `tx` handle beside
- * it, so a mislabelled record does not fail loudly: a caller that narrows on
- * it reaches into the other ledger module and is handed a plausible wrong
- * value. The current era refuses the mirror of this at the same seam, through
- * `requireV9Record`. This is the retained arm's half, and it compares the
- * record against the HEAD rather than against a fixed era, because a
- * retained-era call is legitimately recorded by EITHER era -- which is why the
- * result type keeps `version` a union in the first place.
+ * Compares the record against the HEAD, not against a fixed era. It does NOT
+ * assert that the result's `era` and the record's `version` agree: those
+ * legitimately disagree, since `era: 'ledger8'` with `version: 'v9'` IS a
+ * keep-state transaction.
  *
- * What this does NOT assert is that the result's `era` and the record's
- * `version` agree. They legitimately disagree: `era: 'ledger8'` with
- * `version: 'v9'` IS a keep-state transaction. The agreement that has to hold
- * is between the record and the head the operation started on.
- *
- * Checked BEFORE the status, because `status` is a field of the very record
- * whose provenance is in doubt. A call that both failed and came back
- * mislabelled therefore reports the era fault, which is the one naming a cause
- * a caller can act on.
+ * KEEP THIS AHEAD OF THE STATUS CHECK. `status` is a field of the very record
+ * whose provenance is in doubt.
  *
  * @param record The finalized record the read surface returned.
  * @param head The era the network head was on when this operation started.
@@ -963,6 +916,8 @@ const assertLedger8DeploySucceeded = (
  * for its transaction id, a deploy for its address. Named rather than fixed so
  * the refusal points a caller at the method that actually answered.
  * @throws EraInvariantViolationError if the record's era is not the head's.
+ * @see {@link EraDispatch} for why a mislabelled record fails silently without
+ * this, and why the check precedes the status read.
  */
 const assertLedger8RecordEra = (
   record: VersionedFinalizedTxData,
@@ -1299,9 +1254,7 @@ export interface Ledger8DeployedState {
  * attempt lands at a different address.
  *
  * The verifier keys are fetched for EVERY entry point the artifact declares,
- * off the artifact rather than off any state: a retained constructor builds
- * every slot blank and the retained deploy registers no keys of its own, so a
- * map naming anything else puts a contract on chain that nothing can call.
+ * off the artifact rather than off any state.
  *
  * @param providers The provider set.
  * @param options The deployment the entry point received.
@@ -1318,6 +1271,8 @@ export interface Ledger8DeployedState {
  * private-state provider then refused to store the signing key or the initial
  * private state. It carries the key either way.
  * @throws Every error {@link runLedger8Deploy} raises.
+ * @see {@link KeepStatePipeline} for why every slot has to be registered, and
+ * for the order after submission.
  */
 export const submitLedger8DeployTx = async (
   providers: Ledger8DeployEntryProviders,

@@ -359,6 +359,23 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 ```
 
+## Architecture Documents
+
+The reasoning behind this package's shape lives in `docs/`, not in the source
+docstrings. Each file is registered with TypeDoc through `projectDocuments`, so
+it is a page in the generated API reference and `@see {@link Title}` in a
+docstring resolves to it.
+
+| Document | What it explains |
+|---|---|
+| [Version-tagged payloads](./docs/version-tagged-payloads.md) | Why a retained-era payload crosses a seam as bytes, the three things the `version` tag deliberately does not establish, and why ledger parameters travel with the state |
+| [Seam era declarations](./docs/seam-era-declarations.md) | Why `supportedEras` is read before an operation starts and still not trusted, why the two era refusals stay distinct, and what the lifting adapters exist to avoid |
+| [Reading the head era](./docs/reading-the-head-era.md) | The caching rule `queryLatestProtocolVersion` imposes, why it takes no force-refresh option, and when to prefer the `protocolVersion` a read already carries |
+
+Docstrings in `src/` carry the API contract: what a symbol does, its
+parameters, what it returns and what it throws. Anything that answers "why is
+it built this way" belongs in a document above, stated once.
+
 ## Resources
 
 - [Midnight Network](https://midnight.network)

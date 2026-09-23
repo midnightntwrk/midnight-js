@@ -493,10 +493,57 @@ the caller supplies none. `undefined` there means either nothing stored or an
 entry this framework did not write; the breadcrumb above is what separates the
 two.
 
-It diverges from the current era in one case, deliberately. Where
-`setOrGetInitialSigningKey` samples a fresh key when the store holds none, the
-retained arm reports `undefined`. A key sampled at attach time bears no relation
-to the authority the chain already holds for a contract this caller did not
-deploy, and the retained era has no governance arm at all, so there is no
-maintenance interface on `Ledger8FoundContract` for such a key to be used
-through. Storing one would put a key on record that can maintain nothing.
+It diverges from the current era in THREE cases, each deliberate.
+
+**1. Nothing is sampled.** Where `setOrGetInitialSigningKey` samples a fresh key
+when the store holds none, the retained arm reports `undefined`. A key sampled at
+attach time bears no relation to the authority the chain already holds for a
+contract this caller did not deploy, and the retained era has no governance arm
+at all, so there is no maintenance interface on `Ledger8FoundContract` for such a
+key to be used through. Storing one would put a key on record that can maintain
+nothing and report it as though it could.
+
+**2. An unusable or unreadable entry reads as absent**, and the attach still
+succeeds — where the current era reports whatever the store answered, unchecked.
+The blast-radius argument for the content half is at
+`fromStoredLedger8SigningKey`; the read half is the catch around the lookup.
+
+**3. A supplied key is REFUSED rather than reported back.** A supplied key is
+validated through the read's own rule before it is stored, where the current era
+stores whatever it was handed. `Ledger8SigningKey` is `string`, so
+`signingKey: ''` type-checks; stored unchecked it would be reported on THIS
+attach and read as absent on the NEXT one, out of the same store, with nothing
+erroring either time — and the entry it replaced would already be gone. The
+caller passed this value in this call, so a refusal is cheap here in a way it is
+not in case 2. The refusal is `Ledger8SigningKeyUnusableError`, raised BEFORE the
+write, so a refused key replaces nothing.
+
+The supplied-key guard is `!== undefined`, where the current era's rule uses
+truthiness. That difference is load-bearing: a falsy supplied key must reach the
+refusal in case 3, not fall through to the read as though nothing had been
+supplied.
+
+A supplied key REPLACES whatever is held for that address rather than falling
+back to it, because replacing is the documented remedy for an entry this
+framework cannot use.
+
+### Why the reported key is always present and possibly `undefined`
+
+`Ledger8FoundContract.signingKey` is declared as `Ledger8SigningKey | undefined`
+rather than as an optional member. It is written on every attach,
+`exactOptionalPropertyTypes` is off in this package, and an optional member
+invites `found.signingKey!` at a call site where the absent case is the ordinary
+one.
+
+It is REQUIRED on `Ledger8DeployedContract`, and that is the whole difference
+between the two handles: a deploy always has a key, because it built the
+authority; an attach has one only if a deploy on this machine stored it, or the
+caller supplied one.
+
+`undefined` collapses three cases — nothing stored; something stored this
+framework did not write; the entry could not be read at all. Neither of the last
+two fails the attach, because nothing on this arm CONSUMES the key: the retained
+era exposes no maintenance interface, so a circuit call would otherwise stop
+working over a value it never reads. Both are reported to the logger provider as
+a DEBUG-level dispatch breadcrumb, which is the only place the three are
+distinguishable.

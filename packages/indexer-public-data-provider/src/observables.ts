@@ -258,15 +258,15 @@ export const contractAddressToLatestBlockOffset$ =
  * traffic** — server-side filtered by `contractAddress`; only state
  * changes for this contract flow through the WebSocket.
  *
- * Emits one {@link ContractState} per state change (per-change feed,
- * not per-block snapshot). Used by `contractStateObservable.all` where
- * the change-feed semantics fit. Not used by `latest`/`blockHeight`/`blockHash`
- * — those need the per-block view from {@link blockOffsetToBlock$} +
- * {@link blockToContractState$} because `Rx.skip(1)` on a per-change
- * stream would skip a single change rather than a single block, giving
- * `inclusive: false` a subtly different meaning.
+ * Emits one {@link ContractState} per state change (per-change feed, not
+ * per-block snapshot). Used by `contractStateObservable.all`; NOT used by
+ * `latest`/`blockHeight`/`blockHash`, which need the per-block view from
+ * {@link blockOffsetToBlock$} + {@link blockToContractState$}.
  *
  * Assumes block already exists.
+ *
+ * @see {@link SubscriptionShapes} for why a per-change feed cannot serve the
+ * block-anchored branches.
  */
 export const blockOffsetToContractState$ =
   (apolloClient: ApolloClient) =>

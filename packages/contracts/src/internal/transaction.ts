@@ -297,13 +297,11 @@ export const mergeUnsubmittedCallTxData = <
  * `TypeId` the implementation stamps.
  *
  * Type-parameterised so a caller can narrow to ITS OWN context type instead of
- * the widest one. Both parameters default to the widest, so a caller that
- * supplies none behaves exactly as before. The internal call sites supply them
- * because their parameter union already names one concrete context type, and
- * narrowing to the widest there would hand the widest onward -- which stopped
- * type-checking as soon as `FinalizedCallTxData` named its circuit.
+ * the widest one. Both parameters default to the widest, so supplying none
+ * behaves exactly as before.
  *
  * @internal
+ * @see {@link OverloadTyping} for why the internal call sites supply them.
  */
 export const isTransactionContext = <
   C extends Contract.Any = Contract.Any,
@@ -316,9 +314,7 @@ export const isTransactionContext = <
  * Refuses a retained-era call that was handed a scope to join.
  *
  * Reachable only from JavaScript today — the retained-era `submitCallTx`
- * overload declares no scope parameter — and still checked, because the
- * alternative is what it replaces: the retained arm accepted the scope context
- * and quietly ran outside it.
+ * overload declares no scope parameter — and still checked.
  *
  * KEEP THE THREE OUTCOMES APART. No third argument is the normal case; a real
  * scope is the mixed-era refusal; anything else is a malformed argument.
