@@ -10,20 +10,14 @@ An error indicating that a retained-era call would spend a shielded coin the
 contract already holds on chain, which this pipeline structurally cannot
 compose.
 
-Building the transaction's Zswap offer for such a spend needs the contract's
-Zswap CHAIN state, to locate the coin's commitment in the chain's Merkle tree
-— and the retained-era pipeline does not read one. A coin the same call
-produced needs no chain state (it is paired with its own output as a
-transient), which is why only spends of previously held coins are refused.
+A coin the same call produced is NOT refused: it is paired with its own
+output as a transient and needs no chain state. Only spends of previously
+held coins are.
 
-Raised BEFORE the offer is built rather than left to fail deeper: without
-this the condition surfaced as a bare assertion inside the offer builder,
-naming neither the era nor the circuit, which told a caller nothing about
-why its call could not be composed.
+## See
 
-The fix is to supply the retained arm with a Zswap chain state, which is
-tracked separately; until then this refuses in the caller's own test run
-rather than in production.
+[ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for what the retained arm is missing and why this
+refuses before the offer is built.
 
 ## Extends
 

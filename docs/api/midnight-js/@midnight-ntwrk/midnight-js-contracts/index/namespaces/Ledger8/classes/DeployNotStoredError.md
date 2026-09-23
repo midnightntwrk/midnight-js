@@ -11,19 +11,21 @@ but the private-state provider refused to record it locally.
 
 Distinct from [Ledger8DeployUnconfirmedError](DeployUnconfirmedError.md), which covers the window
 where the chain's answer is unknown. Here the answer arrived and it was
-success, so the contract exists, its maintenance authority is built from this
-error's key, and deploying again is the one thing a caller must not do.
+success, so the contract EXISTS and its maintenance authority is built from
+this error's key. DO NOT DEPLOY AGAIN.
 
-Carries the signing key over BOTH writes even though only one of them can
-strand it, because one class over the whole after-success region is what
-makes the region's guarantee checkable: no `await` in it may reject without
-the key riding along.
+Carries the signing key over both writes, and [stage](#stage) says which one
+the store refused.
 
-[Ledger8DeployNotStoredError.signingKey](#signingkey) is NAMED but never rendered,
-for the reason [Ledger8DeployTxFailedError](DeployTxFailedError.md) states.
+[Ledger8DeployNotStoredError.signingKey](#signingkey) is NAMED but never rendered
+into the message.
 
-Carries no registered error code of its own, for the same reason
-[Ledger8DeployUnconfirmedError](DeployUnconfirmedError.md) does not.
+Carries no registered error code of its own.
+
+## See
+
+[ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for the after-submission region this closes and
+why the key rides along even where only one write can strand it.
 
 ## Extends
 

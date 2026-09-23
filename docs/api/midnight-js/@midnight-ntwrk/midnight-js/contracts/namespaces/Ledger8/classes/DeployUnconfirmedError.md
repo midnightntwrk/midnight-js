@@ -10,26 +10,27 @@ An error indicating that a retained-era deployment was submitted, but what
 the chain did with it could not be confirmed.
 
 Covers every way that step fails: the read surface rejecting, a record whose
-version tag is missing or unrecognised, and a record that arrives from an era
-the head this deployment composed on cannot have recorded. One class over all
-of them because the caller's action is the same in each - the transaction may
-still finalize, this error holds the only copy of the signing key, and the
-address has to be checked before deploying again. One class does not mean one
-message: the wording states which condition was hit.
+version tag is missing or unrecognised, and a record arriving from an era the
+head this deployment composed on cannot have recorded. The message states
+which condition was hit.
 
-Wraps the underlying failure on `cause` rather than replacing it: the reason
-the deployment is unconfirmed - an unreachable indexer, a timeout, an
-untagged payload, an era violation - is what a caller branches on, and this
-class adds the one fact that failure cannot carry, which is the key the
-submitted deployment was built with. An era violation reaching `cause`
-unchanged is what keeps `cause instanceof EraInvariantViolationError`, its
-seam and its registered code reachable.
+DO NOT DEPLOY AGAIN on seeing this. The transaction may still finalize, this
+error holds the only copy of the signing key, and the address has to be
+checked first.
+
+Branch on `cause` for the underlying failure — an unreachable indexer, a
+timeout, an untagged payload, an era violation. It is wrapped rather than
+replaced, so `cause instanceof EraInvariantViolationError`, its seam and its
+registered code all stay reachable.
 
 Reachable only AFTER submission. Every refusal ahead of it is raised with no
 key having been sampled.
 
-Carries no registered error code of its own, for the same reason
-[Ledger8DeployTxFailedError](DeployTxFailedError.md) does not.
+Carries no registered error code of its own.
+
+## See
+
+[ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for why one class covers the whole window.
 
 ## Extends
 

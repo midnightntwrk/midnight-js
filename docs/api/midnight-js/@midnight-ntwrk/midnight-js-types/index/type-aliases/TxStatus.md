@@ -1,0 +1,11 @@
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-types](../../README.md) / [index](../README.md) / TxStatus
+
+# Type Alias: TxStatus
+
+> **TxStatus** = *typeof* [`FailEntirely`](../variables/FailEntirely.md) \| *typeof* [`FailFallible`](../variables/FailFallible.md) \| *typeof* [`SucceedEntirely`](../variables/SucceedEntirely.md)
+
+The status of a transaction.

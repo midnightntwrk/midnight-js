@@ -88,6 +88,7 @@ docstring resolves to it.
 | [Verifier keys](documents/VerifierKeys.md) | Registration rules, the refusals that stop a deploy landing at an address the caller's artifacts do not describe, and why the address cannot be recomputed |
 | [Module graph and lazy loading](documents/ModuleGraphAndLazyLoading.md) | Build entries, the `./v8` and `./engine` chunks, the import cycle avoided by a leaf module, and why a vendor's types are named with `import type` |
 | [Injected vendor slices](documents/InjectedVendorSlices.md) | How a seam names the vendor class it takes by injection — derived from the vendor's own class, declared structurally, or narrowed — and what each choice buys |
+| [Cross-era operation registry](documents/CrossEraOperationRegistry.md) | What actually crosses the fork boundary when a dormant retained-era contract is called, why re-expressing its operations is faithful rather than a substitution, and why the primary state is left at its default |
 | [Shared table discipline](documents/SharedTableDiscipline.md) | Why the shared tables are frozen and null-prototyped, and why exhaustiveness is enforced at compile time as well as at run time |
 
 Docstrings in `src/` carry the API contract: what a symbol does, its
@@ -279,6 +280,7 @@ Licensed under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 ## Documents
 
 - [ComposeRefusalOrder](documents/ComposeRefusalOrder.md)
+- [CrossEraOperationRegistry](documents/CrossEraOperationRegistry.md)
 - [DualInstantiationGuard](documents/DualInstantiationGuard.md)
 - [EraSeam](documents/EraSeam.md)
 - [FailClosedDecoding](documents/FailClosedDecoding.md)

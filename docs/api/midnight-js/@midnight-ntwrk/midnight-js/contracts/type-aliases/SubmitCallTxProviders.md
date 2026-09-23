@@ -10,18 +10,10 @@
 
 The provider set a call entry point accepts.
 
-Two arms because a call does not always need private state:
-`SubmitTxProviders` is `ContractProviders` without `privateStateProvider`,
-so a contract that declares no private state can be called with a set that
-has none. Naming only `ContractProviders` would demand a provider such a
-caller has no reason to build.
-
-The arm without the provider is valid only for options that name no
-`privateStateId`. Naming one without a `privateStateProvider` is refused
-before any provider is touched, with
-[IncompleteCallTxPrivateStateConfig](../classes/IncompleteCallTxPrivateStateConfig.md) -- so the pairing the type cannot
-state is enforced at run time rather than left to go wrong. That refusal is
-what makes the narrowing inside these functions sound.
+Two arms, because a call does not always need private state. The arm WITHOUT
+`privateStateProvider` is valid only for options that name no
+`privateStateId`; naming one without the provider is refused with
+[IncompleteCallTxPrivateStateConfig](../classes/IncompleteCallTxPrivateStateConfig.md) before any provider is touched.
 
 ## Type Parameters
 
@@ -32,3 +24,8 @@ what makes the narrowing inside these functions sound.
 ### PCK
 
 `PCK` *extends* [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
+
+## See
+
+[OverloadTyping](../../documents/OverloadTyping.md) for why that run-time refusal is what makes the
+narrowing inside these functions sound.
