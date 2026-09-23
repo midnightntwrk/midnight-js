@@ -49,12 +49,17 @@ export type CircuitCallTxInterface<C extends Contract.Any> = {
  * Creates a {@link CallTxOptions} object from various data.
  *
  * `args` is indexed with {@link CircuitKey}-unbranded `PCK`, matching `call.ts`'s
- * `CallOptionsWithArguments`: by the time a real call site (`circuit()`, `getProvableCircuitIds()`)
- * reaches this function `PCK` is branded, and `Contract.CircuitParameters` resolves a branded key
- * to `unknown[]` rather than the real tuple. Without the unbranding this parameter would accept
- * any argument list while the return type -- `CallTxOptions<C, PCK>`, which is
- * `CallOptionsWithArguments` underneath -- claims the real tuple: an unsound mismatch between what
- * is checked and what is returned.
+ * `CallOptionsWithArguments`. This function is part of the published surface (`index.ts`), and a
+ * CONSUMER instantiating `PCK` with a branded id -- what `getProvableCircuitIds()` hands back --
+ * is who hits the degradation: `Contract.CircuitParameters` resolves a branded key to `unknown[]`
+ * rather than the real tuple. Without the unbranding this parameter would accept any argument list
+ * while the return type -- `CallTxOptions<C, PCK>`, which is `CallOptionsWithArguments`
+ * underneath -- claims the real tuple: an unsound mismatch between what is checked and what is
+ * returned.
+ *
+ * This package's own call site does NOT go through that path: `createCircuitCallTxInterface` below
+ * instantiates `PCK` at the unbranded `Contract.ProvableCircuitId<C>` explicitly, as the comment
+ * there says.
  *
  * `circuitId` is constrained by `PCK extends Contract.ProvableCircuitId<C>`, which is the
  * NAMESPACE member `keyof C['provableCircuits'] & string`. That `keyof` is what rejects a circuit
