@@ -45,8 +45,9 @@ const E2E_COMPILED = 'testkit-js/testkit-js-e2e/src/contract/compiled';
  *
  * The retained toolchain (`compactc` 0.31.1) left exactly one COMMITTED fixture
  * in this repository, `counter-016`; retained-era twins of these are built on
- * demand instead -- see {@link RETAINED_TWINS}, which covers six of the seven.
- * `events` is the one for which the retained half of the fork crossing cannot be posed at all.
+ * demand instead -- see {@link RETAINED_TWINS}. Each list has one key the other
+ * lacks: `events` has no retained twin that can exist, and `private-counter` has
+ * no current-era arm worth running.
  *
  * What this current-era set covers is the other half of the same question:
  * whether the framework's full contract surface works on a chain that carries

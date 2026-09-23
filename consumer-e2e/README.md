@@ -88,18 +88,24 @@ which one process can execute a pre-fork contract and a current one.
 
 Per retained twin, in order: deploy below the boundary, call, cross, call again
 through the same call site (keep-state), call a second time, then **find the
-contract again**. The last one is what a restarted dApp does — it holds an
-address and a store, not the handle its deploy returned — and it asserts two
-things the other legs cannot:
+contract again** and call through the handle that returns. The last one is what a
+restarted dApp does — it holds an address and a store, not the handle its deploy
+returned — and it asserts three things the other legs cannot:
 
-- the attach resolves a verifier key for **every** circuit the artifact declares
-  and refuses if one does not match, so a successful find is the chain and the
-  pre-fork artifact still agreeing after migration re-versioned the state;
+- the attach resolves a verifier key for every one of the artifact's **impure**
+  circuits -- the set the returned `callTx` is built from -- and refuses if one
+  does not match, so a successful find is the chain and the pre-fork artifact
+  still agreeing after migration re-versioned the state;
 - `signingKey` comes back from the private-state store rather than from the
   chain, so it is the assertion that the maintenance key the retained deploy
   persisted **before** the fork survived it. That key is not on chain and not
   derivable from anything that is: losing it silently leaves a contract nobody
-  can ever rotate a verifier key on.
+  can ever rotate a verifier key on;
+- the handle it hands back is one that **transacts**. A twin declaring an
+  `afterFind` call drives it through `found.callTx`, so the row says the
+  re-attached handle works rather than merely that it exists. `private-counter`
+  is the twin that pays for it: its witness has to read pre-fork private state
+  through a provider built after the boundary.
 
 For that to mean anything the private-state store must not be re-keyed at the
 boundary, which is why `retainedProvidersFor` names it `fork-retained-${key}`
@@ -109,9 +115,10 @@ real dApp has one store and does not re-key it when the chain forks.
 
 ### `private-counter`: the only twin with private state
 
-Every other contract in either matrix is built with vacant witnesses, so nothing
-in the run could show private state crossing the boundary — the round trip would
-be `{}` in, `{}` out. Continuity was asserted only at unit tier, against a frozen
+No other contract in either matrix declares a witness — the retained twins are
+constructed with an empty witness object, the current-era ones with
+`withVacantWitnesses` — so nothing in the run could show private state crossing
+the boundary; the round trip would be `{}` in, `{}` out. Continuity was asserted only at unit tier, against a frozen
 LevelDB store (`testkit-js/.../cross-window.ut.test.ts`): real, but offline, with
 no chain and no fork in it.
 
@@ -120,20 +127,32 @@ discloses it to the ledger. `step` is 7 and is written **once**, before the
 boundary, so the ledger figure is a statement about what the witness could still
 read:
 
-| Phase | `round` | private `calls` |
-|---|---|---|
-| pre-fork call | 7 | 1 |
-| post-fork keep-state call | 14 | 2 |
-| second post-fork call | 21 | 3 |
+Each call adds `step` to `round` and 1 to the private `calls` counter — four
+calls in all, the last through the re-attached handle. `step` is chosen **per
+run** rather than fixed, so the ledger figures are reachable only by reading back
+what that run wrote: a store answering with a constant, a default or a replayed
+initial value would satisfy a hardcoded number and fails here. The expectations
+are derived from it in `RETAINED_MATRIX` in `fork-matrix-entry.mjs` and are
+deliberately not repeated here; two copies of numbers that must move together is
+one copy too many.
 
-A post-fork call that reached a fresh or reset private state cannot produce 14.
-The store itself is checked separately and member by member, on `typeof` as well
-as value — a layer that stopped preserving `bigint` would satisfy the ledger
-assertion and fail that one, which is the failure mode private-state storage
-actually has.
+A post-fork call that reached a fresh or reset private state cannot reach the
+second figure: it would find no `step` to read and fail outright.
+The store itself is checked separately and member by member with `===`, which is
+what separates the bigint `2n` from the number `2`; `typeof` is reported in the
+failure so the row says which it got. A layer that stopped preserving `bigint`
+would satisfy the ledger assertion and fail that one, which is the failure mode
+private-state storage actually has.
 
 It is **retained-only**, the mirror of `events` being current-only: a current-era
 deploy happens after the fork and has no pre-fork state to carry.
+
+Its assertions have a negative control, for the same reason the surviving-balance
+one does. `checkPrivateState` reads a single id and compares what comes back, so
+it passes if the provider answers the id it was given — and passes just as
+happily if the provider answers *any* id with whatever state it last touched. One
+leg therefore asks the same provider, at the same address, for an id nothing ever
+wrote. The answer has to be nothing.
 
 ### The in-flight probe
 
@@ -141,14 +160,30 @@ One more thing runs in the fork window itself: retained calls driven from the
 moment enactment starts until the head flips, recording whether any met the
 boundary and was refused with `StaleHeadError`.
 
-It is a **probe, not a leg** — it colours nothing. Hitting that race means a call
-being in exactly the wrong part of a window `enactFork()` takes about 3m41s to
-close, which this harness does not control; a coin toss inside a blocking release
-gate is the one thing such a gate must not contain. The row distinguishes three
-outcomes — `admitted`, `stale-head` (with `kind`, `startEra`, `freshEra` off the
-error), and anything else verbatim. The wallet is itself mid-crossing in that
-window, so a refusal from that direction is expected and is **not** evidence
-about stale-head handling.
+It is a **probe, not a leg** — losing the race colours nothing. Hitting it means a
+call being in exactly the wrong part of a window `enactFork()` takes about 3m41s
+to close, which this harness does not control; a coin toss inside a blocking
+release gate is the one thing such a gate must not contain. The row distinguishes
+four outcomes — `admitted`, `stale-head` (with `kind`, `startEra`, `freshEra` off
+the error), `never-returned`, and anything else verbatim. The wallet is itself
+mid-crossing in that window, so a refusal from that direction is expected and is
+**not** evidence about stale-head handling.
+
+**One thing it does colour, and it is not the race.** If the chain answered
+*none* of the calls, the run observed nothing about the boundary at all — a proof
+server down, a wallet that never settled, or a `StaleHeadError` that stopped
+being raised and now arrives unrecognised. Each produces a row identical to a
+healthy miss, and this probe is the only place in the run that can see
+`StaleHeadError` on a live chain, so a silent one would be that regression
+reaching a release unobserved. A run where at least one call was admitted is
+healthy whether or not it met the fork.
+
+Each attempt is bounded on its own. A retained `submitCallTx` waits on
+`watchForTxData`, which polls for finalization without a timeout, so a
+transaction the chain *drops* rather than rejects never returns — and that is
+precisely the case the probe is trying to provoke. Without a per-call ceiling it
+would hang until the outer deadline, which is fatal and sits before the `fork
+enacted` gate.
 
 ## Two things that bite
 
@@ -313,8 +348,12 @@ was read, so the retained contract had to be deployed through protocol's era
 facade, and the stale-head remediation could not be provoked from an entry point
 at all.
 
-Neither still holds. The retained deploy arm was wired, and every retained twin
-is now deployed through `deployContract` — the surface a consumer has — so a
-regression in that arm is visible to the matrix instead of being measured
-around. And the stale-head path is driven, as a probe: see
-[The in-flight probe](#the-in-flight-probe) for what it can and cannot claim.
+The first no longer holds: the retained deploy arm was wired, and every retained
+twin is now deployed through `deployContract` — the surface a consumer has — so a
+regression in that arm is visible to the matrix instead of being measured around.
+
+The second holds **only for the deploy branch**, which is what it was originally
+about. The stale-head path is now driven, but by calls, so the error it provokes
+carries `kind: 'call'`. The deploy branch's remediation still cannot be reached
+from any entry point here. See [The in-flight probe](#the-in-flight-probe) for
+what that probe can and cannot claim.

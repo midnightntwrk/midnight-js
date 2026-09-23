@@ -216,13 +216,18 @@ const legSucceeded = async (name, run, ms = LEG_TIMEOUT) => {
  * they try a current-era contract on a chain that has not forked yet, say. A
  * refusal there is information, not a defect, so it must not colour the run's
  * exit code; `leg` is for the things the fork crossing asserts.
+ *
+ * `ms` is a BACKSTOP, not the probe's budget. A probe that runs a loop of its own
+ * has to bound each iteration itself and pass a deadline derived from that -- the
+ * default here is fatal when it fires, so a probe relying on it to stop would be
+ * a probe that ends the run.
  */
-const probe = async (name, run) => {
+const probe = async (name, run, ms = LEG_TIMEOUT) => {
   if (reported) {
     return;
   }
   try {
-    const result = await withDeadline(name, LEG_TIMEOUT, run);
+    const result = await withDeadline(name, ms, run);
     observed[name] = result === undefined ? 'ok' : result;
   } catch (error) {
     if (error instanceof LegTimeoutError) {
@@ -406,6 +411,29 @@ const tenMinutesAgo = () => BigInt(Math.floor(Date.now() / 1000)) - 600n;
  * to answer the crossing question, and the per-circuit surface is covered on the
  * current era. An era difference confined to the circuits left out would not show.
  */
+/**
+ * The step `private-counter`'s witness reads out of private state, chosen PER RUN.
+ *
+ * It used to be the literal 7, in the initial state and in all four expected
+ * figures. That left one gap open: nothing separated "the witness read `step`
+ * back out of the store" from "the store answers with a constant that happens to
+ * be 7". A default, a replay double, or a layer that rebuilt private state from
+ * the contract's own initial value would all satisfy 7/14/21/28.
+ *
+ * A value this process mints and nothing else can predict closes it: the figures
+ * become reachable only by reading back what THIS run wrote.
+ *
+ * NOT a coin toss inside a release gate, which is the thing this file refuses
+ * elsewhere. The INPUT varies and the expected figures are derived from it, so
+ * the outcome stays deterministic -- and the value is reported on every
+ * `privateState` row, so a failure names the run's own number rather than hiding
+ * it.
+ *
+ * Bounded well inside `Uint<16>`, which the witness returns: the ledger reaches
+ * `4 * step` over the run, so the ceiling that matters is 16383.
+ */
+const PRIVATE_COUNTER_STEP = BigInt(7 + (Date.now() % 97));
+
 const RETAINED_MATRIX = [
   {
     key: 'simple',
@@ -602,21 +630,21 @@ const RETAINED_MATRIX = [
     // THE ONLY TWIN THAT CARRIES PRIVATE STATE, and the only one whose
     // assertions are about the dApp's own storage rather than the chain's.
     //
-    // Every other contract in this matrix is built with vacant witnesses, so
-    // nothing in the run could show private state surviving the boundary: the
-    // round trip would be `{}` in, `{}` out. Continuity was asserted only at
+    // No other contract in this matrix declares a witness, so nothing in the run
+    // could show private state surviving the boundary: the round trip would be
+    // `{}` in, `{}` out. Continuity was asserted only at
     // unit tier, against a frozen LevelDB store
     // (`testkit-js/.../cross-window.ut.test.ts`) -- real, but offline, and with
     // no chain and no fork in it.
     //
     // WHAT MAKES THE POST-FORK CALL EVIDENCE. `localIncrement` reads `step` out
     // of private state and discloses it to the ledger, so `round` is a
-    // statement about what the witness could still read. `step` is 7 and is
-    // written ONCE, before the boundary. A post-fork call that reached a fresh
-    // or reset private state cannot produce 14: it would read no `step` at all
-    // and fail, or read a different one and leave a different number. The
-    // ledger figures below are therefore the private-state assertion, checked
-    // against the chain rather than against this process's own memory -- and
+    // statement about what the witness could still read. `step` is written ONCE,
+    // before the boundary. A post-fork call that reached a fresh or reset
+    // private state cannot reach `2 * step`: it would read no `step` at all and
+    // fail, or read a different one and leave a different number. The ledger
+    // figures below are therefore the private-state assertion, checked against
+    // the chain rather than against this process's own memory -- and
     // `privateState` below checks the store itself, which is the other half.
     key: 'private-counter',
     // `calls` is what the witness writes back on every execution, so it counts
@@ -624,12 +652,17 @@ const RETAINED_MATRIX = [
     // Neither survives a store that was silently re-created.
     privateState: {
       id: 'fork-private-counter',
-      initial: { step: 7n, calls: 0n },
+      initial: { step: PRIVATE_COUNTER_STEP, calls: 0n },
       // Deploy runs no circuit -- the constructor reads no witness -- so the
       // count only moves on calls.
-      preFork: { step: 7n, calls: 1n },
-      postFork: { step: 7n, calls: 2n },
-      secondCall: { step: 7n, calls: 3n }
+      preFork: { step: PRIVATE_COUNTER_STEP, calls: 1n },
+      postFork: { step: PRIVATE_COUNTER_STEP, calls: 2n },
+      secondCall: { step: PRIVATE_COUNTER_STEP, calls: 3n },
+      // The call driven through the handle `findDeployedContract` returned, which
+      // is a different object from the one every leg above used. A witness that
+      // ran against a re-attached handle and still read `step` is the store
+      // answering a caller that arrived with nothing but an address and an id.
+      afterFind: { step: PRIVATE_COUNTER_STEP, calls: 4n }
     },
     witnesses: () => ({
       localIncrement: (context) => [
@@ -640,17 +673,55 @@ const RETAINED_MATRIX = [
     preFork: [{ circuitId: 'increment' }],
     postFork: { circuitId: 'increment' },
     secondCall: { circuitId: 'increment' },
+    // Driven through the re-attached handle rather than through `callRetained`,
+    // which is the whole point of declaring it: see leg (c3).
+    afterFind: { circuitId: 'increment' },
     state: {
       label: 'round',
       read: (ledgerState) => BigInt(ledgerState.round),
-      preFork: 7n,
-      postFork: 14n,
-      secondCall: 21n
+      preFork: PRIVATE_COUNTER_STEP,
+      postFork: 2n * PRIVATE_COUNTER_STEP,
+      secondCall: 3n * PRIVATE_COUNTER_STEP,
+      afterFind: 4n * PRIVATE_COUNTER_STEP
     }
   }
 ];
 
-/** One twin's declaration, by key. Throws rather than answering `undefined`: every caller needs the entry. */
+/**
+ * The phases every declared `state` and `privateState` block must name.
+ *
+ * WHY THIS IS CHECKED AT ALL. Both `checkLedgerState` and `checkPrivateState`
+ * answer `undefined` for a phase they were not given an expectation for, and the
+ * call sites spread that into the row as `...(x ?? {})`. A misspelled phase key
+ * therefore asserts NOTHING and leaves no trace: the leg still reports `ok` and
+ * the run is green. That is the one failure this whole file exists to make
+ * impossible, so a typo has to be a startup error rather than a silent pass.
+ *
+ * `afterFind` is deliberately NOT here. It is opt-in -- only a twin willing to
+ * pay for a fourth call declares it -- whereas these three are driven for every
+ * twin, so a block that omits one of them is a mistake rather than a choice.
+ */
+const ASSERTED_PHASES = ['preFork', 'postFork', 'secondCall'];
+
+for (const entry of RETAINED_MATRIX) {
+  for (const block of ['state', 'privateState']) {
+    if (entry[block] === undefined) {
+      continue;
+    }
+    for (const phase of ASSERTED_PHASES) {
+      if (entry[block][phase] === undefined) {
+        throw new Error(`retained twin '${entry.key}' declares '${block}' but names no '${phase}' expectation`);
+      }
+    }
+    // Declared but never driven: an `afterFind` expectation with no `afterFind`
+    // call would be checked against whatever the previous leg left, and pass.
+    if (entry[block].afterFind !== undefined && entry.afterFind === undefined) {
+      throw new Error(`retained twin '${entry.key}' expects '${block}.afterFind' but drives no afterFind call`);
+    }
+  }
+}
+
+/** One twin's declaration, by key. Throws because every caller needs the entry and none can proceed without it. */
 const retainedEntry = (key) => {
   const entry = RETAINED_MATRIX.find((candidate) => candidate.key === key);
   if (entry === undefined) {
@@ -723,11 +794,13 @@ const retainedZkConfigPath = (key) => {
  * state stores per twin and silently made three things unmeasurable:
  *
  * - private state written before the boundary, read after it -- the whole
- *   subject of the `private-counter` twin;
+ *   subject of the `private-counter` twin, which lands under this name itself;
  * - the signing key the retained deploy persists, which a post-fork
- *   `findDeployedContract` reports back; both land under
+ *   `findDeployedContract` reports back, and which lands under
  *   `${privateStateStoreName}-signing-keys`;
  * - anything else a consumer would keep across the fork.
+ *
+ * Both names are DERIVED from this one, which is why an era in it split both.
  *
  * A real dApp has ONE store and does not re-key it when the chain forks, so the
  * era-suffixed name modelled something no consumer does. The legs that needed
@@ -799,12 +872,34 @@ const deployRetained = async (key, providers) => {
     contractAddress: deployed.contractAddress,
     indexedAs: state.version,
     envelope: envelopeTag(state.raw),
-    // The key the arm persisted for this address. Reported so the post-fork
-    // `findDeployedContract` leg has something to compare against that was
-    // observed rather than assumed.
+    // The key the arm persisted for this address, CARRIED IN PROCESS ONLY so the
+    // post-fork `findDeployedContract` leg has something to compare against that
+    // was observed rather than assumed. `reportableDeployment` is what keeps it
+    // off the report -- see there for why that is not optional.
     signingKey: deployed.signingKey
   };
 };
+
+/**
+ * A deploy record stripped to what may be written to the report.
+ *
+ * `report` JSON-stringifies `observed` to stdout, and the driver echoes every
+ * dApp line into its own, so ANYTHING a leg returns lands in a CI log -- a public
+ * one, for this repository. `signingKey` is annotated
+ * `**Privacy-sensitive.** Signing-key material` where the framework declares it,
+ * and leg (c3)'s `signingKeySurvived` carries the entire assertion without the
+ * material.
+ *
+ * Written as an ALLOW-LIST rather than by deleting the one member known to be
+ * sensitive today, so a field added to the deploy record later has to be opted
+ * IN to the log rather than remembered and opted out.
+ */
+const reportableDeployment = (deployed) => ({
+  txId: deployed.txId,
+  contractAddress: deployed.contractAddress,
+  indexedAs: deployed.indexedAs,
+  envelope: deployed.envelope
+});
 
 /**
  * Calls one circuit on a retained twin.
@@ -829,8 +924,12 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
   const compiledContract = new Contract(retainedWitnesses(key));
   const args = call.args === undefined ? [] : call.args(context);
   const privateState = retainedEntry(key).privateState;
-  // Two literals rather than one built conditionally -- `deployRetained` carries
-  // why the private-state member cannot be spread in.
+  // Two literals, for SYMMETRY with `deployRetained` rather than for its reason.
+  // `Ledger8CallTxOptions`' base arm merely omits `privateStateId` -- no
+  // `?: never` -- and the retained entry reads the value, so an explicit
+  // `undefined` here would typecheck and would mean "no id named". The branch is
+  // kept anyway: a call site that looks like the deploy above is one a reader can
+  // check once instead of twice.
   const submitted =
     privateState === undefined
       ? await submitCallTx(providers, { compiledContract, contractAddress, circuitId: call.circuitId, args })
@@ -970,9 +1069,11 @@ const checkLedgerState = async (label, entry, phase, providers, contractAddress)
  * calls so far should have left in it.
  *
  * Read straight off `providers.privateStateProvider` under the id the twin
- * named, which is what a consumer does: the framework publishes no private state
- * on a retained call result, and reading it back through the provider is the
- * documented way to see it.
+ * named, rather than off the call result. The result DOES carry the state --
+ * `nextPrivateState`, on the `private` half -- but that is the value this process
+ * computed and handed down, so asserting on it would measure the harness's own
+ * memory. Going to the provider is what makes this an assertion about
+ * PERSISTENCE, and it is what a restarted consumer has to do anyway.
  *
  * WHY THIS IS NOT REDUNDANT WITH THE LEDGER ASSERTION. The ledger figure says
  * the witness could still READ the pre-fork state; this says the store still
@@ -990,21 +1091,23 @@ const checkPrivateState = async (label, entry, phase, providers, contractAddress
     return undefined;
   }
   // NAMED HERE, not relied on from the call that ran before this one. The
-  // provider scopes every entry by the address last set and THROWS on a `get`
+  // provider scopes a private-state `get` by the address last set and THROWS
   // before any has been -- so a leg whose call failed would reach this and
   // report `Contract address not set` instead of what the store holds, which is
   // the opposite of what this function is for. Setting it explicitly also makes
-  // the scope visible rather than inherited.
+  // the scope visible rather than inherited. (Signing keys are the exception and
+  // need none of this: they are keyed by an address ARGUMENT.)
   providers.privateStateProvider.setContractAddress(contractAddress);
   const actual = await providers.privateStateProvider.get(entry.privateState.id);
   if (actual === null || actual === undefined) {
     failures.push(`${label}: nothing is stored at private state id '${entry.privateState.id}'`);
     return { privateState: 'absent' };
   }
-  // Member by member, and on `typeof` as well as value: `calls` coming back as
-  // the NUMBER 2 rather than the bigint 2n is a storage layer that stopped
-  // preserving types, and `===` against 2n is what catches it. A whole-object
-  // compare would report "not equal" without saying which half moved.
+  // Member by member, with `===`: `calls` coming back as the NUMBER 2 rather than
+  // the bigint 2n is a storage layer that stopped preserving types, and `===`
+  // against 2n is what catches it -- `typeof` appears in the message so the row
+  // says which of the two it was. A whole-object compare would report "not equal"
+  // without saying which half moved.
   for (const [member, want] of Object.entries(expected)) {
     const got = actual[member];
     if (got !== want) {
@@ -1029,12 +1132,43 @@ const walletContext = async (wallet) => ({
  * of 12 -- twelve calls at roughly 18s each cover about 3m36s, and `enactFork()`
  * closes the window in about 3m41s, so the probe fell silent moments before the
  * one event it exists to observe. The cap is here to stop a runaway loop, not to
- * end the probe early; at 20 the loop is bounded by the fork landing, with
- * `IN_FLIGHT_DEADLINE` still behind it for a fork that never does.
+ * end the probe early; at 20 the loop is bounded by the fork landing rather than
+ * by itself.
+ *
+ * 20 x 18s is 6m, which is `IN_FLIGHT_DEADLINE` exactly -- the two bound the same
+ * loop from either side rather than one sitting behind the other. Whichever is
+ * reached first, `stoppedBecause` names it.
  */
 const IN_FLIGHT_MAX_ATTEMPTS = 20;
 /** Its own ceiling, so a fork that never lands cannot leave the loop running until `probe`'s deadline. */
 const IN_FLIGHT_DEADLINE = 6 * 60_000;
+
+/**
+ * The ceiling on ONE attempt, and the thing that keeps this probe from ending the run.
+ *
+ * `IN_FLIGHT_DEADLINE` is tested at the top of the loop, so it cannot interrupt a
+ * call already in flight -- and a retained `submitCallTx` waits on
+ * `watchForTxData`, which polls for finalization with NO timeout of its own. A
+ * transaction the chain drops rather than explicitly rejects therefore never
+ * returns. That is not a hypothetical: it is the boundary case this probe exists
+ * to provoke, so the probe must survive its own subject.
+ *
+ * Without this, such a call hangs until `probe`'s outer deadline, which is FATAL
+ * (`report(1)`) and sits before the `fork enacted` gate -- costing every post-fork
+ * leg in the shard to record one row. Five times the ~18s a healthy call measured,
+ * so a slow prover is still admitted and only a hung one is cut off.
+ */
+const IN_FLIGHT_CALL_TIMEOUT = 90_000;
+
+/**
+ * The backstop handed to `probe`, derived from the loop's own budget rather than
+ * left at `LEG_TIMEOUT`.
+ *
+ * The loop now returns within `IN_FLIGHT_DEADLINE` plus at most one
+ * `IN_FLIGHT_CALL_TIMEOUT`, so this should never fire. It is here to be a
+ * generous margin over that sum instead of a number that happens to sit near it.
+ */
+const IN_FLIGHT_PROBE_TIMEOUT = IN_FLIGHT_DEADLINE + IN_FLIGHT_CALL_TIMEOUT + 60_000;
 
 /**
  * Drives retained-era calls into the fork window, and reports what each one met.
@@ -1072,20 +1206,36 @@ const IN_FLIGHT_DEADLINE = 6 * 60_000;
  * that HAS a ledger assertion would make an unpredictable number of increments
  * part of an expected figure.
  */
-const driveCallsAcrossTheBoundary = async (boundaryReached) => {
+const driveCallsAcrossTheBoundary = async (forkOutcome) => {
+  // The probe reads `deployment` out of the enclosing scope, and the leg that
+  // assigns it records-and-continues. Without this, a failed baseline deploy
+  // makes every iteration a `TypeError` on `.contractAddress`, filling the cap in
+  // milliseconds and reporting it as if the chain had refused twenty calls.
+  if (deployment === undefined) {
+    return {
+      attempts: [],
+      metTheBoundary: false,
+      stoppedBecause: 'the pre-fork baseline deploy did not complete, so there was nothing to call'
+    };
+  }
   const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
   const deadline = Date.now() + IN_FLIGHT_DEADLINE;
   const attempts = [];
 
-  while (!boundaryReached() && Date.now() < deadline && attempts.length < IN_FLIGHT_MAX_ATTEMPTS) {
+  while (forkOutcome() === undefined && Date.now() < deadline && attempts.length < IN_FLIGHT_MAX_ATTEMPTS) {
     const startedAt = Date.now();
     try {
-      const submitted = await submitCallTx(session.providers, {
-        compiledContract: new Contract({}),
-        contractAddress: deployment.contractAddress,
-        circuitId: CIRCUIT_ID,
-        args: []
-      });
+      // Bounded, because the call this probe is TRYING to provoke is one the
+      // chain may drop rather than reject, and `watchForTxData` waits on a
+      // dropped transaction forever. See `IN_FLIGHT_CALL_TIMEOUT`.
+      const submitted = await withDeadline('in-flight call', IN_FLIGHT_CALL_TIMEOUT, () =>
+        submitCallTx(session.providers, {
+          compiledContract: new Contract({}),
+          contractAddress: deployment.contractAddress,
+          circuitId: CIRCUIT_ID,
+          args: []
+        })
+      );
       attempts.push({ outcome: 'admitted', txId: submitted.public.txId, tookMs: Date.now() - startedAt });
     } catch (error) {
       if (error instanceof StaleHeadError) {
@@ -1101,20 +1251,66 @@ const driveCallsAcrossTheBoundary = async (boundaryReached) => {
         // only collect refusals that say nothing further.
         break;
       }
+      if (error instanceof LegTimeoutError) {
+        // Its own outcome rather than `other`: a call that never came back is a
+        // different observation from one the chain answered, and it is the shape
+        // a dropped in-flight transaction takes.
+        attempts.push({ outcome: 'never-returned', tookMs: Date.now() - startedAt });
+        continue;
+      }
       attempts.push({ outcome: 'other', error: describeError(error).split('\n')[0], tookMs: Date.now() - startedAt });
     }
+  }
+
+  const metTheBoundary = attempts.some((attempt) => attempt.outcome === 'stale-head');
+  // THE ONE THING THIS PROBE COLOURS, and it is not the race.
+  //
+  // Losing the race is the expected outcome and must never fail the run -- that
+  // is the whole reason this is a probe. But a run where the chain answered NONE
+  // of the calls is not evidence about the boundary at all: it is a proof server
+  // down, a wallet that never settled, or a `StaleHeadError` that stopped being
+  // raised and now arrives as an unrecognised refusal. Each of those produces a
+  // row indistinguishable from a healthy miss, and this probe is the run's ONLY
+  // live coverage of `StaleHeadError`, so a silent one would be the regression
+  // reaching a release unobserved.
+  //
+  // `admitted` is the floor deliberately: the probe is healthy the moment the
+  // chain accepted one call, whether or not it later met the fork.
+  const answered = attempts.filter(
+    (attempt) => attempt.outcome === 'admitted' || attempt.outcome === 'stale-head'
+  ).length;
+  //
+  // Not when the FORK failed, though. Every call is expected to be refused on a
+  // chain that never crossed, and the gate below this probe already reports that
+  // -- colouring it here too would add a second row for one root cause, which is
+  // the exact noise the gate exists to prevent.
+  if (attempts.length > 0 && answered === 0 && forkOutcome() !== 'failed') {
+    failures.push(
+      `a retained call in flight as the fork applies: the chain answered none of ${attempts.length} calls, ` +
+        `so this run observed nothing about the boundary -- first refusal: ${attempts[0].error ?? attempts[0].outcome}`
+    );
   }
 
   return {
     attempts,
     // Stated rather than left to be counted off the list, because "no call met
     // the boundary" is the expected outcome and has to be legible as such.
-    metTheBoundary: attempts.some((attempt) => attempt.outcome === 'stale-head'),
-    stoppedBecause: boundaryReached()
-      ? 'the fork was enacted'
-      : attempts.length >= IN_FLIGHT_MAX_ATTEMPTS
-        ? 'the attempt cap was reached before the fork landed'
-        : 'the probe deadline passed before the fork landed'
+    metTheBoundary,
+    answered,
+    // FIVE branches, and the first two were missing. The `break` above leaves the
+    // fork unsettled and the cap unreached, so it used to fall through to "the
+    // deadline passed" and print that beside `metTheBoundary: true` -- on exactly
+    // the run the probe exists to record. And `forkOutcome` distinguishes a fork
+    // that FAILED from one that landed, which a single boolean could not.
+    stoppedBecause: metTheBoundary
+      ? 'a call met the boundary and was refused'
+      : forkOutcome() === 'failed'
+        ? 'the fork failed before any call met the boundary'
+        : forkOutcome() === 'enacted'
+          ? 'the fork was enacted'
+          : attempts.length >= IN_FLIGHT_MAX_ATTEMPTS
+            ? 'the attempt cap was reached before the fork landed'
+            : 'the probe deadline passed before the fork landed'
   };
 };
 
@@ -1208,7 +1404,46 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     const label = `pre-fork retained ${entry.key}`;
     const ledgerState = await checkLedgerState(label, entry, 'preFork', providers, deployed.contractAddress);
     const privateState = await checkPrivateState(label, entry, 'preFork', providers, deployed.contractAddress);
-    return { ...deployed, calls, ...(ledgerState ?? {}), ...(privateState ?? {}) };
+    return { ...reportableDeployment(deployed), calls, ...(ledgerState ?? {}), ...(privateState ?? {}) };
+  });
+}
+
+// (a) continued: the negative control for every private-state assertion in this
+// file, in the same spirit as (c1b) is for the surviving-balance one.
+//
+// WITHOUT IT `checkPrivateState` IS DECORATIVE. It reads one id and compares what
+// comes back, so it passes if the provider answers the id it was given -- and it
+// passes just as happily if the provider answers ANY id with whatever state it
+// last touched. That is not a contrived failure: `get` is scoped by the address
+// named on the provider, and a layer that stopped distinguishing ids underneath
+// that scope would keep every assertion in this file green while private state
+// had silently become per-contract rather than per-id.
+//
+// So: ask the same provider, at the same address, for an id nothing ever wrote.
+// The answer has to be nothing.
+for (const entry of RETAINED_MATRIX.filter(
+  (candidate) => covers(SELECTED.retained, candidate.key) && candidate.privateState !== undefined
+)) {
+  const name = `pre-fork private state is scoped by id, ${entry.key}`;
+  await leg(name, async () => {
+    const deployed = retainedDeployments.get(entry.key);
+    if (deployed === undefined) {
+      return 'skipped: its pre-fork deploy did not complete';
+    }
+    const providers = retainedProvidersFor('v8', session.wallet, entry.key);
+    providers.privateStateProvider.setContractAddress(deployed.contractAddress);
+    const unwritten = `${entry.privateState.id}-never-written`;
+    const answer = await providers.privateStateProvider.get(unwritten);
+    if (answer !== null && answer !== undefined) {
+      // Member NAMES, not the state: a private state is the one thing in this run
+      // that must not reach the report, and naming its shape is enough to say
+      // which state leaked.
+      failures.push(
+        `${name}: the store answered '${unwritten}', which nothing ever wrote, with a state carrying ` +
+          `${Object.keys(answer).join(', ')}`
+      );
+    }
+    return { unknownIdAnswers: answer === null || answer === undefined ? 'nothing' : 'a state' };
   });
 }
 
@@ -1220,9 +1455,9 @@ await probe('pre-fork deploy of a current-era contract', async () => {
   const zkConfigPath = config.matrixZkConfigPaths?.simple;
   if (zkConfigPath === undefined) {
     // SKIPPED, not refused. This question needs `simple`'s artifacts and the
-    // matrix is sharded one contract per job, so six of the seven shards do not
-    // install them. Recording `refused` there answered a question about the fork
-    // with a message about a missing file -- noise wearing a measurement's
+    // matrix is sharded one contract per job, so every shard but `simple`'s does
+    // not install them. Recording `refused` there answered a question about the
+    // fork with a message about a missing file -- noise wearing a measurement's
     // clothes.
     return 'skipped: this shard does not install the current-era `simple` artifacts';
   }
@@ -1256,17 +1491,26 @@ await probe('pre-fork deploy of a current-era contract', async () => {
 // promise resolves. That window is the only place an in-flight transaction can
 // meet the boundary, and it is what the probe drives calls into.
 const forkEnacted = awaitFork();
-let boundaryReached = false;
-const markBoundaryReached = () => {
-  boundaryReached = true;
-};
-// Both arms, and attached immediately: an unobserved rejection here would be an
-// unhandled rejection, and the probe must stop on a fork that FAILED just as it
-// stops on one that succeeded.
-forkEnacted.then(markBoundaryReached, markBoundaryReached);
+// WHICH of the two, not merely THAT one of them happened. Both arms stop the
+// probe -- it must not keep driving calls at a fork that failed -- but a boolean
+// made the two indistinguishable afterwards, so a failed fork reported
+// `stoppedBecause: 'the fork was enacted'` next to the gate below saying it had
+// not been. Attached immediately, because an unobserved rejection here would be
+// an unhandled one.
+let forkOutcome;
+forkEnacted.then(
+  () => {
+    forkOutcome = 'enacted';
+  },
+  () => {
+    forkOutcome = 'failed';
+  }
+);
 
-await probe('a retained call in flight as the fork applies', () =>
-  driveCallsAcrossTheBoundary(() => boundaryReached)
+await probe(
+  'a retained call in flight as the fork applies',
+  () => driveCallsAcrossTheBoundary(() => forkOutcome),
+  IN_FLIGHT_PROBE_TIMEOUT
 );
 
 // These two gate everything below them, so they are the one place `leg`'s
@@ -1275,9 +1519,10 @@ await probe('a retained call in flight as the fork applies', () =>
 // plausible contract failures for one root cause -- and the retained keep-state
 // rows read FAILED for calls that were never attempted after the boundary.
 //
-// Already settled by the time this runs, because the probe above returns when
-// the boundary is reached -- the deadline here covers the case where the probe
-// bailed on its own attempt cap instead.
+// Usually already settled by the time this runs, because the probe above returns
+// when the fork lands. The deadline here covers every way the probe can return
+// FIRST instead: its attempt cap, its own deadline, a call that met the boundary
+// and broke the loop, and a baseline deploy that never completed.
 const forked = await legSucceeded('fork enacted', () => forkEnacted, FORK_WAIT_TIMEOUT);
 
 const crossed =
@@ -1517,9 +1762,10 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
 // cannot do.
 //
 // WHAT IT ASSERTS BEYOND "the address answers". The retained arm resolves a
-// verifier key for EVERY circuit the artifact declares and refuses the attach if
-// one does not match the chain -- so a successful find is the chain and the
-// pre-fork artifact still agreeing, after migration re-versioned the state
+// verifier key for every one of the artifact's IMPURE circuits -- the set
+// `callTx` is built from -- and refuses the attach if one does not match the
+// chain, so a successful find is the chain and the pre-fork artifact still
+// agreeing, after migration re-versioned the state
 // envelope. And `signingKey` comes back from the private-state store rather than
 // from the chain: the arm reports the key already stored and samples none, so
 // this is also the assertion that the maintenance key the deploy persisted
@@ -1537,10 +1783,15 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     const { Contract } = await import(`@midnight-ntwrk/fork-retained-${entry.key}`);
     const compiledContract = new Contract(retainedWitnesses(entry.key));
     const privateState = entry.privateState;
-    // Two literals, for the reason `deployRetained` records. NO `signingKey`
-    // member on either: supplying one REPLACES what is stored, which would make
-    // the assertion below vacuous -- it would report back the key this leg just
-    // handed it.
+    // Two literals again. Here `Ledger8FindDeployedContractOptions` is a single
+    // interface with an OPTIONAL `privateStateId` rather than a union, so the
+    // type would accept a conditional spread -- but the arm refuses an explicit
+    // `privateStateId: undefined` at run time, for the same reason the deploy arm
+    // does, so the branch is what keeps the two from diverging.
+    //
+    // NO `signingKey` member on either: supplying one REPLACES what is stored,
+    // which would make the assertion below vacuous -- it would report back the
+    // key this leg just handed it.
     const found =
       privateState === undefined
         ? await findDeployedContract(providers, { compiledContract, contractAddress: deployed.contractAddress })
@@ -1550,8 +1801,18 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
             privateStateId: privateState.id
           });
 
-    if (found.contractAddress !== deployed.contractAddress) {
-      failures.push(`${name}: attached to ${found.contractAddress}, expected ${deployed.contractAddress}`);
+    // NOT `found.contractAddress === deployed.contractAddress`. The retained arm
+    // returns `contractAddress: options.contractAddress` verbatim
+    // (`find-deployed-contract.ts`), so comparing them compares the argument with
+    // itself and can never fail. What a restarted dApp actually needs is a handle
+    // it can CALL, so the usable assertion is that `callTx` came back carrying the
+    // circuits the artifact declares -- it is built from `impureCircuits`, after
+    // the attach has checked a verifier key for each one.
+    const callable = Object.keys(found.callTx ?? {});
+    const declared = Object.keys(compiledContract.impureCircuits);
+    const missing = declared.filter((circuitId) => !callable.includes(circuitId));
+    if (missing.length > 0) {
+      failures.push(`${name}: the re-attached handle exposes no call site for ${missing.join(', ')}`);
     }
     // The key the DEPLOY reported, before the boundary, against the key the
     // attach reports after it. Compared only when the deploy actually reported
@@ -1565,12 +1826,26 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
           `${found.signingKey === undefined ? 'none' : 'a different key'}`
       );
     }
+    // THE HANDLE IS USED, not just inspected, where the twin declares an
+    // `afterFind` call. Re-checking `secondCall` here instead -- which is what
+    // this leg did -- re-read values the second-call leg had asserted moments
+    // earlier in the same process, so it could only ever cascade: a failure there
+    // left `calls` behind and reported it against THIS leg's name. Driving a call
+    // through `found.callTx` asks the one question the row is for: whether a
+    // handle built from nothing but an address and a store id can transact.
+    //
+    // Opt-in per twin, because it costs a fourth call. `private-counter` is the
+    // twin worth paying it for -- its witness has to read pre-fork private state
+    // through a provider this leg constructed after the boundary.
+    const afterFind = entry.afterFind;
+    const called = afterFind === undefined ? undefined : await found.callTx[afterFind.circuitId]();
     return {
       contractAddress: found.contractAddress,
+      callable,
       signingKeySurvived: deployed.signingKey !== undefined && found.signingKey === deployed.signingKey,
-      // The attach re-reads the private state under the id it was given, so this
-      // is the store answering a caller that arrived with nothing but an address.
-      ...((await checkPrivateState(name, entry, 'secondCall', providers, deployed.contractAddress)) ?? {})
+      ...(called === undefined ? {} : { afterFindCall: { circuitId: called.circuitId, txId: called.public.txId } }),
+      ...((await checkLedgerState(name, entry, 'afterFind', providers, deployed.contractAddress)) ?? {}),
+      ...((await checkPrivateState(name, entry, 'afterFind', providers, deployed.contractAddress)) ?? {})
     };
   });
 }
