@@ -84,6 +84,72 @@ codegen demands. That is what a consumer's tree looks like once a retained
 contract is packaged rather than pasted in, and it is the only arrangement in
 which one process can execute a pre-fork contract and a current one.
 
+## What the fork crossing asks of each contract
+
+Per retained twin, in order: deploy below the boundary, call, cross, call again
+through the same call site (keep-state), call a second time, then **find the
+contract again**. The last one is what a restarted dApp does — it holds an
+address and a store, not the handle its deploy returned — and it asserts two
+things the other legs cannot:
+
+- the attach resolves a verifier key for **every** circuit the artifact declares
+  and refuses if one does not match, so a successful find is the chain and the
+  pre-fork artifact still agreeing after migration re-versioned the state;
+- `signingKey` comes back from the private-state store rather than from the
+  chain, so it is the assertion that the maintenance key the retained deploy
+  persisted **before** the fork survived it. That key is not on chain and not
+  derivable from anything that is: losing it silently leaves a contract nobody
+  can ever rotate a verifier key on.
+
+For that to mean anything the private-state store must not be re-keyed at the
+boundary, which is why `retainedProvidersFor` names it `fork-retained-${key}`
+with **no era in it**. It used to carry one, which gave every twin two stores
+and made the signing key and any private state unmeasurable across the fork. A
+real dApp has one store and does not re-key it when the chain forks.
+
+### `private-counter`: the only twin with private state
+
+Every other contract in either matrix is built with vacant witnesses, so nothing
+in the run could show private state crossing the boundary — the round trip would
+be `{}` in, `{}` out. Continuity was asserted only at unit tier, against a frozen
+LevelDB store (`testkit-js/.../cross-window.ut.test.ts`): real, but offline, with
+no chain and no fork in it.
+
+`private-counter` declares a witness that reads `step` out of private state and
+discloses it to the ledger. `step` is 7 and is written **once**, before the
+boundary, so the ledger figure is a statement about what the witness could still
+read:
+
+| Phase | `round` | private `calls` |
+|---|---|---|
+| pre-fork call | 7 | 1 |
+| post-fork keep-state call | 14 | 2 |
+| second post-fork call | 21 | 3 |
+
+A post-fork call that reached a fresh or reset private state cannot produce 14.
+The store itself is checked separately and member by member, on `typeof` as well
+as value — a layer that stopped preserving `bigint` would satisfy the ledger
+assertion and fail that one, which is the failure mode private-state storage
+actually has.
+
+It is **retained-only**, the mirror of `events` being current-only: a current-era
+deploy happens after the fork and has no pre-fork state to carry.
+
+### The in-flight probe
+
+One more thing runs in the fork window itself: retained calls driven from the
+moment enactment starts until the head flips, recording whether any met the
+boundary and was refused with `StaleHeadError`.
+
+It is a **probe, not a leg** — it colours nothing. Hitting that race means a call
+being in exactly the wrong part of a window `enactFork()` takes about 3m41s to
+close, which this harness does not control; a coin toss inside a blocking release
+gate is the one thing such a gate must not contain. The row distinguishes three
+outcomes — `admitted`, `stale-head` (with `kind`, `startEra`, `freshEra` off the
+error), and anything else verbatim. The wallet is itself mid-crossing in that
+window, so a refusal from that direction is expected and is **not** evidence
+about stale-head handling.
+
 ## Two things that bite
 
 **Path length.** pnpm's content-addressable store encodes a tarball's path into a
@@ -240,10 +306,15 @@ way. This repository pins it in root `resolutions`; a consumer installing the
 framework beside a retained contract has to do the same, and the migration guide
 should say so.
 
-Two fork-crossing legs are additionally out of reach at this tier, by design of the shipped
-code rather than by anything here: `deployContract`'s retained arm refuses
-unconditionally before any head is read, and the working pipeline lives in
-`contracts/src/internal` where a consumer cannot reach it. So the retained
-contract is deployed through protocol's era facade instead, standing in for the
-pre-fork dApp that would already have deployed it, and the deploy-branch
-stale-head remediation cannot be provoked from an entry point at all.
+**Superseded, and recorded because the reasoning was cited elsewhere.** This
+paragraph used to say that two fork-crossing legs were out of reach at this
+tier: `deployContract`'s retained arm refused unconditionally before any head
+was read, so the retained contract had to be deployed through protocol's era
+facade, and the stale-head remediation could not be provoked from an entry point
+at all.
+
+Neither still holds. The retained deploy arm was wired, and every retained twin
+is now deployed through `deployContract` — the surface a consumer has — so a
+regression in that arm is visible to the matrix instead of being measured
+around. And the stale-head path is driven, as a probe: see
+[The in-flight probe](#the-in-flight-probe) for what it can and cannot claim.

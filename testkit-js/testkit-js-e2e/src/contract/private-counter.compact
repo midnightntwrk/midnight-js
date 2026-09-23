@@ -1,0 +1,35 @@
+// The fork window's private-state contract, and the only contract in either
+// fork matrix that declares a witness.
+//
+// Every other matrix contract is built with `withVacantWitnesses`, so nothing
+// there carries private state and nothing there can show private state
+// SURVIVING the boundary. This one can: `localIncrement()` reads the step out of
+// the dApp's own private state and discloses it to the ledger, so the value the
+// ledger ends up holding is evidence about what the witness could still read.
+//
+// That is what makes the post-fork assertion work. A call made after the fork
+// adds the step that was written into private state BEFORE it, so `round` can
+// only reach 2 * step if the post-fork call read pre-fork private state. A
+// framework that silently started from a fresh private state would leave a
+// different number rather than an error.
+//
+// `pragma language_version >= 0.23` deliberately: this source is compiled by
+// BOTH toolchains -- 0.31.1 for the retained twin and this repo's current
+// compactc for the e2e build -- and the floor is what the retained one accepts.
+// Adding a form newer than 0.23 breaks the retained twin, which is the arm that
+// matters here.
+//
+// The same source, without the witness, is `counter.compact`'s shape; the
+// unit-tier twin of this file is
+// `testkit-js/testkit-js/src/fixtures/hf/private-counter-twin/private-counter.compact`.
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+export ledger round: Counter;
+
+witness localIncrement(): Uint<16>;
+
+export circuit increment(): [] {
+  round.increment(disclose(localIncrement()));
+}
