@@ -1,2 +1,3 @@
 yarn lint
 yarn typecheck:tests
+yarn typecheck:consumer-e2e

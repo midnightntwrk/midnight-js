@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// @ts-check
+//
 // Runs inside an installed persona, not in the monorepo. Everything it imports
 // resolves the way a real consumer's install resolves it, which is the only
 // place these assertions mean anything.
@@ -79,6 +81,13 @@ check(
 //    successful import is the assertion. This is the line that fails loudly if
 //    the two copies above collapsed into one.
 try {
+  // Relative to the PERSONA tree, which `personas.mjs` writes at run time --
+  // nothing at this path exists in the repository, so `tsc` cannot resolve it
+  // and a wildcard `declare module` cannot help either (ambient declarations
+  // are matched on non-relative specifiers only). `@ts-expect-error` rather
+  // than a suppression comment, so that if this ever DOES become resolvable
+  // the stale exemption fails the lane instead of lingering.
+  // @ts-expect-error -- written into the persona tree at run time; see above.
   await import('./contract/index.js');
   observed['contract module import'] = 'ok';
 } catch (error) {

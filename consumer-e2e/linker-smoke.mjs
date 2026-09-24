@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// @ts-check
+//
 // The isolated-linker install smoke (spec AC6, split-topology milestone).
 //
 // Builds each dApp persona outside the workspace, installs it from the packed
@@ -154,8 +156,8 @@ export const LINKERS = {
 /**
  * @param extraContracts Contract keys to wrap in addition to the persona's own.
  *
- * The fork matrix needs thirteen more contracts than the install smoke does --
- * seven current-era and six retained twins -- and their prover keys run to a few
+ * The fork matrix needs fourteen more contracts than the install smoke does --
+ * seven current-era and seven retained twins -- and their prover keys run to a few
  * hundred megabytes. Declaring them on the persona would make every AC6 install
  * pay for artifacts it never proves against, so the caller that wants them asks
  * for them.
