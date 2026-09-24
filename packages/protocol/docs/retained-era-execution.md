@@ -68,11 +68,26 @@ glue's own `createCircuitContext` fills that field only from a full
 map.
 
 The write happens once, before the circuit runs, and holds for the whole call
-only because `block` carries across the context swaps the glue performs on every
-ledger query and every registered coin. That is the vendor's behaviour rather
-than this framework's, so `v8-execute.test.ts` pins it: were a runtime bump to
-drop it, every balance read after a circuit's first ledger read would quietly
+only because `block` carries across the context swaps the glue performs. There
+are two such swaps and they are separately pinned, because a runtime bump could
+drop either alone: `queryLedgerState` replaces the context on every ledger query,
+and `insertCommitment` replaces it on every coin the circuit registers.
+`v8-execute.test.ts` drives a real ledger-querying circuit for the first and a
+real coin-producing one for the second, asserting in each case both that the
+context really was replaced and that the balance survived it. That is the
+vendor's behaviour rather than this framework's; were it to change, every
+balance read after a circuit's first ledger read or first output would quietly
 answer zero again.
+
+`executeCircuit` refuses an absent balance at runtime, not only in the types.
+`tsc` reaches neither a JavaScript caller nor an options object assembled
+dynamically, and the refusal covers more than nullish: `new Map(...)` turns an
+empty array, an empty `Set` and an empty string alike into an empty map, and a
+JSON round trip — which `ContractBalance` is otherwise documented as surviving —
+turns a `Map` into a plain object. Each of those would reproduce the original
+defect silently, so the guard tests the `ReadonlyMap` surface structurally
+rather than with `instanceof`, which keeps a map from a worker or another realm
+acceptable.
 
 ## Structural equality over the encoded algebra
 

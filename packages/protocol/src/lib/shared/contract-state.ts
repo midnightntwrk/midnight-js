@@ -28,17 +28,59 @@ export interface DecodableContractOperation {
 /**
  * The public balances a contract holds, keyed by token type.
  *
- * Derived from the vendor's own `TokenType` rather than restated, the way
- * `EncodedStateValue` is, so a rename fails this build instead of leaving a
- * mirror describing a shape neither runtime has. `shared-contract-state.test.ts`
- * pins the two eras' declarations mutually assignable, which is what lets a
- * balance decoded off a retained state be handed to the current era's types.
+ * Derived from the vendor's own `TokenType` rather than restated, so a rename
+ * fails this build instead of leaving a mirror describing a shape neither
+ * runtime has.
+ *
+ * `shared-contract-state.test.ts` pins the two eras' `TokenType` declarations
+ * mutually assignable. That pin is STRUCTURAL: both eras declare `raw` as a
+ * `string`, and they document different encodings behind it — 32 bytes on the
+ * current era, 35 on the retained one. So a key decoded off a retained state is
+ * assignable to the current era's types, and nothing here says the two eras read
+ * it as the same colour.
  *
  * Plain data end to end — string-tagged objects and `bigint`s — so it survives
  * the trip across an era boundary like every other member of
  * {@link ContractStatePojo}.
  */
 export type ContractBalance = ReadonlyMap<TokenType, bigint>;
+
+/**
+ * Names what a rejected value WAS, without rendering any of it.
+ *
+ * `typeof` alone reports `'object'` for `null`, which reads as a map that was
+ * there, and that is the one distinction a caller chasing an absent balance
+ * needs.
+ *
+ * @param value The rejected value.
+ * @returns `'null'`, or the value's `typeof`.
+ */
+export const describeValue = (value: unknown): string => (value === null ? 'null' : typeof value);
+
+/**
+ * Whether a value can serve as a {@link ContractBalance}.
+ *
+ * Structural rather than `instanceof Map`, so a map from another realm — a
+ * worker, a VM context — is accepted. Every other iterable is refused: `new
+ * Map(...)` turns an empty array, an empty `Set` and an empty string alike into
+ * an empty map, which is the substitution the balance guards exist to prevent.
+ *
+ * @param value The candidate, from an injected decoder or an untyped caller.
+ * @returns Whether it answers the `ReadonlyMap` surface.
+ * @see {@link FailClosedDecoding}
+ */
+export const isContractBalance = (value: unknown): value is ContractBalance => {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const candidate = value as Partial<ContractBalance>;
+  return (
+    typeof candidate.get === 'function' &&
+    typeof candidate.has === 'function' &&
+    typeof candidate.size === 'number' &&
+    typeof candidate[Symbol.iterator] === 'function'
+  );
+};
 
 /**
  * The slice of a ledger `ContractState` {@link decodeContractStateWith} reads.
@@ -174,19 +216,21 @@ export const decodeContractStateWith = (
       };
     });
 
-    // Deliberately not defaulted, for the same reason `executeCircuit` requires
-    // its own: `new Map(undefined)` is an EMPTY map, indistinguishable from a
-    // contract that holds nothing, and that silence is the whole of #1345. Only
-    // an injected decoder can get here -- both vendors declare `balance`
-    // non-optional -- and that is exactly the seam worth failing loudly at.
-    if (decoded.balance === undefined || decoded.balance === null) {
-      throw new Error('contract state resolves no balance; a contract that holds nothing still declares an empty map.');
+    // Read ONCE. An injected decoder may answer with a different object on each
+    // access, which would have the guard validate one map and the copy take
+    // another.
+    const balance: unknown = decoded.balance;
+    // Not defaulted: `new Map(undefined)` is an empty map, indistinguishable
+    // from a contract that holds nothing. @see FailClosedDecoding
+    if (!isContractBalance(balance)) {
+      throw new Error(
+        `contract state resolves no usable balance (received ${describeValue(balance)}); a contract that holds ` +
+          'nothing still declares an empty map.'
+      );
     }
 
-    // Copied rather than handed on, so the pojo owns a map nothing else holds.
-    // The real vendor getters already marshal a fresh `Map` out of WASM on
-    // every access, but a structurally-typed decoder need not.
-    return { state: decoded.data.state.encode(), balance: new Map(decoded.balance), entryPoints };
+    // Copied, so the pojo owns a map nothing else holds.
+    return { state: decoded.data.state.encode(), balance: new Map(balance), entryPoints };
   } catch (cause) {
     throw new StateDecodeFailedError(version, cause);
   }

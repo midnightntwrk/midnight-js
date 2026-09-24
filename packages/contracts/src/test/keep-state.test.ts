@@ -40,6 +40,8 @@ import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import {
   type ComposeCallOptions,
   type ContractBalance,
+  type DownConvertedState,
+  type ExecuteCircuitOptions,
   type LedgerEra,
   loadLedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
@@ -60,7 +62,7 @@ import {
   LedgerParametersUnservedError,
   RetainedArtifactOnCurrentEraStateError
 } from '../errors';
-import { runLedger8CallPipeline } from '../internal/ledger8-pipeline';
+import { type Ledger8ExecuteRequest, runLedger8CallPipeline } from '../internal/ledger8-pipeline';
 import { createEncryptionPublicKeyResolver } from '../internal/utils';
 import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx } from '../submit-call-tx';
@@ -640,3 +642,29 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });
 });
+
+// `Ledger8ExecutionEngine.executeCircuit` uses METHOD syntax deliberately, so
+// its parameters compare BIVARIANTLY: the real engine satisfies the slice
+// whether or not `Ledger8ExecuteRequest` declares every option the engine
+// requires. Dropping `balance` from the interface would leave the pipeline
+// compiling while it silently stopped passing one, and the only thing between
+// that and #1345 recurring would be the engine's own runtime guard.
+//
+// Whole-interface assignability is NOT the pin: `Ledger8ExecuteRequest.contract`
+// is deliberately the wider slice, so the request is not assignable to the
+// engine's options and never was. What has to hold is that the request NAMES
+// every option the engine requires, and agrees with it on the one this file is
+// about.
+type Assert<T extends true> = T;
+type _RequestNamesEveryEngineOption = Assert<
+  [Exclude<keyof ExecuteCircuitOptions, keyof Ledger8ExecuteRequest<DownConvertedState>>] extends [never]
+    ? true
+    : false
+>;
+type _RequestAgreesOnTheBalance = Assert<
+  [Ledger8ExecuteRequest<DownConvertedState>['balance']] extends [ExecuteCircuitOptions['balance']]
+    ? [ExecuteCircuitOptions['balance']] extends [Ledger8ExecuteRequest<DownConvertedState>['balance']]
+      ? true
+      : false
+    : false
+>;

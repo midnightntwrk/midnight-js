@@ -15,6 +15,7 @@
 
 
 import { hashVerifierKey } from '@midnight-ntwrk/compact-js';
+import type * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as ledgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
@@ -30,6 +31,7 @@ import {
 import { entryPointName } from '../lib/shared/verifier-keys';
 import { expectStructuredCloneable } from './clone-assertions';
 import { readHexFixture } from './fixtures';
+import type { Assert, MutuallyAssignable } from './type-assertions';
 
 
 // Same full-decode check the golden-fixture suite uses: `Buffer.from(_, 'hex')`
@@ -223,8 +225,40 @@ describe('decodeContractStateWith carries the contract balance', () => {
   // The pojo is what crosses the era boundary, so the balance has to be plain
   // data like every other member — a live handle here would not survive the
   // trip and would pin the value to the runtime instance that decoded it.
+  //
+  // Asserted on `pojo.balance`, NOT on the whole pojo: `expectStructuredCloneable`
+  // walks whatever it is given, so a pojo that carried no balance at all would
+  // satisfy it. The content assertion beside it is what keeps the member in
+  // scope of the check.
   it('carries it as plain data, with no live handle', () => {
-    expectStructuredCloneable(decodeContractStateWith(serializedStateHolding(7n), 'v9', ledgerV9));
+    const pojo = decodeContractStateWith(serializedStateHolding(7n), 'v9', ledgerV9);
+
+    expectStructuredCloneable(pojo.balance);
+    expect([...pojo.balance]).toEqual([[COLOUR, 7n]]);
+  });
+
+  // `new Map(...)` preserves every entry, but so would an implementation that
+  // read only the first: a single-entry map cannot tell the two apart, and
+  // neither can one colour tell a tag-blind implementation from a correct one.
+  it('reads back every entry, across token-type variants', () => {
+    const shielded = { tag: 'shielded', raw: 'ef'.repeat(32) } as const;
+    const dust = { tag: 'dust' } as const;
+    const contractState = new ledgerV9.ContractState();
+    contractState.balance = new Map<ledgerV9.TokenType, bigint>([
+      [COLOUR, 1n],
+      [shielded, 2n],
+      [dust, 3n]
+    ]);
+
+    const pojo = decodeContractStateWith(contractState.serialize(), 'v9', ledgerV9);
+
+    // Sorted by tag on both sides: the decoder's iteration order is the runtime's
+    // canonical one, and this test is about entries surviving, not about order.
+    expect([...pojo.balance].sort(([a], [b]) => a.tag.localeCompare(b.tag))).toEqual([
+      [dust, 3n],
+      [shielded, 2n],
+      [COLOUR, 1n]
+    ]);
   });
 });
 
@@ -255,7 +289,7 @@ describe('decodeContractStateWith refuses a state that resolves no balance', () 
   // declares `balance` as a non-optional data property, so an override cannot
   // express the shape under test. `ContractStateDecoder` is declared
   // structurally for exactly this reason.
-  const decoderAnswering = (balance: ContractBalance | undefined | null): ContractStateDecoder => ({
+  const decoderAnswering = (balance: unknown): ContractStateDecoder => ({
     ContractState: {
       deserialize: (): DecodableContractState => ({
         data: new ledgerV9.ContractState().data,
@@ -266,7 +300,7 @@ describe('decodeContractStateWith refuses a state that resolves no balance', () 
     }
   });
 
-  const decodeFailure = (balance: ContractBalance | undefined | null): unknown => {
+  const decodeFailure = (balance: unknown): unknown => {
     let caught: unknown;
     try {
       decodeContractStateWith(new Uint8Array(), 'v9', decoderAnswering(balance));
@@ -282,7 +316,7 @@ describe('decodeContractStateWith refuses a state that resolves no balance', () 
     expect(caught).toBeInstanceOf(StateDecodeFailedError);
     expect(caught).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED, version: 'v9' });
     expect((caught as StateDecodeFailedError).cause).toBeInstanceOf(Error);
-    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no balance/);
+    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
   });
 
   // A separate case, not a restatement: `new Map(null)` is an empty map too, so
@@ -291,17 +325,68 @@ describe('decodeContractStateWith refuses a state that resolves no balance', () 
     const caught = decodeFailure(null);
 
     expect(caught).toBeInstanceOf(StateDecodeFailedError);
-    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no balance/);
+    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
+  });
+
+  // Nullish is not the whole substitution. `new Map(...)` turns each of these
+  // into an empty map just as quietly, and a JSON round trip -- which the pojo
+  // is documented as surviving -- produces exactly the last of them.
+  const emptyButNotAMap: readonly [label: string, balance: unknown][] = [
+    ['an empty array', []],
+    ['an empty Set', new Set()],
+    ['an empty string', ''],
+    ['a plain object, the shape a JSON round trip leaves behind', {}]
+  ];
+
+  it.each(emptyButNotAMap)('refuses %s rather than reading it as an empty balance', (_label, balance) => {
+    const caught = decodeFailure(balance);
+
+    expect(caught).toBeInstanceOf(StateDecodeFailedError);
+    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
+  });
+
+  // The guard and the copy must read the SAME object. A decoder is injectable,
+  // so one that answers with a fresh map on every access can have the guard
+  // approve one value and the copy take another -- and this double hands out a
+  // held balance first and an empty map afterwards.
+  it('copies the very object it validated, not a later answer from the same decoder', () => {
+    const heldColour = { tag: 'unshielded', raw: '11'.repeat(32) } as const;
+    const held: ContractBalance = new Map([[heldColour, 9n]]);
+    let answered = false;
+    const shiftingDecoder: ContractStateDecoder = {
+      ContractState: {
+        deserialize: (): DecodableContractState => ({
+          data: new ledgerV9.ContractState().data,
+          get balance(): ContractBalance {
+            if (answered) {
+              return new Map();
+            }
+            answered = true;
+            return held;
+          },
+          operations: () => [],
+          operation: () => undefined
+        })
+      }
+    };
+
+    const pojo = decodeContractStateWith(new Uint8Array(), 'v9', shiftingDecoder);
+
+    expect([...pojo.balance]).toEqual([...held]);
   });
 });
 
 // The pin `ContractBalance`'s own doc comment names. `ContractBalance` keys by
 // ledger-v9's `TokenType`, yet the map it describes is decoded off a ledger-v8
-// state and handed to the 0.16 runtime. Were those declarations to drift, the
-// alias would describe a shape one of the runtimes does not have -- so the
-// drift has to fail this build rather than a transaction.
-type Assert<T extends true> = T;
-type MutuallyAssignable<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+// state and written onto the 0.16 runtime's own `block.balance`. That is THREE
+// declarations, so all three are pinned: the onchain-runtime-v3 one is where
+// the map actually lands, and until now it was covered only incidentally, by
+// `execute.ts` happening to compile.
+//
+// The pin is STRUCTURAL and cannot be more than that: `raw` is a `string` in
+// all three, and the eras document different byte lengths behind it. @see
+// FailClosedDecoding
 
-// Prefixed `_`: never instantiated, it exists only to make the compiler check.
+// Prefixed `_`: never instantiated, they exist only to make the compiler check.
 type _TokenTypeIdenticalAcrossEras = Assert<MutuallyAssignable<ledgerV8.TokenType, ledgerV9.TokenType>>;
+type _TokenTypeIdenticalOnTheExecutionRuntime = Assert<MutuallyAssignable<ocrt3.TokenType, ledgerV9.TokenType>>;

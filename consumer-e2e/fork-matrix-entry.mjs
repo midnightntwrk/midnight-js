@@ -1096,9 +1096,10 @@ if (covers(SELECTED.retained, 'unshielded')) {
       // the import specifier a whole English sentence -- unreachable, but never
       // reached, because the leg died on the undeclared capture map four lines
       // above and the arity was never exercised.
-      // NEVER give this call an `expect`. The catch below reads ANY throw as the
-      // pass, and `callRetained` now throws on a failed `expect` too -- so an
-      // assertion failure here would be recorded as the refusal it is looking for.
+      // NEVER give this call an `expect`. `callRetained` throws on a failed one,
+      // and an assertion failure is not the refusal this leg is looking for --
+      // the catch below would report it under a name that says the ledger did
+      // its job.
       await callRetained('unshielded', providers, deployed.contractAddress, {
         circuitId: 'sendUnshieldedToUserTest',
         // FOUR TIMES what the contract can be holding: one `MINT_AMOUNT` was
@@ -1107,11 +1108,29 @@ if (covers(SELECTED.retained, 'unshielded')) {
         args: (ctx) => [ctx.preForkColor, MINT_AMOUNT * 2n, { bytes: ctx.unshieldedAddress }]
       }, context);
     } catch (error) {
-      // The refusal is the PASS. Recorded rather than swallowed so the run
-      // carries which failure shape answered -- a node rejection and a
-      // balancing refusal are different findings and this row is where they
-      // would first show apart.
-      return { refusedAs: describeError(error).split('\n')[0] };
+      const described = describeError(error);
+      // Only a SEAM refusal is the pass. An unresolvable import, a provider
+      // misconfiguration, an indexer 5xx, a `LegTimeoutError` or any harness
+      // `TypeError` would otherwise be recorded as the ledger checking the
+      // balance -- which would make the surviving-balance row above decorative
+      // in exactly the way this leg's own header warns against.
+      //
+      // `balanceTx` and `submitTx` both count, and `proveTx` does not: a
+      // balance the contract cannot serve is refused either when the
+      // transaction is balanced or when the node re-runs it, but never by the
+      // prover. `Ledger8SeamFailedError` renders `<seam> rejected`, and
+      // `describeError` walks the cause chain, so the shape is readable here.
+      if (!/(?:balanceTx|submitTx) rejected/.test(described)) {
+        throw new Error(
+          'the oversized send failed, but not with a seam refusal, so this leg proves nothing about the ' +
+            `ledger checking the balance:\n${described}`,
+          { cause: error }
+        );
+      }
+      // Recorded rather than swallowed so the run carries which failure shape
+      // answered -- a node rejection and a balancing refusal are different
+      // findings and this row is where they would first show apart.
+      return { refusedAs: described.split('\n')[0] };
     }
     // Reached only when the call was ADMITTED, which is the failure this leg
     // exists to catch -- thrown rather than returned so it colours the run.

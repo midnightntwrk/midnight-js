@@ -221,6 +221,16 @@ to a caller that has to reconcile them.
 reads: nothing in this framework reads it off a decoded state, and a field
 carried "in case" becomes a field a caller depends on.
 
+**`balance` is refused when it is not a map.** `decodeContractStateWith` reads
+`decoded.balance` exactly once and checks that it answers the `ReadonlyMap`
+surface before copying it. Once, because a decoder is injectable and one that
+answers with a fresh object per access would have the guard validate one map and
+the copy take another. Checked, because `new Map(...)` turns an absent value, an
+empty array, an empty `Set` and an empty string alike into an empty map — which
+is indistinguishable from a contract that holds nothing, and is the substitution
+#1345 was made of. The check is structural rather than `instanceof Map`, so a
+map from another realm is still accepted.
+
 **`balance` is read, and was not always.** It was excluded on the same reasoning
 until the retained-era execution path turned out to need it: the balances a
 circuit reads arrive through `CallContext.balance`, which the caller has to

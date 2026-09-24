@@ -38,7 +38,8 @@ import {
   type Ledger8QueryContext,
   type TranscriptPojo
 } from '../lib/v8/execute';
-import { emptyPartitionContext } from './fixtures';
+import { emptyPartitionContext, fixturePath } from './fixtures';
+import type { MutuallyAssignable } from './type-assertions';
 
 const FIXTURE_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/counter-016');
 const EMPTY_ALIGNED: ocrt3.AlignedValue = { value: [], alignment: [] };
@@ -76,12 +77,6 @@ const buildState = (byte: number): DownConvertedState => ({
     })
   )
 });
-
-/**
- * True only when `A` and `B` are assignable to each other. Wrapped in tuples so
- * a union on either side is compared whole rather than distributed.
- */
-type MutuallyAssignable<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 
 describe('the two runtimes decode a Zswap local state to the SAME declaration', () => {
   it('is mutually assignable, in BOTH directions', () => {
@@ -628,10 +623,14 @@ describe('executeCircuit puts the contract balance on the block the circuit read
     // Wraps the real circuit rather than replacing it: the ledger queries, and
     // therefore the swaps, are the runtime's own.
     let balanceAfterCircuit: ocrt3.CallContext['balance'] | undefined;
+    let preCallContext: unknown;
+    let postCallContext: unknown;
     const observed: Ledger8ContractLike = {
       impureCircuits: {
         increment: (ctx, ...args): Ledger8CircuitResult => {
+          preCallContext = ctx.currentQueryContext;
           const result = contract.impureCircuits.increment(ctx, ...args);
+          postCallContext = result.context.currentQueryContext;
           balanceAfterCircuit = result.context.currentQueryContext.block.balance;
           return result;
         }
@@ -652,26 +651,130 @@ describe('executeCircuit puts the contract balance on the block the circuit read
       ledger8Runtime
     );
 
+    // The premise first: without a swap the survival assertion below is trivially
+    // true, and a runtime that stopped swapping would leave this suite green while
+    // the comment it guards silently became false.
+    expect(postCallContext).not.toBe(preCallContext);
     expect([...transcript.partitionContext.block.balance]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
     expect([...(balanceAfterCircuit ?? new Map())]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
   });
 
-  it('REFUSES a call with no balance rather than reading every colour back as zero', () => {
+  it('reads back every entry, across token-type variants', () => {
     const rig = rigReadingBalance();
-    // What a JavaScript caller, or one assembling the options dynamically, can
-    // reach `executeCircuit` with -- `tsc` guards only the callers it compiles.
-    const withoutBalance: Omit<ExecuteCircuitOptions, 'balance'> = {
+    const shielded = { tag: 'shielded', raw: 'ef'.repeat(32) } as const;
+
+    runReadsBalance(
+      rig,
+      new Map<ocrt3.TokenType, bigint>([
+        [SAMPLE_COLOUR, 1_000n],
+        [shielded, 7n],
+        [{ tag: 'dust' }, 3n]
+      ])
+    );
+
+    expect([...rig.seen()]).toEqual([
+      [SAMPLE_COLOUR, 1_000n],
+      [shielded, 7n],
+      [{ tag: 'dust' }, 3n]
+    ]);
+  });
+
+  // What a JavaScript caller, or one assembling the options dynamically, can
+  // reach `executeCircuit` with -- `tsc` guards only the callers it compiles.
+  //
+  // Nullish is not the whole substitution: `new Map(...)` turns every entry
+  // below into an empty map just as quietly, and a JSON round trip -- which
+  // `ContractBalance` is documented as surviving -- produces the plain object.
+  const notABalance: readonly [label: string, balance: unknown][] = [
+    ['absent', undefined],
+    ['null', null],
+    ['an empty array', []],
+    ['an empty Set', new Set()],
+    ['an empty string', ''],
+    ['a plain object, the shape a JSON round trip leaves behind', {}]
+  ];
+
+  it.each(notABalance)('REFUSES a call whose balance is %s, rather than reading every colour back as zero', (_label, balance) => {
+    const rig = rigReadingBalance();
+    const options: Omit<ExecuteCircuitOptions, 'balance'> & { balance: unknown } = {
       contract: rig.contract,
       circuitId: 'readsBalance',
       args: [],
       state: buildState(0x01),
       address: ocrt3.dummyContractAddress(),
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: {}
+      privateState: {},
+      balance
     };
 
-    expect(() => executeCircuit(withoutBalance as ExecuteCircuitOptions, rig.runtime)).toThrow(
-      /executeCircuit requires 'balance' for circuit 'readsBalance'/
+    expect(() => executeCircuit(options as ExecuteCircuitOptions, rig.runtime)).toThrow(
+      /executeCircuit requires 'balance' for circuit 'readsBalance', as a Map/
     );
+    expect(rig.seen().size).toBe(0);
+  });
+});
+
+// The glue swaps `currentQueryContext` at TWO sites, and only one of them was
+// pinned: `queryLedgerState` on every ledger query, which `increment` above
+// exercises, and `insertCommitment` on every coin the circuit registers, which
+// it does not. A runtime bump that dropped `block` across the second alone
+// would reproduce the silent-zero regression with the rest of this suite green.
+interface CompiledReceiverContract extends Ledger8ContractLike {
+  initialState(constructorContext: ConstructorContext<Record<string, never>>): {
+    currentContractState: { data: ocrt3.ChargedState };
+  };
+}
+
+interface CompiledReceiverModule {
+  readonly Contract: new (witnesses: Record<string, never>) => CompiledReceiverContract;
+}
+
+describe('the contract balance survives the context swap the glue performs on a REGISTERED COIN', () => {
+  const RECEIVED_COIN = { nonce: new Uint8Array(32).fill(0x07), color: new Uint8Array(32).fill(0), value: 42n };
+
+  it('still reads back after a circuit that produces a Zswap output', async () => {
+    const { Contract } = (await import(
+      /* @vite-ignore */ fixturePath('coin-receiver-016', 'compiled', 'contract', 'index.js')
+    )) as CompiledReceiverModule;
+    const ledger8Runtime = await import('compact-runtime-ledger8');
+    const contract = new Contract({});
+    const initial = contract.initialState(ledger8Runtime.createConstructorContext({}, SAMPLE_COIN_PUBLIC_KEY));
+
+    // Wraps the real circuit rather than replacing it, so the commitment -- and
+    // therefore the swap -- is the runtime's own.
+    let preCallContext: unknown;
+    let postCallContext: unknown;
+    let balanceAfterCircuit: ocrt3.CallContext['balance'] | undefined;
+    const observed: Ledger8ContractLike = {
+      impureCircuits: {
+        receive_coin: (ctx, ...args): Ledger8CircuitResult => {
+          preCallContext = ctx.currentQueryContext;
+          const result = contract.impureCircuits.receive_coin(ctx, ...args);
+          postCallContext = result.context.currentQueryContext;
+          balanceAfterCircuit = result.context.currentQueryContext.block.balance;
+          return result;
+        }
+      }
+    };
+
+    const transcript = executeCircuit(
+      {
+        contract: observed,
+        circuitId: 'receive_coin',
+        args: [RECEIVED_COIN],
+        state: { data: initial.currentContractState.data },
+        address: ocrt3.dummyContractAddress(),
+        coinPk: SAMPLE_COIN_PUBLIC_KEY,
+        privateState: {},
+        balance: new Map<ocrt3.TokenType, bigint>([[SAMPLE_COLOUR, 1_000n]])
+      },
+      ledger8Runtime
+    );
+
+    // The coin really was registered, and the context really was replaced --
+    // without both, the survival assertion below tests nothing.
+    expect(transcript.zswapLocalState.outputs.length).toBeGreaterThan(0);
+    expect(postCallContext).not.toBe(preCallContext);
+    expect([...(balanceAfterCircuit ?? new Map())]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
   });
 });
