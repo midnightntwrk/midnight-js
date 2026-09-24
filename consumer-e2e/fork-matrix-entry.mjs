@@ -38,7 +38,13 @@ import { setTimeout as delay } from 'node:timers/promises';
 // root is not a consumer-facing import, and taking them off it made this file
 // look like it needed one. See `packages/midnight-js/src/index.ts` and
 // `src/protocol.ts` for the published set.
-import { deployContract, findDeployedContract, StaleHeadError, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import {
+  deployContract,
+  findDeployedContract,
+  StaleHeadError,
+  SubmitRejectionUndiagnosedError,
+  submitCallTx
+} from '@midnight-ntwrk/midnight-js-contracts';
 import { networkHeadVersion, protocol } from '@midnight-ntwrk/midnight-js';
 // THE ONE IMPORT HERE THAT IS NOT CONSUMER-FACING, and it is a gap in
 // `contracts`, not a shortcut taken here. `readRetainedLedger` has to decode a
@@ -1480,6 +1486,190 @@ await probe('pre-fork deploy of a current-era contract', async () => {
   };
 });
 
+/**
+ * The stale-head legs, and why they hold a submission rather than race one.
+ *
+ * `handleSubmitRejection` is the framework's answer to a transaction built
+ * against the pre-fork ledger that is still in flight when the fork applies: it
+ * re-reads the head, sees the era move forward, and raises {@link StaleHeadError}
+ * with remediation instead of an opaque decode failure. The probe below drives
+ * calls at that window and cannot assert on it -- and the reason is sharper than
+ * "it is a race". MEASURED on a fork stack: nine calls admitted, then eleven
+ * refused at `submitTx`, and not one of them diagnosed. The node starts refusing
+ * retained-era bytes BEFORE the indexer's head flips, so the re-read those
+ * refusals provoke reports the same era the operation started on and the
+ * rejection is re-thrown unchanged, exactly as it should be. The window in which
+ * a live call can observe `StaleHeadError` is therefore not half the fork
+ * window; it is the sliver after the indexer catches up, and the probe nearly
+ * always misses it.
+ *
+ * These legs remove the race instead of running it. A call starts BEFORE the
+ * fork and is really composed, proven and balanced against a real pre-fork head.
+ * Only its SUBMISSION is held -- at the `midnightProvider.submitTx` seam -- until
+ * the head reports `v9`. Then it goes to the real wallet and the real node, is
+ * really refused, and the framework re-reads a head that really moved. The one
+ * injected thing is WHEN the bytes leave, which is the condition being modelled.
+ *
+ * DO NOT REPLACE THIS WITH A FAKED HEAD READING on a chain that has already
+ * forked. That mechanism does not reach the submit seam at all: the retained
+ * composition refuses the v9-tagged ledger parameters a post-fork block serves,
+ * with `ComposeOptionError`, before anything is proven. Measured, not reasoned
+ * about.
+ *
+ * One shard drives them. The diagnosis is a property of the framework and not of
+ * any contract, so thirteen copies of it would buy thirteen copies of one
+ * measurement and pay for each in fork-window time.
+ */
+const DRIVES_STALE_HEAD = covers(SELECTED.retained, 'simple');
+
+/**
+ * A provider set whose submission is HELD at the seam until it is released.
+ *
+ * Only `midnightProvider` is wrapped. The proving and balancing seams run
+ * untouched and at their normal moment, which is what keeps the held
+ * transaction a real one rather than a shape assembled for a test.
+ *
+ * @param providers The provider set to wrap.
+ * @returns The wrapped set, a promise that settles when the submission reaches
+ * the seam, and the function that lets it through.
+ */
+const parkSubmission = (providers) => {
+  const seam = providers.midnightProvider;
+  let reachSeam;
+  let letThrough;
+  const reachedSeam = new Promise((resolve) => {
+    reachSeam = resolve;
+  });
+  const released = new Promise((resolve) => {
+    letThrough = resolve;
+  });
+  return {
+    reachedSeam,
+    release: () => letThrough(),
+    providers: {
+      ...providers,
+      midnightProvider: {
+        // Carried over, never restated. The era gate reads this before the
+        // operation starts, and a wrapper that narrowed it would refuse the very
+        // payload these legs exist to submit.
+        supportedEras: seam.supportedEras,
+        submitTx: async (tx) => {
+          reachSeam(tx.version);
+          await released;
+          return seam.submitTx(tx);
+        }
+      }
+    }
+  };
+};
+
+/** What a parked call is given to compose, prove and balance. One measured at ~18s. */
+const PARK_TIMEOUT = 3 * 60_000;
+/** What a released submission is given to be refused and diagnosed. */
+const SETTLE_TIMEOUT = 4 * 60_000;
+
+/** Why a call that should have parked did not. */
+const describeParkFailure = (settled) => {
+  if (settled === undefined) {
+    return `nothing happened within ${PARK_TIMEOUT / 1000}s`;
+  }
+  return settled.error === undefined
+    ? `it was admitted as ${settled.admitted}`
+    : `it failed before the seam: ${describeError(settled.error).split('\n')[0]}`;
+};
+
+/**
+ * Starts a baseline call and returns once it is parked at the submit seam.
+ *
+ * Bounded on its own: a call that never reaches the seam would otherwise be
+ * found only by `leg`'s backstop, which is fatal and would cost every leg after
+ * it. Started one at a time by the callers, because every leg in this file draws
+ * on ONE wallet and two balances at once select the same coins.
+ *
+ * @param providers The provider set the call runs on, already carrying whatever
+ * the calling leg injects.
+ * @returns The release function, the promise of what the framework made of the
+ * released submission, and the era arm the payload crossed the seam on.
+ * @throws Error if the call finished, failed or fell silent instead of parking.
+ */
+const parkBaselineCall = async (providers) => {
+  const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+  const parked = parkSubmission(providers);
+  // Mapped to a value on BOTH arms here, where it is created, and not awaited
+  // until the release leg: an unobserved rejection in between would be an
+  // unhandled one.
+  const settles = submitCallTx(parked.providers, {
+    compiledContract: new Contract({}),
+    contractAddress: deployment.contractAddress,
+    circuitId: CIRCUIT_ID,
+    args: []
+  }).then(
+    // Both members on both arms, not one each: a union of two shapes is not
+    // narrowable by a property only one of them declares, and
+    // `typecheck:consumer-e2e` is what says so.
+    (submitted) => ({ admitted: submitted.public.txId, error: undefined }),
+    (error) => ({ admitted: undefined, error })
+  );
+  const first = await Promise.race([
+    parked.reachedSeam.then((version) => ({ payloadVersion: version, settled: undefined })),
+    settles.then((settled) => ({ payloadVersion: undefined, settled })),
+    delay(PARK_TIMEOUT, undefined, { ref: false }).then(() => ({ payloadVersion: undefined, settled: undefined }))
+  ]);
+  if (first.payloadVersion === undefined) {
+    parked.release();
+    throw new Error(`the call never reached the submit seam: ${describeParkFailure(first.settled)}`);
+  }
+  return { release: parked.release, settles, payloadVersion: first.payloadVersion };
+};
+
+/**
+ * Lets a parked submission through and returns the refusal the framework built.
+ *
+ * @param parked The parked call, from {@link parkBaselineCall}.
+ * @returns The error the entry point rejected with.
+ * @throws Error if the submission was ADMITTED -- a post-fork network taking
+ * retained-era bytes is a finding, not a passing leg -- or never settled.
+ */
+const releaseAndSettle = async (parked) => {
+  parked.release();
+  const settled = await Promise.race([
+    parked.settles,
+    delay(SETTLE_TIMEOUT, undefined, { ref: false }).then(() => undefined)
+  ]);
+  if (settled === undefined) {
+    throw new Error(`the released submission did not settle within ${SETTLE_TIMEOUT / 1000}s`);
+  }
+  if (settled.error === undefined) {
+    throw new Error(
+      `the released submission was ADMITTED as ${settled.admitted}: the post-fork network took bytes built against the pre-fork ledger`
+    );
+  }
+  return settled.error;
+};
+
+/**
+ * A read surface answering the head read differently once `answer` says so.
+ *
+ * Built by PROTOTYPE DELEGATION rather than as a hand-written object: every
+ * other member the operation reads -- the contract state, the finalization
+ * watch -- stays exactly the provider the rest of the run uses, so the only
+ * difference between these legs and an ordinary one is the reading under test.
+ *
+ * @param real The provider to delegate to.
+ * @param answer Called on every head read; returns `undefined` to pass the read
+ * through to `real`, or a function producing this leg's answer.
+ * @returns The delegating read surface.
+ */
+const withHeadReadAnswer = (real, answer) =>
+  Object.create(real, {
+    queryLatestProtocolVersion: {
+      value: async () => {
+        const injected = answer();
+        return injected === undefined ? real.queryLatestProtocolVersion() : injected();
+      }
+    }
+  });
+
 // ── (b) the fork moment ───────────────────────────────────────────────────────
 
 // ONE `awaitFork()`, shared by the probe below and the gate under it. Calling it
@@ -1507,6 +1697,49 @@ forkEnacted.then(
   }
 );
 
+
+// The two held submissions, started the moment the enactment window opens: the
+// head they resolve is a real pre-fork one that is about to move. Sequentially,
+// never together -- one wallet.
+let parkedStaleHead;
+let parkedUnreadableHead;
+/** The integer a pre-fork head reported, replayed by the backwards-head leg after the boundary. */
+let preForkProtocolVersion;
+/** Flipped at release, so the failing read is the RE-READ and every reading before it is real. */
+let headReReadFails = false;
+
+if (DRIVES_STALE_HEAD) {
+  await leg('park a retained call at the submit seam', async () => {
+    if (deployment === undefined) {
+      throw new Error('the pre-fork baseline deploy did not complete, so there is nothing to call');
+    }
+    // READ, not assumed. The backwards-head leg replays this integer, and a
+    // hardcoded one would make that leg a statement about this environment's
+    // version numbering rather than about the diagnosis.
+    preForkProtocolVersion = await session.providers.publicDataProvider.queryLatestProtocolVersion();
+    parkedStaleHead = await parkBaselineCall(session.providers);
+    return { payload: parkedStaleHead.payloadVersion, preForkProtocolVersion };
+  });
+
+  await leg('park a second retained call, whose head re-read will fail', async () => {
+    if (parkedStaleHead === undefined) {
+      throw new Error('the first call did not park, so a second one would only queue behind it on the wallet');
+    }
+    const real = session.providers.publicDataProvider;
+    parkedUnreadableHead = await parkBaselineCall({
+      ...session.providers,
+      publicDataProvider: withHeadReadAnswer(real, () =>
+        headReReadFails
+          ? () => {
+              throw new Error('the indexer is unreachable');
+            }
+          : undefined
+      )
+    });
+    return { payload: parkedUnreadableHead.payloadVersion };
+  });
+}
+
 await probe(
   'a retained call in flight as the fork applies',
   () => driveCallsAcrossTheBoundary(() => forkOutcome),
@@ -1524,6 +1757,70 @@ await probe(
 // FIRST instead: its attempt cap, its own deadline, a call that met the boundary
 // and broke the loop, and a baseline deploy that never completed.
 const forked = await legSucceeded('fork enacted', () => forkEnacted, FORK_WAIT_TIMEOUT);
+
+
+// ── (b) continued: the stale-head verdicts ───────────────────────────────
+//
+// BEFORE the wallet is rebuilt below. A parked submission holds the PRE-fork
+// wallet, and releasing it into a stopped one would answer with that instead of
+// with the network's refusal -- a failure wearing the right error's clothes.
+if (DRIVES_STALE_HEAD && parkedStaleHead !== undefined) {
+  // Its own leg, and its own row: the verdicts below rest on the head having
+  // MOVED, and "it never did" is a different finding from "it moved and the
+  // framework said the wrong thing about it".
+  const headMoved =
+    forked &&
+    (await legSucceeded('the head reports v9 before the parked submissions are released', () =>
+      waitForHead(session.providers.publicDataProvider, 'v9', 5 * 60_000)
+    ));
+
+  await leg('a retained call parked across the fork is refused as STALE', async () => {
+    if (!headMoved) {
+      // Released anyway: a call left parked holds the wallet every leg below
+      // draws on.
+      parkedStaleHead.release();
+      throw new Error('the head never reported v9, so a released submission would say nothing about the fork');
+    }
+    const refusal = await releaseAndSettle(parkedStaleHead);
+    if (!(refusal instanceof StaleHeadError)) {
+      throw new Error(`expected StaleHeadError; got ${describeError(refusal).split('\n')[0]}`);
+    }
+    // All three, because the remediation a consumer is pointed at is derived
+    // from them: `kind` picks the deploy or call wording, and the two eras are
+    // what the message tells an operator to act on.
+    if (refusal.kind !== 'call' || refusal.startEra !== 'v8' || refusal.freshEra !== 'v9') {
+      throw new Error(
+        `StaleHeadError reported kind '${refusal.kind}', startEra '${refusal.startEra}', freshEra '${refusal.freshEra}'`
+      );
+    }
+    return { kind: refusal.kind, startEra: refusal.startEra, freshEra: refusal.freshEra };
+  });
+
+  await leg('a parked call whose head RE-READ FAILS is reported undiagnosed', async () => {
+    if (parkedUnreadableHead === undefined) {
+      throw new Error('the second call never parked, so there is nothing to release');
+    }
+    if (!headMoved) {
+      parkedUnreadableHead.release();
+      throw new Error('the head never reported v9, so a released submission would say nothing about the fork');
+    }
+    headReReadFails = true;
+    const refusal = await releaseAndSettle(parkedUnreadableHead);
+    if (!(refusal instanceof SubmitRejectionUndiagnosedError)) {
+      throw new Error(`expected SubmitRejectionUndiagnosedError; got ${describeError(refusal).split('\n')[0]}`);
+    }
+    if (refusal.reason !== 'head-read-failed') {
+      throw new Error(`expected reason 'head-read-failed'; got '${refusal.reason}'`);
+    }
+    // NEITHER failure is dropped: the submission's rejection first, the read's
+    // failure second. Reporting only one of the two is what this arm's
+    // `AggregateError` shape exists to rule out.
+    if (refusal.errors.length !== 2) {
+      throw new Error(`expected both failures to be carried; it carries ${refusal.errors.length}`);
+    }
+    return { reason: refusal.reason, startEra: refusal.startEra, kind: refusal.kind, carries: refusal.errors.length };
+  });
+}
 
 const crossed =
   forked &&
@@ -1549,6 +1846,66 @@ if (!crossed) {
 await leg('envelope tag across the boundary', () =>
   sampleEnvelope(session.providers.publicDataProvider, deployment.contractAddress, 6, 10_000)
 );
+
+
+// ── (c) continued: the head that moved BACKWARDS ────────────────────────
+//
+// The one arm no chain produces. A head moving backwards is not a fork crossing
+// and not anything else a network does, so unlike the two legs above this one
+// cannot be driven by timing alone: both the rejection and the backwards reading
+// are injected here, and this comment is the leg being honest about that. What
+// the live chain still contributes is everything else -- a real post-fork head
+// resolved at the operation's start, a real retained contract, a real
+// composition through the keep-state pipeline -- so the subject under test is
+// the framework's verdict rather than a mock of it.
+if (DRIVES_STALE_HEAD) {
+  await leg('a submit rejection under a head that moved BACKWARDS is not called a fork crossing', async () => {
+    if (deployment === undefined || preForkProtocolVersion === undefined) {
+      throw new Error('there is no pre-fork baseline deploy, or no pre-fork head reading to replay');
+    }
+    const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+    const real = session.providers.publicDataProvider;
+    let submitted = false;
+    const providers = {
+      ...session.providers,
+      // The reading the operation STARTS on is the real post-fork one; only the
+      // re-read after the rejection answers the pre-fork integer this run
+      // actually observed.
+      publicDataProvider: withHeadReadAnswer(real, () => (submitted ? () => preForkProtocolVersion : undefined)),
+      midnightProvider: {
+        supportedEras: session.providers.midnightProvider.supportedEras,
+        submitTx: () => {
+          submitted = true;
+          return Promise.reject(new Error('the node refused the transaction'));
+        }
+      }
+    };
+    const outcome = await submitCallTx(providers, {
+      compiledContract: new Contract({}),
+      contractAddress: deployment.contractAddress,
+      circuitId: CIRCUIT_ID,
+      args: []
+    }).then(
+      (admitted) => ({ admitted: admitted.public.txId, error: undefined }),
+      (error) => ({ admitted: undefined, error })
+    );
+    if (outcome.error === undefined) {
+      throw new Error(`the call was admitted as ${outcome.admitted} although the submit seam refused it`);
+    }
+    if (!(outcome.error instanceof SubmitRejectionUndiagnosedError)) {
+      throw new Error(`expected SubmitRejectionUndiagnosedError; got ${describeError(outcome.error).split('\n')[0]}`);
+    }
+    if (outcome.error.reason !== 'head-moved-backwards') {
+      throw new Error(`expected reason 'head-moved-backwards'; got '${outcome.error.reason}'`);
+    }
+    // The era the operation STARTED on, which is the post-fork one it really
+    // read: a leg that let this be 'v8' would be measuring its own injection.
+    if (outcome.error.startEra !== 'v9') {
+      throw new Error(`expected the operation to have started on 'v9'; it reports '${outcome.error.startEra}'`);
+    }
+    return { reason: outcome.error.reason, startEra: outcome.error.startEra, kind: outcome.error.kind };
+  });
+}
 
 // ── (c) post-fork: the SAME call site, now on keep-state ──────────────────────
 

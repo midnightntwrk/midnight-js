@@ -185,6 +185,59 @@ precisely the case the probe is trying to provoke. Without a per-call ceiling it
 would hang until the outer deadline, which is fatal and sits before the `fork
 enacted` gate.
 
+### The three legs that do not race
+
+The probe above cannot assert, and the reason is sharper than "it is a race".
+Measured on this stack, on two runs that agreed exactly: nine calls admitted,
+then eleven refused at `submitTx`, `metTheBoundary: false` both times. Every one
+of those eleven was a real refusal -- the node stops taking retained-era bytes at
+the boundary -- and not one was diagnosed as a stale head, because the node
+refuses them **before the indexer's head flips**. The re-read each refusal
+provokes therefore reports the era the operation started on, and
+`handleSubmitRejection` re-throws the rejection unchanged, which is exactly
+right. So the window in which a live call can observe `StaleHeadError` is not
+half the fork window; it is the sliver after the indexer catches up, and the
+probe lands in it about as often as never.
+
+Three legs remove the race instead of running it. Each starts a call **before**
+the fork, on a real pre-fork head, and really composes, proves and balances it
+there. Only the SUBMISSION is held -- at the `midnightProvider.submitTx` seam --
+until the head reports `v9`. Then the bytes go to the real wallet and the real
+node, are really refused, and the framework re-reads a head that really moved.
+
+| Leg | Real | Injected |
+|---|---|---|
+| a retained call parked across the fork is refused as STALE | the operation, the refusal, the re-read | when the submission leaves |
+| a parked call whose head RE-READ FAILS is reported undiagnosed | the operation, the refusal | when the submission leaves; the re-read throws |
+| a submit rejection under a head that moved BACKWARDS | the operation and the post-fork era it starts on | the refusal, and the re-read's answer |
+
+The first reads `kind`, `startEra` and `freshEra` off the `StaleHeadError` -- the
+three fields its remediation text is built from. The other two read `reason` off
+the `SubmitRejectionUndiagnosedError`, and the second also asserts that the
+undiagnosed arm carries **both** failures, since reporting only one of them is
+the defect its `AggregateError` shape exists to rule out.
+
+The third is the one arm no chain produces: a head does not move backwards, so
+both its rejection and its backwards reading are injected, and the leg says so at
+its call site. What the live chain still contributes there is the era the
+operation starts on -- `startEra: 'v9'` is asserted, so a leg that had quietly
+begun measuring its own injection would fail.
+
+**Verified by mutation.** With `handleSubmitRejection` reduced to
+`throw rejection`, all three legs go red and the shard exits 1. Without that, a
+leg that asserts on a live chain is only a leg that passes on a live chain.
+
+**Do not replace the holding with a faked head reading on a chain that has
+already forked.** Measured: the retained composition refuses the v9-tagged ledger
+parameters a post-fork block serves, with `ComposeOptionError`, before anything
+is proven -- so that mechanism never reaches the submit seam at all, and a leg
+built on it would be asserting on the composer.
+
+They run on **one shard**, gated like the current-era pre-fork probe: the
+diagnosis is a property of the framework and not of any contract, so thirteen
+copies of it would buy thirteen copies of one measurement and pay for each in
+fork-window time.
+
 ## Two things that bite
 
 **Path length.** pnpm's content-addressable store encodes a tarball's path into a
@@ -353,7 +406,9 @@ twin is now deployed through `deployContract` — the surface a consumer has —
 regression in that arm is visible to the matrix instead of being measured around.
 
 The second holds **only for the deploy branch**, which is what it was originally
-about. The stale-head path is now driven, but by calls, so the error it provokes
-carries `kind: 'call'`. The deploy branch's remediation still cannot be reached
-from any entry point here. See [The in-flight probe](#the-in-flight-probe) for
-what that probe can and cannot claim.
+about. The stale-head path is now driven, and asserted, but by calls, so the
+error it provokes carries `kind: 'call'`. The deploy branch's remediation still
+cannot be reached from any entry point here. See
+[The three legs that do not race](#the-three-legs-that-do-not-race) for what is
+asserted and what is injected, and [The in-flight probe](#the-in-flight-probe)
+for what that probe can and cannot claim.
