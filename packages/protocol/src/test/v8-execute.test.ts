@@ -535,79 +535,48 @@ describe('executeCircuit against the ported spike counter-016 fixture (real comp
 const SAMPLE_COLOUR = { tag: 'unshielded', raw: 'ab'.repeat(32) } as const;
 
 describe('executeCircuit puts the contract balance on the block the circuit reads', () => {
-  it('has the balance in place BEFORE the circuit runs, not merely on the recorded context', () => {
-    const preState = buildState(0x01);
-    const balance = new Map<ocrt3.TokenType, bigint>([[SAMPLE_COLOUR, 1_000n]]);
-    let balanceSeenByCircuit: ocrt3.CallContext['balance'] | undefined;
+  // One rig for the three fake-runtime tests below. The circuit records what
+  // `block.balance` held when it ran, which is the only thing any of them asks.
+  const rigReadingBalance = (): {
+    runtime: Ledger8ExecutionRuntime;
+    contract: Ledger8ContractLike;
+    seen: () => ocrt3.CallContext['balance'];
+  } => {
+    let seen: ocrt3.CallContext['balance'] | undefined;
 
-    const runtime: Ledger8ExecutionRuntime = {
-      decodeZswapLocalState,
-      createCircuitContext: (_address, _coinPk, contractState, privateState) => ({
-        currentQueryContext: fakeQueryContext(contractState),
-        currentPrivateState: privateState,
-        currentZswapLocalState: emptyZswap()
-      }),
-      CostModel: { initialCostModel: () => ocrt3.CostModel.initialCostModel() }
-    };
-    const contract: Ledger8ContractLike = {
-      impureCircuits: {
-        readsBalance: (ctx): Ledger8CircuitResult => {
-          balanceSeenByCircuit = ctx.currentQueryContext.block.balance;
-          return {
-            result: undefined,
-            proofData: { input: EMPTY_ALIGNED, output: EMPTY_ALIGNED, publicTranscript: [], privateTranscriptOutputs: [] },
-            context: { ...ctx, currentZswapLocalState: emptyZswap() }
-          };
-        }
-      }
-    };
-
-    executeCircuit(
-      {
-        contract,
-        circuitId: 'readsBalance',
-        args: [],
-        state: preState,
-        address: ocrt3.dummyContractAddress(),
-        coinPk: SAMPLE_COIN_PUBLIC_KEY,
-        privateState: {},
-        balance
+    return {
+      runtime: {
+        decodeZswapLocalState,
+        createCircuitContext: (_address, _coinPk, contractState, privateState) => ({
+          currentQueryContext: fakeQueryContext(contractState),
+          currentPrivateState: privateState,
+          currentZswapLocalState: emptyZswap()
+        }),
+        CostModel: { initialCostModel: () => ocrt3.CostModel.initialCostModel() }
       },
-      runtime
-    );
-
-    expect([...(balanceSeenByCircuit ?? [])]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
-  });
-
-  it('copies the balance rather than sharing it, so a later mutation by the caller cannot reach a running circuit', () => {
-    const balance = new Map<ocrt3.TokenType, bigint>([[SAMPLE_COLOUR, 1_000n]]);
-    let balanceSeenByCircuit: ocrt3.CallContext['balance'] | undefined;
-
-    const runtime: Ledger8ExecutionRuntime = {
-      decodeZswapLocalState,
-      createCircuitContext: (_address, _coinPk, contractState, privateState) => ({
-        currentQueryContext: fakeQueryContext(contractState),
-        currentPrivateState: privateState,
-        currentZswapLocalState: emptyZswap()
-      }),
-      CostModel: { initialCostModel: () => ocrt3.CostModel.initialCostModel() }
-    };
-    const contract: Ledger8ContractLike = {
-      impureCircuits: {
-        readsBalance: (ctx): Ledger8CircuitResult => {
-          balanceSeenByCircuit = ctx.currentQueryContext.block.balance;
-          return {
-            result: undefined,
-            proofData: { input: EMPTY_ALIGNED, output: EMPTY_ALIGNED, publicTranscript: [], privateTranscriptOutputs: [] },
-            context: { ...ctx, currentZswapLocalState: emptyZswap() }
-          };
+      contract: {
+        impureCircuits: {
+          readsBalance: (ctx): Ledger8CircuitResult => {
+            seen = ctx.currentQueryContext.block.balance;
+            return {
+              result: undefined,
+              proofData: { input: EMPTY_ALIGNED, output: EMPTY_ALIGNED, publicTranscript: [], privateTranscriptOutputs: [] },
+              context: { ...ctx, currentZswapLocalState: emptyZswap() }
+            };
+          }
         }
-      }
+      },
+      seen: () => seen ?? new Map()
     };
+  };
 
+  const runReadsBalance = (
+    rig: ReturnType<typeof rigReadingBalance>,
+    balance: ReadonlyMap<ocrt3.TokenType, bigint>
+  ): void => {
     executeCircuit(
       {
-        contract,
+        contract: rig.contract,
         circuitId: 'readsBalance',
         args: [],
         state: buildState(0x01),
@@ -616,14 +585,37 @@ describe('executeCircuit puts the contract balance on the block the circuit read
         privateState: {},
         balance
       },
-      runtime
+      rig.runtime
     );
-    balance.set({ tag: 'unshielded', raw: 'cd'.repeat(32) }, 5n);
+  };
 
-    expect([...(balanceSeenByCircuit ?? [])]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
+  it('has the balance in place BEFORE the circuit runs, not merely on the recorded context', () => {
+    const rig = rigReadingBalance();
+
+    runReadsBalance(rig, new Map([[SAMPLE_COLOUR, 1_000n]]));
+
+    expect([...rig.seen()]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
   });
 
-  it('writes it onto the REAL runtime context, whose `block` is a WASM-backed property', async () => {
+  it('copies the balance rather than sharing it, so a later mutation by the caller cannot reach a running circuit', () => {
+    const rig = rigReadingBalance();
+    const balance = new Map<ocrt3.TokenType, bigint>([[SAMPLE_COLOUR, 1_000n]]);
+
+    runReadsBalance(rig, balance);
+    balance.set({ tag: 'unshielded', raw: 'cd'.repeat(32) }, 5n);
+
+    expect([...rig.seen()]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
+  });
+
+  // Against the real glue AND a real ledger-querying circuit, which is what
+  // makes the second assertion possible. `increment` reads and writes the
+  // counter, and the glue REPLACES `currentQueryContext` on every such query.
+  // `executeCircuit` writes the balance once, before the call, so the write
+  // holds for the whole circuit only because `block` carries across that swap.
+  // That is the vendor's behaviour rather than this module's, and a runtime
+  // bump could drop it silently -- every balance read after a circuit's first
+  // ledger read would quietly answer zero again.
+  it('writes it onto the REAL runtime context, and it survives the glue swapping that context', async () => {
     const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
     const ledger8Runtime = await import('compact-runtime-ledger8');
 
@@ -633,9 +625,22 @@ describe('executeCircuit puts the contract balance on the block the circuit read
       ledger8Runtime.createConstructorContext(initialPrivateState, SAMPLE_COIN_PUBLIC_KEY)
     );
 
+    // Wraps the real circuit rather than replacing it: the ledger queries, and
+    // therefore the swaps, are the runtime's own.
+    let balanceAfterCircuit: ocrt3.CallContext['balance'] | undefined;
+    const observed: Ledger8ContractLike = {
+      impureCircuits: {
+        increment: (ctx, ...args): Ledger8CircuitResult => {
+          const result = contract.impureCircuits.increment(ctx, ...args);
+          balanceAfterCircuit = result.context.currentQueryContext.block.balance;
+          return result;
+        }
+      }
+    };
+
     const transcript = executeCircuit(
       {
-        contract,
+        contract: observed,
         circuitId: 'increment',
         args: [],
         state: { data: initial.currentContractState.data },
@@ -648,5 +653,25 @@ describe('executeCircuit puts the contract balance on the block the circuit read
     );
 
     expect([...transcript.partitionContext.block.balance]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
+    expect([...(balanceAfterCircuit ?? new Map())]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
+  });
+
+  it('REFUSES a call with no balance rather than reading every colour back as zero', () => {
+    const rig = rigReadingBalance();
+    // What a JavaScript caller, or one assembling the options dynamically, can
+    // reach `executeCircuit` with -- `tsc` guards only the callers it compiles.
+    const withoutBalance: Omit<ExecuteCircuitOptions, 'balance'> = {
+      contract: rig.contract,
+      circuitId: 'readsBalance',
+      args: [],
+      state: buildState(0x01),
+      address: ocrt3.dummyContractAddress(),
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      privateState: {}
+    };
+
+    expect(() => executeCircuit(withoutBalance as ExecuteCircuitOptions, rig.runtime)).toThrow(
+      /executeCircuit requires 'balance' for circuit 'readsBalance'/
+    );
   });
 });

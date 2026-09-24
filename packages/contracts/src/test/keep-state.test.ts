@@ -37,7 +37,12 @@ import { readFileSync } from 'node:fs';
 
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import { type ComposeCallOptions, type LedgerEra, loadLedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import {
+  type ComposeCallOptions,
+  type ContractBalance,
+  type LedgerEra,
+  loadLedgerEra
+} from '@midnight-ntwrk/midnight-js-protocol';
 import { ContractState, LedgerParameters, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type RawContractState,
@@ -320,16 +325,31 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
   // cannot carry: it lives beside `.data` on the ledger's own `ContractState`.
   // Without this the engine ran every circuit against an empty balance, and the
   // only thing that caught it was the node refusing the resulting transcript.
+  //
+  // THE HOLDING IS STUBBED ONTO THE DECODER, and both halves of that matter.
+  // The committed envelope holds NOTHING -- every `.hex` fixture in this repo
+  // does -- so an expectation read off it would be an empty map, and the
+  // regression this test is named for, a pipeline hard-coding `new Map()`,
+  // would satisfy it. And the expected map is written HERE as a literal rather
+  // than taken from `decodeContractState`, because deriving it from the very
+  // function the pipeline calls would satisfy the assertion whatever that
+  // function returned. What is under test is the PIPELINE's carrying, so the
+  // decoder is the seam to stub; that the real decoder reads a real retained
+  // balance is `shared-contract-state.test.ts`'s claim, not this one's.
   it('hands the engine the contract balance the chain state declares, not an empty one', async () => {
     const log: OrchestrationLog = [];
     const providers = postForkProviders(v6Envelope);
+    const heldColour = { tag: 'unshielded', raw: 'ab'.repeat(32) } as const;
+    const held: ContractBalance = new Map([[heldColour, 1_000n]]);
+    const retainedEraHolding: LedgerEra = {
+      ...retainedEra,
+      decodeContractState: (raw) => ({ ...retainedEra.decodeContractState(raw), balance: held })
+    };
 
     await runLedger8CallPipeline<ReplayState>({
       era: currentEra,
-      retainedEra,
-      engine: createReplayEngine(recording, log, undefined, {
-        balance: retainedEra.decodeContractState(v6Envelope).balance
-      }),
+      retainedEra: retainedEraHolding,
+      engine: createReplayEngine(recording, log, undefined, { balance: held }),
       publicDataProvider: providers.publicDataProvider,
       head: 'v9',
       contract,
@@ -347,6 +367,8 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       )
     });
 
+    // The engine double asserts the VALUE as it receives it; this pins that the
+    // step ran at all, so a double that was never called cannot read as a pass.
     expect(log).toContain('engine.executeCircuit');
   });
 

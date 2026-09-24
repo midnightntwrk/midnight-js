@@ -213,16 +213,28 @@ export interface ExecuteCircuitOptions {
  * for the caller to turn into the transaction's Zswap offer.
  *
  * @param options The contract module, circuit id, arguments, down-converted
- *   state, contract address, coin public key and private state.
+ *   state, contract address, coin public key, private state and the balances
+ *   the contract holds.
  * @param ledger8Runtime The injected pre-fork glue slice.
  * @returns Every artifact a v9-native call prototype needs.
  * @throws Error A plain `Error` — not a {@link PROTOCOL_ERROR_CODES}-carrying
  *   class — when `circuitId` names no entry point on
- *   `contract.impureCircuits`.
+ *   `contract.impureCircuits`, or when `balance` is absent.
  * @see {@link RetainedEraExecution}
  */
 export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: Ledger8ExecutionRuntime): TranscriptPojo => {
-  const { contract, circuitId, args, state, address, coinPk, privateState } = options;
+  const { contract, circuitId, args, state, address, coinPk, privateState, balance } = options;
+  // `balance` is REQUIRED, and `new Map(undefined)` would quietly make an absent
+  // one look like a contract holding nothing -- the substitution this option
+  // exists to prevent, and the whole of #1345. `tsc` cannot reach a JavaScript
+  // caller or an options object assembled dynamically, so the check is here.
+  if (balance === undefined || balance === null) {
+    throw new Error(
+      `executeCircuit requires 'balance' for circuit '${circuitId}'. ` +
+        "Read it from the same contract-state snapshot as 'state' (ContractStatePojo.balance); " +
+        'a contract that holds nothing passes an empty Map explicitly.'
+    );
+  }
   const circuit = Object.hasOwn(contract.impureCircuits, circuitId) ? contract.impureCircuits[circuitId] : undefined;
   if (typeof circuit !== 'function') {
     throw new Error(
@@ -247,7 +259,12 @@ export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: L
   //
   // BEFORE the circuit runs, and copied rather than shared: the running circuit
   // must not observe a later edit by the caller.
-  ctx.currentQueryContext.block = { ...ctx.currentQueryContext.block, balance: new Map(options.balance) };
+  //
+  // `block` SURVIVES the context swaps below -- the glue replaces
+  // `currentQueryContext` on every ledger query and every registered coin, and
+  // carries `block` across both. `v8-execute.test.ts` pins that, because it is
+  // the vendor's behaviour rather than this module's.
+  ctx.currentQueryContext.block = { ...ctx.currentQueryContext.block, balance: new Map(balance) };
   // Read BEFORE the circuit runs. The glue swaps `currentQueryContext` for a
   // new context on every coin it registers, so after the call this object no
   // longer answers for the context the call started from.

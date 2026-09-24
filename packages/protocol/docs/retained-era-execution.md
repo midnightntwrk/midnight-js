@@ -67,6 +67,13 @@ glue's own `createCircuitContext` fills that field only from a full
 `ContractState`; handed the `ChargedState` this arm has, it substitutes an empty
 map.
 
+The write happens once, before the circuit runs, and holds for the whole call
+only because `block` carries across the context swaps the glue performs on every
+ledger query and every registered coin. That is the vendor's behaviour rather
+than this framework's, so `v8-execute.test.ts` pins it: were a runtime bump to
+drop it, every balance read after a circuit's first ledger read would quietly
+answer zero again.
+
 ## Structural equality over the encoded algebra
 
 `structurallyEqual` compares values in the `EncodedStateValue` algebra — plain

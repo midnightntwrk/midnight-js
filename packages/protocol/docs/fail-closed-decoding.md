@@ -227,5 +227,5 @@ circuit reads arrive through `CallContext.balance`, which the caller has to
 carry, and the down-converted state carries only `.data`. With the field absent
 there was nothing for a caller to carry, so every retained-era circuit executed
 against an empty balance and read every balance back as zero — silently, until
-the node refused the transcript that produced (#1345). It is plain data, so it
+the node refused the transcript that produced it (#1345). It is plain data, so it
 crosses an era boundary like every other member.

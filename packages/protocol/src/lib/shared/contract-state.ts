@@ -14,8 +14,7 @@
  */
 
 import { hashVerifierKey } from '@midnight-ntwrk/compact-js';
-import type { EncodedStateValue } from '@midnightntwrk/ledger-v9';
-import type { TokenType } from '@midnightntwrk/ledger-v9';
+import type { EncodedStateValue, TokenType } from '@midnightntwrk/ledger-v9';
 
 import { StateDecodeFailedError } from '../../errors';
 import type { LedgerVersion } from './ledger-version';
@@ -27,13 +26,13 @@ export interface DecodableContractOperation {
 }
 
 /**
-/**
  * The public balances a contract holds, keyed by token type.
  *
  * Derived from the vendor's own `TokenType` rather than restated, the way
- * `EncodedStateValue` is: the declaration is pinned identical across the eras
- * by `shared-contract-state.test.ts`, so a rename there fails this build
- * instead of leaving a mirror describing a shape neither runtime has.
+ * `EncodedStateValue` is, so a rename fails this build instead of leaving a
+ * mirror describing a shape neither runtime has. `shared-contract-state.test.ts`
+ * pins the two eras' declarations mutually assignable, which is what lets a
+ * balance decoded off a retained state be handed to the current era's types.
  *
  * Plain data end to end — string-tagged objects and `bigint`s — so it survives
  * the trip across an era boundary like every other member of
@@ -175,9 +174,18 @@ export const decodeContractStateWith = (
       };
     });
 
-    // Copied rather than handed on: the decoded state owns the map it answers
-    // with, and a caller that mutated it would be editing the state this
-    // decoder just read.
+    // Deliberately not defaulted, for the same reason `executeCircuit` requires
+    // its own: `new Map(undefined)` is an EMPTY map, indistinguishable from a
+    // contract that holds nothing, and that silence is the whole of #1345. Only
+    // an injected decoder can get here -- both vendors declare `balance`
+    // non-optional -- and that is exactly the seam worth failing loudly at.
+    if (decoded.balance === undefined || decoded.balance === null) {
+      throw new Error('contract state resolves no balance; a contract that holds nothing still declares an empty map.');
+    }
+
+    // Copied rather than handed on, so the pojo owns a map nothing else holds.
+    // The real vendor getters already marshal a fresh `Map` out of WASM on
+    // every access, but a structurally-typed decoder need not.
     return { state: decoded.data.state.encode(), balance: new Map(decoded.balance), entryPoints };
   } catch (cause) {
     throw new StateDecodeFailedError(version, cause);

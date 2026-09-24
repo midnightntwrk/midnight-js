@@ -715,6 +715,9 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
   // the legs that follow build on it, so a wrong figure has to stop the leg
   // rather than let the next call run against state the assertion just said was
   // not there. `leg` turns it into the row and the failure.
+  // `!== undefined` rather than `'expect' in call`, matching the current-era
+  // arm at the bottom of this file: a circuit whose correct answer IS `undefined`
+  // cannot be asserted this way. No twin needs that today.
   if (call.expect !== undefined && submitted.private.result !== call.expect) {
     throw new Error(
       `retained ${key}/${call.circuitId} returned ${String(submitted.private.result)}, expected ${String(call.expect)}`
@@ -1093,6 +1096,9 @@ if (covers(SELECTED.retained, 'unshielded')) {
       // the import specifier a whole English sentence -- unreachable, but never
       // reached, because the leg died on the undeclared capture map four lines
       // above and the arity was never exercised.
+      // NEVER give this call an `expect`. The catch below reads ANY throw as the
+      // pass, and `callRetained` now throws on a failed `expect` too -- so an
+      // assertion failure here would be recorded as the refusal it is looking for.
       await callRetained('unshielded', providers, deployed.contractAddress, {
         circuitId: 'sendUnshieldedToUserTest',
         // FOUR TIMES what the contract can be holding: one `MINT_AMOUNT` was

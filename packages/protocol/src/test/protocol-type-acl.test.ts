@@ -152,6 +152,10 @@ describe('Protocol type ACL', () => {
     // callable by a consumer that imports the engine through its own subpath.
     expect(engineTypeNames).toEqual([
       'ConstructorResultPojo',
+      // `executeCircuit` takes a REQUIRED `balance` of this type, so a consumer
+      // that imports the engine through its own subpath cannot name what it has
+      // to carry without it -- the same argument as `ContractEntryPointPojo`.
+      'ContractBalance',
       'ContractEntryPointPojo',
       'DownConvertedState',
       'EncodedStateValue',

@@ -46,7 +46,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { ComposeCallOptions, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import type { ComposeCallOptions, ContractBalance, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { expect } from 'vitest';
@@ -345,7 +345,7 @@ export interface ReplayExpectations {
    * against an empty balance, so a circuit reading one back sees zero and the
    * chain refuses the transcript it produced.
    */
-  readonly balance?: ReadonlyMap<unknown, bigint>;
+  readonly balance?: ContractBalance;
   /**
    * The private state the pipeline must have handed the CONSTRUCTOR. Separate
    * from the circuit's, because a deploy's is the caller's `initialPrivateState`

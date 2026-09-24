@@ -15,12 +15,18 @@
 
 
 import { hashVerifierKey } from '@midnight-ntwrk/compact-js';
+import * as ledgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { PROTOCOL_ERROR_CODES, StateDecodeFailedError } from '../errors';
 import { extractV9EncodedStateValue } from '../lib/era/envelope';
-import { type ContractStateDecoder, decodeContractStateWith } from '../lib/shared/contract-state';
+import {
+  type ContractBalance,
+  type ContractStateDecoder,
+  type DecodableContractState,
+  decodeContractStateWith
+} from '../lib/shared/contract-state';
 import { entryPointName } from '../lib/shared/verifier-keys';
 import { expectStructuredCloneable } from './clone-assertions';
 import { readHexFixture } from './fixtures';
@@ -221,3 +227,81 @@ describe('decodeContractStateWith carries the contract balance', () => {
     expectStructuredCloneable(decodeContractStateWith(serializedStateHolding(7n), 'v9', ledgerV9));
   });
 });
+
+// The RETAINED arm is the only place this code path runs in production, and
+// every test above it reads a v9 state. `DecodableContractState.balance` is
+// structural, so a retained state whose `.balance` resolved to `undefined`
+// would decode to an empty map and reproduce #1345 with the v9 tests all green.
+describe('decodeContractStateWith carries the balance off a RETAINED-era state', () => {
+  const COLOUR = { tag: 'unshielded', raw: 'cd'.repeat(32) } as const;
+
+  it('reads back the balance a ledger-v8 state declares', () => {
+    const contractState = new ledgerV8.ContractState();
+    contractState.balance = new Map([[COLOUR, 4_200n]]);
+
+    const pojo = decodeContractStateWith(contractState.serialize(), 'v8', ledgerV8);
+
+    expect([...pojo.balance]).toEqual([[COLOUR, 4_200n]]);
+  });
+});
+
+// `DecodableContractState.balance` is structural and both vendors declare it
+// non-optional, so only an INJECTED decoder can answer without one. That is
+// exactly the seam worth failing loudly at: `new Map(undefined)` is an empty
+// map, indistinguishable from a contract that holds nothing, which is the
+// substitution #1345 was made of.
+describe('decodeContractStateWith refuses a state that resolves no balance', () => {
+  // A plain-object decoder rather than a `ContractState` subclass: the vendor
+  // declares `balance` as a non-optional data property, so an override cannot
+  // express the shape under test. `ContractStateDecoder` is declared
+  // structurally for exactly this reason.
+  const decoderAnswering = (balance: ContractBalance | undefined | null): ContractStateDecoder => ({
+    ContractState: {
+      deserialize: (): DecodableContractState => ({
+        data: new ledgerV9.ContractState().data,
+        balance: balance as ContractBalance,
+        operations: () => [],
+        operation: () => undefined
+      })
+    }
+  });
+
+  const decodeFailure = (balance: ContractBalance | undefined | null): unknown => {
+    let caught: unknown;
+    try {
+      decodeContractStateWith(new Uint8Array(), 'v9', decoderAnswering(balance));
+    } catch (error) {
+      caught = error;
+    }
+    return caught;
+  };
+
+  it('refuses an absent balance rather than reading it as an empty one', () => {
+    const caught = decodeFailure(undefined);
+
+    expect(caught).toBeInstanceOf(StateDecodeFailedError);
+    expect(caught).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED, version: 'v9' });
+    expect((caught as StateDecodeFailedError).cause).toBeInstanceOf(Error);
+    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no balance/);
+  });
+
+  // A separate case, not a restatement: `new Map(null)` is an empty map too, so
+  // a guard that caught only `undefined` would let this one through silently.
+  it('refuses a null balance for the same reason', () => {
+    const caught = decodeFailure(null);
+
+    expect(caught).toBeInstanceOf(StateDecodeFailedError);
+    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no balance/);
+  });
+});
+
+// The pin `ContractBalance`'s own doc comment names. `ContractBalance` keys by
+// ledger-v9's `TokenType`, yet the map it describes is decoded off a ledger-v8
+// state and handed to the 0.16 runtime. Were those declarations to drift, the
+// alias would describe a shape one of the runtimes does not have -- so the
+// drift has to fail this build rather than a transaction.
+type Assert<T extends true> = T;
+type MutuallyAssignable<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+
+// Prefixed `_`: never instantiated, it exists only to make the compiler check.
+type _TokenTypeIdenticalAcrossEras = Assert<MutuallyAssignable<ledgerV8.TokenType, ledgerV9.TokenType>>;
