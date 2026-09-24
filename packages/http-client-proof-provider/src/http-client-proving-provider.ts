@@ -19,7 +19,13 @@ import {
   parseCheckResult,
   type ProvingKeyMaterial,
   type ProvingProvider} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { InvalidProtocolSchemeError, type ZKConfigProvider, ZKConfigRegistry, zkConfigToProvingKeyMaterial } from '@midnight-ntwrk/midnight-js-types';
+import {
+  InvalidProtocolSchemeError,
+  ProofServerResponseError,
+  type ZKConfigProvider,
+  ZKConfigRegistry,
+  zkConfigToProvingKeyMaterial,
+} from '@midnight-ntwrk/midnight-js-types';
 import { warnIfInsecureRemoteUrl, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
@@ -89,8 +95,10 @@ const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, h
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Failed Proof Server response: url="${response.url}", code="${response.status}", status="${response.statusText}"`
+    throw new ProofServerResponseError(
+      response.url,
+      response.status,
+      response.statusText
     );
   }
 
