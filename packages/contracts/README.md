@@ -115,6 +115,24 @@ const publicStates = await getPublicStates(providers, contractAddress);
 const balances = await getUnshieldedBalances(providers, contractAddress);
 ```
 
+`getStates` and `getPublicStates` decode with the current ledger era, so they
+refuse a contract deployed before the fork that has not been written to since.
+For those, and wherever a contract's era is not known in advance, use
+`getAnyEraContractState`:
+
+```typescript
+import { getAnyEraContractState } from '@midnight-ntwrk/midnight-js-contracts';
+
+const read = await getAnyEraContractState(providers.publicDataProvider, contractAddress);
+
+if (read !== null) {
+  // `read.envelopeVersion` is the era that WROTE the bytes, read off the
+  // envelope — not the era of the block that dated the read.
+  // `read.state` is encoded, so decode it with your own contract's runtime.
+  const ledgerState = Counter.ledger(StateValue.decode(read.state));
+}
+```
+
 ### Transaction Interfaces
 
 ```typescript
@@ -178,6 +196,7 @@ import {
   // State queries
   getStates,
   getPublicStates,
+  getAnyEraContractState,
   getUnshieldedBalances,
 
   // Transaction interfaces

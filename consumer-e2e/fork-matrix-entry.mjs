@@ -38,19 +38,14 @@ import { setTimeout as delay } from 'node:timers/promises';
 // root is not a consumer-facing import, and taking them off it made this file
 // look like it needed one. See `packages/midnight-js/src/index.ts` and
 // `src/protocol.ts` for the published set.
-import { deployContract, findDeployedContract, StaleHeadError, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import {
+  deployContract,
+  findDeployedContract,
+  getAnyEraContractState,
+  StaleHeadError,
+  submitCallTx
+} from '@midnight-ntwrk/midnight-js-contracts';
 import { networkHeadVersion, protocol } from '@midnight-ntwrk/midnight-js';
-// THE ONE IMPORT HERE THAT IS NOT CONSUMER-FACING, and it is a gap in
-// `contracts`, not a shortcut taken here. `readRetainedLedger` has to decode a
-// RETAINED-era contract state served by the indexer, and `contracts` publishes
-// no way to: `getStates`/`getPublicStates` decode with the current era and
-// refuse anything else, and the `Ledger8` namespace carries types and errors but
-// no decoder. The only public alternative is `nextContractStateEncoded` off a
-// call result -- the state the call computed LOCALLY, not the state the chain
-// stored, which is the whole of what the continuity assertions are about.
-// Tracked as the `getPublicStates` retained-arm gap; when that lands, this
-// import goes and `readRetainedLedger` moves onto it.
-import { loadLedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
 
 const { CompiledContract } = protocol;
 
@@ -292,6 +287,56 @@ const sampleEnvelope = async (publicDataProvider, contractAddress, samples, ever
     }
   }
   return seen;
+};
+
+/**
+ * How long a contract-state stream is watched before its behaviour is written down.
+ *
+ * Generous relative to block time, so "nothing arrived" means the stream is silent
+ * rather than that the window closed early.
+ */
+const STREAM_WATCH_MS = 60_000;
+
+/**
+ * Subscribes to a contract-state stream and records what it does, without judging it.
+ *
+ * `subscribe` with an explicit `error` callback, never a bare one: an Rx stream that
+ * errors with no error handler raises an unhandled rejection, and this process turns
+ * one of those into a fatal report. The question here is precisely whether these
+ * streams error, so the handler is the measurement rather than a precaution.
+ *
+ * The subscription is left OPEN. A caller reads `record` whenever it likes -- which is
+ * what lets one stream be opened before the boundary and read after it.
+ */
+const watchContractStates = (publicDataProvider, contractAddress, streamConfig) => {
+  const record = { emitted: 0, errored: null, completed: false };
+  const subscription = publicDataProvider.contractStateObservable(contractAddress, streamConfig).subscribe({
+    next: () => {
+      record.emitted += 1;
+    },
+    error: (error) => {
+      record.errored = describeError(error);
+    },
+    complete: () => {
+      record.completed = true;
+    }
+  });
+  return { record, stop: () => subscription.unsubscribe() };
+};
+
+/**
+ * Waits until a watched stream has settled, or until the window closes.
+ *
+ * Settled means errored or completed: both END the stream, and neither is recoverable
+ * from the subscriber's side. A stream still running when the window closes is
+ * reported as such rather than waited on further.
+ */
+const settled = async (watch, ms) => {
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline && watch.record.errored === null && !watch.record.completed) {
+    await delay(2_000);
+  }
+  return { ...watch.record, stillOpen: watch.record.errored === null && !watch.record.completed };
 };
 
 /**
@@ -1002,46 +1047,30 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
  *
  * Closing those three needs a circuit that does not exist in the source yet, so
  * it is a fixture change rather than a harness one.
- *
- * THE ONE FUNCTION HERE THAT REACHES PAST THE CONSUMER SURFACE, through
- * `loadLedgerEra`. That is a gap in `contracts`, not a shortcut: see the import
- * block at the top of this file for what was tried instead and why the public
- * alternative would weaken every assertion built on this.
  */
 const readRetainedLedger = async (key, providers, contractAddress, read) => {
-  const [{ ledger }, runtime, { utils }] = await Promise.all([
+  const [{ ledger }, runtime] = await Promise.all([
     import(`@midnight-ntwrk/fork-retained-${key}`),
-    import(`@midnight-ntwrk/fork-retained-${key}/runtime`),
-    import('@midnight-ntwrk/midnight-js')
+    import(`@midnight-ntwrk/fork-retained-${key}/runtime`)
   ]);
 
-  // RAW, not `queryContractState`: that path decodes with the head's era and
-  // refuses a v8 envelope by design -- the shape `readLedger8Snapshot` uses in
-  // `contracts` for the same reason.
-  const state = await providers.publicDataProvider.queryRawContractState(contractAddress);
+  // NOT `queryContractState`: that path decodes with the current era only and
+  // refuses a retained envelope by design. This one reads the era off the
+  // envelope's OWN tag and dispatches on it, which is what lets ONE call site
+  // serve both sides of the boundary -- a retained contract keeps its pre-fork
+  // envelope on a v9 chain until something writes to it, and the post-fork leg
+  // CALLS the contract before this read, which is that write. So one read
+  // answers `v8` below the boundary and `v9` above it.
+  const state = await getAnyEraContractState(providers.publicDataProvider, contractAddress);
   if (state === null) {
     throw new Error(`the indexer served no contract state for '${key}' at ${contractAddress}`);
   }
 
-  // The era comes off the envelope's OWN tag. Not assumed, and deliberately not
-  // `state.version`, which `RawContractState` documents as derived from
-  // `protocolVersion` alone and explicitly NOT a statement about the bytes.
-  //
-  // The two disagree exactly here. A retained contract keeps its pre-fork
-  // envelope on a v9 chain until something writes to it, and the post-fork leg
-  // CALLS the contract before this read -- which is that write. So one read
-  // answers `v8` below the boundary and `v9` above it, and pinning either era
-  // fails on the other half. Pinning v8 is what made this leg report
-  // `StateDecodeFailedError` for a tag mismatch.
-  const era = await loadLedgerEra(utils.contractStateEnvelopeVersion(state.raw));
-
-  // ADR-0010: the era-agnostic facade is crossed with plain data only. `extractState`
-  // answers with an `EncodedStateValue`, and the twin's OWN runtime turns that
-  // back into a handle. Handing over a handle minted anywhere else -- the
-  // provider's module included -- is what `ledger()` refuses with
-  // `expected instance of ChargedState`.
-  const encoded = era.extractState(state.raw);
-  return read(ledger(runtime.StateValue.decode(encoded)));
+  // ADR-0010: what crosses is plain data. `state.state` is an `EncodedStateValue`
+  // and the twin's OWN runtime turns it back into a handle. Handing over a handle
+  // minted anywhere else -- the framework's module included -- is what `ledger()`
+  // refuses with `expected instance of ChargedState`.
+  return read(ledger(runtime.StateValue.decode(state.state)));
 };
 
 /**
@@ -1385,6 +1414,42 @@ await leg('pre-fork retained call', async () => {
   return { txId: submitted.public.txId };
 });
 
+// (a) continued: THE DECODED READ SURFACE, which nothing in this run has ever
+// walked. Every leg above reads state through `queryRawContractState`, because
+// that is what a retained contract needs -- so what a dApp meets when it calls
+// the DECODING members has only ever been inferred from the decoder's source.
+// These probes measure it, on a contract that really is deployed and really does
+// carry a retained envelope.
+//
+// ONE SHARD. The baseline contract they read is deployed by every shard, so
+// without a gate the same measurement would run eight times over and answer the
+// same question eight times. `simple` carries it, in the same spirit as the
+// current-era deploy probe above.
+const MEASURES_READ_SURFACE = covers(SELECTED.current, 'simple');
+
+// Opened BEFORE the boundary and deliberately not stopped here: what this
+// subscription does as the fork moves under it is the second half of the
+// question, and it is read again after the crossing.
+let streamHeldAcrossTheBoundary;
+
+if (MEASURES_READ_SURFACE) {
+  await probe('pre-fork decoded read of the retained contract', async () => {
+    const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
+    // Reached only if the read was ADMITTED, which is itself the finding: this
+    // path decodes with the current era, and the contract is a retained one.
+    return { admitted: true, state: state === null ? 'null' : 'a decoded state' };
+  });
+
+  await probe('pre-fork contract-state stream on the retained contract', async () => {
+    streamHeldAcrossTheBoundary = watchContractStates(
+      session.providers.publicDataProvider,
+      deployment.contractAddress,
+      { type: 'latest' }
+    );
+    return settled(streamHeldAcrossTheBoundary, STREAM_WATCH_MS);
+  });
+}
+
 // (a) continued: the rest of the retained-era contracts, deployed and called on
 // the pre-fork chain. Same source as the current-era matrix below, built with
 // `compactc` 0.31.1, so the pair differ only in the toolchain that emitted them.
@@ -1550,6 +1615,54 @@ await leg('envelope tag across the boundary', () =>
   sampleEnvelope(session.providers.publicDataProvider, deployment.contractAddress, 6, 10_000)
 );
 
+// (b) continued: THE WINDOW. Everything from here to the keep-state call below
+// runs against a contract that is deployed, carries a retained envelope, and has
+// NOT been written to since the boundary -- which is the state every pre-fork
+// contract on a freshly forked chain is in, and the one a dApp reading through
+// the decoding members actually meets. The keep-state call is the write that
+// closes this window, so these probes have to run before it.
+if (MEASURES_READ_SURFACE) {
+  await probe('post-fork decoded read of the not-yet-migrated contract', async () => {
+    const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
+    return { admitted: true, state: state === null ? 'null' : 'a decoded state' };
+  });
+
+  // The era-agnostic read, side by side with the refusal above and taken at the
+  // same moment on the same contract. Without it the row above says a read
+  // failed; with it, the pair says which read fails and which succeeds -- which
+  // is what the package documentation then has to tell a consumer.
+  await probe('post-fork era-agnostic read of the same contract', async () => {
+    const state = await getAnyEraContractState(session.providers.publicDataProvider, deployment.contractAddress);
+    return state === null
+      ? 'the indexer served no state'
+      : {
+          envelopeVersion: state.envelopeVersion,
+          protocolVersion: state.protocolVersion,
+          entryPoints: state.entryPoints.map((entryPoint) => entryPoint.circuitId)
+        };
+  });
+
+  await probe('the pre-fork contract-state stream, after the boundary moved under it', async () => {
+    if (streamHeldAcrossTheBoundary === undefined) {
+      return 'skipped: the pre-fork stream was never opened';
+    }
+    const outcome = await settled(streamHeldAcrossTheBoundary, STREAM_WATCH_MS);
+    // Stopped HERE and not before: this is the last reading taken of it, and an
+    // open subscription left behind would keep the process alive past its report.
+    streamHeldAcrossTheBoundary.stop();
+    return outcome;
+  });
+
+  await probe('post-fork contract-state stream opened before any write', async () => {
+    const watch = watchContractStates(session.providers.publicDataProvider, deployment.contractAddress, {
+      type: 'latest'
+    });
+    const outcome = await settled(watch, STREAM_WATCH_MS);
+    watch.stop();
+    return outcome;
+  });
+}
+
 // ── (c) post-fork: the SAME call site, now on keep-state ──────────────────────
 
 await leg('post-fork keep-state call through the same call site', async () => {
@@ -1568,6 +1681,40 @@ await leg('post-fork keep-state call through the same call site', async () => {
   // `submitted.txId` is NOT it: neither arm puts the id at the top level.
   return { txId: submitted.public.txId };
 });
+
+// (c) continued: the same three reads, now that the keep-state call above has
+// written to the contract and re-versioned its envelope. This is what separates
+// "the decoding surface is unusable across the fork" from "it is unusable until
+// the contract is written to" -- and, for the `all` branch, whether the write
+// helps at all.
+if (MEASURES_READ_SURFACE) {
+  await probe('post-write decoded read of the migrated contract', async () => {
+    const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
+    return { admitted: true, state: state === null ? 'null' : 'a decoded state' };
+  });
+
+  await probe('post-write contract-state stream, from the latest state', async () => {
+    const watch = watchContractStates(session.providers.publicDataProvider, deployment.contractAddress, {
+      type: 'latest'
+    });
+    const outcome = await settled(watch, STREAM_WATCH_MS);
+    watch.stop();
+    return outcome;
+  });
+
+  await probe('post-write contract-state stream, from the deploy', async () => {
+    // `all` replays every contract action from the deploy onward, and the deploy
+    // is on the far side of the boundary. Asked separately from `latest` because
+    // a write cannot change what an earlier block already contains -- so if this
+    // branch is unusable, no amount of activity on the contract recovers it.
+    const watch = watchContractStates(session.providers.publicDataProvider, deployment.contractAddress, {
+      type: 'all'
+    });
+    const outcome = await settled(watch, STREAM_WATCH_MS);
+    watch.stop();
+    return outcome;
+  });
+}
 
 // (c) continued: the same keep-state call for every other retained twin. These
 // are the legs the fork crossing could not previously pose — a pre-fork contract that is not a

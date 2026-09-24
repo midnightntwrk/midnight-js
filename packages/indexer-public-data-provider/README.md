@@ -108,6 +108,60 @@ only if that era is v9. Otherwise the call fails with an `IndexerDataError` that
 names the era it got and points at `queryRawContractState`, instead of a
 header-tag error from deep inside a decoder.
 
+#### Which contracts this affects, and for how long
+
+Every contract deployed before the fork, until something writes to it. The
+ledger does not rewrite stored contract state at the fork, and the indexer
+serves the last contract action at or before the block you ask about — so a
+contract that has not been called since the boundary keeps its v8 envelope
+under a v9 head, indefinitely. The five methods above refuse it for as long as
+that lasts. The first post-fork call re-versions the envelope, and from then on
+they read it normally.
+
+For `contractStateObservable` the refusal is not a returned error but a
+**terminated stream**: the decode runs inside the stream, so a refusal reaches
+the subscriber's `error` callback and the subscription ends. This package
+installs no `retry` and no `catchError`, so nothing reconciles it — recovery
+means subscribing again. The `all` branch is the harsher case: it replays every
+contract action from the deploy onward, and for a contract deployed before the
+fork that replay always reaches a v8 envelope, so a later write does not help
+it.
+
+#### Reading a contract that may predate the fork
+
+Use `getAnyEraContractState` from
+`@midnight-ntwrk/midnight-js-contracts`. It reads the era off the envelope,
+decodes with that era's runtime, and hands back plain data:
+
+```typescript
+import { getAnyEraContractState } from '@midnight-ntwrk/midnight-js-contracts';
+
+const read = await getAnyEraContractState(provider, contractAddress);
+
+if (read !== null) {
+  // `read.state` is an EncodedStateValue — plain data. Decode it with the
+  // runtime your own contract code brings, which is the only one that can
+  // accept it.
+  const ledgerState = Counter.ledger(StateValue.decode(read.state));
+}
+```
+
+Two things that look interchangeable and are not:
+
+- `read.envelopeVersion` is the era that **wrote the bytes**.
+  `queryRawContractState(...).version` is derived from `protocolVersion` and is
+  a statement about the **block**. They disagree for exactly the dormant
+  contracts described above, which is when it matters.
+- `read.state` is encoded, not a live handle. A handle minted inside the
+  framework belongs to the framework's copy of the WASM module and is rejected
+  by a dApp's own `ledger()`; encoded state crosses that boundary, and also
+  survives `structuredClone`, a worker `postMessage` and a write to storage.
+
+If you would rather decode the bytes yourself, `queryRawContractState` still
+serves them untouched — pair it with `contractStateEnvelopeVersion` from
+`@midnight-ntwrk/midnight-js-utils` to read the envelope's era, never with the
+record's own `version`.
+
 A state older than the block that dates the read is normal, not a fault: the
 indexer serves the latest contract action at or before that block, so any
 contract dormant across a fork is exactly that. The protocol version the
