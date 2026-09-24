@@ -15,6 +15,7 @@
 
 import { hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import type { EncodedStateValue } from '@midnightntwrk/ledger-v9';
+import type { TokenType } from '@midnightntwrk/ledger-v9';
 
 import { StateDecodeFailedError } from '../../errors';
 import type { LedgerVersion } from './ledger-version';
@@ -26,15 +27,31 @@ export interface DecodableContractOperation {
 }
 
 /**
+/**
+ * The public balances a contract holds, keyed by token type.
+ *
+ * Derived from the vendor's own `TokenType` rather than restated, the way
+ * `EncodedStateValue` is: the declaration is pinned identical across the eras
+ * by `shared-contract-state.test.ts`, so a rename there fails this build
+ * instead of leaving a mirror describing a shape neither runtime has.
+ *
+ * Plain data end to end — string-tagged objects and `bigint`s — so it survives
+ * the trip across an era boundary like every other member of
+ * {@link ContractStatePojo}.
+ */
+export type ContractBalance = ReadonlyMap<TokenType, bigint>;
+
+/**
  * The slice of a ledger `ContractState` {@link decodeContractStateWith} reads.
  * Both eras' class satisfies it structurally, which is what lets one decoder
  * serve both axes without either era's types being named here.
  *
- * @see {@link FailClosedDecoding} for why `maintenanceAuthority` and `balance`
- * are deliberately absent.
+ * @see {@link FailClosedDecoding} for why `maintenanceAuthority` is absent
+ * where `balance` is not.
  */
 export interface DecodableContractState {
   readonly data: { readonly state: { readonly encode: () => EncodedStateValue } };
+  readonly balance: ContractBalance;
   readonly operations: () => (string | Uint8Array)[];
   readonly operation: (entryPoint: string | Uint8Array) => DecodableContractOperation | undefined;
 }
@@ -69,8 +86,8 @@ export interface ContractEntryPointPojo {
 }
 
 /**
- * A contract state as plain data: the primary state in its encoded form, and
- * the entry points the state declares.
+ * A contract state as plain data: the primary state in its encoded form, the
+ * balances the contract holds, and the entry points the state declares.
  *
  * `entryPoints` is an ARRAY, not a map keyed by circuit id: two distinct byte
  * entry points can decode to the same name, and a caller has to reconcile
@@ -80,6 +97,13 @@ export interface ContractEntryPointPojo {
  */
 export interface ContractStatePojo {
   readonly state: EncodedStateValue;
+  /**
+   * The balances the contract holds, which are NOT part of the primary state:
+   * the ledger keeps them beside it, so a caller reading only `state` cannot
+   * reach them. A retained-era call that executes without them runs every
+   * circuit against an empty balance — see {@link RetainedEraExecution}.
+   */
+  readonly balance: ContractBalance;
   readonly entryPoints: readonly ContractEntryPointPojo[];
 }
 
@@ -151,7 +175,10 @@ export const decodeContractStateWith = (
       };
     });
 
-    return { state: decoded.data.state.encode(), entryPoints };
+    // Copied rather than handed on: the decoded state owns the map it answers
+    // with, and a caller that mutated it would be editing the state this
+    // decoder just read.
+    return { state: decoded.data.state.encode(), balance: new Map(decoded.balance), entryPoints };
   } catch (cause) {
     throw new StateDecodeFailedError(version, cause);
   }

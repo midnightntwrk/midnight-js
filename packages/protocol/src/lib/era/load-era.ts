@@ -43,7 +43,7 @@ export type {
   ZswapOfferFactory
 } from '../shared/compose-types';
 export { INITIAL_LEDGER_PARAMETERS } from '../shared/compose-types';
-export type { ContractEntryPointPojo, ContractStatePojo } from '../shared/contract-state';
+export type { ContractBalance, ContractEntryPointPojo, ContractStatePojo } from '../shared/contract-state';
 export type { LedgerEra } from './era';
 
 // One memo slot per era, never one shared slot, and both arms are frozen --

@@ -149,7 +149,8 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
       state: preState,
       address: 'deadbeef',
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: { count: 1 }
+      privateState: { count: 1 },
+      balance: new Map()
     };
 
     const transcript = executeCircuit(options, runtime);
@@ -192,7 +193,8 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
       state: buildState(3),
       address: 'deadbeef',
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: undefined
+      privateState: undefined,
+      balance: new Map()
     };
 
     expect(() => executeCircuit(options, runtime)).toThrow(/No impure circuit named 'missing'/);
@@ -223,7 +225,8 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
         state: buildState(4),
         address: 'deadbeef',
         coinPk: SAMPLE_COIN_PUBLIC_KEY,
-        privateState: undefined
+        privateState: undefined,
+        balance: new Map()
       };
 
       expect(() => executeCircuit(options, runtime)).toThrow(new RegExp(`No impure circuit named '${inheritedName}'`));
@@ -254,7 +257,8 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
       state: buildState(5),
       address: 'deadbeef',
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: undefined
+      privateState: undefined,
+      balance: new Map()
     };
 
     expect(() => executeCircuit(options, runtime)).toThrow(/Available circuits: increment\./);
@@ -316,7 +320,8 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
       state: preState,
       address: 'deadbeef',
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: {}
+      privateState: {},
+      balance: new Map()
     };
 
     const transcript = executeCircuit(options, runtime);
@@ -386,7 +391,8 @@ describe('executeCircuit records the query context a composition leg has to part
         state: buildState(0x01),
         address: ocrt3.dummyContractAddress(),
         coinPk: SAMPLE_COIN_PUBLIC_KEY,
-        privateState: {}
+        privateState: {},
+        balance: new Map()
       },
       runtime
     );
@@ -454,7 +460,8 @@ describe('executeCircuit against the ported spike counter-016 fixture (real comp
       state: preState,
       address: ocrt3.dummyContractAddress(),
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: {}
+      privateState: {},
+      balance: new Map()
     };
 
     const transcript = executeCircuit(options, ledger8Runtime);
@@ -516,5 +523,130 @@ describe('executeCircuit against the ported spike counter-016 fixture (real comp
       readFileSync(resolve(FIXTURE_DIR, 'increment-transcript.golden.json'), 'utf8')
     ) as unknown;
     expect(toGolden(serializable)).toEqual(golden);
+  });
+});
+
+// The contract's standing balance is not part of its primary state: ledger-v8
+// keeps it on `ContractState.balance`, and the retained pipeline carries only
+// `.data` across the era boundary. `createCircuitContext` substitutes an empty
+// map for anything that is not a full `ContractState`, so without these the
+// balance a circuit reads back is silently zero — a transcript the chain
+// refuses, because it re-runs the read against the balance it really holds.
+const SAMPLE_COLOUR = { tag: 'unshielded', raw: 'ab'.repeat(32) } as const;
+
+describe('executeCircuit puts the contract balance on the block the circuit reads', () => {
+  it('has the balance in place BEFORE the circuit runs, not merely on the recorded context', () => {
+    const preState = buildState(0x01);
+    const balance = new Map<ocrt3.TokenType, bigint>([[SAMPLE_COLOUR, 1_000n]]);
+    let balanceSeenByCircuit: ocrt3.CallContext['balance'] | undefined;
+
+    const runtime: Ledger8ExecutionRuntime = {
+      decodeZswapLocalState,
+      createCircuitContext: (_address, _coinPk, contractState, privateState) => ({
+        currentQueryContext: fakeQueryContext(contractState),
+        currentPrivateState: privateState,
+        currentZswapLocalState: emptyZswap()
+      }),
+      CostModel: { initialCostModel: () => ocrt3.CostModel.initialCostModel() }
+    };
+    const contract: Ledger8ContractLike = {
+      impureCircuits: {
+        readsBalance: (ctx): Ledger8CircuitResult => {
+          balanceSeenByCircuit = ctx.currentQueryContext.block.balance;
+          return {
+            result: undefined,
+            proofData: { input: EMPTY_ALIGNED, output: EMPTY_ALIGNED, publicTranscript: [], privateTranscriptOutputs: [] },
+            context: { ...ctx, currentZswapLocalState: emptyZswap() }
+          };
+        }
+      }
+    };
+
+    executeCircuit(
+      {
+        contract,
+        circuitId: 'readsBalance',
+        args: [],
+        state: preState,
+        address: ocrt3.dummyContractAddress(),
+        coinPk: SAMPLE_COIN_PUBLIC_KEY,
+        privateState: {},
+        balance
+      },
+      runtime
+    );
+
+    expect([...(balanceSeenByCircuit ?? [])]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
+  });
+
+  it('copies the balance rather than sharing it, so a later mutation by the caller cannot reach a running circuit', () => {
+    const balance = new Map<ocrt3.TokenType, bigint>([[SAMPLE_COLOUR, 1_000n]]);
+    let balanceSeenByCircuit: ocrt3.CallContext['balance'] | undefined;
+
+    const runtime: Ledger8ExecutionRuntime = {
+      decodeZswapLocalState,
+      createCircuitContext: (_address, _coinPk, contractState, privateState) => ({
+        currentQueryContext: fakeQueryContext(contractState),
+        currentPrivateState: privateState,
+        currentZswapLocalState: emptyZswap()
+      }),
+      CostModel: { initialCostModel: () => ocrt3.CostModel.initialCostModel() }
+    };
+    const contract: Ledger8ContractLike = {
+      impureCircuits: {
+        readsBalance: (ctx): Ledger8CircuitResult => {
+          balanceSeenByCircuit = ctx.currentQueryContext.block.balance;
+          return {
+            result: undefined,
+            proofData: { input: EMPTY_ALIGNED, output: EMPTY_ALIGNED, publicTranscript: [], privateTranscriptOutputs: [] },
+            context: { ...ctx, currentZswapLocalState: emptyZswap() }
+          };
+        }
+      }
+    };
+
+    executeCircuit(
+      {
+        contract,
+        circuitId: 'readsBalance',
+        args: [],
+        state: buildState(0x01),
+        address: ocrt3.dummyContractAddress(),
+        coinPk: SAMPLE_COIN_PUBLIC_KEY,
+        privateState: {},
+        balance
+      },
+      runtime
+    );
+    balance.set({ tag: 'unshielded', raw: 'cd'.repeat(32) }, 5n);
+
+    expect([...(balanceSeenByCircuit ?? [])]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
+  });
+
+  it('writes it onto the REAL runtime context, whose `block` is a WASM-backed property', async () => {
+    const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
+    const ledger8Runtime = await import('compact-runtime-ledger8');
+
+    const initialPrivateState: Record<string, never> = {};
+    const contract = new Contract(initialPrivateState);
+    const initial = contract.initialState(
+      ledger8Runtime.createConstructorContext(initialPrivateState, SAMPLE_COIN_PUBLIC_KEY)
+    );
+
+    const transcript = executeCircuit(
+      {
+        contract,
+        circuitId: 'increment',
+        args: [],
+        state: { data: initial.currentContractState.data },
+        address: ocrt3.dummyContractAddress(),
+        coinPk: SAMPLE_COIN_PUBLIC_KEY,
+        privateState: {},
+        balance: new Map<ocrt3.TokenType, bigint>([[SAMPLE_COLOUR, 1_000n]])
+      },
+      ledger8Runtime
+    );
+
+    expect([...transcript.partitionContext.block.balance]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
   });
 });

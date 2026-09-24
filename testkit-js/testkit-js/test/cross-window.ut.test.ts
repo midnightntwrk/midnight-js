@@ -426,7 +426,9 @@ describe('private state across the ledger v8 to v9 fork window', () => {
       state: initial.currentContractState,
       address: retained.runtime.dummyContractAddress(),
       coinPk: COIN_PUBLIC_KEY,
-      privateState
+      privateState,
+      // Freshly constructed, so it holds nothing.
+      balance: new Map()
     });
     if (!isCounterPrivateState(transcript.privateStateAfter)) {
       throw new Error('the retained execution did not hand back a private state of the expected shape');

@@ -171,7 +171,8 @@ const runReceiveCoin = async (): Promise<RealExecution> => {
       state: { data: initial.currentContractState.data },
       address: ocrt3.dummyContractAddress(),
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: {}
+      privateState: {},
+      balance: new Map()
     },
     ledger8Runtime
   );

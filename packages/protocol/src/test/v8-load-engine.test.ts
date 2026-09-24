@@ -132,7 +132,8 @@ describe('createLedger8Engine', () => {
       state: preState,
       address: ocrt3.dummyContractAddress(),
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: {}
+      privateState: {},
+      balance: new Map()
     };
 
     const transcript = engine.executeCircuit(options);
@@ -173,7 +174,10 @@ describe('createLedger8Engine', () => {
       state: preState,
       address,
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: {}
+      privateState: {},
+      // Freshly constructed, so it holds nothing -- an empty balance here is the
+      // contract's real one, not a stand-in.
+      balance: new Map()
     });
 
     expect(transcript.publicTranscript.length).toBeGreaterThan(0);

@@ -337,6 +337,16 @@ export interface ReplayExpectations {
   /** The private state the pipeline must have handed the engine. */
   readonly privateState?: unknown;
   /**
+   * The contract BALANCE the pipeline must have handed the engine.
+   *
+   * It does not travel with the primary state — ledger-v8 keeps it on
+   * `ContractState.balance`, and the state this pipeline down-converts carries
+   * only `.data`. An engine that never receives it executes every circuit
+   * against an empty balance, so a circuit reading one back sees zero and the
+   * chain refuses the transcript it produced.
+   */
+  readonly balance?: ReadonlyMap<unknown, bigint>;
+  /**
    * The private state the pipeline must have handed the CONSTRUCTOR. Separate
    * from the circuit's, because a deploy's is the caller's `initialPrivateState`
    * — `undefined` when none was supplied — where a call's is what the provider
@@ -414,6 +424,9 @@ export const createReplayEngine = (
     );
     if (expectations !== undefined && 'privateState' in expectations) {
       expect(options.privateState).toEqual(expectations.privateState);
+    }
+    if (expectations !== undefined && 'balance' in expectations) {
+      expect(options.balance).toEqual(expectations.balance);
     }
     // The post-call state the real engine answers with is a live handle; the
     // double mints a marker DISTINCT from the down-converted one, so a test can

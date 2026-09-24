@@ -126,7 +126,11 @@ const transcript = engine.executeCircuit({
   state,
   address: contractAddress,
   coinPk: coinPublicKey,
-  privateState
+  privateState,
+  // The balances do NOT travel with `state`, which is the primary state alone.
+  // They come off the same read, through the era facade's own decoder, and a
+  // circuit that reads a balance back sees zero without them.
+  balance: era.decodeContractState(rawContractState).balance
 });
 const prototype = engine.wrapKeepStateCall({ transcript, contractAddress, contractState: migratedV9ContractState });
 ```

@@ -58,6 +58,15 @@ defaults for `.operations`, `.maintenanceAuthority`, or `.balance`. Those
 remain the caller's to carry — execution receives balances via
 `CallContext.balance`, not via this state.
 
+`executeCircuit` is what carries them: it takes the balances as a REQUIRED
+option and writes them onto `block.balance` before the circuit runs. Required
+rather than defaulted, because an empty balance is a legitimate value — a
+contract holding nothing has one — and defaulting would make "holds nothing"
+indistinguishable from "the caller forgot", which is the shape #1345 took. The
+glue's own `createCircuitContext` fills that field only from a full
+`ContractState`; handed the `ChargedState` this arm has, it substitutes an empty
+map.
+
 ## Structural equality over the encoded algebra
 
 `structurallyEqual` compares values in the `EncodedStateValue` algebra — plain

@@ -316,6 +316,40 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(result.fallibleZswapOffer).toBeUndefined();
   });
 
+  // The balance is the one part of the chain state the down-converted value
+  // cannot carry: it lives beside `.data` on the ledger's own `ContractState`.
+  // Without this the engine ran every circuit against an empty balance, and the
+  // only thing that caught it was the node refusing the resulting transcript.
+  it('hands the engine the contract balance the chain state declares, not an empty one', async () => {
+    const log: OrchestrationLog = [];
+    const providers = postForkProviders(v6Envelope);
+
+    await runLedger8CallPipeline<ReplayState>({
+      era: currentEra,
+      retainedEra,
+      engine: createReplayEngine(recording, log, undefined, {
+        balance: retainedEra.decodeContractState(v6Envelope).balance
+      }),
+      publicDataProvider: providers.publicDataProvider,
+      head: 'v9',
+      contract,
+      contractAddress: recording.contractAddress,
+      circuitId: CIRCUIT_ID,
+      args: [recording.receivedCoin],
+      coinPublicKey: recording.coinPublicKey,
+      privateState: {},
+      localVerifierKey: STAND_IN_VERIFIER_KEY,
+      networkId: NETWORK_ID,
+      ttl: new Date(Date.now() + 3_600_000),
+      encryptionPublicKey: createEncryptionPublicKeyResolver(
+        recording.coinPublicKey,
+        providers.walletProvider.getEncryptionPublicKey()
+      )
+    });
+
+    expect(log).toContain('engine.executeCircuit');
+  });
+
   it('REFUSES a finalized record from the era the head it composed on had already left', async () => {
     const providers = postForkProviders(v6Envelope);
     // The keep-state direction of the same guard. This flow ran the RETAINED

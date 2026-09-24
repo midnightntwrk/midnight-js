@@ -188,3 +188,36 @@ describe('decodeContractStateWith', () => {
     expect(failure.message).not.toMatch(/[0-9a-f]{16,}/i);
   });
 });
+
+// The balance is the contract's own, and it lives on `ContractState.balance`
+// rather than inside the primary state — so a reader that returns only `state`
+// leaves a caller no way to reach it. A retained-era call that executes without
+// it reads every balance back as zero.
+describe('decodeContractStateWith carries the contract balance', () => {
+  const COLOUR = { tag: 'unshielded', raw: 'ab'.repeat(32) } as const;
+
+  const serializedStateHolding = (amount: bigint): Uint8Array => {
+    const contractState = new ledgerV9.ContractState();
+    contractState.balance = new Map([[COLOUR, amount]]);
+    return contractState.serialize();
+  };
+
+  it('reads back the balance the state declares', () => {
+    const pojo = decodeContractStateWith(serializedStateHolding(1_000n), 'v9', ledgerV9);
+
+    expect([...pojo.balance]).toEqual([[COLOUR, 1_000n]]);
+  });
+
+  it('reads an empty balance as empty rather than as absent', () => {
+    const pojo = decodeContractStateWith(serializedStateWithBlankOperation(), 'v9', ledgerV9);
+
+    expect([...pojo.balance]).toEqual([]);
+  });
+
+  // The pojo is what crosses the era boundary, so the balance has to be plain
+  // data like every other member — a live handle here would not survive the
+  // trip and would pin the value to the runtime instance that decoded it.
+  it('carries it as plain data, with no live handle', () => {
+    expectStructuredCloneable(decodeContractStateWith(serializedStateHolding(7n), 'v9', ledgerV9));
+  });
+});

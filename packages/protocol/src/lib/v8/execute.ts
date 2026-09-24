@@ -23,6 +23,7 @@ type Op<T> = OnchainRuntimeV3.Op<T>;
 
 import type { EncodedStateValue } from '../era/envelope';
 import type { PartitionContext } from '../shared/compose-types';
+import type { ContractBalance } from '../shared/contract-state';
 import type { DownConvertedState } from './down-convert';
 
 /**
@@ -191,6 +192,15 @@ export interface ExecuteCircuitOptions {
   readonly address: string;
   readonly coinPk: string;
   readonly privateState: unknown;
+  /**
+   * The balances the contract holds on chain.
+   *
+   * REQUIRED rather than defaulted, because an empty balance is a legitimate
+   * value: a contract that holds nothing has one, and a caller that forgot to
+   * carry them has one too. Defaulting would make those indistinguishable, and
+   * the second silently answers every balance read with zero.
+   */
+  readonly balance: ContractBalance;
 }
 
 /**
@@ -229,6 +239,15 @@ export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: L
     undefined,
     ledger8Runtime.CostModel.initialCostModel()
   );
+  // The balance does not arrive with the state. `createCircuitContext` fills
+  // `block.balance` only from a full `ContractState`, and this arm hands it a
+  // `ChargedState`, so without this every circuit reads every balance back as
+  // zero -- a transcript the chain refuses, because it re-runs the read against
+  // the balance it really holds.
+  //
+  // BEFORE the circuit runs, and copied rather than shared: the running circuit
+  // must not observe a later edit by the caller.
+  ctx.currentQueryContext.block = { ...ctx.currentQueryContext.block, balance: new Map(options.balance) };
   // Read BEFORE the circuit runs. The glue swaps `currentQueryContext` for a
   // new context on every coin it registers, so after the call this object no
   // longer answers for the context the call started from.

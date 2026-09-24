@@ -402,25 +402,20 @@ const RETAINED_MATRIX = [
     // WHY THIS TWIN ASSERTS THROUGH A CIRCUIT AND NOT THROUGH `state`.
     //
     // What survives for `unshielded` is the contract's BALANCE: it declares no
-    // ledger block, and `decodeContractState` deliberately omits balance, so
-    // `readRetainedLedger` cannot reach it at all. The circuit that reads it
-    // back, `getUnshieldedBalanceTest`, is REFUSED post-fork on the retained arm
-    // -- `submitTx rejected a retained-era transaction`, with the provider's own
-    // reason redacted at the seam by design.
+    // ledger block, so `readRetainedLedger` cannot reach it. The circuit that
+    // reads it back is `getUnshieldedBalanceTest`, and this twin drives it
+    // across the boundary.
     //
-    // READ THAT REFUSAL CAREFULLY BEFORE THEORISING ABOUT IT. It names the
-    // `submitTx` seam, and the three seams are separate and sequential
-    // (`ledger8-entry.ts`): proving and BALANCING both completed, and the node
-    // rejected what they produced. So "the retained arm cannot balance a wholly
-    // fallible transcript" -- the explanation this entry used to carry -- is
-    // contradicted by the measurement it was attached to. A balancing failure
-    // reads `balanceTx rejected` and surfaces `Wallet.InsufficientFunds`; this
-    // does neither. The partitioning half may still be the cause of the NODE's
-    // rejection; the balancing half is not. Diagnosing it needs the node's own
-    // reason, which is what the redaction withholds.
+    // That read used to be REFUSED here, and the refusal was the framework's:
+    // the retained arm handed the runtime a `ChargedState`, which carries no
+    // balance, so every retained circuit executed against an empty one. A read
+    // of a HELD colour therefore built a transcript claiming zero, and the node
+    // refused it for disagreeing with the balance it really held (#1345). An
+    // UNHELD colour agreed by accident, which is why a probe that swapped the
+    // colour looked green and settled nothing.
     //
-    // The send below is therefore COVERAGE, not a diagnosis. It does not test
-    // that hypothesis and a green result must not be read as confirming one.
+    // The read below is now the assertion, and the send after it is independent
+    // evidence of the same survival through a different mechanism.
     preFork: [
       {
         circuitId: 'mintUnshieldedToSelfTest',
@@ -432,9 +427,17 @@ const RETAINED_MATRIX = [
       }
     ],
     postFork: [
-      // THE SURVIVING-BALANCE ASSERTION. A send out of the contract can only move
-      // a colour it still holds, so its success is the assertion -- and unlike a
-      // read it has a guaranteed segment.
+      // THE SURVIVING-BALANCE ASSERTION, and the regression guard for #1345.
+      // FIRST, before the send below moves half of it: what this has to read is
+      // the balance the fork carried over untouched.
+      {
+        circuitId: 'getUnshieldedBalanceTest',
+        args: (context) => [context.preForkColor],
+        expect: MINT_AMOUNT
+      },
+      // The same survival through a write, kept because it rests on nothing the
+      // read rests on: a send out of the contract can only move a colour it
+      // still holds, and unlike a read it has a guaranteed segment.
       //
       // TO THE USER, not to `kernel.self()`, and the difference is measured
       // rather than assumed. `unshielded.mint-and-send.it.test.ts` pins a
@@ -707,6 +710,17 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
     retainedCaptures.set(key, { ...retainedCaptures.get(key), [call.capture]: submitted.private.result });
   }
 
+  // THROWS rather than pushing onto `failures`, unlike the current-era arm's
+  // check. A retained call's return value is asserted at most once per leg and
+  // the legs that follow build on it, so a wrong figure has to stop the leg
+  // rather than let the next call run against state the assertion just said was
+  // not there. `leg` turns it into the row and the failure.
+  if (call.expect !== undefined && submitted.private.result !== call.expect) {
+    throw new Error(
+      `retained ${key}/${call.circuitId} returned ${String(submitted.private.result)}, expected ${String(call.expect)}`
+    );
+  }
+
   return {
     circuitId: call.circuitId,
     status: submitted.public.status,
@@ -738,19 +752,16 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
  * The other three twins (`unshielded`, `shielded`, `block-time`) declare no
  * ledger block, so `checkLedgerState` returns `undefined` for them and asserts
  * nothing about surviving state at any phase. What survives for them is the
- * contract's BALANCE, which `decodeContractState` deliberately omits, and
- * neither mechanism in this harness reaches it:
+ * contract's BALANCE, which this mechanism does not reach:
  *
- * - `unshielded`'s balance is readable only through a circuit, and a post-fork
- *   retained call to `getUnshieldedBalanceTest` is REFUSED BY THE CHAIN -- see
- *   that twin's own entry, which records the measurement and the untried
- *   write-based alternative. Do not read this as coverage it does not have.
+ * - `unshielded` asserts it through a CIRCUIT instead -- `getUnshieldedBalanceTest`
+ *   across the boundary, in that twin's own entry. So its surviving state is
+ *   covered, just not by this function.
  * - `shielded` and `block-time` have no circuit that reads earlier state back:
  *   `mintShieldedTokens` returns a new coin and `testBlockTimeGte` answers about
- *   the block, not the contract.
- *
- * Closing those three needs a circuit that does not exist in the source yet, so
- * it is a fixture change rather than a harness one.
+ *   the block, not the contract. Those two remain uncovered, and closing them
+ *   needs a circuit that does not exist in the source yet -- a fixture change
+ *   rather than a harness one.
  */
 const readRetainedLedger = async (key, providers, contractAddress, read) => {
   const [{ ledger }, runtime, { utils }] = await Promise.all([
