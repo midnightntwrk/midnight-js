@@ -55,6 +55,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
+      # BEFORE the pack, so a type error costs seconds rather than a pack plus
+      # four persona installs.
+      #
+      # THIS LANE AND NOT THE MIDNIGHT.JS ONE, which is where it was first put
+      # and where it cannot work: that leg builds `--filter="./packages/*"`, and
+      # `fork-matrix-smoke.mjs` imports `@midnight-ntwrk/testkit-js` by name.
+      # With testkit unbuilt the check reports `TS2307` for it and nothing else
+      # -- a red lane carrying no information. Resolving testkit from source
+      # instead is not an option either: its sources are `moduleResolution:
+      # bundler` while these scripts are `nodenext`, so every relative import in
+      # them fails `TS2835`. This lane runs an unfiltered `yarn build`, which is
+      # the only arrangement in which the check resolves what it is checking.
+      - name: Typecheck the harness
+        run: yarn typecheck:consumer-e2e
+
       - name: Pack the framework
         run: node consumer-e2e/pack-framework.mjs
 

@@ -27,6 +27,7 @@
     "typecheck:tests": "yarn typecheck:tests:core && yarn typecheck:tests:testkit",
     "typecheck:tests:core": "bash -c 'for cfg in packages/*/tsconfig.json; do tsc --noEmit --composite false -p \"$cfg\" || exit 1; done'",
     "typecheck:tests:testkit": "bash -c 'for cfg in testkit-js/*/tsconfig.json; do tsc --noEmit --composite false -p \"$cfg\" || exit 1; done'",
+    "typecheck:consumer-e2e": "tsc -p consumer-e2e/tsconfig.json",
     "check:core": "turbo run check --filter='!@midnight-ntwrk/testkit-*' && yarn lint",
     "deploy": "turbo run deploy",
     "deploy:core": "turbo run deploy --filter='!@midnight-ntwrk/testkit-*'",

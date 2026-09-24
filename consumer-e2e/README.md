@@ -26,6 +26,54 @@ node consumer-e2e/linker-smoke.mjs pnp retained
 node consumer-e2e/fork-matrix-smoke.mjs pnp           # needs Docker
 ```
 
+## These scripts are typechecked
+
+`yarn typecheck:consumer-e2e` runs `tsc` over every `.mjs` here through
+[`tsconfig.json`](./tsconfig.json). CI runs it on the **Consumer E2E** lane,
+before the pack — that lane is the one with an unfiltered `yarn build`, and
+`fork-matrix-smoke.mjs` imports `@midnight-ntwrk/testkit-js` by name, so a leg
+that builds only `packages/*` cannot resolve what the check is checking. It is
+also in the pre-push hook, so a push carries it whether or not you remember.
+
+**Why it exists.** This directory is the only place a transaction crosses the
+fork, and its call sites are the framework's own public entry points — but until
+the check landed, the only static gate on them was ESLint, which does not know
+what `submitCallTx` takes. Two defects shipped through that gap and each cost a
+13-minute Hard fork shard to find: `contract` written for `compiledContract`, and
+an `args` member on a nullary circuit's options.
+
+**The gate catches the first of those, and only that one is verified by mutation
+rather than assumed.** Reverting `compiledContract` to `contract` turns the lane
+red, as does reading a finalized record off the top level instead of `public`.
+The `args` defect it does NOT catch: a retained wrapper's `Contract` is declared
+`any` — necessarily, see `generated-personas.d.ts` — so `args: [1]` on a nullary
+retained circuit still typechecks. What rules that one out is the convention
+below, written at the call sites, not the type system. Do not read the check as
+covering it.
+
+**What it does and does not cover.** The framework's types are real, so result
+shapes are fully checked on both arms, and so is every member of a current-era
+options object. A retained options object is checked for its own members —
+`compiledContract` against `contract` is exactly that — but not for `circuitId`
+or `args`, which its `any` instance leaves open. The wrapped contracts cannot be
+resolved from here at all: they are generated into the persona tree at run time,
+so [`generated-personas.d.ts`](./generated-personas.d.ts) declares the shape they
+all share. That file carries what each declaration is allowed to assume, why the
+retained side is looser than the current one, and why nothing checks the file
+itself — read it before widening either.
+
+Two conventions follow from the check, both recorded at their call sites:
+
+- **`args` is always present**, and `[]` for a nullary circuit. Identical at run
+  time — every entry point normalises an absent `args` to the empty tuple — and
+  it is what lets a helper generic over many circuits typecheck at all.
+- **The framework is imported the way a consumer imports it.** Entry points come
+  off `@midnight-ntwrk/midnight-js-contracts`; `networkHeadVersion` and
+  `CompiledContract` come off the `@midnight-ntwrk/midnight-js` barrel, not
+  `protocol`'s root. The single remaining non-consumer import is
+  `loadLedgerEra`, and it is a gap in `contracts` rather than a shortcut taken
+  here — `readRetainedLedger` explains it.
+
 ## The personas
 
 `retained` and `current` each pin one Compact runtime and prove the framework
@@ -140,7 +188,11 @@ Each was hiding the next, which is why they are worth naming.
    for exactly this hazard.
 3. **`submitCallTx` was called with the wrong option names.** The retained arm
    wants `compiledContract`, not `contract`, and a nullary circuit's options
-   carry no `args` at all. `.mjs` means `tsc` never looked.
+   carry no `args` at all. `.mjs` meant `tsc` never looked — which it now does,
+   see [These scripts are typechecked](#these-scripts-are-typechecked). This is
+   the defect that check was built against. Reverting the NAME half is the
+   mutation that proves the check still works; the `args` half it cannot see,
+   for the reason recorded there.
 4. **The deploy was not waited for.** The call leg ran before the indexer had
    served the new contract, which reads as `No contract deployed at ...` rather
    than as a race.
