@@ -1,4 +1,4 @@
-/*
+  /*
  * This file is part of midnight-js.
  * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
@@ -87,6 +87,13 @@ describe('validateConfig — custom values', () => {
     const validated = validateConfig({ queryURL, subscriptionURL, pollInterval: 5000 });
 
     expect(validated.pollInterval).toBe(5000);
+  });
+
+    test('custom fetch function is preserved in validated config', () => {
+    const customFetch = (() => Promise.resolve(new Response())) as unknown as typeof fetch;
+    const validated = validateConfig({ queryURL, subscriptionURL, fetch: customFetch });
+
+    expect(validated.fetch).toBe(customFetch);
   });
 });
 

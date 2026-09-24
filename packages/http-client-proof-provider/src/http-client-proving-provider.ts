@@ -21,7 +21,6 @@ import {
   type ProvingProvider} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { InvalidProtocolSchemeError, type ZKConfigProvider, ZKConfigRegistry, zkConfigToProvingKeyMaterial } from '@midnight-ntwrk/midnight-js-types';
 import { warnIfInsecureRemoteUrl, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
-import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
 
 const retryOptions = {
@@ -29,7 +28,6 @@ const retryOptions = {
   retryDelay: (attempt: number) => 2 ** attempt * 1_000,
   retryOn: [500, 503]
 };
-const fetchRetry = fetchBuilder(fetch, retryOptions);
 
 const CHECK_PATH = '/check';
 const PROVE_PATH = '/prove';
@@ -80,7 +78,13 @@ const makeKeyMaterialResolver = <K extends string>(
   };
 };
 
-const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, headers: Record<string, string> = {}): Promise<Uint8Array> => {
+const makeHttpRequest = async (
+  fetchRetry: ReturnType<typeof fetchBuilder>,
+  url: URL,
+  payload: Uint8Array,
+  timeout: number,
+  headers: Record<string, string> = {}
+): Promise<Uint8Array> => {
   const response = await fetchRetry(url, {
     method: 'POST',
     body: new Uint8Array(payload),
@@ -100,6 +104,7 @@ const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, h
 export interface ProvingProviderConfig {
   readonly timeout?: number;
   readonly headers?: Record<string, string>;
+  readonly fetch?: typeof globalThis.fetch;
 }
 
 /**
@@ -144,8 +149,9 @@ export const httpClientProvingProvider = <K extends string>(
 
   const timeout = config?.timeout ?? DEFAULT_TIMEOUT;
   const headers = config?.headers ?? {};
+  const fetchRetry = fetchBuilder(config?.fetch ?? globalThis.fetch, retryOptions);
 
-  return  {
+  return {
     async check(
       serializedPreimage: Uint8Array,
       keyLocation: string,
@@ -153,7 +159,7 @@ export const httpClientProvingProvider = <K extends string>(
     ): Promise<(bigint | undefined)[]> {
       const keyMaterial = await getKeyMaterial(keyLocation);
       const payload = createCheckPayload(serializedPreimage, keyMaterial?.ir);
-      const result = await makeHttpRequest(checkUrl, payload, overrideTimeout ?? timeout, headers);
+      const result = await makeHttpRequest(fetchRetry, checkUrl, payload, overrideTimeout ?? timeout, headers);
       return parseCheckResult(result);
     },
 
@@ -165,7 +171,7 @@ export const httpClientProvingProvider = <K extends string>(
     ): Promise<Uint8Array> {
       const keyMaterial = await getKeyMaterial(keyLocation);
       const payload = createProvingPayload(serializedPreimage, overwriteBindingInput, keyMaterial);
-      return makeHttpRequest(proveUrl, payload, overrideTimeout ?? timeout, headers);
+      return makeHttpRequest(fetchRetry, proveUrl, payload, overrideTimeout ?? timeout, headers);
     },
 
     lookupKey: getKeyMaterial
