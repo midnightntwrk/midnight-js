@@ -45,8 +45,9 @@ const E2E_COMPILED = 'testkit-js/testkit-js-e2e/src/contract/compiled';
  *
  * The retained toolchain (`compactc` 0.31.1) left exactly one COMMITTED fixture
  * in this repository, `counter-016`; retained-era twins of these are built on
- * demand instead -- see {@link RETAINED_TWINS}, which covers six of the seven.
- * `events` is the one for which the retained half of the fork crossing cannot be posed at all.
+ * demand instead -- see {@link RETAINED_TWINS}. Each list has one key the other
+ * lacks: `events` has no retained twin that can exist, and `private-counter` has
+ * no current-era arm worth running.
  *
  * What this current-era set covers is the other half of the same question:
  * whether the framework's full contract surface works on a chain that carries
@@ -84,8 +85,24 @@ export const retainedTwinPath = (key) => path.join(RETAINED_TWIN_DIR, key);
  * and `emit` is not a language-0.23 form, so `events.compact` fails to compile
  * against this toolchain with `unbound identifier emit`. Everything else builds
  * from the same unmodified source the current-era suite compiles.
+ *
+ * `private-counter` is RETAINED-ONLY, and it is the exact mirror of `events`: it
+ * is the only contract in either matrix that declares a WITNESS, and its subject
+ * is private state written below the boundary and read above it. A current-era
+ * deploy happens after the fork and so has no pre-fork private state to carry --
+ * it would be a witness contract working, which is not what this matrix is for.
+ * {@link resolveContractSelection} narrows its shard to the retained half alone,
+ * the same way it narrows `events` to the current half.
  */
-export const RETAINED_TWINS = ['simple', 'unshielded', 'shielded', 'shielded-fallible', 'fee-mint', 'block-time'];
+export const RETAINED_TWINS = [
+  'simple',
+  'unshielded',
+  'shielded',
+  'shielded-fallible',
+  'fee-mint',
+  'block-time',
+  'private-counter'
+];
 
 /**
  * The Compact runtime each persona declares. These two numbers are the experiment:
@@ -164,10 +181,16 @@ export const CONTRACT_PACKAGES = {
  * unknown key is refused by name rather than filtered away, and an empty
  * selection is refused too.
  *
- * `retained` is the intersection with {@link RETAINED_TWINS}, not the whole
- * request: `events` is a legitimate current-era key with no retained twin that
- * can exist, so asking for it must narrow the retained half to nothing without
- * failing.
+ * EACH HALF IS AN INTERSECTION, not the whole request, and the two asymmetries
+ * are real rather than defensive: `events` is a legitimate key with no retained
+ * twin that can exist, and `private-counter` is a legitimate key with no
+ * current-era arm worth running. Asking for either must narrow the other half to
+ * nothing without failing, so that a one-contract shard runs exactly the arms
+ * that contract has.
+ *
+ * A key is known if EITHER matrix claims it. Validating against the current-era
+ * list alone -- which is what this did while every retained twin was also a
+ * current-era one -- would refuse `private-counter` as a typo.
  *
  * @param requested Contract keys, or `undefined` for the whole matrix.
  * @returns The current-era and retained-era keys this run covers.
@@ -177,16 +200,18 @@ export const resolveContractSelection = (requested) => {
     return { current: [...MATRIX_CONTRACTS], retained: [...RETAINED_TWINS] };
   }
   const keys = requested.filter((key) => key !== '');
-  const unknown = keys.filter((key) => !MATRIX_CONTRACTS.includes(key));
+  const known = [...new Set([...MATRIX_CONTRACTS, ...RETAINED_TWINS])];
+  const unknown = keys.filter((key) => !known.includes(key));
   if (unknown.length > 0) {
-    throw new Error(
-      `Not a fork-matrix contract: ${unknown.join(', ')}. Known: ${MATRIX_CONTRACTS.join(', ')}`
-    );
+    throw new Error(`Not a fork-matrix contract: ${unknown.join(', ')}. Known: ${known.join(', ')}`);
   }
   if (keys.length === 0) {
     throw new Error('A fork-matrix contract selection cannot be empty; omit it to run the whole matrix');
   }
-  return { current: keys, retained: keys.filter((key) => RETAINED_TWINS.includes(key)) };
+  return {
+    current: keys.filter((key) => MATRIX_CONTRACTS.includes(key)),
+    retained: keys.filter((key) => RETAINED_TWINS.includes(key))
+  };
 };
 
 /** The retained twins as persona contract keys. */
