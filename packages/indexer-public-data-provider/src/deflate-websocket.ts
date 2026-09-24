@@ -19,6 +19,12 @@ import { inflate } from './inflate';
 
 export const DEFLATE_PROTOCOL = 'graphql-transport-ws+deflate';
 
+/**
+ * Close code used when a frame cannot be decoded. `graphql-ws` classifies it as
+ * retryable, so the client reconnects and the indexer replays the lost block.
+ */
+export const DEFLATE_DECODE_FAILURE_CLOSE_CODE = 4499;
+
 /** Minimal logger surface — compatible with Pino's `error(obj, msg)` shape and `console.error`. */
 export type DeflateLogger = {
   warn?(message: string, context?: Record<string, unknown>): void;
@@ -112,18 +118,17 @@ export const wrapWithDeflate = <T extends typeof ws.WebSocket>(
           try {
             text = await inflate(binary);
           } catch (err) {
-            // Single malformed or oversized frame — drop it but keep the queue alive so
-            // subsequent frames are not blocked. The underlying socket is unaffected, so
-            // graphql-ws will NOT trigger a reconnect (its reconnect path fires on close /
-            // error events, not frame-level decoding failures). If a server is systematically
-            // misbehaving, the subscription will stall silently from the consumer's view —
-            // surfacing the error through `logger` is the only diagnostic signal available.
-            logger?.warn?.('deflate-websocket: inflate failed, dropping frame', {
+            // A frame that cannot be decoded is a hole in the stream, and the socket itself
+            // is fine, so nothing below would ever notice. Closing it is what makes
+            // graphql-ws reconnect and the indexer replay what was lost.
+            logger?.warn?.('deflate-websocket: inflate failed, closing the socket', {
               error: err instanceof Error ? err.message : String(err),
               code: err instanceof Error && 'cause' in err && err.cause instanceof Error && 'code' in err.cause
                 ? (err.cause as { code?: unknown }).code
                 : undefined
             });
+            this.__closed = true;
+            this.close(DEFLATE_DECODE_FAILURE_CLOSE_CODE, 'Subscription frame could not be decoded');
             return;
           }
           if (this.__closed) return;

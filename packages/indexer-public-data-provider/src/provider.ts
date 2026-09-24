@@ -63,9 +63,10 @@ import {
   blockOffsetToBlock$,
   blockOffsetToContractState$,
   blockOffsetToUnshieldedBalances$,
-  blockToContractState$,
+  blockToPositionedContractState$,
   contractAddressToLatestBlockOffset$,
   contractEvents$,
+  dropReplayed,
   maybeThrowQueryError,
   pollUntilPresent,
   transactionIdToTransaction$,
@@ -466,7 +467,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * chain and filter client-side, which is heavy on a busy chain.
    *
    * See {@link blockOffsetToBlock$}, {@link blockOffsetToContractState$},
-   * and {@link blockToContractState$} for per-subscription docs.
+   * and {@link blockToPositionedContractState$} for per-subscription docs.
    *
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the stream. Defaults to `latest`.
@@ -488,7 +489,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     if (config.type === 'latest') {
       return contractAddressToLatestBlockOffset$(this.client, this.pollInterval)(contractAddress).pipe(
         Rx.concatMap(blockOffsetToBlock$(this.client)),
-        Rx.concatMap(blockToContractState$(contractAddress))
+        Rx.concatMap(blockToPositionedContractState$(contractAddress)),
+        dropReplayed(),
+        Rx.map(({ state }) => state)
       );
     }
     if (config.type === 'all') {
@@ -504,7 +507,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       config.type === 'blockHeight' || config.type === 'blockHash'
         ? Rx.iif(() => config.inclusive ?? true, blocks, blocks.pipe(Rx.skip(1)))
         : blocks;
-    return maybeShortenedBlocks.pipe(Rx.concatMap(blockToContractState$(contractAddress)));
+    return maybeShortenedBlocks.pipe(
+      Rx.concatMap(blockToPositionedContractState$(contractAddress)),
+      dropReplayed(),
+      Rx.map(({ state }) => state)
+    );
   }
 
   /**

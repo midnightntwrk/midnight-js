@@ -24,6 +24,27 @@ import { createClient } from 'graphql-ws';
 import type { ValidatedConfig } from './config';
 import { wrapWithDeflate } from './deflate-websocket';
 
+/** Interval between the client's keep-alive pings. */
+const KEEP_ALIVE_INTERVAL_MS = 10_000;
+
+/** How long a ping may go unanswered before the socket is treated as dead. */
+const PONG_WAIT_MS = 5_000;
+
+/** How long a socket may stay open without acknowledging the connection. */
+const CONNECTION_ACK_WAIT_MS = 10_000;
+
+/**
+ * Close code for a socket that stopped answering pings. `graphql-ws` classifies
+ * it as retryable, so the client reconnects instead of failing the stream.
+ */
+export const PONG_TIMEOUT_CLOSE_CODE = 4408;
+
+/** The part of a live WebSocket the keep-alive recipe needs. */
+type ClosableSocket = { close(code: number, reason: string): void };
+
+const isClosableSocket = (socket: unknown): socket is ClosableSocket =>
+  typeof socket === 'object' && socket !== null && 'close' in socket && typeof socket.close === 'function';
+
 /**
  * Resource-bearing handle that pairs the Apollo client with an idempotent
  * `dispose()` for releasing the underlying WebSocket connection.
@@ -80,11 +101,33 @@ export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => 
   });
   const apolloLink = from([retryLink, httpLink]);
 
+  // A half-open socket produces no close event, so without these the subscription
+  // waits for a server that is already gone and never reports anything.
+  let activeSocket: ClosableSocket | null = null;
+  let pongTimer: ReturnType<typeof setTimeout> | undefined;
+
   const wsClient = createClient({
     url: validated.subscriptionURLString,
     // TODO(loggerProvider): forward provider's optional logger here once the indexer
     // public-data-provider factory accepts and threads loggerProvider through.
-    webSocketImpl: wrapWithDeflate(validated.webSocket)
+    webSocketImpl: wrapWithDeflate(validated.webSocket),
+    keepAlive: KEEP_ALIVE_INTERVAL_MS,
+    connectionAckWaitTimeout: CONNECTION_ACK_WAIT_MS,
+    on: {
+      connected: (socket) => {
+        activeSocket = isClosableSocket(socket) ? socket : null;
+      },
+      ping: (received) => {
+        if (received) return;
+        // Captured, not read at timeout: a reconnect in the meantime must not
+        // cost the replacement socket its life.
+        const pinged = activeSocket;
+        pongTimer = setTimeout(() => pinged?.close(PONG_TIMEOUT_CLOSE_CODE, 'Pong timeout'), PONG_WAIT_MS);
+      },
+      pong: (received) => {
+        if (received) clearTimeout(pongTimer);
+      }
+    }
   });
 
   const client = new ApolloClient({

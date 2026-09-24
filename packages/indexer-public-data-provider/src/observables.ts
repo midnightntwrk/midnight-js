@@ -15,6 +15,7 @@
 
 import type { ApolloClient, ApolloQueryResult, FetchResult, OperationVariables } from '@apollo/client/core';
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
+import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { ContractEvent } from '@midnight-ntwrk/midnight-js-types';
 import * as Rx from 'rxjs';
@@ -63,6 +64,44 @@ export type Transaction = {
   protocolVersion: number;
   contractActions: readonly { state: string; address: string }[];
 };
+
+/**
+ * Where a contract state sits in the chain: the block that carried it, and its
+ * rank among the states for one address within that block.
+ */
+export type ChainPosition = {
+  readonly height: number;
+  readonly ordinal: number;
+};
+
+/** A contract state carrying the {@link ChainPosition} it was served at. */
+export type PositionedContractState = ChainPosition & {
+  readonly state: ContractState;
+};
+
+/**
+ * Suppresses states at or behind the last one delivered. The indexer replays
+ * from the subscription's original offset whenever the socket reconnects, so
+ * without this a recovered stream re-delivers history as though it were new.
+ */
+export const dropReplayed =
+  <T extends ChainPosition>(): Rx.MonoTypeOperatorFunction<T> =>
+  (source) =>
+    Rx.defer(() => {
+      let last: ChainPosition | null = null;
+      return source.pipe(
+        Rx.filter((value) => {
+          const replayed =
+            last !== null &&
+            (value.height < last.height || (value.height === last.height && value.ordinal <= last.ordinal));
+          if (replayed) {
+            return false;
+          }
+          last = value;
+          return true;
+        })
+      );
+    });
 
 export const maybeThrowQueryError = <R extends { error?: { message: string } }>(result: R): R => {
   if (result.error) {
@@ -154,7 +193,7 @@ export function pollUntilPresent<TQuery, TVars extends OperationVariables, TResu
  * filter by address; every block on chain flows through the WebSocket.
  *
  * Use when the caller needs the block-grouped "states-at-this-block"
- * view (typically paired with {@link blockToContractState$} to extract
+ * view (typically paired with {@link blockToPositionedContractState$} to extract
  * contract states from each block's transactions). For a continuous
  * change feed of a single contract, prefer {@link blockOffsetToContractState$}
  * — it's server-side filtered (light).
@@ -226,21 +265,29 @@ export const transactionToContractState$ =
     );
 
 /**
- * Walks a block's transactions and emits one {@link ContractState} per
- * `contractAction` whose `address` matches `contractAddress`. Client-side
+ * Walks a block's transactions and emits one {@link PositionedContractState}
+ * per `contractAction` whose `address` matches `contractAddress`. Client-side
  * filter. Paired with {@link blockOffsetToBlock$} to produce the
  * block-grouped "states-at-this-block" view used by `contractStateObservable`
  * for the `latest`, `blockHeight`, and `blockHash` branches.
  *
  * Multiple states can come from a single block (every matching contract
- * action in every transaction of that block emits one).
+ * action in every transaction of that block emits one), so the position
+ * carries an ordinal as well as a height — see {@link dropReplayed}.
  */
-export const blockToContractState$ = (contractAddress: ContractAddress) => (block: Block) =>
-  Rx.from(block.transactions).pipe(
-    Rx.concatMap(({ contractActions }) => Rx.from(contractActions)),
-    Rx.filter((call) => call.address === contractAddress),
-    Rx.map((call) => parseHexContractState(call.state, block.protocolVersion))
-  );
+export const blockToPositionedContractState$ =
+  (contractAddress: ContractAddress) =>
+  (block: Block): Rx.Observable<PositionedContractState> =>
+    Rx.from(
+      block.transactions
+        .flatMap(({ contractActions }) => contractActions)
+        .filter((call) => call.address === contractAddress)
+        .map((call, ordinal) => ({
+          height: block.height,
+          ordinal,
+          state: parseHexContractState(call.state, block.protocolVersion)
+        }))
+    );
 
 export const contractAddressToLatestBlockOffset$ =
   (apolloClient: ApolloClient, pollInterval: number) => (contractAddress: ContractAddress) =>
@@ -261,7 +308,7 @@ export const contractAddressToLatestBlockOffset$ =
  * Emits one {@link ContractState} per state change (per-change feed, not
  * per-block snapshot). Used by `contractStateObservable.all`; NOT used by
  * `latest`/`blockHeight`/`blockHash`, which need the per-block view from
- * {@link blockOffsetToBlock$} + {@link blockToContractState$}.
+ * {@link blockOffsetToBlock$} + {@link blockToPositionedContractState$}.
  *
  * Assumes block already exists.
  *
