@@ -107,7 +107,14 @@ export {
   FoundContract,
   verifierKeysEqual,
   verifyContractState} from './find-deployed-contract';
-export { ContractStates,getPublicStates, getStates, PublicContractStates } from './get-states';
+export {
+  AnyEraContractState,
+  AnyEraContractStateReadSurface,
+  ContractStates,
+  getAnyEraContractState,
+  getPublicStates,
+  getStates,
+  PublicContractStates} from './get-states';
 export { getUnshieldedBalances } from './get-unshielded-balances';
 export {
   CircuitMaintenanceTxInterface,
