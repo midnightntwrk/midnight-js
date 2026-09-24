@@ -13,16 +13,14 @@ The retained-era counterpart of [CallTxFailedError](../../../classes/CallTxFaile
 reused because it carries a current-era `FinalizedTxData` where a retained
 call is recorded as a version-tagged [VersionedFinalizedTxData](../../../../types/type-aliases/VersionedFinalizedTxData.md).
 
-Carries no registered error code, deliberately: a code is a published
-compatibility commitment, and this arm's record type is expected to converge
-with the current era's. The record itself is on [txData](#txdata) so a caller
-can branch on the status rather than read it out of the message.
+Carries no registered error code of its own. Branch on the class, or on the
+inherited [AnyEraTxFailedError.code](../../../classes/AnyEraTxFailedError.md#code), and read the record off
+[txData](#txdata) rather than out of the message.
 
-The message states the local-versus-chain consequence per STATUS, because the
-two differ: with the whole transaction rejected nothing landed, but a
-fallible-phase failure keeps every guaranteed effect — and this pipeline
-places every movement it makes in the guaranteed segment, so the chain moved
-while the private state was not stored.
+## See
+
+[ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for why this arm registers no code, and for the
+local-versus-chain consequence the message states per status.
 
 ## Extends
 
@@ -66,14 +64,13 @@ while the private state was not stored.
 
 The one code every recorded-failure class in this package answers to.
 
-`instanceof` is the idiom this hierarchy is built for, but it is identity-
-based: with two copies of this package resolved in one process it returns
-`false` and a failed transaction walks past a correctly written handler.
-A consumer that cannot import these classes, or cannot rely on there being
-one copy of them, branches on this instead. Subclasses inherit it rather
-than each declaring their own -- what a caller needs to distinguish is
-WHICH transaction failed, which the class and the record answer, not a
-finer code.
+Branch on this rather than `instanceof` where these classes cannot be
+imported, or where there may be more than one copy of this package in the
+process. Subclasses inherit it rather than each declaring their own.
+
+#### See
+
+[ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for why the code sits on the base.
 
 #### Inherited from
 

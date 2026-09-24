@@ -84,16 +84,15 @@ artifact against a post-fork head is refused with `Ledger8DeployOnV9Error`. Reco
 current toolchain and deploy that artifact instead; the retained artifact keeps working for calls
 against contracts deployed before the fork.
 
-A verifier key is registered for every entry point the artifact declares, because a retained
-constructor builds every slot BLANK and the retained deploy registers none of its own.
+A verifier key is registered for every entry point the artifact declares.
 
 A maintenance authority of one key at threshold 1 is registered, that key being
 `options.signingKey` or a freshly sampled one. Once the chain has recorded the deployment the key
-is stored against the minted address through `providers.privateStateProvider`, exactly as the
-current era's deploy stores its own, and it is reported on `Ledger8DeployedContract.signingKey`.
-That provider is the only copy besides the returned handle: the key is not on chain and not
-derivable from anything that is, so a store that is lost or cleared leaves a contract on which no
-verifier key can ever be inserted, removed or replaced by anyone.
+is stored against the minted address through `providers.privateStateProvider` and reported on
+`Ledger8DeployedContract.signingKey`. THAT PROVIDER IS THE ONLY COPY besides the returned handle:
+the key is not on chain and not derivable from anything that is, so a store that is lost or
+cleared leaves a contract on which no verifier key can ever be inserted, removed or replaced by
+anyone.
 
 ### Type Parameters
 
@@ -117,7 +116,9 @@ verifier key can ever be inserted, removed or replaced by anyone.
 
 ### See
 
-[OverloadTyping](../../documents/OverloadTyping.md) for how the two eras are discriminated.
+ - [OverloadTyping](../../documents/OverloadTyping.md) for how the two eras are discriminated.
+ - [KeepStatePipeline](../../documents/KeepStatePipeline.md) for why every slot has to be registered here, and for the
+maintenance authority this builds.
 
 ## Call Signature
 

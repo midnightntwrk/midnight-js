@@ -206,33 +206,18 @@ The address of the contract of interest.
 Retrieves the protocol-version integer reported by the network's current
 head block.
 
-Implementations MAY serve this from a cache, on one condition: the cached
-answer must expire by itself, on a bound short relative to block time.
-What is forbidden is a reading held indefinitely.
+Implementations MAY serve this from a cache, on ONE condition: the cached
+answer must expire by itself, on a bound short relative to block time. A
+reading held indefinitely is forbidden.
 
-The reason for the condition: the point of asking is to learn which ledger
-era a transaction being built now will land in, and that is exactly the
-question a stale answer gets wrong at the one moment it matters — the fork
-boundary. An era only ever moves forward, so a reading that has fallen
-behind cannot be corrected by a later reading of the same kind; it would
-have to be recognised as wrong first, and nothing in a head integer
-announces that. A cache that expires needs no such recognition. It is also
-why this member takes no "give me a fresh one" option: under the bound,
-every answer is at most one bound old, so there is nothing for a caller to
-opt out of (see ADR 0007).
+PREFER THE `protocolVersion` ON A READ wherever the era of *existing* data
+is the question — it is dated to the same block as the bytes it describes
+and costs no extra request. Reach for this method only where there is no
+record to date: the deploy path.
 
-This is the construct-path counterpart to the `protocolVersion` that every
-read on this interface already carries. Prefer that field wherever the era
-of *existing* data is the question — it is dated to the same block as the
-bytes it describes and costs no extra request. Reach for this method only
-where there is no record to date: the deploy path, which has no prior
-contract state to read.
-
-The answer is a lower bound on the era of the block that will include a
-transaction built from it, never a guarantee — inclusion happens later,
-and the era may have advanced by then. A caller that must be certain
-confirms after the fact, from the `protocolVersion` on the finalized
-record.
+The answer is a LOWER BOUND on the era of the block that will include a
+transaction built from it, never a guarantee. A caller that must be certain
+confirms afterwards, from the `protocolVersion` on the finalized record.
 
 #### Returns
 
@@ -242,6 +227,11 @@ record.
 
 Implementation-specific error when the network reports no head
   block at all.
+
+#### See
+
+ReadingTheHeadEra for why the cache must expire by itself, and
+  why this member takes no "give me a fresh one" option.
 
 ***
 

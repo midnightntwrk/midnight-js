@@ -80,17 +80,12 @@ export interface LedgerEra {
    * `.prove()` is ever called; proving needs a proving provider and a running
    * proof server, neither of which this seam has.
    *
-   * The two eras are not equivalent here, and the difference is deliberate
-   * rather than hidden: the retained pre-fork era composes exactly one call,
-   * because a cross-contract call is a ledger-9-only feature a pre-fork
-   * contract cannot emit. The refusal is raised, never worked around. A Zswap
-   * offer is NOT refused on either era.
+   * The retained pre-fork era composes exactly ONE call and refuses a longer
+   * list. A Zswap offer is NOT refused on either era.
    *
-   * A call's Zswap offer is supplied as a factory rather than as ready-made
-   * bytes: a coin has to be routed into the segment its movement belongs to,
-   * and the segment boundary is not known until this method has split the
-   * transcripts. The factory is handed that split, and the same split comes
-   * back on the result.
+   * A call's Zswap offer is supplied as a FACTORY rather than as ready-made
+   * bytes. It is handed the transcript split this method resolves, and the same
+   * split comes back on the result.
    *
    * @param options The calls to compose and the transaction-wide envelope.
    * @returns The serialized UNPROVEN transaction and each call's partition.

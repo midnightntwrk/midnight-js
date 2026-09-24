@@ -32,15 +32,11 @@ import type { DownConvertedState } from './down-convert';
  * partition the call's public transcript against the context it really ran on
  * (see {@link PartitionContext}).
  *
- * A `Pick` of the vendor's own class, not a restatement of it: the member names
- * and their types come from onchain-runtime-v3, so a rename there fails this
- * build instead of leaving a mirror that describes a property the runtime no
- * longer has. It stays a narrowing rather than the whole class because
- * `QueryContext` is a WASM class with dozens of members, and this seam reads
- * four — the narrowing is what lets the execution tests hand `executeCircuit` a
- * plain object double instead of standing up real WASM.
+ * A `Pick` of the vendor's own class, not a restatement of it.
  *
  * @see {@link RetainedEraExecution}
+ * @see {@link InjectedVendorSlices} for why this is derived from the vendor
+ * rather than mirrored, and what the narrowing buys the execution tests.
  */
 export type Ledger8QueryContext = Pick<
   OnchainRuntimeV3.QueryContext,

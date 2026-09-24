@@ -10,6 +10,7 @@
 
 - [Breadcrumbs](documents/Breadcrumbs.md)
 - [EraDispatch](documents/EraDispatch.md)
+- [ErrorTaxonomy](documents/ErrorTaxonomy.md)
 - [KeepStatePipeline](documents/KeepStatePipeline.md)
 - [OverloadTyping](documents/OverloadTyping.md)
 - [RetainedEraNamespace](documents/RetainedEraNamespace.md)
