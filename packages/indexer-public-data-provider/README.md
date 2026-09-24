@@ -119,13 +119,20 @@ that lasts. The first post-fork call re-versions the envelope, and from then on
 they read it normally.
 
 For `contractStateObservable` the refusal is not a returned error but a
-**terminated stream**: the decode runs inside the stream, so a refusal reaches
-the subscriber's `error` callback and the subscription ends. This package
-installs no `retry` and no `catchError`, so nothing reconciles it — recovery
-means subscribing again. The `all` branch is the harsher case: it replays every
-contract action from the deploy onward, and for a contract deployed before the
-fork that replay always reaches a v8 envelope, so a later write does not help
-it.
+**terminated stream**: the decode runs inside an `Rx.map`, so a refusal reaches
+the subscriber's `error` callback and the subscription ends. No RxJS `retry` or
+`catchError` operator is installed on any branch, so nothing reconciles it —
+recovery means subscribing again. (The Apollo `RetryLink` in `transport.ts`
+retries *transport* failures on HTTP queries; subscriptions are routed past it,
+and it sits below the decode in any case, so it cannot see a refusal.)
+
+On the `latest` branch the stream does not fail at subscribe time — it fails on
+the first matching contract action that flows through it.
+
+The `all` branch is the harsher case: it replays every contract action from the
+deploy onward, so for a contract deployed before the fork the replay always
+reaches its pre-fork deploy state. No later write can change what an earlier
+block already contains, so that branch does not recover.
 
 #### Reading a contract that may predate the fork
 
@@ -135,6 +142,9 @@ decodes with that era's runtime, and hands back plain data:
 
 ```typescript
 import { getAnyEraContractState } from '@midnight-ntwrk/midnight-js-contracts';
+// From YOUR OWN generated contract module, not from the framework — which is why
+// `read.state` is plain data rather than a handle.
+import { Counter, StateValue } from './managed/counter/contract/index.cjs';
 
 const read = await getAnyEraContractState(provider, contractAddress);
 
@@ -155,7 +165,10 @@ Two things that look interchangeable and are not:
 - `read.state` is encoded, not a live handle. A handle minted inside the
   framework belongs to the framework's copy of the WASM module and is rejected
   by a dApp's own `ledger()`; encoded state crosses that boundary, and also
-  survives `structuredClone`, a worker `postMessage` and a write to storage.
+  survives a worker `postMessage` and a write to storage. Note that
+  `structuredClone` does *not* tell the two apart — it copies a handle's
+  internal pointer without complaint and yields an object that is useless in the
+  receiving context.
 
 If you would rather decode the bytes yourself, `queryRawContractState` still
 serves them untouched — pair it with `contractStateEnvelopeVersion` from

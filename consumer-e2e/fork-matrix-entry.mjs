@@ -309,34 +309,100 @@ const STREAM_WATCH_MS = 60_000;
  * what lets one stream be opened before the boundary and read after it.
  */
 const watchContractStates = (publicDataProvider, contractAddress, streamConfig) => {
-  const record = { emitted: 0, errored: null, completed: false };
+  // `errored` is ALWAYS a string once set -- `describeError` stringifies even a non-Error -- so
+  // `null` is unambiguously the not-yet sentinel that `settled` tests against.
+  //
+  // The two `*At` stamps are what let a later reading say WHEN the stream ended rather than only
+  // that it had. Without them a stream that died before the fork and one that died because of it
+  // produce identical rows.
+  const record = { emitted: 0, errored: null, erroredAt: null, completed: false, completedAt: null };
   const subscription = publicDataProvider.contractStateObservable(contractAddress, streamConfig).subscribe({
     next: () => {
       record.emitted += 1;
     },
     error: (error) => {
       record.errored = describeError(error);
+      record.erroredAt = new Date().toISOString();
     },
     complete: () => {
       record.completed = true;
+      record.completedAt = new Date().toISOString();
     }
   });
-  return { record, stop: () => subscription.unsubscribe() };
+  return {
+    record,
+    /** Snapshots the counter, so a later reading can report what arrived SINCE this moment. */
+    mark: () => ({ emitted: record.emitted, alreadySettled: record.errored !== null || record.completed }),
+    stop: () => subscription.unsubscribe()
+  };
 };
 
 /**
  * Waits until a watched stream has settled, or until the window closes.
  *
- * Settled means errored or completed: both END the stream, and neither is recoverable
- * from the subscriber's side. A stream still running when the window closes is
- * reported as such rather than waited on further.
+ * Settled means errored or completed: both END the stream, and neither is recoverable from the
+ * subscriber's side. A stream still running when the window closes is reported as such.
+ *
+ * `since` is a {@link watchContractStates} mark. Given one, the row reports what happened AFTER
+ * that mark rather than since subscription -- and says whether the stream was already finished
+ * when this reading began, which is the difference between "the boundary ended it" and "it was
+ * over long before".
  */
-const settled = async (watch, ms) => {
+const settled = async (watch, ms, since) => {
   const deadline = Date.now() + ms;
   while (Date.now() < deadline && watch.record.errored === null && !watch.record.completed) {
     await delay(2_000);
   }
-  return { ...watch.record, stillOpen: watch.record.errored === null && !watch.record.completed };
+  const stillOpen = watch.record.errored === null && !watch.record.completed;
+  return {
+    ...watch.record,
+    stillOpen,
+    readAt: new Date().toISOString(),
+    ...(since === undefined
+      ? {}
+      : { emittedSinceMark: watch.record.emitted - since.emitted, settledBeforeMark: since.alreadySettled })
+  };
+};
+
+/**
+ * Whether the indexer is serving any state for this contract right now.
+ *
+ * Paired with a stream reading because `pollUntilPresent` polls FOREVER on an absent contract and
+ * never errors -- so a stream that is quiet because the indexer momentarily lost the contract
+ * reports exactly like one that is quiet because nothing happened. One extra request separates
+ * them.
+ */
+const contractPresent = (publicDataProvider, contractAddress) =>
+  publicDataProvider
+    .queryRawContractState(contractAddress)
+    .then((state) => (state === null ? 'absent' : envelopeTag(state.raw)))
+    .catch((error) => `unreadable: ${describeError(error).split('\n')[0]}`);
+
+/**
+ * The error classes that are an ANSWER to "what does this read do across the fork".
+ *
+ * `probe` records every throw as `refused:`, which is its reserved word for "the thing being
+ * measured said no". A dropped socket is not that, and recording one under a probe's name would
+ * put a network fluke into the report as evidence about the decoding surface -- exactly what
+ * `probe` already refuses to do for timeouts.
+ */
+const DECODE_ANSWERS = new Set(['IndexerDataError', 'TagParseError', 'StateDecodeFailedError']);
+
+/**
+ * Runs a read and lets only a genuine refusal reach `probe`'s `refused:` bucket.
+ *
+ * Anything else is recorded as INCONCLUSIVE under its own name, so a reader can tell a measurement
+ * that did not happen from one that did.
+ */
+const decodeAnswer = async (run) => {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof Error && DECODE_ANSWERS.has(error.name)) {
+      throw error;
+    }
+    return `INCONCLUSIVE: not a decode refusal -- ${describeError(error)}`;
+  }
 };
 
 /**
@@ -1422,23 +1488,48 @@ await leg('pre-fork retained call', async () => {
 // carry a retained envelope.
 //
 // ONE SHARD. The baseline contract they read is deployed by every shard, so
-// without a gate the same measurement would run eight times over and answer the
-// same question eight times. `simple` carries it, in the same spirit as the
+// without a gate the same measurement would run once per shard and answer the
+// same question every time. `simple` carries it, in the same spirit as the
 // current-era deploy probe above.
-const MEASURES_READ_SURFACE = covers(SELECTED.current, 'simple');
+//
+// `deployment !== undefined` is not defensive. `leg` records-and-continues, so a
+// baseline deploy that fails for any non-timeout reason leaves it unset and every
+// probe below throws a `TypeError` on `.contractAddress` -- which `probe` writes
+// down as `refused:`, its reserved word for THE THING BEING MEASURED SAID NO. A
+// reader would find a column of refusals answering the very question this PR
+// exists to ask, from a deploy that never happened. `driveCallsAcrossTheBoundary`
+// carries the same guard, for the same reason.
+const MEASURES_READ_SURFACE = covers(SELECTED.current, 'simple') && deployment !== undefined;
+
+if (covers(SELECTED.current, 'simple') && deployment === undefined) {
+  // ONE honest row beats nine false refusals.
+  observed['decoded read surface'] = 'skipped: the pre-fork baseline deploy did not complete';
+}
 
 // Opened BEFORE the boundary and deliberately not stopped here: what this
 // subscription does as the fork moves under it is the second half of the
 // question, and it is read again after the crossing.
+/** @type {ReturnType<typeof watchContractStates> | undefined} */
 let streamHeldAcrossTheBoundary;
+/**
+ * Where that stream had got to before the fork, so the later reading can report the DELTA.
+ *
+ * @type {ReturnType<ReturnType<typeof watchContractStates>['mark']> | undefined}
+ */
+let streamMarkBeforeTheFork;
 
 if (MEASURES_READ_SURFACE) {
-  await probe('pre-fork decoded read of the retained contract', async () => {
-    const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
-    // Reached only if the read was ADMITTED, which is itself the finding: this
-    // path decodes with the current era, and the contract is a retained one.
-    return { admitted: true, state: state === null ? 'null' : 'a decoded state' };
-  });
+  await probe('pre-fork decoded read of the retained contract', () =>
+    decodeAnswer(async () => {
+      const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
+      // `admitted` is claimed ONLY on the non-null branch. `queryContractState`
+      // answers `null` before it reaches the decoder, so saying a decode was
+      // admitted there would assert something about a decoder that never ran.
+      return state === null
+        ? { admitted: false, note: 'the indexer served no state, so no decode was attempted' }
+        : { admitted: true, operations: state.operations().length };
+    })
+  );
 
   await probe('pre-fork contract-state stream on the retained contract', async () => {
     streamHeldAcrossTheBoundary = watchContractStates(
@@ -1446,7 +1537,8 @@ if (MEASURES_READ_SURFACE) {
       deployment.contractAddress,
       { type: 'latest' }
     );
-    return settled(streamHeldAcrossTheBoundary, STREAM_WATCH_MS);
+    const outcome = await settled(streamHeldAcrossTheBoundary, STREAM_WATCH_MS);
+    return { ...outcome, contract: await contractPresent(session.providers.publicDataProvider, deployment.contractAddress) };
   });
 }
 
@@ -1590,6 +1682,11 @@ await probe(
 // and broke the loop, and a baseline deploy that never completed.
 const forked = await legSucceeded('fork enacted', () => forkEnacted, FORK_WAIT_TIMEOUT);
 
+// Taken the moment the fork is known to have landed, and BEFORE the head gate
+// below rebuilds the session. Everything the held stream does after this mark is
+// attributable to the crossing; everything before it is not.
+streamMarkBeforeTheFork = streamHeldAcrossTheBoundary?.mark();
+
 const crossed =
   forked &&
   (await legSucceeded('post-fork head era', async () => {
@@ -1615,51 +1712,76 @@ await leg('envelope tag across the boundary', () =>
   sampleEnvelope(session.providers.publicDataProvider, deployment.contractAddress, 6, 10_000)
 );
 
-// (b) continued: THE WINDOW. Everything from here to the keep-state call below
-// runs against a contract that is deployed, carries a retained envelope, and has
-// NOT been written to since the boundary -- which is the state every pre-fork
-// contract on a freshly forked chain is in, and the one a dApp reading through
-// the decoding members actually meets. The keep-state call is the write that
-// closes this window, so these probes have to run before it.
+// (b) continued: THE WINDOW, between the boundary and the keep-state call that
+// re-versions the envelope. This is where a dApp reading through the DECODING
+// members meets a contract the ledger did not rewrite at the fork.
+//
+// The rows do NOT assume they found a retained envelope, and the probe names do
+// not claim it. `driveCallsAcrossTheBoundary` above drives calls at this very
+// address as the fork lands, so a call of its own may already have migrated the
+// contract before this runs. Every row therefore carries the tag actually read,
+// and the question each answers is "what did this member do with THAT envelope"
+// -- which is the honest question either way.
 if (MEASURES_READ_SURFACE) {
-  await probe('post-fork decoded read of the not-yet-migrated contract', async () => {
-    const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
-    return { admitted: true, state: state === null ? 'null' : 'a decoded state' };
-  });
+  await probe('post-fork decoded read, through the current-era-only member', () =>
+    decodeAnswer(async () => {
+      const envelope = await contractPresent(session.providers.publicDataProvider, deployment.contractAddress);
+      const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
+      return state === null
+        ? { envelope, admitted: false, note: 'the indexer served no state, so no decode was attempted' }
+        : { envelope, admitted: true, operations: state.operations().length };
+    })
+  );
 
-  // The era-agnostic read, side by side with the refusal above and taken at the
-  // same moment on the same contract. Without it the row above says a read
-  // failed; with it, the pair says which read fails and which succeeds -- which
-  // is what the package documentation then has to tell a consumer.
-  await probe('post-fork era-agnostic read of the same contract', async () => {
-    const state = await getAnyEraContractState(session.providers.publicDataProvider, deployment.contractAddress);
-    return state === null
-      ? 'the indexer served no state'
-      : {
-          envelopeVersion: state.envelopeVersion,
-          protocolVersion: state.protocolVersion,
-          entryPoints: state.entryPoints.map((entryPoint) => entryPoint.circuitId)
-        };
-  });
+  // The era-agnostic read, on the same contract at the same moment. Without it
+  // the row above says a read failed; with it, the pair says which read fails and
+  // which succeeds -- which is what the package documentation has to tell a
+  // consumer. The two are SEPARATE REQUESTS, so each carries the envelope it
+  // actually saw; a reader compares them only when both report the same tag.
+  await probe('post-fork era-agnostic read of the same contract', () =>
+    decodeAnswer(async () => {
+      const state = await getAnyEraContractState(session.providers.publicDataProvider, deployment.contractAddress);
+      return state === null
+        ? 'the indexer served no state'
+        : {
+            envelopeVersion: state.envelopeVersion,
+            protocolVersion: state.protocolVersion,
+            entryPoints: state.entryPoints.map((entryPoint) => entryPoint.circuitId)
+          };
+    })
+  );
 
   await probe('the pre-fork contract-state stream, after the boundary moved under it', async () => {
     if (streamHeldAcrossTheBoundary === undefined) {
       return 'skipped: the pre-fork stream was never opened';
     }
-    const outcome = await settled(streamHeldAcrossTheBoundary, STREAM_WATCH_MS);
-    // Stopped HERE and not before: this is the last reading taken of it, and an
-    // open subscription left behind would keep the process alive past its report.
-    streamHeldAcrossTheBoundary.stop();
-    return outcome;
+    try {
+      // AGAINST THE MARK taken when the fork landed. Without it this reads the
+      // same cumulative record the pre-fork row already reported: a stream that
+      // died BEFORE the boundary would be filed here as an observation about the
+      // crossing, and `emitted` would carry pre-fork emissions into a
+      // post-boundary count. `settledBeforeMark` is the field that says which
+      // happened.
+      const outcome = await settled(streamHeldAcrossTheBoundary, STREAM_WATCH_MS, streamMarkBeforeTheFork);
+      return { ...outcome, contract: await contractPresent(session.providers.publicDataProvider, deployment.contractAddress) };
+    } finally {
+      streamHeldAcrossTheBoundary.stop();
+    }
   });
 
   await probe('post-fork contract-state stream opened before any write', async () => {
     const watch = watchContractStates(session.providers.publicDataProvider, deployment.contractAddress, {
       type: 'latest'
     });
-    const outcome = await settled(watch, STREAM_WATCH_MS);
-    watch.stop();
-    return outcome;
+    try {
+      const outcome = await settled(watch, STREAM_WATCH_MS);
+      // A quiet stream has two causes -- nothing happened, or the indexer is not
+      // serving this contract -- and `pollUntilPresent` never errors on the
+      // second. This is what tells them apart.
+      return { ...outcome, contract: await contractPresent(session.providers.publicDataProvider, deployment.contractAddress) };
+    } finally {
+      watch.stop();
+    }
   });
 }
 
@@ -1688,18 +1810,26 @@ await leg('post-fork keep-state call through the same call site', async () => {
 // the contract is written to" -- and, for the `all` branch, whether the write
 // helps at all.
 if (MEASURES_READ_SURFACE) {
-  await probe('post-write decoded read of the migrated contract', async () => {
-    const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
-    return { admitted: true, state: state === null ? 'null' : 'a decoded state' };
-  });
+  await probe('post-write decoded read, through the current-era-only member', () =>
+    decodeAnswer(async () => {
+      const envelope = await contractPresent(session.providers.publicDataProvider, deployment.contractAddress);
+      const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
+      return state === null
+        ? { envelope, admitted: false, note: 'the indexer served no state, so no decode was attempted' }
+        : { envelope, admitted: true, operations: state.operations().length };
+    })
+  );
 
   await probe('post-write contract-state stream, from the latest state', async () => {
     const watch = watchContractStates(session.providers.publicDataProvider, deployment.contractAddress, {
       type: 'latest'
     });
-    const outcome = await settled(watch, STREAM_WATCH_MS);
-    watch.stop();
-    return outcome;
+    try {
+      const outcome = await settled(watch, STREAM_WATCH_MS);
+      return { ...outcome, contract: await contractPresent(session.providers.publicDataProvider, deployment.contractAddress) };
+    } finally {
+      watch.stop();
+    }
   });
 
   await probe('post-write contract-state stream, from the deploy', async () => {
@@ -1710,9 +1840,12 @@ if (MEASURES_READ_SURFACE) {
     const watch = watchContractStates(session.providers.publicDataProvider, deployment.contractAddress, {
       type: 'all'
     });
-    const outcome = await settled(watch, STREAM_WATCH_MS);
-    watch.stop();
-    return outcome;
+    try {
+      const outcome = await settled(watch, STREAM_WATCH_MS);
+      return { ...outcome, contract: await contractPresent(session.providers.publicDataProvider, deployment.contractAddress) };
+    } finally {
+      watch.stop();
+    }
   });
 }
 

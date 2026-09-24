@@ -15,18 +15,21 @@
 
 import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
 import type { LedgerEra, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
-import { TagParseError } from '@midnight-ntwrk/midnight-js-utils';
+import { PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { hasErrorCode, TagParseError } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getAnyEraContractState } from '../get-states';
 import {
   BBOARD_ENTRY_POINTS,
+  CORRUPTED_PAYLOAD,
   CURRENT_ENVELOPE,
   POST_FORK_PROTOCOL_VERSION,
   PRE_FORK_PROTOCOL_VERSION,
   RETAINED_ENVELOPE,
   surfaceServing,
-  surfaceServingNothing
+  surfaceServingNothing,
+  TAG_CLAIMS_RETAINED_ERA
 } from './any-era-fixtures';
 import { createMockContractAddress } from './test-mocks';
 
@@ -133,11 +136,23 @@ describe('getAnyEraContractState: one decoded read that spans both ledger eras',
       contractAddress
     );
 
-    // Assert: the verifier-key HASHES, not the keys -- the migration carries the keys
-    // across unchanged, and the hash is the comparison the framework itself makes.
-    expect(retained?.entryPoints.map((entryPoint) => entryPoint.verifierKeyHash)).toEqual(
-      current?.entryPoints.map((entryPoint) => entryPoint.verifierKeyHash)
-    );
+    // Assert: anchored first, because every comparison below is between two optional chains and
+    // would hold just as well between two `undefined`s.
+    expect(retained).not.toBeNull();
+    expect(current).not.toBeNull();
+
+    // The PRIMARY STATE, which no other test in this file reads, and which is the member both
+    // READMEs tell a consumer to decode. Equal across the eras is the strongest statement
+    // available here: it says the retained arm returned the contract's real content rather than
+    // something merely well-formed.
+    expect(retained?.state).toEqual(current?.state);
+
+    // The verifier-key HASHES, not the keys -- the hash is the comparison the framework itself
+    // makes. Asserted present as well as equal, because two unkeyed slots would compare equal as
+    // a pair of `undefined`s and say nothing.
+    const retainedHashes = retained?.entryPoints.map((entryPoint) => entryPoint.verifierKeyHash);
+    expect(retainedHashes?.every((hash) => typeof hash === 'string')).toBe(true);
+    expect(retainedHashes).toEqual(current?.entryPoints.map((entryPoint) => entryPoint.verifierKeyHash));
   });
 
   it('hands back the served bytes unchanged, envelope included', async () => {
@@ -165,6 +180,37 @@ describe('getAnyEraContractState: one decoded read that spans both ledger eras',
     // Assert: null rather than a throw. An absent contract is an answer, and this
     // reports it the way every other read member of the surface does.
     expect(read).toBeNull();
+    // And no era was resolved on the way to saying so. Without this an implementation that loaded
+    // a runtime before checking for an absent contract would pass.
+    expect(erasRequested()).toEqual<LedgerVersion[]>([]);
+  });
+
+  it('reads the address it was given', async () => {
+    // The stub answers the same record whatever it is asked, so an implementation that forwarded a
+    // different address -- or a hard-coded one -- satisfies every other test in this file.
+
+    // Arrange.
+    const surface = surfaceServing(CURRENT_ENVELOPE, POST_FORK_PROTOCOL_VERSION);
+
+    // Act.
+    await getAnyEraContractState(surface, contractAddress);
+
+    // Assert.
+    expect(surface.queryRawContractState).toHaveBeenCalledWith(contractAddress);
+  });
+
+  it('refuses a malformed address before asking the network anything', async () => {
+    // WITHOUT THE GUARD THIS IS A FAIL-OPEN. A malformed address reaches the indexer, which finds
+    // nothing, and the function answers `null` -- which its own documentation defines as "no
+    // contract is deployed there". A caller's typo would come back as a definitive statement about
+    // the chain.
+
+    // Arrange.
+    const surface = surfaceServing(CURRENT_ENVELOPE, POST_FORK_PROTOCOL_VERSION);
+
+    // Act / Assert.
+    await expect(getAnyEraContractState(surface, `0x${contractAddress}`)).rejects.toBeInstanceOf(TypeError);
+    expect(surface.queryRawContractState).not.toHaveBeenCalled();
   });
 
   it('refuses a payload carrying no contract-state envelope, before reaching a decoder', async () => {
@@ -174,5 +220,39 @@ describe('getAnyEraContractState: one decoded read that spans both ledger eras',
     // Act / Assert: the tag failure, NOT a deserializer's complaint from inside one
     // era's runtime -- which would name an era the bytes never claimed.
     await expect(getAnyEraContractState(surface, contractAddress)).rejects.toBeInstanceOf(TagParseError);
+    // "before reaching a decoder" is the claim in the title, and this is what holds it up: junk
+    // never pays for a WASM instantiation.
+    expect(erasRequested()).toEqual<LedgerVersion[]>([]);
+  });
+
+  it('fails closed when the envelope tag names an era that cannot read the payload behind it', async () => {
+    // THE ADVERSARIAL CASE. The tag is network-supplied and it is what selects the runtime the
+    // bytes are handed to -- a one-byte edit moves a current-era payload to the retained decoder.
+    // Nothing downstream re-checks that choice, so the only thing standing between a swapped tag
+    // and a mis-decode is the selected decoder refusing.
+
+    // Arrange: a `[v6]` tag over a v9 payload.
+    const surface = surfaceServing(TAG_CLAIMS_RETAINED_ERA, POST_FORK_PROTOCOL_VERSION);
+
+    // Act.
+    const rejection = await getAnyEraContractState(surface, contractAddress).catch((error: unknown) => error);
+
+    // Assert: refused, and refused by the era the TAG named rather than by the block's.
+    expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED)).toBe(true);
+    expect(erasRequested()).toEqual<LedgerVersion[]>(['v8']);
+  });
+
+  it('fails closed on a well-tagged envelope whose payload has been corrupted', async () => {
+    // The sibling of the case above: the tag is honest and the body is not. Separated because the
+    // two fail at different depths -- the tag check passes here and the runtime is what refuses.
+
+    // Arrange.
+    const surface = surfaceServing(CORRUPTED_PAYLOAD, POST_FORK_PROTOCOL_VERSION);
+
+    // Act.
+    const rejection = await getAnyEraContractState(surface, contractAddress).catch((error: unknown) => error);
+
+    // Assert.
+    expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED)).toBe(true);
   });
 });

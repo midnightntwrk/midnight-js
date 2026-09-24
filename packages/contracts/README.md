@@ -103,16 +103,21 @@ await submitReplaceAuthorityTx(providers, options);
 ### State Queries
 
 ```typescript
-import { getStates, getPublicStates, getUnshieldedBalances } from '@midnight-ntwrk/midnight-js-contracts';
+import { getPublicStates, getStates, getUnshieldedBalances } from '@midnight-ntwrk/midnight-js-contracts';
 
 // Get contract states (public + private)
-const states = await getStates(providers, contractAddress, privateStateId);
+const states = await getStates(
+  providers.publicDataProvider,
+  providers.privateStateProvider,
+  contractAddress,
+  privateStateId
+);
 
 // Get public states only
-const publicStates = await getPublicStates(providers, contractAddress);
+const publicStates = await getPublicStates(providers.publicDataProvider, contractAddress);
 
 // Get unshielded token balances
-const balances = await getUnshieldedBalances(providers, contractAddress);
+const balances = await getUnshieldedBalances(providers.publicDataProvider, contractAddress);
 ```
 
 `getStates` and `getPublicStates` decode with the current ledger era, so they
@@ -122,6 +127,11 @@ For those, and wherever a contract's era is not known in advance, use
 
 ```typescript
 import { getAnyEraContractState } from '@midnight-ntwrk/midnight-js-contracts';
+// `StateValue` and the contract class both come from YOUR OWN generated contract
+// module and its Compact runtime — not from the framework. That is the point:
+// `read.state` is plain data precisely so your runtime can accept it.
+import { StateValue } from './managed/counter/contract/index.cjs';
+import { Counter } from './managed/counter/contract/index.cjs';
 
 const read = await getAnyEraContractState(providers.publicDataProvider, contractAddress);
 

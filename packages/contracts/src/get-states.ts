@@ -13,14 +13,9 @@
  * limitations under the License.
  */
 
-import { type ContractEntryPointPojo, type LedgerVersion, loadLedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import { type ContractStatePojo, type LedgerVersion, loadLedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type {
-  ContractAddress,
-  EncodedStateValue,
-  LedgerParameters,
-  ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PrivateStateId,PrivateStateProvider, PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -109,62 +104,85 @@ export type AnyEraContractStateReadSurface = Pick<PublicDataProvider, 'queryRawC
 /**
  * A contract state read and decoded by whichever ledger era wrote it.
  *
+ * Extends {@link ContractStatePojo}, so `state` and `entryPoints` are the members protocol's own
+ * decoders answer with, under the names they already use.
+ *
  * Every member is plain data. Nothing here is a live WASM handle, so the record survives a
- * `structuredClone`, a `postMessage` to a worker and a write to storage — and
- * {@link AnyEraContractState.state} can be handed to the caller's OWN Compact runtime, which a
- * handle minted inside the framework cannot be.
+ * `postMessage` to a worker and a write to storage — and `state` can be handed to the caller's OWN
+ * Compact runtime, which a handle minted inside the framework cannot be.
  */
-export interface AnyEraContractState {
+export interface AnyEraContractState extends ContractStatePojo {
   /**
    * The ledger era that wrote these bytes, read from the envelope they carry.
    *
    * Not the `version` of the raw record, which is derived from `protocolVersion` and so describes
-   * the BLOCK. The two disagree for any contract not written to since the fork.
+   * the BLOCK. Two different things make the two disagree legitimately, and neither is a fault:
+   * a contract not written to since the fork keeps an OLDER envelope under a newer block, and an
+   * unpinned read resolves the state and the block as independent Query-root siblings that can
+   * land either side of the boundary. See `EnvelopeUpperBound` in
+   * `@midnight-ntwrk/midnight-js-indexer-public-data-provider`.
    */
   readonly envelopeVersion: LedgerVersion;
-  /** The protocol-version integer the network reported for the block that dated the read. */
+  /**
+   * The protocol-version integer the network reported for the block that dated the read.
+   *
+   * The raw integer, passed through unexamined. Placing it on the era timeline is
+   * `protocolVersionToLedger`'s job, and that throws on an integer it cannot place.
+   */
   readonly protocolVersion: number;
-  /** The serialized state, byte for byte as the network served it, envelope included. */
+  /**
+   * The serialized state, byte for byte as the network served it, envelope included.
+   *
+   * The other members are these bytes decoded, so they agree with them by construction. Reach for
+   * these to get at what this record does not decode — the contract's balance and its maintenance
+   * authority. NOT the block's ledger parameters: those are a sibling field on the raw record and
+   * are not carried here, so a caller needing them reads them separately rather than substituting
+   * `initialParameters()`.
+   */
   readonly raw: Uint8Array;
-  /** The contract's primary state, encoded — decode it with the caller's own runtime. */
-  readonly state: EncodedStateValue;
-  /** The entry points the state declares, with the verifier key registered against each. */
-  readonly entryPoints: readonly ContractEntryPointPojo[];
 }
 
 /**
  * Fetches a contract's public state and decodes it with the era that wrote it, whichever that is.
  *
- * Use this wherever a contract may predate the ledger fork. The deserializing members of
- * {@link PublicDataProvider} — `queryContractState` and its siblings — decode with the current era
- * only and refuse anything else; this reads the era off the state's own envelope and dispatches on
- * it, so a contract deployed before the fork and not yet written to still reads.
+ * Use this wherever a contract may predate the ledger fork. The deserializing members of the
+ * shipped `IndexerPublicDataProvider` — `queryContractState` and its siblings — decode with the
+ * current era only and refuse anything else; this reads the era off the state's own envelope and
+ * dispatches on it, so a contract deployed before the fork and not yet written to still reads.
  *
- * The retained-era runtime is acquired only when an envelope calls for it, and at most once per
- * process.
+ * The read is relative to the network head. There is no block selector, so a historical read goes
+ * through `queryRawContractState` directly.
+ *
+ * The retained-era runtime is acquired only when an envelope calls for it, and — once acquired
+ * successfully — reused for the life of the process. See `loadLedgerEra`.
  *
  * @param publicDataProvider The provider to read the raw contract state through.
  * @param contractAddress The ledger address of the contract.
- * @returns The decoded state, or `null` if no contract is deployed at `contractAddress`.
+ * @returns The decoded state, or `null` when the read surface reports no contract at
+ * `contractAddress`.
+ * @throws TypeError if `contractAddress` is not a well-formed contract address.
  * @throws TagParseError if the served payload carries no supported contract-state envelope.
  * @throws StateDecodeFailedError if the envelope's own era cannot read the state behind it.
+ * @throws Ledger8RuntimeMissingError if the state carries a retained-era envelope and that runtime
+ * cannot be acquired — the everyday case being a build that does not ship it.
+ * @throws whatever `queryRawContractState` throws, unchanged.
  */
 export const getAnyEraContractState = async (
   publicDataProvider: AnyEraContractStateReadSurface,
   contractAddress: ContractAddress
 ): Promise<AnyEraContractState | null> => {
   assertIsContractAddress(contractAddress);
-  const state = await publicDataProvider.queryRawContractState(contractAddress);
-  if (state === null) {
+  const served = await publicDataProvider.queryRawContractState(contractAddress);
+  if (served === null) {
     return null;
   }
-  const envelopeVersion = contractStateEnvelopeVersion(state.raw);
+  const envelopeVersion = contractStateEnvelopeVersion(served.raw);
   const era = await loadLedgerEra(envelopeVersion);
-  return {
-    envelopeVersion,
-    protocolVersion: state.protocolVersion,
-    raw: state.raw,
-    state: era.extractState(state.raw),
-    entryPoints: era.decodeContractState(state.raw).entryPoints
-  };
+  // ONE decode, not an `extractState` beside a `decodeContractState`. Those two are kept separate
+  // in the keep-state pipeline because there the extraction feeds execution and the decode feeds
+  // the key check, and each has to be able to fail without the other. Here both members are
+  // returned together or not at all, so a second deserialization of the same bytes would buy
+  // nothing and cost a full WASM pass over them.
+  const decoded = era.decodeContractState(served.raw);
+  return { envelopeVersion, protocolVersion: served.protocolVersion, raw: served.raw, ...decoded };
 };

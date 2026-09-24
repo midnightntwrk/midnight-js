@@ -141,13 +141,18 @@ import {
 } from '@midnight-ntwrk/midnight-js-contracts';
 
 // Query states
-const states = await getStates(providers, contractAddress, privateStateId);
-const publicStates = await getPublicStates(providers, contractAddress);
-const balances = await getUnshieldedBalances(providers, contractAddress);
+const states = await getStates(
+  providers.publicDataProvider,
+  providers.privateStateProvider,
+  contractAddress,
+  privateStateId
+);
+const publicStates = await getPublicStates(providers.publicDataProvider, contractAddress);
+const balances = await getUnshieldedBalances(providers.publicDataProvider, contractAddress);
 
-// Both of the above decode with the CURRENT ledger era, so they refuse a
-// contract deployed before the fork and not written to since. For those, read
-// the era off the envelope and decode with it:
+// `getStates` and `getPublicStates` decode with the CURRENT ledger era, so they
+// refuse a contract deployed before the fork and not written to since. For those,
+// read the era off the envelope and decode with it:
 const read = await getAnyEraContractState(providers.publicDataProvider, contractAddress);
 // read.envelopeVersion — the era that wrote the bytes
 // read.state           — EncodedStateValue, for your own contract's runtime
