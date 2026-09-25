@@ -13,33 +13,71 @@
  * limitations under the License.
  */
 
-import { PrivateStateSerializationError } from '@midnight-ntwrk/midnight-js-types';
-
-const ROOT_PATH = '<root>';
+import { PRIVATE_STATE_ROOT_PATH, PrivateStateSerializationError } from '@midnight-ntwrk/midnight-js-types';
+import { Buffer } from 'buffer';
 
 /**
- * Types `superjson` restores to their own class, plus the `Buffer` this package
- * registers a transformer for. Everything else carrying a prototype is stored as
- * a plain object, losing its methods.
+ * Prototypes `superjson` restores to their own type, matched by identity so that a
+ * subclass — which it would restore as the base type, without the subclass methods —
+ * is refused instead.
+ *
+ * The typed arrays are the nine `superjson` names; `BigInt64Array` and
+ * `BigUint64Array` are absent because it throws on them. `Buffer` is here because
+ * this package registers a transformer for it in `level-private-state-provider.ts`;
+ * without that registration a stored `Buffer` fails on the way back out.
+ *
+ * `Array`, `Map`, `Set` and plain objects are restored too, and are handled in the
+ * walk rather than here because their members have to be visited.
  */
-const RESTORED_CLASSES = [Date, RegExp, URL, Error] as const;
+const RESTORED_PROTOTYPES: ReadonlySet<unknown> = new Set<unknown>([
+  Date.prototype,
+  RegExp.prototype,
+  URL.prototype,
+  Int8Array.prototype,
+  Uint8Array.prototype,
+  Uint8ClampedArray.prototype,
+  Int16Array.prototype,
+  Uint16Array.prototype,
+  Int32Array.prototype,
+  Uint32Array.prototype,
+  Float32Array.prototype,
+  Float64Array.prototype,
+  Buffer.prototype
+]);
 
-const isRestoredClass = (value: object): boolean =>
-  ArrayBuffer.isView(value) ||
-  value instanceof ArrayBuffer ||
-  RESTORED_CLASSES.some((restored) => value instanceof restored);
+const isArrayIndex = (key: string): boolean => String(Number.parseInt(key, 10)) === key;
 
-const hasPlainPrototype = (value: object): boolean => {
-  const prototype = Object.getPrototypeOf(value) as object | null;
-  return prototype === Object.prototype || prototype === null;
+const child = (path: string, segment: string): string =>
+  path === PRIVATE_STATE_ROOT_PATH ? segment : `${path}${segment.startsWith('[') ? '' : '.'}${segment}`;
+
+/**
+ * Rejects own properties storage would not write back: symbol-keyed ones, and, for
+ * a value stored as something other than a plain object, anything hung off it
+ * beyond what that form carries.
+ */
+const assertNoDroppedProperties = (
+  value: object,
+  path: string,
+  stateId: string | undefined,
+  survives: (key: string, descriptor: PropertyDescriptor) => boolean
+): void => {
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new PrivateStateSerializationError(path, 'symbol_keyed_property', stateId);
+  }
+  for (const key of Object.getOwnPropertyNames(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor !== undefined && !survives(key, descriptor)) {
+      throw new PrivateStateSerializationError(child(path, key), 'dropped_property', stateId);
+    }
+  }
 };
 
-const walk = (value: unknown, path: string, visited: WeakSet<object>): void => {
+const walk = (value: unknown, path: string, stateId: string | undefined, visited: WeakSet<object>): void => {
   if (typeof value === 'function') {
-    throw new PrivateStateSerializationError(path, 'function');
+    throw new PrivateStateSerializationError(path, 'function', stateId);
   }
   if (typeof value === 'symbol') {
-    throw new PrivateStateSerializationError(path, 'symbol');
+    throw new PrivateStateSerializationError(path, 'symbol', stateId);
   }
   if (value === null || typeof value !== 'object') {
     return;
@@ -49,55 +87,87 @@ const walk = (value: unknown, path: string, visited: WeakSet<object>): void => {
   }
   visited.add(value);
 
-  if (isRestoredClass(value)) {
+  if (value instanceof ArrayBuffer || value instanceof DataView) {
+    throw new PrivateStateSerializationError(path, 'binary_buffer', stateId);
+  }
+
+  const prototype: unknown = Object.getPrototypeOf(value);
+
+  if (RESTORED_PROTOTYPES.has(prototype)) {
+    if (value instanceof Date && Number.isNaN(value.valueOf())) {
+      throw new PrivateStateSerializationError(path, 'invalid_date', stateId);
+    }
+    assertNoDroppedProperties(
+      value,
+      path,
+      stateId,
+      (key, descriptor) =>
+        (ArrayBuffer.isView(value) && isArrayIndex(key)) ||
+        (!descriptor.enumerable && typeof descriptor.value !== 'function')
+    );
     return;
   }
-  if (Array.isArray(value)) {
-    value.forEach((element, index) => walk(element, `${path}[${index}]`, visited));
+
+  if (Array.isArray(value) && prototype === Array.prototype) {
+    for (let index = 0; index < value.length; index += 1) {
+      if (!(index in value)) {
+        throw new PrivateStateSerializationError(path, 'sparse_array', stateId);
+      }
+      walk(value[index], child(path, `[${index}]`), stateId, visited);
+    }
+    assertNoDroppedProperties(value, path, stateId, (key) => key === 'length' || isArrayIndex(key));
     return;
   }
-  if (value instanceof Map) {
+
+  if (value instanceof Map && prototype === Map.prototype) {
     let index = 0;
     for (const [key, element] of value.entries()) {
-      walk(key, `${path}[key ${index}]`, visited);
-      walk(element, `${path}[value ${index}]`, visited);
+      walk(key, child(path, `[key ${index}]`), stateId, visited);
+      walk(element, child(path, `[value ${index}]`), stateId, visited);
       index += 1;
     }
+    assertNoDroppedProperties(value, path, stateId, () => false);
     return;
   }
-  if (value instanceof Set) {
+
+  if (value instanceof Set && prototype === Set.prototype) {
     let index = 0;
     for (const element of value.values()) {
-      walk(element, `${path}[value ${index}]`, visited);
+      walk(element, child(path, `[value ${index}]`), stateId, visited);
       index += 1;
     }
+    assertNoDroppedProperties(value, path, stateId, () => false);
     return;
   }
-  if (!hasPlainPrototype(value)) {
-    throw new PrivateStateSerializationError(path, 'class_instance');
+
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new PrivateStateSerializationError(path, 'class_instance', stateId);
   }
-  if (Object.getOwnPropertySymbols(value).length > 0) {
-    throw new PrivateStateSerializationError(path, 'symbol_keyed_property');
-  }
+
+  assertNoDroppedProperties(value, path, stateId, (_key, descriptor) => descriptor.enumerable === true);
   for (const [key, element] of Object.entries(value)) {
-    walk(element, path === ROOT_PATH ? key : `${path}.${key}`, visited);
+    walk(element, child(path, key), stateId, visited);
   }
 };
 
 /**
- * Asserts that a private state can be stored and read back unchanged, throwing
- * on the first member that cannot, named by its path within the state.
+ * Asserts that a private state can be stored and read back unchanged, throwing on
+ * the first member that cannot, named by its path within the state.
  *
- * Members are visited in declaration order, so a state with several offending
- * members always reports the same one.
+ * This is a runtime gate only. "Survives storage" is a deep structural property of
+ * a value, not something a TypeScript type can express, so there is no assertion
+ * signature to narrow to.
+ *
+ * Reporting is deterministic: a state with several offending members always names
+ * the same one.
  *
  * @param state The private state about to be serialized.
+ * @param privateStateId The state being written, named in the error.
  *
- * @throws {PrivateStateSerializationError} If any member is a function, a symbol,
- *                                          a symbol-keyed property, or a class
- *                                          instance other than one storage
- *                                          restores.
+ * @throws {PrivateStateSerializationError} If any part of the state would be
+ *                                          dropped, emptied or restored as a
+ *                                          different value.
  */
-export const assertSerializablePrivateState = (state: unknown): void => {
-  walk(state, ROOT_PATH, new WeakSet<object>());
+export const assertSerializablePrivateState = (state: unknown, privateStateId?: string): void => {
+  walk(state, PRIVATE_STATE_ROOT_PATH, privateStateId, new WeakSet<object>());
 };
