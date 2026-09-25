@@ -16,7 +16,7 @@
 import type * as ws from 'isomorphic-ws';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { DEFLATE_DECODE_FAILURE_CLOSE_CODE } from '../deflate-websocket';
+import type { ApolloHandle } from '../transport';
 
 const wsClientDisposeSpy = vi.fn(() => Promise.resolve());
 const wsClientTerminateSpy = vi.fn();
@@ -28,9 +28,12 @@ const createClientSpy = vi.fn(() => ({
   iterate: vi.fn()
 }));
 
-vi.mock('graphql-ws', () => ({
-  createClient: createClientSpy
-}));
+// Only `createClient` is replaced: `CloseCode` and `TerminatedCloseEvent` are read
+// back by the close-code suite and must stay the library's own values.
+vi.mock('graphql-ws', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return { ...actual, createClient: createClientSpy };
+});
 
 beforeEach(() => {
   wsClientDisposeSpy.mockClear();
@@ -161,37 +164,31 @@ type LivenessOptions = {
   connectionAckWaitTimeout?: number;
   on?: {
     connected?: (socket: unknown) => void;
+    closed?: (event: unknown) => void;
+    message?: (message: unknown) => void;
     ping?: (received: boolean) => void;
     pong?: (received: boolean) => void;
   };
 };
 
-/** The `graphql-ws` close codes documented as fatal, named so a typo fails the build. */
-type FatalCloseCodes = Record<
-  | 'InternalServerError'
-  | 'InternalClientError'
-  | 'BadRequest'
-  | 'BadResponse'
-  | 'Unauthorized'
-  | 'SubprotocolNotAcceptable'
-  | 'SubscriberAlreadyExists'
-  | 'TooManyInitialisationRequests',
-  number
->;
-
 const lastClientOptions = (): LivenessOptions =>
   (createClientSpy.mock.calls.at(-1) as unknown as [LivenessOptions])[0];
 
-const buildHandle = async (): Promise<void> => {
+const buildHandle = async (): Promise<ApolloHandle> => {
   const { validateConfig } = await import('../config');
   const { createApolloClient } = await import('../transport');
-  createApolloClient(
+  return createApolloClient(
     validateConfig({
       queryURL: 'http://localhost:4000/graphql',
       subscriptionURL: 'ws://localhost:4000/graphql/ws'
     })
   );
 };
+
+const fakeSocket = (): { readyState: number; close: ReturnType<typeof vi.fn> } => ({
+  readyState: 1,
+  close: vi.fn()
+});
 
 describe('createApolloClient — WebSocket liveness', () => {
   test('pings the server on an interval so a silent socket can be discovered', async () => {
@@ -210,10 +207,9 @@ describe('createApolloClient — WebSocket liveness', () => {
     vi.useFakeTimers();
     try {
       await buildHandle();
-      const { on } = lastClientOptions();
-      const socket = { readyState: 1, close: vi.fn() };
-
       const { PONG_TIMEOUT_CLOSE_CODE } = await import('../transport');
+      const { on } = lastClientOptions();
+      const socket = fakeSocket();
 
       on?.connected?.(socket);
       on?.ping?.(false);
@@ -231,11 +227,34 @@ describe('createApolloClient — WebSocket liveness', () => {
     try {
       await buildHandle();
       const { on } = lastClientOptions();
-      const socket = { readyState: 1, close: vi.fn() };
+      const socket = fakeSocket();
+      expect(on?.ping).toBeTypeOf('function');
+      expect(on?.pong).toBeTypeOf('function');
 
       on?.connected?.(socket);
       on?.ping?.(false);
+      expect(vi.getTimerCount()).toBe(1);
       on?.pong?.(true);
+
+      expect(vi.getTimerCount()).toBe(0);
+      vi.advanceTimersByTime(60_000);
+      expect(socket.close).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('leaves a socket open while any message is still arriving', async () => {
+    vi.useFakeTimers();
+    try {
+      await buildHandle();
+      const { on } = lastClientOptions();
+      const socket = fakeSocket();
+      expect(on?.message).toBeTypeOf('function');
+
+      on?.connected?.(socket);
+      on?.ping?.(false);
+      on?.message?.({ type: 'next' });
       vi.advanceTimersByTime(60_000);
 
       expect(socket.close).not.toHaveBeenCalled();
@@ -244,21 +263,169 @@ describe('createApolloClient — WebSocket liveness', () => {
     }
   });
 
-  test('never closes a socket with a code graphql-ws treats as fatal', async () => {
-    const { CloseCode } = await vi.importActual<{ CloseCode: FatalCloseCodes }>('graphql-ws');
-    const { PONG_TIMEOUT_CLOSE_CODE } = await import('../transport');
-    const fatal: number[] = [
-      CloseCode.InternalServerError,
-      CloseCode.InternalClientError,
-      CloseCode.BadRequest,
-      CloseCode.BadResponse,
-      CloseCode.Unauthorized,
-      CloseCode.SubprotocolNotAcceptable,
-      CloseCode.SubscriberAlreadyExists,
-      CloseCode.TooManyInitialisationRequests
-    ];
+  test('closes the socket that went quiet, never the one that replaced it', async () => {
+    vi.useFakeTimers();
+    try {
+      await buildHandle();
+      const { on } = lastClientOptions();
+      const abandoned = fakeSocket();
+      const replacement = fakeSocket();
 
-    expect(fatal).not.toContain(PONG_TIMEOUT_CLOSE_CODE);
-    expect(fatal).not.toContain(DEFLATE_DECODE_FAILURE_CLOSE_CODE);
+      on?.connected?.(abandoned);
+      on?.ping?.(false);
+      on?.connected?.(replacement);
+      vi.advanceTimersByTime(60_000);
+
+      expect(abandoned.close).toHaveBeenCalledTimes(1);
+      expect(replacement.close).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('does not arm the deadline for a ping the server sent us', async () => {
+    vi.useFakeTimers();
+    try {
+      await buildHandle();
+      const { on } = lastClientOptions();
+      const socket = fakeSocket();
+
+      on?.connected?.(socket);
+      on?.ping?.(true);
+      vi.advanceTimersByTime(60_000);
+
+      expect(socket.close).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('does not treat a pong we sent as proof the server is alive', async () => {
+    vi.useFakeTimers();
+    try {
+      await buildHandle();
+      const { PONG_TIMEOUT_CLOSE_CODE } = await import('../transport');
+      const { on } = lastClientOptions();
+      const socket = fakeSocket();
+
+      on?.connected?.(socket);
+      on?.ping?.(false);
+      on?.pong?.(false);
+      vi.advanceTimersByTime(60_000);
+
+      expect(socket.close).toHaveBeenCalledWith(PONG_TIMEOUT_CLOSE_CODE, expect.any(String));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('rejects a WebSocket implementation that cannot be closed', async () => {
+    await buildHandle();
+    const { on } = lastClientOptions();
+
+    expect(() => on?.connected?.({ readyState: 1 })).toThrow();
+  });
+});
+
+describe('createApolloClient — liveness teardown', () => {
+  test('clears a pending pong deadline when the socket closes', async () => {
+    vi.useFakeTimers();
+    try {
+      await buildHandle();
+      const { on } = lastClientOptions();
+      const socket = fakeSocket();
+
+      on?.connected?.(socket);
+      on?.ping?.(false);
+      on?.closed?.({ code: 1006 });
+
+      expect(vi.getTimerCount()).toBe(0);
+      vi.advanceTimersByTime(60_000);
+      expect(socket.close).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('clears a pending pong deadline on dispose', async () => {
+    vi.useFakeTimers();
+    try {
+      const handle = await buildHandle();
+      const { on } = lastClientOptions();
+      const socket = fakeSocket();
+
+      on?.connected?.(socket);
+      on?.ping?.(false);
+      await handle.dispose();
+
+      expect(vi.getTimerCount()).toBe(0);
+      vi.advanceTimersByTime(60_000);
+      expect(socket.close).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+/** The close codes `graphql-ws` names as fatal, read back from the library at run time. */
+const FATAL_MEMBERS = [
+  'InternalServerError',
+  'InternalClientError',
+  'BadRequest',
+  'BadResponse',
+  'Unauthorized',
+  'SubprotocolNotAcceptable',
+  'SubscriberAlreadyExists',
+  'TooManyInitialisationRequests'
+] as const;
+
+/** The 1000-1999 codes `graphql-ws` does NOT treat as fatal. */
+const RETRYABLE_INTERNAL_CODES = [1000, 1001, 1005, 1006, 1012, 1013, 1014];
+
+const loadGraphqlWs = (): Promise<{
+  CloseCode: Record<string, number>;
+  TerminatedCloseEvent: new () => { code: number };
+}> =>
+  vi.importActual<{
+    CloseCode: Record<string, number>;
+    TerminatedCloseEvent: new () => { code: number };
+  }>('graphql-ws');
+
+const fatalCodesOf = (closeCode: Record<string, number>): number[] =>
+  FATAL_MEMBERS.map((member) => closeCode[member] as number);
+
+/** Mirrors `shouldRetryConnectOrThrow` plus `isFatalInternalCloseCode` in graphql-ws. */
+const isFatal = (code: number, closeCode: Record<string, number>): boolean =>
+  (code >= 1000 && code <= 1999 && !RETRYABLE_INTERNAL_CODES.includes(code)) ||
+  fatalCodesOf(closeCode).includes(code);
+
+describe('close codes', () => {
+  test('the fatal members this suite checks against still exist in graphql-ws', async () => {
+    const { CloseCode } = await loadGraphqlWs();
+
+    expect(fatalCodesOf(CloseCode).every((code) => typeof code === 'number')).toBe(true);
+  });
+
+  test('the codes used for recoverable failures are ones graphql-ws retries', async () => {
+    const { CloseCode } = await loadGraphqlWs();
+    const { PONG_TIMEOUT_CLOSE_CODE } = await import('../transport');
+    const { DEFLATE_DECODE_FAILURE_CLOSE_CODE } = await import('../deflate-websocket');
+
+    expect(isFatal(PONG_TIMEOUT_CLOSE_CODE, CloseCode)).toBe(false);
+    expect(isFatal(DEFLATE_DECODE_FAILURE_CLOSE_CODE, CloseCode)).toBe(false);
+  });
+
+  test('the code used to give up is one graphql-ws refuses to retry', async () => {
+    const { CloseCode } = await loadGraphqlWs();
+    const { DEFLATE_DECODE_GIVE_UP_CLOSE_CODE } = await import('../deflate-websocket');
+
+    expect(isFatal(DEFLATE_DECODE_GIVE_UP_CLOSE_CODE, CloseCode)).toBe(true);
+  });
+
+  test('the decode-failure code is not the one graphql-ws closes frozen sockets with', async () => {
+    const { TerminatedCloseEvent } = await loadGraphqlWs();
+    const { DEFLATE_DECODE_FAILURE_CLOSE_CODE } = await import('../deflate-websocket');
+
+    expect(DEFLATE_DECODE_FAILURE_CLOSE_CODE).not.toBe(new TerminatedCloseEvent().code);
   });
 });

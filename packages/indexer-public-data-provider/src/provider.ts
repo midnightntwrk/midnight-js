@@ -466,6 +466,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * light; `latest`, `blockHeight`, `blockHash` and `txId` stream every block on
    * chain and filter client-side, which is heavy on a busy chain.
    *
+   * REPLAY SUPPRESSION IS NOT UNIFORM. A transport reconnect makes the indexer
+   * replay from the subscription's original offset. `latest`, `blockHeight` and
+   * `blockHash` suppress what they have already delivered; `all` and `txId` do
+   * not, so a consumer of those two should expect a state more than once.
+   *
    * See {@link blockOffsetToBlock$}, {@link blockOffsetToContractState$},
    * and {@link blockToPositionedContractState$} for per-subscription docs.
    *

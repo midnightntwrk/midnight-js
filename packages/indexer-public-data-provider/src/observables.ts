@@ -67,7 +67,9 @@ export type Transaction = {
 
 /**
  * Where a contract state sits in the chain: the block that carried it, and its
- * rank among the states for one address within that block.
+ * rank among the states for one address within that block. The rank is derived
+ * from the payload the indexer delivered, not asserted by the indexer, so it is
+ * only as stable as that block's transaction order.
  */
 export type ChainPosition = {
   readonly height: number;
@@ -87,6 +89,8 @@ export type PositionedContractState = ChainPosition & {
 export const dropReplayed =
   <T extends ChainPosition>(): Rx.MonoTypeOperatorFunction<T> =>
   (source) =>
+    // `defer` so the cursor belongs to the subscription: sharing one would make a
+    // second subscriber skip the history it has not seen.
     Rx.defer(() => {
       let last: ChainPosition | null = null;
       return source.pipe(
@@ -278,15 +282,19 @@ export const transactionToContractState$ =
 export const blockToPositionedContractState$ =
   (contractAddress: ContractAddress) =>
   (block: Block): Rx.Observable<PositionedContractState> =>
+    // Filtering eagerly is what makes the ordinal deterministic; deserializing stays
+    // inside the pipe so a state that fails to decode does not withhold the states
+    // that precede it in the same block.
     Rx.from(
       block.transactions
         .flatMap(({ contractActions }) => contractActions)
         .filter((call) => call.address === contractAddress)
-        .map((call, ordinal) => ({
-          height: block.height,
-          ordinal,
-          state: parseHexContractState(call.state, block.protocolVersion)
-        }))
+    ).pipe(
+      Rx.map((call, ordinal) => ({
+        height: block.height,
+        ordinal,
+        state: parseHexContractState(call.state, block.protocolVersion)
+      }))
     );
 
 export const contractAddressToLatestBlockOffset$ =
@@ -309,6 +317,9 @@ export const contractAddressToLatestBlockOffset$ =
  * per-block snapshot). Used by `contractStateObservable.all`; NOT used by
  * `latest`/`blockHeight`/`blockHash`, which need the per-block view from
  * {@link blockOffsetToBlock$} + {@link blockToPositionedContractState$}.
+ *
+ * Carries no position, so {@link dropReplayed} cannot guard it: a reconnect
+ * re-delivers the states the indexer replays.
  *
  * Assumes block already exists.
  *
