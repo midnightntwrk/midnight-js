@@ -188,15 +188,17 @@ enacted` gate.
 ### The three legs that do not race
 
 The probe above cannot assert on what it is for, and the numbers say why.
-Measured on this stack across five runs that could have seen it. Three times it
-saw nine calls admitted and then eleven refused at `submitTx` with not one of
-them diagnosed (`metTheBoundary: false`, stopped at its attempt cap -- a refusal
-returns in about a second where an admitted call takes eighteen, so eleven of
-them burn the cap in moments). Twice it caught the one it exists for and stopped.
-**So the race is winnable, and it was won two runs in five.** A blocking gate
-cannot be built on a coin toss, which is what makes these legs worth their
-fork-window time -- and the probe worth keeping beside them, because when it does
-land it observes something no injected version can.
+Measured across six runs that could have seen it, three local and three in CI:
+it caught the boundary in **three of them** and missed in the other three. A miss
+looks the same every time -- nine or so calls admitted, then a run of refusals at
+`submitTx` with not one diagnosed, `metTheBoundary: false`, stopped at the
+attempt cap, because a refusal returns in about a second where an admitted call
+takes eighteen and a dozen of them burn the cap in moments.
+
+**So this is a coin toss, near enough, and that is the point.** A blocking gate
+cannot rest on one, which is what makes these legs worth their fork-window time.
+It is also not a long shot, which is why the probe stays beside them: when it
+does land, it observes the real race, and no injected version can.
 
 The undiagnosed refusals are the informative part. Each was a real refusal that
 `handleSubmitRejection`
