@@ -23,6 +23,8 @@ import {
   InvalidExportFormatError,
   type PrivateStateExport,
   PrivateStateExportError,
+  PrivateStateSerializationError,
+  type PrivateStateSerializationFailure,
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
@@ -102,7 +104,11 @@ describe('Level Private State Provider', (): void => {
     booleanArrayValue: [true, false, true],
     objectValues: [objectValue, objectValue, objectValue],
     uint8ArrayArrayValue: [uint8Array0, uint8Array1],
-    bufferArrayValue: [buffer0, buffer1]
+    bufferArrayValue: [buffer0, buffer1],
+    dateValue: new Date('2026-09-25T00:00:00.000Z'),
+    mapValue: new Map<string, bigint>([['leaf', 7n]]),
+    setValue: new Set([1, 2, 3]),
+    bigintValue: 7n
   };
 
   type PID = keyof typeof testStates;
@@ -181,6 +187,18 @@ describe('Level Private State Provider', (): void => {
     });
     test('for buffer arrays', async () => {
       return testSetGet('bufferArrayValue');
+    });
+    test('for dates', async () => {
+      return testSetGet('dateValue');
+    });
+    test('for maps', async () => {
+      return testSetGet('mapValue');
+    });
+    test('for sets', async () => {
+      return testSetGet('setValue');
+    });
+    test('for bigints', async () => {
+      return testSetGet('bigintValue');
     });
     test('for signing keys', async () => {
       return testSetGetSigningKey('bufferArrayValue');
@@ -3106,5 +3124,88 @@ describe('Level Private State Provider', (): void => {
       }
     });
   });
-});
 
+  describe('Non-serialisable private state', () => {
+    const REJECTION_CONTRACT_ADDRESS = 'non-serialisable-contract-address' as ContractAddress;
+
+    type RichStateId = 'functionState' | 'emptyState' | 'priorState' | 'classState' | 'symbolState' | 'recoveryState';
+    type RichState = { readonly registry: Record<string, unknown> };
+
+    const withFunction = (): RichState => ({ registry: { depth: 8, findPathForLeaf: () => 42 } });
+
+    const richStateProvider = () => {
+      const db = levelPrivateStateProvider<RichStateId, RichState>(testConfig);
+      db.setContractAddress(REJECTION_CONTRACT_ADDRESS);
+      return db;
+    };
+
+    const expectRejectedSet = async (
+      id: RichStateId,
+      state: RichState,
+      expectedPath: string,
+      reason: PrivateStateSerializationFailure
+    ): Promise<void> => {
+      const db = richStateProvider();
+
+      const error = await captureError(() => db.set(id, state));
+
+      expect(error).toBeInstanceOf(PrivateStateSerializationError);
+      if (!(error instanceof PrivateStateSerializationError)) {
+        throw new Error(`expected a PrivateStateSerializationError, got ${String(error)}`);
+      }
+      expect(error.path).toBe(expectedPath);
+      expect(error.reason).toBe(reason);
+      expect(error.privateStateId).toBe(id);
+    };
+
+    test("'set' rejects a function-valued field, naming its path", async () => {
+      await expectRejectedSet('functionState', withFunction(), 'registry.findPathForLeaf', 'function');
+    });
+
+    test("'set' rejects a class instance", async () => {
+      class Registry {
+        constructor(public readonly depth: number) {}
+
+        findPathForLeaf(): number {
+          return this.depth;
+        }
+      }
+
+      await expectRejectedSet('classState', { registry: { tree: new Registry(8) } }, 'registry.tree', 'class_instance');
+    });
+
+    test("'set' rejects a symbol value", async () => {
+      await expectRejectedSet('symbolState', { registry: { tag: Symbol('leaf') } }, 'registry.tag', 'symbol');
+    });
+
+    test("a rejected 'set' stores nothing when the key was empty", async () => {
+      const db = richStateProvider();
+
+      const error = await captureError(() => db.set('emptyState', withFunction()));
+
+      expect(error).toBeInstanceOf(PrivateStateSerializationError);
+      expect(await db.get('emptyState')).toBeNull();
+    });
+
+    test("a rejected 'set' leaves a previously stored value intact", async () => {
+      const db = richStateProvider();
+      const stored = { registry: { depth: 8 } };
+      await db.set('priorState', stored);
+
+      const error = await captureError(() => db.set('priorState', withFunction()));
+
+      expect(error).toBeInstanceOf(PrivateStateSerializationError);
+      expect(await db.get('priorState')).toStrictEqual(stored);
+    });
+
+    test('the provider still writes after a rejection', async () => {
+      const db = richStateProvider();
+      await captureError(() => db.set('recoveryState', withFunction()));
+
+      const stored = { registry: { depth: 8 } };
+      await db.set('recoveryState', stored);
+
+      expect(await db.get('recoveryState')).toStrictEqual(stored);
+    });
+  });
+});
