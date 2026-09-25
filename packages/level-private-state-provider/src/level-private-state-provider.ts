@@ -42,6 +42,7 @@ import { Level } from 'level';
 import * as superjson from 'superjson';
 
 import type { CryptoBackendType } from './crypto-backend';
+import { assertSerializablePrivateState } from './private-state-validation';
 import {
   decryptValue,
   getPasswordFromProvider,
@@ -791,6 +792,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     },
     /** {@inheritDoc PrivateStateProvider.set} */
     async set(privateStateId: PSI, state: PS): Promise<void> {
+      assertSerializablePrivateState(state);
       const { privateState } = scopedNames;
       await waitForRotationLock(ctx.dbName, privateState);
       const scopedKey = getScopedKey(privateStateId);

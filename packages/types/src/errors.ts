@@ -286,6 +286,47 @@ export class PrivateStateExportError extends Error {
 }
 
 /**
+ * The kinds of member a private state may hold that storage cannot preserve.
+ */
+export type PrivateStateSerializationFailure =
+  | 'function'
+  | 'symbol'
+  | 'symbol_keyed_property'
+  | 'class_instance';
+
+const SERIALIZATION_FAILURE_DESCRIPTIONS: Readonly<Record<PrivateStateSerializationFailure, string>> =
+  Object.freeze({
+    function: 'is a function',
+    symbol: 'is a symbol',
+    symbol_keyed_property: 'has symbol-keyed properties',
+    class_instance: 'is a class instance, whose prototype methods do not survive storage'
+  });
+
+/**
+ * An error thrown when a private state holds a member that cannot survive being
+ * stored, raised by {@link PrivateStateProvider.set} before anything is written.
+ *
+ * Private state must be plain data. Objects, arrays, `Date`, `RegExp`, `URL`,
+ * `Error`, `Map`, `Set`, `BigInt`, `undefined`, `Buffer` and typed arrays are
+ * stored and read back unchanged. Functions, symbols and class instances are not:
+ * serialization drops them, so they are refused at the write that introduced
+ * them rather than surfacing later as a missing member.
+ */
+export class PrivateStateSerializationError extends Error {
+  constructor(
+    public readonly path: string,
+    public readonly reason: PrivateStateSerializationFailure
+  ) {
+    super(
+      `Private state at '${path}' ${SERIALIZATION_FAILURE_DESCRIPTIONS[reason]} and cannot be stored. ` +
+        `Private state must be plain data: objects, arrays, Date, RegExp, URL, Error, Map, Set, BigInt, ` +
+        `undefined, Buffer and typed arrays are supported.`
+    );
+    this.name = 'PrivateStateSerializationError';
+  }
+}
+
+/**
  * An error thrown when exporting signing keys fails.
  */
 export class SigningKeyExportError extends Error {

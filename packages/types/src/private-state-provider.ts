@@ -233,8 +233,20 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
   /**
    * Store the given private state at the given private state ID.
    *
+   * Private state must be plain data. Objects, arrays, `Date`, `RegExp`, `URL`,
+   * `Error`, `Map`, `Set`, `BigInt`, `undefined`, `Buffer` and typed arrays are
+   * read back unchanged. Functions, symbols and class instances are not stored:
+   * an implementation that persists state rejects them here rather than dropping
+   * them, because a dropped member surfaces much later, as a missing field inside
+   * witness evaluation.
+   *
    * @param privateStateId The private state identifier.
    * @param state The private state to store.
+   *
+   * @throws {PrivateStateSerializationError} If the state holds a member that
+   *         cannot be stored. Nothing is written when it does. Implementations
+   *         that keep state in memory by reference, and so preserve every member,
+   *         do not raise it.
    */
   set(privateStateId: PSI, state: PS): Promise<void>;
 
