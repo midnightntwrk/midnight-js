@@ -13,11 +13,7 @@
  * limitations under the License.
  */
 
-import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
 import { type FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-// Type-only, which the retained-era lint gate exempts: runtime access goes
-// through `loadLedger8()` below and nowhere else.
-import type { FinalizedTransaction as V8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import {
   type ProviderSeam,
   UntaggedPayloadError,
@@ -31,10 +27,29 @@ import {
   type WalletFacade,
   WalletTransaction
 } from '@midnightntwrk/wallet-sdk';
+// Type-only, from the same copy `retainedLedger()` loads at runtime.
+import type * as RetainedLedger from '@midnightntwrk/wallet-sdk/ledger/v8';
 import { Either } from 'effect';
 import * as Rx from 'rxjs';
 
 import { FORK_SCHEDULE } from './wallet-configuration-mapper';
+
+let retainedLedgerModule: Promise<typeof RetainedLedger> | undefined;
+
+/**
+ * The ledger-v8 module retained payloads are deserialized with: the wallet SDK's
+ * own copy, reached through its `./ledger/v8` subpath.
+ *
+ * `ledger-v8` is installed twice, under both npm scopes, and the two copies'
+ * classes refuse each other. Everything this file builds is handed to the SDK, so
+ * it must be built with the SDK's copy.
+ *
+ * Lazy: a caller that never carries a retained payload never loads the WASM.
+ *
+ * @see docs/architecture/retained-era-coverage.md
+ */
+export const retainedLedger = (): Promise<typeof RetainedLedger> =>
+  (retainedLedgerModule ??= import('@midnightntwrk/wallet-sdk/ledger/v8'));
 
 type VersionedWallet = Pick<WalletFacade, 'state'>;
 
@@ -96,7 +111,7 @@ export const adoptVersionedUnbound = async (
   if (payload.version === 'v9') {
     return WalletTransaction.adopt('Unbound', payload.tx, active);
   }
-  const v8 = await loadLedger8();
+  const v8 = await retainedLedger();
   return WalletTransaction.adopt(
     'Unbound',
     v8.Transaction.deserialize('signature', 'proof', 'pre-binding', payload.txBytes),
@@ -114,7 +129,7 @@ export const adoptVersionedFinalized = async (
   if (payload.version === 'v9') {
     return WalletTransaction.adopt('Finalized', payload.tx, active);
   }
-  const v8 = await loadLedger8();
+  const v8 = await retainedLedger();
   return WalletTransaction.adopt(
     'Finalized',
     v8.Transaction.deserialize('signature', 'proof', 'binding', payload.txBytes),
@@ -140,6 +155,6 @@ export const unwrapVersionedFinalized = async (
   }
   return {
     version: 'v8',
-    txBytes: unwrapWithinActive<V8FinalizedTransaction>(handle, accepted).serialize()
+    txBytes: unwrapWithinActive<RetainedLedger.FinalizedTransaction>(handle, accepted).serialize()
   };
 };
