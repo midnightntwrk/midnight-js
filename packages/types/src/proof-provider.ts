@@ -22,7 +22,14 @@ import {
   type Transaction,
   type UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
+import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import {
+  CURRENT_LEDGER_VERSION,
+  type LedgerVersion,
+  RETAINED_LEDGER_VERSIONS,
+  type RetainedLedgerVersion
+} from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
 import type { VersionedTx } from './versioned';
@@ -171,14 +178,111 @@ export const createProofProviderFromArms = (arms: ProofProviderArms): ProofProvi
 });
 
 /**
+ * The proving providers {@link createProofProviderFromProvingProviders}
+ * assembles a {@link ProofProvider} from — one per ledger era served.
+ */
+export interface EraProvingProviders {
+  /** Required: every provider serves the current era. */
+  readonly currentEra: ProvingProvider;
+  /**
+   * Optional, one entry per retained era this provider serves.
+   *
+   * Takes the RETAINED era's `ProvingProvider` shape, which is what an
+   * in-process prover's `asV8ProvingProvider()` returns. Registering the
+   * provider built for THIS era is the whole point of the entry: the eras need
+   * different key material, and a proof made with the other era's is rejected
+   * by the node at submit, after the proving has been paid for.
+   */
+  readonly retainedEras?: RetainedEraHandlers<RetainedEraProvingProvider>;
+  /**
+   * Optional cost model, applied on the CURRENT era only. Defaults to the
+   * initial cost model.
+   *
+   * Not consulted on a retained era, which proves with its own era's model: the
+   * retained ledger ships its own `CostModel` class and type-checks `prove()`'s
+   * argument against it across the WASM boundary, so the value passed here
+   * would be rejected outright.
+   */
+  readonly costModel?: CostModel;
+}
+
+/**
+ * How each retained era turns serialized bytes into proved serialized bytes.
+ *
+ * A required record rather than a partial one: an era added to
+ * {@link RetainedLedgerVersion} without an entry here is a build failure, so
+ * the factory below cannot silently stop serving one.
+ */
+const RETAINED_ERA_PROVERS: Readonly<
+  Record<
+    RetainedLedgerVersion,
+    (txBytes: Uint8Array, provingProvider: RetainedEraProvingProvider) => Promise<Uint8Array>
+  >
+> = {
+  v8: proveV8Transaction
+};
+
+const toRetainedEraArms = (
+  provingProviders: RetainedEraHandlers<RetainedEraProvingProvider>
+): RetainedEraHandlers<RetainedEraProver> => {
+  const arms: Partial<Record<RetainedLedgerVersion, RetainedEraProver>> = {};
+  for (const era of RETAINED_LEDGER_VERSIONS) {
+    const provingProvider = provingProviders[era];
+    if (provingProvider !== undefined) {
+      arms[era] = (txBytes) => RETAINED_ERA_PROVERS[era](txBytes, provingProvider);
+    }
+  }
+  return arms;
+};
+
+/**
+ * Assembles a {@link ProofProvider} from one {@link ProvingProvider} per ledger
+ * era it serves.
+ *
+ * This is the route for an in-process prover that crosses the fork. Such a
+ * prover needs one instance per era — the eras' proving keys are a different
+ * generation, and a node rejects a transaction proved with the other era's key
+ * material — and this factory is where the two are paired with the era each
+ * one serves. Everything else follows from the pairing: the routing, the
+ * version tagging and the `supportedEras` declaration are all derived, so no
+ * caller writes them.
+ *
+ * @param provingProviders One proving provider per era served, and an optional
+ *                         current-era cost model.
+ * @returns A {@link ProofProvider} routing each request to its era's proving
+ *          provider and answering in the era the request arrived in.
+ *
+ * @example
+ * ```typescript
+ * const proofProvider = createProofProviderFromProvingProviders({
+ *   currentEra: currentEraProver.asProvingProvider(),
+ *   retainedEras: { v8: retainedEraProver.asV8ProvingProvider() }
+ * });
+ * // proofProvider.supportedEras === ['v9', 'v8']
+ * ```
+ */
+export const createProofProviderFromProvingProviders = ({
+  currentEra,
+  retainedEras,
+  costModel = CostModel.initialCostModel()
+}: EraProvingProviders): ProofProvider =>
+  createProofProviderFromArms({
+    currentEra: (tx) => tx.prove(currentEra, costModel),
+    retainedEras: retainedEras && toRetainedEraArms(retainedEras)
+  });
+
+/**
  * Creates a {@link ProofProvider} from a {@link ProvingProvider}.
  * The returned provider proves transactions using the initial cost model.
  *
  * The returned provider serves the v9 arm only — `supportedEras` says so — and
- * that is permanent rather than a gap: it lifts a v9-only `ProvingProvider`. It
- * rejects a v8 payload with `V8PayloadUnsupportedError`, and an untagged one
- * with `UntaggedPayloadError`. To serve a retained era as well, use
- * {@link createProofProviderFromArms}.
+ * that is what a single proving provider can honestly promise: it is the one
+ * built for the current era. It rejects a v8 payload with
+ * `V8PayloadUnsupportedError`, and an untagged one with
+ * `UntaggedPayloadError`. To serve a retained era as well, pass that era's own
+ * proving provider to {@link createProofProviderFromProvingProviders}, or,
+ * where the proving itself is not a `ProvingProvider` call, write the arms
+ * directly with {@link createProofProviderFromArms}.
  *
  * @param provingProvider - The underlying proving provider used to generate proofs.
  * @param costModel - Optional cost model to use for proof generation. Defaults to the initial cost model if not provided.
@@ -187,7 +291,4 @@ export const createProofProviderFromArms = (arms: ProofProviderArms): ProofProvi
 export const createProofProvider = (
   provingProvider: ProvingProvider,
   costModel: CostModel = CostModel.initialCostModel()
-): ProofProvider =>
-  createProofProviderFromArms({
-    currentEra: (tx) => tx.prove(provingProvider, costModel)
-  });
+): ProofProvider => createProofProviderFromProvingProviders({ currentEra: provingProvider, costModel });

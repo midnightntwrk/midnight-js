@@ -57,6 +57,10 @@ Two quite different cases produce it:
 implementation into the version-tagged interface. Refusing the retained arm is
 the adapter accurately reporting what it wraps, not a gap to be filled. To serve
 both eras, use the `…FromArms` constructors, or implement the interface directly.
+On the proof seam there is a shorter route:
+`createProofProviderFromProvingProviders` takes one `ProvingProvider` per era —
+which is what an in-process prover crossing the fork has, since the eras need
+different key material — and derives the arms and the declaration from them.
 
 **Contingently, from a concrete provider.** `httpClientProofProvider` and
 `dappConnectorProofProvider` both DO serve the retained arm, taking and returning
