@@ -32,16 +32,17 @@ export interface DecodableContractOperation {
  * fails this build instead of leaving a mirror describing a shape neither
  * runtime has.
  *
- * `shared-contract-state.test.ts` pins the two eras' `TokenType` declarations
- * mutually assignable. That pin is STRUCTURAL: both eras declare `raw` as a
- * `string`, and they document different encodings behind it — 32 bytes on the
- * current era, 35 on the retained one. So a key decoded off a retained state is
- * assignable to the current era's types, and nothing here says the two eras read
- * it as the same colour.
+ * `shared-contract-state.test.ts` pins all three `TokenType` declarations —
+ * both eras' and the execution runtime's, which is where the map actually
+ * lands — mutually assignable. That pin is STRUCTURAL and can be no more:
+ * `raw` is an opaque `string` everywhere, so assignability says the handoff
+ * type-checks and says nothing about two eras reading a given key as the same
+ * colour.
  *
- * Plain data end to end — string-tagged objects and `bigint`s — so it survives
- * the trip across an era boundary like every other member of
- * {@link ContractStatePojo}.
+ * Plain data end to end — string-tagged objects and `bigint`s — so it crosses
+ * an era boundary like every other member of {@link ContractStatePojo}. That is
+ * a statement about `structuredClone`, which carries a `Map`; a JSON round trip
+ * does NOT, and leaves the plain object the balance guards refuse.
  */
 export type ContractBalance = ReadonlyMap<TokenType, bigint>;
 
@@ -58,6 +59,39 @@ export type ContractBalance = ReadonlyMap<TokenType, bigint>;
 export const describeValue = (value: unknown): string => (value === null ? 'null' : typeof value);
 
 /**
+ * Whether a candidate answers the `ReadonlyMap` lookup surface.
+ *
+ * Iterability is NOT checked here: `everyEntryIsAColouredAmount` iterates, so a
+ * non-iterable candidate is refused there. A clause for it as well would be one
+ * no test could distinguish -- verified by deleting it.
+ */
+const answersTheMapSurface = (candidate: Partial<ContractBalance>): boolean =>
+  typeof candidate.get === 'function' && typeof candidate.has === 'function' && typeof candidate.size === 'number';
+
+/**
+ * Whether every entry is a colour keyed against an amount the ledger can do
+ * arithmetic with.
+ *
+ * Refuses a candidate that cannot be iterated at all: `for...of` throws on one,
+ * and {@link isContractBalance} turns that into the refusal.
+ */
+const everyEntryIsAColouredAmount = (candidate: Iterable<unknown>): boolean => {
+  for (const entry of candidate) {
+    if (!Array.isArray(entry) || entry.length !== 2) {
+      return false;
+    }
+    const [colour, amount]: readonly unknown[] = entry;
+    if (typeof amount !== 'bigint' || typeof colour !== 'object' || colour === null) {
+      return false;
+    }
+    if (typeof (colour as { readonly tag?: unknown }).tag !== 'string') {
+      return false;
+    }
+  }
+  return true;
+};
+
+/**
  * Whether a value can serve as a {@link ContractBalance}.
  *
  * Structural rather than `instanceof Map`, so a map from another realm — a
@@ -65,8 +99,26 @@ export const describeValue = (value: unknown): string => (value === null ? 'null
  * Map(...)` turns an empty array, an empty `Set` and an empty string alike into
  * an empty map, which is the substitution the balance guards exist to prevent.
  *
+ * The entries are checked too, not just the container. A map carrying amounts
+ * that are not `bigint`s answers every structural clause and then feeds the
+ * circuit arithmetic it cannot do — the same class of silent wrong answer this
+ * guard exists to stop — so the `value is ContractBalance` narrowing has to
+ * cover them or it overclaims.
+ *
+ * TOTAL: it answers rather than throws for every input. `Map.prototype`'s
+ * members reject a foreign receiver — a proxied map and an object that merely
+ * inherits the prototype both make `size` and iteration throw — and neither can
+ * serve as a balance, because `new Map(...)` would throw on that same receiver.
+ * They belong in the refusal, carrying the caller's diagnosis rather than the
+ * vendor's `TypeError`.
+ *
+ * Not a claim that an empty answer is genuine: a hand-built object declaring an
+ * empty iterator is a valid empty balance as far as anything here can tell, and
+ * so is a contract holding nothing. That is why the option is required at the
+ * seams rather than defaulted.
+ *
  * @param value The candidate, from an injected decoder or an untyped caller.
- * @returns Whether it answers the `ReadonlyMap` surface.
+ * @returns Whether it answers the `ReadonlyMap` surface with usable entries.
  * @see {@link FailClosedDecoding}
  */
 export const isContractBalance = (value: unknown): value is ContractBalance => {
@@ -74,12 +126,11 @@ export const isContractBalance = (value: unknown): value is ContractBalance => {
     return false;
   }
   const candidate = value as Partial<ContractBalance>;
-  return (
-    typeof candidate.get === 'function' &&
-    typeof candidate.has === 'function' &&
-    typeof candidate.size === 'number' &&
-    typeof candidate[Symbol.iterator] === 'function'
-  );
+  try {
+    return answersTheMapSurface(candidate) && everyEntryIsAColouredAmount(candidate as Iterable<unknown>);
+  } catch {
+    return false;
+  }
 };
 
 /**

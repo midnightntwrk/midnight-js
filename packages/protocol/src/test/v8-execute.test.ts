@@ -535,7 +535,7 @@ describe('executeCircuit puts the contract balance on the block the circuit read
   const rigReadingBalance = (): {
     runtime: Ledger8ExecutionRuntime;
     contract: Ledger8ContractLike;
-    seen: () => ocrt3.CallContext['balance'];
+    seen: () => ocrt3.CallContext['balance'] | undefined;
   } => {
     let seen: ocrt3.CallContext['balance'] | undefined;
 
@@ -561,7 +561,10 @@ describe('executeCircuit puts the contract balance on the block the circuit read
           }
         }
       },
-      seen: () => seen ?? new Map()
+      // `undefined` when the circuit never ran, NOT an empty map: an empty map
+      // is also what a circuit that RAN against an empty balance sees, so
+      // collapsing the two made `expect(seen().size).toBe(0)` unfailable.
+      seen: () => seen
     };
   };
 
@@ -589,7 +592,7 @@ describe('executeCircuit puts the contract balance on the block the circuit read
 
     runReadsBalance(rig, new Map([[SAMPLE_COLOUR, 1_000n]]));
 
-    expect([...rig.seen()]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
+    expect([...(rig.seen() ?? [])]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
   });
 
   it('copies the balance rather than sharing it, so a later mutation by the caller cannot reach a running circuit', () => {
@@ -599,7 +602,7 @@ describe('executeCircuit puts the contract balance on the block the circuit read
     runReadsBalance(rig, balance);
     balance.set({ tag: 'unshielded', raw: 'cd'.repeat(32) }, 5n);
 
-    expect([...rig.seen()]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
+    expect([...(rig.seen() ?? [])]).toEqual([[SAMPLE_COLOUR, 1_000n]]);
   });
 
   // Against the real glue AND a real ledger-querying circuit, which is what
@@ -672,7 +675,7 @@ describe('executeCircuit puts the contract balance on the block the circuit read
       ])
     );
 
-    expect([...rig.seen()]).toEqual([
+    expect([...(rig.seen() ?? [])]).toEqual([
       [SAMPLE_COLOUR, 1_000n],
       [shielded, 7n],
       [{ tag: 'dust' }, 3n]
@@ -710,7 +713,92 @@ describe('executeCircuit puts the contract balance on the block the circuit read
     expect(() => executeCircuit(options as ExecuteCircuitOptions, rig.runtime)).toThrow(
       /executeCircuit requires 'balance' for circuit 'readsBalance', as a Map/
     );
-    expect(rig.seen().size).toBe(0);
+    // The circuit never ran. An empty map would be the same answer a circuit
+    // that DID run against an empty balance leaves behind, so the sentinel has
+    // to be a value the rig cannot produce any other way.
+    expect(rig.seen()).toBeUndefined();
+  });
+
+  // Every case above dies on the FIRST structural clause, so the other three
+  // were carried by nothing: deleting them left the suite green. One case per
+  // clause, each answering the clauses before it.
+  // An iterator that yields nothing. A genuine empty balance iterates exactly
+  // like this, so these cases are about the SURFACE clauses, not about
+  // emptiness -- nothing here can tell an empty map from an empty fake.
+  const yieldsNothing = (): Iterator<never> => [][Symbol.iterator]();
+
+  const partialMapSurface: readonly [label: string, balance: unknown][] = [
+    ['answers no `get`', { has: () => false, size: 0, [Symbol.iterator]: yieldsNothing }],
+    ['answers `get` but no `has`', { get: () => undefined, size: 0, [Symbol.iterator]: yieldsNothing }],
+    [
+      'answers a `size` that is not a number',
+      { get: () => undefined, has: () => false, size: '0', [Symbol.iterator]: yieldsNothing }
+    ],
+    ['is not iterable', { get: () => undefined, has: () => false, size: 0 }]
+  ];
+
+  // `Map.prototype`'s members throw rather than answer when invoked with a
+  // foreign receiver. Neither shape can serve as a balance -- `new Map(...)`
+  // throws on the same receiver -- so both must be refused with the diagnosis
+  // this seam writes, not with the vendor's `TypeError`.
+  const throwsOnTheMapSurface: readonly [label: string, balance: unknown][] = [
+    ['is a proxied map, which `new Map(...)` cannot read either', new Proxy(new Map([[SAMPLE_COLOUR, 5n]]), {})],
+    ['only inherits `Map.prototype`', Object.create(Map.prototype)]
+  ];
+
+  // The container is not the balance. A map carrying the wrong entry types
+  // satisfies every structural clause and then feeds the circuit arithmetic it
+  // cannot do.
+  const unusableEntries: readonly [label: string, balance: unknown][] = [
+    ['carries amounts that are not bigints', new Map([[SAMPLE_COLOUR, '1000']])],
+    ['carries colours that are not token types', new Map([['unshielded', 1_000n]])]
+  ];
+
+  it.each([...partialMapSurface, ...throwsOnTheMapSurface, ...unusableEntries])(
+    'REFUSES a call whose balance %s',
+    (_label, balance) => {
+      const rig = rigReadingBalance();
+      const options: Omit<ExecuteCircuitOptions, 'balance'> & { balance: unknown } = {
+        contract: rig.contract,
+        circuitId: 'readsBalance',
+        args: [],
+        state: buildState(0x01),
+        address: ocrt3.dummyContractAddress(),
+        coinPk: SAMPLE_COIN_PUBLIC_KEY,
+        privateState: {},
+        balance
+      };
+
+      expect(() => executeCircuit(options as ExecuteCircuitOptions, rig.runtime)).toThrow(
+        /executeCircuit requires 'balance' for circuit 'readsBalance', as a Map/
+      );
+      expect(rig.seen()).toBeUndefined();
+    }
+  );
+
+  // `describeValue` exists for one distinction -- `typeof null` is `'object'`,
+  // which reads as a map that was there -- and nothing asserted its output:
+  // replacing its body with a bare `typeof` passed every test in this file.
+  it.each([
+    ['null', null, 'null'],
+    ['absent', undefined, 'undefined'],
+    ['a plain object', {}, 'object']
+  ] as const)('names what arrived when it refuses %s', (_label, balance, described) => {
+    const rig = rigReadingBalance();
+    const options: Omit<ExecuteCircuitOptions, 'balance'> & { balance: unknown } = {
+      contract: rig.contract,
+      circuitId: 'readsBalance',
+      args: [],
+      state: buildState(0x01),
+      address: ocrt3.dummyContractAddress(),
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      privateState: {},
+      balance
+    };
+
+    expect(() => executeCircuit(options as ExecuteCircuitOptions, rig.runtime)).toThrow(
+      new RegExp(`received ${described}\\.`)
+    );
   });
 });
 

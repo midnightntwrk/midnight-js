@@ -69,12 +69,15 @@ map.
 
 The write happens once, before the circuit runs, and holds for the whole call
 only because `block` carries across the context swaps the glue performs. There
-are two such swaps and they are separately pinned, because a runtime bump could
-drop either alone: `queryLedgerState` replaces the context on every ledger query,
-and `insertCommitment` replaces it on every coin the circuit registers.
+are two such swaps: `queryLedgerState` replaces the context on every ledger
+query, and `insertCommitment` replaces it on every coin the circuit registers.
 `v8-execute.test.ts` drives a real ledger-querying circuit for the first and a
 real coin-producing one for the second, asserting in each case both that the
-context really was replaced and that the balance survived it. That is the
+context really was replaced and that the balance survived it. The two tests are
+not fully separable: the coin-producing circuit also performs ledger queries, so
+its premise assertion — that the context was replaced at all — is satisfied by
+either swap. What it does establish is that the balance survives a circuit that
+registers coins, which is the path the fake rig cannot exercise. That is the
 vendor's behaviour rather than this framework's; were it to change, every
 balance read after a circuit's first ledger read or first output would quietly
 answer zero again.
@@ -83,11 +86,21 @@ answer zero again.
 `tsc` reaches neither a JavaScript caller nor an options object assembled
 dynamically, and the refusal covers more than nullish: `new Map(...)` turns an
 empty array, an empty `Set` and an empty string alike into an empty map, and a
-JSON round trip — which `ContractBalance` is otherwise documented as surviving —
-turns a `Map` into a plain object. Each of those would reproduce the original
+JSON round trip turns a `Map` into a plain object — `structuredClone` carries a
+`Map`, `JSON.stringify` does not. Each of those would reproduce the original
 defect silently, so the guard tests the `ReadonlyMap` surface structurally
 rather than with `instanceof`, which keeps a map from a worker or another realm
 acceptable.
+
+The guard checks the ENTRIES too, and it is TOTAL. Entries, because a map
+carrying amounts that are not `bigint`s answers every structural clause and then
+feeds the circuit arithmetic it cannot do — the same silent wrong answer, one
+layer in. Total, because `Map.prototype`'s members reject a foreign receiver: a
+proxied map and an object that merely inherits the prototype both make `size`
+and iteration throw, and a guard reading them plainly propagates that `TypeError`
+instead of refusing. Neither can serve as a balance — `new Map(...)` throws on
+the same receiver — so both are refused, carrying this seam's diagnosis rather
+than the vendor's.
 
 ## Structural equality over the encoded algebra
 

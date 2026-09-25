@@ -19,6 +19,9 @@
  * A bare conditional type never fails one on its own -- `type X = C ? true :
  * never` compiles whatever `C` resolves to. The constraint here is what turns a
  * `false` into a compile error, so the alias has to be routed through it.
+ *
+ * Declared per package rather than shared: test sources are not a build entry,
+ * so `packages/protocol`'s copy cannot be imported from here.
  */
 export type Assert<T extends true> = T;
 

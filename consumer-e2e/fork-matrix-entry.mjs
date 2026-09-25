@@ -760,6 +760,21 @@ const retainedDeployments = new Map();
 const retainedCaptures = new Map();
 
 /**
+ * The retained twins whose post-fork call list ran to the END.
+ *
+ * `callRetained` THROWS on a failed `expect`, which stops the remaining calls in
+ * the list -- deliberately, so the next one does not run against state the
+ * assertion just denied. For `unshielded` that list ends with the mint that
+ * migrates the envelope, so a wrong balance figure also leaves the second-call
+ * leg below reading `envelopeBefore: 'retained'` and presenting it as evidence
+ * that the first call did not migrate. One real failure, two findings, and the
+ * second one points somewhere else entirely.
+ *
+ * So the second-call leg asks this before it interprets anything.
+ */
+const retainedPostForkCompleted = new Set();
+
+/**
  * The wallet's current keys, plus whatever this twin captured on an earlier leg.
  *
  * A function rather than three call sites building the object, and that is the
@@ -1611,6 +1626,9 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
         await callRetained(entry.key, providers, deployed.contractAddress, call, context)
       );
     }
+    // Only once every call in the list has run. What the second-call leg needs
+    // from this one is the LAST call, not the first.
+    retainedPostForkCompleted.add(entry.key);
     // The state written BEFORE the boundary, read back after it. Without this
     // the leg proves only that the address still answers.
     const label = `post-fork keep-state ${entry.key}`;
@@ -1697,6 +1715,13 @@ if (covers(SELECTED.retained, 'unshielded')) {
       // transaction is balanced or when the node re-runs it, but never by the
       // prover. `Ledger8SeamFailedError` renders `<seam> rejected`, and
       // `describeError` walks the cause chain, so the shape is readable here.
+      //
+      // The framework's OWN guards -- `executeCircuit` refusing a balance, the
+      // pipeline refusing an envelope -- run inside this `try` too, and they are
+      // not seam refusals, so they land in the branch below rather than being
+      // read as the ledger doing its job. That is deliberate: a framework that
+      // refused to build the transaction at all would prove nothing about what
+      // the ledger checks.
       if (!/(?:balanceTx|submitTx) rejected/.test(described)) {
         throw new Error(
           'the oversized send failed, but not with a seam refusal, so this leg proves nothing about the ' +
@@ -1704,10 +1729,49 @@ if (covers(SELECTED.retained, 'unshielded')) {
           { cause: error }
         );
       }
+      // `submitTx` is the NODE. It re-ran the transcript against the balance the
+      // contract really holds and disagreed, which is exactly the finding this
+      // leg is after, and nothing else reaches that seam.
+      //
       // Recorded rather than swallowed so the run carries which failure shape
       // answered -- a node rejection and a balancing refusal are different
       // findings and this row is where they would first show apart.
-      return { refusedAs: described.split('\n')[0] };
+      if (/submitTx rejected/.test(described)) {
+        return { refusedAs: described.split('\n')[0], refusedBy: 'the node' };
+      }
+
+      // `balanceTx` is the WALLET, and on its own it is AMBIGUOUS. A send the
+      // contract cannot serve leaves an unmatched delta, which balancing
+      // reports as `Wallet.InsufficientFunds` -- the answer this leg wants. A
+      // wallet that has run out of its own funds or dust reports the same
+      // thing, and by here this run has already paid for a deploy, a mint, a
+      // send and several proofs. The rendered message cannot tell the two
+      // apart, so the leg asks the wallet instead of guessing: one send the
+      // contract CAN serve, same circuit, same providers, same colour. If the
+      // wallet balances and submits that, it was healthy, and the refusal above
+      // was about the amount.
+      //
+      // A QUARTER of the mint: half is still with the contract after the
+      // post-fork send, so this is serviceable, and it leaves the contract
+      // holding something either way.
+      try {
+        await callRetained('unshielded', providers, deployed.contractAddress, {
+          circuitId: 'sendUnshieldedToUserTest',
+          args: (ctx) => [ctx.preForkColor, MINT_AMOUNT / 4n, { bytes: ctx.unshieldedAddress }]
+        }, context);
+      } catch (controlError) {
+        throw new Error(
+          'the oversized send was refused at `balanceTx`, but so was a send the contract can serve, so the ' +
+            'refusal is the wallet running short rather than the ledger checking the contract balance, and ' +
+            'this leg proves nothing',
+          { cause: controlError }
+        );
+      }
+
+      return {
+        refusedAs: described.split('\n')[0],
+        refusedBy: 'the wallet, with a serviceable send through the same circuit accepted afterwards'
+      };
     }
     // Reached only when the call was ADMITTED, which is the failure this leg
     // exists to catch -- thrown rather than returned so it colours the run.
@@ -1745,6 +1809,13 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     const deployed = retainedDeployments.get(entry.key);
     if (deployed === undefined) {
       return 'skipped: its pre-fork deploy did not complete';
+    }
+    // SKIPPED rather than run, because this leg reads the envelope the post-fork
+    // leg was supposed to migrate. Run after an aborted call list, it reports
+    // `envelopeBefore: 'retained'` as a finding of its own -- a second, unrelated
+    // -looking signal produced by the first failure. @see retainedPostForkCompleted
+    if (!retainedPostForkCompleted.has(entry.key)) {
+      return 'skipped: its post-fork call list did not run to the end, so the envelope it reads was never migrated';
     }
     const providers = retainedProvidersFor('v9', session.wallet, entry.key);
 

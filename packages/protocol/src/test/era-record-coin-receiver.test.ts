@@ -59,6 +59,7 @@ import type { PartitionContext } from '../lib/shared/compose-types';
 import type { LedgerVersion } from '../lib/shared/ledger-version';
 import { executeCircuit, type Ledger8ContractLike, type TranscriptPojo } from '../lib/v8/execute';
 import { fixturePath, readHexFixture } from './fixtures';
+import type { Assert } from './type-assertions';
 
 // The fixture module asserts `checkRuntimeVersion('0.16.0')` against a bare
 // `@midnight-ntwrk/compact-runtime` import, so the specifier is redirected to
@@ -224,7 +225,6 @@ interface RecordingFile {
 // (`preContractState`, `postContractState`), which cannot be serialized at all.
 // A member added to `TranscriptPojo` fails this, which is what stops the
 // recording drifting behind the runtime.
-type Assert<T extends true> = T;
 type SerializableTranscriptMember = Exclude<
   keyof TranscriptPojo,
   'preContractState' | 'postContractState'

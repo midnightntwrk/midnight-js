@@ -57,6 +57,7 @@ import type {
   Ledger8Transcript
 } from '../internal/ledger8-pipeline';
 import type { CoinReceiver016Coin } from './ledger8-fixture-types';
+import type { Assert } from './type-assertions';
 
 // The fixture tree lives in testkit-js because that is where it is produced and
 // where the e2e suites consume it. Reached by RELATIVE path, never through
@@ -232,7 +233,6 @@ type SynthesizedMember = 'postContractState';
 
 type TranscriptMember = (typeof TRANSCRIPT_MEMBERS)[number] | SynthesizedMember;
 
-type Assert<T extends true> = T;
 type _EveryMemberListed = Assert<
   [Exclude<keyof Ledger8Transcript<ReplayState>, TranscriptMember>] extends [never] ? true : false
 >;

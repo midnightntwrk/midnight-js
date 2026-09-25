@@ -229,7 +229,11 @@ the copy take another. Checked, because `new Map(...)` turns an absent value, an
 empty array, an empty `Set` and an empty string alike into an empty map — which
 is indistinguishable from a contract that holds nothing, and is the substitution
 #1345 was made of. The check is structural rather than `instanceof Map`, so a
-map from another realm is still accepted.
+map from another realm is still accepted; it covers the entries as well as the
+container, because a map of the wrong entry types passes every structural clause
+and then produces the same silent wrong answer one layer in; and it answers
+rather than throws for a proxied map or a prototype-only object, both of which
+make `Map.prototype`'s members reject the receiver.
 
 **`balance` is read, and was not always.** It was excluded on the same reasoning
 until the retained-era execution path turned out to need it: the balances a

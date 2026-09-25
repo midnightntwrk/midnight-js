@@ -81,6 +81,7 @@ import {
   txTagPrefix
 } from './ledger8-replay';
 import { createMockFinalizedTxData, createMockProviders } from './test-mocks';
+import type { Assert, MutuallyAssignable } from './type-assertions';
 
 // See `./v8-native.test.ts` for both redirects: the artifact's own runtime
 // check needs an import-time stub, and the retained engine acquisition is
@@ -655,16 +656,11 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
 // engine's options and never was. What has to hold is that the request NAMES
 // every option the engine requires, and agrees with it on the one this file is
 // about.
-type Assert<T extends true> = T;
 type _RequestNamesEveryEngineOption = Assert<
   [Exclude<keyof ExecuteCircuitOptions, keyof Ledger8ExecuteRequest<DownConvertedState>>] extends [never]
     ? true
     : false
 >;
 type _RequestAgreesOnTheBalance = Assert<
-  [Ledger8ExecuteRequest<DownConvertedState>['balance']] extends [ExecuteCircuitOptions['balance']]
-    ? [ExecuteCircuitOptions['balance']] extends [Ledger8ExecuteRequest<DownConvertedState>['balance']]
-      ? true
-      : false
-    : false
+  MutuallyAssignable<Ledger8ExecuteRequest<DownConvertedState>['balance'], ExecuteCircuitOptions['balance']>
 >;

@@ -219,7 +219,8 @@ export interface ExecuteCircuitOptions {
  * @returns Every artifact a v9-native call prototype needs.
  * @throws Error A plain `Error` — not a {@link PROTOCOL_ERROR_CODES}-carrying
  *   class — when `circuitId` names no entry point on
- *   `contract.impureCircuits`, or when `balance` is absent or is not a map.
+ *   `contract.impureCircuits`, or when `balance` is absent, is not a map, or
+ *   carries entries that are not a colour keyed against a `bigint` amount.
  * @see {@link RetainedEraExecution}
  */
 export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: Ledger8ExecutionRuntime): TranscriptPojo => {
@@ -252,14 +253,17 @@ export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: L
     undefined,
     ledger8Runtime.CostModel.initialCostModel()
   );
-  // BEFORE the circuit runs, and copied rather than shared, so a later edit by
-  // the caller cannot reach a running circuit. `block` survives the context
-  // swaps the glue performs on every ledger query and every registered coin,
-  // both pinned by `v8-execute.test.ts`. @see RetainedEraExecution
+  // BEFORE the circuit runs, and copied rather than shared, so an entry the
+  // caller adds or removes afterwards cannot reach a running circuit. The copy
+  // is SHALLOW: the amounts are `bigint`s and carry by value, the colour keys
+  // stay the caller's own objects. `block` survives the context swaps the glue
+  // performs on every ledger query and every registered coin, both pinned by
+  // `v8-execute.test.ts`. @see RetainedEraExecution
   ctx.currentQueryContext.block = { ...ctx.currentQueryContext.block, balance: new Map(balance) };
   // Read BEFORE the circuit runs. The glue swaps `currentQueryContext` for a
-  // new context on every coin it registers, so after the call this object no
-  // longer answers for the context the call started from.
+  // new context on every ledger query and on every coin it registers -- the
+  // same two sites named above -- so after the call this object no longer
+  // answers for the context the call started from.
   const preCallBlock = ctx.currentQueryContext.block;
   const preCallEffects = ctx.currentQueryContext.effects;
   const res = circuit(ctx, ...args);
