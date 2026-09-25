@@ -188,15 +188,15 @@ enacted` gate.
 ### The three legs that do not race
 
 The probe above cannot assert on what it is for, and the numbers say why.
-Measured on this stack across three runs: twice it saw nine calls admitted and
-then eleven refused at `submitTx` with not one of them diagnosed
-(`metTheBoundary: false`, stopped at its attempt cap -- a refusal returns in
-about a second where an admitted call takes eighteen, so eleven of them burn the
-cap in moments); the third time it saw nine admitted, four refused, and then
-caught the one it exists for, and stopped. **So the race is winnable, and it was
-won once in three.** A blocking gate cannot be built on that, which is what makes
-these legs worth their fork-window time -- and the probe worth keeping, because
-one run in three it observes something no injected version can.
+Measured on this stack across five runs that could have seen it. Three times it
+saw nine calls admitted and then eleven refused at `submitTx` with not one of
+them diagnosed (`metTheBoundary: false`, stopped at its attempt cap -- a refusal
+returns in about a second where an admitted call takes eighteen, so eleven of
+them burn the cap in moments). Twice it caught the one it exists for and stopped.
+**So the race is winnable, and it was won two runs in five.** A blocking gate
+cannot be built on a coin toss, which is what makes these legs worth their
+fork-window time -- and the probe worth keeping beside them, because when it does
+land it observes something no injected version can.
 
 The undiagnosed refusals are the informative part. Each was a real refusal that
 `handleSubmitRejection`
@@ -206,13 +206,15 @@ re-read reported no movement, and saying nothing about a fork there is exactly
 right. The window in which a live call can observe `StaleHeadError` is therefore
 not the fork window, but the part of it after the indexer catches up.
 
-Three legs remove the race instead of running it.
+Three legs replace that race with something a gate can rest on, and they are
+not the same size, deliberately.
 
-**Two of them start a call before the fork**, on a real pre-fork head, and really
-compose, prove and balance it there. Only the SUBMISSION is held -- at the
-`midnightProvider.submitTx` seam -- until the head reports `v9`. Then the bytes
-go to the real node, and it really refuses them. In its own words, from
-`stack-logs/node.log` on a run where the diagnosis had been removed:
+**One leg carries the whole claim about the network.** It starts a call before
+the fork, on a real pre-fork head, and really composes, proves and balances it
+there. Only the SUBMISSION is held -- at the `midnightProvider.submitTx` seam --
+until the head reports `v9`. Then the bytes go to the real node, and it really
+refuses them. In its own words, from `stack-logs/node.log` on a run where the
+diagnosis had been removed:
 
 ```
 Error deserializing: "...Transaction<midnight_ledger_v9::structure::Signature, ...>":
@@ -222,30 +224,39 @@ Error deserializing: "...Transaction<midnight_ledger_v9::structure::Signature, .
 
 The bytes are declined on their era tag, at decode, before the node considers
 what they spend -- which is worth knowing, because it also rules out the reading
-where a coin conflict, not the boundary, is what refused them. **The third leg
-starts after the boundary** and is not parked at all.
+where a coin conflict, and not the boundary, is what refused them.
+
+**The other two legs inject the refusal**, and keep everything else real: a real
+post-fork head resolved at the operation's start, a real retained contract, a
+real composition through the keep-state pipeline, a real proof, a real
+balancing. They ask what the diagnosis DECIDES on the strength of one head
+reading, which is not a question about the network -- and the leg above is what
+establishes that this decision is reached on a live chain at all. Re-proving
+that for each arm would cost another balanced transaction on the one shared
+wallet, and another slice of the fork window, to assert nothing new.
 
 | Leg | Real | Injected |
 |---|---|---|
 | a retained call parked across the fork is refused as STALE | the operation, the refusal, the re-read | when the submission leaves |
-| a parked call whose head RE-READ FAILS is reported undiagnosed | the operation, the refusal | when the submission leaves; the re-read throws |
-| a submit rejection under a head that moved BACKWARDS | the operation, the post-fork era it starts on, the arm its payload took | the refusal, and the re-read's answer |
+| a rejection whose head RE-READ FAILS is reported undiagnosed | the operation, the era it starts on | the refusal; the re-read throws |
+| a rejection under a head that moved BACKWARDS | the operation, the post-fork era it starts on, the arm its payload took | the refusal, and the re-read's answer |
 
 The first reads `kind`, `startEra` and `freshEra` off the `StaleHeadError` --
 the three that decide which remediation wording it carries -- and also
 `circuitId` and `contractAddress`, which are what that remediation's first step
 sends an operator to go and read; without those two the leg would pass on an
 error naming a different operation. The other two read `reason` off the
-`SubmitRejectionUndiagnosedError`. The second also asserts that the arm carries
-**both** failures, in order, and that the second of them is the injected one,
-since carrying only one is the defect its `AggregateError` shape exists to rule
-out.
+`SubmitRejectionUndiagnosedError`. The `head-read-failed` one also asserts that
+the arm carries **both** failures, in order, and that the second of them is the
+injected one, since carrying only one is the defect its `AggregateError` shape
+exists to rule out; and that the injected reading was consulted exactly once, so
+a framework that took its re-read somewhere else would not pass unnoticed.
 
-The third is the one arm no chain produces: a head does not move backwards, so
-both its rejection and its backwards reading are injected, and the leg says so at
-its call site. What the live chain still contributes is the era the operation
-starts on and the arm its payload takes -- both asserted as `v9`, so a leg that
-had quietly begun measuring its own injection would fail.
+The last is an arm no chain produces at all -- a head does not move backwards --
+so it could not be driven any other way. What the live chain still contributes
+there is the era the operation starts on and the arm its payload takes, both
+asserted as `v9`, so a leg that had quietly begun measuring its own injection
+would fail.
 
 **Verified by mutation, and here is what that does and does not establish.** With
 `handleSubmitRejection` reduced to `throw rejection`, all three legs go red and
@@ -260,20 +271,27 @@ already forked.** Measured: a composition that has resolved a `v8` head after th
 boundary refuses the v9-tagged ledger parameters the block serves, with
 `ComposeOptionError`, before anything is proven -- so that mechanism never
 reaches the submit seam at all, and a leg built on it would be asserting on the
-composer. (A retained contract composes perfectly well after the fork; the third
-leg does it. The refusal is specific to a composition that believes the head is
-still pre-fork.)
+composer. (A retained contract composes perfectly well after the fork; the two
+injected legs do it. The refusal is specific to a composition that believes the
+head is still pre-fork.)
 
-**What they cost, and what that costs the probe.** They run on the same shard as
-the current-era pre-fork probe, and leave a `skipped` row on every other one: the
-diagnosis is a property of the framework and not of any contract, so thirteen
-copies would buy thirteen copies of one measurement and pay for each in
-fork-window time. On that shard the two parked calls take roughly two calls'
-worth of the enactment window before the probe starts, and their balanced coins
-stay unspent until release, while the probe balances against the same wallet.
-All three runs saw the probe admit nine calls regardless, but this is measured
-alongside, not designed away. The third leg balances a transaction it never
-submits -- the one place this file deliberately abandons one.
+**What they cost.** They run on the same shard as the current-era pre-fork probe,
+and leave a `skipped` row on every other one: the diagnosis is a property of the
+framework and not of any contract, so thirteen copies would buy thirteen copies
+of one measurement and pay for each in fork-window time. On that shard, the cost
+inside the window is one parked call -- roughly one call's worth of composing,
+proving and balancing before the probe starts, and its balanced coins stay
+unspent until release, while the probe balances against the same wallet. All
+three runs saw the probe admit nine calls regardless, but that is measured
+alongside, not designed away.
+
+The two injected legs run LAST, after every other leg, and that position is
+load-bearing: each balances a real transaction and then never submits it, and
+the dust a balancing reserves does not come back to the wallet by itself.
+Measured -- with those two legs sitting before the keep-state legs, four later
+legs failed with `Wallet.InsufficientFunds: could not balance dust`, a red run
+blaming whichever contracts happened to follow them. Nothing draws on the wallet
+after them now, so the abandoned balancing costs nothing.
 
 ## Two things that bite
 

@@ -1699,6 +1699,73 @@ const withHeadReadAnswer = (real, answer) =>
     }
   });
 
+/**
+ * Drives a post-fork retained call whose SUBMISSION is refused by injection, and
+ * hands back what the framework made of that refusal.
+ *
+ * ONE leg in this file carries the full-fidelity claim: the parked call above,
+ * where a real node refuses real pre-fork bytes after a real fork. That is what
+ * establishes this diagnosis runs on a live chain at all. The remaining arms are
+ * decisions taken on the strength of one head reading, and re-proving the
+ * network path for each of them would cost another balanced transaction on the
+ * one shared wallet and another slice of the fork window to assert nothing new.
+ * So they inject the refusal and keep everything else real: a real post-fork
+ * head resolved at the operation's start, a real retained contract, a real
+ * composition through the keep-state pipeline, a real proof and a real
+ * balancing.
+ *
+ * The injected rejection is uncoded, which is deliberate -- `atSeam` wraps it
+ * into the same `Ledger8SeamFailedError` a provider's own failure would arrive
+ * as, so the diagnosis sees exactly the shape it gates on.
+ *
+ * @param headAnswer What the head re-read should do once the submission has been
+ * refused: return an integer, or throw. Every reading BEFORE that point is the
+ * real one, which is what makes the era the operation starts on real too.
+ * @returns The error the entry point rejected with, how many times the injected
+ * reading was consulted, and the era arm the payload took.
+ * @throws Error if the call was admitted, which would mean the injected seam
+ * never ran.
+ */
+const callWithRefusedSubmission = async (headAnswer) => {
+  const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+  const real = session.providers.publicDataProvider;
+  let refused = false;
+  let injectedHeadReads = 0;
+  let submittedVersion;
+  const providers = {
+    ...session.providers,
+    publicDataProvider: withHeadReadAnswer(real, () =>
+      refused
+        ? () => {
+            injectedHeadReads += 1;
+            return headAnswer();
+          }
+        : undefined
+    ),
+    midnightProvider: {
+      supportedEras: session.providers.midnightProvider.supportedEras,
+      submitTx: (tx) => {
+        submittedVersion = tx.version;
+        refused = true;
+        return Promise.reject(new Error('the node refused the transaction'));
+      }
+    }
+  };
+  const outcome = await submitCallTx(providers, {
+    compiledContract: new Contract({}),
+    contractAddress: deployment.contractAddress,
+    circuitId: CIRCUIT_ID,
+    args: []
+  }).then(
+    (admitted) => ({ outcome: 'admitted', txId: admitted.public.txId, error: undefined }),
+    (error) => ({ outcome: 'refused', txId: undefined, error })
+  );
+  if (outcome.outcome === 'admitted') {
+    throw new Error(`the call was admitted as ${outcome.txId} although the submit seam refused it`);
+  }
+  return { error: outcome.error, injectedHeadReads, submittedVersion };
+};
+
 // ── (b) the fork moment ───────────────────────────────────────────────────────
 
 // ONE `awaitFork()`, shared by the probe below and the gate under it. Calling it
@@ -1727,21 +1794,13 @@ forkEnacted.then(
 );
 
 
-// The two held submissions, started the moment the enactment window opens: the
-// head they resolve is a real pre-fork one that is about to move. Sequentially,
-// never together -- one wallet.
+// THE held submission, started the moment the enactment window opens: the head
+// it resolves is a real pre-fork one that is about to move. One, not several --
+// every leg in this file draws on one wallet, and a balanced transaction that
+// has not been submitted is holding coins the legs after it will select.
 let parkedStaleHead;
-let parkedUnreadableHead;
 /** The integer a pre-fork head reported, replayed by the backwards-head leg after the boundary. */
 let preForkProtocolVersion;
-/**
- * Flipped at release, so the failing read is the RE-READ and every reading
- * before it is real. Never reset: the wrapper it gates is unreachable once that
- * call has settled.
- */
-let headReReadFails = false;
-/** How many reads that wrapper answered. Exactly one is the re-read under test. */
-let injectedHeadReads = 0;
 
 if (DRIVES_STALE_HEAD) {
   await leg('park a retained call at the submit seam', async () => {
@@ -1751,8 +1810,8 @@ if (DRIVES_STALE_HEAD) {
     // ASSERTED, not assumed. Nothing sequences this leg against the enactment
     // the driver began when `FORK_AWAIT` went out, so a slow run can arrive here
     // after the boundary -- and then the integer below is a post-fork one, the
-    // backwards-head leg replays it as though it were not, and three legs go red
-    // for a timing fact none of their messages would name.
+    // backwards-head leg replays it as though it were not, and two legs go red
+    // for a timing fact neither of their messages would name.
     const head = await networkHeadVersion(session.providers.publicDataProvider);
     if (head !== 'v8') {
       throw new Error(
@@ -1766,7 +1825,7 @@ if (DRIVES_STALE_HEAD) {
     parkedStaleHead = await parkBaselineCall('park a retained call at the submit seam', session.providers);
     // The arm the payload crossed the seam on is the only direct evidence that
     // this call was composed against a pre-fork head. Judged HERE, where the
-    // answer is precise, rather than left to surface two legs later as a refusal
+    // answer is precise, rather than left to surface a leg later as a refusal
     // that reads like a framework regression.
     if (parkedStaleHead.payloadVersion !== 'v8') {
       throw new Error(
@@ -1774,30 +1833,6 @@ if (DRIVES_STALE_HEAD) {
       );
     }
     return { payload: parkedStaleHead.payloadVersion, preForkProtocolVersion };
-  });
-
-  await leg('park a second retained call, whose head re-read will fail', async () => {
-    if (parkedStaleHead === undefined) {
-      throw new Error('the first call did not park, so a second one would only queue behind it on the wallet');
-    }
-    const real = session.providers.publicDataProvider;
-    parkedUnreadableHead = await parkBaselineCall('park a second retained call, whose head re-read will fail', {
-      ...session.providers,
-      publicDataProvider: withHeadReadAnswer(real, () =>
-        headReReadFails
-          ? () => {
-              injectedHeadReads += 1;
-              throw new Error('the indexer is unreachable');
-            }
-          : undefined
-      )
-    });
-    if (parkedUnreadableHead.payloadVersion !== 'v8') {
-      throw new Error(
-        `the parked call crossed the seam on '${parkedUnreadableHead.payloadVersion}', not on the retained arm`
-      );
-    }
-    return { payload: parkedUnreadableHead.payloadVersion };
   });
 } else {
   // A ROW, not silence. Legs that simply vanish from a report read as legs that
@@ -1886,48 +1921,6 @@ if (DRIVES_STALE_HEAD && parkedStaleHead !== undefined) {
     };
   });
 
-  await leg('a parked call whose head RE-READ FAILS is reported undiagnosed', async () => {
-    if (parkedUnreadableHead === undefined) {
-      throw new Error('the second call never parked, so there is nothing to release');
-    }
-    if (!headMoved) {
-      parkedUnreadableHead.discard();
-      return 'skipped: the head never reported v9, and the row above says why';
-    }
-    headReReadFails = true;
-    const refusal = await releaseAndSettle(
-      'a parked call whose head RE-READ FAILS is reported undiagnosed',
-      parkedUnreadableHead
-    );
-    if (!(refusal instanceof SubmitRejectionUndiagnosedError)) {
-      throw new Error(`expected SubmitRejectionUndiagnosedError; got ${describeError(refusal)}`, { cause: refusal });
-    }
-    if (refusal.reason !== 'head-read-failed' || refusal.startEra !== 'v8' || refusal.kind !== 'call') {
-      throw new Error(
-        `expected a 'head-read-failed' call that started on 'v8'; got '${refusal.reason}' on '${refusal.startEra}' as '${refusal.kind}'`,
-        { cause: refusal }
-      );
-    }
-    // EXACTLY ONE injected read. The wrapper answers every head read once it is
-    // armed, so a framework that took a second reading somewhere else on the
-    // rejection path -- a retry, another watch -- would still land here, and the
-    // leg would stay green with the diagnosis re-read gone.
-    if (injectedHeadReads !== 1) {
-      throw new Error(`the failing read was answered ${injectedHeadReads} times, not once`, { cause: refusal });
-    }
-    // NEITHER failure is dropped, and in this order: the submission's rejection
-    // first, the read's failure second. Carrying only one of the two is what
-    // this arm's `AggregateError` shape exists to rule out, and reading the
-    // second one's message is what proves it is the injected failure rather than
-    // whatever else was to hand.
-    if (refusal.errors.length !== 2 || !String(refusal.errors[1]?.message).includes('the indexer is unreachable')) {
-      throw new Error(
-        `expected the rejection and the injected read failure, in that order; got ${refusal.errors.length} entries ending '${refusal.errors[1]?.message}'`,
-        { cause: refusal }
-      );
-    }
-    return { reason: refusal.reason, startEra: refusal.startEra, kind: refusal.kind, carries: refusal.errors.length };
-  });
 } else if (DRIVES_STALE_HEAD) {
   await leg('the stale-head verdicts', () => 'skipped: no call parked, and the park leg above says why');
 }
@@ -1957,86 +1950,6 @@ await leg('envelope tag across the boundary', () =>
   sampleEnvelope(session.providers.publicDataProvider, deployment.contractAddress, 6, 10_000)
 );
 
-
-// ── (c) continued: the head that moved BACKWARDS ────────────────────────
-//
-// The one arm no chain produces. A head moving backwards is not a fork crossing
-// and not anything else a network does, so unlike the two legs above this one
-// cannot be driven by timing: both the rejection and the backwards reading are
-// injected, and this comment is the leg being honest about it. What the live
-// chain still contributes is everything else -- a real post-fork head resolved
-// at the operation's start, a real retained contract, a real composition through
-// the keep-state pipeline, a real proof and a real balancing -- so the subject
-// under test is the framework's verdict rather than a mock of it. The balanced
-// transaction is then never submitted, which is the one place this file
-// deliberately abandons one.
-if (DRIVES_STALE_HEAD) {
-  await leg('a submit rejection under a head that moved BACKWARDS is not called a fork crossing', async () => {
-    if (deployment === undefined || preForkProtocolVersion === undefined) {
-      throw new Error('there is no pre-fork baseline deploy, or no pre-fork head reading to replay');
-    }
-    const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
-    const real = session.providers.publicDataProvider;
-    let submitted = false;
-    let submittedVersion;
-    const providers = {
-      ...session.providers,
-      // The reading the operation STARTS on is the real post-fork one; only the
-      // re-read after the rejection answers the pre-fork integer this run
-      // actually observed.
-      publicDataProvider: withHeadReadAnswer(real, () => (submitted ? () => preForkProtocolVersion : undefined)),
-      midnightProvider: {
-        supportedEras: session.providers.midnightProvider.supportedEras,
-        submitTx: (tx) => {
-          submitted = true;
-          submittedVersion = tx.version;
-          return Promise.reject(new Error('the node refused the transaction'));
-        }
-      }
-    };
-    const outcome = await submitCallTx(providers, {
-      compiledContract: new Contract({}),
-      contractAddress: deployment.contractAddress,
-      circuitId: CIRCUIT_ID,
-      args: []
-    }).then(
-      (admitted) => ({ outcome: 'admitted', txId: admitted.public.txId, error: undefined }),
-      (error) => ({ outcome: 'refused', txId: undefined, error })
-    );
-    if (outcome.outcome === 'admitted') {
-      throw new Error(`the call was admitted as ${outcome.txId} although the submit seam refused it`);
-    }
-    if (!(outcome.error instanceof SubmitRejectionUndiagnosedError)) {
-      throw new Error(`expected SubmitRejectionUndiagnosedError; got ${describeError(outcome.error)}`, {
-        cause: outcome.error
-      });
-    }
-    if (outcome.error.reason !== 'head-moved-backwards' || outcome.error.kind !== 'call') {
-      throw new Error(
-        `expected a 'head-moved-backwards' call; got '${outcome.error.reason}' as '${outcome.error.kind}'`,
-        { cause: outcome.error }
-      );
-    }
-    // The era the operation STARTED on, read from the live chain, and the arm
-    // its payload actually took. A leg that let either be the pre-fork value
-    // would be measuring its own injection.
-    if (outcome.error.startEra !== 'v9' || submittedVersion !== 'v9') {
-      throw new Error(
-        `expected a post-fork operation; it started on '${outcome.error.startEra}' and submitted a '${submittedVersion}' payload`,
-        { cause: outcome.error }
-      );
-    }
-    // ONE carried failure on this arm, against the other arm's two: the head was
-    // read successfully here, so there is no second failure to carry, and an
-    // extra entry would mean the framework attached something it should not.
-    if (outcome.error.errors.length !== 1) {
-      throw new Error(`expected the rejection alone; it carries ${outcome.error.errors.length} entries`, {
-        cause: outcome.error
-      });
-    }
-    return { reason: outcome.error.reason, startEra: outcome.error.startEra, kind: outcome.error.kind };
-  });
-}
 
 // ── (c) post-fork: the SAME call site, now on keep-state ──────────────────────
 
@@ -2556,6 +2469,90 @@ for (const entry of MATRIX.filter((candidate) => covers(SELECTED.current, candid
   // that throws does not stop the ones after it -- `leg` records and continues.
   await leg(`post-fork ${entry.key}`, () => runMatrixContract(entry));
 }
+
+// ── (d) last of all: the arms a live chain does not hand you ─────────────
+//
+// Both refuse the submission by injection, for the reason
+// {@link callWithRefusedSubmission} gives: the parked leg above is what shows
+// this diagnosis runs on a live chain, and these two ask what it DECIDES, which
+// is a question about one head reading and not about the network. A head that
+// moved backwards is in any case something no chain produces.
+//
+// LAST, and that position is load-bearing. Each balances a real transaction and
+// then never submits it, and the dust a balancing reserves does not come back
+// to the wallet by itself. MEASURED: with these two legs sitting before the
+// keep-state legs, four later legs failed with
+// `Wallet.InsufficientFunds: could not balance dust` -- a red run blaming the
+// contracts that happened to come after them. Nothing draws on the wallet after
+// this point, so an abandoned balancing here costs nothing. Do not move them
+// back up, and do not add a leg below them.
+if (DRIVES_STALE_HEAD) {
+  await leg('a rejection whose head RE-READ FAILS is reported undiagnosed', async () => {
+    if (deployment === undefined) {
+      throw new Error('there is no baseline contract to call');
+    }
+    const { error, injectedHeadReads } = await callWithRefusedSubmission(() => {
+      throw new Error('the indexer is unreachable');
+    });
+    if (!(error instanceof SubmitRejectionUndiagnosedError)) {
+      throw new Error(`expected SubmitRejectionUndiagnosedError; got ${describeError(error)}`, { cause: error });
+    }
+    if (error.reason !== 'head-read-failed' || error.kind !== 'call') {
+      throw new Error(`expected a 'head-read-failed' call; got '${error.reason}' as '${error.kind}'`, { cause: error });
+    }
+    // EXACTLY ONE injected read. The wrapper answers every head read taken after
+    // the refusal, so a framework that took a second one somewhere else on this
+    // path -- a retry, another watch -- would still land here, and the leg would
+    // stay green with the diagnosis re-read gone.
+    if (injectedHeadReads !== 1) {
+      throw new Error(`the failing read was answered ${injectedHeadReads} times, not once`, { cause: error });
+    }
+    // NEITHER failure is dropped, and in this order: the submission's rejection
+    // first, the read's failure second. Carrying only one of the two is what
+    // this arm's `AggregateError` shape exists to rule out, and reading the
+    // second one's message is what proves it is the injected failure rather than
+    // whatever else was to hand.
+    if (error.errors.length !== 2 || !String(error.errors[1]?.message).includes('the indexer is unreachable')) {
+      throw new Error(
+        `expected the rejection and the injected read failure, in that order; got ${error.errors.length} entries ending '${error.errors[1]?.message}'`,
+        { cause: error }
+      );
+    }
+    return { reason: error.reason, startEra: error.startEra, kind: error.kind, carries: error.errors.length };
+  });
+
+  await leg('a rejection under a head that moved BACKWARDS is not called a fork crossing', async () => {
+    if (deployment === undefined || preForkProtocolVersion === undefined) {
+      throw new Error('there is no baseline contract, or no pre-fork head reading to replay');
+    }
+    const { error, submittedVersion } = await callWithRefusedSubmission(() => preForkProtocolVersion);
+    if (!(error instanceof SubmitRejectionUndiagnosedError)) {
+      throw new Error(`expected SubmitRejectionUndiagnosedError; got ${describeError(error)}`, { cause: error });
+    }
+    if (error.reason !== 'head-moved-backwards' || error.kind !== 'call') {
+      throw new Error(`expected a 'head-moved-backwards' call; got '${error.reason}' as '${error.kind}'`, {
+        cause: error
+      });
+    }
+    // The era the operation STARTED on, read from the live chain, and the arm
+    // its payload actually took. A leg that let either be the pre-fork value
+    // would be measuring its own injection.
+    if (error.startEra !== 'v9' || submittedVersion !== 'v9') {
+      throw new Error(
+        `expected a post-fork operation; it started on '${error.startEra}' and submitted a '${submittedVersion}' payload`,
+        { cause: error }
+      );
+    }
+    // ONE carried failure on this arm, against the other arm's two: the head was
+    // read successfully here, so there is no second failure to carry, and an
+    // extra entry would mean the framework attached something it should not.
+    if (error.errors.length !== 1) {
+      throw new Error(`expected the rejection alone; it carries ${error.errors.length} entries`, { cause: error });
+    }
+    return { reason: error.reason, startEra: error.startEra, kind: error.kind };
+  });
+}
+
 
 await session.wallet?.stop().catch(() => undefined);
 report(failures.length === 0 ? 0 : 1);
