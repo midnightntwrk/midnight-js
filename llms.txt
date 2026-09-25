@@ -259,6 +259,20 @@ Three things to know before wiring a retained-era flow:
   });
   ```
 
+  One proving provider serves both arms above because the proof server and the DApp Connector pick
+  their own key material per request. An IN-PROCESS prover does not: the eras' proving keys are a
+  different generation, a node rejects a transaction proved with the other era's key material, and
+  the refusal lands at submit, after the proving has been paid for. Such a prover needs one
+  instance per era, and `createProofProviderFromProvingProviders` is where the two are paired with
+  the era each one serves:
+
+  ```typescript
+  const proofProvider = createProofProviderFromProvingProviders({
+    currentEra: currentEraProver.asProvingProvider(),
+    retainedEras: { v8: retainedEraProver.asV8ProvingProvider() }
+  });
+  ```
+
   Implementing a version-tagged interface directly still works — write `supportedEras` yourself.
 
 A payload sent on the `v8` arm that is not a serialized transaction is refused with

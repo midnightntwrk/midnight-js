@@ -20,6 +20,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { PayloadNotATransactionError, PROTOCOL_ERROR_CODES, TRANSACTION_TAG_PREFIX } from '../errors';
 import { loadLedger8 } from '../lib/v8/load';
 import { proveV8Transaction } from '../lib/v8/prove';
+import type { ProvingProvider as RetainedEraProvingProvider } from '../v8';
 import { V8_UNPROVEN_TX_TAG } from './fixtures';
 
 const NETWORK_ID = 'undeployed';
@@ -337,6 +338,37 @@ describe('proveV8Transaction', () => {
       // The provider handed in is the one the retained runtime consults, and
       // WHICH member it consults is part of the claim -- labelled, so this
       // cannot pass on `check` when it says `prove`.
+      expect(consulted, `proveV8Transaction rejected with: ${String(rejection)}`).toEqual([
+        'prove:midnight/zswap/output'
+      ]);
+    });
+  });
+
+  // The shape an in-process prover hands over for this era: the retained
+  // runtime's own `ProvingProvider`, which declares `check` and `prove` and no
+  // `lookupKey`. `WasmProver.asV8ProvingProvider()` returns exactly this, and
+  // the two eras need different key material, so the provider reaching here is
+  // not the current era's. Compile-time is where this case bites -- accepting
+  // it means a consumer never casts to satisfy the signature.
+  describe('a retained-era proving provider', () => {
+    it('is driven for the output circuit, though it declares no lookupKey', async () => {
+      const consulted: string[] = [];
+      const retainedEraProvider: RetainedEraProvingProvider = {
+        check: (_preimage, keyLocation) => {
+          consulted.push(`check:${keyLocation}`);
+          return Promise.reject(new Error('proving refused'));
+        },
+        prove: (_preimage, keyLocation) => {
+          consulted.push(`prove:${keyLocation}`);
+          return Promise.reject(new Error('proving refused'));
+        }
+      };
+
+      const rejection = await proveV8Transaction(circuitDrivingTxBytes, retainedEraProvider).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
       expect(consulted, `proveV8Transaction rejected with: ${String(rejection)}`).toEqual([
         'prove:midnight/zswap/output'
       ]);

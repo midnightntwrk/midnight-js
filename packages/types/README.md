@@ -341,6 +341,8 @@ import {
   createWalletProvider,
   createMidnightProvider,
   createProofProvider,
+  createProofProviderFromProvingProviders,
+  type EraProvingProviders,
   type ProofProviderArms,
   type WalletProviderArms,
   type MidnightProviderArms,
