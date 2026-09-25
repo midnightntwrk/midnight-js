@@ -27,7 +27,7 @@ import {
   type WalletFacade,
   WalletTransaction
 } from '@midnightntwrk/wallet-sdk';
-// Type-only, from the same copy `retainedLedger()` loads at runtime.
+// From the same copy `retainedLedger()` loads at runtime.
 import type * as RetainedLedger from '@midnightntwrk/wallet-sdk/ledger/v8';
 import { Either } from 'effect';
 import * as Rx from 'rxjs';
@@ -40,16 +40,22 @@ let retainedLedgerModule: Promise<typeof RetainedLedger> | undefined;
  * The ledger-v8 module retained payloads are deserialized with: the wallet SDK's
  * own copy, reached through its `./ledger/v8` subpath.
  *
- * `ledger-v8` is installed twice, under both npm scopes, and the two copies'
- * classes refuse each other. Everything this file builds is handed to the SDK, so
- * it must be built with the SDK's copy.
+ * Everything this file builds is handed to the SDK, so it must be built with the
+ * SDK's copy — `ledger-v8` is installed twice and the two copies' classes refuse
+ * each other.
  *
- * Lazy: a caller that never carries a retained payload never loads the WASM.
+ * Lazy, and a failed load is not memoised: the next call retries rather than
+ * serving the first rejection forever.
  *
  * @see docs/architecture/retained-era-coverage.md
  */
 export const retainedLedger = (): Promise<typeof RetainedLedger> =>
-  (retainedLedgerModule ??= import('@midnightntwrk/wallet-sdk/ledger/v8'));
+  (retainedLedgerModule ??= import('@midnightntwrk/wallet-sdk/ledger/v8').catch((error: unknown) => {
+    retainedLedgerModule = undefined;
+    throw new Error("the wallet SDK's retained ledger ('@midnightntwrk/wallet-sdk/ledger/v8') could not be loaded", {
+      cause: error
+    });
+  }));
 
 type VersionedWallet = Pick<WalletFacade, 'state'>;
 

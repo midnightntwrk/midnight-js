@@ -28,8 +28,11 @@ import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 
-const BARE_SPECIFIER = '@midnight-ntwrk/compact-runtime';
-const RETAINED_SPECIFIER = 'compact-runtime-ledger8';
+/** The specifier `compactc` emits, which the workspace pins to the current runtime. */
+export const BARE_SPECIFIER = '@midnight-ntwrk/compact-runtime';
+
+/** This repository's alias for the retained runtime. */
+export const RETAINED_SPECIFIER = 'compact-runtime-ledger8';
 
 /** The runtime version a retained-era artifact set must declare. */
 export const RETAINED_RUNTIME_VERSION = '0.16.0';
@@ -41,7 +44,9 @@ const REWRITTEN_FILES = ['index.js', 'index.d.ts'];
  * Rewrites one file's runtime specifier.
  *
  * Throws when the file names neither specifier, so a compiler that stopped
- * emitting the bare import cannot make this a silent no-op.
+ * emitting the bare import cannot make this a silent no-op, and throws again when
+ * the bare name survives in a form the replacement does not match — a differently
+ * quoted import, or a subpath — rather than reporting the file as already done.
  *
  * @param file Absolute path of the emitted file.
  * @returns Whether the file had to be changed.
@@ -49,6 +54,9 @@ const REWRITTEN_FILES = ['index.js', 'index.d.ts'];
 const rewriteFile = (file) => {
   const before = readFileSync(file, 'utf8');
   if (!before.includes(`'${BARE_SPECIFIER}'`)) {
+    if (before.includes(BARE_SPECIFIER)) {
+      throw new Error(`${file} names '${BARE_SPECIFIER}' in a form this rewrite does not match`);
+    }
     if (before.includes(`'${RETAINED_SPECIFIER}'`)) {
       return false;
     }
@@ -56,27 +64,59 @@ const rewriteFile = (file) => {
   }
   const after = before.replaceAll(`'${BARE_SPECIFIER}'`, `'${RETAINED_SPECIFIER}'`);
   writeFileSync(file, after);
+  // Compared whole rather than re-scanned for the specifier: `replaceAll` already
+  // guarantees the specifier is gone, so re-checking it proves nothing, while a
+  // truncated or partially flushed write passes that check and fails this one.
   const verified = readFileSync(file, 'utf8');
-  if (verified.includes(`'${BARE_SPECIFIER}'`)) {
-    throw new Error(`${file} still names '${BARE_SPECIFIER}' after the rewrite`);
+  if (verified !== after) {
+    throw new Error(`${file} does not match what was written (${after.length} bytes out, ${verified.length} back)`);
   }
   return true;
 };
 
 /**
- * Refuses an artifact set the CURRENT toolchain produced.
- *
- * The era is read off `contract-info.json` by `resolveArtifactEra`, so a twin
- * built with the wrong `compactc` would be routed to the current-era pipeline and
- * the test driving it would pass while proving nothing about the retained arm.
+ * Refuses an artifact set the CURRENT toolchain produced: `resolveArtifactEra`
+ * reads the era off this field.
  *
  * @param twinDir Absolute path of one twin's artifact set.
  */
 const assertRetainedArtifacts = (twinDir) => {
   const infoFile = path.join(twinDir, 'compiler', 'contract-info.json');
-  const declared = JSON.parse(readFileSync(infoFile, 'utf8'))['runtime-version'];
+  let info;
+  try {
+    info = JSON.parse(readFileSync(infoFile, 'utf8'));
+  } catch (error) {
+    throw new Error(`${infoFile} is not readable as JSON`, { cause: error });
+  }
+  if (typeof info !== 'object' || info === null) {
+    throw new Error(`${infoFile} does not hold a JSON object`);
+  }
+  const declared = info['runtime-version'];
   if (declared !== RETAINED_RUNTIME_VERSION) {
     throw new Error(`${infoFile} declares runtime-version ${declared}, expected ${RETAINED_RUNTIME_VERSION}`);
+  }
+};
+
+/**
+ * Refuses a twin where any emitted file still names the bare specifier.
+ *
+ * {@link REWRITTEN_FILES} is a fixed list, and `compactc` is not a compiler this
+ * repository controls: a version that emits one more module under `contract/`
+ * would leave it resolving the current runtime while every guard above reported
+ * success. This asks the directory rather than the list.
+ *
+ * @param twinDir Absolute path of one twin's artifact set.
+ */
+const assertNoBareSpecifierLeft = (twinDir) => {
+  const contractDir = path.join(twinDir, 'contract');
+  for (const entry of readdirSync(contractDir, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) {
+      continue;
+    }
+    const file = path.join(entry.parentPath, entry.name);
+    if (readFileSync(file, 'utf8').includes(BARE_SPECIFIER)) {
+      throw new Error(`${file} still names '${BARE_SPECIFIER}'; ${REWRITTEN_FILES.join(', ')} are not the whole set`);
+    }
   }
 };
 
@@ -98,11 +138,14 @@ export const rewriteRetainedTwins = (root) => {
     assertRetainedArtifacts(twinDir);
     for (const name of REWRITTEN_FILES) {
       const file = path.join(twinDir, 'contract', name);
-      statSync(file);
+      if (!statSync(file, { throwIfNoEntry: false })?.isFile()) {
+        throw new Error(`${twinDir} emitted no ${name}; compactc did not produce a complete artifact set`);
+      }
       if (rewriteFile(file)) {
         rewritten.push(file);
       }
     }
+    assertNoBareSpecifierLeft(twinDir);
   }
   return rewritten;
 };

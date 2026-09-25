@@ -14,6 +14,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 import { deployContract, Ledger8, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
 import { versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
@@ -29,7 +30,6 @@ import {
   type MidnightWalletProvider,
   type TestEnvironment
 } from '@midnight-ntwrk/testkit-js';
-import path from 'path';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
 import { SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '../src/constants';
@@ -55,19 +55,28 @@ const logger = createLogger(
 const RETAINED_RUNTIME_VERSION = '0.16.0';
 
 /** The specifier the build step points a twin's emitted module at. */
-const RETAINED_RUNTIME_SPECIFIER = 'compact-runtime-ledger8';
+const RETAINED_SPECIFIER = 'compact-runtime-ledger8';
 
-const retainedArtifactPath = (twin: string): string =>
+/** The build step these two constants have to agree with. */
+const REWRITE_SCRIPT = path.resolve(__dirname, '../scripts/rewrite-retained-runtime.mjs');
+
+/** The twins this file drives; a typo is a compile error rather than a late ENOENT while proving. */
+type RetainedTwin = 'unshielded' | 'block-time';
+
+const RETAINED_TWINS: readonly RetainedTwin[] = ['unshielded', 'block-time'];
+
+// One suffix per run, not per configuration: the two `unshielded` configurations
+// below must name the same private state store.
+const RUN_SUFFIX = Date.now().toString();
+
+const retainedArtifactPath = (twin: RetainedTwin): string =>
   path.resolve(__dirname, '../src/contract/compiled-retained', twin);
 
 class RetainedConfiguration implements ContractConfiguration {
-  constructor(
-    private readonly twin: string,
-    private readonly suffix = Date.now().toString()
-  ) {}
+  constructor(private readonly twin: RetainedTwin) {}
 
   get privateStateStoreName(): string {
-    return `retained-${this.twin}-private-store-${this.suffix}`;
+    return `retained-${this.twin}-private-store-${RUN_SUFFIX}`;
   }
 
   get zkConfigPath(): string {
@@ -82,8 +91,9 @@ class RetainedConfiguration implements ContractConfiguration {
 
 const currentTimeSeconds = (): bigint => BigInt(Math.floor(Date.now() / 1_000));
 
-// `undefined` rather than the generated default of `any`, which would leave every
-// circuit argument below unchecked. Neither twin declares a witness.
+// Neither twin declares a witness. `undefined` rather than the generated default
+// of `any`, which would untype the private-state channel -- the provider set and
+// the `private` half of every call result.
 const unshieldedContract = new RetainedUnshieldedContract<undefined>({});
 const blockTimeContract = new RetainedBlockTimeContract<undefined>({});
 
@@ -91,8 +101,14 @@ type RetainedProviders<C extends Ledger8.Contract> = Ledger8.ContractProviders<C
 
 describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => {
   const MINT_DOMAIN_SEPARATOR = new Uint8Array(32).fill(1);
+  const SECOND_MINT_DOMAIN_SEPARATOR = new Uint8Array(32).fill(3);
   const NEVER_MINTED_COLOUR = new Uint8Array(32).fill(2);
   const MINT_AMOUNT = 1_000_000n;
+  // Different from MINT_AMOUNT on purpose: with one held colour, "the map has a
+  // single entry and any held colour returns it" is indistinguishable from a
+  // correct per-key lookup.
+  const SECOND_MINT_AMOUNT = 250_000n;
+  const SEND_AMOUNT = 100_000n;
   const BLOCK_TIME_BUFFER_SECONDS = 60n;
 
   let testEnvironment: TestEnvironment;
@@ -136,27 +152,45 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
       });
     });
 
-    test.each(['unshielded', 'block-time'])(
-      'the %s twin is a retained-era artifact set wired to the retained runtime',
-      (twin) => {
-        // Arrange.
-        const twinDir = retainedArtifactPath(twin);
-        const contractInfo: unknown = JSON.parse(
-          readFileSync(path.join(twinDir, 'compiler', 'contract-info.json'), 'utf8')
-        );
-        const emitted = readFileSync(path.join(twinDir, 'contract', 'index.js'), 'utf8');
+    // The build step is a `.mjs` with no declarations, so these constants cannot be
+    // imported from it. Pinned against its source instead: a runtime-version bump
+    // that misses this file fails here, naming the drift, rather than in the twin
+    // assertions below, where it would read as a broken artifact.
+    test('the build step declares the runtime version and specifier this file asserts', () => {
+      // Arrange / Act.
+      const script = readFileSync(REWRITE_SCRIPT, 'utf8');
 
-        // Assert: `resolveArtifactEra` reads the era off this field.
-        expect(contractInfo).toMatchObject({ 'runtime-version': RETAINED_RUNTIME_VERSION });
-        expect(emitted).toContain(`from '${RETAINED_RUNTIME_SPECIFIER}'`);
-        expect(emitted).not.toContain("from '@midnight-ntwrk/compact-runtime'");
+      // Assert.
+      expect(script).toContain(`RETAINED_RUNTIME_VERSION = '${RETAINED_RUNTIME_VERSION}'`);
+      expect(script).toContain(`RETAINED_SPECIFIER = '${RETAINED_SPECIFIER}'`);
+    });
+
+    test.each(RETAINED_TWINS)('the %s twin is a retained-era artifact set wired to the retained runtime', (twin) => {
+      // Arrange: both emitted files, because the build step rewrites both and the
+      // whole directory is excluded from lint.
+      const twinDir = retainedArtifactPath(twin);
+      const contractInfo: unknown = JSON.parse(
+        readFileSync(path.join(twinDir, 'compiler', 'contract-info.json'), 'utf8')
+      );
+      const emitted = ['index.js', 'index.d.ts'].map((name) =>
+        readFileSync(path.join(twinDir, 'contract', name), 'utf8')
+      );
+
+      // Assert: `resolveArtifactEra` reads the era off this field.
+      expect(contractInfo).toMatchObject({ 'runtime-version': RETAINED_RUNTIME_VERSION });
+      for (const source of emitted) {
+        expect(source).toContain(`from '${RETAINED_SPECIFIER}'`);
+        // The bare name, not `from '...'`: a differently quoted or subpath import
+        // would resolve the current runtime just as wrongly.
+        expect(source).not.toContain('@midnight-ntwrk/compact-runtime');
       }
-    );
+    });
   });
 
   describe('unshielded: CallContext.balance', () => {
     let contractAddress: ContractAddress;
     let mintedColour: Uint8Array;
+    let secondColour: Uint8Array;
     let providers: RetainedProviders<typeof unshieldedContract>;
 
     const contract = unshieldedContract;
@@ -180,7 +214,27 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
         args: [MINT_DOMAIN_SEPARATOR, MINT_AMOUNT]
       });
       expect(minted.public.status).toBe(SucceedEntirely);
-      mintedColour = minted.private.result as Uint8Array;
+      // Narrowed rather than cast: `providers` is typed over every circuit's return
+      // type, so a shape change here would otherwise surface as an opaque mismatch
+      // in the balance assertions rather than at the mint that caused it.
+      const minted_colour = minted.private.result;
+      if (!(minted_colour instanceof Uint8Array)) {
+        throw new Error(`mintUnshieldedToSelfTest returned ${typeof minted_colour}, expected the colour as bytes`);
+      }
+      mintedColour = minted_colour;
+
+      const secondMint = await submitCallTx(providers, {
+        compiledContract: unshieldedContract,
+        contractAddress,
+        circuitId: 'mintUnshieldedToSelfTest',
+        args: [SECOND_MINT_DOMAIN_SEPARATOR, SECOND_MINT_AMOUNT]
+      });
+      expect(secondMint.public.status).toBe(SucceedEntirely);
+      const second_colour = secondMint.private.result;
+      if (!(second_colour instanceof Uint8Array)) {
+        throw new Error(`mintUnshieldedToSelfTest returned ${typeof second_colour}, expected the colour as bytes`);
+      }
+      secondColour = second_colour;
     }, VERY_SLOW_TEST_TIMEOUT);
 
     test(
@@ -203,6 +257,26 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
     );
 
     test(
+      'reads each held colour back at its own amount',
+      async () => {
+        // Act.
+        const txData = await submitCallTx(providers, {
+          compiledContract: unshieldedContract,
+          contractAddress,
+          circuitId: 'getUnshieldedBalanceTest',
+          args: [secondColour]
+        });
+
+        // Assert: a second held colour at a different amount, so the per-key
+        // lookup is load-bearing. With one colour, a map that ignored its key
+        // would pass.
+        expect(txData.public.status).toBe(SucceedEntirely);
+        expect(txData.private.result).toEqual(SECOND_MINT_AMOUNT);
+      },
+      SLOW_TEST_TIMEOUT
+    );
+
+    test(
       'reads zero for a colour the contract never held',
       async () => {
         // Act.
@@ -213,8 +287,9 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
           args: [NEVER_MINTED_COLOUR]
         });
 
-        // Assert: a control for the rig, NOT a second reading of the balance -- an
-        // unheld colour agrees with the node either way.
+        // Assert: a control, NOT a second reading of the balance -- an unheld colour
+        // agrees with the node whether or not the balance crossed. What it does kill
+        // is a balance map whose keys collapse: that returns MINT_AMOUNT here.
         expect(txData.public.status).toBe(SucceedEntirely);
         expect(txData.private.result).toEqual(0n);
       },
@@ -236,19 +311,74 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
           (reason: unknown) => reason
         );
 
-        // Assert: a seam refusal, not any rejection -- an import fault or a timeout
-        // must not certify that the ledger checks balances. `proveTx` cannot.
+        // Assert: the NODE refused it, at `submitTx`. Measured, and pinned exactly
+        // rather than as an alternation, because the seam is what discriminates
+        // here: the wallet funds the fee and balances this transaction happily, so
+        // every wallet-local fault -- a failed ledger import, an unfunded wallet,
+        // a balancer fault -- surfaces one seam earlier, at `balanceTx`, and no
+        // longer satisfies this. The refusal moving seams is itself worth a red.
+        //
+        // The provider's own reason is not usable: it reaches `cause` as a generic
+        // `SubmissionError: Transaction submission error`, with no balance text to
+        // match on. The seam plus the successful send below is what separates "the
+        // ledger compared the amount" from "retained sends fail".
         expect(rejection).toBeInstanceOf(Ledger8.SeamFailedError);
         expect(
           rejection instanceof Ledger8.SeamFailedError
             ? { circuitId: rejection.circuitId, seam: rejection.seam }
             : rejection
-        ).toEqual({
-          circuitId: 'sendUnshieldedToUserTest',
-          seam: expect.stringMatching(/^(?:balanceTx|submitTx)$/)
-        });
+        ).toEqual({ circuitId: 'sendUnshieldedToUserTest', seam: 'submitTx' });
       },
       SLOW_TEST_TIMEOUT
+    );
+
+    // LAST, because it is the only test here that moves the balance. Everything
+    // above reads what `beforeAll` minted.
+    //
+    // Without it the refusal above proves nothing: a pipeline where EVERY retained
+    // send failed -- effects dropped, unshielded outputs misassembled -- would
+    // refuse the oversized one too, for the wrong reason, and stay green.
+    test(
+      'sends part of the balance and reads the remainder back',
+      async () => {
+        // Arrange: read what the contract holds rather than assuming it, so this
+        // does not depend on the order the tests above ran in.
+        const before = await submitCallTx(providers, {
+          compiledContract: unshieldedContract,
+          contractAddress,
+          circuitId: 'getUnshieldedBalanceTest',
+          args: [mintedColour]
+        });
+        const held = before.private.result;
+        if (typeof held !== 'bigint') {
+          throw new Error(`getUnshieldedBalanceTest returned ${typeof held}, expected the balance as a bigint`);
+        }
+        expect(held).toBeGreaterThan(SEND_AMOUNT);
+
+        // Act.
+        const sent = await submitCallTx(providers, {
+          compiledContract: unshieldedContract,
+          contractAddress,
+          circuitId: 'sendUnshieldedToUserTest',
+          args: [mintedColour, SEND_AMOUNT, { bytes: userAddressBytes }]
+        });
+
+        // Assert: admitted, and the balance the next call reads back followed it.
+        // The retained result carries no `unshielded` movement summary -- that is a
+        // current-era member -- so the delta is what shows the send landed on the
+        // chain rather than merely being accepted.
+        expect(sent.public.status).toBe(SucceedEntirely);
+
+        const after = await submitCallTx(providers, {
+          compiledContract: unshieldedContract,
+          contractAddress,
+          circuitId: 'getUnshieldedBalanceTest',
+          args: [mintedColour]
+        });
+        expect(after.public.status).toBe(SucceedEntirely);
+        expect(after.private.result).toEqual(held - SEND_AMOUNT);
+      },
+      VERY_SLOW_TEST_TIMEOUT
     );
   });
 
@@ -283,8 +413,9 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
           args: [pastTime]
         });
 
-        // Assert: a pipeline leaving `secondsSinceEpoch` at its default fails this
-        // locally, before any transaction exists.
+        // Assert: a pipeline handing the circuit a zero block time fails this
+        // locally, before any transaction exists. The retained runtime stamps a
+        // wall clock of its own, so this holds unless something drops the field.
         expect(txData.public.status).toBe(SucceedEntirely);
       },
       SLOW_TEST_TIMEOUT
@@ -304,6 +435,6 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
           args: [futureTime]
         })
       ).rejects.toThrow('Block time is <= time');
-    });
+    }, SLOW_TEST_TIMEOUT);
   });
 });
