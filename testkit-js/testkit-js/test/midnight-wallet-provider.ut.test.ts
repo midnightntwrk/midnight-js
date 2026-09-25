@@ -169,15 +169,20 @@ describe('MidnightWalletProvider', () => {
   });
 
   // `ledger-v8` is installed twice, under both npm scopes, and the two copies'
-  // classes refuse each other. No other test notices, because each loads one copy.
+  // classes refuse each other.
   // @see docs/architecture/retained-era-coverage.md
   describe('the ledger the retained arm deserializes with', () => {
-    it('is the one the wallet SDK itself carries, not this repository\'s own copy', async () => {
+    it('is the module the wallet SDK publishes, so a revert to another copy fails here', async () => {
       // Arrange / Act.
       const deserializer = await retainedLedger();
 
       // Assert: identity, not structural equality -- the copies are structurally
       // identical, which is why this went unseen.
+      //
+      // What this CANNOT prove: that the SDK links that copy internally. Both
+      // sides name the same specifier, so the identity holds by construction and
+      // the test fails for exactly one reason -- production naming a different
+      // module. That reason is the regression, which is why it is worth pinning.
       expect(deserializer.Transaction).toBe(walletSdkLedger8.Transaction);
     });
   });

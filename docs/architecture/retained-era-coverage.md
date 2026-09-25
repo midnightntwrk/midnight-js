@@ -1,7 +1,7 @@
 # Retained-era coverage outside the fork lane
 
 Covers `testkit-js/testkit-js-e2e/test/retained-call.v8era.it.test.ts`, the twin artifacts under
-`testkit-js/testkit-js-e2e/src/contract/compiled-retained/`, the build step that produces them
+`testkit-js/testkit-js-e2e/src/contract/compiled-retained/`, the build step that finishes them
 (`testkit-js/testkit-js-e2e/scripts/rewrite-retained-runtime.mjs`), and the ledger instance
 `testkit-js/testkit-js/src/wallet/wallet-transaction.ts` deserializes retained payloads with.
 
@@ -25,16 +25,25 @@ and its own ledger fields is era-independent and already pinned by unit goldens,
 
 Two twins are built:
 
-| twin | field it reads | why it is here |
+| twin | field it reads | what it is for |
 |---|---|---|
-| `unshielded` | `CallContext.balance` (slot 5) | the field #1345 was about |
-| `block-time` | `CallContext.secondsSinceEpoch` (slot 2) | the same glue function does populate this one |
+| `unshielded` | `CallContext.balance` (slot 5) | the field #1345 was about, and the only one this framework carries |
+| `block-time` | `CallContext.secondsSinceEpoch` (slot 2) | a second artifact set through deploy, prove, balance and admission |
 
-They are a matched pair. A run where both go red at once indicates the harness, not the pipeline.
+**Only `balance` is carried by this framework.** `packages/protocol/src/lib/v8/execute.ts` calls
+`createCircuitContext` without the optional `time` argument, and `compact-runtime@0.16`'s
+`createInitialQueryContext` then stamps `secondsSinceEpoch: BigInt(time ?? Date.now() / 1000)` from
+its own clock while leaving `balance` an empty map for a `ChargedState` input. That asymmetry *is*
+#1345.
+
+So `block-time` is not a second reading of the same plumbing. It is a smoke test for a second
+retained artifact set, and it exercises the circuit-`assert` rejection path. It still earns its
+place — a single twin cannot distinguish "this contract works" from "retained contracts work" — but
+no pipeline regression can move the field it reads.
 
 `shielded`, `shielded-fallible` and `fee-mint` are deliberately deferred: they add `comIndices`,
-the transcript partition and the heaviest effects shape, at 32 MB, 73 MB and 146 MB of prover keys
-respectively. `events` can never have a retained twin — `emit` is not a language-0.23 form.
+the transcript partition and the heaviest effects shape, at 31 MiB, 73 MiB and 146 MiB of prover
+keys respectively. `events` can never have a retained twin — `emit` is not a language-0.23 form.
 
 ### What the assertions have to be
 
@@ -45,23 +54,37 @@ from "the network refused".
 
 Measured, both against a live node 1.0.0 chain:
 
-- with the balance carried (`#1349`), the whole file is 8/8;
+- with the balance carried (`#1349`), the whole file is 11/11;
 - with `block.balance` reverted to an empty map, exactly one test fails —
-  `SubmissionError` in 2 s on the balance read — and the other seven stay green.
+  `SubmissionError` in 2 s on the balance read — and the rest stay green.
 
 The unheld-colour control passes in **both** runs, and that is the point of keeping it: a colour the
 contract never held is absent from the real balance map too, so it agrees with the node whether or
-not the pipeline carried anything. On its own it would certify nothing.
+not the pipeline carried anything. It says nothing about #1345 — but it is the only assertion that
+kills a balance map whose keys collapse, which would answer `MINT_AMOUNT` for every colour.
 
 The same trap applies to the over-send control. An unshielded send of more than the contract holds
 is **accepted** when the recipient is the contract itself — nothing moves outward, so nothing makes
 the ledger compare the amount against the standing balance. The assertion names the wallet as
 recipient for that reason.
 
+That control is still only half a pair. A pipeline where *every* retained send failed would refuse
+the oversized one too, for the wrong reason, and stay green — so the file also sends a part of the
+balance successfully and reads the remainder back. The retained result carries no `unshielded`
+movement summary (a current-era member), so the balance delta is what shows the send reached the
+chain rather than merely being accepted.
+
+The refusal is pinned to the **`submitTx`** seam exactly, not to an alternation. Measured: the wallet
+funds the fee and balances an oversized send happily, and the node refuses it at apply time. So every
+wallet-local fault — a failed ledger import, an unfunded wallet, a balancer fault — surfaces one seam
+earlier and no longer satisfies the assertion. The provider's own reason is not usable for this: it
+reaches `cause` as a generic `SubmissionError: Transaction submission error`, with no balance text to
+match on.
+
 ## Why the twins are committed, and held apart from `compiled/`
 
-Compiled contract artifacts are committed in this repository (384 MB under
-`testkit-js/testkit-js-e2e/src/contract/compiled/`), so committing 11.3 MB of twins follows the
+Compiled contract artifacts are committed in this repository (383 MiB under
+`testkit-js/testkit-js-e2e/src/contract/compiled/`), so committing 11 MiB of twins follows the
 house pattern and needs no CI change — every job checks the repository out.
 
 They live in a **sibling** directory rather than under `compiled/` because the build job uploads
@@ -126,8 +149,8 @@ This is not a fork defect and not specific to the pre-fork lane. It is reached b
 deploy or call made from inside the workspace, on either side of the boundary, and it had never been
 observed because nothing in the workspace had ever made one. The `Hard fork` lane is not a
 counter-example: `consumer-e2e` personas install outside the repository under an isolated linker,
-where the same alias *does* collapse the two names, and `consumer-e2e/personas.mjs` documents that
-it relies on exactly this.
+where the same alias *does* collapse the two names. `consumer-e2e/personas.mjs` documents the alias
+and why it is needed; the isolated linker is what the lane actually runs under.
 
 The rule the fix follows: **an ADR-0006 seam carries bytes so that the receiver inflates them with
 its own module.** Everything these two functions build is for the wallet SDK, so they load the SDK's
@@ -135,8 +158,9 @@ copy, through the SDK's own `./ledger/v8` subpath — by definition whichever co
 uses, so it cannot drift if the SDK finishes the scope migration. `packages/protocol`'s copy stays
 where it belongs: retained execution, which never hands a handle across this seam.
 
-Repointing protocol's `v8` re-export at the SDK's copy turned the retained e2e file from 0/5 to 8/8,
-which is what identified the cause; the shipped fix is the narrower one above.
+Repointing protocol's `v8` re-export at the SDK's copy took the retained e2e file from every deploy
+refused to fully green, which is what identified the cause; the shipped fix is the narrower one
+above.
 
 A unit test pins the module identity, because the two copies are structurally identical and no
 existing test loaded both.
