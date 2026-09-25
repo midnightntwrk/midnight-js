@@ -23,6 +23,7 @@ type Op<T> = OnchainRuntimeV3.Op<T>;
 
 import type { EncodedStateValue } from '../era/envelope';
 import type { PartitionContext } from '../shared/compose-types';
+import { type ContractBalance, describeValue, isContractBalance } from '../shared/contract-state';
 import type { DownConvertedState } from './down-convert';
 
 /**
@@ -191,6 +192,15 @@ export interface ExecuteCircuitOptions {
   readonly address: string;
   readonly coinPk: string;
   readonly privateState: unknown;
+  /**
+   * The balances the contract holds on chain, which `state` does not carry.
+   *
+   * REQUIRED rather than defaulted; a contract that holds nothing passes an
+   * empty map explicitly.
+   *
+   * @see {@link RetainedEraExecution}
+   */
+  readonly balance: ContractBalance;
 }
 
 /**
@@ -203,16 +213,30 @@ export interface ExecuteCircuitOptions {
  * for the caller to turn into the transaction's Zswap offer.
  *
  * @param options The contract module, circuit id, arguments, down-converted
- *   state, contract address, coin public key and private state.
+ *   state, contract address, coin public key, private state and the balances
+ *   the contract holds.
  * @param ledger8Runtime The injected pre-fork glue slice.
  * @returns Every artifact a v9-native call prototype needs.
  * @throws Error A plain `Error` — not a {@link PROTOCOL_ERROR_CODES}-carrying
  *   class — when `circuitId` names no entry point on
- *   `contract.impureCircuits`.
+ *   `contract.impureCircuits`, or when `balance` is absent, is not a map, or
+ *   carries entries that are not a colour keyed against a `bigint` amount.
  * @see {@link RetainedEraExecution}
  */
 export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: Ledger8ExecutionRuntime): TranscriptPojo => {
-  const { contract, circuitId, args, state, address, coinPk, privateState } = options;
+  const { contract, circuitId, args, state, address, coinPk, privateState, balance } = options;
+  // Checked at runtime because `tsc` reaches neither a JavaScript caller nor an
+  // options object assembled dynamically, and every substitution `new Map(...)`
+  // accepts -- absent, an empty array, an empty `Set` -- yields an empty
+  // balance. @see RetainedEraExecution
+  if (!isContractBalance(balance)) {
+    throw new Error(
+      `executeCircuit requires 'balance' for circuit '${circuitId}', as a Map — received ${describeValue(balance)}. ` +
+        "Read it from the same contract-state snapshot as 'state' (ContractStatePojo.balance); " +
+        'a contract that holds nothing passes an empty Map explicitly. A JSON round trip turns a Map into a ' +
+        'plain object and is refused here; use structuredClone.'
+    );
+  }
   const circuit = Object.hasOwn(contract.impureCircuits, circuitId) ? contract.impureCircuits[circuitId] : undefined;
   if (typeof circuit !== 'function') {
     throw new Error(
@@ -229,9 +253,17 @@ export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: L
     undefined,
     ledger8Runtime.CostModel.initialCostModel()
   );
+  // BEFORE the circuit runs, and copied rather than shared, so an entry the
+  // caller adds or removes afterwards cannot reach a running circuit. The copy
+  // is SHALLOW: the amounts are `bigint`s and carry by value, the colour keys
+  // stay the caller's own objects. `block` survives the context swaps the glue
+  // performs on every ledger query and every registered coin, both pinned by
+  // `v8-execute.test.ts`. @see RetainedEraExecution
+  ctx.currentQueryContext.block = { ...ctx.currentQueryContext.block, balance: new Map(balance) };
   // Read BEFORE the circuit runs. The glue swaps `currentQueryContext` for a
-  // new context on every coin it registers, so after the call this object no
-  // longer answers for the context the call started from.
+  // new context on every ledger query and on every coin it registers -- the
+  // same two sites named above -- so after the call this object no longer
+  // answers for the context the call started from.
   const preCallBlock = ctx.currentQueryContext.block;
   const preCallEffects = ctx.currentQueryContext.effects;
   const res = circuit(ctx, ...args);

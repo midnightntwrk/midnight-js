@@ -135,7 +135,9 @@ const runIncrement = async (): Promise<{
     state: { data: initial.currentContractState.data },
     address,
     coinPk: SAMPLE_COIN_PUBLIC_KEY,
-    privateState: {}
+    privateState: {},
+    // Freshly constructed, so it holds nothing.
+    balance: new Map()
   });
 
   return { entry: callEntryFromTranscript(transcript, address), address };

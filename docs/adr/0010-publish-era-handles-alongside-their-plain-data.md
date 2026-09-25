@@ -215,3 +215,37 @@ guarded: `era-parity.test.ts` asserts it rejects a collapsed-handle shape that
 the previous form accepted, and a handle behind a `Set`, behind a `Map` value,
 and used as a `Map` key — each with the path in the message, so a dead walk
 cannot stay green.
+
+## Amendment — the decoded pojo now carries the contract balance (2026-09-24)
+
+The decision above stands unchanged. This note records a **breaking** addition
+to the plain-data side of it, and why the rule permitted it.
+
+`ContractStatePojo` gains a required `balance` member, and
+`ExecuteCircuitOptions` — the retained engine's `executeCircuit` option bag,
+published from the barrel and from the `./engine` subpath — gains a required
+`balance` option. Both are additive in shape and breaking in practice: a
+consumer that builds an `ExecuteCircuitOptions` by hand stops compiling, and one
+that builds a `ContractStatePojo` by hand does too.
+
+**Why it belongs on the plain-data side.** The balance is a
+`ReadonlyMap<TokenType, bigint>` keyed by string-tagged objects. Nothing in it
+is a live WASM handle, so it satisfies the transport rule the same way the
+encoded state and the entry points do, and it is guarded by the same walk — the
+`expectStructuredCloneable` assertion in `shared-contract-state.test.ts` is made
+on the balance itself, not only on the pojo containing it.
+
+**Why the option is required rather than defaulted.** An empty balance is a
+legitimate value: a contract holding nothing has one. Defaulting would make
+"holds nothing" indistinguishable from "the caller did not carry one", and the
+second answers every balance read with zero — a transcript the chain refuses,
+because it re-runs the read against the balance the contract really holds. That
+is the defect this amendment's change fixes (#1345). The same reasoning applies
+to the decoder: `decodeContractStateWith` refuses a state that resolves no
+usable balance rather than substituting an empty map.
+
+**What this does NOT change.** `maintenanceAuthority` stays absent from
+`DecodableContractState` for the reason it always was — nothing reads it off a
+decoded state. The addition here is not a general licence to carry ledger fields
+"in case"; it is the one field an execution path demonstrably could not run
+without.

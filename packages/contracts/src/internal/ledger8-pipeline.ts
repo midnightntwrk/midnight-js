@@ -28,6 +28,7 @@
  */
 
 import type {
+  ContractBalance,
   ContractStatePojo,
   DeployResultPojo,
   DownConvertedState,
@@ -145,6 +146,12 @@ export interface Ledger8ExecuteRequest<TState> {
   readonly address: string;
   readonly coinPk: string;
   readonly privateState: unknown;
+  /**
+   * The balances the contract holds on chain, which `state` does not carry:
+   * the ledger keeps them beside the primary state, and the down-converted
+   * value is the primary state alone.
+   */
+  readonly balance: ContractBalance;
 }
 
 /**
@@ -589,7 +596,11 @@ export const runLedger8CallPipeline = async <TState>(
     state: downConverted,
     address: contractAddress,
     coinPk: request.coinPublicKey,
-    privateState: request.privateState
+    privateState: request.privateState,
+    // From the SAME read as the state above, for the same reason the ledger
+    // parameters are: a balance from another block describes a contract this
+    // call is not binding to.
+    balance: snapshot.decoded.balance
   });
 
   // Refused BEFORE the offer is built, and before anything is composed: this

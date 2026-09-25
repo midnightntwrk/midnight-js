@@ -16,7 +16,7 @@
 import type { ContractCallPrototype } from '@midnightntwrk/ledger-v9';
 
 import type { EncodedStateValue } from '../era/envelope';
-import type { ContractEntryPointPojo } from '../shared/contract-state';
+import type { ContractBalance, ContractEntryPointPojo } from '../shared/contract-state';
 import { reexpressOperationsForCurrentEra } from '../v9/operations';
 import { wrapKeepStateCall, type WrapKeepStateCallOptions } from '../v9/wrap';
 import {
@@ -39,6 +39,7 @@ import { assertSharedLedger8Instance } from './instance-guard';
 
 export type {
   ConstructorResultPojo,
+  ContractBalance,
   ContractEntryPointPojo,
   DownConvertedState,
   EncodedStateValue,

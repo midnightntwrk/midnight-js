@@ -93,6 +93,11 @@ describe('Protocol type ACL', () => {
       // vocabulary does: both name parameters and results of `Ledger8Engine`
       // methods, which the barrel publishes.
       'ConstructorResultPojo',
+      // The balances a contract holds, published because they are a member of
+      // `ContractStatePojo` and a REQUIRED option of the engine's
+      // `executeCircuit`: a consumer driving the retained arm cannot name what
+      // it has to carry without this.
+      'ContractBalance',
       'ContractEntryPointPojo',
       'ContractStatePojo',
       // The current/retained split of `LedgerVersion`, published beside it:
@@ -147,6 +152,10 @@ describe('Protocol type ACL', () => {
     // callable by a consumer that imports the engine through its own subpath.
     expect(engineTypeNames).toEqual([
       'ConstructorResultPojo',
+      // `executeCircuit` takes a REQUIRED `balance` of this type, so a consumer
+      // that imports the engine through its own subpath cannot name what it has
+      // to carry without it -- the same argument as `ContractEntryPointPojo`.
+      'ContractBalance',
       'ContractEntryPointPojo',
       'DownConvertedState',
       'EncodedStateValue',

@@ -46,7 +46,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { ComposeCallOptions, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import type { ComposeCallOptions, ContractBalance, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { expect } from 'vitest';
@@ -57,6 +57,7 @@ import type {
   Ledger8Transcript
 } from '../internal/ledger8-pipeline';
 import type { CoinReceiver016Coin } from './ledger8-fixture-types';
+import type { Assert } from './type-assertions';
 
 // The fixture tree lives in testkit-js because that is where it is produced and
 // where the e2e suites consume it. Reached by RELATIVE path, never through
@@ -232,7 +233,6 @@ type SynthesizedMember = 'postContractState';
 
 type TranscriptMember = (typeof TRANSCRIPT_MEMBERS)[number] | SynthesizedMember;
 
-type Assert<T extends true> = T;
 type _EveryMemberListed = Assert<
   [Exclude<keyof Ledger8Transcript<ReplayState>, TranscriptMember>] extends [never] ? true : false
 >;
@@ -337,6 +337,16 @@ export interface ReplayExpectations {
   /** The private state the pipeline must have handed the engine. */
   readonly privateState?: unknown;
   /**
+   * The contract BALANCE the pipeline must have handed the engine.
+   *
+   * It does not travel with the primary state — ledger-v8 keeps it on
+   * `ContractState.balance`, and the state this pipeline down-converts carries
+   * only `.data`. An engine that never receives it executes every circuit
+   * against an empty balance, so a circuit reading one back sees zero and the
+   * chain refuses the transcript it produced.
+   */
+  readonly balance?: ContractBalance;
+  /**
    * The private state the pipeline must have handed the CONSTRUCTOR. Separate
    * from the circuit's, because a deploy's is the caller's `initialPrivateState`
    * — `undefined` when none was supplied — where a call's is what the provider
@@ -414,6 +424,9 @@ export const createReplayEngine = (
     );
     if (expectations !== undefined && 'privateState' in expectations) {
       expect(options.privateState).toEqual(expectations.privateState);
+    }
+    if (expectations !== undefined && 'balance' in expectations) {
+      expect(options.balance).toEqual(expectations.balance);
     }
     // The post-call state the real engine answers with is a live handle; the
     // double mints a marker DISTINCT from the down-converted one, so a test can

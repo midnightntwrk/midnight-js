@@ -75,7 +75,10 @@ const runReceiveCoin = async (): Promise<TranscriptPojo> => {
       state: { data: initial.currentContractState.data },
       address: ocrt3.dummyContractAddress(),
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: {}
+      privateState: {},
+      // Freshly constructed, so it holds nothing. The coin this circuit receives
+      // arrives as an ARGUMENT; it is not a standing balance until a later block.
+      balance: new Map()
     },
     ledger8Runtime
   );

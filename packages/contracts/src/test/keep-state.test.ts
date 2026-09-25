@@ -37,7 +37,14 @@ import { readFileSync } from 'node:fs';
 
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import { type ComposeCallOptions, type LedgerEra, loadLedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import {
+  type ComposeCallOptions,
+  type ContractBalance,
+  type DownConvertedState,
+  type ExecuteCircuitOptions,
+  type LedgerEra,
+  loadLedgerEra
+} from '@midnight-ntwrk/midnight-js-protocol';
 import { ContractState, LedgerParameters, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type RawContractState,
@@ -55,7 +62,7 @@ import {
   LedgerParametersUnservedError,
   RetainedArtifactOnCurrentEraStateError
 } from '../errors';
-import { runLedger8CallPipeline } from '../internal/ledger8-pipeline';
+import { type Ledger8ExecuteRequest, runLedger8CallPipeline } from '../internal/ledger8-pipeline';
 import { createEncryptionPublicKeyResolver } from '../internal/utils';
 import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx } from '../submit-call-tx';
@@ -74,6 +81,7 @@ import {
   txTagPrefix
 } from './ledger8-replay';
 import { createMockFinalizedTxData, createMockProviders } from './test-mocks';
+import type { Assert, MutuallyAssignable } from './type-assertions';
 
 // See `./v8-native.test.ts` for both redirects: the artifact's own runtime
 // check needs an import-time stub, and the retained engine acquisition is
@@ -314,6 +322,57 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // the fallible half' for the other direction.
     expect(result.guaranteedZswapOffer).toBeInstanceOf(Uint8Array);
     expect(result.fallibleZswapOffer).toBeUndefined();
+  });
+
+  // The balance is the one part of the chain state the down-converted value
+  // cannot carry: it lives beside `.data` on the ledger's own `ContractState`.
+  // Without this the engine ran every circuit against an empty balance, and the
+  // only thing that caught it was the node refusing the resulting transcript.
+  //
+  // THE HOLDING IS STUBBED ONTO THE DECODER, and both halves of that matter.
+  // The committed envelope holds NOTHING -- every `.hex` fixture in this repo
+  // does -- so an expectation read off it would be an empty map, and the
+  // regression this test is named for, a pipeline hard-coding `new Map()`,
+  // would satisfy it. And the expected map is written HERE as a literal rather
+  // than taken from `decodeContractState`, because deriving it from the very
+  // function the pipeline calls would satisfy the assertion whatever that
+  // function returned. What is under test is the PIPELINE's carrying, so the
+  // decoder is the seam to stub; that the real decoder reads a real retained
+  // balance is `shared-contract-state.test.ts`'s claim, not this one's.
+  it('hands the engine the contract balance the chain state declares, not an empty one', async () => {
+    const log: OrchestrationLog = [];
+    const providers = postForkProviders(v6Envelope);
+    const heldColour = { tag: 'unshielded', raw: 'ab'.repeat(32) } as const;
+    const held: ContractBalance = new Map([[heldColour, 1_000n]]);
+    const retainedEraHolding: LedgerEra = {
+      ...retainedEra,
+      decodeContractState: (raw) => ({ ...retainedEra.decodeContractState(raw), balance: held })
+    };
+
+    await runLedger8CallPipeline<ReplayState>({
+      era: currentEra,
+      retainedEra: retainedEraHolding,
+      engine: createReplayEngine(recording, log, undefined, { balance: held }),
+      publicDataProvider: providers.publicDataProvider,
+      head: 'v9',
+      contract,
+      contractAddress: recording.contractAddress,
+      circuitId: CIRCUIT_ID,
+      args: [recording.receivedCoin],
+      coinPublicKey: recording.coinPublicKey,
+      privateState: {},
+      localVerifierKey: STAND_IN_VERIFIER_KEY,
+      networkId: NETWORK_ID,
+      ttl: new Date(Date.now() + 3_600_000),
+      encryptionPublicKey: createEncryptionPublicKeyResolver(
+        recording.coinPublicKey,
+        providers.walletProvider.getEncryptionPublicKey()
+      )
+    });
+
+    // The engine double asserts the VALUE as it receives it; this pins that the
+    // step ran at all, so a double that was never called cannot read as a pass.
+    expect(log).toContain('engine.executeCircuit');
   });
 
   it('REFUSES a finalized record from the era the head it composed on had already left', async () => {
@@ -584,3 +643,24 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });
 });
+
+// `Ledger8ExecutionEngine.executeCircuit` uses METHOD syntax deliberately, so
+// its parameters compare BIVARIANTLY: the real engine satisfies the slice
+// whether or not `Ledger8ExecuteRequest` declares every option the engine
+// requires. Dropping `balance` from the interface would leave the pipeline
+// compiling while it silently stopped passing one, and the only thing between
+// that and #1345 recurring would be the engine's own runtime guard.
+//
+// Whole-interface assignability is NOT the pin: `Ledger8ExecuteRequest.contract`
+// is deliberately the wider slice, so the request is not assignable to the
+// engine's options and never was. What has to hold is that the request NAMES
+// every option the engine requires, and agrees with it on the one this file is
+// about.
+type _RequestNamesEveryEngineOption = Assert<
+  [Exclude<keyof ExecuteCircuitOptions, keyof Ledger8ExecuteRequest<DownConvertedState>>] extends [never]
+    ? true
+    : false
+>;
+type _RequestAgreesOnTheBalance = Assert<
+  MutuallyAssignable<Ledger8ExecuteRequest<DownConvertedState>['balance'], ExecuteCircuitOptions['balance']>
+>;
