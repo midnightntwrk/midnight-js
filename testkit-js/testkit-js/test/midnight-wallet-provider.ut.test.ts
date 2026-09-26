@@ -29,6 +29,7 @@ import {
   type WalletFacade,
   WalletTransaction
 } from '@midnightntwrk/wallet-sdk';
+import * as walletSdkLedger8 from '@midnightntwrk/wallet-sdk/ledger/v8';
 import { pino } from 'pino';
 import * as Rx from 'rxjs';
 
@@ -36,6 +37,7 @@ import type { EnvironmentConfiguration } from '../src/test-environment/environme
 import { MidnightWalletProvider } from '../src/wallet/midnight-wallet-provider';
 import { FORK_SCHEDULE } from '../src/wallet/wallet-configuration-mapper';
 import { WalletSeeds } from '../src/wallet/wallet-seed';
+import { retainedLedger } from '../src/wallet/wallet-transaction';
 
 // Two versions, one on each side of the fork. The retained one is what the
 // refusal-is-gone tests run at; the current one is what the v9 arm needs, since
@@ -163,6 +165,25 @@ describe('MidnightWalletProvider', () => {
       expect(rejection).toBeDefined();
       expect(rejection).not.toBeInstanceOf(V8PayloadUnsupportedError);
       expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(false);
+    });
+  });
+
+  // `ledger-v8` is installed twice, under both npm scopes, and the two copies'
+  // classes refuse each other.
+  // @see docs/architecture/retained-era-coverage.md
+  describe('the ledger the retained arm deserializes with', () => {
+    it('is the module the wallet SDK publishes, so a revert to another copy fails here', async () => {
+      // Arrange / Act.
+      const deserializer = await retainedLedger();
+
+      // Assert: identity, not structural equality -- the copies are structurally
+      // identical, which is why this went unseen.
+      //
+      // What this CANNOT prove: that the SDK links that copy internally. Both
+      // sides name the same specifier, so the identity holds by construction and
+      // the test fails for exactly one reason -- production naming a different
+      // module. That reason is the regression, which is why it is worth pinning.
+      expect(deserializer.Transaction).toBe(walletSdkLedger8.Transaction);
     });
   });
 

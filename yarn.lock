@@ -2208,6 +2208,7 @@ __metadata:
     allure-vitest: "npm:^3.10.2"
     axios: "npm:^1.16.1"
     buffer: "npm:^6.0.3"
+    compact-runtime-ledger8: "npm:@midnight-ntwrk/compact-runtime@0.16.0"
     cross-fetch: "npm:^4.1.0"
     pino: "npm:^10.3.1"
     pino-pretty: "npm:^13.1.3"
