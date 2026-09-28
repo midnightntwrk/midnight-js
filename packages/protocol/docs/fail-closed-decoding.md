@@ -216,7 +216,30 @@ that are not valid UTF-8 both resolve to the replacement character), and a
 name-keyed result would silently drop one of them. An array leaves both visible
 to a caller that has to reconcile them.
 
-**`maintenanceAuthority` and `balance` are deliberately absent** from
+**`maintenanceAuthority` is deliberately absent** from
 `DecodableContractState`, the slice of a ledger `ContractState` this decoder
-reads: nothing in this framework reads them off a decoded state, and a field
+reads: nothing in this framework reads it off a decoded state, and a field
 carried "in case" becomes a field a caller depends on.
+
+**`balance` is refused when it is not a map.** `decodeContractStateWith` reads
+`decoded.balance` exactly once and checks that it answers the `ReadonlyMap`
+surface before copying it. Once, because a decoder is injectable and one that
+answers with a fresh object per access would have the guard validate one map and
+the copy take another. Checked, because `new Map(...)` turns an absent value, an
+empty array, an empty `Set` and an empty string alike into an empty map — which
+is indistinguishable from a contract that holds nothing, and is the substitution
+#1345 was made of. The check is structural rather than `instanceof Map`, so a
+map from another realm is still accepted; it covers the entries as well as the
+container, because a map of the wrong entry types passes every structural clause
+and then produces the same silent wrong answer one layer in; and it answers
+rather than throws for a proxied map or a prototype-only object, both of which
+make `Map.prototype`'s members reject the receiver.
+
+**`balance` is read, and was not always.** It was excluded on the same reasoning
+until the retained-era execution path turned out to need it: the balances a
+circuit reads arrive through `CallContext.balance`, which the caller has to
+carry, and the down-converted state carries only `.data`. With the field absent
+there was nothing for a caller to carry, so every retained-era circuit executed
+against an empty balance and read every balance back as zero — silently, until
+the node refused the transcript that produced it (#1345). It is plain data, so it
+crosses an era boundary like every other member.
