@@ -2,14 +2,14 @@
 
 ***
 
-[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [types](../README.md) / ProofProviderArms
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-types](../../README.md) / [index](../README.md) / ProofProviderHandlers
 
-# Interface: ProofProviderArms
+# Interface: ProofProviderHandlers
 
-The per-era arms [createProofProviderFromArms](../variables/createProofProviderFromArms.md) assembles a
+The per-era handlers [createProofProviderFromHandlers](../functions/createProofProviderFromHandlers.md) assembles a
 [ProofProvider](ProofProvider.md) from.
 
-Writing the arms rather than the whole interface means an implementation
+Writing the handlers rather than the whole interface means an implementation
 never writes a `version` tag, never narrows a payload, and cannot answer in
 the wrong era — the factory routes each request to its own era's arm and tags
 the answer to match. What is left in each arm is the proving itself.
