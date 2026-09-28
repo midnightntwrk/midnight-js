@@ -21,17 +21,28 @@ retained toolchain has been acquired.
 
 ### downConvertForExecution()
 
-> **downConvertForExecution**(`state`): [`DownConvertedState`](DownConvertedState.md)
+> **downConvertForExecution**(`contractState`): [`ExecutableContractState`](ExecutableContractState.md)
+
+Down-converts a decoded contract state for retained-era execution, carrying
+its balance with it.
+
+Takes the DECODED state rather than the extracted `EncodedStateValue`: the
+balance a circuit reads is not part of the primary state, and as a separate
+argument it could come off a different read.
 
 #### Parameters
 
-##### state
+##### contractState
 
-[`EncodedStateValue`](https://github.com/midnightntwrk/midnight-ledger)
+[`ContractStatePojo`](ContractStatePojo.md)
 
 #### Returns
 
-[`DownConvertedState`](DownConvertedState.md)
+[`ExecutableContractState`](ExecutableContractState.md)
+
+#### See
+
+toExecutableState
 
 ***
 

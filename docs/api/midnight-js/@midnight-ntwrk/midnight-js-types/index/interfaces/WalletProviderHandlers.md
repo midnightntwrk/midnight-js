@@ -2,14 +2,14 @@
 
 ***
 
-[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [types](../README.md) / WalletProviderArms
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-types](../../README.md) / [index](../README.md) / WalletProviderHandlers
 
-# Interface: WalletProviderArms
+# Interface: WalletProviderHandlers
 
-The per-era arms [createWalletProviderFromArms](../variables/createWalletProviderFromArms.md) assembles a
+The per-era handlers [createWalletProviderFromHandlers](../functions/createWalletProviderFromHandlers.md) assembles a
 [WalletProvider](WalletProvider.md) from.
 
-The two key readers sit beside the arms rather than inside one: a coin public
+The two key readers sit beside the handlers rather than inside one: a coin public
 key and an encryption public key are properties of the wallet, not of the era
 a transaction belongs to, and duplicating them per era would invite two
 answers to one question.
