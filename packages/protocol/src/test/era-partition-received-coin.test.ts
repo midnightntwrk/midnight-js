@@ -16,7 +16,6 @@
 import { readFileSync } from 'node:fs';
 
 import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
-import { CompiledContract } from '@midnight-ntwrk/compact-js/v8/effect';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
@@ -44,7 +43,7 @@ const REGISTERED_VERIFIER_KEY = readFileSync(fixturePath('twin-contract', 'compi
 interface CompiledReceiverContract extends CompactContract.Contract<Record<string, never>> {
   initialState(constructorContext: ConstructorContext<Record<string, never>>): {
     currentPrivateState: Record<string, never>;
-    currentContractState: { serialize(): Uint8Array };
+    currentContractState: { data: ocrt3.ChargedState };
   };
 }
 
@@ -70,22 +69,15 @@ const runReceiveCoin = async (): Promise<TranscriptPojo> => {
   const contract = new Contract({});
   const initial = contract.initialState(ledger8Runtime.createConstructorContext({}, SAMPLE_COIN_PUBLIC_KEY));
 
-  const compiled = CompiledContract.make<CompiledReceiverContract, Record<string, never>>(
-    'coin-receiver-016',
-    Contract
-  ).pipe(
-    CompiledContract.withVacantWitnesses,
-    CompiledContract.withCompiledFileAssets(fixturePath('coin-receiver-016', 'compiled'))
-  );
 
   return runRetainedCircuit({
-    compiledContract: compiled,
+    contract,
     circuitId: CIRCUIT_ID,
     args: [RECEIVED_COIN],
     // Freshly constructed, so the contract holds nothing. The coin this circuit
     // receives arrives as an ARGUMENT; it is not a standing balance until a
     // later block.
-    contractStateBytes: initial.currentContractState.serialize(),
+    contractState: { state: initial.currentContractState.data.state.encode(), balance: new Map(), entryPoints: [] },
     address: ocrt3.dummyContractAddress(),
     coinPk: SAMPLE_COIN_PUBLIC_KEY,
     privateState: {}

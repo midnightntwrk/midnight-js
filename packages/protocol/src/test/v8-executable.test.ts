@@ -26,11 +26,13 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
-import { CompiledContract } from '@midnight-ntwrk/compact-js/v8/effect';
 import { Effect } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ComposeOptionError } from '../errors';
+import type { EncodedStateValue } from '../lib/era/envelope';
+import { loadLedgerEra } from '../lib/era/load-era';
+import type { ContractBalance } from '../lib/shared/contract-state';
 import {
   pinnedClock,
   refuseVerifierKeyRead,
@@ -72,7 +74,7 @@ type CounterPrivateState = Record<string, never>;
  */
 interface CounterConstructorResult {
   readonly currentPrivateState: CounterPrivateState;
-  readonly currentContractState: { serialize(): Uint8Array };
+  readonly currentContractState: { data: { state: { encode(): EncodedStateValue } } };
 }
 
 interface CounterContract extends Contract.Contract<CounterPrivateState> {
@@ -91,40 +93,36 @@ interface CounterModule {
  * through `runRetainedConstructor`, so a fault in the constructor path cannot
  * make the circuit assertions below pass or fail for the wrong reason.
  */
-const freshCounterStateBytes = async (contractModule: CounterModule): Promise<Uint8Array> => {
-  const glue = await import('compact-runtime-ledger8');
-  const contract = new contractModule.Contract({});
-  const constructorContext = glue.createConstructorContext({}, SAMPLE_COIN_PUBLIC_KEY);
-  return contract.initialState(constructorContext).currentContractState.serialize();
+
+
+const loadCounter = async (): Promise<{ module: CounterModule; contract: CounterContract }> => {
+  const contractModule = (await import(/* @vite-ignore */ resolve(COUNTER_DIR, 'compiled/contract/index.js'))) as CounterModule;
+  return { module: contractModule, contract: new contractModule.Contract({}) };
 };
 
-const loadCounter = async (): Promise<{
-  module: CounterModule;
-  compiled: CompiledContract.CompiledContract<CounterContract, CounterPrivateState, never>;
-}> => {
-  const contractModule = (await import(/* @vite-ignore */ resolve(COUNTER_DIR, 'compiled/contract/index.js'))) as CounterModule;
-  const compiled = CompiledContract.make<CounterContract, CounterPrivateState>(
-    'counter-016',
-    contractModule.Contract
-    // Both halves of `CompiledContract.Context` have to be discharged before
-    // `ContractExecutable.make` will take it, so the assets path is supplied
-    // even though a circuit call reads no ZK configuration.
-  ).pipe(CompiledContract.withVacantWitnesses, CompiledContract.withCompiledFileAssets(COUNTER_DIR));
-  return { module: contractModule, compiled };
+/**
+ * The contract state a fresh counter starts on, in the ERA-NEUTRAL shape the
+ * envelope readers produce — which is what execution takes.
+ */
+const freshCounterState = async (contractModule: CounterModule, balance: ContractBalance = new Map()) => {
+  const glue = await import('compact-runtime-ledger8');
+  const contract = new contractModule.Contract({});
+  const initial = contract.initialState(glue.createConstructorContext({}, SAMPLE_COIN_PUBLIC_KEY));
+  return { state: initial.currentContractState.data.state.encode(), balance, entryPoints: [] };
 };
 
 describe('runRetainedCircuit against the counter-016 artifact (real compact-runtime@0.16)', () => {
   it('reproduces the committed golden transcript', async () => {
     // Arrange.
-    const { module: contractModule, compiled } = await loadCounter();
-    const contractStateBytes = await freshCounterStateBytes(contractModule);
+    const { module: contractModule, contract } = await loadCounter();
+    const contractState = await freshCounterState(contractModule);
 
     // Act.
     const transcript = await runRetainedCircuit({
-      compiledContract: compiled,
+      contract,
       circuitId: 'increment',
       args: [],
-      contractStateBytes,
+      contractState,
       address: ADDRESS,
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
       privateState: {}
@@ -146,15 +144,15 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
 
   it('advances the state it returns, and encodes the state it claims to encode', async () => {
     // Arrange.
-    const { module: contractModule, compiled } = await loadCounter();
-    const contractStateBytes = await freshCounterStateBytes(contractModule);
+    const { module: contractModule, contract } = await loadCounter();
+    const contractState = await freshCounterState(contractModule);
 
     // Act.
     const transcript = await runRetainedCircuit({
-      compiledContract: compiled,
+      contract,
       circuitId: 'increment',
       args: [],
-      contractStateBytes,
+      contractState,
       address: ADDRESS,
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
       privateState: {}
@@ -170,15 +168,15 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
 
   it('records the context the retained runtime actually built', async () => {
     // Arrange.
-    const { module: contractModule, compiled } = await loadCounter();
-    const contractStateBytes = await freshCounterStateBytes(contractModule);
+    const { module: contractModule, contract } = await loadCounter();
+    const contractState = await freshCounterState(contractModule);
 
     // Act.
     const transcript = await runRetainedCircuit({
-      compiledContract: compiled,
+      contract,
       circuitId: 'increment',
       args: [],
-      contractStateBytes,
+      contractState,
       address: ADDRESS,
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
       privateState: {}
@@ -193,16 +191,16 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
 
   it('pins the block clock to the second it is given, rather than the wall clock', async () => {
     // Arrange.
-    const { module: contractModule, compiled } = await loadCounter();
-    const contractStateBytes = await freshCounterStateBytes(contractModule);
+    const { module: contractModule, contract } = await loadCounter();
+    const contractState = await freshCounterState(contractModule);
     const nowSeconds = 1_700_000_000;
 
     // Act.
     const transcript = await runRetainedCircuit({
-      compiledContract: compiled,
+      contract,
       circuitId: 'increment',
       args: [],
-      contractStateBytes,
+      contractState,
       address: ADDRESS,
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
       privateState: {},
@@ -216,31 +214,22 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
   });
 
   it('carries the balance the contract holds into the executing context', async () => {
-    // Arrange. The balance rides INSIDE the serialized contract state; it is
-    // not a separate argument. This is the regression #1345 was: handed a bare
-    // state value rather than a whole contract state, the retained runtime
-    // substitutes an empty balance map and a circuit reading a balance sees
-    // nothing, with every guard green.
-    const { module: contractModule, compiled } = await loadCounter();
-    const { Ledger } = await import('@midnight-ntwrk/compact-js/v8/effect');
+    // Arrange. The balance travels on the SAME value as the state, so the two
+    // cannot come off different reads. This is the regression #1345 was: handed
+    // a bare state value rather than a whole contract state, the retained
+    // runtime substitutes an empty balance map and a circuit reading a balance
+    // sees nothing, with every guard green.
+    const { module: contractModule, contract } = await loadCounter();
     const colour = { tag: 'shielded' as const, raw: '11'.repeat(32) };
     const held = 4_200n;
-
-    const freshBytes = await freshCounterStateBytes(contractModule);
-    const withBalance = await Effect.runPromise(
-      Effect.gen(function* () {
-        const state = yield* Ledger.contractStateFromBytes(freshBytes);
-        state.balance = new Map([[colour, held]]);
-        return state.serialize();
-      })
-    );
+    const contractState = await freshCounterState(contractModule, new Map([[colour, held]]));
 
     // Act.
     const transcript = await runRetainedCircuit({
-      compiledContract: compiled,
+      contract,
       circuitId: 'increment',
       args: [],
-      contractStateBytes: withBalance,
+      contractState,
       address: ADDRESS,
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
       privateState: {}
@@ -249,19 +238,51 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     // Assert.
     expect([...transcript.partitionContext.block.balance]).toEqual([[colour, held]]);
   });
-});
 
-describe('runRetainedConstructor', () => {
+  it('executes a contract whose state carries a CURRENT-era envelope', async () => {
+    // Arrange. A contract an earlier post-fork call has already MIGRATED: its
+    // state is written in the current era while its artifacts stay the retained
+    // toolchain's, so it must keep executing on the retained runtime. A real
+    // committed v9 envelope, decoded by the era that wrote it -- which is what
+    // the pipeline threads.
+    //
+    // This is a regression test with a known failure: handing the chain's own
+    // bytes to the retained decoder instead refuses them on the envelope tag,
+    // which silently broke every keep-state call after the first.
+    const receiverDir = fixturePath('coin-receiver-016');
+    const receiverModule = (await import(/* @vite-ignore */ `${receiverDir}/compiled/contract/index.js`)) as CounterModule;
+    const contract = new receiverModule.Contract({});
+    const era = await loadLedgerEra('v9');
+    const contractState = era.decodeContractState(
+      Uint8Array.from(Buffer.from(readFileSync(`${receiverDir}/state-v9.hex`, 'utf8').trim(), 'hex'))
+    );
+
+    // Act.
+    const transcript = await runRetainedCircuit({
+      contract,
+      circuitId: 'receive_coin',
+      args: [{ nonce: new Uint8Array(32).fill(7), color: new Uint8Array(32), value: 42n }],
+      contractState,
+      address: ADDRESS,
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      privateState: {}
+    });
+
+    // Assert.
+    expect(transcript.circuitId).toBe('receive_coin');
+    expect(transcript.publicTranscript.length).toBeGreaterThan(0);
+  });
+
   it('refuses a malformed signing key before it runs the constructor', async () => {
     // Arrange. A key the retained runtime cannot read at all: the refusal has
     // to name the option, not leave the runtime's own buffer message to stand
     // for it, and it has to happen before anything executes.
-    const { compiled } = await loadCounter();
+    const { contract } = await loadCounter();
     let constructorRan = false;
 
     // Act.
     const rejection = await runRetainedConstructor({
-      compiledContract: compiled,
+      contract,
       args: [],
       privateState: {},
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
@@ -280,11 +301,11 @@ describe('runRetainedConstructor', () => {
 
   it('refuses to build a state when the reader answers for no key', async () => {
     // Arrange.
-    const { compiled } = await loadCounter();
+    const { contract } = await loadCounter();
 
     // Act.
     const rejection = await runRetainedConstructor({
-      compiledContract: compiled,
+      contract,
       args: [],
       privateState: {},
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
@@ -302,12 +323,12 @@ describe('runRetainedConstructor', () => {
 
   it('surfaces a verifier-key read failure rather than deploying without the key', async () => {
     // Arrange.
-    const { compiled } = await loadCounter();
+    const { contract } = await loadCounter();
     const cause = new Error('the key store was unreachable');
 
     // Act.
     const rejection = await runRetainedConstructor({
-      compiledContract: compiled,
+      contract,
       args: [],
       privateState: {},
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
@@ -335,7 +356,7 @@ describe('refuseVerifierKeyRead', () => {
 });
 
 describe('pinnedClock', () => {
-  it('answers the same instant on every accessor, in each accessor\'s own unit', () => {
+  it('answers the same instant on every accessor, in each accessor\'s own unit', async () => {
     // Arrange, Act.
     const clock = pinnedClock(1_700_000_000);
 
@@ -347,6 +368,12 @@ describe('pinnedClock', () => {
     expect(Effect.runSync(clock.currentTimeMillis)).toBe(1_700_000_000_000);
     expect(clock.unsafeCurrentTimeNanos()).toBe(1_700_000_000_000_000_000n);
     expect(Effect.runSync(clock.currentTimeNanos)).toBe(1_700_000_000_000_000_000n);
+    // The members that are NOT overridden must survive. `Clock.make()` returns a
+    // class instance and these two live on its prototype, so building the pinned
+    // clock with a spread drops them -- with no type error, because a spread
+    // type keeps the declared members.
+    expect(typeof clock.sleep).toBe('function');
+    await expect(Effect.runPromise(Effect.sleep('1 millis').pipe(Effect.withClock(clock)))).resolves.toBeUndefined();
   });
 });
 

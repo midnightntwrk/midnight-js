@@ -23,7 +23,7 @@ export type {
   EncodedStateValue,
   Ledger8Engine,
   Ledger8SigningKey,
-  RetainedCompiledContract,
+  RetainedContract,
   RunRetainedCircuitOptions,
   RunRetainedConstructorOptions,
   TranscriptPojo,

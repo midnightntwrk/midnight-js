@@ -42,6 +42,8 @@ import type { PublicDataProvider, RawContractState } from '@midnight-ntwrk/midni
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
+import type { Ledger8Contract } from '../ledger8-contract';
+
 /**
  * The retained era's contract-state handle, derived from the engine's own
  * result rather than restated: it is compact-js's ledger-8 `StateValue`, and
@@ -152,10 +154,15 @@ export interface Ledger8ConstructibleContract {
  * bytes through makes that substitution unreachable.
  */
 export interface Ledger8ExecuteRequest {
-  readonly compiledContract: unknown;
+  /**
+   * TYPED, not `unknown`. The engine and this package have to agree on what a
+   * retained contract IS; an `unknown` here compiles whatever either side
+   * believes and lets them disagree silently, which is exactly what it did.
+   */
+  readonly contract: Ledger8Contract;
   readonly circuitId: string;
   readonly args: readonly unknown[];
-  readonly contractStateBytes: Uint8Array;
+  readonly contractState: ContractStatePojo;
   readonly address: string;
   readonly coinPk: string;
   readonly privateState: unknown;
@@ -192,7 +199,7 @@ export interface Ledger8ConstructedState {
 
 /** What {@link Ledger8ExecutionEngine.executeConstructor} is asked to run. */
 export interface Ledger8ConstructRequest {
-  readonly compiledContract: unknown;
+  readonly contract: Ledger8Contract;
   readonly args: readonly unknown[];
   readonly privateState: unknown;
   readonly coinPk: string;
@@ -454,7 +461,7 @@ export interface Ledger8CallPipelineRequest<TState> {
   readonly head: LedgerVersion;
   /** The optional logger the dating step's breadcrumbs are written to. */
   readonly logger?: BreadcrumbSink;
-  readonly contract: Ledger8ContractSlice;
+  readonly contract: Ledger8Contract;
   readonly contractAddress: string;
   readonly circuitId: string;
   readonly args: readonly unknown[];
@@ -609,15 +616,16 @@ export const runLedger8CallPipeline = async <TState>(
   // turns a paid-for, late failure into a free, immediate one.
   assertSnapshotVerifierKey(snapshot, circuitId, request.localVerifierKey, contractAddress);
 
-  // The chain's own serialized state, not the extracted primary state: the
-  // balances the contract holds ride inside it, and the retained runtime reads
-  // them only from a whole contract state. `snapshot.state.raw` and
-  // `snapshot.decoded` are the same bytes read once.
+  // The DECODED state, read by whichever era's reader the envelope named. A
+  // contract an earlier post-fork call migrated carries a current-era envelope
+  // while still executing on the retained runtime, so the chain's own bytes
+  // cannot be handed to one era's decoder. The balance rides on this same
+  // value, so the state and its balances cannot come off different reads.
   const transcript = await engine.executeCircuit({
-    compiledContract: contract,
+    contract,
     circuitId,
     args: request.args,
-    contractStateBytes: snapshot.state.raw,
+    contractState: snapshot.decoded,
     address: contractAddress,
     coinPk: request.coinPublicKey,
     privateState: request.privateState
@@ -789,7 +797,7 @@ export const runLedger8CallPipeline = async <TState>(
 export interface Ledger8DeployPipelineRequest {
   readonly era: LedgerEra;
   readonly engine: Ledger8ExecutionEngine<unknown>;
-  readonly contract: Ledger8ContractSlice;
+  readonly contract: Ledger8Contract;
   readonly args: readonly unknown[];
   readonly privateState: unknown;
   readonly coinPublicKey: string;
@@ -876,7 +884,7 @@ export interface Ledger8DeployPipelineResult {
  */
 export const runLedger8DeployPipeline = async (request: Ledger8DeployPipelineRequest): Promise<Ledger8DeployPipelineResult> => {
   const constructed = await request.engine.executeConstructor({
-    compiledContract: request.contract,
+    contract: request.contract,
     verifierKeys: (circuitId) => Promise.resolve(request.verifierKeys.get(circuitId)),
     args: request.args,
     privateState: request.privateState,

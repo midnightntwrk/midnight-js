@@ -78,6 +78,7 @@ import {
   Ledger8SeamFailedError,
   type SubmittedOperation
 } from '../errors';
+import type { Ledger8Contract } from '../ledger8-contract';
 import type {
   AnyLedger8CallTxOptions,
   AnyLedger8FinalizedCallTxData,
@@ -98,7 +99,6 @@ import {
   assertSnapshotVerifierKey,
   type Ledger8CallPipelineResult,
   type Ledger8ConstructedState,
-  type Ledger8ContractSlice,
   type Ledger8DeployPipelineResult,
   type Ledger8ExecutionEngine,
   readLedger8Snapshot,
@@ -535,7 +535,7 @@ export const submitLedger8Tx = async (
 
 /** What a retained-era call arrived with. */
 export interface Ledger8CallRequest {
-  readonly contract: Ledger8ContractSlice;
+  readonly contract: Ledger8Contract;
   readonly contractAddress: string;
   readonly circuitId: string;
   readonly args: readonly unknown[];
@@ -649,7 +649,7 @@ export const runLedger8Call = async (
 
 /** What a retained-era deploy arrived with. */
 export interface Ledger8DeployRequest {
-  readonly contract: Ledger8ContractSlice;
+  readonly contract: Ledger8Contract;
   readonly args: readonly unknown[];
   readonly privateState: unknown;
   /**
@@ -757,7 +757,7 @@ export const runLedger8Deploy = async (
 
 /** What attaching to an already-deployed retained-era contract arrived with. */
 export interface Ledger8FindRequest {
-  readonly contract: Ledger8ContractSlice;
+  readonly contract: Ledger8Contract;
   readonly contractAddress: string;
   /** Every entry point whose key is checked against the chain's slot. */
   readonly circuitIds: readonly string[];
@@ -997,7 +997,7 @@ const readLedger8PrivateState = async (
 
 /** The options a retained-era call entry point received, in the shape this layer reads them. */
 export interface Ledger8CallEntryOptions {
-  readonly compiledContract: Ledger8ContractSlice;
+  readonly compiledContract: Ledger8Contract;
   readonly contractAddress: string;
   readonly circuitId: string;
   readonly args?: readonly unknown[];
@@ -1214,7 +1214,7 @@ export const submitLedger8CallTx = async (
 
 /** The options a retained-era deploy entry point received, in the shape this layer reads them. */
 export interface Ledger8DeployEntryOptions {
-  readonly compiledContract: Ledger8ContractSlice;
+  readonly compiledContract: Ledger8Contract;
   readonly args?: readonly unknown[];
   readonly privateStateId?: PrivateStateId;
   readonly initialPrivateState?: unknown;

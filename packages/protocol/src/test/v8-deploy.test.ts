@@ -17,7 +17,6 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
-import { CompiledContract } from '@midnight-ntwrk/compact-js/v8/effect';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import type { EncodedZswapLocalState } from 'compact-runtime-ledger8';
@@ -91,13 +90,6 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     readonly ledger: (state: ocrt3.StateValue | ocrt3.ChargedState) => CompiledCounterLedger;
   }
 
-  /** Wraps the generated counter class in the container compact-js executes. */
-  const compiledCounter = (ctor: new (witnesses: Record<string, never>) => CompiledCounterContract) =>
-    CompiledContract.make<CompiledCounterContract, Record<string, never>>('counter-016', ctor).pipe(
-      CompiledContract.withVacantWitnesses,
-      CompiledContract.withCompiledFileAssets(resolve(FIXTURE_DIR, 'compiled'))
-    );
-
   // `initialize` registers a verifier key against every entry point the
   // constructor declares, so unlike a circuit call it DOES read ZK
   // configuration. The committed fixture key is served here.
@@ -109,7 +101,7 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
 
     const initialPrivateState: Record<string, never> = {};
     const result = await runRetainedConstructor({
-      compiledContract: compiledCounter(Contract),
+      contract: new Contract({}),
       args: [],
       privateState: initialPrivateState,
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
@@ -173,7 +165,7 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     const signingKey = ocrt3.sampleSigningKey();
 
     const result = await runRetainedConstructor({
-      compiledContract: compiledCounter(Contract),
+      contract: new Contract({}),
       args: [],
       privateState: {},
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
@@ -215,7 +207,7 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
   it('samples a signing key when none is supplied, reports it, and builds the committee from that key', async () => {
     const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
     const request = {
-      compiledContract: compiledCounter(Contract),
+      contract: new Contract({}),
       args: [],
       privateState: {},
       coinPk: SAMPLE_COIN_PUBLIC_KEY,

@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { ContractCallPrototype } from '@midnightntwrk/ledger-v9';
 
 import type { EncodedStateValue } from '../era/envelope';
@@ -23,7 +22,7 @@ import { wrapKeepStateCall, type WrapKeepStateCallOptions } from '../v9/wrap';
 import {
   type ConstructorResultPojo,
   type Ledger8SigningKey,
-  type RetainedCompiledContract,
+  type RetainedContract,
   runRetainedCircuit,
   type RunRetainedCircuitOptions,
   runRetainedConstructor,
@@ -39,7 +38,7 @@ export type {
   ContractStatePojo,
   EncodedStateValue,
   Ledger8SigningKey,
-  RetainedCompiledContract,
+  RetainedContract,
   RunRetainedCircuitOptions,
   RunRetainedConstructorOptions,
   TranscriptPojo,
@@ -71,10 +70,10 @@ export interface Ledger8Engine {
    * gone with the hand-maintained execution layer; there is no separate
    * down-convert step any more.
    */
-  executeCircuit<C extends Contract.Contract<PS>, PS>(
+  executeCircuit<C extends RetainedContract, PS>(
     options: RunRetainedCircuitOptions<C, PS>
   ): Promise<TranscriptPojo>;
-  executeConstructor<C extends Contract.Contract<PS>, PS>(
+  executeConstructor<C extends RetainedContract, PS>(
     options: RunRetainedConstructorOptions<C, PS>
   ): Promise<ConstructorResultPojo>;
   wrapKeepStateCall(options: WrapKeepStateCallOptions): ContractCallPrototype;

@@ -150,11 +150,12 @@ describe('installed ledger and runtime instances', () => {
   });
 
   // TWO copies of compact-runtime are correct and load-bearing: the 0.16 line
-  // is the ledger-8 era's runtime and 0.19 is the current era's. The 0.16 line
-  // reaches this package's PRODUCTION code through compact-js now, not through
-  // the `compact-runtime-ledger8` alias -- the alias survives as a DEVELOPMENT
-  // dependency, because the retained-era suites drive the real 0.16 glue
-  // directly to build the states they execute against.
+  // is the ledger-8 era's runtime and 0.19 is the current era's. This package
+  // reaches the 0.16 line through BOTH compact-js and its own
+  // `compact-runtime-ledger8` alias: compact-js executes the circuit, and the
+  // alias supplies the `StateValue`/`ChargedState` VALUES its `CompactRuntime`
+  // binding does not re-export (spec finding E9), which is what builds the
+  // state a circuit runs against. One physical copy has to serve both.
   //
   // What must never appear is a THIRD copy -- a second of either line, which is
   // what compact-js's own `0.19.0-rc.0` would become if the root `resolutions`
@@ -162,7 +163,7 @@ describe('installed ledger and runtime instances', () => {
   it('resolves exactly one copy of each compact-runtime era line', () => {
     const currentEra = versionOf(manifestEntry('package.json', 'resolutions', '@midnight-ntwrk/compact-runtime'));
     const retainedEra = versionOf(
-      manifestEntry('packages/protocol/package.json', 'devDependencies', 'compact-runtime-ledger8')
+      manifestEntry('packages/protocol/package.json', 'dependencies', 'compact-runtime-ledger8')
     );
 
     expect(resolvedVersionsOf('@midnight-ntwrk/compact-runtime')).toEqual([retainedEra, currentEra].sort(byVersion));

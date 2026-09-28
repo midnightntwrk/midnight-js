@@ -131,7 +131,7 @@ describe('Protocol type ACL', () => {
       'ProtocolV8',
       'ProtocolVersionSource',
       'ProtocolVersionUnknownReason',
-      'RetainedCompiledContract',
+      'RetainedContract',
       'RetainedEraSubpath',
       'RetainedLedgerVersion',
       'RunRetainedCircuitOptions',
@@ -165,7 +165,7 @@ describe('Protocol type ACL', () => {
       'Ledger8SigningKey',
       // `RunRetainedCircuitOptions.compiledContract` is one of these, so a
       // consumer building the container cannot declare it without this name.
-      'RetainedCompiledContract',
+      'RetainedContract',
       'RunRetainedCircuitOptions',
       'RunRetainedConstructorOptions',
       'TranscriptPojo',

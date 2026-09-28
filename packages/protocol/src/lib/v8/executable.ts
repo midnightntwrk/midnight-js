@@ -32,9 +32,8 @@
 
 import * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import {
-  type CompiledContract,
+  CompiledContract,
   ContractExecutable,
-  Ledger,
   ZKConfiguration,
   ZKConfigurationReadError
 } from '@midnight-ntwrk/compact-js/v8/effect';
@@ -42,11 +41,13 @@ import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as PlatformContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import { Clock, Effect, Layer, Option } from 'effect';
+import * as glue from 'compact-runtime-ledger8';
+import { Clock, Effect, Layer, Option, type Types } from 'effect';
 
 import { ComposeOptionError } from '../../errors';
 import type { EncodedStateValue } from '../era/envelope';
 import type { PartitionContext } from '../shared/compose-types';
+import type { ContractStatePojo } from '../shared/contract-state';
 
 /**
  * The shape the retained runtime reads a signing key in: 32 bytes written in
@@ -76,18 +77,68 @@ const LEDGER8_SIGNATURE_KIND = 'schnorr' as const;
 export type Ledger8SigningKey = string;
 
 /**
- * A retained-era contract, as a compact-js `CompiledContract`.
+ * A retained-era contract, as the caller holds it: the CONSTRUCTED artifact the
+ * previous toolchain generates.
  *
- * The same container the current era uses. Before compact-js published an
- * era-pinned ledger-8 line there was none for this era and callers passed a
- * constructed instance; that is no longer true, and the two eras now take the
- * same shape.
+ * Deliberately not compact-js's `CompiledContract` container. That container is
+ * a recipe — a class plus witnesses, instantiated fresh per operation — and the
+ * retained era's callers hold an instance whose witnesses are already bound.
+ * {@link containerFor} adapts one to the other at this seam, which keeps the
+ * adaptation in one place instead of on every consumer.
  */
-export type RetainedCompiledContract<C extends Contract.Contract<PS>, PS> = CompiledContract.CompiledContract<
-  C,
+export interface RetainedContract {
+  /** The map compact-js indexes to find the circuit to run. */
+  readonly provableCircuits: Readonly<Record<string, unknown>>;
+  /** The constructor a deployment runs. */
+  initialState(...args: never[]): unknown;
+}
+
+/**
+ * The tag compact-js reports a retained contract under.
+ *
+ * It reaches nothing but error messages: the container's tag is chosen by
+ * whoever builds it, and this era's callers pass an instance that carries no
+ * name of its own.
+ */
+const RETAINED_CONTRACT_TAG = 'retained-era-contract';
+
+/**
+ * Wraps a constructed retained contract in the container compact-js executes.
+ *
+ * `ContractExecutable` resolves the contract through `new ctor(witnesses)`, so
+ * it needs a constructor. The caller has an instance, and its witnesses are
+ * already bound to it — so the constructor hands that same instance back and
+ * the witnesses arrive with it. Returning an object from a constructor is
+ * ordinary JavaScript; the assertion is needed only because TypeScript types a
+ * class expression by its declaration rather than by what it returns.
+ *
+ * Reusing one instance across calls is what this era already did before
+ * compact-js served it, so this is the existing lifetime, not a new one.
+ *
+ * The compiled-assets path is a placeholder: it is read only by compact-js's
+ * own `ZKConfiguration` reader, and {@link zkConfigurationLayer} replaces that
+ * service outright, so nothing ever resolves it.
+ */
+const containerFor = <PS>(contract: RetainedContract): CompiledContract.CompiledContract<
+  Contract.Contract<PS>,
   PS,
   never
->;
+> =>
+  CompiledContract.make<Contract.Contract<PS>, PS>(
+    RETAINED_CONTRACT_TAG,
+    // The single assertion this seam needs, and it is here rather than at any
+    // caller. A retained artifact satisfies compact-js's `Contract` structurally
+    // -- same four circuit maps, and a synchronous `initialState` satisfies its
+    // `Awaitable` return -- but the two declare their members over different
+    // private-state parameters, so TypeScript will not see it. Narrowing what
+    // this module ASKS for (see `RetainedContract`) is what keeps the assertion
+    // to one line instead of pushing a cast onto every consumer.
+    class {
+      constructor() {
+        return contract;
+      }
+    } as Types.Ctor<Contract.Contract<PS>>
+  ).pipe(CompiledContract.withVacantWitnesses, CompiledContract.withCompiledFileAssets('.'));
 
 /**
  * The query-context members a composition leg needs to re-partition a call's
@@ -166,23 +217,30 @@ export interface ConstructorResultPojo {
 export type VerifierKeyReader = (provableCircuitId: string) => Promise<Uint8Array | undefined>;
 
 /** Everything {@link runRetainedCircuit} needs to run one circuit. */
-export interface RunRetainedCircuitOptions<C extends Contract.Contract<PS>, PS> {
-  readonly compiledContract: RetainedCompiledContract<C, PS>;
-  readonly circuitId: Contract.Contract.ProvableCircuitId<C>;
+export interface RunRetainedCircuitOptions<C extends RetainedContract, PS> {
+  readonly contract: C;
+  readonly circuitId: string;
   readonly args: readonly unknown[];
   /**
-   * The contract state the call runs against, as the SERIALIZED bytes the chain
-   * serves.
+   * The contract state the call runs against, DECODED — the primary state in
+   * its era-neutral encoded form, with the balances the contract holds beside
+   * it.
    *
-   * Bytes rather than an extracted primary state, because the balances a
-   * circuit reads live on the contract state and not in that primary state.
-   * The retained runtime populates the query context's `block.balance` only
-   * when it is handed a whole `ContractState`; handed a bare state value it
-   * substitutes an empty map, and a circuit that reads a balance then executes
-   * against nothing with every guard green. That substitution is what #1345
-   * was.
+   * Era-neutral rather than one era's serialized bytes, because a contract that
+   * an earlier post-fork call has already migrated carries a CURRENT-era
+   * envelope while still executing on the retained runtime. Chain bytes would
+   * have to be decoded by the era that wrote them; this shape is what both
+   * envelopes' readers produce, so one path serves a pre-fork contract and a
+   * migrated one alike.
+   *
+   * The balance travels on the same value, so the two halves cannot come off
+   * different reads. {@link executableStateFrom} writes it onto a whole
+   * `ContractState`, which is the only form the retained runtime reads a
+   * balance from — handed a bare state value it substitutes an empty map, and a
+   * circuit reading a balance then executes against nothing with every guard
+   * green. That substitution is what #1345 was.
    */
-  readonly contractStateBytes: Uint8Array;
+  readonly contractState: ContractStatePojo;
   readonly address: string;
   readonly coinPk: string;
   readonly privateState: PS;
@@ -199,8 +257,8 @@ export interface RunRetainedCircuitOptions<C extends Contract.Contract<PS>, PS> 
 }
 
 /** Everything {@link runRetainedConstructor} needs to run one constructor. */
-export interface RunRetainedConstructorOptions<C extends Contract.Contract<PS>, PS> {
-  readonly compiledContract: RetainedCompiledContract<C, PS>;
+export interface RunRetainedConstructorOptions<C extends RetainedContract, PS> {
+  readonly contract: C;
   readonly args: readonly unknown[];
   readonly privateState: PS;
   readonly coinPk: string;
@@ -252,13 +310,18 @@ const keysLayer = (coinPk: string, signingKey: Ledger8SigningKey | undefined): L
 export const pinnedClock = (nowSeconds: number): Clock.Clock => {
   const millis = nowSeconds * 1_000;
   const nanos = BigInt(millis) * 1_000_000n;
-  return {
-    ...Clock.make(),
+  // `Object.assign` onto the real clock, NOT a spread of it. `Clock.make()`
+  // returns a class instance whose `sleep` and `scheduler` live on the
+  // prototype; a spread copies own enumerable properties only and silently
+  // drops both, leaving a `Clock` that throws `clock.sleep is not a function`
+  // the first time anything schedules work. TypeScript cannot see it, because a
+  // spread type keeps the declared members.
+  return Object.assign(Clock.make(), {
     unsafeCurrentTimeMillis: () => millis,
     currentTimeMillis: Effect.succeed(millis),
     unsafeCurrentTimeNanos: () => nanos,
     currentTimeNanos: Effect.succeed(nanos)
-  };
+  });
 };
 
 const withPinnedClock = <A, E, R>(nowSeconds: number | undefined, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
@@ -327,6 +390,35 @@ export const refuseVerifierKeyRead: VerifierKeyReader = (provableCircuitId) =>
   );
 
 /**
+ * Builds the retained-era `ContractState` a circuit executes against, from the
+ * era-neutral state the envelope's own reader produced.
+ *
+ * `StateValue` and `ChargedState` come from the retained glue rather than from
+ * compact-js: its `CompactRuntime` binding re-exports neither as a VALUE
+ * (midnightntwrk/midnight-sdk, spec finding E9), and building them through
+ * ledger-v8's own same-named classes instead would be the dual instantiation
+ * this era must not perform. `ContractState` is the glue's as well, so all
+ * three come from one module.
+ *
+ * A WHOLE `ContractState` rather than the bare `ChargedState` its predecessor
+ * built: the runtime reads `block.balance` off a contract state and substitutes
+ * an empty map for anything less, so writing the balance here is what makes it
+ * reach the circuit at all. It used to be injected into the query context after
+ * the fact, which is what #1345 was.
+ *
+ * @param contractState The decoded state and the balances beside it.
+ * @returns The state the retained runtime executes against.
+ */
+const executableStateFrom = (contractState: ContractStatePojo): glue.ContractState => {
+  const state = new glue.ContractState();
+  state.data = new glue.ChargedState(glue.StateValue.decode(contractState.state));
+  // Copied rather than shared, so an entry the caller adds or removes afterwards
+  // cannot reach a running circuit.
+  state.balance = new Map(contractState.balance);
+  return state;
+};
+
+/**
  * Reads the ONE contract call a retained-era circuit produces.
  *
  * The retained era has no `crossContractCall`, so its execution adapter
@@ -355,23 +447,21 @@ export const soleCall = <T>(calls: readonly T[], circuitId: string): T => {
  * Runs one circuit on a retained-era contract and packages every artifact a
  * v9-native call prototype needs.
  *
- * The state is decoded from the caller's own chain bytes inside this call, so
- * the balances the contract holds travel with it — see
- * {@link RunRetainedCircuitOptions.contractStateBytes}.
+ * The balances the contract holds travel on the state it is given — see
+ * {@link RunRetainedCircuitOptions.contractState}.
  *
  * @param options The compiled contract, circuit id, arguments, state bytes,
  *   address, coin public key, private state and optional pinned clock.
  * @returns Every artifact a v9-native call prototype needs.
  * @see {@link RetainedEraExecution}
  */
-export const runRetainedCircuit = async <C extends Contract.Contract<PS>, PS>(
+export const runRetainedCircuit = async <C extends RetainedContract, PS>(
   options: RunRetainedCircuitOptions<C, PS>
 ): Promise<TranscriptPojo> => {
-  const executable = ContractExecutable.make(options.compiledContract);
+  const executable = ContractExecutable.make(containerFor<PS>(options.contract));
+  const contractState = executableStateFrom(options.contractState);
 
   const program = Effect.gen(function* () {
-    const ledgerState = yield* Ledger.contractStateFromBytes(options.contractStateBytes);
-    const contractState = yield* Ledger.toRuntimeContractState(ledgerState);
     return yield* executable.circuit(
       Contract.ProvableCircuitId(options.circuitId),
       {
@@ -385,7 +475,7 @@ export const runRetainedCircuit = async <C extends Contract.Contract<PS>, PS>(
       // indexes `provableCircuits` against the constraint rather than the
       // instantiated contract. The tuple is checked where `C` is concrete, at
       // the caller's own call site.
-      ...(options.args as Contract.Contract.CircuitParameters<C, Contract.ProvableCircuitId<C>>)
+      ...(options.args as readonly never[])
     );
   });
 
@@ -442,7 +532,7 @@ export const runRetainedCircuit = async <C extends Contract.Contract<PS>, PS>(
  *   built from.
  * @see {@link RetainedEraExecution}
  */
-export const runRetainedConstructor = async <C extends Contract.Contract<PS>, PS>(
+export const runRetainedConstructor = async <C extends RetainedContract, PS>(
   options: RunRetainedConstructorOptions<C, PS>
 ): Promise<ConstructorResultPojo> => {
   // BEFORE the constructor runs, so nothing is executed against a key the
@@ -453,10 +543,10 @@ export const runRetainedConstructor = async <C extends Contract.Contract<PS>, PS
     throw new ComposeOptionError('v8', 'signingKey');
   }
 
-  const executable = ContractExecutable.make(options.compiledContract);
+  const executable = ContractExecutable.make(containerFor<PS>(options.contract));
   const deployed = await Effect.runPromise(
     executable
-      .initialize(options.privateState, ...(options.args as Contract.Contract.InitializeParameters<C>))
+      .initialize(options.privateState, ...(options.args as readonly never[]))
       .pipe(
         Effect.provide(
           Layer.mergeAll(

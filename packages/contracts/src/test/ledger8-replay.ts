@@ -349,17 +349,15 @@ export interface ReplayExpectations {
   /** The private state the pipeline must have handed the engine. */
   readonly privateState?: unknown;
   /**
-   * The SERIALIZED contract state the pipeline must have handed the engine.
+   * The BALANCE the pipeline must have handed the engine, on the state itself.
    *
-   * This is where a contract's balances live: ledger-v8 keeps them on
-   * `ContractState.balance`, not in the primary state, and the retained runtime
-   * reads them only from a whole contract state. An engine handed anything less
-   * executes every circuit against an empty balance, so a circuit reading one
-   * back sees zero and the chain refuses the transcript it produced. Asserting
-   * the bytes is what pins the pipeline to threading the chain's own state
-   * through rather than an extracted part of it.
+   * Balances live on the contract state, not in the primary state, and the
+   * retained runtime reads them only from a whole contract state. An engine
+   * handed anything less executes every circuit against an empty balance, so a
+   * circuit reading one back sees zero and the chain refuses the transcript it
+   * produced.
    */
-  readonly contractStateBytes?: Uint8Array;
+  readonly balance?: ContractBalance;
   /**
    * The verifier key the CONSTRUCTOR must be able to read for the recorded
    * circuit.
@@ -433,17 +431,23 @@ export const createReplayEngine = (
     // threads: the chain's own serialized contract state. The recording is only
     // replayed for the state it was recorded against, so this double cannot
     // answer for a state the real runtime never ran on.
-    if (expectations?.contractStateBytes !== undefined) {
-      expect(options.contractStateBytes).toEqual(expectations.contractStateBytes);
-    }
+    // THE REPLAY CONDITION, and unconditional again. The recording is only
+    // replayed for the state it was recorded against, so this double cannot
+    // answer for a state the real runtime never ran on. Made opt-in during the
+    // compact-js migration, which is how a pipeline feeding the wrong state
+    // stayed green.
+    expect(options.contractState.state).toEqual(recording.preState);
     // The CONTRACT the pipeline threaded through, not merely that one was
     // passed: an engine handed some other object would otherwise replay
     // happily, because the recording answers regardless of what it is given.
-    expect(Object.keys((options.compiledContract as { readonly impureCircuits: object }).impureCircuits)).toContain(
+    expect(Object.keys((options.contract as { readonly impureCircuits: object }).impureCircuits)).toContain(
       recording.circuitId
     );
     if (expectations !== undefined && 'privateState' in expectations) {
       expect(options.privateState).toEqual(expectations.privateState);
+    }
+    if (expectations !== undefined && 'balance' in expectations) {
+      expect(options.contractState.balance).toEqual(expectations.balance);
     }
     // The post-call state the real engine answers with is a live handle; the
     // double mints markers DISTINCT from each other, so a test can tell the

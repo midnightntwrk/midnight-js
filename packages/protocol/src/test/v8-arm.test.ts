@@ -17,7 +17,6 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
-import { CompiledContract } from '@midnight-ntwrk/compact-js/v8/effect';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import type { EncodedZswapLocalState } from 'compact-runtime-ledger8';
@@ -76,16 +75,6 @@ const loadCounterContract = async (): Promise<CompiledCounterContract> => {
   return new Contract({});
 };
 
-/** The generated class in the container compact-js executes. */
-const loadCompiledCounter = async () => {
-  const { Contract } = (await import(
-    /* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js')
-  )) as CompiledCounterModule;
-  return CompiledContract.make<CompiledCounterContract, Record<string, never>>('counter-016', Contract).pipe(
-    CompiledContract.withVacantWitnesses,
-    CompiledContract.withCompiledFileAssets(resolve(FIXTURE_DIR, 'compiled'))
-  );
-};
 
 /** Serves the committed fixture key `initialize` registers onto each entry point. */
 const readFixtureVerifierKey = (circuitId: string): Promise<Uint8Array | undefined> =>
@@ -145,11 +134,11 @@ const runIncrement = async (): Promise<{
   const address = ocrt3.dummyContractAddress();
 
   const transcript = await engine.executeCircuit({
-    compiledContract: await loadCompiledCounter(),
+    contract,
     circuitId: 'increment',
     args: [],
     // Freshly constructed, so the contract holds nothing.
-    contractStateBytes: initial.currentContractState.serialize(),
+    contractState: { state: initial.currentContractState.data.state.encode(), balance: new Map(), entryPoints: [] },
     address,
     coinPk: SAMPLE_COIN_PUBLIC_KEY,
     privateState: {}
@@ -258,7 +247,7 @@ describe('the v8 era arm', () => {
     const era = await loadLedgerEra('v8');
     const engine = await loadLedger8Engine();
     const constructorResult = await engine.executeConstructor({
-      compiledContract: await loadCompiledCounter(),
+      contract: await loadCounterContract(),
       args: [],
       privateState: {},
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
@@ -413,7 +402,7 @@ describe('the v8 era arm', () => {
     const era = await loadLedgerEra('v8');
     const engine = await loadLedger8Engine();
     const constructorResult = await engine.executeConstructor({
-      compiledContract: await loadCompiledCounter(),
+      contract: await loadCounterContract(),
       args: [],
       privateState: {},
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
@@ -439,7 +428,7 @@ describe('the v8 era arm', () => {
     const era = await loadLedgerEra('v8');
     const engine = await loadLedger8Engine();
     const constructorResult = await engine.executeConstructor({
-      compiledContract: await loadCompiledCounter(),
+      contract: await loadCounterContract(),
       args: [],
       privateState: {},
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
@@ -464,7 +453,7 @@ describe('the v8 era arm', () => {
     const era = await loadLedgerEra('v8');
     const engine = await loadLedger8Engine();
     const constructorResult = await engine.executeConstructor({
-      compiledContract: await loadCompiledCounter(),
+      contract: await loadCounterContract(),
       args: [],
       privateState: {},
       coinPk: SAMPLE_COIN_PUBLIC_KEY,

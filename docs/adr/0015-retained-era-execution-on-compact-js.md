@@ -23,10 +23,15 @@ compact-js 3.0.0-rc.2 closes the four gaps that kept it there:
 - **#402** fixes `CircuitParameters` under a branded circuit id.
 - **#401** widens the `Ledger` facade to 37 names.
 
-One gap is still open and turned out not to matter: `CompactRuntime` exports
-neither `StateValue` nor `ChargedState` as values. The replacement path takes
-the chain's own serialized `ContractState` instead of a bare state value, so it
-never needs them.
+One gap is still open, and the spec's judgement that it was moot was WRONG.
+`CompactRuntime` exports neither `StateValue` nor `ChargedState` as values
+(finding E9). The spec reasoned that `execute.ts` and `down-convert.ts` retire
+together, so nothing would need them. They are needed: a contract an earlier
+post-fork call has migrated carries a CURRENT-era envelope while still executing
+on the retained runtime, so its state has to be rebuilt from the era-neutral
+form rather than decoded from one era's bytes — and rebuilding it needs exactly
+those two values. `compact-runtime-ledger8` supplies them and stays a
+dependency of this package for that reason alone.
 
 ## Decision
 
@@ -45,8 +50,10 @@ Three properties hold at that seam:
    still re-partitions against the target era's `LedgerParameters`, from the
    `partitionInputs` compact-js now publishes.
 
-The retained era takes a `CompiledContract`, the same container the current era
-takes. The two eras no longer disagree on how a contract is handed over.
+The retained era's PUBLIC surface is unchanged: a caller still passes the
+constructed artifact the previous toolchain generates. `containerFor` adapts it
+into compact-js's `CompiledContract` at the seam, in one place, so the
+adaptation does not land on every consumer.
 
 ## Consequences
 
@@ -67,19 +74,17 @@ takes. The two eras no longer disagree on how a contract is handed over.
   hand-written constructor left every slot blank and `composeV8DeployTx` was the
   only thing that checked coverage. The pipeline derives the constructor's
   reader from the deploy's own key map, so the two cannot disagree.
-- **Negative — the retained ledger module now loads for a keep-state call.**
-  `Ledger` on compact-js's ledger-8 entry IS ledger-v8, and the state decode
-  goes through it. The previous engine deliberately never acquired it. What is
-  still gated is that there is exactly ONE acquisition path.
 - **Negative — the Merkle-rehash guard is gone.** `assertMerkleTreesRehashed`
   refused a state whose bounded Merkle trees had no computed root. It could only
   fire on a bare `EncodedStateValue` a caller assembled by hand; the new path
   takes a whole serialized contract state read off a chain, where the trees are
   rehashed by construction.
-- **Follow-ups:** `packages/protocol` keeps `@midnightntwrk/ledger-v8` (the
-  published `/v8` subpath re-exports it) and `@midnight-ntwrk/onchain-runtime-v3`
-  (`lib/era/envelope.ts` names it). Only `compact-runtime-ledger8` became a
-  development dependency.
+- **Follow-ups:** `packages/protocol` keeps all three direct ledger
+  dependencies. `@midnightntwrk/ledger-v8` backs the published `/v8` subpath,
+  `@midnight-ntwrk/onchain-runtime-v3` is named by `lib/era/envelope.ts`, and
+  `compact-runtime-ledger8` supplies the two values E9 leaves unavailable. Step
+  5 of the phase-2 scope — dropping them — is therefore not done, and cannot be
+  until E9 is closed upstream.
 
 ### Why the contract state travels as bytes
 
@@ -101,14 +106,23 @@ than detected.
 **Keep the hand-maintained layer.** Rejected: it exists only because compact-js
 had no ledger-8 entry, and it now duplicates one that is tested upstream.
 
-**Take an instance and wrap it in a synthetic constructor.** This would have
-kept the retained-era public API unchanged, at the cost of one `as` assertion
-and a wrapping pattern found nowhere else in the repo. Rejected in favour of
-consistency with the current era, which already publishes `CompiledContract` on
-ten public options types. It is also not merely cosmetic: `CompiledContract` has
-no public accessor for the contract it holds, so the deploy arm could not have
-recovered an instance once the call arm took a container — the two arms would
-have had to disagree.
+**Make `CompiledContract` the retained era's public surface too**, for symmetry
+with the current era. Attempted first, and reverted. Two things decided it.
+
+The symmetry argument rested on compact-js being the sole owner of the retained
+runtime; E9 above means it is not, so the premise failed. And the migration was
+not free: `resolveArtifactEra` short-circuits a container straight to the
+current era in order to skip a provider round trip, so placing both eras behind
+one container makes every current-era call read `getArtifactRuntimeVersion()` —
+a provider that does not implement it would newly be refused.
+
+An honest note on how this was found: the first implementation DID take a
+container in `packages/protocol` while `packages/contracts` still passed a raw
+instance, with `unknown` at the seam between them. Both packages' suites were
+green — contracts' tests run against a double that never reaches the engine —
+and every retained-era call failed at run time. The seam is typed now, and
+`keep-state.test.ts` pins that the request's contract satisfies what the engine
+accepts.
 
 **Pin the clock with a `Layer` over `Clock.Clock`.** Measured and rejected: the
 clock is one of Effect's DEFAULT services, living on the fiber rather than in

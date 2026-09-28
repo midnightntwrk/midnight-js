@@ -17,7 +17,6 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
-import { CompiledContract } from '@midnight-ntwrk/compact-js/v8/effect';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import { ContractCallPrototype, ContractOperation, ContractState, Intent, sampleContractAddress } from '@midnightntwrk/ledger-v9';
 import type { ConstructorContext } from 'compact-runtime-ledger8';
@@ -31,12 +30,6 @@ const PKG_ROOT = resolve(__dirname, '..', '..');
 const FIXTURE_DIR = resolve(PKG_ROOT, '..', '..', 'testkit-js/testkit-js/src/fixtures/hf/counter-016');
 const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
 
-/** Wraps the generated counter class in the container compact-js executes. */
-const compiledCounter = (ctor: new (witnesses: Record<string, never>) => CompiledCounterContract) =>
-  CompiledContract.make<CompiledCounterContract, Record<string, never>>('counter-016', ctor).pipe(
-    CompiledContract.withVacantWitnesses,
-    CompiledContract.withCompiledFileAssets(resolve(FIXTURE_DIR, 'compiled'))
-  );
 
 // Redirects the ported spike fixture's bare `@midnight-ntwrk/compact-runtime`
 // import to this package's own `compact-runtime-ledger8` (the real retained
@@ -137,10 +130,10 @@ describe('createLedger8Engine', () => {
     const initial = contract.initialState(constructorContext);
 
     const options: RunRetainedCircuitOptions<CompiledCounterContract, Record<string, never>> = {
-      compiledContract: compiledCounter(Contract),
+      contract: new Contract({}),
       circuitId: 'increment',
       args: [],
-      contractStateBytes: initial.currentContractState.serialize(),
+      contractState: { state: initial.currentContractState.data.state.encode(), balance: new Map(), entryPoints: [] },
       address: ocrt3.dummyContractAddress(),
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
       privateState: {}
@@ -177,12 +170,12 @@ describe('createLedger8Engine', () => {
     const address = ocrt3.dummyContractAddress();
 
     const transcript = await engine.executeCircuit({
-      compiledContract: compiledCounter(Contract),
+      contract: new Contract({}),
       circuitId: 'increment',
       args: [],
       // Freshly constructed, so the contract holds nothing -- the empty balance
       // these bytes carry is the contract's real one, not a stand-in.
-      contractStateBytes: initial.currentContractState.serialize(),
+      contractState: { state: initial.currentContractState.data.state.encode(), balance: new Map(), entryPoints: [] },
       address,
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
       privateState: {}

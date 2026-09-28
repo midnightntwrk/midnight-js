@@ -42,8 +42,8 @@ import {
   type ContractBalance,
   type LedgerEra,
   loadLedgerEra,
+  type RetainedContract,
   type RunRetainedCircuitOptions} from '@midnight-ntwrk/midnight-js-protocol';
-import type * as CompactContract from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { ContractState, LedgerParameters, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type RawContractState,
@@ -72,7 +72,7 @@ import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-f
  * about which OPTIONS the engine requires, not about any particular artifact,
  * so the narrowest contract that satisfies compact-js's constraint is used.
  */
-type AnyRetainedContract = CompactContract.Contract<undefined>;
+type AnyRetainedContract = RetainedContract;
 import {
   type CoinReceiverRecording,
   createReplayEngine,
@@ -357,7 +357,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     await runLedger8CallPipeline<ReplayState>({
       era: currentEra,
       retainedEra: retainedEraHolding,
-      engine: createReplayEngine(recording, log, undefined, { contractStateBytes: v6Envelope }),
+      engine: createReplayEngine(recording, log, undefined, { balance: held }),
       publicDataProvider: providers.publicDataProvider,
       head: 'v9',
       contract,
@@ -674,9 +674,20 @@ type _RequestNamesEveryEngineOption = Assert<
     ? true
     : false
 >;
-type _RequestAgreesOnTheStateBytes = Assert<
+type _RequestAgreesOnTheState = Assert<
   MutuallyAssignable<
-    Ledger8ExecuteRequest['contractStateBytes'],
-    RunRetainedCircuitOptions<AnyRetainedContract, undefined>['contractStateBytes']
+    Ledger8ExecuteRequest['contractState'],
+    RunRetainedCircuitOptions<AnyRetainedContract, undefined>['contractState']
   >
+>;
+// And on the CONTRACT. ONE-directional deliberately: the request is narrower
+// than what the engine accepts, and what has to hold is that the value this
+// package threads SATISFIES the engine -- not that the two are interchangeable.
+//
+// This is the pin the seam did not have. `compiledContract` was `unknown` on the
+// request side, so the two packages could and did disagree about what a retained
+// contract is, and the engine failed only at run time with a message naming
+// neither the contract nor the real cause.
+type _RequestContractSatisfiesTheEngine = Assert<
+  Ledger8ExecuteRequest['contract'] extends RetainedContract ? true : false
 >;
