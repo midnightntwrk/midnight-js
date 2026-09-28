@@ -43,8 +43,8 @@ Three properties hold at that seam:
 
 1. **Plain data crosses it.** No `Effect` value reaches a caller; the effects
    are discharged with `Effect.runPromise` inside the module.
-2. **Execution takes the chain's SERIALIZED contract state**, not an extracted
-   primary state.
+2. **Execution takes the DECODED contract state**, read by whichever era's
+   reader the envelope named, with the balances on the same value.
 3. **The cross-era partition stays here.** compact-js partitions for the era
    that executed, which across a fork window is the wrong one. `assemble-call.ts`
    still re-partitions against the target era's `LedgerParameters`, from the
@@ -60,7 +60,7 @@ adaptation does not land on every consumer.
 - **Positive:** 2 689 lines removed. The balance bug class is closed by
   construction rather than by a guard — see below. The clock is injectable, so
   `era-record-coin-receiver.test.ts` no longer substitutes two fields into its
-  own recording after the fact. Both eras share one contract container.
+  own recording after the fact.
 - **Positive:** the committed golden transcript and the recorded coin-receiver
   fixture are reproduced byte-identically by the new path. Re-minting the
   recording changed only its `documentation` string.
@@ -86,7 +86,7 @@ adaptation does not land on every consumer.
   5 of the phase-2 scope — dropping them — is therefore not done, and cannot be
   until E9 is closed upstream.
 
-### Why the contract state travels as bytes
+### Why the state and its balances travel as one value
 
 The retained runtime populates the query context's `block.balance` only when it
 is handed a whole `ContractState`:
@@ -98,8 +98,17 @@ const balance = contractState instanceof ocrt.ContractState ? contractState.bala
 The retired `execute.ts` handed it a `ChargedState`, so the balance fell to an
 empty map and a circuit reading one saw nothing, with every guard green. That is
 #1345, and #1349 patched it by writing the balance into the context after the
-fact. Passing the chain's own bytes makes the substitution unreachable rather
-than detected.
+fact.
+
+`executableStateFrom` builds a whole `ContractState` and writes the balance onto
+it, so the runtime reads it natively and the substitution is unreachable rather
+than detected. The state and the balance arrive as ONE value — the decoded
+snapshot — so they cannot come off different reads either.
+
+They are NOT the chain's own bytes, and that is deliberate: a contract migrated
+by an earlier post-fork call carries a current-era envelope while still
+executing on the retained runtime, so bytes would have to be decoded by the era
+that wrote them. The era-neutral form is what lets one path serve both.
 
 ## Alternatives considered
 
