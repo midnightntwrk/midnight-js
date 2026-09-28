@@ -42,7 +42,7 @@ import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration
 import * as PlatformContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import * as glue from 'compact-runtime-ledger8';
-import { Clock, Effect, Layer, Option, type Types } from 'effect';
+import { Cause, Clock, Effect, Exit, Layer, Option, type Types } from 'effect';
 
 import { ComposeOptionError } from '../../errors';
 import type { EncodedStateValue } from '../era/envelope';
@@ -419,6 +419,44 @@ const executableStateFrom = (contractState: ContractStatePojo): glue.ContractSta
 };
 
 /**
+ * Every message in a failure's cause chain, outermost first.
+ *
+ * compact-js reports an execution failure as `Error executing circuit 'x'` and
+ * hangs the runtime's own diagnostic -- `Block time is <= time`, an out-of-gas,
+ * a failed assertion -- on `cause`. Only the outer message reaches a caller who
+ * reads `error.message`, so the reason the circuit ACTUALLY failed is lost at
+ * exactly the moment someone needs it.
+ */
+export const causeChain = (error: unknown, seen: Set<unknown> = new Set()): readonly string[] => {
+  if (typeof error !== 'object' || error === null || seen.has(error)) {
+    return typeof error === 'string' ? [error] : [];
+  }
+  seen.add(error);
+  const message = 'message' in error && typeof error.message === 'string' ? [error.message] : [];
+  return 'cause' in error ? [...message, ...causeChain(error.cause, seen)] : message;
+};
+
+/**
+ * Runs an effect and rethrows its failure with the whole cause chain in the
+ * message.
+ *
+ * `Effect.runPromise` alone rejects with a `FiberFailure`, which carries neither
+ * the failure's class nor its `cause` — so a caller loses both the error it
+ * could have discriminated on and the diagnostic it needed. `runPromiseExit`
+ * plus `Cause.squash` recovers the real error, which is then rethrown with the
+ * underlying reason spelled out and the original on `cause`.
+ */
+export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {
+  const exit = await Effect.runPromiseExit(effect);
+  if (Exit.isSuccess(exit)) {
+    return exit.value;
+  }
+  const error: unknown = Cause.squash(exit.cause);
+  const chain = causeChain(error);
+  throw new Error(chain.length > 0 ? chain.join(': ') : String(error), { cause: error });
+};
+
+/**
  * Reads the ONE contract call a retained-era circuit produces.
  *
  * The retained era has no `crossContractCall`, so its execution adapter
@@ -479,7 +517,7 @@ export const runRetainedCircuit = async <C extends RetainedContract, PS>(
     );
   });
 
-  const call = await Effect.runPromise(
+  const call = await runOrRethrow(
     withPinnedClock(
       options.nowSeconds,
       program.pipe(
@@ -544,7 +582,7 @@ export const runRetainedConstructor = async <C extends RetainedContract, PS>(
   }
 
   const executable = ContractExecutable.make(containerFor<PS>(options.contract));
-  const deployed = await Effect.runPromise(
+  const deployed = await runOrRethrow(
     executable
       .initialize(options.privateState, ...(options.args as readonly never[]))
       .pipe(

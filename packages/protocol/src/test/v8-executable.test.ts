@@ -34,8 +34,10 @@ import type { EncodedStateValue } from '../lib/era/envelope';
 import { loadLedgerEra } from '../lib/era/load-era';
 import type { ContractBalance } from '../lib/shared/contract-state';
 import {
+  causeChain,
   pinnedClock,
   refuseVerifierKeyRead,
+  runOrRethrow,
   runRetainedCircuit,
   runRetainedConstructor,
   soleCall
@@ -388,5 +390,91 @@ describe('soleCall', () => {
     // cannot honour, and is refused rather than read as `undefined` and carried
     // into a composition.
     expect(() => soleCall([], 'increment')).toThrow("circuit 'increment' produced no contract call");
+  });
+});
+
+describe('a failing circuit', () => {
+  it('surfaces the runtime\'s own reason, not just compact-js\'s wrapper', async () => {
+    // Arrange. `receive_coin` on a contract state that does not fit it: the
+    // retained runtime refuses inside the circuit, and compact-js reports that
+    // as `Error executing circuit '...'` with the real diagnostic on `cause`.
+    const { module: contractModule, contract } = await loadCounter();
+    const contractState = await freshCounterState(contractModule);
+
+    // Act.
+    const rejection = await runRetainedCircuit({
+      contract,
+      circuitId: 'increment',
+      args: ['not-an-argument-this-circuit-takes'],
+      contractState,
+      address: ADDRESS,
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      privateState: {}
+    }).catch((error: unknown) => error);
+
+    // Assert. The wrapper alone would leave a caller reading
+    // `Error executing circuit 'increment'` with no idea why. Both halves have
+    // to reach them, and the original has to stay on `cause` so it can still be
+    // discriminated on.
+    expect(rejection).toBeInstanceOf(Error);
+    expect((rejection as Error).message).toContain('increment');
+    expect((rejection as Error).message.split(': ').length).toBeGreaterThan(1);
+    expect((rejection as Error).cause).toBeDefined();
+  });
+});
+
+describe('causeChain', () => {
+  it('reads every message down the chain, outermost first', () => {
+    const root = new Error('Block time is <= time');
+    const wrapped = new Error("Error executing circuit 'testBlockTimeGt'", { cause: root });
+
+    expect(causeChain(wrapped)).toEqual(["Error executing circuit 'testBlockTimeGt'", 'Block time is <= time']);
+  });
+
+  it('reads a cause that is a bare string, which a thrown literal produces', () => {
+    expect(causeChain(new Error('outer', { cause: 'inner reason' }))).toEqual(['outer', 'inner reason']);
+  });
+
+  it('stops on a cycle rather than recursing forever', () => {
+    // A self-referential cause is not hypothetical: a handler that re-wraps an
+    // error it already wrapped produces one, and the walk must terminate.
+    const looped: { message: string; cause?: unknown } = { message: 'looped' };
+    looped.cause = looped;
+
+    expect(causeChain(looped)).toEqual(['looped']);
+  });
+
+  it('answers nothing for a value carrying no message at all', () => {
+    expect(causeChain(undefined)).toEqual([]);
+    expect(causeChain({ cause: { cause: undefined } })).toEqual([]);
+  });
+});
+
+describe('runOrRethrow', () => {
+  it('passes a success straight through', async () => {
+    await expect(runOrRethrow(Effect.succeed('value'))).resolves.toBe('value');
+  });
+
+  it('rethrows a failure with the whole cause chain and the original on `cause`', async () => {
+    const root = new Error('Block time is <= time');
+    const wrapped = new Error("Error executing circuit 'testBlockTimeGt'", { cause: root });
+
+    const rejection = await runOrRethrow(Effect.fail(wrapped)).catch((error: unknown) => error);
+
+    // `Effect.runPromise` alone rejects with a `FiberFailure`, which carries
+    // neither the class nor the cause -- so the reason the circuit actually
+    // failed never reaches the caller. This is the assertion an e2e test caught
+    // the hard way.
+    expect((rejection as Error).message).toBe("Error executing circuit 'testBlockTimeGt': Block time is <= time");
+    expect((rejection as Error).cause).toBe(wrapped);
+  });
+
+  it('still says something when the failure carries no message', async () => {
+    // A failure value that is not an `Error` at all. Without the fallback the
+    // rethrown message would be empty, which is worse than the wrapper it
+    // replaced.
+    const rejection = await runOrRethrow(Effect.fail(42)).catch((error: unknown) => error);
+
+    expect((rejection as Error).message).toBe('42');
   });
 });
