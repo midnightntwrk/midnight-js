@@ -38,8 +38,17 @@ retained-runtime state handle, and nothing in this package may construct one, so
 the slice is GENERIC in that state: the pipeline receives the value from
 `downConvertForExecution` and hands it straight to `executeCircuit` without
 looking inside. The real engine satisfies the slice at
-`TState = DownConvertedState`, while a test replaying a committed recording
-satisfies it at a plain marker type.
+`TExecutable = ExecutableContractState` and `TState = DownConvertedState`, while
+a test replaying a committed recording satisfies it at plain marker types.
+
+TWO parameters, because the state going IN carries the contract's balances and
+the state coming OUT on the transcript does not. The pipeline used to pass the
+balance as a second option beside the state, which meant a caller could hand the
+engine two halves of different reads and nothing could tell — the same class of
+defect as the one that produced #1345. `downConvertForExecution` now takes the
+DECODED contract state and answers with both halves as one value, and
+`TExecutable extends TState` is what keeps the transcript's own state readable
+from it.
 
 Both members of the slice are declared with method syntax deliberately — their
 parameters are then compared bivariantly, which is what lets the real engine

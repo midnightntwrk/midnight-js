@@ -49,6 +49,7 @@ header:
     - '**/*.d.ts'
     - '**/generated/**'
     - '**/compiled/**'
+    - '**/compiled-retained/**'
     - '**/managed/**'
     - '**/auto-generated/**'
     - 'packages/*/src/gen/*.ts'
