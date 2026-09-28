@@ -1,4 +1,4 @@
-# 0014. Build the provider seams from per-era arms, and declare what they serve
+# 0014. Build the provider seams from per-era handlers, and declare what they serve
 
 - Status: Accepted
 - Date: 2026-09-11
@@ -70,12 +70,12 @@ handler per era.
    these interfaces, and a required member is what tells an implementer through
    the compiler. An optional one says nothing and defaults to a lie.
 
-3. **Providers are assembled from arms.** `createProofProviderFromArms`,
-   `createWalletProviderFromArms` and `createMidnightProviderFromArms` each take
-   a required `currentEra` handler plus an optional `retainedEras` record, and
-   return the tagged interface. The factory does the routing, the tagging and
-   the refusal of an arm it was not given; an arm never writes a `version` tag
-   and cannot answer in the wrong era.
+3. **Providers are assembled from handlers.** `createProofProviderFromHandlers`,
+   `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers`
+   each take a required `currentEra` handler plus an optional `retainedEras`
+   record, and return the tagged interface. The factory does the routing, the
+   tagging and the refusal of a handler it was not given; a handler never writes
+   a `version` tag and cannot answer in the wrong era.
 
 4. **`RetainedEraHandlers<H>` excludes the current era from its key set.**
    `Partial<Readonly<Record<RetainedLedgerVersion, H>>>`, where
@@ -86,16 +86,16 @@ handler per era.
    network moves on and today's current era becomes retained, it becomes
    registrable on its own, with no change to the type.
 
-5. **`supportedEras` is COMPUTED from the arms, never written beside them.**
+5. **`supportedEras` is COMPUTED from the handlers, never written beside them.**
    `erasServedBy(retainedEras)` returns the current era plus each retained era
    with a handler, frozen. A hand-written list is a second statement of the same
-   fact and drifts the first time an arm moves.
+   fact and drifts the first time a handler moves.
 
 6. **The tagged interface may still be implemented directly.** A class, a test
    double, or a provider that routes internally writes `supportedEras` itself.
    The testkit's `MidnightWalletProvider` does exactly that: the wallet SDK
    adopts a transaction AT a protocol version, so both eras genuinely run through
-   one call, and splitting that into arms would duplicate the
+   one call, and splitting that into handlers would duplicate the
    balance/sign/finalize sequence to no purpose.
 
 7. **The declarations are checked before an operation starts.**
@@ -125,17 +125,17 @@ handler per era.
 
 10. **The simple adapters keep their signatures.** `createProofProvider(pp,
     costModel)`, `createWalletProvider(impl)` and `createMidnightProvider(fn)`
-    are unchanged for callers; each is now one line over its arms factory and
-    declares exactly the current era. A dApp with a v9-only wallet migrates by
-    adding nothing.
+    are unchanged for callers; each is now one line over its handlers factory
+    and declares exactly the current era. A dApp with a v9-only wallet migrates
+    by adding nothing.
 
 ## Consequences
 
 - **Positive.** A provider set that cannot carry a transaction end to end is
   refused before the proof is paid for, and the error names the seam and the
   remedy. Both proof providers lose their hand-written routing — the
-  dapp-connector one drops from a twenty-line `proveTx` to two arms — and with
-  it the class of bug where a seam answers in the arm it was not asked in.
+  dapp-connector one drops from a twenty-line `proveTx` to two handlers — and
+  with it the class of bug where a seam answers in the arm it was not asked in.
   "A retained handler for the current era" and "an era outside the vocabulary"
   are both build failures. A third ledger era adds a member to
   `LEDGER_VERSIONS` and becomes registrable everywhere at once, without editing
@@ -158,15 +158,16 @@ handler per era.
   `packages/contracts/docs/era-dispatch.md`; nothing binds them mechanically.
 
 - **Follow-ups.**
-  - The retained arms of `balanceTx` and `submitTx` have no framework-supplied
-    implementation. `RetainedEraBalancer` and `RetainedEraSubmitter` are declared
-    and routed, and the testkit wallet serves both eras, but a consumer wanting
-    them outside the testkit still writes them. ADR 0006's "provider-side v8
+  - The retained handlers of `balanceTx` and `submitTx` have no
+    framework-supplied implementation. `RetainedEraBalancer` and
+    `RetainedEraSubmitter` are declared and routed, and the testkit wallet
+    serves both eras, but a consumer wanting them outside the testkit still
+    writes them. ADR 0006's "provider-side v8
     support, which retires `V8PayloadUnsupportedError`" remains partly done.
   - The stage-erasure risk ADR 0006's amendment records is untouched:
     `V8TxBytes` is still identical across the three seams, so an unproven
     retained payload is still assignable where a finalized one is expected. The
-    arms narrow what an IMPLEMENTATION sees, not what the union expresses.
+    handlers narrow what an IMPLEMENTATION sees, not what the union expresses.
 
 ## Alternatives considered
 
@@ -194,13 +195,13 @@ from a declaration before any payload exists, and its remedy is different: wire 
 different provider, rather than upgrade or check the indexer. Merging them would
 make `hasErrorCode` unable to tell a wiring mistake from a decode failure.
 
-**Replacing `createProofProvider` with the arms factory.** Rejected. The two-
-argument form is the easy path for the common case — a dApp with a
+**Replacing `createProofProvider` with the handlers factory.** Rejected. The
+two-argument form is the easy path for the common case — a dApp with a
 `ProvingProvider` and no retained-era ambitions — and keeping it means that dApp
-migrates by changing nothing. Both forms exist; the arms factory is what the
+migrates by changing nothing. Both forms exist; the handlers factory is what the
 documentation points a dual-era implementer at.
 
-**Splitting the testkit's `MidnightWalletProvider` into arms for uniformity.**
+**Splitting the testkit's `MidnightWalletProvider` into handlers for uniformity.**
 Rejected on inspection. Its `balanceTx` runs both eras through one wallet-SDK
 call because the SDK adopts a transaction at a protocol version — the era branch
 lives below it, in `adoptVersionedUnbound`/`unwrapVersionedFinalized`. Splitting

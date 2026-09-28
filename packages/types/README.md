@@ -309,7 +309,7 @@ import {
   type Seam,
   unwrapV9,
 
-  // Per-era arms, and the declaration built from them
+  // Per-era handlers, arm selection, and the declaration built from them
   type RetainedEraHandlers,
   type EraArmRequest,
   erasServedBy,

@@ -374,7 +374,7 @@ proof server, which remains untested.
 
 The decision above stands unchanged. This note records that one consequence its
 first amendment described has been addressed, by
-[ADR-0014](./0014-build-provider-seams-from-per-era-arms.md).
+[ADR-0014](./0014-build-provider-seams-from-per-era-handlers.md).
 
 That amendment closed with:
 
@@ -400,13 +400,13 @@ Three points of this ADR are affected, none reversed:
   serving more than one era, and it reports the same two errors for the same two
   reasons.
 - The `create*Provider` adapters keep their signatures. Each is now a one-line
-  call to its arms factory and declares exactly the current era, which is the
+  call to its handlers factory and declares exactly the current era, which is the
   same permanent refusal this ADR's first amendment describes — now stated in
   the type rather than discoverable only by sending a payload.
 
 The stage-erasure risk that amendment records is NOT affected: `V8TxBytes` is
-still identical across the three seams. The arms narrow what an implementation
-sees, not what the union expresses.
+still identical across the three seams. The handlers narrow what an
+implementation sees, not what the union expresses.
 
 ## Amendment — the provider codes move to the package that throws them (2026-09-16)
 
