@@ -21,7 +21,7 @@ import { ContractCallPrototype, ContractOperation, ContractState, Intent, sample
 import type { ConstructorContext } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { DownConvertedState } from '../lib/v8/down-convert';
+import type { ExecutableContractState } from '../lib/v8/down-convert';
 import { createLedger8Engine } from '../lib/v8/engine';
 import type { ExecuteCircuitOptions, Ledger8ContractLike } from '../lib/v8/execute';
 import { emptyPartitionContext, emptyZswapLocalState } from './fixtures';
@@ -123,7 +123,7 @@ describe('createLedger8Engine', () => {
     const contract = new Contract(initialPrivateState);
     const constructorContext = ledger8Runtime.createConstructorContext(initialPrivateState, SAMPLE_COIN_PUBLIC_KEY);
     const initial = contract.initialState(constructorContext);
-    const preState: DownConvertedState = { data: initial.currentContractState.data };
+    const preState: ExecutableContractState = { data: initial.currentContractState.data, balance: new Map() };
 
     const options: ExecuteCircuitOptions = {
       contract,
@@ -132,8 +132,7 @@ describe('createLedger8Engine', () => {
       state: preState,
       address: ocrt3.dummyContractAddress(),
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: {},
-      balance: new Map()
+      privateState: {}
     };
 
     const transcript = engine.executeCircuit(options);
@@ -164,7 +163,7 @@ describe('createLedger8Engine', () => {
     const contract = new Contract(initialPrivateState);
     const constructorContext = ledger8Runtime.createConstructorContext(initialPrivateState, SAMPLE_COIN_PUBLIC_KEY);
     const initial = contract.initialState(constructorContext);
-    const preState: DownConvertedState = { data: initial.currentContractState.data };
+    const preState: ExecutableContractState = { data: initial.currentContractState.data, balance: new Map() };
     const address = ocrt3.dummyContractAddress();
 
     const transcript = engine.executeCircuit({
@@ -177,7 +176,6 @@ describe('createLedger8Engine', () => {
       privateState: {},
       // Freshly constructed, so it holds nothing -- an empty balance here is the
       // contract's real one, not a stand-in.
-      balance: new Map()
     });
 
     expect(transcript.publicTranscript.length).toBeGreaterThan(0);

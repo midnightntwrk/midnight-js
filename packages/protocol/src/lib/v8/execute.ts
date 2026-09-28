@@ -23,8 +23,8 @@ type Op<T> = OnchainRuntimeV3.Op<T>;
 
 import type { EncodedStateValue } from '../era/envelope';
 import type { PartitionContext } from '../shared/compose-types';
-import { type ContractBalance, describeValue, isContractBalance } from '../shared/contract-state';
-import type { DownConvertedState } from './down-convert';
+import { describeValue, isContractBalance } from '../shared/contract-state';
+import type { DownConvertedState, ExecutableContractState } from './down-convert';
 
 /**
  * The `QueryContext` slice {@link executeCircuit} reads off a circuit's
@@ -188,19 +188,21 @@ export interface ExecuteCircuitOptions {
   readonly contract: Ledger8ContractLike;
   readonly circuitId: string;
   readonly args: readonly unknown[];
-  readonly state: DownConvertedState;
-  readonly address: string;
-  readonly coinPk: string;
-  readonly privateState: unknown;
   /**
-   * The balances the contract holds on chain, which `state` does not carry.
+   * The state to execute against AND the balances the contract holds, as one
+   * value.
    *
-   * REQUIRED rather than defaulted; a contract that holds nothing passes an
-   * empty map explicitly.
+   * One member rather than two, because the two halves must describe the same
+   * block. As separate options a caller could pass a balance read off another
+   * block or another contract, and nothing here could tell. Build it with
+   * {@link toExecutableState}, which takes one contract-state pojo.
    *
    * @see {@link RetainedEraExecution}
    */
-  readonly balance: ContractBalance;
+  readonly state: ExecutableContractState;
+  readonly address: string;
+  readonly coinPk: string;
+  readonly privateState: unknown;
 }
 
 /**
@@ -224,17 +226,18 @@ export interface ExecuteCircuitOptions {
  * @see {@link RetainedEraExecution}
  */
 export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: Ledger8ExecutionRuntime): TranscriptPojo => {
-  const { contract, circuitId, args, state, address, coinPk, privateState, balance } = options;
+  const { contract, circuitId, args, state, address, coinPk, privateState } = options;
+  const balance: unknown = state?.balance;
   // Checked at runtime because `tsc` reaches neither a JavaScript caller nor an
   // options object assembled dynamically, and every substitution `new Map(...)`
   // accepts -- absent, an empty array, an empty `Set` -- yields an empty
   // balance. @see RetainedEraExecution
   if (!isContractBalance(balance)) {
     throw new Error(
-      `executeCircuit requires 'balance' for circuit '${circuitId}', as a Map — received ${describeValue(balance)}. ` +
-        "Read it from the same contract-state snapshot as 'state' (ContractStatePojo.balance); " +
-        'a contract that holds nothing passes an empty Map explicitly. A JSON round trip turns a Map into a ' +
-        'plain object and is refused here; use structuredClone.'
+      `executeCircuit requires 'balance' on 'state' for circuit '${circuitId}', as a Map — received ` +
+        `${describeValue(balance)}. Build the state with toExecutableState, which reads both halves off one ` +
+        'contract-state snapshot; a contract that holds nothing carries an empty Map explicitly. A JSON round ' +
+        'trip turns a Map into a plain object and is refused here; use structuredClone.'
     );
   }
   const circuit = Object.hasOwn(contract.impureCircuits, circuitId) ? contract.impureCircuits[circuitId] : undefined;

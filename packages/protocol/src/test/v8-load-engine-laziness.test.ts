@@ -63,7 +63,7 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
       alignment: [{ tag: 'atom', value: { tag: 'field' } }]
     }).encode();
 
-    expect(engine.downConvertForExecution(encoded)).toBeDefined();
+    expect(engine.downConvertForExecution({ state: encoded, balance: new Map(), entryPoints: [] })).toBeDefined();
     expect(loadLedger8).not.toHaveBeenCalled();
   });
 

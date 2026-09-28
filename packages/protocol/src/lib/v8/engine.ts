@@ -16,7 +16,7 @@
 import type { ContractCallPrototype } from '@midnightntwrk/ledger-v9';
 
 import type { EncodedStateValue } from '../era/envelope';
-import type { ContractBalance, ContractEntryPointPojo } from '../shared/contract-state';
+import type { ContractBalance, ContractEntryPointPojo, ContractStatePojo } from '../shared/contract-state';
 import { reexpressOperationsForCurrentEra } from '../v9/operations';
 import { wrapKeepStateCall, type WrapKeepStateCallOptions } from '../v9/wrap';
 import {
@@ -29,10 +29,11 @@ import {
 } from './deploy';
 import {
   type DownConvertedState,
-  downConvertForExecution,
+  type ExecutableContractState,
   type Ledger8ChargedState,
   type Ledger8CompactRuntime,
-  type Ledger8StateValue
+  type Ledger8StateValue,
+  toExecutableState
 } from './down-convert';
 import { executeCircuit, type ExecuteCircuitOptions, type Ledger8ExecutionRuntime, type TranscriptPojo } from './execute';
 import { assertSharedLedger8Instance } from './instance-guard';
@@ -41,8 +42,10 @@ export type {
   ConstructorResultPojo,
   ContractBalance,
   ContractEntryPointPojo,
+  ContractStatePojo,
   DownConvertedState,
   EncodedStateValue,
+  ExecutableContractState,
   ExecuteCircuitOptions,
   ExecuteConstructorOptions,
   Ledger8ChargedState,
@@ -64,7 +67,15 @@ export type {
  * @see {@link EraSeam}
  */
 export interface Ledger8Engine {
-  downConvertForExecution(state: EncodedStateValue): DownConvertedState;
+  /**
+   * Down-converts a decoded contract state for retained-era execution, carrying
+   * its balance with it.
+   *
+   * Takes the DECODED state rather than the extracted `EncodedStateValue`: the
+   * balance a circuit reads is not part of the primary state, and as a separate
+   * argument it could come off a different read. @see {@link toExecutableState}
+   */
+  downConvertForExecution(contractState: ContractStatePojo): ExecutableContractState;
   executeCircuit(options: ExecuteCircuitOptions): TranscriptPojo;
   wrapKeepStateCall(options: WrapKeepStateCallOptions): ContractCallPrototype;
   executeConstructor(options: ExecuteConstructorOptions): ConstructorResultPojo;
@@ -133,7 +144,7 @@ export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
   };
 
   return {
-    downConvertForExecution: (state) => downConvertForExecution(state, ledger8CompactRuntime),
+    downConvertForExecution: (contractState) => toExecutableState(contractState, ledger8CompactRuntime),
     executeCircuit: (options) => executeCircuit(options, ledger8ExecutionRuntime),
     wrapKeepStateCall,
     reexpressOperationsForCurrentEra,

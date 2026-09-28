@@ -40,7 +40,7 @@ import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import {
   type ComposeCallOptions,
   type ContractBalance,
-  type DownConvertedState,
+  type ExecutableContractState,
   type ExecuteCircuitOptions,
   type LedgerEra,
   loadLedgerEra
@@ -76,6 +76,7 @@ import {
   type OrchestrationLog,
   readHfHexFixture,
   recordEraCalls,
+  type ReplayExecutableState,
   type ReplayState,
   RETAINED_ERA_TX_TAG,
   txTagPrefix
@@ -221,7 +222,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     let composed: ComposeCallOptions | undefined;
     const providers = postForkProviders(v6Envelope);
 
-    const result = await runLedger8CallPipeline<ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
       era: recordEraCalls(currentEra, log, (options) => {
         composed = options;
       }),
@@ -295,7 +296,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     const log: OrchestrationLog = [];
     const providers = postForkProviders(v6Envelope);
 
-    const result = await runLedger8CallPipeline<ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
       era: currentEra,
       retainedEra,
       engine: createReplayEngine(recording, log),
@@ -349,7 +350,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       decodeContractState: (raw) => ({ ...retainedEra.decodeContractState(raw), balance: held })
     };
 
-    await runLedger8CallPipeline<ReplayState>({
+    await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
       era: currentEra,
       retainedEra: retainedEraHolding,
       engine: createReplayEngine(recording, log, undefined, { balance: held }),
@@ -540,7 +541,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     const log: OrchestrationLog = [];
     let caught: unknown;
     try {
-      await runLedger8CallPipeline<ReplayState>({
+      await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
         era: recordEraCalls(currentEra, log),
         retainedEra: recordEraCalls(retainedEra, log),
         engine: createReplayEngine(recording, log),
@@ -647,7 +648,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
 // `Ledger8ExecutionEngine.executeCircuit` uses METHOD syntax deliberately, so
 // its parameters compare BIVARIANTLY: the real engine satisfies the slice
 // whether or not `Ledger8ExecuteRequest` declares every option the engine
-// requires. Dropping `balance` from the interface would leave the pipeline
+// requires. Dropping a member from the interface would leave the pipeline
 // compiling while it silently stopped passing one, and the only thing between
 // that and #1345 recurring would be the engine's own runtime guard.
 //
@@ -655,12 +656,18 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
 // is deliberately the wider slice, so the request is not assignable to the
 // engine's options and never was. What has to hold is that the request NAMES
 // every option the engine requires, and agrees with it on the one this file is
-// about.
+// about -- which is now `state`, because the balance rides on it.
 type _RequestNamesEveryEngineOption = Assert<
-  [Exclude<keyof ExecuteCircuitOptions, keyof Ledger8ExecuteRequest<DownConvertedState>>] extends [never]
+  [Exclude<keyof ExecuteCircuitOptions, keyof Ledger8ExecuteRequest<ExecutableContractState>>] extends [never]
     ? true
     : false
 >;
-type _RequestAgreesOnTheBalance = Assert<
-  MutuallyAssignable<Ledger8ExecuteRequest<DownConvertedState>['balance'], ExecuteCircuitOptions['balance']>
+type _RequestAgreesOnTheExecutableState = Assert<
+  MutuallyAssignable<Ledger8ExecuteRequest<ExecutableContractState>['state'], ExecuteCircuitOptions['state']>
+>;
+// And that the state really does carry the balance: a `state` that lost it
+// would satisfy the two pins above and put the pipeline back where #1345 was,
+// with the engine's runtime guard as the only thing left.
+type _ExecutableStateCarriesTheBalance = Assert<
+  MutuallyAssignable<ExecuteCircuitOptions['state']['balance'], ContractBalance>
 >;

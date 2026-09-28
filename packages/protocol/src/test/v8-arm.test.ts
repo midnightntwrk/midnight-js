@@ -132,12 +132,11 @@ const runIncrement = async (): Promise<{
     contract,
     circuitId: 'increment',
     args: [],
-    state: { data: initial.currentContractState.data },
+    state: { data: initial.currentContractState.data, balance: new Map() },
     address,
     coinPk: SAMPLE_COIN_PUBLIC_KEY,
     privateState: {},
     // Freshly constructed, so it holds nothing.
-    balance: new Map()
   });
 
   return { entry: callEntryFromTranscript(transcript, address), address };
@@ -202,7 +201,7 @@ describe('the v8 era arm', () => {
       })
     );
 
-    const downConverted = engine.downConvertForExecution(era.extractState(contractState.serialize()));
+    const downConverted = engine.downConvertForExecution(era.decodeContractState(contractState.serialize()));
 
     expect(downConverted.data.state.type()).toBe('cell');
   });
