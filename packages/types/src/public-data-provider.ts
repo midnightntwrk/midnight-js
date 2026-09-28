@@ -418,6 +418,40 @@ export interface PublicDataProvider {
   contractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<ContractState>;
 
   /**
+   * Creates a stream of contract states as the raw serialized bytes the network
+   * returned, without deserializing them, each together with the era its record
+   * is dated to. The observable emits a value every time a state is either
+   * created or updated at the given address.
+   * Waits indefinitely for matching data to appear.
+   *
+   * THE STREAMING COUNTERPART OF {@link queryRawContractState}, and the reason
+   * to prefer it over {@link contractStateObservable} is the same: it is the
+   * contract-state stream that works across the ledger fork. An implementation
+   * that deserializes inside the stream can only do so with the eras its own
+   * runtime has, and a state from any other era then ENDS the subscription
+   * rather than skipping one emission — a contract deployed before a fork and
+   * not written to since serves exactly such a state for as long as it stays
+   * dormant. Here the era travels on the record and the caller narrows on
+   * {@link RawContractState.version} before handing the bytes to a
+   * deserializer.
+   *
+   * {@link RawContractState.ledgerParameters} MAY BE ABSENT ON A STREAM even
+   * where the same implementation serves it on
+   * {@link queryRawContractState}. The parameters are a per-block blob, and a
+   * stream would carry one for every block it passes through rather than only
+   * for the blocks that touch this contract; an implementation is free to
+   * refuse that cost. A caller that needs them asks
+   * {@link queryRawContractState} for the block the record names.
+   *
+   * @param address The address of the contract of interest.
+   * @param config The configuration for the observable.
+   */
+  rawContractStateObservable(
+    address: ContractAddress,
+    config: ContractStateObservableConfig
+  ): Observable<RawContractState>;
+
+  /**
    * Retrieves an observable that tracks the unshielded balances for a specific contract address.
    *
    * @param {ContractAddress} address - The contract address for which unshielded balances are being observed.

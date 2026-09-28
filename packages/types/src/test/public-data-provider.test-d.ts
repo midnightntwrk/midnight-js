@@ -14,9 +14,15 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { Observable } from 'rxjs';
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { BlockHashConfig, BlockHeightConfig, PublicDataProvider } from '../public-data-provider';
+import type {
+  BlockHashConfig,
+  BlockHeightConfig,
+  ContractStateObservableConfig,
+  PublicDataProvider
+} from '../public-data-provider';
 import type { RawContractState } from '../raw-contract-state';
 
 // These are compile-level tests: the property under test is that the file
@@ -43,7 +49,7 @@ type RawContractStateFixture = {
   readonly ledgerParameters?: Uint8Array;
 };
 
-// Independent restatements of the two new member signatures — written out
+// Independent restatements of the three new member signatures — written out
 // here rather than read off the interface, so a widened parameter, a dropped
 // optional, or a changed result type breaks the equality checks below.
 type HeadVersionQuery = () => Promise<number>;
@@ -53,14 +59,21 @@ type RawStateQuery = (
   config?: BlockHeightConfig | BlockHashConfig
 ) => Promise<RawContractState | null>;
 
+// `config` is REQUIRED here, matching the two observables that came before it
+// — an implementation may default it, the interface does not.
+type RawStateStream = (
+  address: ContractAddress,
+  config: ContractStateObservableConfig
+) => Observable<RawContractState>;
+
 // The member set an implementation written against the previous release
-// satisfies: today's interface minus the two members this change adds.
-// Deliberately derived with `Omit` — the property under test is "these two
+// satisfies: today's interface minus the three members these changes add.
+// Deliberately derived with `Omit` — the property under test is "these three
 // names are required members", and deriving makes the test fail (via an
-// unused `@ts-expect-error`) the moment either name stops being required.
+// unused `@ts-expect-error`) the moment any of them stops being required.
 type PreviousPublicDataProvider = Omit<
   PublicDataProvider,
-  'queryLatestProtocolVersion' | 'queryRawContractState'
+  'queryLatestProtocolVersion' | 'queryRawContractState' | 'rawContractStateObservable'
 >;
 
 describe('PublicDataProvider head-version and raw-state members', () => {
@@ -68,24 +81,26 @@ describe('PublicDataProvider head-version and raw-state members', () => {
     const previousImplementation = {} as PreviousPublicDataProvider;
 
     // @ts-expect-error An object that implements every member of the previous
-    // release no longer satisfies `PublicDataProvider`: both
-    // `queryLatestProtocolVersion` and `queryRawContractState` are missing.
-    // If either member stopped being required, this suppression would become
-    // unused and TypeScript would report *that* instead — which is what makes
-    // this an actual assertion rather than a comment.
+    // release no longer satisfies `PublicDataProvider`: all three of
+    // `queryLatestProtocolVersion`, `queryRawContractState` and
+    // `rawContractStateObservable` are missing. If any of them stopped being
+    // required, this suppression would become unused and TypeScript would
+    // report *that* instead — which is what makes this an actual assertion
+    // rather than a comment.
     const provider: PublicDataProvider = previousImplementation;
 
     expectTypeOf(provider).not.toBeAny();
   });
 
-  it('accepts the previous member set once both new members are supplied — no third member is required', () => {
+  it('accepts the previous member set once all three new members are supplied — no fourth member is required', () => {
     // Positive control for the check above: proves the rejection is caused by
-    // exactly these two members. It also fails if a *further* member is added
+    // exactly these three members. It also fails if a *further* member is added
     // to the interface without this test being updated.
     expectTypeOf<
       PreviousPublicDataProvider & {
         queryLatestProtocolVersion: HeadVersionQuery;
         queryRawContractState: RawStateQuery;
+        rawContractStateObservable: RawStateStream;
       }
     >().toMatchTypeOf<PublicDataProvider>();
   });
@@ -107,6 +122,23 @@ describe('PublicDataProvider head-version and raw-state members', () => {
 
   it('pins queryRawContractState to an address plus an optional block config, resolving to the record or null', () => {
     expectTypeOf<PublicDataProvider['queryRawContractState']>().toEqualTypeOf<RawStateQuery>();
+  });
+
+  it('pins rawContractStateObservable to an address plus a stream config, emitting the raw record', () => {
+    expectTypeOf<PublicDataProvider['rawContractStateObservable']>().toEqualTypeOf<RawStateStream>();
+  });
+
+  it('streams the same record the raw query resolves to, so one narrowing serves both', () => {
+    // The two raw reads are a pair: a caller writes ONE `switch (record.version)`
+    // and uses it against the query and the stream alike. A divergence in the
+    // element type would split that into two.
+    type Streamed = PublicDataProvider['rawContractStateObservable'] extends (
+      ...args: never[]
+    ) => Observable<infer Element>
+      ? Element
+      : never;
+
+    expectTypeOf<Streamed>().toEqualTypeOf<RawContractState>();
   });
 
   it('pins RawContractState to exactly four fields — fails if one is dropped, added, or retyped', () => {
