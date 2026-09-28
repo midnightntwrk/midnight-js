@@ -15,15 +15,23 @@
 
 
 import { hashVerifierKey } from '@midnight-ntwrk/compact-js';
+import type * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import * as ledgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { PROTOCOL_ERROR_CODES, StateDecodeFailedError } from '../errors';
 import { extractV9EncodedStateValue } from '../lib/era/envelope';
-import { type ContractStateDecoder, decodeContractStateWith } from '../lib/shared/contract-state';
+import {
+  type ContractBalance,
+  type ContractStateDecoder,
+  type DecodableContractState,
+  decodeContractStateWith
+} from '../lib/shared/contract-state';
 import { entryPointName } from '../lib/shared/verifier-keys';
 import { expectStructuredCloneable } from './clone-assertions';
 import { readHexFixture } from './fixtures';
+import type { Assert, MutuallyAssignable } from './type-assertions';
 
 
 // Same full-decode check the golden-fixture suite uses: `Buffer.from(_, 'hex')`
@@ -188,3 +196,312 @@ describe('decodeContractStateWith', () => {
     expect(failure.message).not.toMatch(/[0-9a-f]{16,}/i);
   });
 });
+
+// The balance is the contract's own, and it lives on `ContractState.balance`
+// rather than inside the primary state — so a reader that returns only `state`
+// leaves a caller no way to reach it. A retained-era call that executes without
+// it reads every balance back as zero.
+describe('decodeContractStateWith carries the contract balance', () => {
+  const COLOUR = { tag: 'unshielded', raw: 'ab'.repeat(32) } as const;
+
+  const serializedStateHolding = (amount: bigint): Uint8Array => {
+    const contractState = new ledgerV9.ContractState();
+    contractState.balance = new Map([[COLOUR, amount]]);
+    return contractState.serialize();
+  };
+
+  it('reads back the balance the state declares', () => {
+    const pojo = decodeContractStateWith(serializedStateHolding(1_000n), 'v9', ledgerV9);
+
+    expect([...pojo.balance]).toEqual([[COLOUR, 1_000n]]);
+  });
+
+  it('reads an empty balance as empty rather than as absent', () => {
+    const pojo = decodeContractStateWith(serializedStateWithBlankOperation(), 'v9', ledgerV9);
+
+    expect([...pojo.balance]).toEqual([]);
+  });
+
+  // The pojo is what crosses the era boundary, so the balance has to be plain
+  // data like every other member — a live handle here would not survive the
+  // trip and would pin the value to the runtime instance that decoded it.
+  //
+  // Asserted on `pojo.balance`, NOT on the whole pojo: `expectStructuredCloneable`
+  // walks whatever it is given, so a pojo that carried no balance at all would
+  // satisfy it. The content assertion beside it is what keeps the member in
+  // scope of the check.
+  it('carries it as plain data, with no live handle', () => {
+    const pojo = decodeContractStateWith(serializedStateHolding(7n), 'v9', ledgerV9);
+
+    expectStructuredCloneable(pojo.balance);
+    expect([...pojo.balance]).toEqual([[COLOUR, 7n]]);
+  });
+
+  // `new Map(...)` preserves every entry, but so would an implementation that
+  // read only the first: a single-entry map cannot tell the two apart, and
+  // neither can one colour tell a tag-blind implementation from a correct one.
+  it('reads back every entry, across token-type variants', () => {
+    const shielded = { tag: 'shielded', raw: 'ef'.repeat(32) } as const;
+    const dust = { tag: 'dust' } as const;
+    const contractState = new ledgerV9.ContractState();
+    contractState.balance = new Map<ledgerV9.TokenType, bigint>([
+      [COLOUR, 1n],
+      [shielded, 2n],
+      [dust, 3n]
+    ]);
+
+    const pojo = decodeContractStateWith(contractState.serialize(), 'v9', ledgerV9);
+
+    // Sorted by tag on both sides: the decoder's iteration order is the runtime's
+    // canonical one, and this test is about entries surviving, not about order.
+    expect([...pojo.balance].sort(([a], [b]) => a.tag.localeCompare(b.tag))).toEqual([
+      [dust, 3n],
+      [shielded, 2n],
+      [COLOUR, 1n]
+    ]);
+  });
+});
+
+// The RETAINED arm is the only place this code path runs in production, and
+// every test above it reads a v9 state. `DecodableContractState.balance` is
+// structural, so a retained state whose `.balance` resolved to `undefined`
+// would decode to an empty map and reproduce #1345 with the v9 tests all green.
+describe('decodeContractStateWith carries the balance off a RETAINED-era state', () => {
+  const COLOUR = { tag: 'unshielded', raw: 'cd'.repeat(32) } as const;
+
+  it('reads back the balance a ledger-v8 state declares', () => {
+    const contractState = new ledgerV8.ContractState();
+    contractState.balance = new Map([[COLOUR, 4_200n]]);
+
+    const pojo = decodeContractStateWith(contractState.serialize(), 'v8', ledgerV8);
+
+    expect([...pojo.balance]).toEqual([[COLOUR, 4_200n]]);
+  });
+});
+
+// `DecodableContractState.balance` is structural and both vendors declare it
+// non-optional, so only an INJECTED decoder can answer without one. That is
+// exactly the seam worth failing loudly at: `new Map(undefined)` is an empty
+// map, indistinguishable from a contract that holds nothing, which is the
+// substitution #1345 was made of.
+describe('decodeContractStateWith refuses a state that resolves no balance', () => {
+  const REFUSED_COLOUR = { tag: 'unshielded', raw: 'ab'.repeat(32) } as const;
+
+  // A plain-object decoder rather than a `ContractState` subclass: the vendor
+  // declares `balance` as a non-optional data property, so an override cannot
+  // express the shape under test. `ContractStateDecoder` is declared
+  // structurally for exactly this reason.
+  const decoderAnswering = (balance: unknown): ContractStateDecoder => ({
+    ContractState: {
+      deserialize: (): DecodableContractState => ({
+        data: new ledgerV9.ContractState().data,
+        balance: balance as ContractBalance,
+        operations: () => [],
+        operation: () => undefined
+      })
+    }
+  });
+
+  const decodeFailure = (balance: unknown): unknown => {
+    let caught: unknown;
+    try {
+      decodeContractStateWith(new Uint8Array(), 'v9', decoderAnswering(balance));
+    } catch (error) {
+      caught = error;
+    }
+    return caught;
+  };
+
+  it('refuses an absent balance rather than reading it as an empty one', () => {
+    const caught = decodeFailure(undefined);
+
+    expect(caught).toBeInstanceOf(StateDecodeFailedError);
+    expect(caught).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED, version: 'v9' });
+    expect((caught as StateDecodeFailedError).cause).toBeInstanceOf(Error);
+    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
+  });
+
+  // A separate case, not a restatement: `new Map(null)` is an empty map too, so
+  // a guard that caught only `undefined` would let this one through silently.
+  it('refuses a null balance for the same reason', () => {
+    const caught = decodeFailure(null);
+
+    expect(caught).toBeInstanceOf(StateDecodeFailedError);
+    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
+  });
+
+  // Nullish is not the whole substitution. `new Map(...)` turns each of these
+  // into an empty map just as quietly, and a plain object is what a JSON round
+  // trip leaves behind.
+  const emptyButNotAMap: readonly [label: string, balance: unknown][] = [
+    ['an empty array', []],
+    ['an empty Set', new Set()],
+    ['an empty string', ''],
+    ['a plain object, the shape a JSON round trip leaves behind', {}]
+  ];
+
+  it.each(emptyButNotAMap)('refuses %s rather than reading it as an empty balance', (_label, balance) => {
+    const caught = decodeFailure(balance);
+
+    expect(caught).toBeInstanceOf(StateDecodeFailedError);
+    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
+  });
+
+  // Every case above dies on the FIRST structural clause, so the remaining
+  // three were carried by nothing: deleting them left the suite green. One
+  // case per clause, each answering the clauses before it.
+  // An iterator that yields nothing. A genuine empty balance iterates exactly
+  // like this, so these cases are about the SURFACE clauses, not about
+  // emptiness -- nothing here can tell an empty map from an empty fake.
+  const yieldsNothing = (): Iterator<never> => [][Symbol.iterator]();
+
+  const partialMapSurface: readonly [label: string, balance: unknown][] = [
+    ['an object with no `get`', { has: () => false, size: 0, [Symbol.iterator]: yieldsNothing }],
+    ['an object with `get` but no `has`', { get: () => undefined, size: 0, [Symbol.iterator]: yieldsNothing }],
+    [
+      'an object whose `size` is not a number',
+      { get: () => undefined, has: () => false, size: '0', [Symbol.iterator]: yieldsNothing }
+    ],
+    ['an object that is not iterable', { get: () => undefined, has: () => false, size: 0 }]
+  ];
+
+  it.each(partialMapSurface)('refuses %s, which answers only part of the map surface', (_label, balance) => {
+    const caught = decodeFailure(balance);
+
+    expect(caught).toBeInstanceOf(StateDecodeFailedError);
+    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
+  });
+
+  // `Map.prototype`'s members throw rather than answer when invoked with a
+  // foreign receiver, so a guard that reads them plainly is not a total
+  // predicate: it propagates a `TypeError` instead of refusing. Neither shape
+  // can serve as a balance -- `new Map(...)` throws on the same receiver -- so
+  // both belong in the refusal, and with the diagnostic message, not with the
+  // vendor's.
+  const throwsOnTheMapSurface: readonly [label: string, balance: unknown][] = [
+    ['a proxied map, which `new Map(...)` cannot read either', new Proxy(new Map([[REFUSED_COLOUR, 5n]]), {})],
+    ['an object that only inherits `Map.prototype`', Object.create(Map.prototype)]
+  ];
+
+  it.each(throwsOnTheMapSurface)('refuses %s rather than propagating its TypeError', (_label, balance) => {
+    const caught = decodeFailure(balance);
+
+    expect(caught).toBeInstanceOf(StateDecodeFailedError);
+    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
+    expect(((caught as StateDecodeFailedError).cause as Error).message).not.toMatch(/incompatible receiver/);
+  });
+
+  // The container alone is not the balance. A map carrying the wrong entry
+  // types satisfies every structural clause and then feeds the circuit
+  // arithmetic it cannot do, which is the same class of silent wrong answer
+  // #1345 was -- so `value is ContractBalance` has to mean the entries too.
+  const mapWithUnusableEntries: readonly [label: string, balance: unknown][] = [
+    ['amounts that are not bigints', new Map([[REFUSED_COLOUR, '1000']])],
+    ['amounts that are numbers', new Map([[REFUSED_COLOUR, 1000]])],
+    ['colours that are not token types', new Map([['unshielded', 1_000n]])],
+    ['colours carrying no tag', new Map([[{ raw: 'ab'.repeat(32) }, 1_000n]])],
+    // A real `Map` always iterates `[key, value]` pairs; a hand-built object
+    // claiming the surface need not, and `new Map(...)` throws on it rather
+    // than answering. Refused here instead, with the diagnosis.
+    [
+      'entries that are values rather than pairs',
+      { get: () => undefined, has: () => false, size: 1, [Symbol.iterator]: () => [1_000n][Symbol.iterator]() }
+    ],
+    [
+      'entries that are pairs of the wrong length',
+      {
+        get: () => undefined,
+        has: () => false,
+        size: 1,
+        [Symbol.iterator]: () => [[REFUSED_COLOUR]][Symbol.iterator]()
+      }
+    ]
+  ];
+
+  it.each(mapWithUnusableEntries)('refuses a map with %s', (_label, balance) => {
+    const caught = decodeFailure(balance);
+
+    expect(caught).toBeInstanceOf(StateDecodeFailedError);
+    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
+  });
+
+  // `describeValue` exists for one distinction -- `typeof null` is `'object'`,
+  // which reads as a map that was there -- and until now nothing asserted its
+  // output: replacing its body with a bare `typeof` passed every test.
+  it.each([
+    ['null', null, 'null'],
+    ['undefined', undefined, 'undefined'],
+    ['a plain object', {}, 'object'],
+    ['an empty string', '', 'string']
+  ] as const)('names what arrived when it refuses %s', (_label, balance, described) => {
+    const caught = decodeFailure(balance);
+
+    expect(((caught as StateDecodeFailedError).cause as Error).message).toContain(`received ${described}`);
+  });
+
+  // The guard and the copy must read the SAME object. A decoder is injectable,
+  // so one that answers with a fresh map on every access can have the guard
+  // approve one value and the copy take another -- and this double hands out a
+  // held balance first and an empty map afterwards.
+  it('copies the very object it validated, not a later answer from the same decoder', () => {
+    const heldColour = { tag: 'unshielded', raw: '11'.repeat(32) } as const;
+    const held: ContractBalance = new Map([[heldColour, 9n]]);
+    let answered = false;
+    const shiftingDecoder: ContractStateDecoder = {
+      ContractState: {
+        deserialize: (): DecodableContractState => ({
+          data: new ledgerV9.ContractState().data,
+          get balance(): ContractBalance {
+            if (answered) {
+              return new Map();
+            }
+            answered = true;
+            return held;
+          },
+          operations: () => [],
+          operation: () => undefined
+        })
+      }
+    };
+
+    const pojo = decodeContractStateWith(new Uint8Array(), 'v9', shiftingDecoder);
+
+    expect([...pojo.balance]).toEqual([...held]);
+  });
+
+  // The copy is what makes the pojo own its balance. The shifting-decoder test
+  // above proves the guard and the copy read the SAME object; it does not prove
+  // a copy happened at all, and dropping `new Map(...)` left the whole suite
+  // green. Identity is the only thing that separates the two.
+  it('copies the map rather than handing back the decoder own answer', () => {
+    const held: ContractBalance = new Map([[REFUSED_COLOUR, 3n]]);
+
+    const pojo = decodeContractStateWith(new Uint8Array(), 'v9', decoderAnswering(held));
+
+    expect(pojo.balance).not.toBe(held);
+    expect([...pojo.balance]).toEqual([...held]);
+  });
+});
+
+// The pin `ContractBalance`'s own doc comment names. `ContractBalance` keys by
+// ledger-v9's `TokenType`, yet the map it describes is decoded off a ledger-v8
+// state and written onto the 0.16 runtime's own `block.balance`. That is THREE
+// declarations, so all three are pinned: the onchain-runtime-v3 one is where
+// the map actually lands, and until now it was covered only incidentally, by
+// `execute.ts` happening to compile.
+//
+// The pin is STRUCTURAL and cannot be more than that: `raw` is an opaque
+// `string` in all three, so assignability says the handoff type-checks and
+// says nothing about two eras reading a given key as the same colour. @see
+// FailClosedDecoding
+
+// Prefixed `_`: never instantiated, they exist only to make the compiler check.
+type _TokenTypeIdenticalAcrossEras = Assert<MutuallyAssignable<ledgerV8.TokenType, ledgerV9.TokenType>>;
+type _TokenTypeIdenticalOnTheExecutionRuntime = Assert<MutuallyAssignable<ocrt3.TokenType, ledgerV9.TokenType>>;
+
+// The pins above are worth exactly what `MutuallyAssignable` refuses. `any` is
+// assignable in both directions, so a vendor `.d.ts` that resolved `TokenType`
+// to `any` -- what a broken or missing type after a bump looks like -- would
+// satisfy a bare assignability test and turn both of them into green no-ops.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the negative case under test IS `any`
+type _AnyDoesNotSatisfyThePin = Assert<MutuallyAssignable<any, ledgerV9.TokenType> extends false ? true : false>;

@@ -46,7 +46,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { ComposeCallOptions, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import type { ComposeCallOptions, ContractBalance, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { expect } from 'vitest';
@@ -57,6 +57,7 @@ import type {
   Ledger8Transcript
 } from '../internal/ledger8-pipeline';
 import type { CoinReceiver016Coin } from './ledger8-fixture-types';
+import type { Assert } from './type-assertions';
 
 // The fixture tree lives in testkit-js because that is where it is produced and
 // where the e2e suites consume it. Reached by RELATIVE path, never through
@@ -232,7 +233,6 @@ type SynthesizedMember = 'postContractState';
 
 type TranscriptMember = (typeof TRANSCRIPT_MEMBERS)[number] | SynthesizedMember;
 
-type Assert<T extends true> = T;
 type _EveryMemberListed = Assert<
   [Exclude<keyof Ledger8Transcript<ReplayState>, TranscriptMember>] extends [never] ? true : false
 >;
@@ -318,6 +318,18 @@ export interface ReplayState {
   readonly replayedCircuitId: string;
 }
 
+/**
+ * What the double's `downConvertForExecution` answers with: the replay marker
+ * AND the balance it was handed, on one value.
+ *
+ * Carrying the balance here rather than taking it as a second option is the
+ * point of the pairing -- the double cannot be handed a state from one read and
+ * a balance from another, because there is only one argument.
+ */
+export interface ReplayExecutableState extends ReplayState {
+  readonly balance: ContractBalance;
+}
+
 /** Every era-facade and engine call one operation made, in the order it made them. */
 export type OrchestrationLog = string[];
 
@@ -336,6 +348,16 @@ export type OrchestrationLog = string[];
 export interface ReplayExpectations {
   /** The private state the pipeline must have handed the engine. */
   readonly privateState?: unknown;
+  /**
+   * The contract BALANCE the pipeline must have handed the engine.
+   *
+   * It does not travel with the primary state — ledger-v8 keeps it on
+   * `ContractState.balance`, and the state this pipeline down-converts carries
+   * only `.data`. An engine that never receives it executes every circuit
+   * against an empty balance, so a circuit reading one back sees zero and the
+   * chain refuses the transcript it produced.
+   */
+  readonly balance?: ContractBalance;
   /**
    * The private state the pipeline must have handed the CONSTRUCTOR. Separate
    * from the circuit's, because a deploy's is the caller's `initialPrivateState`
@@ -388,8 +410,8 @@ export const createReplayEngine = (
   log: OrchestrationLog,
   constructedState?: Uint8Array,
   expectations?: ReplayExpectations
-): Ledger8ExecutionEngine<ReplayState> => ({
-  downConvertForExecution: (state): ReplayState => {
+): Ledger8ExecutionEngine<ReplayExecutableState, ReplayState> => ({
+  downConvertForExecution: (contractState): ReplayExecutableState => {
     log.push('engine.downConvertForExecution');
     // THE REPLAY CONDITION. The recording is only replayed for the state it was
     // recorded against, so this double cannot answer for a state the real
@@ -397,15 +419,17 @@ export const createReplayEngine = (
     // path: this value travelled from a committed on-chain envelope through the
     // era facade's own `extractState`, and it arrives structurally identical to
     // what the real retained runtime executed on.
-    expect(state).toEqual(recording.preState);
-    return { replayedCircuitId: recording.circuitId };
+    expect(contractState.state).toEqual(recording.preState);
+    // The BALANCE arrives on the same value now, so the double carries it
+    // forward rather than taking it as a second argument it could contradict.
+    return { replayedCircuitId: recording.circuitId, balance: contractState.balance };
   },
   executeCircuit: (options): Ledger8Transcript<ReplayState> => {
     log.push('engine.executeCircuit');
     expect(options.circuitId).toBe(recording.circuitId);
     expect(options.args).toEqual([recording.receivedCoin]);
     expect(options.coinPk).toBe(recording.coinPublicKey);
-    expect(options.state).toEqual({ replayedCircuitId: recording.circuitId });
+    expect(options.state.replayedCircuitId).toBe(recording.circuitId);
     // The CONTRACT the pipeline threaded through, not merely that one was
     // passed: an engine handed some other object would otherwise replay
     // happily, because the recording answers regardless of what it is given.
@@ -414,6 +438,9 @@ export const createReplayEngine = (
     );
     if (expectations !== undefined && 'privateState' in expectations) {
       expect(options.privateState).toEqual(expectations.privateState);
+    }
+    if (expectations !== undefined && 'balance' in expectations) {
+      expect(options.state.balance).toEqual(expectations.balance);
     }
     // The post-call state the real engine answers with is a live handle; the
     // double mints a marker DISTINCT from the down-converted one, so a test can
