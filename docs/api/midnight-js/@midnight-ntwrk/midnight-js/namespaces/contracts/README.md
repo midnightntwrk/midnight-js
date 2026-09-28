@@ -8,6 +8,18 @@
 
 ## References
 
+### AnyEraContractState
+
+Re-exports [AnyEraContractState](../../contracts/interfaces/AnyEraContractState.md)
+
+***
+
+### AnyEraContractStateReadSurface
+
+Re-exports [AnyEraContractStateReadSurface](../../contracts/type-aliases/AnyEraContractStateReadSurface.md)
+
+***
+
 ### AnyEraFinalizedCallTxData
 
 Re-exports [AnyEraFinalizedCallTxData](../../contracts/type-aliases/AnyEraFinalizedCallTxData.md)
@@ -437,6 +449,12 @@ Re-exports [FindDeployedContractOptionsStorePrivateState](../../contracts/interf
 ### FoundContract
 
 Re-exports [FoundContract](../../contracts/interfaces/FoundContract.md)
+
+***
+
+### getAnyEraContractState
+
+Re-exports [getAnyEraContractState](../../contracts/variables/getAnyEraContractState.md)
 
 ***
 

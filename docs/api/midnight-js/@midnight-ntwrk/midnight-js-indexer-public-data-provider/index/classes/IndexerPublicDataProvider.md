@@ -78,8 +78,13 @@ WIRE TRAFFIC DIFFERS SHARPLY BY BRANCH. `all` is server-side filtered and
 light; `latest`, `blockHeight`, `blockHash` and `txId` stream every block on
 chain and filter client-side, which is heavy on a busy chain.
 
+REPLAY SUPPRESSION IS NOT UNIFORM. A transport reconnect makes the indexer
+replay from the subscription's original offset. `latest`, `blockHeight` and
+`blockHash` suppress what they have already delivered; `all` and `txId` do
+not, so a consumer of those two should expect a state more than once.
+
 See blockOffsetToBlock$, blockOffsetToContractState$,
-and blockToContractState$ for per-subscription docs.
+and blockToPositionedContractState$ for per-subscription docs.
 
 #### Parameters
 
