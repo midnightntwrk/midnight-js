@@ -20,7 +20,7 @@ import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';
 
-import { IndexerDataError } from '../errors';
+import { IndexerDataError, IndexerError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
 import {
   BLOCK_QUERY,
@@ -35,6 +35,7 @@ import {
   mintV8ContractStateHex,
   mintV9ContractStateHex,
   mintV9TransactionHex,
+  UNRESOLVABLE_PROTOCOL_VERSION,
   V8_ERA_PROTOCOL_VERSION,
   V9_ERA_PROTOCOL_VERSION
 } from './state-fixtures';
@@ -238,6 +239,52 @@ describe('rawContractStateObservable — latest', () => {
     const rejection = await rejectionOf(collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' })));
 
     expect(rejection).toBeInstanceOf(TagParseError);
+  });
+
+  test('reports an unplaceable protocol version as an indexer error, not a bare protocol one', async () => {
+    // `version` is not optional on the record, so a `protocolVersion` this
+    // client cannot place on the era timeline ends the stream -- the one
+    // asymmetry with `contractStateObservable`, which withholds only its
+    // upper-bound check and decodes on the envelope alone. What must NOT
+    // happen is that the failure escapes this package's error contract: a
+    // consumer catches every failure from this provider with one
+    // `instanceof IndexerError`.
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(latestPoll),
+      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
+        blockFrame(10, UNRESOLVABLE_PROTOCOL_VERSION, [[action(ADDRESS, mintV9ContractStateHex())]])
+      ])
+    });
+
+    const rejection = await rejectionOf(collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' })));
+
+    expect(rejection).toBeInstanceOf(IndexerError);
+    expect(rejection).toBeInstanceOf(IndexerDataError);
+    expect((rejection as IndexerDataError).context).toEqual({
+      kind: 'unresolvable-era',
+      protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION
+    });
+    // The protocol-level failure is preserved rather than discarded.
+    expect((rejection as Error).cause).toBeInstanceOf(Error);
+  });
+
+  test('the decoded stream keeps going on that same unplaceable version', async () => {
+    // The contrast that makes the asymmetry a documented fact rather than an
+    // accident: the decoded path treats "cannot place this integer" as a
+    // withheld check, not a failure, and decodes on the envelope.
+    const hexState = mintV9ContractStateHex();
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(latestPoll),
+      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
+        blockFrame(10, UNRESOLVABLE_PROTOCOL_VERSION, [[action(ADDRESS, hexState)]])
+      ])
+    });
+
+    const seen = await Rx.lastValueFrom(
+      provider.contractStateObservable(ADDRESS, { type: 'latest' }).pipe(Rx.toArray())
+    );
+
+    expect(seen).toHaveLength(1);
   });
 
   test('reports the version of the BLOCK, not of the envelope the bytes carry', async () => {

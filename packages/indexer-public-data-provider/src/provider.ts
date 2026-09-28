@@ -579,7 +579,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * envelope from an era this client's tag table does not list, and a
    * `protocolVersion` integer it cannot place on the era timeline. The second
    * is the one asymmetry with {@link contractStateObservable}, which tolerates
-   * such an integer and decodes on the envelope alone.
+   * such an integer and decodes on the envelope alone; here `version` is a
+   * required field with nothing to fall back to, so the read is refused as
+   * {@link IndexerDataError} with `kind: 'unresolvable-era'` rather than
+   * guessed. Both arrive as an `IndexerError`, like every other failure from
+   * this package.
    *
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the stream. Defaults to `latest`.

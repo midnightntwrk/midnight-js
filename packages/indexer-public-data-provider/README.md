@@ -325,7 +325,10 @@ stream. Two things can still end the stream on era grounds — an envelope from 
 era this client's tag table does not list, and a `protocolVersion` integer it
 cannot place on the era timeline. The second is the one asymmetry with
 `contractStateObservable`, which tolerates such an integer and decodes on the
-envelope alone.
+envelope alone; on the raw reads `version` is a required field with nothing to
+fall back to, so the read is refused rather than guessed. Both surface as an
+`IndexerDataError` (`kind: 'unresolvable-era'` for the second), so one
+`instanceof IndexerError` still catches every failure from this provider.
 
 ### Observable Configuration
 
