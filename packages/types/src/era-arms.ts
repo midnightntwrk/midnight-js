@@ -21,7 +21,12 @@ import {
   type RetainedLedgerVersion
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { type ProviderSeam, UntaggedPayloadError, V8PayloadUnsupportedError } from './errors';
+import {
+  type ProviderSeam,
+  UntaggedPayloadError,
+  UnusableEraArmError,
+  V8PayloadUnsupportedError
+} from './errors';
 import type { VersionedTx } from './versioned';
 
 /**
@@ -62,6 +67,37 @@ export const erasServedBy = (retainedEras?: RetainedEraHandlers<unknown>): reado
     CURRENT_LEDGER_VERSION,
     ...RETAINED_LEDGER_VERSIONS.filter((era) => retainedEras?.[era] !== undefined)
   ]);
+
+/**
+ * Asserts that each retained era arm supplied to a provider factory is usable.
+ *
+ * An entry present but `undefined` leaves the era unserved, which is valid.
+ * Any other non-usable value (null, objects missing required methods, non-functions)
+ * is refused at construction so `supportedEras` does not over-claim.
+ *
+ * @param seam The provider method where the retained era was registered.
+ * @param retainedEras The retained arms supplied to the factory, if any.
+ * @param isValid Predicate checking whether an entry is usable. Defaults to checking if it is a function.
+ * @param expected Description of what is expected, used in error message if invalid.
+ * @throws UnusableEraArmError if an entry is defined but not usable.
+ */
+export const assertValidRetainedEras = <H>(
+  seam: ProviderSeam,
+  retainedEras: RetainedEraHandlers<H> | undefined,
+  isValid: (entry: unknown) => boolean = (entry): boolean => typeof entry === 'function',
+  expected = 'expected a function'
+): void => {
+  if (retainedEras === undefined || retainedEras === null) {
+    return;
+  }
+  for (const era of RETAINED_LEDGER_VERSIONS) {
+    const entry = retainedEras[era];
+    if (entry !== undefined && !isValid(entry)) {
+      const got = entry === null ? 'null' : Array.isArray(entry) ? 'an array' : typeof entry;
+      throw new UnusableEraArmError(seam, era, `${expected}, got ${got}`);
+    }
+  }
+};
 
 /**
  * A tagged payload narrowed to the arm that will serve it: either the live
