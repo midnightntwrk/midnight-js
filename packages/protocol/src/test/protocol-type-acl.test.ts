@@ -93,6 +93,11 @@ describe('Protocol type ACL', () => {
       // vocabulary does: both name parameters and results of `Ledger8Engine`
       // methods, which the barrel publishes.
       'ConstructorResultPojo',
+      // The balances a contract holds, published because they are a member of
+      // `ContractStatePojo` and a REQUIRED option of the engine's
+      // `executeCircuit`: a consumer driving the retained arm cannot name what
+      // it has to carry without this.
+      'ContractBalance',
       'ContractEntryPointPojo',
       'ContractStatePojo',
       // The current/retained split of `LedgerVersion`, published beside it:
@@ -103,6 +108,10 @@ describe('Protocol type ACL', () => {
       'DownConvertedState',
       'DownConvertStage',
       'EncodedStateValue',
+      // What `Ledger8Engine.downConvertForExecution` returns and
+      // `ExecuteCircuitOptions.state` is: the down-converted state and the
+      // balances the contract holds, as ONE value.
+      'ExecutableContractState',
       'ExecuteCircuitOptions',
       'ExecuteConstructorOptions',
       // Named by the state handles the results carry: `DownConvertedState.data`
@@ -147,9 +156,21 @@ describe('Protocol type ACL', () => {
     // callable by a consumer that imports the engine through its own subpath.
     expect(engineTypeNames).toEqual([
       'ConstructorResultPojo',
+      // `ExecutableContractState` carries a REQUIRED balance of this type, so a
+      // consumer that imports the engine through its own subpath cannot name
+      // what it has to carry without it -- the same argument as
+      // `ContractEntryPointPojo`.
+      'ContractBalance',
       'ContractEntryPointPojo',
+      // `downConvertForExecution` TAKES one: the decoded contract state is the
+      // engine's execution entry point, and a consumer that cannot name it
+      // cannot declare the value it passes.
+      'ContractStatePojo',
       'DownConvertedState',
       'EncodedStateValue',
+      // What `downConvertForExecution` returns and `executeCircuit` takes as
+      // `state`: the down-converted state and its balance as ONE value.
+      'ExecutableContractState',
       'ExecuteCircuitOptions',
       'ExecuteConstructorOptions',
       'Ledger8ChargedState',

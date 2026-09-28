@@ -32,7 +32,7 @@ the first state CHANGE, not the first BLOCK.
 That is what makes the two shapes non-interchangeable: `inclusive: false` on
 `blockHeight` and `blockHash` is defined in blocks. Served from a per-change
 feed, the same published option would quietly mean something else. The per-block
-view from `blockOffsetToBlock$` + `blockToContractState$` is what gives that
+view from `blockOffsetToBlock$` + `blockToPositionedContractState$` is what gives that
 option the meaning it documents.
 
 ## Why the others cannot simply become `all`
