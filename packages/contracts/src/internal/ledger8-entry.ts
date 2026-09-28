@@ -32,7 +32,12 @@
  */
 
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type { DownConvertedState, Ledger8SigningKey, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import type {
+  DownConvertedState,
+  ExecutableContractState,
+  Ledger8SigningKey,
+  LedgerEra
+} from '@midnight-ntwrk/midnight-js-protocol';
 import {
   type LedgerVersion,
   loadLedger8Engine,
@@ -160,7 +165,7 @@ export interface Ledger8RuntimeProviders extends TransactionSeams {
  */
 export interface Ledger8Runtime {
   readonly resolved: ResolvedOperationEra;
-  readonly engine: Ledger8ExecutionEngine<DownConvertedState>;
+  readonly engine: Ledger8ExecutionEngine<ExecutableContractState, DownConvertedState>;
   /**
    * The RETAINED era facade, which reads the contract's on-chain state.
    *

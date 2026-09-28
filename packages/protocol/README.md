@@ -118,7 +118,11 @@ import { loadLedger8Engine, loadLedgerEra, versionOfRecord } from '@midnight-ntw
 const engine = await loadLedger8Engine();
 const era = await loadLedgerEra(versionOfRecord(indexerRecord));
 
-const state = engine.downConvertForExecution(era.extractState(rawContractState));
+// The DECODED state, not the extracted one: the balances a circuit reads are
+// not part of the primary state, and `downConvertForExecution` carries them
+// forward with it. One read in, one value out -- there is no second argument
+// that could describe a different block.
+const state = engine.downConvertForExecution(era.decodeContractState(rawContractState));
 const transcript = engine.executeCircuit({
   contract,
   circuitId: 'increment',
