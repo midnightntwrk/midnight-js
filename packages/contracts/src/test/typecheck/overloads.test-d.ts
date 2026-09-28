@@ -715,14 +715,24 @@ describe('both eras resolve a call to the SAME result structure', () => {
     type CurrentEraCall = ContractExecutable.ContractExecutable.ContractCall;
 
     expectTypeOf<keyof CurrentEraCall>().toEqualTypeOf<keyof Ledger8ContractCall>();
-    // Three additions, nothing dropped. `contractState` means the POST-call
-    // state in both eras -- `compact-js` fills it from the final query context
-    // -- so the state the call BOUND to is published beside it under its own
-    // name rather than under a name that already means something else.
+    // Three additions on the retained side, one on the current side.
+    // `contractState` means the POST-call state in both eras -- `compact-js`
+    // fills it from the final query context -- so the state the call BOUND to is
+    // published beside it under its own name rather than under a name that
+    // already means something else.
     type RetainedEraOnlyCallPublicMembers =
       'contractStateEncoded' | 'preContractState' | 'preContractStateEncoded';
 
-    expectTypeOf<keyof CurrentEraCall['public']>().toEqualTypeOf<
+    // `partitionInputs` is the four values a transcript's partition was built
+    // from, which compact-js publishes as of 3.0.0-rc.2
+    // (midnightntwrk/midnight-sdk#400). The retained arm answers the same
+    // question through `preContractState` plus the `partitionContext` its
+    // transcript carries, so it has no member of this name -- yet. Retiring
+    // `lib/v8/execute.ts` onto `ContractExecutable` puts both eras on this one
+    // member and this exclusion goes away with it.
+    type CurrentEraOnlyCallPublicMembers = 'partitionInputs';
+
+    expectTypeOf<Exclude<keyof CurrentEraCall['public'], CurrentEraOnlyCallPublicMembers>>().toEqualTypeOf<
       Exclude<keyof Ledger8ContractCall['public'], RetainedEraOnlyCallPublicMembers>
     >();
     expectTypeOf<keyof CurrentEraCall['private']>().toEqualTypeOf<keyof Ledger8ContractCall['private']>();
