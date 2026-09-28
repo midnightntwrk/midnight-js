@@ -71,8 +71,8 @@ Implementing `WalletProvider` or `MidnightProvider`? Use `createWalletProvider` 
 `createMidnightProvider` from `types` rather than tagging by hand. See
 [ADR 0006](./docs/adr/0006-version-tagged-payloads-at-provider-seams.md).
 
-Serving more than one era? Use `createProofProviderFromArms` /
-`createWalletProviderFromArms` / `createMidnightProviderFromArms` — one handler
+Serving more than one era? Use `createProofProviderFromHandlers` /
+`createWalletProviderFromHandlers` / `createMidnightProviderFromHandlers` — one handler
 per era, with the routing, the tagging and the `supportedEras` declaration
 derived from the handlers. All three seams carry a required `supportedEras`, read
 before an operation starts so a set that cannot carry a transaction end to end is
