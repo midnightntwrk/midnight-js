@@ -20,17 +20,14 @@ import type * as Engine from './engine.js';
 // barrel -- see ModuleGraphAndLazyLoading.
 export type {
   ConstructorResultPojo,
-  DownConvertedState,
   EncodedStateValue,
-  ExecutableContractState,
-  ExecuteCircuitOptions,
-  ExecuteConstructorOptions,
-  Ledger8ChargedState,
-  Ledger8DeployableContractState,
   Ledger8Engine,
   Ledger8SigningKey,
-  Ledger8StateValue,
+  RetainedCompiledContract,
+  RunRetainedCircuitOptions,
+  RunRetainedConstructorOptions,
   TranscriptPojo,
+  VerifierKeyReader,
   WrapKeepStateCallOptions
 } from './engine.js';
 

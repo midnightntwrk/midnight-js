@@ -249,30 +249,31 @@ const keysLayer = (coinPk: string, signingKey: Ledger8SigningKey | undefined): L
  * converts to seconds at the call site — but the whole interface is pinned so a
  * future read cannot quietly fall back to the wall clock.
  */
-const withPinnedClock = <A, E, R>(nowSeconds: number | undefined, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
-  if (nowSeconds === undefined) {
-    return effect;
-  }
+export const pinnedClock = (nowSeconds: number): Clock.Clock => {
   const millis = nowSeconds * 1_000;
   const nanos = BigInt(millis) * 1_000_000n;
-  const pinned: Clock.Clock = {
+  return {
     ...Clock.make(),
     unsafeCurrentTimeMillis: () => millis,
     currentTimeMillis: Effect.succeed(millis),
     unsafeCurrentTimeNanos: () => nanos,
     currentTimeNanos: Effect.succeed(nanos)
   };
-  return Effect.withClock(pinned)(effect);
 };
+
+const withPinnedClock = <A, E, R>(nowSeconds: number | undefined, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+  nowSeconds === undefined ? effect : Effect.withClock(pinnedClock(nowSeconds))(effect);
 
 /**
  * Adapts a {@link VerifierKeyReader} into the service compact-js's
  * `initialize` reads keys through.
  *
- * A key the reader does not answer for is `Option.none()`, which is how
- * compact-js spells "this entry point registers no key" — it is not an error
- * here, and the deploy leg's own key check is what refuses a state whose entry
- * points and keys disagree.
+ * A key the reader does not answer for becomes `Option.none()`, and compact-js
+ * REFUSES it: `initialize` fails with a `ContractConfigurationError` naming the
+ * circuit. That is measured, not assumed, and it is stricter than the leg this
+ * replaced — a retained-era constructor used to leave every slot blank and the
+ * deploy composition was the only thing that checked coverage. It now fails
+ * before a state is built at all.
  */
 const zkConfigurationLayer = (read: VerifierKeyReader): Layer.Layer<ZKConfiguration.ZKConfiguration> =>
   Layer.succeed(
@@ -317,13 +318,38 @@ const zkConfigurationLayer = (read: VerifierKeyReader): Layer.Layer<ZKConfigurat
  * during a circuit call, this fails by name instead of silently serving
  * `Option.none()` and composing a call with a blank key slot.
  */
-const refuseVerifierKeyRead: VerifierKeyReader = (provableCircuitId) =>
+export const refuseVerifierKeyRead: VerifierKeyReader = (provableCircuitId) =>
   Promise.reject(
     new Error(
       `a retained-era circuit call read the verifier key for '${provableCircuitId}'. Circuit calls are ` +
         'not supposed to read ZK configuration; only deployment and maintenance are.'
     )
   );
+
+/**
+ * Reads the ONE contract call a retained-era circuit produces.
+ *
+ * The retained era has no `crossContractCall`, so its execution adapter
+ * synthesises a single-entry trace and a one-element list is complete by
+ * construction. The list is still typed as a list, so the emptiness this era
+ * cannot produce is refused by name rather than read as `undefined` and carried
+ * into a composition.
+ *
+ * @param calls The calls the execution reported.
+ * @param circuitId The circuit they were produced for, for the message.
+ * @returns The sole call.
+ * @throws Error If the list is empty.
+ */
+export const soleCall = <T>(calls: readonly T[], circuitId: string): T => {
+  const [only] = calls;
+  if (only === undefined) {
+    throw new Error(
+      `circuit '${circuitId}' produced no contract call. The retained era cannot make a ` +
+        'cross-contract call, so exactly one is expected.'
+    );
+  }
+  return only;
+};
 
 /**
  * Runs one circuit on a retained-era contract and packages every artifact a
@@ -374,13 +400,7 @@ export const runRetainedCircuit = async <C extends Contract.Contract<PS>, PS>(
     )
   );
 
-  const [only] = call.calls;
-  if (only === undefined) {
-    throw new Error(
-      `circuit '${options.circuitId}' produced no contract call. The retained era cannot make a ` +
-        'cross-contract call, so exactly one is expected.'
-    );
-  }
+  const only = soleCall(call.calls, options.circuitId);
 
   return {
     circuitId: only.circuitId,

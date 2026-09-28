@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { ContractCallPrototype } from '@midnightntwrk/ledger-v9';
 
 import type { EncodedStateValue } from '../era/envelope';
@@ -21,64 +22,62 @@ import { reexpressOperationsForCurrentEra } from '../v9/operations';
 import { wrapKeepStateCall, type WrapKeepStateCallOptions } from '../v9/wrap';
 import {
   type ConstructorResultPojo,
-  executeConstructor,
-  type ExecuteConstructorOptions,
-  type Ledger8ConstructorRuntime,
-  type Ledger8DeployableContractState,
-  type Ledger8SigningKey
-} from './deploy';
-import {
-  type DownConvertedState,
-  type ExecutableContractState,
-  type Ledger8ChargedState,
-  type Ledger8CompactRuntime,
-  type Ledger8StateValue,
-  toExecutableState
-} from './down-convert';
-import { executeCircuit, type ExecuteCircuitOptions, type Ledger8ExecutionRuntime, type TranscriptPojo } from './execute';
-import { assertSharedLedger8Instance } from './instance-guard';
+  type Ledger8SigningKey,
+  type RetainedCompiledContract,
+  runRetainedCircuit,
+  type RunRetainedCircuitOptions,
+  runRetainedConstructor,
+  type RunRetainedConstructorOptions,
+  type TranscriptPojo,
+  type VerifierKeyReader
+} from './executable';
 
 export type {
   ConstructorResultPojo,
   ContractBalance,
   ContractEntryPointPojo,
   ContractStatePojo,
-  DownConvertedState,
   EncodedStateValue,
-  ExecutableContractState,
-  ExecuteCircuitOptions,
-  ExecuteConstructorOptions,
-  Ledger8ChargedState,
-  Ledger8DeployableContractState,
   Ledger8SigningKey,
-  Ledger8StateValue,
+  RetainedCompiledContract,
+  RunRetainedCircuitOptions,
+  RunRetainedConstructorOptions,
   TranscriptPojo,
+  VerifierKeyReader,
   WrapKeepStateCallOptions
 };
 
 /**
  * The public surface {@link createLedger8Engine} builds: the retained pre-fork
- * EXECUTION capabilities, with the 0.16 runtime instance already captured in
- * closure — no method here takes a runtime or module parameter.
+ * EXECUTION capabilities.
  *
- * Every method is synchronous: this object is handed over only after the
- * retained toolchain has been acquired.
+ * The two execution members are ASYNCHRONOUS. They used to be synchronous, and
+ * the docblock here used to promise it: compact-js builds a circuit call on
+ * `Effect.tryPromise`, so `runSync` cannot discharge it and the promise is not
+ * satisfiable. Nothing else about the surface changed shape -- every value
+ * crossing it is still plain data or an era handle, and no `Effect` reaches a
+ * caller.
  *
  * @see {@link EraSeam}
  */
 export interface Ledger8Engine {
   /**
-   * Down-converts a decoded contract state for retained-era execution, carrying
-   * its balance with it.
+   * Runs one circuit against the SERIALIZED contract state the chain serves.
    *
-   * Takes the DECODED state rather than the extracted `EncodedStateValue`: the
-   * balance a circuit reads is not part of the primary state, and as a separate
-   * argument it could come off a different read. @see {@link toExecutableState}
+   * Takes chain bytes rather than an extracted primary state, because the
+   * balances a circuit reads live on the contract state and not in that
+   * primary state -- see {@link RunRetainedCircuitOptions.contractStateBytes}.
+   * The `downConvertForExecution` member that used to sit beside this one is
+   * gone with the hand-maintained execution layer; there is no separate
+   * down-convert step any more.
    */
-  downConvertForExecution(contractState: ContractStatePojo): ExecutableContractState;
-  executeCircuit(options: ExecuteCircuitOptions): TranscriptPojo;
+  executeCircuit<C extends Contract.Contract<PS>, PS>(
+    options: RunRetainedCircuitOptions<C, PS>
+  ): Promise<TranscriptPojo>;
+  executeConstructor<C extends Contract.Contract<PS>, PS>(
+    options: RunRetainedConstructorOptions<C, PS>
+  ): Promise<ConstructorResultPojo>;
   wrapKeepStateCall(options: WrapKeepStateCallOptions): ContractCallPrototype;
-  executeConstructor(options: ExecuteConstructorOptions): ConstructorResultPojo;
   /**
    * Re-expresses a retained-era contract's entry points as a current-era contract state, so a
    * keep-state call has an operation registry the current composer can read.
@@ -90,64 +89,28 @@ export interface Ledger8Engine {
 }
 
 /**
- * Acquires the retained pre-fork toolchain — the `compact-runtime@0.16` glue
- * and `@midnight-ntwrk/onchain-runtime-v3` — and builds a {@link Ledger8Engine}
- * bound to it.
+ * Builds a {@link Ledger8Engine}.
  *
- * Runs {@link assertSharedLedger8Instance} exactly once, on the
- * `onchain-runtime-v3` axis. Any acquisition failure surfaces through the
- * facade (`lib/v8/load-engine.ts`) as `Ledger8RuntimeMissingError`
- * (`../../errors.ts`).
+ * The retained toolchain is no longer acquired here: compact-js's era-pinned
+ * ledger-8 entries own it, and `lib/v8/executable.ts` reaches them. What this
+ * function still does is sit behind the dynamic `import('../../engine.js')` in
+ * `lib/v8/load-engine.ts`, so importing the package root never pulls the
+ * multi-megabyte retained WASM onto the module graph.
  *
- * Does NOT acquire the v8 ledger module: a consumer that only executes
- * circuits and binds them onto v9 never instantiates the multi-megabyte v8
- * WASM, and never hard-depends on ledger-v8 resolving.
+ * It no longer runs a dual-instantiation guard either. That guard compared two
+ * modules THIS package imported, `onchain-runtime-v3` and the 0.16 glue; with
+ * both imports gone there is nothing left to compare. compact-js resolves one
+ * copy of each for itself, and `src/test/single-instance.test.ts` is what holds
+ * the installed tree to that.
  *
- * @returns The engine surface, with the acquired runtime captured in closure.
- * @throws Ledger8InstanceMismatchError If `onchain-runtime-v3` resolved to two
- *   physically distinct copies in this process.
+ * @returns The engine surface.
  * @see {@link EraSeam}
- * @see {@link DualInstantiationGuard}
  * @see {@link ModuleGraphAndLazyLoading}
  */
-export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
-  const [glue, ocrt3] = await Promise.all([
-    import('compact-runtime-ledger8'),
-    import('@midnight-ntwrk/onchain-runtime-v3')
-  ]);
-
-  assertSharedLedger8Instance('onchain-runtime-v3', ocrt3.ChargedState, glue.ChargedState);
-
-  // `ContractState` from ocrt3, the other two from the glue: sound only because
-  // of the assertion above -- see DualInstantiationGuard. The member is what
-  // pins this object to the pre-fork era -- see `Ledger8CompactRuntime`.
-  const ledger8CompactRuntime: Ledger8CompactRuntime = {
-    ContractState: ocrt3.ContractState,
-    StateValue: glue.StateValue,
-    ChargedState: glue.ChargedState
-  };
-  const ledger8ExecutionRuntime: Ledger8ExecutionRuntime = {
-    decodeZswapLocalState: glue.decodeZswapLocalState,
-    createCircuitContext: glue.createCircuitContext,
-    CostModel: glue.CostModel
-  };
-  // The authority slice from ocrt3, the context builder from the glue: the
-  // same mixing the compact runtime above does, sound for the same reason --
-  // the authority is written onto a state the glue built, so the two must be
-  // one instance.
-  const ledger8ConstructorRuntime: Ledger8ConstructorRuntime = {
-    createConstructorContext: glue.createConstructorContext,
-    decodeZswapLocalState: glue.decodeZswapLocalState,
-    sampleSigningKey: ocrt3.sampleSigningKey,
-    signatureVerifyingKey: ocrt3.signatureVerifyingKey,
-    ContractMaintenanceAuthority: ocrt3.ContractMaintenanceAuthority
-  };
-
-  return {
-    downConvertForExecution: (contractState) => toExecutableState(contractState, ledger8CompactRuntime),
-    executeCircuit: (options) => executeCircuit(options, ledger8ExecutionRuntime),
+export const createLedger8Engine = async (): Promise<Ledger8Engine> =>
+  Promise.resolve({
+    executeCircuit: runRetainedCircuit,
+    executeConstructor: runRetainedConstructor,
     wrapKeepStateCall,
-    reexpressOperationsForCurrentEra,
-    executeConstructor: (options) => executeConstructor(options, ledger8ConstructorRuntime)
-  };
-};
+    reexpressOperationsForCurrentEra
+  });

@@ -30,7 +30,14 @@ import { CompiledContract } from '@midnight-ntwrk/compact-js/v8/effect';
 import { Effect } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
-import { runRetainedCircuit } from '../lib/v8/executable';
+import { ComposeOptionError } from '../errors';
+import {
+  pinnedClock,
+  refuseVerifierKeyRead,
+  runRetainedCircuit,
+  runRetainedConstructor,
+  soleCall
+} from '../lib/v8/executable';
 import { fixturePath } from './fixtures';
 
 // The compiled artifact opens with `checkRuntimeVersion('0.16.0')` against a
@@ -241,5 +248,118 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
 
     // Assert.
     expect([...transcript.partitionContext.block.balance]).toEqual([[colour, held]]);
+  });
+});
+
+describe('runRetainedConstructor', () => {
+  it('refuses a malformed signing key before it runs the constructor', async () => {
+    // Arrange. A key the retained runtime cannot read at all: the refusal has
+    // to name the option, not leave the runtime's own buffer message to stand
+    // for it, and it has to happen before anything executes.
+    const { compiled } = await loadCounter();
+    let constructorRan = false;
+
+    // Act.
+    const rejection = await runRetainedConstructor({
+      compiledContract: compiled,
+      args: [],
+      privateState: {},
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      signingKey: 'not-hex',
+      verifierKeys: () => {
+        constructorRan = true;
+        return Promise.resolve(undefined);
+      }
+    }).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBeInstanceOf(ComposeOptionError);
+    expect((rejection as ComposeOptionError).option).toBe('signingKey');
+    expect(constructorRan).toBe(false);
+  });
+
+  it('refuses to build a state when the reader answers for no key', async () => {
+    // Arrange.
+    const { compiled } = await loadCounter();
+
+    // Act.
+    const rejection = await runRetainedConstructor({
+      compiledContract: compiled,
+      args: [],
+      privateState: {},
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: () => Promise.resolve(undefined)
+    }).catch((error: unknown) => error);
+
+    // Assert. STRICTER than the leg this replaced, and deliberately recorded:
+    // a retained-era constructor used to leave every entry point's key slot
+    // blank, and the deploy composition was the only thing that checked
+    // coverage. compact-js refuses before a state is built at all, naming the
+    // circuit whose key is missing.
+    expect(rejection).toBeDefined();
+    expect(String(rejection)).toContain("'increment'");
+  });
+
+  it('surfaces a verifier-key read failure rather than deploying without the key', async () => {
+    // Arrange.
+    const { compiled } = await loadCounter();
+    const cause = new Error('the key store was unreachable');
+
+    // Act.
+    const rejection = await runRetainedConstructor({
+      compiledContract: compiled,
+      args: [],
+      privateState: {},
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: () => Promise.reject(cause)
+    }).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBeDefined();
+    expect(String(rejection)).toContain('increment');
+  });
+});
+
+describe('refuseVerifierKeyRead', () => {
+  it('names the circuit whose key a circuit call tried to read', async () => {
+    // Arrange, Act.
+    const rejection = await refuseVerifierKeyRead('increment').catch((error: unknown) => error);
+
+    // Assert. A circuit call reads no ZK configuration -- measured, not
+    // assumed -- so this reader exists to make a future version that DOES read
+    // one fail by name rather than silently serve `Option.none()` and compose a
+    // call with a blank key slot.
+    expect(rejection).toBeInstanceOf(Error);
+    expect((rejection as Error).message).toContain("'increment'");
+  });
+});
+
+describe('pinnedClock', () => {
+  it('answers the same instant on every accessor, in each accessor\'s own unit', () => {
+    // Arrange, Act.
+    const clock = pinnedClock(1_700_000_000);
+
+    // Assert. compact-js reads `currentTimeMillis` and divides to seconds, but
+    // the whole interface is pinned so a future read cannot quietly fall back
+    // to the wall clock. The units differ and a copy-paste between them would
+    // be off by a factor of a million.
+    expect(clock.unsafeCurrentTimeMillis()).toBe(1_700_000_000_000);
+    expect(Effect.runSync(clock.currentTimeMillis)).toBe(1_700_000_000_000);
+    expect(clock.unsafeCurrentTimeNanos()).toBe(1_700_000_000_000_000_000n);
+    expect(Effect.runSync(clock.currentTimeNanos)).toBe(1_700_000_000_000_000_000n);
+  });
+});
+
+describe('soleCall', () => {
+  it('reads the one call a retained-era execution produces', () => {
+    expect(soleCall(['only'], 'increment')).toBe('only');
+  });
+
+  it('refuses an empty call list by naming the circuit', () => {
+    // The retained era cannot make a cross-contract call, so its adapter
+    // synthesises exactly one entry. An empty list is a contract this era
+    // cannot honour, and is refused rather than read as `undefined` and carried
+    // into a composition.
+    expect(() => soleCall([], 'increment')).toThrow("circuit 'increment' produced no contract call");
   });
 });

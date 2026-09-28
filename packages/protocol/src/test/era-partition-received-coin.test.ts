@@ -15,6 +15,8 @@
 
 import { readFileSync } from 'node:fs';
 
+import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
+import { CompiledContract } from '@midnight-ntwrk/compact-js/v8/effect';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
@@ -25,7 +27,7 @@ import { ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
 import { assembleCallPrototype } from '../lib/shared/assemble-call';
 import type { PartitionContext } from '../lib/shared/compose-types';
 import type { LedgerVersion } from '../lib/shared/ledger-version';
-import { executeCircuit, type Ledger8ContractLike, type TranscriptPojo } from '../lib/v8/execute';
+import { runRetainedCircuit, type TranscriptPojo } from '../lib/v8/executable';
 import { fixturePath } from './fixtures';
 
 // The fixture's compiled module imports `@midnight-ntwrk/compact-runtime`
@@ -39,9 +41,10 @@ const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
 const REGISTERED_VERIFIER_KEY = readFileSync(fixturePath('twin-contract', 'compiled', 'keys', 'increment.verifier'));
 
 /** The slice of the compiled fixture module this suite drives. */
-interface CompiledReceiverContract extends Ledger8ContractLike {
+interface CompiledReceiverContract extends CompactContract.Contract<Record<string, never>> {
   initialState(constructorContext: ConstructorContext<Record<string, never>>): {
-    currentContractState: { data: ocrt3.ChargedState };
+    currentPrivateState: Record<string, never>;
+    currentContractState: { serialize(): Uint8Array };
   };
 }
 
@@ -67,20 +70,26 @@ const runReceiveCoin = async (): Promise<TranscriptPojo> => {
   const contract = new Contract({});
   const initial = contract.initialState(ledger8Runtime.createConstructorContext({}, SAMPLE_COIN_PUBLIC_KEY));
 
-  return executeCircuit(
-    {
-      contract,
-      circuitId: CIRCUIT_ID,
-      args: [RECEIVED_COIN],
-      state: { data: initial.currentContractState.data, balance: new Map() },
-      address: ocrt3.dummyContractAddress(),
-      coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: {},
-      // Freshly constructed, so it holds nothing. The coin this circuit receives
-      // arrives as an ARGUMENT; it is not a standing balance until a later block.
-    },
-    ledger8Runtime
+  const compiled = CompiledContract.make<CompiledReceiverContract, Record<string, never>>(
+    'coin-receiver-016',
+    Contract
+  ).pipe(
+    CompiledContract.withVacantWitnesses,
+    CompiledContract.withCompiledFileAssets(fixturePath('coin-receiver-016', 'compiled'))
   );
+
+  return runRetainedCircuit({
+    compiledContract: compiled,
+    circuitId: CIRCUIT_ID,
+    args: [RECEIVED_COIN],
+    // Freshly constructed, so the contract holds nothing. The coin this circuit
+    // receives arrives as an ARGUMENT; it is not a standing balance until a
+    // later block.
+    contractStateBytes: initial.currentContractState.serialize(),
+    address: ocrt3.dummyContractAddress(),
+    coinPk: SAMPLE_COIN_PUBLIC_KEY,
+    privateState: {}
+  });
 };
 
 // One assembly per era, each against its own module and its own contract
@@ -101,7 +110,7 @@ const ARMS: Readonly<Record<LedgerVersion, (transcript: TranscriptPojo, partitio
         ledgerParameters: 'initial',
         transcript: {
           kind: 'unpartitioned',
-          preState: transcript.preContractState.data.state.encode(),
+          preState: transcript.preContractState.encode(),
           publicTranscript: transcript.publicTranscript,
           partitionContext
         },
@@ -125,7 +134,7 @@ const ARMS: Readonly<Record<LedgerVersion, (transcript: TranscriptPojo, partitio
         ledgerParameters: 'initial',
         transcript: {
           kind: 'unpartitioned',
-          preState: transcript.preContractState.data.state.encode(),
+          preState: transcript.preContractState.encode(),
           publicTranscript: transcript.publicTranscript,
           partitionContext
         },

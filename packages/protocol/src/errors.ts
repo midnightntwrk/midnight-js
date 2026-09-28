@@ -148,10 +148,18 @@ export class Ledger8RuntimeMissingError extends Error {
 }
 
 /**
- * Which physical-copy axis `assertSharedLedger8Instance`
- * (`lib/v8/instance-guard.ts`) detected two distinct instances on.
+ * Which physical-copy axis a dual-instantiation was detected on.
  *
- * `'onchain-runtime-v3'` is the only member this framework version checks.
+ * `'onchain-runtime-v3'` is the only member this framework version names.
+ *
+ * NOTHING IN THIS PACKAGE RAISES THIS ANY MORE. The construction-time guard
+ * that did (`lib/v8/instance-guard.ts`) compared the two retained runtimes this
+ * package used to import directly; compact-js owns both now, so the guard had
+ * no subject left and was removed. The invariant it protected is held at
+ * install time instead, by `src/test/single-instance.test.ts`. The error and
+ * its code stay on the published surface because a consumer may switch on them,
+ * and `loadLedger8Engine` still passes one through unwrapped if a lower layer
+ * ever raises it.
  *
  * @see {@link DualInstantiationGuard}
  */
@@ -180,9 +188,11 @@ const axisPackageNames = (axis: Ledger8InstanceAxis): readonly string[] =>
   PUBLISHED_SCOPES.map((scope) => `${scope}/${AXIS_BARE_PACKAGE_NAMES[axis]}`);
 
 /**
- * Thrown by `assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`)
- * when the same-named WASM package resolved to two physically distinct copies
- * in this process (a dual-instantiation).
+ * Raised when the same-named WASM package resolves to two physically distinct
+ * copies in this process (a dual-instantiation).
+ *
+ * See {@link Ledger8InstanceAxis} for why nothing in this package raises it any
+ * more, and what holds the invariant instead.
  *
  * Carries no `cause`: this is a direct reference-equality assertion failure,
  * not a wrapped lower-level exception.
@@ -650,10 +660,11 @@ export class StateDecodeFailedError extends Error {
 /**
  * Thrown by `extractEncodedStateValue` (`lib/era/envelope.ts`) when the
  * injected pre-fork runtime cannot be used — it was not passed at all, or the
- * binding the decoder needs is absent from it. Also raised by
- * `downConvertForExecution` (`lib/v8/down-convert.ts`) and
- * `assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`), the latter for a
- * nullish instance probe.
+ * binding the decoder needs is absent from it.
+ *
+ * `downConvertForExecution` and the shared-instance guard used to raise it too;
+ * both are gone with the hand-maintained execution layer, so the envelope
+ * decoder is now its only source.
  *
  * Nothing is wrong with the caller's input here. Distinct from
  * {@link Ledger8RuntimeMissingError}, which reports the v8 chunk failing to
@@ -682,12 +693,14 @@ export class Ledger8RuntimeInvalidError extends Error {
 }
 
 /**
- * Thrown by `assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`)
- * when the `axis` it was handed is not a member of {@link Ledger8InstanceAxis}.
+ * Raised when a shared-instance guard is handed an `axis` that is not a member
+ * of {@link Ledger8InstanceAxis}.
  *
- * A TypeScript caller cannot produce this — `axis` is typed as
- * {@link Ledger8InstanceAxis}. It exists for the untyped JavaScript consumers
- * this package also serves.
+ * NOTHING RAISES THIS ANY MORE: the guard it served
+ * (`lib/v8/instance-guard.ts`) was removed with the hand-maintained execution
+ * layer — see {@link Ledger8InstanceAxis}. It is kept on the published surface,
+ * with its code, rather than removed from a consumer's error taxonomy as a side
+ * effect of an internal refactor.
  *
  * @param requestedAxis The offending value that was passed. Carried for
  *   programmatic use only; it is deliberately kept out of the message.

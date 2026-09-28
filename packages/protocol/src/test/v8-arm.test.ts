@@ -16,6 +16,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
+import { CompiledContract } from '@midnight-ntwrk/compact-js/v8/effect';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import type { EncodedZswapLocalState } from 'compact-runtime-ledger8';
@@ -24,7 +26,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
 import { loadLedgerEra } from '../lib/era/load-era';
 import type { ComposeCallEntry, PartitionContext } from '../lib/shared/compose-types';
-import type { Ledger8ContractLike } from '../lib/v8/execute';
 import { loadLedger8Engine } from '../lib/v8/load-engine';
 
 const PKG_ROOT = resolve(__dirname, '..', '..');
@@ -50,14 +51,14 @@ vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-l
 // file's paths reach — the live `ChargedState` execution runs against, the
 // `serialize()` the deploy leg bridges by, and the `maintenanceAuthority`
 // `executeConstructor` writes the caller's signing key into.
-interface CompiledCounterContract extends Ledger8ContractLike {
+interface CompiledCounterContract extends CompactContract.Contract<Record<string, never>> {
   initialState(constructorContext: unknown): {
     currentContractState: {
       data: ocrt3.ChargedState;
       serialize: () => Uint8Array;
       maintenanceAuthority: ocrt3.ContractMaintenanceAuthority;
     };
-    currentPrivateState: unknown;
+    currentPrivateState: Record<string, never>;
     // The third member the artifact really returns, read since a constructor
     // that mints a coin needs it to compose a balanceable deploy.
     currentZswapLocalState: EncodedZswapLocalState;
@@ -74,6 +75,21 @@ const loadCounterContract = async (): Promise<CompiledCounterContract> => {
   )) as CompiledCounterModule;
   return new Contract({});
 };
+
+/** The generated class in the container compact-js executes. */
+const loadCompiledCounter = async () => {
+  const { Contract } = (await import(
+    /* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js')
+  )) as CompiledCounterModule;
+  return CompiledContract.make<CompiledCounterContract, Record<string, never>>('counter-016', Contract).pipe(
+    CompiledContract.withVacantWitnesses,
+    CompiledContract.withCompiledFileAssets(resolve(FIXTURE_DIR, 'compiled'))
+  );
+};
+
+/** Serves the committed fixture key `initialize` registers onto each entry point. */
+const readFixtureVerifierKey = (circuitId: string): Promise<Uint8Array | undefined> =>
+  Promise.resolve(new Uint8Array(readFileSync(resolve(FIXTURE_DIR, 'compiled', 'keys', `${circuitId}.verifier`))));
 
 const VERIFIER_KEY = new Uint8Array(readFileSync(VERIFIER_KEY_PATH));
 
@@ -96,7 +112,7 @@ const callEntryFromTranscript = (
     readonly output: ocrt3.AlignedValue;
     readonly publicTranscript: ocrt3.Op<ocrt3.AlignedValue>[];
     readonly privateTranscriptOutputs: ocrt3.AlignedValue[];
-    readonly preContractState: { readonly data: ocrt3.ChargedState };
+    readonly preContractState: ocrt3.StateValue;
     readonly partitionContext: PartitionContext;
   },
   contractAddress: string
@@ -108,7 +124,7 @@ const callEntryFromTranscript = (
   ledgerParameters: 'initial',
   transcript: {
     kind: 'unpartitioned',
-    preState: transcript.preContractState.data.state.encode(),
+    preState: transcript.preContractState.encode(),
     publicTranscript: transcript.publicTranscript,
     partitionContext: transcript.partitionContext
   },
@@ -128,15 +144,15 @@ const runIncrement = async (): Promise<{
   const initial = contract.initialState(constructorContext);
   const address = ocrt3.dummyContractAddress();
 
-  const transcript = engine.executeCircuit({
-    contract,
+  const transcript = await engine.executeCircuit({
+    compiledContract: await loadCompiledCounter(),
     circuitId: 'increment',
     args: [],
-    state: { data: initial.currentContractState.data, balance: new Map() },
+    // Freshly constructed, so the contract holds nothing.
+    contractStateBytes: initial.currentContractState.serialize(),
     address,
     coinPk: SAMPLE_COIN_PUBLIC_KEY,
-    privateState: {},
-    // Freshly constructed, so it holds nothing.
+    privateState: {}
   });
 
   return { entry: callEntryFromTranscript(transcript, address), address };
@@ -190,22 +206,6 @@ const payingCallEntry = (owner: string, token: string): ComposeCallEntry => ({
 });
 
 describe('the v8 era arm', () => {
-  it('extracts a v8-era envelope the engine can then down-convert for execution', async () => {
-    const era = await loadLedgerEra('v8');
-    const engine = await loadLedger8Engine();
-    const contractState = new ocrt3.ContractState();
-    contractState.data = new ocrt3.ChargedState(
-      ocrt3.StateValue.newCell({
-        value: [new Uint8Array(32).fill(7)],
-        alignment: [{ tag: 'atom', value: { tag: 'field' } }]
-      })
-    );
-
-    const downConverted = engine.downConvertForExecution(era.decodeContractState(contractState.serialize()));
-
-    expect(downConverted.data.state.type()).toBe('cell');
-  });
-
   it('composes a v8-native call transaction from a real executeCircuit transcript passed as plain data', async () => {
     const era = await loadLedgerEra('v8');
     const { entry, address } = await runIncrement();
@@ -257,13 +257,12 @@ describe('the v8 era arm', () => {
   it('composes a v8-native deploy from a constructor result passed as bytes', async () => {
     const era = await loadLedgerEra('v8');
     const engine = await loadLedger8Engine();
-    const contract = await loadCounterContract();
-
-    const constructorResult = engine.executeConstructor({
-      contract,
+    const constructorResult = await engine.executeConstructor({
+      compiledContract: await loadCompiledCounter(),
       args: [],
       privateState: {},
-      coinPk: SAMPLE_COIN_PUBLIC_KEY
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: readFixtureVerifierKey
     });
     const result = era.composeDeployTx({
       contractState: constructorResult.contractState.serialize(),
@@ -413,12 +412,12 @@ describe('the v8 era arm', () => {
   it('refuses a deploy with no verifier-key map', async () => {
     const era = await loadLedgerEra('v8');
     const engine = await loadLedger8Engine();
-    const contract = await loadCounterContract();
-    const constructorResult = engine.executeConstructor({
-      contract,
+    const constructorResult = await engine.executeConstructor({
+      compiledContract: await loadCompiledCounter(),
       args: [],
       privateState: {},
-      coinPk: SAMPLE_COIN_PUBLIC_KEY
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: readFixtureVerifierKey
     });
 
     let caught: unknown;
@@ -439,12 +438,12 @@ describe('the v8 era arm', () => {
   it('carries a supplied guaranteed Zswap offer into the deploy transaction', async () => {
     const era = await loadLedgerEra('v8');
     const engine = await loadLedger8Engine();
-    const contract = await loadCounterContract();
-    const constructorResult = engine.executeConstructor({
-      contract,
+    const constructorResult = await engine.executeConstructor({
+      compiledContract: await loadCompiledCounter(),
       args: [],
       privateState: {},
-      coinPk: SAMPLE_COIN_PUBLIC_KEY
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: readFixtureVerifierKey
     });
     const coin = LedgerV8.createShieldedCoinInfo(LedgerV8.sampleRawTokenType(), 100n);
     const output = LedgerV8.ZswapOutput.new(coin, 0, LedgerV8.sampleCoinPublicKey(), LedgerV8.sampleEncryptionPublicKey());
@@ -464,12 +463,12 @@ describe('the v8 era arm', () => {
   it('refuses deploy Zswap offer bytes this era cannot read', async () => {
     const era = await loadLedgerEra('v8');
     const engine = await loadLedger8Engine();
-    const contract = await loadCounterContract();
-    const constructorResult = engine.executeConstructor({
-      contract,
+    const constructorResult = await engine.executeConstructor({
+      compiledContract: await loadCompiledCounter(),
       args: [],
       privateState: {},
-      coinPk: SAMPLE_COIN_PUBLIC_KEY
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: readFixtureVerifierKey
     });
 
     expect(() =>

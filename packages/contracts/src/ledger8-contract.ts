@@ -42,11 +42,22 @@
 // changed its own. It reaches here through the protocol barrel, so this package still takes no
 // dependency on the retained runtime, type-only or otherwise.
 import type {
-  DownConvertedState,
+  ConstructorResultPojo,
   EncodedStateValue,
-  Ledger8DeployableContractState,
-  Ledger8SigningKey
+  Ledger8SigningKey,
+  TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
+/**
+ * The retained era's contract-state handle, and the state a retained-era
+ * constructor builds.
+ *
+ * Both are DERIVED from the engine's own results rather than restated: they are
+ * compact-js's ledger-8 types, and naming them structurally keeps this package
+ * free of any dependency on the retained runtime.
+ */
+type RetainedStateValue = TranscriptPojo['postContractState'];
+type RetainedConstructedState = Pick<ConstructorResultPojo['contractState'], 'serialize'>;
+
 import type {
   CommunicationCommitmentData,
   ContractAddress,
@@ -332,7 +343,7 @@ export interface Ledger8CallResultPublic extends CallResultPublicBase {
    * means nothing outside its module. Serialize it yourself if you need to
    * keep it; see ADR-0010.
    */
-  readonly nextContractState: DownConvertedState;
+  readonly nextContractState: RetainedStateValue;
   /**
    * The same state as an {@link EncodedStateValue}: the form that survives this
    * process, a `structuredClone`, a worker transfer and storage.
@@ -419,9 +430,9 @@ export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, K extends
  * everything else.
  *
  * @typeParam TState - The down-converted state type; the framework's own
- * retained runtime fills it with {@link DownConvertedState}.
+ * retained runtime fills it with {@link RetainedStateValue}.
  */
-export interface Ledger8ContractCallPublic<TState = DownConvertedState> extends CallResultPublicBase {
+export interface Ledger8ContractCallPublic<TState = RetainedStateValue> extends CallResultPublicBase {
   /**
    * The state this call ENDED on.
    *
@@ -464,7 +475,7 @@ export interface Ledger8ContractCallPublic<TState = DownConvertedState> extends 
  *
  * @typeParam TState - See {@link Ledger8ContractCallPublic}.
  */
-export interface Ledger8ContractCall<TState = DownConvertedState> {
+export interface Ledger8ContractCall<TState = RetainedStateValue> {
   readonly contractAddress: ContractAddress;
   readonly circuitId: string;
   readonly public: Ledger8ContractCallPublic<TState>;
@@ -820,7 +831,7 @@ export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledg
    * {@link Ledger8DeployedContract.initialState} for anything that has to
    * outlive the runtime instance.
    */
-  readonly initialContractState: Ledger8DeployableContractState;
+  readonly initialContractState: RetainedConstructedState;
   /**
    * The same state, serialized — the bytes the contract address was derived
    * from. A deploy mints a fresh nonce, so these bytes and that address belong

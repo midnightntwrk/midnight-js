@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { Ledger8DeployableContractState, Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
+import type { ConstructorResultPojo, Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
 import type { CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type { ContractAddress, LogEvent, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
@@ -593,7 +593,10 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
     expectTypeOf<Ledger8DeployedContract<Counter016Contract>['initialState']>().toEqualTypeOf<Uint8Array>();
     expectTypeOf<
       Ledger8DeployedContract<Counter016Contract>['initialContractState']
-    >().toEqualTypeOf<Ledger8DeployableContractState>();
+      // The published handle stays the narrow `{ serialize }` it always was --
+      // the constructor's own state type widened when compact-js took the
+      // retained era over, and this pins that the PUBLIC surface did not.
+    >().toEqualTypeOf<Pick<ConstructorResultPojo['contractState'], 'serialize'>>();
   });
 });
 

@@ -17,9 +17,13 @@
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import { describe, expect, it } from 'vitest';
 
-import { DownConvertFailedError, PROTOCOL_ERROR_CODES } from '../errors';
+import {
+  DownConvertFailedError,
+  Ledger8RuntimeInvalidError,
+  PROTOCOL_ERROR_CODES,
+  UnknownLedgerVersionError
+} from '../errors';
 import { extractEncodedStateValue, extractV9EncodedStateValue } from '../lib/era/envelope';
-import { checkRoot, downConvertForExecution } from '../lib/v8/down-convert';
 import { readHexFixture } from './fixtures';
 
 // The engine's own suite (v8-down-convert.test.ts) builds its envelopes
@@ -42,14 +46,25 @@ import { readHexFixture } from './fixtures';
  * every negative test below pass — for the wrong reason.
  */
 
-describe('down-converting a real migrated state', () => {
-  it('yields data byte-identical with the pre-migration v8 state', () => {
+describe('reading a real migrated state', () => {
+  // These used to run through `downConvertForExecution`, which decoded the
+  // extracted state and re-encoded it. That function is gone with the
+  // hand-maintained execution layer: execution now takes the chain's own
+  // serialized `ContractState` bytes and compact-js decodes them. What the
+  // fixtures still pin is the property the down-convert existed to protect --
+  // that both envelopes carry the SAME primary state.
+  //
+  // One guard did not survive: `assertMerkleTreesRehashed` refused a state
+  // whose bounded Merkle trees had no computed root. It could only fire on a
+  // bare `EncodedStateValue`, which a caller could assemble by hand; the new
+  // path takes a whole serialized contract state read off a chain, where the
+  // trees are rehashed by construction. The precondition is no longer
+  // reachable from this package's surface.
+  it('reads a migrated post-fork envelope to the pre-migration v8 state', () => {
     const v9Encoded = extractEncodedStateValue(readHexFixture('state-migrated-v9.hex'), 'v9', ocrt3.ContractState);
     const v8Encoded = extractEncodedStateValue(readHexFixture('state-v8.hex'), 'v8', ocrt3.ContractState);
 
-    const downConverted = downConvertForExecution(v9Encoded, ocrt3);
-
-    expect(downConverted.data.state.encode()).toEqual(v8Encoded);
+    expect(v9Encoded).toEqual(v8Encoded);
   });
 
   it('reads the pre-fork tag-v6 envelope to the same state the post-fork envelope carries', () => {
@@ -58,17 +73,34 @@ describe('down-converting a real migrated state', () => {
 
     expect(fromLedger8).toEqual(fromLedger9);
   });
+});
 
-  it('leaves a golden Merkle state with a readable root', () => {
-    const encoded = extractEncodedStateValue(readHexFixture('state-migrated-v9-merkle.hex'), 'v9', ocrt3.ContractState);
+// The two guards `extractEncodedStateValue` runs BEFORE it decodes anything.
+// They were covered by the retired down-convert suite; a decoder reached with
+// either precondition unmet reads the wrong bytes with the wrong era's reader,
+// which is the failure the envelope layer exists to make impossible.
+describe('the envelope reader refuses before it decodes', () => {
+  it('refuses a ledger version it has no decoder for, naming the value it was given', () => {
+    expect(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the caller this guards is an untyped JavaScript one
+      extractEncodedStateValue(readHexFixture('state-v8.hex'), 'v7' as any, ocrt3.ContractState)
+    ).toThrow(UnknownLedgerVersionError);
+  });
 
-    const downConverted = downConvertForExecution(encoded, ocrt3);
-    const tree = downConverted.data.state.asBoundedMerkleTree();
-    if (tree === undefined) {
-      throw new Error('test fixture invariant violated: expected a boundedMerkleTree StateValue');
+  it('refuses a retained runtime that cannot deserialize, naming the missing binding', () => {
+    // A runtime object assembled by hand rather than taken from the one copy
+    // the caller already loaded -- the substitution this guard exists to catch.
+    const withoutDeserialize = {} as typeof ocrt3.ContractState;
+
+    let caught: unknown;
+    try {
+      extractEncodedStateValue(readHexFixture('state-v8.hex'), 'v8', withoutDeserialize);
+    } catch (error) {
+      caught = error;
     }
 
-    expect(() => checkRoot(tree)).not.toThrow();
+    expect(caught).toBeInstanceOf(Ledger8RuntimeInvalidError);
+    expect((caught as Ledger8RuntimeInvalidError).missingMember).toBe('ContractState.deserialize');
   });
 });
 

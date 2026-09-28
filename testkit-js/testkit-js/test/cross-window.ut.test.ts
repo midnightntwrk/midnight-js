@@ -20,8 +20,9 @@ import * as path from 'node:path';
 
 import type * as currentRuntimeModule from '@midnight-ntwrk/compact-runtime';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-import type { DownConvertedState, ExecuteCircuitOptions } from '@midnight-ntwrk/midnight-js-protocol';
 import { loadLedger8Engine } from '@midnight-ntwrk/midnight-js-protocol';
+import type * as CompactContract from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/v8/effect';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 
 import { hfFixturePath } from '../src/fixtures-hf';
@@ -283,9 +284,12 @@ const withoutVersions = (info: CompiledContractInfo): Record<string, unknown> =>
   Object.fromEntries(Object.entries(info).filter(([member]) => !VERSION_MEMBERS.includes(member)));
 
 /** The retained build, typed as the engine's own `executeCircuit` demands it. */
-type RetainedContract = ExecuteCircuitOptions['contract'] & {
-  initialState(constructorContext: unknown): { readonly currentContractState: DownConvertedState };
-};
+interface RetainedContract extends CompactContract.Contract<CounterPrivateState> {
+  initialState(constructorContext: unknown): {
+    readonly currentPrivateState: CounterPrivateState;
+    readonly currentContractState: { serialize(): Uint8Array };
+  };
+}
 
 interface RetainedModule {
   readonly Contract: new (witnesses: Witnesses) => RetainedContract;
@@ -418,19 +422,29 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     const seen: WitnessView[] = [];
     const contract = new retained.module.Contract(recordingWitnesses(seen));
     const initial = contract.initialState(retained.runtime.createConstructorContext(privateState, COIN_PUBLIC_KEY));
+
     const engine = await loadLedger8Engine();
-    const transcript = engine.executeCircuit({
-      contract,
+    // The witnesses this call records are bound to THIS instance, so the
+    // container is built from a constructor that hands it back rather than from
+    // the generated class -- compact-js constructs a fresh contract per call,
+    // and a fresh one would carry a different `seen` array.
+    const compiled = CompiledContract.make<RetainedContract, CounterPrivateState>(
+      'counter-016',
+      class {
+        constructor() {
+          return contract;
+        }
+      } as never
+    ).pipe(CompiledContract.withVacantWitnesses, CompiledContract.withCompiledFileAssets(path.dirname(path.dirname(RETAINED_COMPILED))));
+
+    const transcript = await engine.executeCircuit({
+      compiledContract: compiled,
       circuitId: 'increment',
       args: [],
-      // The balance rides ON the state, so the two cannot come off different
-      // reads. Freshly constructed here, so it holds nothing.
-      //
-      // `.data` named explicitly, NOT a spread of `currentContractState`: that
-      // is a live WASM handle whose members are prototype getters, and a spread
-      // copies none of them -- the runtime then refuses the state as
-      // `undefined`.
-      state: { data: initial.currentContractState.data, balance: new Map() },
+      // The chain's own serialized state. The balance rides INSIDE it, so the
+      // state and its balances cannot come off different reads. Freshly
+      // constructed here, so the contract holds nothing.
+      contractStateBytes: initial.currentContractState.serialize(),
       address: retained.runtime.dummyContractAddress(),
       coinPk: COIN_PUBLIC_KEY,
       privateState
@@ -440,7 +454,7 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     }
     return {
       privateState: transcript.privateStateAfter,
-      round: retained.module.ledger(transcript.postContractState.data.state).round,
+      round: retained.module.ledger(transcript.postContractState).round,
       seen
     };
   };

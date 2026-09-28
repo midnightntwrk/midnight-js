@@ -33,8 +33,6 @@
 
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type {
-  DownConvertedState,
-  ExecutableContractState,
   Ledger8SigningKey,
   LedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
@@ -104,6 +102,7 @@ import {
   type Ledger8DeployPipelineResult,
   type Ledger8ExecutionEngine,
   readLedger8Snapshot,
+  type RetainedStateValue,
   runLedger8CallPipeline,
   runLedger8DeployPipeline
 } from './ledger8-pipeline';
@@ -165,7 +164,7 @@ export interface Ledger8RuntimeProviders extends TransactionSeams {
  */
 export interface Ledger8Runtime {
   readonly resolved: ResolvedOperationEra;
-  readonly engine: Ledger8ExecutionEngine<ExecutableContractState, DownConvertedState>;
+  readonly engine: Ledger8ExecutionEngine<RetainedStateValue>;
   /**
    * The RETAINED era facade, which reads the contract's on-chain state.
    *
@@ -546,7 +545,7 @@ export interface Ledger8CallRequest {
 /** A composed and submitted retained-era call. */
 export interface Ledger8SubmittedCall {
   readonly txId: string;
-  readonly call: Ledger8CallPipelineResult<DownConvertedState>;
+  readonly call: Ledger8CallPipelineResult<RetainedStateValue>;
   /**
    * The era the network head was on when this call started.
    *
@@ -720,7 +719,7 @@ export const runLedger8Deploy = async (
   // form rather than relying on the resolver normalizing again internally.
   const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId());
 
-  const deploy = runLedger8DeployPipeline({
+  const deploy = await runLedger8DeployPipeline({
     era: resolved.era,
     engine,
     contract: request.contract,
@@ -1044,7 +1043,7 @@ export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Led
  * same call.
  */
 const toLedger8CallTxData = (
-  call: Ledger8CallPipelineResult<DownConvertedState>
+  call: Ledger8CallPipelineResult<RetainedStateValue>
 ): AnyLedger8UnsubmittedCallTxData => ({
   era: RETAINED_PIPELINE_ERA,
   public: {

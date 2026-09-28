@@ -16,19 +16,27 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
+import { CompiledContract } from '@midnight-ntwrk/compact-js/v8/effect';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import { ContractCallPrototype, ContractOperation, ContractState, Intent, sampleContractAddress } from '@midnightntwrk/ledger-v9';
 import type { ConstructorContext } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ExecutableContractState } from '../lib/v8/down-convert';
 import { createLedger8Engine } from '../lib/v8/engine';
-import type { ExecuteCircuitOptions, Ledger8ContractLike } from '../lib/v8/execute';
+import type { RunRetainedCircuitOptions } from '../lib/v8/executable';
 import { emptyPartitionContext, emptyZswapLocalState } from './fixtures';
 
 const PKG_ROOT = resolve(__dirname, '..', '..');
 const FIXTURE_DIR = resolve(PKG_ROOT, '..', '..', 'testkit-js/testkit-js/src/fixtures/hf/counter-016');
 const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
+
+/** Wraps the generated counter class in the container compact-js executes. */
+const compiledCounter = (ctor: new (witnesses: Record<string, never>) => CompiledCounterContract) =>
+  CompiledContract.make<CompiledCounterContract, Record<string, never>>('counter-016', ctor).pipe(
+    CompiledContract.withVacantWitnesses,
+    CompiledContract.withCompiledFileAssets(resolve(FIXTURE_DIR, 'compiled'))
+  );
 
 // Redirects the ported spike fixture's bare `@midnight-ntwrk/compact-runtime`
 // import to this package's own `compact-runtime-ledger8` (the real retained
@@ -45,9 +53,10 @@ interface CompiledCounterModule {
   readonly ledger: (state: ocrt3.StateValue | ocrt3.ChargedState) => CompiledCounterLedger;
 }
 
-interface CompiledCounterContract extends Ledger8ContractLike {
+interface CompiledCounterContract extends CompactContract.Contract<Record<string, never>> {
   initialState(constructorContext: ConstructorContext<Record<string, never>>): {
-    currentContractState: { data: ocrt3.ChargedState };
+    currentPrivateState: Record<string, never>;
+    currentContractState: { data: ocrt3.ChargedState; serialize(): Uint8Array };
   };
 }
 
@@ -64,11 +73,14 @@ describe('createLedger8Engine', () => {
   // Strict equality, not a per-method `typeof` sweep: a method leaked onto the
   // facade, renamed, or silently dropped has to fail here, which a
   // one-directional check of the names we happen to remember cannot do.
-  it('exposes exactly the five documented engine methods, and nothing else', async () => {
+  it('exposes exactly the four documented engine methods, and nothing else', async () => {
     const engine = await createLedger8Engine();
 
+    // `downConvertForExecution` is deliberately absent: execution takes the
+    // chain's own serialized contract state now, so there is no separate
+    // down-convert step to expose.
     expect(Object.keys(engine).sort()).toEqual(
-      ['downConvertForExecution', 'executeCircuit', 'executeConstructor', 'reexpressOperationsForCurrentEra', 'wrapKeepStateCall'].sort()
+      ['executeCircuit', 'executeConstructor', 'reexpressOperationsForCurrentEra', 'wrapKeepStateCall'].sort()
     );
     expect(Object.values(engine).every((method) => typeof method === 'function')).toBe(true);
   });
@@ -100,8 +112,8 @@ describe('createLedger8Engine', () => {
         privateTranscriptOutputs: [],
         partitionContext: emptyPartitionContext(),
         zswapLocalState: emptyZswapLocalState(),
-        preContractState: { data: state },
-        postContractState: { data: state },
+        preContractState: state.state,
+        postContractState: state.state,
         postContractStateEncoded: state.state.encode(),
         privateStateAfter: {}
       },
@@ -123,25 +135,24 @@ describe('createLedger8Engine', () => {
     const contract = new Contract(initialPrivateState);
     const constructorContext = ledger8Runtime.createConstructorContext(initialPrivateState, SAMPLE_COIN_PUBLIC_KEY);
     const initial = contract.initialState(constructorContext);
-    const preState: ExecutableContractState = { data: initial.currentContractState.data, balance: new Map() };
 
-    const options: ExecuteCircuitOptions = {
-      contract,
+    const options: RunRetainedCircuitOptions<CompiledCounterContract, Record<string, never>> = {
+      compiledContract: compiledCounter(Contract),
       circuitId: 'increment',
       args: [],
-      state: preState,
+      contractStateBytes: initial.currentContractState.serialize(),
       address: ocrt3.dummyContractAddress(),
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
       privateState: {}
     };
 
-    const transcript = engine.executeCircuit(options);
+    const transcript = await engine.executeCircuit(options);
 
     // circuitId alone is echoed straight back from the options, so it proves
     // nothing about execution; the round advance is what shows the retained
     // 0.16 stack actually ran the circuit through the facade.
     expect(transcript.circuitId).toBe('increment');
-    expect(ledger(transcript.postContractState.data.state).round).toBe(1n);
+    expect(ledger(transcript.postContractState).round).toBe(1n);
   });
 
   // Every other wrapKeepStateCall test (v9-wrap*.test.ts and the
@@ -163,19 +174,18 @@ describe('createLedger8Engine', () => {
     const contract = new Contract(initialPrivateState);
     const constructorContext = ledger8Runtime.createConstructorContext(initialPrivateState, SAMPLE_COIN_PUBLIC_KEY);
     const initial = contract.initialState(constructorContext);
-    const preState: ExecutableContractState = { data: initial.currentContractState.data, balance: new Map() };
     const address = ocrt3.dummyContractAddress();
 
-    const transcript = engine.executeCircuit({
-      contract,
+    const transcript = await engine.executeCircuit({
+      compiledContract: compiledCounter(Contract),
       circuitId: 'increment',
       args: [],
-      state: preState,
+      // Freshly constructed, so the contract holds nothing -- the empty balance
+      // these bytes carry is the contract's real one, not a stand-in.
+      contractStateBytes: initial.currentContractState.serialize(),
       address,
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: {},
-      // Freshly constructed, so it holds nothing -- an empty balance here is the
-      // contract's real one, not a stand-in.
+      privateState: {}
     });
 
     expect(transcript.publicTranscript.length).toBeGreaterThan(0);

@@ -20,9 +20,11 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 // `yarn info` emits one NDJSON record per resolved version of a package. A
-// version this repo did not ask for means a second physical copy on that line,
-// which is the fault `lib/v8/instance-guard.ts` detects at run time on a
-// different axis.
+// version this repo did not ask for means a second physical copy on that line.
+// This IS the guard for that fault now: the construction-time check that used
+// to sit beside it (`lib/v8/instance-guard.ts`) compared two runtimes this
+// package imported directly, and compact-js owns both, so it had no subject
+// left and was removed.
 //
 // BOTH flags are load-bearing, do not drop either. Per `yarn info --help`:
 //   --all  "all versions of the package that are DIRECT dependencies of any of
@@ -148,14 +150,19 @@ describe('installed ledger and runtime instances', () => {
   });
 
   // TWO copies of compact-runtime are correct and load-bearing: the 0.16 line
-  // is the ledger-8 era's runtime, reached through the `compact-runtime-ledger8`
-  // npm alias, and 0.19 is the current era's. What must never appear is a THIRD
-  // -- a second copy of either line, which is what compact-js's own
-  // `0.19.0-rc.0` would become if the root `resolutions` pin stopped holding.
+  // is the ledger-8 era's runtime and 0.19 is the current era's. The 0.16 line
+  // reaches this package's PRODUCTION code through compact-js now, not through
+  // the `compact-runtime-ledger8` alias -- the alias survives as a DEVELOPMENT
+  // dependency, because the retained-era suites drive the real 0.16 glue
+  // directly to build the states they execute against.
+  //
+  // What must never appear is a THIRD copy -- a second of either line, which is
+  // what compact-js's own `0.19.0-rc.0` would become if the root `resolutions`
+  // pin stopped holding.
   it('resolves exactly one copy of each compact-runtime era line', () => {
     const currentEra = versionOf(manifestEntry('package.json', 'resolutions', '@midnight-ntwrk/compact-runtime'));
     const retainedEra = versionOf(
-      manifestEntry('packages/protocol/package.json', 'dependencies', 'compact-runtime-ledger8')
+      manifestEntry('packages/protocol/package.json', 'devDependencies', 'compact-runtime-ledger8')
     );
 
     expect(resolvedVersionsOf('@midnight-ntwrk/compact-runtime')).toEqual([retainedEra, currentEra].sort(byVersion));
