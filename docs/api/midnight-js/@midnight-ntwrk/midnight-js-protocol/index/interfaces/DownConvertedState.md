@@ -17,6 +17,10 @@ caller's to carry.
 
 [RetainedEraExecution](../../documents/RetainedEraExecution.md)
 
+## Extended by
+
+- [`ExecutableContractState`](ExecutableContractState.md)
+
 ## Properties
 
 ### data

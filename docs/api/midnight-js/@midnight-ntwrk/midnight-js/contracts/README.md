@@ -38,6 +38,7 @@
 
 ## Interfaces
 
+- [AnyEraContractState](interfaces/AnyEraContractState.md)
 - [CallOptionsBase](interfaces/CallOptionsBase.md)
 - [CallOptionsProviderDataDependencies](interfaces/CallOptionsProviderDataDependencies.md)
 - [CallResult](interfaces/CallResult.md)
@@ -78,6 +79,7 @@
 
 ## Type Aliases
 
+- [AnyEraContractStateReadSurface](type-aliases/AnyEraContractStateReadSurface.md)
 - [AnyEraFinalizedCallTxData](type-aliases/AnyEraFinalizedCallTxData.md)
 - [AnyEraSubmittedCallTx](type-aliases/AnyEraSubmittedCallTx.md)
 - [CallOptions](type-aliases/CallOptions.md)
@@ -127,6 +129,7 @@
 - [createContractMaintenanceTxInterface](variables/createContractMaintenanceTxInterface.md)
 - [CURRENT\_PIPELINE\_ERA](variables/CURRENT_PIPELINE_ERA.md)
 - [DISPATCH\_BREADCRUMB\_MESSAGE](variables/DISPATCH_BREADCRUMB_MESSAGE.md)
+- [getAnyEraContractState](variables/getAnyEraContractState.md)
 - [getPublicStates](variables/getPublicStates.md)
 - [getStates](variables/getStates.md)
 - [getUnshieldedBalances](variables/getUnshieldedBalances.md)
