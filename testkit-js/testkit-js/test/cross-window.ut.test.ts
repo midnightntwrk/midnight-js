@@ -423,7 +423,14 @@ describe('private state across the ledger v8 to v9 fork window', () => {
       contract,
       circuitId: 'increment',
       args: [],
-      state: initial.currentContractState,
+      // The balance rides ON the state, so the two cannot come off different
+      // reads. Freshly constructed here, so it holds nothing.
+      //
+      // `.data` named explicitly, NOT a spread of `currentContractState`: that
+      // is a live WASM handle whose members are prototype getters, and a spread
+      // copies none of them -- the runtime then refuses the state as
+      // `undefined`.
+      state: { data: initial.currentContractState.data, balance: new Map() },
       address: retained.runtime.dummyContractAddress(),
       coinPk: COIN_PUBLIC_KEY,
       privateState

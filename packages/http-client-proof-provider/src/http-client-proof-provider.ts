@@ -16,7 +16,7 @@
 import { CostModel, type ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 import {
-  createProofProviderFromArms,
+  createProofProviderFromHandlers,
   type ProofProvider,
   type ProveTxConfig,
   type ZKConfigProvider,
@@ -141,7 +141,7 @@ export function httpClientProofProvider<K extends string>(
   // all left to the factory. Answering in the arm a request arrived in is the factory's guarantee,
   // which matters here because callers narrow the response and reject the other era — replying in
   // the wrong one would strand a submit mid-flight.
-  return createProofProviderFromArms({
+  return createProofProviderFromHandlers({
     currentEra: (tx, proveTxConfig) =>
       tx.prove(provingProviderFor(proveTxConfig), CostModel.initialCostModel()),
     retainedEras: {
