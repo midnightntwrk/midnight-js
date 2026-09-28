@@ -73,7 +73,7 @@ export interface ProofProvider {
    * Read before an operation starts, by `assertSeamsSupportEra`, so a set of
    * providers that cannot carry a transaction end to end is refused before its
    * proof is paid for. A provider built by one of the `create*` factories has
-   * this computed from the arms it was given; a provider implementing this
+   * this computed from the handlers it was given; a provider implementing this
    * interface directly states it.
    *
    * Declare every era `proveTx` really serves and no more. Nothing verifies the
@@ -125,15 +125,15 @@ export type CurrentEraProver = (tx: UnprovenTransaction, config?: ProveTxConfig)
 export type RetainedEraProver = (txBytes: Uint8Array, config?: ProveTxConfig) => Promise<Uint8Array>;
 
 /**
- * The per-era arms {@link createProofProviderFromArms} assembles a
+ * The per-era handlers {@link createProofProviderFromHandlers} assembles a
  * {@link ProofProvider} from.
  *
- * Writing the arms rather than the whole interface means an implementation
+ * Writing the handlers rather than the whole interface means an implementation
  * never writes a `version` tag, never narrows a payload, and cannot answer in
  * the wrong era — the factory routes each request to its own era's arm and tags
  * the answer to match. What is left in each arm is the proving itself.
  */
-export interface ProofProviderArms {
+export interface ProofProviderHandlers {
   /** Required: every provider serves the current era. */
   readonly currentEra: CurrentEraProver;
   /** Optional, one entry per retained era this provider serves. */
@@ -143,32 +143,32 @@ export interface ProofProviderArms {
 /**
  * Assembles a {@link ProofProvider} from one arm per ledger era it serves.
  *
- * The `supportedEras` declaration is computed from the arms supplied, so it
+ * The `supportedEras` declaration is computed from the handlers supplied, so it
  * cannot disagree with what the provider actually does.
  *
- * @param arms The current-era arm, and a handler for each retained era served.
+ * @param handlers The current-era handler, and one for each retained era served.
  * @returns A {@link ProofProvider} routing each request to its era's arm and
  *          answering in the era the request arrived in.
  *
  * @example
  * ```typescript
- * const proofProvider = createProofProviderFromArms({
+ * const proofProvider = createProofProviderFromHandlers({
  *   currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
  *   retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
  * });
  * // proofProvider.supportedEras === ['v9', 'v8']
  * ```
  */
-export const createProofProviderFromArms = (arms: ProofProviderArms): ProofProvider => ({
-  supportedEras: erasServedBy(arms.retainedEras),
+export const createProofProviderFromHandlers = (handlers: ProofProviderHandlers): ProofProvider => ({
+  supportedEras: erasServedBy(handlers.retainedEras),
 
   async proveTx(
     unprovenTx: VersionedUnprovenTransaction,
     proveTxConfig?: ProveTxConfig
   ): Promise<VersionedUnboundTransaction> {
-    const request = narrowToEraArm(unprovenTx, 'proveTx', arms.retainedEras);
+    const request = narrowToEraArm(unprovenTx, 'proveTx', handlers.retainedEras);
     if (request.era === CURRENT_LEDGER_VERSION) {
-      return { version: CURRENT_LEDGER_VERSION, tx: await arms.currentEra(request.tx, proveTxConfig) };
+      return { version: CURRENT_LEDGER_VERSION, tx: await handlers.currentEra(request.tx, proveTxConfig) };
     }
     // Answered in the arm it arrived in: a caller narrows the response and
     // rejects the other era, so replying in the wrong one strands a submit
@@ -178,30 +178,30 @@ export const createProofProviderFromArms = (arms: ProofProviderArms): ProofProvi
 });
 
 /**
- * The proving providers {@link createProofProviderFromProvingProviders}
- * assembles a {@link ProofProvider} from — one per ledger era served.
+ * One {@link ProvingProvider} per ledger era, for
+ * {@link createProofProviderForEras}.
  */
-export interface EraProvingProviders {
-  /** Required: every provider serves the current era. */
+export interface ProvingProvidersByEra {
   readonly currentEra: ProvingProvider;
   /**
-   * Optional, one entry per retained era this provider serves.
+   * One entry per retained era served, in that era's own `ProvingProvider`
+   * shape. An entry present but `undefined` leaves the era unserved, exactly as
+   * omitting it does: `supportedEras` excludes it, and a payload arriving on
+   * that arm is refused with `V8PayloadUnsupportedError`.
    *
-   * Takes the RETAINED era's `ProvingProvider` shape, which is what an
-   * in-process prover's `asV8ProvingProvider()` returns. Registering the
-   * provider built for THIS era is the whole point of the entry: the eras need
-   * different key material, and a proof made with the other era's is rejected
-   * by the node at submit, after the proving has been paid for.
+   * Register the provider built for the era the entry names. Nothing verifies
+   * that — the current era's shape is a structural superset of the retained
+   * era's, so the wrong one type-checks.
+   *
+   * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/seam-era-declarations.md | Seam era declarations}
    */
   readonly retainedEras?: RetainedEraHandlers<RetainedEraProvingProvider>;
   /**
-   * Optional cost model, applied on the CURRENT era only. Defaults to the
-   * initial cost model.
+   * Cost model for the CURRENT era, defaulting to the initial cost model. A
+   * retained era always proves with its own era's initial cost model, which
+   * this cannot override.
    *
-   * Not consulted on a retained era, which proves with its own era's model: the
-   * retained ledger ships its own `CostModel` class and type-checks `prove()`'s
-   * argument against it across the WASM boundary, so the value passed here
-   * would be rejected outright.
+   * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/seam-era-declarations.md | Seam era declarations}
    */
   readonly costModel?: CostModel;
 }
@@ -213,7 +213,7 @@ export interface EraProvingProviders {
  * {@link RetainedLedgerVersion} without an entry here is a build failure, so
  * the factory below cannot silently stop serving one.
  */
-const RETAINED_ERA_PROVERS: Readonly<
+const PROVE_BY_RETAINED_ERA: Readonly<
   Record<
     RetainedLedgerVersion,
     (txBytes: Uint8Array, provingProvider: RetainedEraProvingProvider) => Promise<Uint8Array>
@@ -222,53 +222,64 @@ const RETAINED_ERA_PROVERS: Readonly<
   v8: proveV8Transaction
 };
 
-const toRetainedEraArms = (
+const toRetainedEraHandlers = (
   provingProviders: RetainedEraHandlers<RetainedEraProvingProvider>
 ): RetainedEraHandlers<RetainedEraProver> => {
-  const arms: Partial<Record<RetainedLedgerVersion, RetainedEraProver>> = {};
+  const handlers: Partial<Record<RetainedLedgerVersion, RetainedEraProver>> = {};
   for (const era of RETAINED_LEDGER_VERSIONS) {
     const provingProvider = provingProviders[era];
     if (provingProvider !== undefined) {
-      arms[era] = (txBytes) => RETAINED_ERA_PROVERS[era](txBytes, provingProvider);
+      handlers[era] = (txBytes) => PROVE_BY_RETAINED_ERA[era](txBytes, provingProvider);
     }
   }
-  return arms;
+  return handlers;
 };
 
 /**
  * Assembles a {@link ProofProvider} from one {@link ProvingProvider} per ledger
- * era it serves.
+ * era it serves, deriving the routing, the version tagging and the
+ * `supportedEras` declaration from the providers supplied.
  *
- * This is the route for an in-process prover that crosses the fork. Such a
- * prover needs one instance per era — the eras' proving keys are a different
- * generation, and a node rejects a transaction proved with the other era's key
- * material — and this factory is where the two are paired with the era each
- * one serves. Everything else follows from the pairing: the routing, the
- * version tagging and the `supportedEras` declaration are all derived, so no
- * caller writes them.
+ * This is the route for an in-process prover that crosses the fork, which needs
+ * one instance per era; the package document explains why.
+ *
+ * {@link ProveTxConfig} is not forwarded on either arm: a `ProvingProvider`
+ * takes no per-request configuration, so a `timeout` passed to `proveTx` does
+ * not reach the proving call. A provider that honours it is
+ * `httpClientProofProvider`.
  *
  * @param provingProviders One proving provider per era served, and an optional
  *                         current-era cost model.
  * @returns A {@link ProofProvider} routing each request to its era's proving
  *          provider and answering in the era the request arrived in.
+ * @throws V8PayloadUnsupportedError if a payload arrives on a retained arm no
+ *         provider was registered for.
+ * @throws UntaggedPayloadError if `version` is missing or unrecognised.
+ * @throws PayloadNotATransactionError if a retained arm's `txBytes` is not a
+ *         serialized transaction.
+ * @throws Ledger8RuntimeMissingError if a retained arm is reached and that
+ *         era's runtime cannot be loaded. Both are defined in
+ *         `@midnight-ntwrk/midnight-js-protocol/errors`.
  *
  * @example
  * ```typescript
- * const proofProvider = createProofProviderFromProvingProviders({
+ * const proofProvider = createProofProviderForEras({
  *   currentEra: currentEraProver.asProvingProvider(),
  *   retainedEras: { v8: retainedEraProver.asV8ProvingProvider() }
  * });
- * // proofProvider.supportedEras === ['v9', 'v8']
+ * // supportedEras is ['v9', 'v8']
  * ```
+ *
+ * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/seam-era-declarations.md | Seam era declarations}
  */
-export const createProofProviderFromProvingProviders = ({
+export const createProofProviderForEras = ({
   currentEra,
   retainedEras,
   costModel = CostModel.initialCostModel()
-}: EraProvingProviders): ProofProvider =>
-  createProofProviderFromArms({
+}: ProvingProvidersByEra): ProofProvider =>
+  createProofProviderFromHandlers({
     currentEra: (tx) => tx.prove(currentEra, costModel),
-    retainedEras: retainedEras && toRetainedEraArms(retainedEras)
+    retainedEras: retainedEras && toRetainedEraHandlers(retainedEras)
   });
 
 /**
@@ -276,13 +287,13 @@ export const createProofProviderFromProvingProviders = ({
  * The returned provider proves transactions using the initial cost model.
  *
  * The returned provider serves the v9 arm only — `supportedEras` says so — and
- * that is what a single proving provider can honestly promise: it is the one
- * built for the current era. It rejects a v8 payload with
- * `V8PayloadUnsupportedError`, and an untagged one with
- * `UntaggedPayloadError`. To serve a retained era as well, pass that era's own
- * proving provider to {@link createProofProviderFromProvingProviders}, or,
- * where the proving itself is not a `ProvingProvider` call, write the arms
- * directly with {@link createProofProviderFromArms}.
+ * that is permanent rather than a gap: it lifts a single current-era
+ * `ProvingProvider`. It rejects a v8 payload with `V8PayloadUnsupportedError`,
+ * and an untagged one with `UntaggedPayloadError`. To serve a retained era as
+ * well, pass that era's own proving provider to
+ * {@link createProofProviderForEras}, or, where the proving itself is not a
+ * `ProvingProvider` call, write the handlers directly with
+ * {@link createProofProviderFromHandlers}.
  *
  * @param provingProvider - The underlying proving provider used to generate proofs.
  * @param costModel - Optional cost model to use for proof generation. Defaults to the initial cost model if not provided.
@@ -291,4 +302,4 @@ export const createProofProviderFromProvingProviders = ({
 export const createProofProvider = (
   provingProvider: ProvingProvider,
   costModel: CostModel = CostModel.initialCostModel()
-): ProofProvider => createProofProviderFromProvingProviders({ currentEra: provingProvider, costModel });
+): ProofProvider => createProofProviderForEras({ currentEra: provingProvider, costModel });

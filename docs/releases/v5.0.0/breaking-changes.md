@@ -357,9 +357,9 @@ const midnightProvider: MidnightProvider = {
 the factory compute the declaration:
 
 ```typescript
-import { createProofProviderFromArms } from '@midnight-ntwrk/midnight-js-types';
+import { createProofProviderFromHandlers } from '@midnight-ntwrk/midnight-js-types';
 
-const proofProvider = createProofProviderFromArms({
+const proofProvider = createProofProviderFromHandlers({
   currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
   retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
 });
@@ -387,9 +387,9 @@ See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-arms.md).
 `V9WalletProvider`, `createWalletProvider`, `createMidnightProvider`,
 `SeamEraUnsupportedError`, `assertSeamsSupportEra`, `TransactionSeams`,
 `EraDeclaringProvider`, `RetainedEraHandlers`, `EraArmRequest`, `erasServedBy`,
-`narrowToEraArm`, `createProofProviderFromArms`, `createWalletProviderFromArms`,
-`createMidnightProviderFromArms`, `ProofProviderArms`, `WalletProviderArms`,
-`MidnightProviderArms`, `CurrentEraProver`, `RetainedEraProver`,
+`narrowToEraArm`, `createProofProviderFromHandlers`, `createWalletProviderFromHandlers`,
+`createMidnightProviderFromHandlers`, `ProofProviderHandlers`, `WalletProviderHandlers`,
+`MidnightProviderHandlers`, `CurrentEraProver`, `RetainedEraProver`,
 `CurrentEraBalancer`, `RetainedEraBalancer`, `CurrentEraSubmitter`,
 `RetainedEraSubmitter`. Changed: `FinalizedTxData` gained `version: 'v9'`;
 `ProofProvider`, `WalletProvider` and `MidnightProvider` each gained a required

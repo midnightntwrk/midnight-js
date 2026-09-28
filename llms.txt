@@ -249,25 +249,27 @@ Three things to know before wiring a retained-era flow:
   now refused with `SeamEraUnsupportedError` (`MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED`) naming
   `balanceTx`, before any proving happens — not, as previously, after a full proving cycle.
 - To run one end to end, serve both eras on all three seams. Use
-  `createProofProviderFromArms` / `createWalletProviderFromArms` / `createMidnightProviderFromArms`,
+  `createProofProviderFromHandlers` / `createWalletProviderFromHandlers` / `createMidnightProviderFromHandlers`,
   which take one handler per era and compute `supportedEras` from the handlers supplied:
 
   ```typescript
-  const proofProvider = createProofProviderFromArms({
+  const proofProvider = createProofProviderFromHandlers({
     currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
     retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
   });
   ```
 
-  One proving provider serves both arms above because the proof server and the DApp Connector pick
-  their own key material per request. An IN-PROCESS prover does not: the eras' proving keys are a
-  different generation, a node rejects a transaction proved with the other era's key material, and
-  the refusal lands at submit, after the proving has been paid for. Such a prover needs one
-  instance per era, and `createProofProviderFromProvingProviders` is where the two are paired with
-  the era each one serves:
+  One proving provider serves both arms above because a server-backed client — the proof server,
+  the DApp Connector — frames each request with the ledger version that produced the transaction
+  and resolves key material per request. An IN-PROCESS prover frames nothing: the era it proves for
+  is fixed when it is built, by the key material it was given. From
+  `@midnightntwrk/wallet-sdk-prover-client` 2.0.0-rc.0 that key material is per era, and a node
+  rejects a proof made with the other era's — a refusal that lands at submit, after the proving has
+  been paid for. So such a prover needs one instance per era, and `createProofProviderForEras` is
+  where each is paired with the era it serves:
 
   ```typescript
-  const proofProvider = createProofProviderFromProvingProviders({
+  const proofProvider = createProofProviderForEras({
     currentEra: currentEraProver.asProvingProvider(),
     retainedEras: { v8: retainedEraProver.asV8ProvingProvider() }
   });

@@ -148,9 +148,9 @@ era you did not supply are all handled for you, and `supportedEras` is computed
 from the handlers, so it cannot disagree with what the provider does:
 
 ```typescript
-import { createProofProviderFromArms } from '@midnight-ntwrk/midnight-js-types';
+import { createProofProviderFromHandlers } from '@midnight-ntwrk/midnight-js-types';
 
-const proofProvider = createProofProviderFromArms({
+const proofProvider = createProofProviderFromHandlers({
   currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
   retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
 });
@@ -162,7 +162,7 @@ as serialized bytes, in both directions. That is why the two handler signatures
 differ, and why `retainedEras` cannot name the current era — registering one
 there is a compile error.
 
-`createWalletProviderFromArms` and `createMidnightProviderFromArms` are the same
+`createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers` are the same
 shape for the other two seams. Implementing a tagged interface directly is also
 fine — a class, or a provider that routes internally — in which case you write
 `supportedEras` yourself.
@@ -341,20 +341,20 @@ import {
   createWalletProvider,
   createMidnightProvider,
   createProofProvider,
-  createProofProviderFromProvingProviders,
-  type EraProvingProviders,
-  type ProofProviderArms,
-  type WalletProviderArms,
-  type MidnightProviderArms,
+  createProofProviderForEras,
+  type ProvingProvidersByEra,
+  type ProofProviderHandlers,
+  type WalletProviderHandlers,
+  type MidnightProviderHandlers,
   type CurrentEraProver,
   type RetainedEraProver,
   type CurrentEraBalancer,
   type RetainedEraBalancer,
   type CurrentEraSubmitter,
   type RetainedEraSubmitter,
-  createProofProviderFromArms,
-  createWalletProviderFromArms,
-  createMidnightProviderFromArms,
+  createProofProviderFromHandlers,
+  createWalletProviderFromHandlers,
+  createMidnightProviderFromHandlers,
 
   // Re-exports
   Transaction

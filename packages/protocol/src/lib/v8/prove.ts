@@ -59,13 +59,12 @@ const assertSerializedTransaction = (txBytes: Uint8Array): void => {
  * `expected instance of CostModel`.
  *
  * @param txBytes The serialized, unproven retained-era transaction.
- * @param provingProvider The circuit-level proving provider to drive, in the
- *   RETAINED era's shape. Declared as that era's own type rather than the
- *   current era's, because the two eras need different key material: an
- *   in-process prover hands over `asV8ProvingProvider()` here, which declares
- *   `check` and `prove` and no `lookupKey`. The current era's shape is a
- *   superset, so a provider serving both eras still satisfies this parameter
- *   and needs no adapter.
+ * @param provingProvider The circuit-level proving provider to drive, typed as
+ *   the RETAINED era's `ProvingProvider`: `check` and `prove`, and no
+ *   `lookupKey`. That is the declared return type of an in-process prover's
+ *   `asV8ProvingProvider()`, so registering one here needs no cast. The current
+ *   era's shape is a superset, so a provider serving both eras also satisfies
+ *   this parameter and needs no adapter.
  * @returns The serialized, proven transaction.
  * @throws PayloadNotATransactionError If `txBytes` is not a serialized
  *   transaction.
