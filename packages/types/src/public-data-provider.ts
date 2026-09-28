@@ -431,17 +431,21 @@ export interface PublicDataProvider {
    * runtime has, and a state from any other era then ENDS the subscription
    * rather than skipping one emission — a contract deployed before a fork and
    * not written to since serves exactly such a state for as long as it stays
-   * dormant. Here the era travels on the record and the caller narrows on
-   * {@link RawContractState.version} before handing the bytes to a
-   * deserializer.
+   * dormant. Here the era travels on the record instead.
+   *
+   * {@link RawContractState.version} DATES THE RECORD, it does not read the
+   * bytes — see that field's own documentation. A caller that must know which
+   * runtime WROTE the bytes reads the envelope off
+   * {@link RawContractState.raw}; the two can disagree, and where they can is
+   * stated on the field.
    *
    * {@link RawContractState.ledgerParameters} MAY BE ABSENT ON A STREAM even
    * where the same implementation serves it on
    * {@link queryRawContractState}. The parameters are a per-block blob, and a
-   * stream would carry one for every block it passes through rather than only
-   * for the blocks that touch this contract; an implementation is free to
-   * refuse that cost. A caller that needs them asks
-   * {@link queryRawContractState} for the block the record names.
+   * stream may have no cheap way to obtain one per emission; an implementation
+   * is free to refuse that cost. The record carries no block identifier either,
+   * so a caller that needs the parameters for a streamed state must read
+   * {@link queryRawContractState} at a block it obtained some other way.
    *
    * @param address The address of the contract of interest.
    * @param config The configuration for the observable.

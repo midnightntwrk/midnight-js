@@ -133,11 +133,19 @@ describe('rawContractStateObservable — latest', () => {
 
     const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
 
-    expect(seen).toHaveLength(1);
-    expect(toHex(seen[0]!.raw)).toBe(hexState);
+    // The WHOLE record, not field by field: this is the one assertion that
+    // fails if the record grows a field, and the one that pins
+    // `ledgerParameters` as absent -- a promise three docs make and the block
+    // subscription's field list is the only thing keeping.
+    expect(seen).toEqual([
+      {
+        version: 'v8',
+        protocolVersion: V8_ERA_PROTOCOL_VERSION,
+        raw: new Uint8Array(fromHex(hexState)),
+        ledgerParameters: undefined
+      }
+    ]);
     expect(envelopesOf(seen)).toEqual(['v8']);
-    expect(seen[0]!.version).toBe('v8');
-    expect(seen[0]!.protocolVersion).toBe(V8_ERA_PROTOCOL_VERSION);
   });
 
   test('the same payload terminates the decoded stream instead', async () => {
@@ -340,6 +348,91 @@ describe('rawContractStateObservable — every configuration branch', () => {
 
     expect(seen.map((record) => toHex(record.raw))).toEqual([hexState]);
     expect(envelopesOf(seen)).toEqual(['v8']);
+  });
+
+  test('txId: withholds the states of transactions that precede the named one', async () => {
+    // The identifier match is the ONLY filter on this branch -- it does not
+    // filter by contract address -- so if the skip stops working the caller
+    // silently receives every earlier transaction's states as though they were
+    // its own. The two payloads differ by era so the emitted bytes say which
+    // transaction they came from.
+    const earlier = await mintV8ContractStateHex();
+    const named = mintV9ContractStateHex();
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 } }] }]])),
+      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
+        {
+          data: {
+            blocks: {
+              hash: '0x10',
+              height: 10,
+              protocolVersion: V9_ERA_PROTOCOL_VERSION,
+              transactions: [
+                { hash: '0xtx-earlier', identifiers: ['a-different-tx-id'], contractActions: [action(ADDRESS, earlier)] },
+                { hash: '0xtx-named', identifiers: [TX_ID], contractActions: [action(ADDRESS, named)] }
+              ]
+            }
+          }
+        }
+      ])
+    });
+
+    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID }));
+
+    expect(seen.map((record) => toHex(record.raw))).toEqual([named]);
+  });
+
+  test('txId: inclusive false drops the state of the named transaction itself', async () => {
+    const first = mintV9ContractStateHex();
+    const second = await mintV8ContractStateHex();
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 } }] }]])),
+      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
+        {
+          data: {
+            blocks: {
+              hash: '0x10',
+              height: 10,
+              protocolVersion: V9_ERA_PROTOCOL_VERSION,
+              transactions: [
+                {
+                  hash: '0xtx10',
+                  identifiers: [TX_ID, 'a-later-tx-id'],
+                  contractActions: [action(ADDRESS, first), action(ADDRESS, second)]
+                }
+              ]
+            }
+          }
+        }
+      ])
+    });
+
+    const seen = await collect(
+      provider.rawContractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID, inclusive: false })
+    );
+
+    expect(seen.map((record) => toHex(record.raw))).toEqual([second]);
+  });
+
+  test('blockHeight: inclusive false drops the requested block, not merely the first state', async () => {
+    // This branch skips a BLOCK, while `txId` above skips a STATE. The two
+    // readings diverge exactly when the first block carries more than one
+    // action, which is what this fixture builds.
+    const dropped = mintV9ContractStateHex();
+    const kept = await mintV8ContractStateHex();
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(new Map([[BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }]])),
+      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
+        blockFrame(10, V9_ERA_PROTOCOL_VERSION, [[action(ADDRESS, dropped), action(ADDRESS, dropped)]]),
+        blockFrame(11, V8_ERA_PROTOCOL_VERSION, [[action(ADDRESS, kept)]])
+      ])
+    });
+
+    const seen = await collect(
+      provider.rawContractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 10, inclusive: false })
+    );
+
+    expect(seen.map((record) => toHex(record.raw))).toEqual([kept]);
   });
 });
 

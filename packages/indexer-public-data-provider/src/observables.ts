@@ -87,12 +87,14 @@ export type PositionedContractState = Positioned<ContractState>;
 /**
  * Turns one served contract action into a stream element.
  *
- * The single point of variation between the decoded and the raw stream: every
- * pipeline below is written once and bound twice by the provider, with
- * `parseHexContractState` for the decoded stream and `toRawContractState` for
- * the raw one. Both take the hex payload and the protocol version of the block
- * that dates it, and both refuse a payload that is not a contract state — the
- * raw binding withholds the DESERIALIZATION, not the envelope check.
+ * The single point of variation between the decoded and the raw contract-state
+ * stream: the three pipelines below that take one of these are written once and
+ * bound twice by the provider.
+ *
+ * @param hexState The action's serialized state, in the indexer's hex encoding.
+ * @param protocolVersion The protocol version the indexer reported for the
+ *   record that carried the state -- a block on the block-subscription
+ *   branches, the action's own transaction on `all`.
  */
 export type ContractStateMapper<T> = (hexState: string, protocolVersion: number) => T;
 

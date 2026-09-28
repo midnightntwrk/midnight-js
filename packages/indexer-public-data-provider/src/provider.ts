@@ -106,6 +106,9 @@ import type { ApolloHandle } from './transport';
 const toBlockOffset = (config?: BlockHeightConfig | BlockHashConfig): InputMaybe<BlockOffset> =>
   config ? (config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }) : null;
 
+/** The branch both contract-state streams select when the caller names none. */
+const DEFAULT_STATE_CONFIG: ContractStateObservableConfig = { type: 'latest' };
+
 export class IndexerPublicDataProvider implements PublicDataProvider {
   private readonly handle: ApolloHandle;
   private readonly pollInterval: number;
@@ -464,14 +467,13 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * The stream both public contract-state observables are built from, differing
    * only in what one served contract action becomes.
    *
-   * Written once rather than twice because the branch topology — which
-   * subscription each config reaches, where `dropReplayed` sits, which branches
-   * honour `inclusive` — is the part that is easy to get subtly wrong, and two
-   * copies of it would drift. The mapper is the only axis of variation; see
-   * {@link ContractStateMapper}.
+   * See `docs/subscription-shapes.md` for why the topology is written once.
    *
    * @param contractAddress Validated here, so both public members refuse an
    *   invalid address synchronously.
+   * @param config Selects the branch; required here, defaulted by the callers.
+   * @param mapState Turns one served contract action into a stream element.
+   * @returns One element per contract action the selected branch delivers.
    */
   private contractStates$<T>(
     contractAddress: ContractAddress,
@@ -543,7 +545,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    */
   contractStateObservable(
     contractAddress: ContractAddress,
-    config: ContractStateObservableConfig = { type: 'latest' }
+    config: ContractStateObservableConfig = DEFAULT_STATE_CONFIG
   ): Rx.Observable<ContractState> {
     return this.contractStates$(contractAddress, config, parseHexContractState);
   }
@@ -552,33 +554,40 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * Creates a stream of contract states for `contractAddress` as the bytes the
    * indexer served, without deserializing them.
    *
-   * The streaming twin of {@link queryRawContractState}, and the reason to reach
-   * for it is the same: this is the only contract-state stream that survives the
-   * ledger fork in both directions. {@link contractStateObservable} decodes with
-   * the current era's runtime inside the pipeline, so one retained-era state
-   * terminates that subscription; here the era is carried on the record and the
-   * caller narrows on it.
+   * The streaming twin of {@link queryRawContractState}: no era of contract
+   * state ends this subscription, because none is deserialized here.
+   * {@link contractStateObservable} decodes with the current era's runtime
+   * inside the pipeline, so one retained-era state terminates that
+   * subscription; here the era is carried on the record and the caller narrows
+   * on it.
    *
-   * `ledgerParameters` IS ALWAYS ABSENT ON THIS STREAM. The block subscription
-   * this reads does not ask for them: they are a sizeable blob that would be
-   * delivered on every block of the stream, whether or not the block carries an
-   * action for this contract. A caller that needs the parameters for a given
-   * state asks {@link queryRawContractState} for that block — the record's
-   * `protocolVersion` dates it, and a block config pins the read.
+   * `ledgerParameters` IS ALWAYS ABSENT ON THIS STREAM, and the stream does not
+   * report which block a state came from, so the two CANNOT be paired through
+   * this member. Neither subscription asks for the parameters: the four
+   * block-subscription branches would receive one for every block on chain, and
+   * the `all` branch reads a per-contract-action feed with no block subtree to
+   * read them from. A caller that needs them reads
+   * {@link queryRawContractState} at a block height it obtained some other way.
    *
    * Every branch, every wire-traffic cost and every replay-suppression rule is
    * exactly {@link contractStateObservable}'s; only the element type differs.
    *
-   * A payload that is not a contract state at all still fails the stream. The
-   * envelope is read here — that is how `version` and the bytes are known to be
-   * a state — and only the deserialization is withheld.
+   * WHAT IS WITHHELD, PRECISELY: the deserialization, and the envelope-versus-
+   * block era cross-check {@link parseHexContractState} runs. The envelope tag
+   * is still read, so a payload carrying no supported contract-state envelope
+   * still fails the stream. Two things can still end it on era grounds — an
+   * envelope from an era this client's tag table does not list, and a
+   * `protocolVersion` integer it cannot place on the era timeline. The second
+   * is the one asymmetry with {@link contractStateObservable}, which tolerates
+   * such an integer and decodes on the envelope alone.
    *
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the stream. Defaults to `latest`.
+   * @see {@link SubscriptionShapes} for what each branch costs.
    */
   rawContractStateObservable(
     contractAddress: ContractAddress,
-    config: ContractStateObservableConfig = { type: 'latest' }
+    config: ContractStateObservableConfig = DEFAULT_STATE_CONFIG
   ): Rx.Observable<RawContractState> {
     return this.contractStates$(contractAddress, config, toRawContractState);
   }
