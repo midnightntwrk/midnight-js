@@ -41,10 +41,14 @@ export type ReadSeam = 'watchForTxData' | 'watchForDeployTxData';
 export type Seam = ProviderSeam | ReadSeam;
 
 /**
- * Stable error-code strings for the provider seams.
+ * Stable error-code strings for the providers.
  *
- * Declared in this package because this is where the payload union they refuse
- * is defined, and where the classes for three of the five live; the other two
+ * Most of the group belongs to the provider seams. `PRIVATE_STATE_NOT_SERIALIZABLE`
+ * does not: it belongs to the private-state provider, and is here because this is
+ * the one provider-scoped group there is.
+ *
+ * Declared in this package because this is where the payload union the seam codes
+ * refuse is defined, and where the classes for three of them live; two others
  * come from
  * `@midnight-ntwrk/midnight-js-indexer-public-data-provider`, which depends on
  * this package. `@midnight-ntwrk/midnight-js-utils` re-exports the group and
@@ -59,12 +63,14 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   // that one means "this record cannot be decoded", raised while decoding. This
   // one means "this provider states it does not serve that era", raised from a
   // declaration before any payload exists.
-  SEAM_ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED'
+  SEAM_ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED',
+  PRIVATE_STATE_NOT_SERIALIZABLE: 'MIDNIGHT_JS_PR_PRIVATE_STATE_NOT_SERIALIZABLE'
 } as const);
 /** The union of every value in {@link PROVIDER_ERROR_CODES}. */
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
 
-const { V8_PAYLOAD_UNSUPPORTED, UNTAGGED_PAYLOAD, SEAM_ERA_UNSUPPORTED } = PROVIDER_ERROR_CODES;
+const { V8_PAYLOAD_UNSUPPORTED, UNTAGGED_PAYLOAD, SEAM_ERA_UNSUPPORTED, PRIVATE_STATE_NOT_SERIALIZABLE } =
+  PROVIDER_ERROR_CODES;
 
 /**
  * Thrown by a provider that only speaks the v9 ledger runtime when it is
@@ -282,6 +288,77 @@ export class PrivateStateExportError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = 'PrivateStateExportError';
+  }
+}
+
+/**
+ * The reasons a private state cannot be stored.
+ *
+ * Each names what storage would do to the member rather than what the member is,
+ * so the remedy follows from the reason.
+ */
+export type PrivateStateSerializationFailure =
+  | 'function'
+  | 'symbol'
+  | 'symbol_keyed_property'
+  | 'class_instance'
+  | 'binary_buffer'
+  | 'invalid_date'
+  | 'sparse_array'
+  | 'dropped_property';
+
+const SERIALIZATION_FAILURE_DESCRIPTIONS: Readonly<Record<PrivateStateSerializationFailure, string>> =
+  Object.freeze({
+    function: 'is a function, and a live function cannot be stored',
+    symbol: 'is a symbol, which storage discards',
+    symbol_keyed_property: 'has symbol-keyed properties, which storage discards',
+    class_instance:
+      'is an instance of a type storage cannot restore: it would be read back without its prototype, ' +
+      'and so without its methods',
+    binary_buffer:
+      'is an ArrayBuffer or a DataView, which storage writes as an empty object; ' +
+      'convert it first, with Buffer.from(buffer) or new Uint8Array(buffer)',
+    invalid_date: 'is an invalid Date, which storage writes as null',
+    sparse_array: 'is a sparse array, whose holes storage writes as null',
+    dropped_property: 'is an own property that storage does not persist'
+  });
+
+/**
+ * The value of {@link PrivateStateSerializationError.path} when the private state
+ * itself, rather than a member of it, is what cannot be stored.
+ */
+export const PRIVATE_STATE_ROOT_PATH = '<root>';
+
+/**
+ * An error thrown when a private state holds something that cannot survive being
+ * stored, raised by an implementation of {@link PrivateStateProvider.set} before
+ * anything is written.
+ *
+ * Private state must be plain data. The exact set of values a given implementation
+ * stores faithfully depends on how it serializes, so that set is documented by the
+ * implementation rather than here.
+ */
+export class PrivateStateSerializationError extends Error {
+  readonly code = PRIVATE_STATE_NOT_SERIALIZABLE;
+
+  /**
+   * @param path Where the offending value sits inside the private state, as a
+   *             property path (`registry.findPathForLeaf`, `witnesses[1]`), or
+   *             {@link PRIVATE_STATE_ROOT_PATH} for the private state itself.
+   * @param reason What storage would do to it.
+   * @param privateStateId The state being written, when the caller knows it.
+   */
+  constructor(
+    public readonly path: string,
+    public readonly reason: PrivateStateSerializationFailure,
+    public readonly privateStateId?: string
+  ) {
+    super(
+      `Private state at '${path}' ${SERIALIZATION_FAILURE_DESCRIPTIONS[reason]}. ` +
+        (privateStateId === undefined ? '' : `Writing private state '${privateStateId}'. `) +
+        'Private state must be plain data; nothing was written.'
+    );
+    this.name = 'PrivateStateSerializationError';
   }
 }
 
