@@ -2,24 +2,24 @@
 
 ***
 
-[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [types](../README.md) / createProofProviderFromArms
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-types](../../README.md) / [index](../README.md) / createProofProviderFromHandlers
 
-# Variable: createProofProviderFromArms
+# Function: createProofProviderFromHandlers()
 
-> `const` **createProofProviderFromArms**: (`arms`) => [`ProofProvider`](../interfaces/ProofProvider.md)
+> **createProofProviderFromHandlers**(`handlers`): [`ProofProvider`](../interfaces/ProofProvider.md)
 
 Assembles a [ProofProvider](../interfaces/ProofProvider.md) from one arm per ledger era it serves.
 
-The `supportedEras` declaration is computed from the arms supplied, so it
+The `supportedEras` declaration is computed from the handlers supplied, so it
 cannot disagree with what the provider actually does.
 
 ## Parameters
 
-### arms
+### handlers
 
-[`ProofProviderArms`](../interfaces/ProofProviderArms.md)
+[`ProofProviderHandlers`](../interfaces/ProofProviderHandlers.md)
 
-The current-era arm, and a handler for each retained era served.
+The current-era handler, and one for each retained era served.
 
 ## Returns
 
@@ -31,7 +31,7 @@ A [ProofProvider](../interfaces/ProofProvider.md) routing each request to its er
 ## Example
 
 ```typescript
-const proofProvider = createProofProviderFromArms({
+const proofProvider = createProofProviderFromHandlers({
   currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
   retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
 });

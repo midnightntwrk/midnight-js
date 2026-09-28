@@ -38,6 +38,7 @@
 
 ## Interfaces
 
+- [AnyEraContractState](interfaces/AnyEraContractState.md)
 - [CallOptionsBase](interfaces/CallOptionsBase.md)
 - [CallOptionsProviderDataDependencies](interfaces/CallOptionsProviderDataDependencies.md)
 - [CallResult](interfaces/CallResult.md)
@@ -78,6 +79,7 @@
 
 ## Type Aliases
 
+- [AnyEraContractStateReadSurface](type-aliases/AnyEraContractStateReadSurface.md)
 - [AnyEraFinalizedCallTxData](type-aliases/AnyEraFinalizedCallTxData.md)
 - [AnyEraSubmittedCallTx](type-aliases/AnyEraSubmittedCallTx.md)
 - [CallOptions](type-aliases/CallOptions.md)
@@ -139,6 +141,7 @@
 - [createUnprovenDeployTxFromVerifierKeys](functions/createUnprovenDeployTxFromVerifierKeys.md)
 - [deployContract](functions/deployContract.md)
 - [findDeployedContract](functions/findDeployedContract.md)
+- [getAnyEraContractState](functions/getAnyEraContractState.md)
 - [getPublicStates](functions/getPublicStates.md)
 - [getStates](functions/getStates.md)
 - [getUnshieldedBalances](functions/getUnshieldedBalances.md)

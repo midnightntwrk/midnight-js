@@ -2,11 +2,11 @@
 
 ***
 
-[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [types](../README.md) / MidnightProviderArms
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-types](../../README.md) / [index](../README.md) / MidnightProviderHandlers
 
-# Interface: MidnightProviderArms
+# Interface: MidnightProviderHandlers
 
-The per-era arms [createMidnightProviderFromArms](../variables/createMidnightProviderFromArms.md) assembles a
+The per-era handlers [createMidnightProviderFromHandlers](../functions/createMidnightProviderFromHandlers.md) assembles a
 [MidnightProvider](MidnightProvider.md) from.
 
 ## Properties
