@@ -59,6 +59,7 @@ import type { PartitionContext } from '../lib/shared/compose-types';
 import type { LedgerVersion } from '../lib/shared/ledger-version';
 import { executeCircuit, type Ledger8ContractLike, type TranscriptPojo } from '../lib/v8/execute';
 import { fixturePath, readHexFixture } from './fixtures';
+import type { Assert } from './type-assertions';
 
 // The fixture module asserts `checkRuntimeVersion('0.16.0')` against a bare
 // `@midnight-ntwrk/compact-runtime` import, so the specifier is redirected to
@@ -168,10 +169,12 @@ const runReceiveCoin = async (): Promise<RealExecution> => {
       contract,
       circuitId: CIRCUIT_ID,
       args: [RECEIVED_COIN],
-      state: { data: initial.currentContractState.data },
+      state: { data: initial.currentContractState.data, balance: new Map() },
       address: ocrt3.dummyContractAddress(),
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: {}
+      privateState: {},
+      // Freshly constructed, so it holds nothing. The coin this circuit receives
+      // arrives as an ARGUMENT; it is not a standing balance until a later block.
     },
     ledger8Runtime
   );
@@ -221,7 +224,6 @@ interface RecordingFile {
 // (`preContractState`, `postContractState`), which cannot be serialized at all.
 // A member added to `TranscriptPojo` fails this, which is what stops the
 // recording drifting behind the runtime.
-type Assert<T extends true> = T;
 type SerializableTranscriptMember = Exclude<
   keyof TranscriptPojo,
   'preContractState' | 'postContractState'

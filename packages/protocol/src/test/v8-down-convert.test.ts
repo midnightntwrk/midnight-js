@@ -47,12 +47,14 @@ import {
   UnknownLedgerVersionError
 } from '../errors';
 import { extractEncodedStateValue } from '../lib/era/envelope';
+import type { ContractStatePojo } from '../lib/shared/contract-state';
 import type { Ledger8CompactRuntime } from '../lib/v8/down-convert';
 import {
   assertMerkleTreesRehashed,
   checkRoot,
   downConvertForExecution,
-  structurallyEqual
+  structurallyEqual,
+  toExecutableState
 } from '../lib/v8/down-convert';
 
 // Envelopes are built in-process rather than read from the hard-fork golden
@@ -778,3 +780,53 @@ type _PostForkOnchainRuntimeIsRejected = Expect<NotAssignable<typeof ocrt4, Ledg
 type _PostForkLedgerIsRejected = Expect<
   NotAssignable<{ ContractState: typeof LedgerV9ContractState; StateValue: typeof LedgerV9StateValue }, Ledger8CompactRuntime>
 >;
+
+// The rule this closes was enforced by a COMMENT: `state` and `balance` were
+// two independent options on `executeCircuit`, so a caller -- including the
+// published path the README documents -- could pass a balance read off one
+// block and a state read off another, and reproduce #1345 with every guard
+// green. Both now come off one contract-state pojo, so there is no second
+// value to get wrong.
+describe('toExecutableState pairs a down-converted state with the balance from the SAME read', () => {
+  const COLOUR = { tag: 'unshielded', raw: 'ab'.repeat(32) } as const;
+
+  // Typed loosely on `balance` alone, the way `v8-execute.test.ts` types its
+  // reject table: the refusal case is reachable from JavaScript, and `tsc`
+  // would otherwise make it unwritable.
+  const pojoHolding = (balance: unknown): Omit<ContractStatePojo, 'balance'> & { balance: unknown } => ({
+    state: ocrt3.StateValue.newNull().encode(),
+    balance,
+    entryPoints: []
+  });
+
+  it('carries the balance the pojo declares onto the executable state', () => {
+    const executable = toExecutableState(pojoHolding(new Map([[COLOUR, 1_000n]])) as ContractStatePojo, ocrt3);
+
+    expect([...executable.balance]).toEqual([[COLOUR, 1_000n]]);
+    expect(executable.data).toBeDefined();
+  });
+
+  it('carries an empty balance as empty, which is a contract that holds nothing', () => {
+    const executable = toExecutableState(pojoHolding(new Map()) as ContractStatePojo, ocrt3);
+
+    expect([...executable.balance]).toEqual([]);
+  });
+
+  // Same guard as the two seams it feeds: the pojo reaches here from an
+  // injected decoder or an untyped caller, and `new Map(undefined)` is an
+  // empty map.
+  it('refuses a pojo whose balance is not a usable map', () => {
+    expect(() => toExecutableState(pojoHolding(undefined) as ContractStatePojo, ocrt3)).toThrow(/balance/);
+  });
+
+  // Copied, so the executable state owns a map the caller cannot edit into a
+  // running circuit.
+  it('copies the balance rather than sharing the pojo own map', () => {
+    const held = new Map([[COLOUR, 1_000n]]);
+
+    const executable = toExecutableState(pojoHolding(held) as ContractStatePojo, ocrt3);
+
+    expect(executable.balance).not.toBe(held);
+    expect([...executable.balance]).toEqual([...held]);
+  });
+});

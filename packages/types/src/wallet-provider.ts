@@ -75,15 +75,15 @@ export type CurrentEraBalancer = (tx: UnboundTransaction, ttl?: Date) => Promise
 export type RetainedEraBalancer = (txBytes: Uint8Array, ttl?: Date) => Promise<Uint8Array>;
 
 /**
- * The per-era arms {@link createWalletProviderFromArms} assembles a
+ * The per-era handlers {@link createWalletProviderFromHandlers} assembles a
  * {@link WalletProvider} from.
  *
- * The two key readers sit beside the arms rather than inside one: a coin public
+ * The two key readers sit beside the handlers rather than inside one: a coin public
  * key and an encryption public key are properties of the wallet, not of the era
  * a transaction belongs to, and duplicating them per era would invite two
  * answers to one question.
  */
-export interface WalletProviderArms {
+export interface WalletProviderHandlers {
   /** Required: every wallet balances the current era. */
   readonly currentEra: CurrentEraBalancer;
   /** Optional, one entry per retained era this wallet balances. */
@@ -95,27 +95,27 @@ export interface WalletProviderArms {
 /**
  * Assembles a {@link WalletProvider} from one arm per ledger era it serves.
  *
- * The counterpart to `createProofProviderFromArms`, with the same guarantees:
- * `supportedEras` is computed from the arms supplied, the tag never appears in
+ * The counterpart to `createProofProviderFromHandlers`, with the same guarantees:
+ * `supportedEras` is computed from the handlers supplied, the tag never appears in
  * implementation code, and an answer is always tagged as the era the request
  * carried.
  *
- * @param arms The current-era arm, any retained arms, and the two key readers.
+ * @param handlers The current-era handler, any retained-era handlers, and the two key readers.
  * @returns A {@link WalletProvider} routing each request to its era's arm.
  */
-export const createWalletProviderFromArms = (arms: WalletProviderArms): WalletProvider => ({
-  supportedEras: erasServedBy(arms.retainedEras),
+export const createWalletProviderFromHandlers = (handlers: WalletProviderHandlers): WalletProvider => ({
+  supportedEras: erasServedBy(handlers.retainedEras),
 
   async balanceTx(tx: VersionedUnboundTransaction, ttl?: Date): Promise<VersionedFinalizedTransaction> {
-    const request = narrowToEraArm(tx, 'balanceTx', arms.retainedEras);
+    const request = narrowToEraArm(tx, 'balanceTx', handlers.retainedEras);
     if (request.era === CURRENT_LEDGER_VERSION) {
-      return { version: CURRENT_LEDGER_VERSION, tx: await arms.currentEra(request.tx, ttl) };
+      return { version: CURRENT_LEDGER_VERSION, tx: await handlers.currentEra(request.tx, ttl) };
     }
     return { version: request.era, txBytes: await request.handler(request.txBytes, ttl) };
   },
 
-  getCoinPublicKey: () => arms.getCoinPublicKey(),
-  getEncryptionPublicKey: () => arms.getEncryptionPublicKey()
+  getCoinPublicKey: () => handlers.getCoinPublicKey(),
+  getEncryptionPublicKey: () => handlers.getEncryptionPublicKey()
 });
 
 /**
@@ -140,7 +140,7 @@ export interface V9WalletProvider {
  * that is permanent rather than a gap: it lifts a v9-only implementation. It
  * rejects a v8 payload with `V8PayloadUnsupportedError` and an untagged one with
  * `UntaggedPayloadError`. To serve a retained era as well, use
- * {@link createWalletProviderFromArms}.
+ * {@link createWalletProviderFromHandlers}.
  *
  * @param impl The v9-only wallet implementation to wrap.
  * @returns A {@link WalletProvider} that narrows inbound payloads and tags
@@ -158,7 +158,7 @@ export interface V9WalletProvider {
  * ```
  */
 export const createWalletProvider = (impl: V9WalletProvider): WalletProvider =>
-  createWalletProviderFromArms({
+  createWalletProviderFromHandlers({
     currentEra: (tx, ttl) => impl.balanceTx(tx, ttl),
     getCoinPublicKey: () => impl.getCoinPublicKey(),
     getEncryptionPublicKey: () => impl.getEncryptionPublicKey()

@@ -19,6 +19,28 @@ import { inflate } from './inflate';
 
 export const DEFLATE_PROTOCOL = 'graphql-transport-ws+deflate';
 
+/**
+ * Close code used when a frame cannot be decoded. `graphql-ws` classifies it as
+ * retryable, so the client reconnects and the indexer replays the lost block.
+ * Deliberately not 4499, which `graphql-ws` already uses for its own terminate.
+ */
+export const DEFLATE_DECODE_FAILURE_CLOSE_CODE = 4490;
+
+/**
+ * Close code used once decoding keeps failing. It is `graphql-ws`'s `BadResponse`,
+ * which the library treats as fatal — that is what turns an unrecoverable stream
+ * into an error the consumer sees rather than another reconnect.
+ */
+export const DEFLATE_DECODE_GIVE_UP_CLOSE_CODE = 4004;
+
+/**
+ * Reconnecting cannot clear a failure that depends on the frame's content -- an
+ * oversized payload or invalid UTF-8 fails identically on every replay -- and
+ * `graphql-ws` resets its own retry budget on each acknowledgement, so without
+ * this bound such a frame would reconnect forever in silence.
+ */
+export const MAX_CONSECUTIVE_DECODE_FAILURES = 3;
+
 /** Minimal logger surface — compatible with Pino's `error(obj, msg)` shape and `console.error`. */
 export type DeflateLogger = {
   warn?(message: string, context?: Record<string, unknown>): void;
@@ -58,6 +80,11 @@ export const wrapWithDeflate = <T extends typeof ws.WebSocket>(
   Base: T,
   logger?: DeflateLogger
 ): T => {
+  // Shared across every socket this class creates, because each reconnect builds a
+  // new instance and a per-instance count could never notice a frame that fails
+  // every time.
+  let consecutiveDecodeFailures = 0;
+
   // Capture the inherited onmessage accessor descriptor once at class-creation time.
   // This avoids walking the prototype chain on every setter call and — crucially —
   // lets us INVOKE the inherited setter (which has per-instance side-effects) rather
@@ -68,12 +95,8 @@ export const wrapWithDeflate = <T extends typeof ws.WebSocket>(
   );
 
   /**
-   * NOTE for future maintainers: the `onmessage` setter invokes the inherited
-   * base accessor with `inheritedOnmessage.set.call(this, wrapped)` so that the
-   * base's per-instance dispatch machinery is used. **Do not subclass
-   * `DeflateWebSocket`** — wrapping it again will silently bypass the inflate
-   * logic. If composition is needed, invoke `wrapWithDeflate` once on the
-   * outermost base.
+   * Do not subclass `DeflateWebSocket` — wrapping it twice bypasses the inflate
+   * logic. Call `wrapWithDeflate` once, on the outermost base.
    */
   return class DeflateWebSocket extends (Base as unknown as typeof WebSocket) { // eslint-disable-line no-restricted-syntax
     /** Serializes async inflate so binary frames cannot overtake later text frames. */
@@ -95,10 +118,8 @@ export const wrapWithDeflate = <T extends typeof ws.WebSocket>(
       }
       super.addEventListener('close', () => {
         this.__closed = true;
-        // After close, the only expected rejection source is inflate() on already-queued
-        // binary frames. Swallowing is intentional — the consumer has torn down; re-raising
-        // would surface as an unhandled rejection. Inflate errors during live operation
-        // are caught and logged at the call site below, not here.
+        // The queue can still reject after close, from a listener that threw. Re-raising
+        // would surface as an unhandled rejection with nobody left to receive it.
         this.__deliveryQueue = this.__deliveryQueue.catch(() => undefined);
       });
     }
@@ -112,20 +133,42 @@ export const wrapWithDeflate = <T extends typeof ws.WebSocket>(
           try {
             text = await inflate(binary);
           } catch (err) {
-            // Single malformed or oversized frame — drop it but keep the queue alive so
-            // subsequent frames are not blocked. The underlying socket is unaffected, so
-            // graphql-ws will NOT trigger a reconnect (its reconnect path fires on close /
-            // error events, not frame-level decoding failures). If a server is systematically
-            // misbehaving, the subscription will stall silently from the consumer's view —
-            // surfacing the error through `logger` is the only diagnostic signal available.
-            logger?.warn?.('deflate-websocket: inflate failed, dropping frame', {
-              error: err instanceof Error ? err.message : String(err),
-              code: err instanceof Error && 'cause' in err && err.cause instanceof Error && 'code' in err.cause
-                ? (err.cause as { code?: unknown }).code
-                : undefined
-            });
+            // A frame that cannot be decoded is a hole in the stream, and the socket itself
+            // is fine, so nothing below would ever notice. Closing it is what makes
+            // graphql-ws reconnect and the indexer replay what was lost; once the failures
+            // repeat, the fatal code is what ends the stream rather than looping on it.
+            consecutiveDecodeFailures += 1;
+            const givingUp = consecutiveDecodeFailures >= MAX_CONSECUTIVE_DECODE_FAILURES;
+            logger?.warn?.(
+              givingUp
+                ? 'deflate-websocket: inflate failed repeatedly, failing the subscription'
+                : 'deflate-websocket: inflate failed, closing the socket',
+              {
+                error: err instanceof Error ? err.message : String(err),
+                consecutiveFailures: consecutiveDecodeFailures,
+                code: err instanceof Error && 'cause' in err && err.cause instanceof Error && 'code' in err.cause
+                  ? (err.cause as { code?: unknown }).code
+                  : undefined
+              }
+            );
+            // Muting first is deliberate: the frames queued behind the hole belong to a
+            // stream the consumer can no longer trust, and they are about to be replayed.
+            this.__closed = true;
+            try {
+              this.close(
+                givingUp ? DEFLATE_DECODE_GIVE_UP_CLOSE_CODE : DEFLATE_DECODE_FAILURE_CLOSE_CODE,
+                'Subscription frame could not be decoded'
+              );
+            } catch (closeErr) {
+              // Letting this reject would poison the queue for every later frame and
+              // surface as an unhandled rejection far from its cause.
+              logger?.warn?.('deflate-websocket: closing the socket failed', {
+                error: closeErr instanceof Error ? closeErr.message : String(closeErr)
+              });
+            }
             return;
           }
+          consecutiveDecodeFailures = 0;
           if (this.__closed) return;
           listener(new MessageEvent('message', { data: text }));
         });

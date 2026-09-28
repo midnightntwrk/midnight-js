@@ -18,7 +18,13 @@ import { deflateSync } from 'node:zlib';
 import type * as ws from 'isomorphic-ws';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { DEFLATE_PROTOCOL, wrapWithDeflate } from '../deflate-websocket';
+import {
+  DEFLATE_DECODE_FAILURE_CLOSE_CODE,
+  DEFLATE_DECODE_GIVE_UP_CLOSE_CODE,
+  DEFLATE_PROTOCOL,
+  MAX_CONSECUTIVE_DECODE_FAILURES,
+  wrapWithDeflate
+} from '../deflate-websocket';
 
 /**
  * The DOM-lib and `ws`-package WebSocket types don't structurally unify (the
@@ -121,6 +127,9 @@ class FakeWS extends EventTarget {
   readyState = FakeWS.OPEN;
   onopen: ((ev: Event) => void) | null = null;
 
+  /** Every `close()` the wrapper made, in order, so tests can read the code it chose. */
+  closeCalls: { code?: number; reason?: string }[] = [];
+
   /** Per-instance storage for whatever the wrapper installs via our prototype-level accessor. */
   #installedOnmessage: ((ev: MessageEvent) => void) | null = null;
 
@@ -147,8 +156,10 @@ class FakeWS extends EventTarget {
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   send(_: unknown): void {}
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  close(): void {}
+
+  close(code?: number, reason?: string): void {
+    this.closeCalls.push({ code, reason });
+  }
 }
 
 describe('wrapWithDeflate — message delivery', () => {
@@ -268,7 +279,20 @@ describe('wrapWithDeflate — message delivery', () => {
     expect(seen).toEqual([payload]);
   });
 
-  test('drops a frame whose inflate throws and continues delivering subsequent frames (queue not poisoned, no unhandled rejection)', async () => {
+  test('closes the socket when a frame cannot be inflated, so graphql-ws reconnects and the indexer replays', async () => {
+    const sock = newFake();
+    sock.protocol = DEFLATE_PROTOCOL;
+    sock.addEventListener('message', () => undefined);
+
+    sock.__push(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer);
+
+    await flushDelivery(sock);
+    expect(sock.closeCalls).toEqual([
+      { code: DEFLATE_DECODE_FAILURE_CLOSE_CODE, reason: expect.any(String) }
+    ]);
+  });
+
+  test('delivers no further frames from a socket whose frame could not be inflated', async () => {
     const sock = newFake();
     sock.protocol = DEFLATE_PROTOCOL;
     const seen: unknown[] = [];
@@ -276,15 +300,92 @@ describe('wrapWithDeflate — message delivery', () => {
     const unhandled = vi.fn();
     process.on('unhandledRejection', unhandled);
     try {
-      // First frame: garbage that inflate will reject.
-      const garbage = new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer;
-      sock.__push(garbage);
-      // Second frame: a valid compressed payload that must still be delivered.
-      const good = deflateSync(Buffer.from('{"id":"survives"}', 'utf8'));
+      sock.__push(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer);
+      const good = deflateSync(Buffer.from('{"id":"after-the-failure"}', 'utf8'));
       sock.__push(good.buffer.slice(good.byteOffset, good.byteOffset + good.byteLength));
 
       await flushDelivery(sock);
-      expect(seen).toEqual(['{"id":"survives"}']);
+      expect(seen).toEqual([]);
+      expect(sock.closeCalls).toHaveLength(1);
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+
+  test('reports an uninflatable frame through the configured logger', async () => {
+    const warn = vi.fn();
+    const WithLogger = wrapWithDeflate(asWsCtor(FakeWS), { warn });
+    const sock = new WithLogger('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    sock.protocol = DEFLATE_PROTOCOL;
+    sock.addEventListener('message', () => undefined);
+
+    sock.__push(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer);
+
+    await flushDelivery(sock);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('inflate failed'),
+      expect.objectContaining({ error: expect.any(String) })
+    );
+  });
+
+  test('gives up with a close code graphql-ws treats as fatal once the failures repeat', async () => {
+    const codes: (number | undefined)[] = [];
+
+    for (let attempt = 0; attempt < MAX_CONSECUTIVE_DECODE_FAILURES; attempt += 1) {
+      const sock = newFake();
+      sock.protocol = DEFLATE_PROTOCOL;
+      sock.addEventListener('message', () => undefined);
+      sock.__push(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer);
+      await flushDelivery(sock);
+      codes.push(sock.closeCalls[0]?.code);
+    }
+
+    const expected = Array.from({ length: MAX_CONSECUTIVE_DECODE_FAILURES - 1 }, () =>
+      DEFLATE_DECODE_FAILURE_CLOSE_CODE
+    );
+    expect(codes).toEqual([...expected, DEFLATE_DECODE_GIVE_UP_CLOSE_CODE]);
+  });
+
+  test('forgets earlier failures once a frame decodes', async () => {
+    for (let attempt = 0; attempt < MAX_CONSECUTIVE_DECODE_FAILURES - 1; attempt += 1) {
+      const failing = newFake();
+      failing.protocol = DEFLATE_PROTOCOL;
+      failing.addEventListener('message', () => undefined);
+      failing.__push(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer);
+      await flushDelivery(failing);
+    }
+
+    const recovered = newFake();
+    recovered.protocol = DEFLATE_PROTOCOL;
+    recovered.addEventListener('message', () => undefined);
+    const good = deflateSync(Buffer.from('{"id":"decodes"}', 'utf8'));
+    recovered.__push(good.buffer.slice(good.byteOffset, good.byteOffset + good.byteLength));
+    recovered.__push(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer);
+    await flushDelivery(recovered);
+
+    expect(recovered.closeCalls).toEqual([
+      { code: DEFLATE_DECODE_FAILURE_CLOSE_CODE, reason: expect.any(String) }
+    ]);
+  });
+
+  test('does not poison the delivery queue when close() itself throws', async () => {
+    class UnclosableWS extends FakeWS {
+      override close(): void {
+        throw new Error('close is not supported');
+      }
+    }
+    const Unclosable = wrapWithDeflate(asWsCtor(UnclosableWS));
+    const sock = new Unclosable('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    sock.protocol = DEFLATE_PROTOCOL;
+    sock.addEventListener('message', () => undefined);
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      sock.__push(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer);
+
+      await flushDelivery(sock);
+      await new Promise((resolve) => setImmediate(resolve));
       expect(unhandled).not.toHaveBeenCalled();
     } finally {
       process.off('unhandledRejection', unhandled);

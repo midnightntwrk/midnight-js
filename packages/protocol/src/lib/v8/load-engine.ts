@@ -22,6 +22,7 @@ export type {
   ConstructorResultPojo,
   DownConvertedState,
   EncodedStateValue,
+  ExecutableContractState,
   ExecuteCircuitOptions,
   ExecuteConstructorOptions,
   Ledger8ChargedState,

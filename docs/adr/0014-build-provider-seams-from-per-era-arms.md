@@ -213,3 +213,33 @@ attached.** Deferred, not rejected — it would fail even earlier. The attach pa
 does not receive the write seams today, so it is a signature change in its own
 right, and it would leave the two funnels needing the check anyway for callers
 that never attach.
+
+## Amendment — a second construction route on the proof seam, and the factories renamed (2026-09-28)
+
+Issue #1363. Two changes, neither reversing the decision above.
+
+**The factories are named after what they take.** `createProofProviderFromArms`,
+`createWalletProviderFromArms` and `createMidnightProviderFromArms` are now
+`create…FromHandlers`, and `ProofProviderArms` / `WalletProviderArms` /
+`MidnightProviderArms` are `…Handlers`. What a caller supplies was already
+typed as `RetainedEraHandlers`, so "arms" was the odd word out. The mechanism in
+`era-arms.ts` keeps it — `narrowToEraArm` and `EraArmRequest` describe the
+branch that serves a request, not what the caller registers.
+
+**The proof seam gains `createProofProviderForEras`.** It takes one
+`ProvingProvider` per era rather than one handler per era, and builds the
+handlers itself — `tx.prove(…)` on the current era, `proveV8Transaction` on a
+retained one. The handler route stays for anything whose proving is not a
+`ProvingProvider` call.
+
+The case that motivated it: an in-process prover crossing the fork needs one
+instance per era, because from `@midnightntwrk/wallet-sdk-prover-client`
+2.0.0-rc.0 each era's circuits take their own key material and a node rejects a
+proof made with the other era's. Writing that pairing by hand meant reaching for
+`proveV8Transaction` and assembling the handlers per consumer, and the cost of
+getting it wrong is a refusal at `submitTx`, after the proving has been paid
+for. The factory does not verify the pairing — the two provider shapes are
+structurally compatible and one prover's two accessors return equivalent objects
+— so what it buys is one place where the pairing is written down, with
+`supportedEras` still derived. See
+[the package document](../../packages/types/docs/seam-era-declarations.md).

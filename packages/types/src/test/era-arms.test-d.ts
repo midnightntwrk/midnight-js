@@ -18,9 +18,9 @@ import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { RetainedEraHandlers } from '../era-arms';
-import { createMidnightProviderFromArms, type MidnightProvider } from '../midnight-provider';
-import { createProofProviderFromArms, type ProofProvider, type UnboundTransaction } from '../proof-provider';
-import { createWalletProviderFromArms, type WalletProvider } from '../wallet-provider';
+import { createMidnightProviderFromHandlers, type MidnightProvider } from '../midnight-provider';
+import { createProofProviderFromHandlers, type ProofProvider, type UnboundTransaction } from '../proof-provider';
+import { createWalletProviderFromHandlers, type WalletProvider } from '../wallet-provider';
 
 // These are compile-level tests: the property under test is that the file
 // type-checks, and for the `@ts-expect-error` cases that it does NOT without
@@ -45,10 +45,10 @@ describe('RetainedEraHandlers', () => {
   });
 });
 
-describe('createProofProviderFromArms', () => {
+describe('createProofProviderFromHandlers', () => {
   it('accepts a retained arm for a retained era', () => {
     expectTypeOf(
-      createProofProviderFromArms({
+      createProofProviderFromHandlers({
         currentEra: async () => stubUnbound(),
         retainedEras: { v8: async (bytes: Uint8Array) => bytes }
       })
@@ -56,7 +56,7 @@ describe('createProofProviderFromArms', () => {
   });
 
   it('refuses a retained arm registered for the current era', () => {
-    createProofProviderFromArms({
+    createProofProviderFromHandlers({
       currentEra: async () => stubUnbound(),
       // @ts-expect-error the current era is not a retained era: it crosses the
       // seam as a live ledger object, not as bytes.
@@ -78,9 +78,9 @@ describe('createProofProviderFromArms', () => {
   });
 });
 
-describe('createWalletProviderFromArms', () => {
+describe('createWalletProviderFromHandlers', () => {
   it('refuses a retained arm registered for the current era', () => {
-    createWalletProviderFromArms({
+    createWalletProviderFromHandlers({
       currentEra: async () => stubFinalized(),
       // @ts-expect-error see the proof-provider case above.
       retainedEras: { v9: async (bytes: Uint8Array) => bytes },
@@ -93,9 +93,9 @@ describe('createWalletProviderFromArms', () => {
   });
 });
 
-describe('createMidnightProviderFromArms', () => {
+describe('createMidnightProviderFromHandlers', () => {
   it('refuses a retained arm registered for the current era', () => {
-    createMidnightProviderFromArms({
+    createMidnightProviderFromHandlers({
       currentEra: async () => 'tx-id' as TransactionId,
       // @ts-expect-error see the proof-provider case above.
       retainedEras: { v9: async () => 'tx-id' as TransactionId }
