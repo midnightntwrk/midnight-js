@@ -207,6 +207,22 @@ import {
 } from '@midnight-ntwrk/midnight-js-utils';
 ```
 
+## Architecture Documents
+
+The reasoning behind this package's shape lives in `docs/`, not in the source
+docstrings. Each file is registered with TypeDoc through `projectDocuments`, so
+it is a page in the generated API reference and `@see {@link Title}` in a
+docstring resolves to it.
+
+| Document | What it explains |
+|---|---|
+| [Error vocabulary](./docs/error-vocabulary.md) | Why the framework-code guard and the foreign-code guard are separate functions, why foreignness is enforced at both compile time and run time, and why a deserialization failure is classified rather than re-thrown |
+| [Artifact runtime version](./docs/artifact-runtime-version.md) | Why only `runtime-version` is read out of a compiler description, why its absence is a refusal rather than a default, and why the integrity manifest is consulted before the description |
+
+Docstrings in `src/` carry the API contract: what a symbol does, its
+parameters, what it returns and what it throws. Anything that answers "why is
+it built this way" belongs in a document above, stated once.
+
 ## Resources
 
 - [Midnight Network](https://midnight.network)

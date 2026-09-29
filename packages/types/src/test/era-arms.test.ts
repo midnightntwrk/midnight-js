@@ -23,14 +23,14 @@ import type {
 import { describe, expect, it, vi } from 'vitest';
 
 import { PROVIDER_ERROR_CODES, UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
-import { createMidnightProviderFromArms } from '../midnight-provider';
+import { createMidnightProviderFromHandlers } from '../midnight-provider';
 import {
-  createProofProviderFromArms,
+  createProofProviderFromHandlers,
   type UnboundTransaction,
   type VersionedUnboundTransaction,
   type VersionedUnprovenTransaction
 } from '../proof-provider';
-import { createWalletProviderFromArms, type VersionedFinalizedTransaction } from '../wallet-provider';
+import { createWalletProviderFromHandlers, type VersionedFinalizedTransaction } from '../wallet-provider';
 
 const coinPublicKey = 'coin-pk' as CoinPublicKey;
 const encryptionPublicKey = 'enc-pk' as EncPublicKey;
@@ -44,9 +44,9 @@ const keyReaders = {
   getEncryptionPublicKey: () => encryptionPublicKey
 };
 
-describe('createProofProviderFromArms', () => {
+describe('createProofProviderFromHandlers', () => {
   it('declares exactly the current era when no retained arm is supplied', () => {
-    const provider = createProofProviderFromArms({ currentEra: async () => stubUnbound() });
+    const provider = createProofProviderFromHandlers({ currentEra: async () => stubUnbound() });
 
     // Set equality, not `toContain`: a declaration that leaked an era it
     // cannot serve is the failure this field exists to prevent, and a
@@ -55,7 +55,7 @@ describe('createProofProviderFromArms', () => {
   });
 
   it('declares both eras when a retained arm is supplied', () => {
-    const provider = createProofProviderFromArms({
+    const provider = createProofProviderFromHandlers({
       currentEra: async () => stubUnbound(),
       retainedEras: { v8: async (bytes) => bytes }
     });
@@ -67,7 +67,7 @@ describe('createProofProviderFromArms', () => {
   // so a consumer must not be able to widen it after construction and make the
   // check pass for an era the arms do not serve.
   it('freezes the declaration', () => {
-    const provider = createProofProviderFromArms({ currentEra: async () => stubUnbound() });
+    const provider = createProofProviderFromHandlers({ currentEra: async () => stubUnbound() });
 
     expect(Object.isFrozen(provider.supportedEras)).toBe(true);
   });
@@ -76,7 +76,7 @@ describe('createProofProviderFromArms', () => {
     const unproven = stubUnproven();
     const unbound = stubUnbound();
     const currentEra = vi.fn(async () => unbound);
-    const provider = createProofProviderFromArms({ currentEra });
+    const provider = createProofProviderFromHandlers({ currentEra });
 
     const result = await provider.proveTx({ version: 'v9', tx: unproven }, { timeout: 5 });
 
@@ -92,7 +92,7 @@ describe('createProofProviderFromArms', () => {
     const requested = new Uint8Array([1, 2, 3]);
     const proven = new Uint8Array([4, 5, 6]);
     const retained = vi.fn(async () => proven);
-    const provider = createProofProviderFromArms({
+    const provider = createProofProviderFromHandlers({
       currentEra: async () => stubUnbound(),
       retainedEras: { v8: retained }
     });
@@ -105,7 +105,7 @@ describe('createProofProviderFromArms', () => {
 
   it('never crosses the arms: a current-era request does not reach the retained arm', async () => {
     const retained = vi.fn(async (bytes: Uint8Array) => bytes);
-    const provider = createProofProviderFromArms({
+    const provider = createProofProviderFromHandlers({
       currentEra: async () => stubUnbound(),
       retainedEras: { v8: retained }
     });
@@ -117,7 +117,7 @@ describe('createProofProviderFromArms', () => {
 
   it('rejects the retained arm it was not given, with its stable code', async () => {
     const currentEra = vi.fn(async () => stubUnbound());
-    const provider = createProofProviderFromArms({ currentEra });
+    const provider = createProofProviderFromHandlers({ currentEra });
 
     const rejection = await provider.proveTx({ version: 'v8', txBytes: new Uint8Array([1]) }).then(
       () => undefined,
@@ -132,7 +132,7 @@ describe('createProofProviderFromArms', () => {
 
   it('rejects an untagged payload — the shape a pre-5.0.0 caller passes', async () => {
     const currentEra = vi.fn(async () => stubUnbound());
-    const provider = createProofProviderFromArms({ currentEra });
+    const provider = createProofProviderFromHandlers({ currentEra });
 
     const rejection = await provider
       .proveTx(stubUnproven() as unknown as VersionedUnprovenTransaction)
@@ -147,16 +147,16 @@ describe('createProofProviderFromArms', () => {
   });
 });
 
-describe('createWalletProviderFromArms', () => {
+describe('createWalletProviderFromHandlers', () => {
   const currentOnly = () =>
-    createWalletProviderFromArms({ currentEra: async () => stubFinalized(), ...keyReaders });
+    createWalletProviderFromHandlers({ currentEra: async () => stubFinalized(), ...keyReaders });
 
   it('declares exactly the current era when no retained arm is supplied', () => {
     expect([...currentOnly().supportedEras].sort()).toEqual(['v9']);
   });
 
   it('declares both eras when a retained arm is supplied', () => {
-    const provider = createWalletProviderFromArms({
+    const provider = createWalletProviderFromHandlers({
       currentEra: async () => stubFinalized(),
       retainedEras: { v8: async (bytes) => bytes },
       ...keyReaders
@@ -170,7 +170,7 @@ describe('createWalletProviderFromArms', () => {
     const unbound = stubUnbound();
     const finalized = stubFinalized();
     const currentEra = vi.fn(async () => finalized);
-    const provider = createWalletProviderFromArms({ currentEra, ...keyReaders });
+    const provider = createWalletProviderFromHandlers({ currentEra, ...keyReaders });
 
     const result = await provider.balanceTx({ version: 'v9', tx: unbound }, ttl);
 
@@ -182,7 +182,7 @@ describe('createWalletProviderFromArms', () => {
     const requested = new Uint8Array([1, 2]);
     const balanced = new Uint8Array([3, 4]);
     const retained = vi.fn(async () => balanced);
-    const provider = createWalletProviderFromArms({
+    const provider = createWalletProviderFromHandlers({
       currentEra: async () => stubFinalized(),
       retainedEras: { v8: retained },
       ...keyReaders
@@ -196,7 +196,7 @@ describe('createWalletProviderFromArms', () => {
 
   it('rejects the retained arm it was not given, without balancing anything', async () => {
     const currentEra = vi.fn(async () => stubFinalized());
-    const provider = createWalletProviderFromArms({ currentEra, ...keyReaders });
+    const provider = createWalletProviderFromHandlers({ currentEra, ...keyReaders });
 
     const rejection = await provider.balanceTx({ version: 'v8', txBytes: new Uint8Array([1]) }).then(
       () => undefined,
@@ -211,7 +211,7 @@ describe('createWalletProviderFromArms', () => {
 
   it('rejects an untagged payload without balancing anything', async () => {
     const currentEra = vi.fn(async () => stubFinalized());
-    const provider = createWalletProviderFromArms({ currentEra, ...keyReaders });
+    const provider = createWalletProviderFromHandlers({ currentEra, ...keyReaders });
 
     const rejection = await provider
       .balanceTx(stubUnbound() as unknown as VersionedUnboundTransaction)
@@ -234,15 +234,15 @@ describe('createWalletProviderFromArms', () => {
   });
 });
 
-describe('createMidnightProviderFromArms', () => {
+describe('createMidnightProviderFromHandlers', () => {
   it('declares exactly the current era when no retained arm is supplied', () => {
-    const provider = createMidnightProviderFromArms({ currentEra: async () => 'tx-id' as TransactionId });
+    const provider = createMidnightProviderFromHandlers({ currentEra: async () => 'tx-id' as TransactionId });
 
     expect([...provider.supportedEras].sort()).toEqual(['v9']);
   });
 
   it('declares both eras when a retained arm is supplied', () => {
-    const provider = createMidnightProviderFromArms({
+    const provider = createMidnightProviderFromHandlers({
       currentEra: async () => 'tx-id' as TransactionId,
       retainedEras: { v8: async () => 'tx-id-v8' as TransactionId }
     });
@@ -253,7 +253,7 @@ describe('createMidnightProviderFromArms', () => {
   it('drives the current-era arm with the bare transaction and returns its id', async () => {
     const finalized = stubFinalized();
     const currentEra = vi.fn(async () => 'tx-id' as TransactionId);
-    const provider = createMidnightProviderFromArms({ currentEra });
+    const provider = createMidnightProviderFromHandlers({ currentEra });
 
     const txId = await provider.submitTx({ version: 'v9', tx: finalized });
 
@@ -266,7 +266,7 @@ describe('createMidnightProviderFromArms', () => {
   it('drives the retained-era arm with the bare bytes and returns its id', async () => {
     const requested = new Uint8Array([9]);
     const retained = vi.fn(async () => 'tx-id-v8' as TransactionId);
-    const provider = createMidnightProviderFromArms({
+    const provider = createMidnightProviderFromHandlers({
       currentEra: async () => 'tx-id' as TransactionId,
       retainedEras: { v8: retained }
     });
@@ -279,7 +279,7 @@ describe('createMidnightProviderFromArms', () => {
 
   it('rejects the retained arm it was not given, without submitting anything', async () => {
     const currentEra = vi.fn(async () => 'tx-id' as TransactionId);
-    const provider = createMidnightProviderFromArms({ currentEra });
+    const provider = createMidnightProviderFromHandlers({ currentEra });
 
     const rejection = await provider.submitTx({ version: 'v8', txBytes: new Uint8Array([1]) }).then(
       () => undefined,
@@ -294,7 +294,7 @@ describe('createMidnightProviderFromArms', () => {
 
   it('rejects an untagged payload without submitting anything', async () => {
     const currentEra = vi.fn(async () => 'tx-id' as TransactionId);
-    const provider = createMidnightProviderFromArms({ currentEra });
+    const provider = createMidnightProviderFromHandlers({ currentEra });
 
     const rejection = await provider
       .submitTx(stubFinalized() as unknown as VersionedFinalizedTransaction)

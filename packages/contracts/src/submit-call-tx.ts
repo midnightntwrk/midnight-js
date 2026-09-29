@@ -49,18 +49,13 @@ import {
 /**
  * The provider set a call entry point accepts.
  *
- * Two arms because a call does not always need private state:
- * `SubmitTxProviders` is `ContractProviders` without `privateStateProvider`,
- * so a contract that declares no private state can be called with a set that
- * has none. Naming only `ContractProviders` would demand a provider such a
- * caller has no reason to build.
+ * Two arms, because a call does not always need private state. The arm WITHOUT
+ * `privateStateProvider` is valid only for options that name no
+ * `privateStateId`; naming one without the provider is refused with
+ * {@link IncompleteCallTxPrivateStateConfig} before any provider is touched.
  *
- * The arm without the provider is valid only for options that name no
- * `privateStateId`. Naming one without a `privateStateProvider` is refused
- * before any provider is touched, with
- * {@link IncompleteCallTxPrivateStateConfig} -- so the pairing the type cannot
- * state is enforced at run time rather than left to go wrong. That refusal is
- * what makes the narrowing inside these functions sound.
+ * @see {@link OverloadTyping} for why that run-time refusal is what makes the
+ * narrowing inside these functions sound.
  */
 export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
   | ContractProviders<C>

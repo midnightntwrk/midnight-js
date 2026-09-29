@@ -1,0 +1,12 @@
+{
+  "extends": "@tsconfig/node24/tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "types": ["node"],
+    "noImplicitAny": false,
+    "strictNullChecks": false
+  },
+  "include": ["*.mjs", "generated-personas.d.ts"]
+}

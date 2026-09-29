@@ -23,7 +23,8 @@ type Op<T> = OnchainRuntimeV3.Op<T>;
 
 import type { EncodedStateValue } from '../era/envelope';
 import type { PartitionContext } from '../shared/compose-types';
-import type { DownConvertedState } from './down-convert';
+import { describeValue, isContractBalance } from '../shared/contract-state';
+import type { DownConvertedState, ExecutableContractState } from './down-convert';
 
 /**
  * The `QueryContext` slice {@link executeCircuit} reads off a circuit's
@@ -32,15 +33,11 @@ import type { DownConvertedState } from './down-convert';
  * partition the call's public transcript against the context it really ran on
  * (see {@link PartitionContext}).
  *
- * A `Pick` of the vendor's own class, not a restatement of it: the member names
- * and their types come from onchain-runtime-v3, so a rename there fails this
- * build instead of leaving a mirror that describes a property the runtime no
- * longer has. It stays a narrowing rather than the whole class because
- * `QueryContext` is a WASM class with dozens of members, and this seam reads
- * four — the narrowing is what lets the execution tests hand `executeCircuit` a
- * plain object double instead of standing up real WASM.
+ * A `Pick` of the vendor's own class, not a restatement of it.
  *
  * @see {@link RetainedEraExecution}
+ * @see {@link InjectedVendorSlices} for why this is derived from the vendor
+ * rather than mirrored, and what the narrowing buys the execution tests.
  */
 export type Ledger8QueryContext = Pick<
   OnchainRuntimeV3.QueryContext,
@@ -191,7 +188,18 @@ export interface ExecuteCircuitOptions {
   readonly contract: Ledger8ContractLike;
   readonly circuitId: string;
   readonly args: readonly unknown[];
-  readonly state: DownConvertedState;
+  /**
+   * The state to execute against AND the balances the contract holds, as one
+   * value.
+   *
+   * One member rather than two, because the two halves must describe the same
+   * block. As separate options a caller could pass a balance read off another
+   * block or another contract, and nothing here could tell. Build it with
+   * {@link toExecutableState}, which takes one contract-state pojo.
+   *
+   * @see {@link RetainedEraExecution}
+   */
+  readonly state: ExecutableContractState;
   readonly address: string;
   readonly coinPk: string;
   readonly privateState: unknown;
@@ -207,16 +215,31 @@ export interface ExecuteCircuitOptions {
  * for the caller to turn into the transaction's Zswap offer.
  *
  * @param options The contract module, circuit id, arguments, down-converted
- *   state, contract address, coin public key and private state.
+ *   state, contract address, coin public key, private state and the balances
+ *   the contract holds.
  * @param ledger8Runtime The injected pre-fork glue slice.
  * @returns Every artifact a v9-native call prototype needs.
  * @throws Error A plain `Error` — not a {@link PROTOCOL_ERROR_CODES}-carrying
  *   class — when `circuitId` names no entry point on
- *   `contract.impureCircuits`.
+ *   `contract.impureCircuits`, or when `balance` is absent, is not a map, or
+ *   carries entries that are not a colour keyed against a `bigint` amount.
  * @see {@link RetainedEraExecution}
  */
 export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: Ledger8ExecutionRuntime): TranscriptPojo => {
   const { contract, circuitId, args, state, address, coinPk, privateState } = options;
+  const balance: unknown = state?.balance;
+  // Checked at runtime because `tsc` reaches neither a JavaScript caller nor an
+  // options object assembled dynamically, and every substitution `new Map(...)`
+  // accepts -- absent, an empty array, an empty `Set` -- yields an empty
+  // balance. @see RetainedEraExecution
+  if (!isContractBalance(balance)) {
+    throw new Error(
+      `executeCircuit requires 'balance' on 'state' for circuit '${circuitId}', as a Map — received ` +
+        `${describeValue(balance)}. Build the state with toExecutableState, which reads both halves off one ` +
+        'contract-state snapshot; a contract that holds nothing carries an empty Map explicitly. A JSON round ' +
+        'trip turns a Map into a plain object and is refused here; use structuredClone.'
+    );
+  }
   const circuit = Object.hasOwn(contract.impureCircuits, circuitId) ? contract.impureCircuits[circuitId] : undefined;
   if (typeof circuit !== 'function') {
     throw new Error(
@@ -233,9 +256,17 @@ export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: L
     undefined,
     ledger8Runtime.CostModel.initialCostModel()
   );
+  // BEFORE the circuit runs, and copied rather than shared, so an entry the
+  // caller adds or removes afterwards cannot reach a running circuit. The copy
+  // is SHALLOW: the amounts are `bigint`s and carry by value, the colour keys
+  // stay the caller's own objects. `block` survives the context swaps the glue
+  // performs on every ledger query and every registered coin, both pinned by
+  // `v8-execute.test.ts`. @see RetainedEraExecution
+  ctx.currentQueryContext.block = { ...ctx.currentQueryContext.block, balance: new Map(balance) };
   // Read BEFORE the circuit runs. The glue swaps `currentQueryContext` for a
-  // new context on every coin it registers, so after the call this object no
-  // longer answers for the context the call started from.
+  // new context on every ledger query and on every coin it registers -- the
+  // same two sites named above -- so after the call this object no longer
+  // answers for the context the call started from.
   const preCallBlock = ctx.currentQueryContext.block;
   const preCallEffects = ctx.currentQueryContext.effects;
   const res = circuit(ctx, ...args);

@@ -75,9 +75,8 @@ made through `callTx` read it back. Supplying it with no id is a caller error â€
 is writing `privateStateId` with an undefined value. Naming an id the provider holds nothing
 under is refused too, rather than attaching against a state the contract never had.
 
-The deploy record is returned VERSION-TAGGED rather than narrowed to the current era: a
-retained-era contract was deployed in whichever era was current at the time, and refusing the
-pre-fork arm would refuse exactly the contracts this arm exists to keep callable.
+The deploy record is returned VERSION-TAGGED rather than narrowed to the current era, so it needs
+narrowing on `version` before `tx` is touched.
 
 ### Type Parameters
 
@@ -106,7 +105,8 @@ IncompleteFindContractPrivateStateConfig if an `initialPrivateState` is supplied
 
 ### See
 
-[OverloadTyping](../../documents/OverloadTyping.md) for how the two eras are discriminated.
+[OverloadTyping](../../documents/OverloadTyping.md) for how the two eras are discriminated, and why the record is
+version-tagged.
 
 ## Call Signature
 

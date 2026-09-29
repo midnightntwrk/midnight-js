@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "file": "index.js",
+  "sourceRoot": "../../../../../",
+  "sources": ["src/contract/private-counter.compact"],
+  "names": [],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAwBA;;;;;;;;;;;;;MAQA,AAAA,SAEC;;;;;;;;;;;;;;;;;;;;;;;OAAA;;;;GACA;EAXD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAIA;;;;;;;;;yEAA6B;;;;;;;GAO5B;EALD,AAAA,iBAAmC;;0DAAnC,cAAmC;;;;;;;;;;;;;;GAAA;EAEnC,AAAA,kBAEC;UADC,KAAK;IAAL;;;;;;;;;;6FAAA,KAAK;;;;wEAAA;;GACN;;;;;;;;;;;;;;;;IAND;qCAAA;;;;;;;;;;;0GAA6B;KAAA;;;;;;;;;;;;;;"
+}

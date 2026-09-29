@@ -11,12 +11,21 @@
   // packages/utils/src/test/troubleshooting-coverage.test.ts,
   // packages/midnight-js/src/test/migration-guide-recipe.test.ts and
   // packages/midnight-js/src/test/protocol-recipe.test.ts.
+  //
+  // The root manifest and the lockfile are the subject of
+  // packages/protocol/src/test/single-instance.test.ts, which reads the root `resolutions` pins
+  // and checks them against what yarn actually resolved (`yarn info`, answered from the lockfile).
+  // An edit to `resolutions` that was never reinstalled is precisely what that gate exists to
+  // catch, and it touches no file any package's own `inputs` cover -- so without these two turbo
+  // would replay a cached PASS for it.
   "globalDependencies": [
     "build-tools/**",
     "eslint.config.mjs",
     "TROUBLESHOOTING.md",
     "docs/releases/v5.0.0/migration-guide.md",
-    "llms.txt"
+    "llms.txt",
+    "package.json",
+    "yarn.lock"
   ],
   "tasks": {
     "build": {

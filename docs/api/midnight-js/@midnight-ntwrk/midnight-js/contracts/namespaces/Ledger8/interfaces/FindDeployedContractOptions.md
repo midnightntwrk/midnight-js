@@ -69,29 +69,26 @@ undefined value, which is a caller that believes it named an id.
 The key to record as this contract's maintenance authority key, for a
 caller that holds one and deployed the contract somewhere else.
 
-VALIDATED BEFORE IT IS STORED, and a key this framework could not store and
-read back is refused with `Ledger8SigningKeyUnusableError` rather than
-written. A retained-era key is exactly 64 hexadecimal characters, which is
-what that era's `sampleSigningKey` produces; this type is `string`, so a
-shorter one type-checks. Stored unchecked, it would be reported on the
-attach that supplied it and read as ABSENT on the next one -- and the entry
-it replaced would already be gone. Nothing is written when it is refused.
+VALIDATED BEFORE IT IS STORED. A retained-era key is exactly 64 hexadecimal
+characters, which is what that era's `sampleSigningKey` produces; this type
+is `string`, so a shorter one type-checks and is refused with
+`Ledger8SigningKeyUnusableError`. Nothing is written when it is refused.
 
 Stored against [Ledger8FindDeployedContractOptions.contractAddress](#contractaddress)
 in the private-state provider, which is the same storage
 [Ledger8DeployedContract.signingKey](DeployedContract.md#signingkey) is written to -- so a key
 supplied here REPLACES whatever is held for that address, and is what
-[Ledger8FoundContract.signingKey](FoundContract.md#signingkey) then reports. Replacing is the
-documented remedy for an entry this framework cannot use, so it wins over a
-stored entry rather than falling back to one.
+[Ledger8FoundContract.signingKey](FoundContract.md#signingkey) then reports.
 
-OMITTING it reports the key already stored, and stores nothing. Where the
-current era's `findDeployedContract` samples a fresh key when none is
-stored, this arm reports none: a sampled key bears no relation to the
-authority the chain holds for a contract this caller did not deploy, and
-[Ledger8FoundContract](FoundContract.md) carries no maintenance interface for one to be
-used through.
+OMITTING it reports the key already stored, and stores nothing. It does NOT
+sample a fresh key when none is stored, where the current era's
+`findDeployedContract` does.
 
 #### Remarks
 
 **Privacy-sensitive.** Signing-key material.
+
+#### See
+
+[KeepStatePipeline](../../../../documents/KeepStatePipeline.md) for why this arm samples nothing, and why a
+supplied key replaces a stored one rather than falling back to it.

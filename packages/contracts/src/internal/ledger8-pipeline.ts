@@ -68,22 +68,14 @@ import { assertVerifierKeyMatches } from './verifier-key';
  * The transcript members this pipeline is entitled to read, narrowed off the
  * engine's own result type so the two cannot drift.
  *
- * `circuitId` is in the set but is not read: the pipeline names the circuit
- * from its own request, so reading it back off the transcript would let a
- * mismatched recording rename the call. It stays in the `Pick` because the
- * replay harness requires the fixture to carry it, which is what makes a
- * recording's own claim about which circuit it recorded checkable.
+ * `circuitId` is in the set but is NOT read: the pipeline names the circuit from
+ * its own request. It stays in the `Pick` because the replay harness requires
+ * the fixture to carry it.
  *
- * ONE member of the engine's result is deliberately left out:
- * `preContractState`, which is the same state this pipeline handed the engine
- * in the first place. `result` USED to be another: it was narrowed away here
- * and so could not reach a caller, even though the recording carried it and the
- * current era answers with it.
- *
- * `postContractState` is generic rather than picked off `TranscriptPojo`: it is
- * a live retained-runtime handle, which the replay double cannot mint, so the
- * double fills the parameter with its own marker while the real engine fills it
- * with `DownConvertedState`.
+ * One member of the engine's result is deliberately left out,
+ * `preContractState`. `postContractState` is generic rather than picked off
+ * `TranscriptPojo`, because it is a live retained-runtime handle the replay
+ * double cannot mint.
  *
  * @see {@link KeepStatePipeline} for what is left out and why nothing is lost.
  */
@@ -143,13 +135,16 @@ export interface Ledger8ConstructibleContract {
 /**
  * What {@link Ledger8ExecutionEngine.executeCircuit} is asked to run.
  *
- * @typeParam TState The engine's own down-converted state type, opaque here.
+ * @typeParam TExecutable The engine's own executable state type, opaque here:
+ * the down-converted state and the balances the contract holds, as ONE value.
+ * They used to be two members, and nothing could tell a balance read off
+ * another block from the right one.
  */
-export interface Ledger8ExecuteRequest<TState> {
+export interface Ledger8ExecuteRequest<TExecutable> {
   readonly contract: Ledger8CallableContract;
   readonly circuitId: string;
   readonly args: readonly unknown[];
-  readonly state: TState;
+  readonly state: TExecutable;
   readonly address: string;
   readonly coinPk: string;
   readonly privateState: unknown;
@@ -208,9 +203,16 @@ export interface Ledger8ConstructRequest {
  * @typeParam TState The down-converted state, threaded through opaquely.
  * @see {@link KeepStatePipeline} for why the state is generic.
  */
-export interface Ledger8ExecutionEngine<TState> {
-  downConvertForExecution(state: EncodedStateValue): TState;
-  executeCircuit(options: Ledger8ExecuteRequest<TState>): Ledger8Transcript<TState>;
+export interface Ledger8ExecutionEngine<TExecutable extends TState, TState> {
+  /**
+   * Takes the DECODED contract state, not the extracted `EncodedStateValue`.
+   *
+   * The balances a circuit reads are not part of the primary state, and as a
+   * second argument they could come off a different read. One argument in, one
+   * paired value out.
+   */
+  downConvertForExecution(contractState: ContractStatePojo): TExecutable;
+  executeCircuit(options: Ledger8ExecuteRequest<TExecutable>): Ledger8Transcript<TState>;
   executeConstructor(options: Ledger8ConstructRequest): Ledger8ConstructedState;
   /**
    * Re-expresses the entry points a retained-era state declared as a CURRENT-era contract state.
@@ -417,7 +419,7 @@ const assertRecipientsResolvable = (
 };
 
 /** Everything one retained-era call needs. */
-export interface Ledger8CallPipelineRequest<TState> {
+export interface Ledger8CallPipelineRequest<TExecutable extends TState, TState> {
   /**
    * The era facade the composed transaction is built on, bound to the network head.
    *
@@ -429,7 +431,7 @@ export interface Ledger8CallPipelineRequest<TState> {
   readonly era: LedgerEra;
   /** The retained era facade, which reads the contract's on-chain state. Always the pre-fork one. */
   readonly retainedEra: LedgerEra;
-  readonly engine: Ledger8ExecutionEngine<TState>;
+  readonly engine: Ledger8ExecutionEngine<TExecutable, TState>;
   readonly publicDataProvider: Ledger8PipelineReadSurface;
   readonly head: LedgerVersion;
   /** The optional logger the dating step's breadcrumbs are written to. */
@@ -561,8 +563,8 @@ export interface Ledger8CallPipelineResult<TState> {
  * coin the contract already held — see {@link spendsHeldCoin}.
  * @throws ComposeOptionError, ComposeFailedError if the era refuses the composed call.
  */
-export const runLedger8CallPipeline = async <TState>(
-  request: Ledger8CallPipelineRequest<TState>
+export const runLedger8CallPipeline = async <TExecutable extends TState, TState>(
+  request: Ledger8CallPipelineRequest<TExecutable, TState>
 ): Promise<Ledger8CallPipelineResult<TState>> => {
   const { era, retainedEra, engine, publicDataProvider, head, contract, contractAddress, circuitId } = request;
 
@@ -589,7 +591,10 @@ export const runLedger8CallPipeline = async <TState>(
   // turns a paid-for, late failure into a free, immediate one.
   assertSnapshotVerifierKey(snapshot, circuitId, request.localVerifierKey, contractAddress);
 
-  const downConverted = engine.downConvertForExecution(snapshot.encoded);
+  // ONE value in, so the state and the balance cannot come off different reads.
+  // `snapshot.decoded` and `snapshot.encoded` are the same bytes read once; the
+  // decoded form is what carries the balance.
+  const downConverted = engine.downConvertForExecution(snapshot.decoded);
   const transcript = engine.executeCircuit({
     contract,
     circuitId,
@@ -766,7 +771,7 @@ export const runLedger8CallPipeline = async <TState>(
 /** Everything one retained-era deploy needs. */
 export interface Ledger8DeployPipelineRequest {
   readonly era: LedgerEra;
-  readonly engine: Ledger8ExecutionEngine<unknown>;
+  readonly engine: Ledger8ExecutionEngine<unknown, unknown>;
   readonly contract: Ledger8ContractSlice;
   readonly args: readonly unknown[];
   readonly privateState: unknown;

@@ -61,10 +61,10 @@ export type CurrentEraSubmitter = (tx: FinalizedTransaction) => Promise<Transact
 export type RetainedEraSubmitter = (txBytes: Uint8Array) => Promise<TransactionId>;
 
 /**
- * The per-era arms {@link createMidnightProviderFromArms} assembles a
+ * The per-era handlers {@link createMidnightProviderFromHandlers} assembles a
  * {@link MidnightProvider} from.
  */
-export interface MidnightProviderArms {
+export interface MidnightProviderHandlers {
   /** Required: every submitter serves the current era. */
   readonly currentEra: CurrentEraSubmitter;
   /** Optional, one entry per retained era this submitter serves. */
@@ -74,20 +74,20 @@ export interface MidnightProviderArms {
 /**
  * Assembles a {@link MidnightProvider} from one arm per ledger era it serves.
  *
- * The counterpart to `createProofProviderFromArms`, with the same guarantees:
- * `supportedEras` is computed from the arms supplied, and the tag never appears
+ * The counterpart to `createProofProviderFromHandlers`, with the same guarantees:
+ * `supportedEras` is computed from the handlers supplied, and the tag never appears
  * in implementation code.
  *
- * @param arms The current-era arm, and a handler for each retained era served.
+ * @param handlers The current-era handler, and one for each retained era served.
  * @returns A {@link MidnightProvider} routing each submission to its era's arm.
  */
-export const createMidnightProviderFromArms = (arms: MidnightProviderArms): MidnightProvider => ({
-  supportedEras: erasServedBy(arms.retainedEras),
+export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHandlers): MidnightProvider => ({
+  supportedEras: erasServedBy(handlers.retainedEras),
 
   async submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId> {
-    const request = narrowToEraArm(tx, 'submitTx', arms.retainedEras);
+    const request = narrowToEraArm(tx, 'submitTx', handlers.retainedEras);
     return request.era === CURRENT_LEDGER_VERSION
-      ? arms.currentEra(request.tx)
+      ? handlers.currentEra(request.tx)
       : request.handler(request.txBytes);
   }
 });
@@ -97,18 +97,17 @@ export const createMidnightProviderFromArms = (arms: MidnightProviderArms): Midn
  * {@link MidnightProvider} interface.
  *
  * The counterpart to `createWalletProvider`, and worth using for the same
- * reason: it keeps the `version` tag out of implementation code, so an
- * implementer never meets the parameter-mismatch error the tagged interface
- * otherwise produces.
+ * reason: it keeps the `version` tag out of implementation code.
  *
  * The returned provider serves the v9 arm only — `supportedEras` says so — and
  * that is permanent rather than a gap: it lifts a v9-only implementation. It
  * rejects a v8 payload with `V8PayloadUnsupportedError` and an untagged one with
  * `UntaggedPayloadError`. To serve a retained era as well, use
- * {@link createMidnightProviderFromArms}.
+ * {@link createMidnightProviderFromHandlers}.
  *
  * @param submitTx The v9-only submission function to wrap.
  * @returns A {@link MidnightProvider} that narrows inbound payloads.
+ * @see {@link SeamEraDeclarations} for the compiler error this avoids.
  *
  * @example
  * ```typescript
@@ -117,4 +116,4 @@ export const createMidnightProviderFromArms = (arms: MidnightProviderArms): Midn
  */
 export const createMidnightProvider = (
   submitTx: (tx: FinalizedTransaction) => Promise<TransactionId>
-): MidnightProvider => createMidnightProviderFromArms({ currentEra: submitTx });
+): MidnightProvider => createMidnightProviderFromHandlers({ currentEra: submitTx });

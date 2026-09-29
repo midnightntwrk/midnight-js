@@ -439,3 +439,26 @@ transaction otherwise costs a full proving cycle before anything notices. Read u
 front, the same gap costs one comparison. `v8-native.test.ts` pins that
 directly: the wallet-gap and submitter-gap cases assert `proveTx` was never
 called.
+
+## Dating a finalized record against the head
+
+`version` on a finalized record SELECTS the runtime of the live `tx` handle
+beside it. A mislabelled record therefore does not fail loudly: a caller that
+narrows on it reaches into the other ledger module and is handed a plausible
+wrong value.
+
+The current era refuses the mirror of this at the same seam, through
+`requireV9Record`. `assertLedger8RecordEra` is the retained arm's half, and it
+compares the record against the HEAD rather than against a fixed era, because a
+retained-era call is legitimately recorded by EITHER era — which is why the
+result type keeps `version` a union in the first place.
+
+What it does NOT assert is that the result's `era` and the record's `version`
+agree. They legitimately disagree: `era: 'ledger8'` with `version: 'v9'` IS a
+keep-state transaction. The agreement that has to hold is between the record and
+the head the operation started on.
+
+It is checked BEFORE the status, because `status` is a field of the very record
+whose provenance is in doubt. A call that both failed and came back mislabelled
+therefore reports the era fault, which is the one naming a cause a caller can act
+on.

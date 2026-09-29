@@ -48,4 +48,16 @@ Everything executeCircuit needs to run one impure circuit call.
 
 ### state
 
-> `readonly` **state**: [`DownConvertedState`](DownConvertedState.md)
+> `readonly` **state**: [`ExecutableContractState`](ExecutableContractState.md)
+
+The state to execute against AND the balances the contract holds, as one
+value.
+
+One member rather than two, because the two halves must describe the same
+block. As separate options a caller could pass a balance read off another
+block or another contract, and nothing here could tell. Build it with
+toExecutableState, which takes one contract-state pojo.
+
+#### See
+
+[RetainedEraExecution](../../documents/RetainedEraExecution.md)

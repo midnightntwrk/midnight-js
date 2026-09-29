@@ -16,6 +16,13 @@
 import type * as OnchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
 import type { AlignedValue, EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
+import {
+  type ContractBalance,
+  type ContractStatePojo,
+  describeValue,
+  isContractBalance
+} from '../shared/contract-state';
+
 // Aliases read off the type-only namespace import above, not mirrors -- see
 // ModuleGraphAndLazyLoading.
 type ChargedState = OnchainRuntimeV3.ChargedState;
@@ -78,6 +85,24 @@ export interface Ledger8CompactRuntime {
  */
 export interface DownConvertedState {
   readonly data: ChargedState;
+}
+
+/**
+ * A down-converted state WITH the balance read off the same contract state.
+ *
+ * The pair exists as one type because the two halves have to describe the same
+ * block. They used to be two independent options on
+ * {@link executeCircuit}, held together by a comment, so a caller could pass a
+ * balance read from another block or another contract and reproduce the defect
+ * this pairing closes — every guard green, the transcript wrong.
+ *
+ * Built by {@link toExecutableState}, which takes ONE {@link ContractStatePojo}
+ * and therefore has no second value to get wrong.
+ *
+ * @see {@link RetainedEraExecution}
+ */
+export interface ExecutableContractState extends DownConvertedState {
+  readonly balance: ContractBalance;
 }
 
 /**
@@ -262,4 +287,44 @@ export const downConvertForExecution = (
     }
     throw new DownConvertFailedError('state down-convert', cause);
   }
+};
+
+/**
+ * Down-converts a decoded contract state and carries its balance with it.
+ *
+ * The one entry point {@link executeCircuit} takes its state from. Both halves
+ * come off the single {@link ContractStatePojo} argument, which is what makes
+ * "the state and the balance describe the same block" a property of the type
+ * rather than of a comment at the call site.
+ *
+ * The balance is re-checked here even though the pojo's own decoder already
+ * checked it: a pojo reaches this function from an injected decoder or from a
+ * JavaScript caller, and `new Map(undefined)` is an empty map — the
+ * substitution the whole guard exists to prevent.
+ *
+ * Copied rather than shared, so the executable state owns a map the caller
+ * cannot edit into a running circuit.
+ *
+ * @param contractState The decoded contract state, state and balance together.
+ * @param ledger8Runtime The injected pre-fork runtime slice.
+ * @returns The state a v8-era circuit executes against, balance included.
+ * @throws Error When the balance is absent or is not a usable map.
+ * @throws Ledger8RuntimeInvalidError As {@link downConvertForExecution}.
+ * @throws DownConvertFailedError As {@link downConvertForExecution}.
+ * @throws MerkleNotRehashedError As {@link downConvertForExecution}.
+ * @see {@link RetainedEraExecution}
+ */
+export const toExecutableState = (
+  contractState: ContractStatePojo,
+  ledger8Runtime: Ledger8CompactRuntime
+): ExecutableContractState => {
+  const { balance } = contractState;
+  if (!isContractBalance(balance)) {
+    throw new Error(
+      `a contract state carries no usable balance (received ${describeValue(balance)}), so it cannot be ` +
+        'executed against. Read it from a contract-state snapshot rather than assembling one; a contract that ' +
+        'holds nothing declares an empty Map.'
+    );
+  }
+  return { ...downConvertForExecution(contractState.state, ledger8Runtime), balance: new Map(balance) };
 };

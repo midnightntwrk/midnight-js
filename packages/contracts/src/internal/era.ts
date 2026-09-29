@@ -598,9 +598,8 @@ export const ERA_PAIRING: EraPairingTable = pairingTable({
  * DEPLOY on a post-fork head is the one cell where calls and deploys differ, and the `'call-only'`
  * verdict is where that difference lives.
  *
- * Returns nothing. Which pipeline runs is the `(pipeline, head)` pair the caller already holds;
- * this decides only whether that pair may run, so it does not restate the pair as a third value
- * that could disagree with it.
+ * Returns nothing: this decides only whether the `(pipeline, head)` pair the caller already holds
+ * may run.
  *
  * @param pipeline The pipeline the artifact belongs to, from {@link resolveArtifactEra}.
  * @param head The era the network head is on, from {@link resolveOperationEra}.

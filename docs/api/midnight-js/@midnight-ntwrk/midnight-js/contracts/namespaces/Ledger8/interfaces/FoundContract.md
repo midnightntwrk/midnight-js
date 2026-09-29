@@ -90,15 +90,10 @@ produced the objects below.
 The key this framework holds for the contract's maintenance authority, or
 `undefined` when it holds none it can use.
 
-ALWAYS PRESENT and possibly `undefined`, rather than optional. The member is
-written on every attach, `exactOptionalPropertyTypes` is off in this
-package, and an optional member invites `found.signingKey!` at a call site
-where the absent case is the ordinary one.
-
-REQUIRED on [Ledger8DeployedContract](DeployedContract.md), and that is the whole
-difference between the two handles: a deploy always has a key, because it
-built the authority; an attach has one only if a deploy on this machine
-stored it, or the caller supplied one through
+ALWAYS PRESENT and possibly `undefined`, rather than optional. REQUIRED on
+[Ledger8DeployedContract](DeployedContract.md): a deploy always has a key, because it built
+the authority; an attach has one only if a deploy on this machine stored it,
+or the caller supplied one through
 [Ledger8FindDeployedContractOptions.signingKey](FindDeployedContractOptions.md#signingkey).
 
 `undefined` COLLAPSES THREE CASES, and a caller that needs to tell them
@@ -112,11 +107,9 @@ apart has to look at the logger rather than at this field:
 3. the entry could not be READ at all, because `getSigningKey` rejected: a
    wrong store password, a rotation-lock timeout, store I/O.
 
-Neither 2 nor 3 fails the attach, because nothing on this arm consumes the
-key: the retained era exposes no maintenance interface, so a circuit call
-would otherwise stop working over a value it never reads. Both are reported
-to the logger provider as a DEBUG-level dispatch breadcrumb, which is the
-only place the three cases are distinguishable.
+Neither 2 nor 3 fails the attach. Both are reported to the logger provider
+as a DEBUG-level dispatch breadcrumb, which is the only place the three
+cases are distinguishable.
 
 The remedy for case 2 is the caller's either way: pass the retained-era key
 on [Ledger8FindDeployedContractOptions.signingKey](FindDeployedContractOptions.md#signingkey), which replaces the
@@ -126,3 +119,8 @@ entry, or remove the entry with
 #### Remarks
 
 **Privacy-sensitive.** Signing-key material.
+
+#### See
+
+[KeepStatePipeline](../../../../documents/KeepStatePipeline.md) for why the member is not optional, and why
+an unreadable entry does not fail the attach.

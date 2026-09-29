@@ -70,6 +70,13 @@ jobs:
       - name: Test workflow scripts
         run: yarn test:workflow-scripts
 
+      # `consumer-e2e` is not a workspace either, so the same gap applied to the
+      # logic deciding which arms each Hard fork shard runs. That lane cannot
+      # catch a shard narrowed to nothing -- doing less work looks like passing --
+      # so it is covered here, where it costs a second.
+      - name: Test consumer-e2e selection logic
+        run: yarn test:consumer-e2e
+
       - name: Run tests
         run: |
           yarn test ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo

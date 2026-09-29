@@ -10,17 +10,16 @@ An error indicating that a contract-scoped transaction was created while the
 network head is on a ledger era that has no way to express one.
 
 The pre-fork era composes exactly one call per transaction, which leaves a
-pre-fork scope nothing to batch into.
+pre-fork scope nothing to batch into. The message names both ways forward,
+because the caller's batching intent cannot be honoured either way.
 
 Raised when the scope is CREATED, and from the head READING alone — before
 that era's runtime is acquired. Both are load-bearing; do not move it later.
 
-Both ways forward are named in the message, because the caller's batching
-intent cannot be honoured either way and it needs to choose.
-
 ## See
 
-[StaleHeadRemediation](../../documents/StaleHeadRemediation.md) for what each placement property prevents.
+ - [ErrorTaxonomy](../../documents/ErrorTaxonomy.md) for the refuse-before-you-pay placement rule.
+ - [StaleHeadRemediation](../../documents/StaleHeadRemediation.md) for what each placement property prevents.
 
 ## Extends
 

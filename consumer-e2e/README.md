@@ -26,6 +26,54 @@ node consumer-e2e/linker-smoke.mjs pnp retained
 node consumer-e2e/fork-matrix-smoke.mjs pnp           # needs Docker
 ```
 
+## These scripts are typechecked
+
+`yarn typecheck:consumer-e2e` runs `tsc` over every `.mjs` here through
+[`tsconfig.json`](./tsconfig.json). CI runs it on the **Consumer E2E** lane,
+before the pack — that lane is the one with an unfiltered `yarn build`, and
+`fork-matrix-smoke.mjs` imports `@midnight-ntwrk/testkit-js` by name, so a leg
+that builds only `packages/*` cannot resolve what the check is checking. It is
+also in the pre-push hook, so a push carries it whether or not you remember.
+
+**Why it exists.** This directory is the only place a transaction crosses the
+fork, and its call sites are the framework's own public entry points — but until
+the check landed, the only static gate on them was ESLint, which does not know
+what `submitCallTx` takes. Two defects shipped through that gap and each cost a
+13-minute Hard fork shard to find: `contract` written for `compiledContract`, and
+an `args` member on a nullary circuit's options.
+
+**The gate catches the first of those, and only that one is verified by mutation
+rather than assumed.** Reverting `compiledContract` to `contract` turns the lane
+red, as does reading a finalized record off the top level instead of `public`.
+The `args` defect it does NOT catch: a retained wrapper's `Contract` is declared
+`any` — necessarily, see `generated-personas.d.ts` — so `args: [1]` on a nullary
+retained circuit still typechecks. What rules that one out is the convention
+below, written at the call sites, not the type system. Do not read the check as
+covering it.
+
+**What it does and does not cover.** The framework's types are real, so result
+shapes are fully checked on both arms, and so is every member of a current-era
+options object. A retained options object is checked for its own members —
+`compiledContract` against `contract` is exactly that — but not for `circuitId`
+or `args`, which its `any` instance leaves open. The wrapped contracts cannot be
+resolved from here at all: they are generated into the persona tree at run time,
+so [`generated-personas.d.ts`](./generated-personas.d.ts) declares the shape they
+all share. That file carries what each declaration is allowed to assume, why the
+retained side is looser than the current one, and why nothing checks the file
+itself — read it before widening either.
+
+Two conventions follow from the check, both recorded at their call sites:
+
+- **`args` is always present**, and `[]` for a nullary circuit. Identical at run
+  time — every entry point normalises an absent `args` to the empty tuple — and
+  it is what lets a helper generic over many circuits typecheck at all.
+- **The framework is imported the way a consumer imports it.** Entry points come
+  off `@midnight-ntwrk/midnight-js-contracts`; `networkHeadVersion` and
+  `CompiledContract` come off the `@midnight-ntwrk/midnight-js` barrel, not
+  `protocol`'s root. The single remaining non-consumer import is
+  `loadLedgerEra`, and it is a gap in `contracts` rather than a shortcut taken
+  here — `readRetainedLedger` explains it.
+
 ## The personas
 
 `retained` and `current` each pin one Compact runtime and prove the framework
@@ -35,6 +83,217 @@ generated packages that each wrap one contract and declare the runtime its
 codegen demands. That is what a consumer's tree looks like once a retained
 contract is packaged rather than pasted in, and it is the only arrangement in
 which one process can execute a pre-fork contract and a current one.
+
+## What the fork crossing asks of each contract
+
+Per retained twin, in order: deploy below the boundary, call, cross, call again
+through the same call site (keep-state), call a second time, then **find the
+contract again** and call through the handle that returns. The last one is what a
+restarted dApp does — it holds an address and a store, not the handle its deploy
+returned — and it asserts three things the other legs cannot:
+
+- the attach resolves a verifier key for every one of the artifact's **impure**
+  circuits -- the set the returned `callTx` is built from -- and refuses if one
+  does not match, so a successful find is the chain and the pre-fork artifact
+  still agreeing after migration re-versioned the state;
+- `signingKey` comes back from the private-state store rather than from the
+  chain, so it is the assertion that the maintenance key the retained deploy
+  persisted **before** the fork survived it. That key is not on chain and not
+  derivable from anything that is: losing it silently leaves a contract nobody
+  can ever rotate a verifier key on;
+- the handle it hands back is one that **transacts**. A twin declaring an
+  `afterFind` call drives it through `found.callTx`, so the row says the
+  re-attached handle works rather than merely that it exists. `private-counter`
+  is the twin that pays for it: its witness has to read pre-fork private state
+  through a provider built after the boundary.
+
+For that to mean anything the private-state store must not be re-keyed at the
+boundary, which is why `retainedProvidersFor` names it `fork-retained-${key}`
+with **no era in it**. It used to carry one, which gave every twin two stores
+and made the signing key and any private state unmeasurable across the fork. A
+real dApp has one store and does not re-key it when the chain forks.
+
+### `private-counter`: the only twin with private state
+
+No other contract in either matrix declares a witness — the retained twins are
+constructed with an empty witness object, the current-era ones with
+`withVacantWitnesses` — so nothing in the run could show private state crossing
+the boundary; the round trip would be `{}` in, `{}` out. Continuity was asserted only at unit tier, against a frozen
+LevelDB store (`testkit-js/.../cross-window.ut.test.ts`): real, but offline, with
+no chain and no fork in it.
+
+`private-counter` declares a witness that reads `step` out of private state and
+discloses it to the ledger. `step` is 7 and is written **once**, before the
+boundary, so the ledger figure is a statement about what the witness could still
+read:
+
+Each call adds `step` to `round` and 1 to the private `calls` counter — four
+calls in all, the last through the re-attached handle. `step` is chosen **per
+run** rather than fixed, so the ledger figures are reachable only by reading back
+what that run wrote: a store answering with a constant, a default or a replayed
+initial value would satisfy a hardcoded number and fails here. The expectations
+are derived from it in `RETAINED_MATRIX` in `fork-matrix-entry.mjs` and are
+deliberately not repeated here; two copies of numbers that must move together is
+one copy too many.
+
+A post-fork call that reached a fresh or reset private state cannot reach the
+second figure: it would find no `step` to read and fail outright.
+The store itself is checked separately and member by member with `===`, which is
+what separates the bigint `2n` from the number `2`; `typeof` is reported in the
+failure so the row says which it got. A layer that stopped preserving `bigint`
+would satisfy the ledger assertion and fail that one, which is the failure mode
+private-state storage actually has.
+
+It is **retained-only**, the mirror of `events` being current-only: a current-era
+deploy happens after the fork and has no pre-fork state to carry.
+
+Its assertions have a negative control, for the same reason the surviving-balance
+one does. `checkPrivateState` reads a single id and compares what comes back, so
+it passes if the provider answers the id it was given — and passes just as
+happily if the provider answers *any* id with whatever state it last touched. One
+leg therefore asks the same provider, at the same address, for an id nothing ever
+wrote. The answer has to be nothing.
+
+### The in-flight probe
+
+One more thing runs in the fork window itself: retained calls driven from the
+moment enactment starts until the head flips, recording whether any met the
+boundary and was refused with `StaleHeadError`.
+
+It is a **probe, not a leg** — losing the race colours nothing. Hitting it means a
+call being in exactly the wrong part of a window `enactFork()` takes about 3m41s
+to close, which this harness does not control; a coin toss inside a blocking
+release gate is the one thing such a gate must not contain. The row distinguishes
+four outcomes — `admitted`, `stale-head` (with `kind`, `startEra`, `freshEra` off
+the error), `never-returned`, and anything else verbatim. The wallet is itself
+mid-crossing in that window, so a refusal from that direction is expected and is
+**not** evidence about stale-head handling.
+
+**One thing it does colour, and it is not the race.** If the chain answered
+*none* of the calls, the run observed nothing about the boundary at all — a proof
+server down, a wallet that never settled, or a `StaleHeadError` that stopped
+being raised and now arrives unrecognised. Each produces a row identical to a
+healthy miss, and this probe is the only place in the run that can see
+`StaleHeadError` on a live chain, so a silent one would be that regression
+reaching a release unobserved. A run where at least one call was admitted is
+healthy whether or not it met the fork.
+
+Each attempt is bounded on its own. A retained `submitCallTx` waits on
+`watchForTxData`, which polls for finalization without a timeout, so a
+transaction the chain *drops* rather than rejects never returns — and that is
+precisely the case the probe is trying to provoke. Without a per-call ceiling it
+would hang until the outer deadline, which is fatal and sits before the `fork
+enacted` gate.
+
+### The three legs that do not race
+
+The probe above cannot assert on what it is for, and the numbers say why.
+Measured across six runs that could have seen it, three local and three in CI:
+it caught the boundary in **three of them** and missed in the other three. A miss
+looks the same every time -- nine or so calls admitted, then a run of refusals at
+`submitTx` with not one diagnosed, `metTheBoundary: false`, stopped at the
+attempt cap, because a refusal returns in about a second where an admitted call
+takes eighteen and a dozen of them burn the cap in moments.
+
+**So this is a coin toss, near enough, and that is the point.** A blocking gate
+cannot rest on one, which is what makes these legs worth their fork-window time.
+It is also not a long shot, which is why the probe stays beside them: when it
+does land, it observes the real race, and no injected version can.
+
+The undiagnosed refusals are the informative part. Each was a real refusal that
+`handleSubmitRejection`
+([`packages/contracts/src/internal/stale-head.ts`](../packages/contracts/src/internal/stale-head.ts))
+re-threw unchanged, which places them BEFORE the indexer's head flipped: the
+re-read reported no movement, and saying nothing about a fork there is exactly
+right. The window in which a live call can observe `StaleHeadError` is therefore
+not the fork window, but the part of it after the indexer catches up.
+
+Three legs replace that race with something a gate can rest on, and they are
+not the same size, deliberately.
+
+**One leg carries the whole claim about the network.** It starts a call before
+the fork, on a real pre-fork head, and really composes, proves and balances it
+there. Only the SUBMISSION is held -- at the `midnightProvider.submitTx` seam --
+until the head reports `v9`. Then the bytes go to the real node, and it really
+refuses them. In its own words, from `stack-logs/node.log` on a run where the
+diagnosis had been removed:
+
+```
+Error deserializing: "...Transaction<midnight_ledger_v9::structure::Signature, ...>":
+  expected header tag 'midnight:transaction[v12](signature[v2],proof,pedersen-schnorr[v1]):',
+  got 'midnight:transaction[v9](signature[v1],proof,pedersen-schnorr[v1]):'
+```
+
+The bytes are declined on their era tag, at decode, before the node considers
+what they spend -- which is worth knowing, because it also rules out the reading
+where a coin conflict, and not the boundary, is what refused them.
+
+**The other two legs inject the refusal**, and keep everything else real: a real
+post-fork head resolved at the operation's start, a real retained contract, a
+real composition through the keep-state pipeline, a real proof, a real
+balancing. They ask what the diagnosis DECIDES on the strength of one head
+reading, which is not a question about the network -- and the leg above is what
+establishes that this decision is reached on a live chain at all. Re-proving
+that for each arm would cost another balanced transaction on the one shared
+wallet, and another slice of the fork window, to assert nothing new.
+
+| Leg | Real | Injected |
+|---|---|---|
+| a retained call parked across the fork is refused as STALE | the operation, the refusal, the re-read | when the submission leaves |
+| a rejection whose head RE-READ FAILS is reported undiagnosed | the operation, the era it starts on | the refusal; the re-read throws |
+| a rejection under a head that moved BACKWARDS | the operation, the post-fork era it starts on, the arm its payload took | the refusal, and the re-read's answer |
+
+The first reads `kind`, `startEra` and `freshEra` off the `StaleHeadError` --
+the three that decide which remediation wording it carries -- and also
+`circuitId` and `contractAddress`, which are what that remediation's first step
+sends an operator to go and read; without those two the leg would pass on an
+error naming a different operation. The other two read `reason` off the
+`SubmitRejectionUndiagnosedError`. The `head-read-failed` one also asserts that
+the arm carries **both** failures, in order, and that the second of them is the
+injected one, since carrying only one is the defect its `AggregateError` shape
+exists to rule out; and that the injected reading was consulted exactly once, so
+a framework that took its re-read somewhere else would not pass unnoticed.
+
+The last is an arm no chain produces at all -- a head does not move backwards --
+so it could not be driven any other way. What the live chain still contributes
+there is the era the operation starts on and the arm its payload takes, both
+asserted as `v9`, so a leg that had quietly begun measuring its own injection
+would fail.
+
+**Verified by mutation, and here is what that does and does not establish.** With
+`handleSubmitRejection` reduced to `throw rejection`, all three legs go red and
+the shard exits 1. That rules out the classic e2e failure -- an assertion that
+never runs -- and shows each leg reaches the real diagnosis and can colour the
+exit code. It does not, on its own, show that each leg is sensitive to a *wrong*
+diagnosis rather than only to a missing one; the ablation removes every arm at
+once. Per-arm mutations are the stronger claim and have not been run.
+
+**Do not replace the holding with a faked head reading on a chain that has
+already forked.** Measured: a composition that has resolved a `v8` head after the
+boundary refuses the v9-tagged ledger parameters the block serves, with
+`ComposeOptionError`, before anything is proven -- so that mechanism never
+reaches the submit seam at all, and a leg built on it would be asserting on the
+composer. (A retained contract composes perfectly well after the fork; the two
+injected legs do it. The refusal is specific to a composition that believes the
+head is still pre-fork.)
+
+**What they cost.** They run on the same shard as the current-era pre-fork probe,
+and leave a `skipped` row on every other one: the diagnosis is a property of the
+framework and not of any contract, so thirteen copies would buy thirteen copies
+of one measurement and pay for each in fork-window time. On that shard, the cost
+inside the window is one parked call -- roughly one call's worth of composing,
+proving and balancing before the probe starts, and its balanced coins stay
+unspent until release, while the probe balances against the same wallet. All
+three runs saw the probe admit nine calls regardless, but that is measured
+alongside, not designed away.
+
+The two injected legs run LAST, after every other leg, and that position is
+load-bearing: each balances a real transaction and then never submits it, and
+the dust a balancing reserves does not come back to the wallet by itself.
+Measured -- with those two legs sitting before the keep-state legs, four later
+legs failed with `Wallet.InsufficientFunds: could not balance dust`, a red run
+blaming whichever contracts happened to follow them. Nothing draws on the wallet
+after them now, so the abandoned balancing costs nothing.
 
 ## Two things that bite
 
@@ -140,7 +399,11 @@ Each was hiding the next, which is why they are worth naming.
    for exactly this hazard.
 3. **`submitCallTx` was called with the wrong option names.** The retained arm
    wants `compiledContract`, not `contract`, and a nullary circuit's options
-   carry no `args` at all. `.mjs` means `tsc` never looked.
+   carry no `args` at all. `.mjs` meant `tsc` never looked — which it now does,
+   see [These scripts are typechecked](#these-scripts-are-typechecked). This is
+   the defect that check was built against. Reverting the NAME half is the
+   mutation that proves the check still works; the `args` half it cannot see,
+   for the reason recorded there.
 4. **The deploy was not waited for.** The call leg ran before the indexer had
    served the new contract, which reads as `No contract deployed at ...` rather
    than as a race.
@@ -188,10 +451,21 @@ way. This repository pins it in root `resolutions`; a consumer installing the
 framework beside a retained contract has to do the same, and the migration guide
 should say so.
 
-Two fork-crossing legs are additionally out of reach at this tier, by design of the shipped
-code rather than by anything here: `deployContract`'s retained arm refuses
-unconditionally before any head is read, and the working pipeline lives in
-`contracts/src/internal` where a consumer cannot reach it. So the retained
-contract is deployed through protocol's era facade instead, standing in for the
-pre-fork dApp that would already have deployed it, and the deploy-branch
-stale-head remediation cannot be provoked from an entry point at all.
+**Superseded, and recorded because the reasoning was cited elsewhere.** This
+paragraph used to say that two fork-crossing legs were out of reach at this
+tier: `deployContract`'s retained arm refused unconditionally before any head
+was read, so the retained contract had to be deployed through protocol's era
+facade, and the stale-head remediation could not be provoked from an entry point
+at all.
+
+The first no longer holds: the retained deploy arm was wired, and every retained
+twin is now deployed through `deployContract` — the surface a consumer has — so a
+regression in that arm is visible to the matrix instead of being measured around.
+
+The second holds **only for the deploy branch**, which is what it was originally
+about. The stale-head path is now driven, and asserted, but by calls, so the
+error it provokes carries `kind: 'call'`. The deploy branch's remediation still
+cannot be reached from any entry point here. See
+[The three legs that do not race](#the-three-legs-that-do-not-race) for what is
+asserted and what is injected, and [The in-flight probe](#the-in-flight-probe)
+for what that probe can and cannot claim.

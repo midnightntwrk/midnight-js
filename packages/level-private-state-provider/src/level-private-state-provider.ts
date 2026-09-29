@@ -42,6 +42,7 @@ import { Level } from 'level';
 import * as superjson from 'superjson';
 
 import type { CryptoBackendType } from './crypto-backend';
+import { assertSerializablePrivateState } from './private-state-validation';
 import {
   decryptValue,
   getPasswordFromProvider,
@@ -99,6 +100,15 @@ export interface LevelPrivateStateProviderConfig {
    *
    * SECURITY: Use a strong, secret password. Never use public key material
    * or other non-secret values as the password source.
+   *
+   * Private state is stored with `superjson`. Plain objects, arrays, `string`,
+   * `number`, `boolean`, `null`, `undefined`, `bigint`, `NaN`, `Infinity`, `Date`,
+   * `RegExp`, `URL`, `Map`, `Set`, `Buffer` and the nine built-in typed arrays are
+   * read back unchanged, and shared references and cycles are preserved. Anything
+   * else — including `Error`, `ArrayBuffer`, `DataView`, `BigInt64Array`, and any
+   * subclass of the types above — is refused by
+   * {@link PrivateStateProvider.set} with a `PrivateStateSerializationError`,
+   * because storage would drop it, empty it or read it back as a different value.
    *
    * @example
    * ```typescript
@@ -791,6 +801,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     },
     /** {@inheritDoc PrivateStateProvider.set} */
     async set(privateStateId: PSI, state: PS): Promise<void> {
+      assertSerializablePrivateState(state, String(privateStateId));
       const { privateState } = scopedNames;
       await waitForRotationLock(ctx.dbName, privateState);
       const scopedKey = getScopedKey(privateStateId);

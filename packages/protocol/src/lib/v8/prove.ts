@@ -13,9 +13,8 @@
  * limitations under the License.
  */
 
-import type { ProvingProvider } from '@midnightntwrk/ledger-v9';
-
 import { PayloadNotATransactionError, TRANSACTION_TAG_PREFIX } from '../../errors';
+import type { ProvingProvider } from '../../v8.js';
 import { loadLedger8 } from './load';
 
 const TRANSACTION_TAG_PREFIX_BYTES = Uint8Array.from(TRANSACTION_TAG_PREFIX, (character) =>
@@ -60,10 +59,12 @@ const assertSerializedTransaction = (txBytes: Uint8Array): void => {
  * `expected instance of CostModel`.
  *
  * @param txBytes The serialized, unproven retained-era transaction.
- * @param provingProvider The circuit-level proving provider to drive. The
- *   current era's `ProvingProvider` shape satisfies the retained runtime's
- *   structurally — it declares the same `check` and `prove` and one member
- *   more — so the two need no adapter between them.
+ * @param provingProvider The circuit-level proving provider to drive, typed as
+ *   the RETAINED era's `ProvingProvider`: `check` and `prove`, and no
+ *   `lookupKey`. That is the declared return type of an in-process prover's
+ *   `asV8ProvingProvider()`, so registering one here needs no cast. The current
+ *   era's shape is a superset, so a provider serving both eras also satisfies
+ *   this parameter and needs no adapter.
  * @returns The serialized, proven transaction.
  * @throws PayloadNotATransactionError If `txBytes` is not a serialized
  *   transaction.

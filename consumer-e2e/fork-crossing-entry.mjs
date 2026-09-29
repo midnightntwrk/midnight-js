@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// @ts-check
+//
 // The dApp the fork crossing describes: one build, holding a contract from each ledger era at
 // once, installed the way a consumer installs it.
 //

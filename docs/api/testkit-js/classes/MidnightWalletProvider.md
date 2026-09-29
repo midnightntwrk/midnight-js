@@ -38,7 +38,7 @@ Handles transaction balancing, submission, and wallet state management.
 
 ### supportedEras
 
-> `readonly` **supportedEras**: readonly (`"v9"` \| `"v8"`)[]
+> `readonly` **supportedEras**: readonly (`"v8"` \| `"v9"`)[]
 
 Both eras, declared once for both seams this class implements.
 

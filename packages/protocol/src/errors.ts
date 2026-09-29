@@ -374,16 +374,11 @@ export type ComposeStage =
  * a closed union, so a consumer can `switch` on it exhaustively; `version`
  * names the ledger era the composition was running against.
  *
- * Most stages are direct assertion failures (a missing lookup, not a wrapped
- * lower-level exception) and carry no `cause`, like
- * {@link Ledger8InstanceMismatchError}. The exceptions are the stages where
- * the ledger itself rejected caller-supplied bytes — enumerated under `cause`
- * below: that failure is preserved on `cause`, the same way
- * {@link DownConvertFailedError} preserves its runtime's own message.
+ * Most stages carry no `cause`. The exceptions are the stages where the ledger
+ * itself rejected caller-supplied bytes, enumerated under `cause` below.
  *
- * `circuitId` names the entry point, never its raw contents: this class
- * renders no hex and no byte-array dump. `'call-empty'` is the one stage with
- * no circuit to name, and its message names none.
+ * `circuitId` names the entry point, never its raw contents: this class renders
+ * no hex and no byte-array dump.
  *
  * @param version The ledger era the composition was running against.
  * @param stage Which composition step failed — see {@link ComposeStage}. A

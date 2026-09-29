@@ -9,27 +9,21 @@
 An error indicating that a retained-era DEPLOY was recorded on chain with a
 status other than `SucceedEntirely`.
 
-Separate from [Ledger8CallTxFailedError](CallTxFailedError.md) because the remediation is,
-and for the same reason [StaleHeadError](../../../classes/StaleHeadError.md) writes a deploy's remediation
-separately: a failed call can simply be run again, while a failed deploy
-cannot be retried blindly. A deploy mints a fresh nonce, so a second attempt
-lands at a DIFFERENT address, and repeating one that in fact finalized leaves
-two copies of the contract on chain.
+DO NOT DEPLOY AGAIN on seeing this. A `ContractDeploy` sits in the Intent —
+the GUARANTEED part — so on `FailFallible` the contract DID land, under the
+maintenance authority built from
+[Ledger8DeployTxFailedError.signingKey](#signingkey). Check the address first.
 
-Carries no registered error code, for the same reason its call-arm sibling
-does not.
+[Ledger8DeployTxFailedError.signingKey](#signingkey) is NAMED but never rendered
+into the message: it is the only copy of the authority over a deployment that
+may have landed.
 
-The message states the local-versus-chain consequence per STATUS, because the
-two differ, and the difference is the whole remediation. A `ContractDeploy`
-sits in the Intent — the GUARANTEED part — so on `FailFallible` the contract
-DID land, under the maintenance authority built from
-[Ledger8DeployTxFailedError.signingKey](#signingkey). A single message saying nothing
-local refers to the address let that caller conclude nothing happened, and
-never go looking for a deployment it owns and cannot maintain.
+Carries no registered error code of its own.
 
-[Ledger8DeployTxFailedError.signingKey](#signingkey) is NAMED but never rendered: it
-is a secret, and an error message reaches logs and issue trackers, while this
-is the only copy of the authority over a deployment that landed.
+## See
+
+[ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for why a failed deploy is a separate class from a
+failed call, why no code is registered, and why the key is never rendered.
 
 ## Extends
 
@@ -78,14 +72,13 @@ from — sampled when the caller named none, and then this is its only copy.
 
 The one code every recorded-failure class in this package answers to.
 
-`instanceof` is the idiom this hierarchy is built for, but it is identity-
-based: with two copies of this package resolved in one process it returns
-`false` and a failed transaction walks past a correctly written handler.
-A consumer that cannot import these classes, or cannot rely on there being
-one copy of them, branches on this instead. Subclasses inherit it rather
-than each declaring their own -- what a caller needs to distinguish is
-WHICH transaction failed, which the class and the record answer, not a
-finer code.
+Branch on this rather than `instanceof` where these classes cannot be
+imported, or where there may be more than one copy of this package in the
+process. Subclasses inherit it rather than each declaring their own.
+
+#### See
+
+[ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for why the code sits on the base.
 
 #### Inherited from
 

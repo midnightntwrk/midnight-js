@@ -9,17 +9,16 @@
 An error indicating that a submission was rejected and that whether the
 network crossed the ledger fork under it could not be established.
 
-An `AggregateError` because nothing may be dropped: the submission rejection
-is what happened to the transaction, and [reason](#reason) is why no diagnosis
-could be made. `cause` names the proximate failure so a consumer walking only
-cause chains still lands somewhere useful.
+An `AggregateError`: the submission rejection is what happened to the
+transaction and is always the FIRST entry of `errors`, [reason](#reason) is why
+no diagnosis could be made, and `cause` names the proximate failure.
 
-DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own for
-a reason.
+DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own.
 
 ## See
 
-[StaleHeadRemediation](../../documents/StaleHeadRemediation.md) for that reason, and for the two arms.
+ - [ErrorTaxonomy](../../documents/ErrorTaxonomy.md) for why the two codes name different things.
+ - [StaleHeadRemediation](../../documents/StaleHeadRemediation.md) for the two arms.
 
 ## Extends
 

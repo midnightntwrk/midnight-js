@@ -425,6 +425,12 @@ The address of the contract for which to delete the signing key.
 
 Store the given private state at the given private state ID.
 
+Private state must be plain data — objects, arrays and the common built-in
+value types. Functions, symbols and class instances are not stored, because a
+dropped member would otherwise surface much later as a missing field during
+witness evaluation. Which built-ins survive depends on how an implementation
+serializes, so each documents its own set.
+
 #### Parameters
 
 ##### privateStateId
@@ -442,6 +448,18 @@ The private state to store.
 #### Returns
 
 `Promise`\<`void`\>
+
+#### Throws
+
+If the state holds something that
+        cannot be stored. Nothing is written when it does. An implementation
+        that keeps state in memory by reference preserves every member and so
+        does not raise it — though such a state may still lose those members
+        when it is exported.
+
+#### Throws
+
+If no contract address has been set.
 
 ***
 

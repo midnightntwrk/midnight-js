@@ -29,6 +29,7 @@ import {
   type ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { CallResultPrivateBase, CallResultPublicBase } from '@midnight-ntwrk/midnight-js-types';
+import type { Brand } from 'effect';
 
 import type { CurrentPipelineEra } from './era';
 
@@ -58,17 +59,40 @@ export interface CallOptionsBase<C extends Contract.Any, PCK extends Contract.Pr
 }
 
 /**
+ * Recovers the plain circuit-id literal from a branded `ProvableCircuitId`.
+ *
+ * `CircuitParameters` indexes `provableCircuits` with the key it is handed, and the brand makes
+ * that key an intersection the indexed access cannot resolve -- so every parameter list degrades
+ * to `unknown[]`. The retained era avoids this by indexing with an unbranded key; this is the
+ * current era's equivalent. Tracked upstream as midnightntwrk/midnight-sdk#402, and pinned by the
+ * `Contract.CircuitParameters` assertion in `test/typecheck/call-args.test-d.ts`, which goes RED
+ * when that is fixed -- that is the signal to delete this type.
+ *
+ * What this type does NOT do is constrain the id. `PCK extends Contract.ProvableCircuitId<C>` in
+ * the signatures below names the NAMESPACE member, `keyof C['provableCircuits'] & string`, not the
+ * branded module-level `ProvableCircuitId` export. The `keyof` is what rejects an arbitrary
+ * string; the brand is incidental, and a plain unbranded literal such as `'receive_coin'` is
+ * accepted at every one of these positions. `CircuitKey` only undoes a brand a real call site
+ * happens to be carrying.
+ *
+ * Exported for `tx-interfaces.ts`, which needs the same unbranding on `createCallTxOptions`'s
+ * `args` parameter -- deliberately NOT re-exported from the package barrel (`index.ts`): it is an
+ * internal workaround, not public API.
+ */
+export type CircuitKey<K extends string> = Brand.Brand.Unbranded<K>;
+
+/**
  * Conditional type that optionally adds the inferred circuit argument types to
  * the options for a circuit call.
  */
 export type CallOptionsWithArguments<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
-  Contract.CircuitParameters<C, PCK> extends []
+  Contract.CircuitParameters<C, CircuitKey<PCK>> extends []
     ? CallOptionsBase<C, PCK>
     : CallOptionsBase<C, PCK> & {
     /**
      * Arguments to pass to the circuit being called.
      */
-    readonly args: Contract.CircuitParameters<C, PCK>;
+    readonly args: Contract.CircuitParameters<C, CircuitKey<PCK>>;
   };
 
 /**

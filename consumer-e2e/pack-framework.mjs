@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// @ts-check
+//
 // Packs every publishable workspace into `consumer-e2e/.tarballs/` and writes a
 // manifest of name -> tarball path.
 //

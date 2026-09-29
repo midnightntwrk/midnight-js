@@ -11,17 +11,12 @@
 Refuses an operation whose ledger era is not served by all three transaction
 seams, before the operation does any work.
 
-The point is WHERE this runs, not what it tests. Proving is the expensive
-step and it is the first of the three, so a wallet that cannot balance a
-retained-era transaction otherwise costs a full proving cycle before anything
-notices. Called at the start of an operation, the same gap costs one
-comparison.
+CALL THIS AT THE START OF AN OPERATION. The placement is the point: proving is
+the expensive step and it is the first of the three seams.
 
-This does not make the seams safe by itself and is not meant to. A
-declaration is a claim by an implementation and nothing verifies it, so each
+It does not make the seams safe by itself. A declaration is a claim, so each
 seam still narrows its own payload and still reports
-`V8PayloadUnsupportedError` when a declaration turns out to be wrong — see
-[SeamEraUnsupportedError](../classes/SeamEraUnsupportedError.md) for why the two errors stay distinct.
+`V8PayloadUnsupportedError` when a declaration turns out to be wrong.
 
 Generic in the era, so a further ledger era needs no change here.
 
@@ -47,3 +42,8 @@ The three providers the transaction will pass through.
 
 SeamEraUnsupportedError naming the first seam, in pipeline order,
         that does not declare `era`.
+
+## See
+
+SeamEraDeclarations for why the declaration is not trusted, and
+why this refusal stays distinct from `V8PayloadUnsupportedError`.

@@ -65,9 +65,18 @@ jobs:
       # unknowns -- which is the report shape this scenario exists to avoid.
       fail-fast: false
       matrix:
-        # `events` is current-era only: `emit` is not a language-0.23 form, so a
-        # pre-fork events contract cannot exist. Its shard poses the current-era
-        # half alone, which `resolveContractSelection` narrows to for it.
+        # Two shards pose one half each, and `resolveContractSelection` narrows
+        # to it for them:
+        #
+        # `events` is CURRENT-ERA ONLY -- `emit` is not a language-0.23 form, so
+        # a pre-fork events contract cannot exist.
+        #
+        # `private-counter` is RETAINED ONLY, and is the only contract in either
+        # matrix that declares a witness. Its subject is private state written
+        # below the boundary and read above it, which a current-era deploy --
+        # happening after the fork, with no pre-fork state to carry -- cannot
+        # pose. Posing one half rather than two is what makes this shard the
+        # cheapest in the set: it costs the unshardable floor and one arm.
         contract:
           - simple
           - unshielded
@@ -76,6 +85,7 @@ jobs:
           - fee-mint
           - events
           - block-time
+          - private-counter
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -110,7 +120,7 @@ jobs:
       # Keyed on the `.compact` source and the compiler, which is exactly what
       # decides the artifacts: a source edit or a compiler bump misses and
       # recompiles, anything else hits. Per contract rather than for the set, so
-      # one contract's edit does not invalidate the other six.
+      # one contract's edit does not invalidate the other seven.
       #
       # Skipped for `events`, which has no retained twin to cache.
       - name: Cache this shard's retained twin

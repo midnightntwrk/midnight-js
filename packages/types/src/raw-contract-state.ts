@@ -19,22 +19,15 @@ import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
  * A contract's on-chain state exactly as the network returned it: the
  * serialized bytes, still in their envelope, with nothing deserialized yet.
  *
- * During the ledger-fork window the two ledger runtimes are separate WASM
- * instances, so bytes produced by one cannot be handed to the other. Reading
- * the state as bytes plus the era the network dated them to lets a caller pick
- * a runtime before it deserializes anything, instead of guessing and failing
- * deep inside a decoder.
+ * `version` is derived from `protocolVersion`. It is the network's DATING of the
+ * record, not a guarantee about the bytes: nothing here compares it against the
+ * envelope inside `raw`.
  *
- * `version` is derived from `protocolVersion` — resolved the same way the
- * `read`-path resolver in `@midnight-ntwrk/midnight-js-protocol` resolves it.
- * On every value of this type those two fields therefore agree; the derivation
- * is never asserted here, because `types` stays declarations-only. Providers
- * and their mocks are responsible for setting `version` at exactly one
- * construction point, from `protocolVersion`, and never independently.
+ * Implementing this? Set `version` at exactly ONE construction point, from
+ * `protocolVersion`, never independently.
  *
- * What is not established at this layer is that `version` agrees with the
- * envelope inside `raw`. Nothing here compares the two, so `version` is the
- * network's dating of the record, not a guarantee about the bytes.
+ * @see {@link VersionTaggedPayloads} for why the state crosses as bytes, and for
+ * the three things the tag does not establish.
  */
 export interface RawContractState {
   /**
@@ -63,18 +56,16 @@ export interface RawContractState {
    * The ledger parameters the chain held at the block that dated this state, exactly as served —
    * no envelope reading, no decode.
    *
-   * WHY THEY TRAVEL WITH THE STATE. They are needed to build a transaction against this state, and
-   * they must come from the SAME block: they are dynamic (prices adjust per block) and they are
-   * era-tagged (`ledger-parameters[v5]` before the fork, `[v8]` after it). Reading them separately
-   * would let the two answers come from different blocks, and a caller that substitutes the
-   * ledger's own `initialParameters()` is using a cost model the chain does not use — which is
-   * wrong on any chain that has been running, not only across a fork.
+   * They must come from the SAME block as the state: they are dynamic and era-tagged. DO NOT
+   * substitute the ledger's own `initialParameters()` — that is a cost model the chain does not
+   * use.
    *
-   * Bytes rather than a decoded object, for the same reason {@link RawContractState.raw} is: only
-   * the era that wrote them can read them, and this record is deliberately era-agnostic.
+   * Bytes rather than a decoded object, for the same reason {@link RawContractState.raw} is.
    *
    * Optional because a provider that cannot serve them is still a usable provider; a consumer that
    * needs them has to say what it does without them.
+   *
+   * @see {@link VersionTaggedPayloads} for why they travel with the state rather than separately.
    */
   readonly ledgerParameters?: Uint8Array;
 }

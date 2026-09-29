@@ -23,6 +23,42 @@ import { createClient } from 'graphql-ws';
 
 import type { ValidatedConfig } from './config';
 import { wrapWithDeflate } from './deflate-websocket';
+import { IndexerProviderConfigError } from './errors';
+
+/** Interval between the client's keep-alive pings. */
+const KEEP_ALIVE_INTERVAL_MS = 10_000;
+
+/** How long a ping may go unanswered before the socket is treated as dead. */
+const PONG_WAIT_MS = 5_000;
+
+/** How long a socket may stay open without acknowledging the connection. */
+const CONNECTION_ACK_WAIT_MS = 10_000;
+
+/**
+ * Close code for a socket that stopped answering pings. `graphql-ws` classifies
+ * it as retryable, so the client reconnects instead of failing the stream.
+ */
+export const PONG_TIMEOUT_CLOSE_CODE = 4408;
+
+/** The part of a live WebSocket the keep-alive recipe needs. */
+type ClosableSocket = { close(code: number, reason: string): void };
+
+const isClosableSocket = (socket: unknown): socket is ClosableSocket =>
+  typeof socket === 'object' && socket !== null && 'close' in socket && typeof socket.close === 'function';
+
+/**
+ * A socket that cannot be closed cannot be kept alive either, and accepting one
+ * would restore the half-open hang this keep-alive exists to end.
+ */
+const asClosableSocket = (socket: unknown): ClosableSocket => {
+  if (!isClosableSocket(socket)) {
+    throw new IndexerProviderConfigError(
+      'The configured WebSocket implementation does not expose close(code, reason); ' +
+      'the subscription keep-alive cannot work without it.'
+    );
+  }
+  return socket;
+};
 
 /**
  * Resource-bearing handle that pairs the Apollo client with an idempotent
@@ -57,15 +93,9 @@ export type ApolloHandle = {
  */
 export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => {
   /**
-   * `cross-fetch` resolves to `node-fetch` in Node (which sends
-   * `Accept-Encoding: gzip,deflate` by default) and to the platform `fetch`
-   * in browsers (which negotiates compression natively). This satisfies the
-   * upcoming indexer 4.4.0 HTTP-response compression contract without any
-   * configuration here. A unit test was attempted but cannot reliably
-   * intercept `cross-fetch` because vitest's hoisted vi.mock('graphql-ws')
-   * binds the transport-side cross-fetch import before any per-test
-   * vi.doMock can intercept it, making the Accept-Encoding header
-   * untestable without a full integration setup.
+   * `cross-fetch` resolves to `node-fetch` in Node and to the platform `fetch` in
+   * browsers, both of which negotiate compression on their own. That is what
+   * satisfies the indexer's HTTP-response compression contract with no configuration.
    */
   const httpLink = new HttpLink({ fetch, uri: validated.queryURLString });
   const retryLink = new RetryLink({
@@ -80,11 +110,47 @@ export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => 
   });
   const apolloLink = from([retryLink, httpLink]);
 
+  let activeSocket: ClosableSocket | null = null;
+  let pongTimer: ReturnType<typeof setTimeout> | undefined;
+  const clearPongDeadline = (): void => {
+    clearTimeout(pongTimer);
+    pongTimer = undefined;
+  };
+
   const wsClient = createClient({
     url: validated.subscriptionURLString,
     // TODO(loggerProvider): forward provider's optional logger here once the indexer
     // public-data-provider factory accepts and threads loggerProvider through.
-    webSocketImpl: wrapWithDeflate(validated.webSocket)
+    webSocketImpl: wrapWithDeflate(validated.webSocket),
+    // A half-open socket produces no close event, so without these the subscription
+    // waits for a server that is already gone and never reports anything.
+    keepAlive: KEEP_ALIVE_INTERVAL_MS,
+    connectionAckWaitTimeout: CONNECTION_ACK_WAIT_MS,
+    on: {
+      connected: (socket) => {
+        activeSocket = asClosableSocket(socket);
+      },
+      closed: () => {
+        clearPongDeadline();
+        activeSocket = null;
+      },
+      // `received` distinguishes a message that arrived from one we sent, so only a
+      // ping we sent starts a deadline and only a pong the server sent clears it.
+      ping: (received) => {
+        if (received) return;
+        // Captured, not read at timeout: a reconnect in the meantime must not
+        // cost the replacement socket its life.
+        const pinged = activeSocket;
+        pongTimer = setTimeout(() => pinged?.close(PONG_TIMEOUT_CLOSE_CODE, 'Pong timeout'), PONG_WAIT_MS);
+      },
+      pong: (received) => {
+        if (received) clearPongDeadline();
+      },
+      // The pong reaches us behind every queued frame's inflate and deserialization,
+      // so under a backlog it can miss its deadline on a socket that is plainly alive.
+      // Any message at all is the proof of life the deadline is really asking for.
+      message: () => clearPongDeadline()
+    }
   });
 
   const client = new ApolloClient({
@@ -105,6 +171,7 @@ export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => 
     client,
     dispose(): Promise<void> {
       disposePromise ??= (async () => {
+        clearPongDeadline();
         client.stop();
         await wsClient.dispose();
       })();

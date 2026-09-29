@@ -17,9 +17,22 @@ themselves are is [EraDispatch](EraDispatch.md).
 
 ## What is breadcrumbed, and what deliberately is not
 
-Three decisions get a breadcrumb, and they are the three this package makes:
-`HeadResolutionBreadcrumb`, `PipelineSelectionBreadcrumb` and
-`EncodingBreadcrumb`.
+Four decisions get a breadcrumb: `HeadResolutionBreadcrumb`,
+`PipelineSelectionBreadcrumb`, `EncodingBreadcrumb` and
+`RetainedSigningKeyEntryBreadcrumb`.
+
+The fourth is there for the opposite reason to the other three. It is the one era
+discrimination in this package that neither refuses nor returns a value a caller
+can inspect: `Ledger8FoundContract.signingKey` is `undefined` either way, so
+without the breadcrumb "nothing was ever stored" and "an entry was there and this
+framework could not use it" are indistinguishable to an operator.
+
+It carries no head integer and no reading provenance — judging a stored entry is
+not a head read — and no era name either, because its `decision` field already
+names the era the read was made for. Its `outcome` is a bounded literal rather
+than the entry's own `tag` or value: a stored entry is arbitrary text once it has
+been hand-edited, and neither key material nor an attacker-chosen string may
+reach a log line.
 
 Several era decisions a reader might expect are REFUSALS rather than choices,
 and are not breadcrumbed a second time. Each already throws a registered,

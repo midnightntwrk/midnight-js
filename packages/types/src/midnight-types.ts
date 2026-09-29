@@ -294,15 +294,14 @@ export interface FinalizedTxRecord {
  * Data for any finalized transaction produced by the v9 ledger runtime.
  *
  * This is the v9 arm of {@link VersionedFinalizedTxData} — see
- * {@link FinalizedTxDataV8} for the v8 arm. The providers in this framework
- * derive `version` from the record's own `protocolVersion`, using the
- * `read`-path resolver in `@midnight-ntwrk/midnight-js-protocol`, and throw
- * rather than mislabel a record from an era they cannot decode — so from them,
- * `version` is a statement about the record rather than an assumption. A
- * third-party `PublicDataProvider` is not obliged to do the same.
+ * {@link FinalizedTxDataV8} for the v8 arm.
  *
- * Narrowing is required: a provider that decodes per era returns the v8 arm as
- * a value for any record whose `protocolVersion` places it in that era.
+ * NARROWING IS REQUIRED. A provider that decodes per era returns the v8 arm as
+ * an ordinary value for any record whose `protocolVersion` places it in that
+ * era.
+ *
+ * @see {@link VersionTaggedPayloads} for what the tag promises from this
+ * framework's providers, and what it does not promise from a third party's.
  */
 export interface FinalizedTxData extends FinalizedTxRecord {
   /**

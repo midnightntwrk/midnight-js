@@ -18,11 +18,7 @@
  * belongs to.
  *
  * Four decisions get a breadcrumb, at DEBUG level, as STRUCTURED fields rather
- * than interpolated prose. Era decisions that are REFUSALS are not breadcrumbed
- * a second time: each already throws a registered, remediation-carrying error.
- * The fourth decision is here for the opposite reason — it is the one era
- * discrimination that is NOT a refusal and produces no return value either, so
- * a breadcrumb is the only place it can be seen.
+ * than interpolated prose.
  *
  * EVERY head read in this package is breadcrumbed, and there are four. A new
  * head read has to add a {@link HeadReadingProvenance} member.
@@ -131,20 +127,15 @@ export interface EncodingBreadcrumb {
  * A stored signing-key entry was read for the RETAINED era and could not be
  * read as one, so the attach reported no key.
  *
- * The one era discrimination in this package that neither refuses nor returns
- * a value a caller can inspect: `Ledger8FoundContract.signingKey` is absent
- * either way, so without this breadcrumb "nothing was ever stored" and "an
- * entry was there and this framework could not use it" are indistinguishable
- * to an operator.
- *
  * Carries no head integer and no reading provenance — judging a stored entry
  * is not a head read — and no era name either, because {@link decision} already
  * names the era the read was made for.
  *
  * PRIVACY: {@link outcome} is a bounded literal rather than the entry's own
- * `tag` or value. A stored entry is arbitrary text once it has been
- * hand-edited, and neither its key material nor an attacker-chosen string may
- * reach a log line.
+ * `tag` or value.
+ *
+ * @see {@link Breadcrumbs} for why this decision is breadcrumbed where the
+ * refusals are not, and why the outcome may not carry the entry itself.
  */
 export interface RetainedSigningKeyEntryBreadcrumb {
   readonly decision: 'retained-signing-key-entry';

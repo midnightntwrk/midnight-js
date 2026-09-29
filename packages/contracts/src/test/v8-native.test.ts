@@ -130,6 +130,7 @@ import {
   type OrchestrationLog,
   readHfHexFixture,
   recordEraCalls,
+  type ReplayExecutableState,
   type ReplayState,
   RETAINED_ERA_TX_TAG,
   SAMPLED_SIGNING_KEY,
@@ -447,7 +448,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       composed = options;
     });
 
-    const result = await runLedger8CallPipeline<ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
       retainedEra: recorded,
       era: recorded,
       engine,
@@ -517,7 +518,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       transcript: { ...recording.transcript, zswapLocalState }
     };
 
-    const result = await runLedger8CallPipeline<ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
       era: retainedEra,
       retainedEra,
       engine: createReplayEngine(mintingRecording, log),
@@ -551,7 +552,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       .fn()
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
-    const result = await runLedger8CallPipeline<ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
       era: retainedEra,
       retainedEra,
       engine: createReplayEngine(recording, log),
@@ -587,7 +588,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     // the current era's `contractState` means. Forwarded rather than
     // re-derived: the marker proves it is the executed-against handle and not a
     // second decode of the same bytes.
-    expect(rootCall?.public.preContractState).toEqual({ replayedCircuitId: CIRCUIT_ID });
+    expect(rootCall?.public.preContractState).toEqual({ replayedCircuitId: CIRCUIT_ID, balance: new Map() });
     expect(rootCall?.public.publicTranscript).toStrictEqual(recording.transcript.publicTranscript);
     expect(rootCall?.private.input).toStrictEqual(recording.transcript.input);
     expect(rootCall?.private.output).toStrictEqual(recording.transcript.output);
@@ -603,7 +604,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       .fn()
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
-    const result = await runLedger8CallPipeline<ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
       era: retainedEra,
       retainedEra,
       engine: createReplayEngine(recording, log),
@@ -642,7 +643,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       .fn()
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
-    const result = await runLedger8CallPipeline<ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
       retainedEra,
       era: recordEraCalls(retainedEra, log, undefined, (offers) => {
         routed = offers;
@@ -726,7 +727,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       }
     };
 
-    const result = await runLedger8CallPipeline<ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
       retainedEra,
       era: fallibleOnlyEra,
       engine: createReplayEngine(recording, log),
@@ -780,7 +781,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     };
 
     await expect(
-      runLedger8CallPipeline<ReplayState>({
+      runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
         retainedEra,
         era: offerIgnoringEra,
         engine: createReplayEngine(recording, log),
@@ -811,7 +812,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       .fn()
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
-    await runLedger8CallPipeline<ReplayState>({
+    await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
       retainedEra,
       era: recordEraCalls(retainedEra, log, (options) => {
         composed = options;
@@ -867,7 +868,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       )
     );
 
-    const result = await runLedger8CallPipeline<ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
       era: retainedEra,
       retainedEra,
       engine: createReplayEngine(recordingPayingUser(recording, thirdPartyCoinPublicKey), log),
@@ -964,7 +965,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       .fn()
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
-    await runLedger8CallPipeline<ReplayState>({
+    await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
       retainedEra,
       era: recordEraCalls(retainedEra, log, (options) => {
         composed = options;
@@ -1087,7 +1088,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // call bound to is a different object, published on `calls[0].public`.
     expect(finalized.public.nextContractState).toEqual({ replayedCircuitId: `${CIRCUIT_ID}:post` });
     expect(finalized.calls[0]?.public.contractState).toEqual({ replayedCircuitId: `${CIRCUIT_ID}:post` });
-    expect(finalized.calls[0]?.public.preContractState).toEqual({ replayedCircuitId: CIRCUIT_ID });
+    expect(finalized.calls[0]?.public.preContractState).toEqual({ replayedCircuitId: CIRCUIT_ID, balance: new Map() });
   });
 
   it('publishes every state handle with its ENCODED form beside it', async () => {

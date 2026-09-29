@@ -63,9 +63,10 @@ import {
   blockOffsetToBlock$,
   blockOffsetToContractState$,
   blockOffsetToUnshieldedBalances$,
-  blockToContractState$,
+  blockToPositionedContractState$,
   contractAddressToLatestBlockOffset$,
   contractEvents$,
+  dropReplayed,
   maybeThrowQueryError,
   pollUntilPresent,
   transactionIdToTransaction$,
@@ -461,33 +462,22 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   /**
    * Creates a stream of contract states for `contractAddress`.
    *
-   * **Wire-traffic asymmetry by branch:**
+   * WIRE TRAFFIC DIFFERS SHARPLY BY BRANCH. `all` is server-side filtered and
+   * light; `latest`, `blockHeight`, `blockHash` and `txId` stream every block on
+   * chain and filter client-side, which is heavy on a busy chain.
    *
-   * | Branch                                 | Pipeline                                                                                            | Wire traffic |
-   * |----------------------------------------|-----------------------------------------------------------------------------------------------------|--------------|
-   * | `latest` / `blockHeight` / `blockHash` | poll for block-presence → `TXS_FROM_BLOCK_SUB` + client-side address filter                          | **Heavy** — every block on chain flows over WS; client extracts states for this contract. |
-   * | `txId`                                 | poll `TX_ID_QUERY` → `TXS_FROM_BLOCK_SUB` from the tx's block → walk states matching the identifier  | **Heavy** — same `TXS_FROM_BLOCK_SUB` subscription as above, opened once the tx is located. |
-   * | `all`                                  | poll for contract-presence → `CONTRACT_STATE_SUB($address, offset: null)`                            | **Light** — server-side filter; only this contract's state changes flow over WS. |
-   *
-   * The heavy path emits one observable value per matching contract action
-   * in each block — a per-block "states-at-this-block" view. It is used
-   * everywhere a block-level anchor matters (latest block, specific block
-   * with `inclusive`, transaction → containing-block). The light path
-   * (`all`) emits one value per state change directly from the
-   * server-filtered subscription — bandwidth scales with state changes
-   * rather than chain activity.
-   *
-   * Why not unify: `CONTRACT_STATE_SUB` is per-change, so a downstream
-   * `Rx.skip(1)` would skip the first state change rather than the first
-   * block — `inclusive: false` on `blockHeight`/`blockHash` would have a
-   * subtly different meaning. `TXS_FROM_BLOCK_SUB` for `all` would stream
-   * every block on chain (orders of magnitude more bytes on a busy chain).
+   * REPLAY SUPPRESSION IS NOT UNIFORM. A transport reconnect makes the indexer
+   * replay from the subscription's original offset. `latest`, `blockHeight` and
+   * `blockHash` suppress what they have already delivered; `all` and `txId` do
+   * not, so a consumer of those two should expect a state more than once.
    *
    * See {@link blockOffsetToBlock$}, {@link blockOffsetToContractState$},
-   * and {@link blockToContractState$} for per-subscription docs.
+   * and {@link blockToPositionedContractState$} for per-subscription docs.
    *
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the stream. Defaults to `latest`.
+   * @see {@link SubscriptionShapes} for what each branch costs, and why the two
+   *   subscription shapes are not interchangeable.
    */
   contractStateObservable(
     contractAddress: ContractAddress,
@@ -504,7 +494,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     if (config.type === 'latest') {
       return contractAddressToLatestBlockOffset$(this.client, this.pollInterval)(contractAddress).pipe(
         Rx.concatMap(blockOffsetToBlock$(this.client)),
-        Rx.concatMap(blockToContractState$(contractAddress))
+        Rx.concatMap(blockToPositionedContractState$(contractAddress)),
+        dropReplayed(),
+        Rx.map(({ state }) => state)
       );
     }
     if (config.type === 'all') {
@@ -520,7 +512,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       config.type === 'blockHeight' || config.type === 'blockHash'
         ? Rx.iif(() => config.inclusive ?? true, blocks, blocks.pipe(Rx.skip(1)))
         : blocks;
-    return maybeShortenedBlocks.pipe(Rx.concatMap(blockToContractState$(contractAddress)));
+    return maybeShortenedBlocks.pipe(
+      Rx.concatMap(blockToPositionedContractState$(contractAddress)),
+      dropReplayed(),
+      Rx.map(({ state }) => state)
+    );
   }
 
   /**

@@ -16,7 +16,7 @@
 import type { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 import {
-  createProofProviderFromArms,
+  createProofProviderFromHandlers,
   type ProofProvider,
   type ZKConfigProvider,
   type ZKConfigRegistry
@@ -54,7 +54,7 @@ export const dappConnectorProofProvider = async <K extends string>(
   costModel: CostModel,
 ): Promise<ProofProvider> => {
   const provingProvider = await dappConnectorProvingProvider(api, zkConfigProvider);
-  return createProofProviderFromArms({
+  return createProofProviderFromHandlers({
     currentEra: (tx) => tx.prove(provingProvider, costModel),
     // Bytes in, bytes out: a retained-era transaction cannot cross this seam as a live object. See
     // the `costModel` parameter above for why this arm does not take one.
