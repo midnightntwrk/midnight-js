@@ -121,14 +121,15 @@ The recorded query context travels the same way: `PartitionContext`'s
 `CallContext` and `Effects` (`lib/shared/compose-types.ts`) are likewise
 declared once against ledger-v9 and identical on all three axes.
 
-THAT IDENTITY IS CURRENTLY UNPINNED. The compile-time drift gate that asserted
-it across the three axes — `_CallContextUnchanged`, `_EffectsUnchanged`,
+That identity is pinned. The compile-time drift gate that asserts it across
+the three axes — `_CallContextUnchanged`, `_EffectsUnchanged`,
 `_V8CallContextUnchanged`, `_V8EffectsUnchanged` and the payload-type
 assertions beside them — lived at the bottom of `v8-down-convert.test.ts` and
 went with that file when the hand-maintained execution layer was retired. It
-was not moved. Until it is restored, a vendor bump that moved any of these
-shapes on one axis would be caught by nothing here; the single-declaration
-choice above rests on an assumption rather than on an assertion.
+was restored at the bottom of `v8-executable.test.ts`, which is where it now
+lives. It is evaluated by `yarn typecheck:tests`, run both by the pre-push hook
+and by CI's `typecheck:tests:core` job — not by the test run itself, which
+transpiles without type-checking.
 
 What does survive is narrower: `shared-contract-state.test.ts` pins `TokenType`
 across ledger-v8, onchain-runtime-v3 and ledger-v9 with

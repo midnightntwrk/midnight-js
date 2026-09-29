@@ -97,11 +97,14 @@ export interface Ledger8Engine {
  * `lib/v8/load-engine.ts`, so importing the package root never pulls the
  * multi-megabyte retained WASM onto the module graph.
  *
- * It no longer runs a dual-instantiation guard either. That guard compared two
- * modules THIS package imported, `onchain-runtime-v3` and the 0.16 glue; with
- * both imports gone there is nothing left to compare. compact-js resolves one
- * copy of each for itself, and `src/test/single-instance.test.ts` is what holds
- * the installed tree to that.
+ * It no longer runs a dual-instantiation guard either. That guard compared
+ * `onchain-runtime-v3` against the 0.16 glue at construction time. Both
+ * acquisition paths are still live — `lib/v8/executable.ts` imports the glue
+ * directly, and compact-js resolves the same specifier for itself — so the axis
+ * did not go away; only the runtime check did. The invariant is held at install
+ * time instead, by `src/test/single-instance.test.ts`, which pins one resolved
+ * copy of `onchain-runtime-v3` and of each compact-runtime era line. That is a
+ * check on THIS repo's lockfile, not on a consumer's process.
  *
  * @returns The engine surface.
  * @see {@link EraSeam}

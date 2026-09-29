@@ -27,6 +27,24 @@ import { resolve } from 'node:path';
 
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/ContractConfigurationError';
+import type { ZswapLocalState as CurrentZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import type * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import type {
+  AlignedValue as LedgerV8AlignedValue,
+  CallContext as LedgerV8CallContext,
+  Effects as LedgerV8Effects,
+  EncodedStateValue as LedgerV8EncodedStateValue,
+  Op as LedgerV8Op,
+  Transcript as LedgerV8Transcript
+} from '@midnightntwrk/ledger-v8';
+import type {
+  AlignedValue as LedgerV9AlignedValue,
+  CallContext as LedgerV9CallContext,
+  Effects as LedgerV9Effects,
+  EncodedStateValue as LedgerV9EncodedStateValue,
+  Op as LedgerV9Op,
+  Transcript as LedgerV9Transcript
+} from '@midnightntwrk/ledger-v9';
 import type { TokenType } from '@midnightntwrk/ledger-v9';
 import * as glue from 'compact-runtime-ledger8';
 import { Effect } from 'effect';
@@ -48,6 +66,7 @@ import {
   structurallyEqual
 } from '../lib/v8/executable';
 import { fixturePath } from './fixtures';
+import type { Assert, MutuallyAssignable } from './type-assertions';
 
 // The compiled artifact opens with `checkRuntimeVersion('0.16.0')` against a
 // bare `@midnight-ntwrk/compact-runtime` import, so the specifier is redirected
@@ -904,3 +923,57 @@ describe('structurallyEqual', () => {
     expect(structurallyEqual(a, b)).toBe(equal);
   });
 });
+
+// Compile-time drift detector, restored from the retired `v8-down-convert.test.ts`.
+// If a vendor bump changes the wire shape of EncodedStateValue, Op, AlignedValue,
+// Transcript, CallContext or Effects between the retained (onchain-runtime-v3 /
+// ledger-v8) and current (ledger-v9) packages this engine bridges, this block
+// stops compiling. It is deliberately not paired with a runtime assertion, which
+// would be a tautology after erasure.
+//
+// Where it is checked: `yarn typecheck:tests`, run BOTH by the pre-push hook and
+// by CI (`typecheck:tests:core`, ci-base.yml). Test files are outside
+// tsconfig.build.json and vitest transpiles without type-checking, so the test
+// run itself does not evaluate it -- the typecheck job does.
+type AssertEqual<A, B> = (<T>() => T extends A ? 1 : 0) extends <T>() => T extends B ? 1 : 0 ? true : false;
+type Expect<T extends true> = T;
+
+type _EncodedStateValueUnchanged = Expect<AssertEqual<ocrt3.EncodedStateValue, LedgerV9EncodedStateValue>>;
+type _OpUnchanged = Expect<AssertEqual<ocrt3.Op<null>, LedgerV9Op<null>>>;
+type _AlignedValueUnchanged = Expect<AssertEqual<ocrt3.AlignedValue, LedgerV9AlignedValue>>;
+type _TranscriptUnchanged = Expect<
+  AssertEqual<ocrt3.Transcript<ocrt3.AlignedValue>, LedgerV9Transcript<LedgerV9AlignedValue>>
+>;
+
+// The ledger-v8 axis, pinned for the same reason: `assemble-call.ts` crosses the
+// envelope into whichever ledger module it is handed, and its safety argument --
+// a safe envelope crossing, not a lossy re-encode -- covers ledger-v8 as soon as
+// the retained leg binds to it.
+type _V8EncodedStateValueUnchanged = Expect<AssertEqual<LedgerV8EncodedStateValue, LedgerV9EncodedStateValue>>;
+type _V8OpUnchanged = Expect<AssertEqual<LedgerV8Op<null>, LedgerV9Op<null>>>;
+type _V8AlignedValueUnchanged = Expect<AssertEqual<LedgerV8AlignedValue, LedgerV9AlignedValue>>;
+type _V8TranscriptUnchanged = Expect<
+  AssertEqual<LedgerV8Transcript<LedgerV8AlignedValue>, LedgerV9Transcript<LedgerV9AlignedValue>>
+>;
+
+// `CallContext` and `Effects` join them one step further out, and this is the row
+// closest to the new code: `runRetainedCircuit` reads `partitionInputs.block` and
+// `.effects` off compact-js's RETAINED types and publishes them as
+// `PartitionContext`, declared once against ledger-v9, which a composition leg
+// then writes onto whichever era's `QueryContext` it partitions against. Three
+// axes have to agree for that to be a move rather than a re-encode, and the WASM
+// setters reject a mismatched record at runtime, from inside wasm, with no
+// compile error to warn first.
+type _CallContextUnchanged = Expect<AssertEqual<ocrt3.CallContext, LedgerV9CallContext>>;
+type _EffectsUnchanged = Expect<AssertEqual<ocrt3.Effects, LedgerV9Effects>>;
+type _V8CallContextUnchanged = Expect<AssertEqual<LedgerV8CallContext, LedgerV9CallContext>>;
+type _V8EffectsUnchanged = Expect<AssertEqual<LedgerV8Effects, LedgerV9Effects>>;
+
+// ADR-0009 declares `nextZswapLocalState` once, as the CURRENT era's
+// `ZswapLocalState`, rather than behind a third type parameter -- and rests that
+// on the two runtimes' declarations being interchangeable. This is the check that
+// claim names. `packages/types` cannot host it (it may not reach the retained
+// runtime), so it lives here, where both are in scope.
+type _ZswapLocalStateInterchangeable = Assert<
+  MutuallyAssignable<glue.ZswapLocalState, CurrentZswapLocalState>
+>;

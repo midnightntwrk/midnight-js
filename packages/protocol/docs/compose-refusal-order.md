@@ -201,8 +201,8 @@ downstream uses, never the context it started from.
 
 The state crossing is safe, not a lossy re-encode: the `EncodedStateValue`
 algebra is structurally identical between onchain-runtime-v3 and both ledger
-modules. That identity lost its compile-time gate when `v8-down-convert.test.ts`
-was retired and has not regained one — see
+modules. That identity is pinned by the compile-time drift gate at the bottom of
+`v8-executable.test.ts` — see
 [InjectedVendorSlices](./injected-vendor-slices.md). Every member of
 the recorded context is caller data the runtime validates itself, from inside
 wasm, so the caller wraps the bridge in its own coded stage.

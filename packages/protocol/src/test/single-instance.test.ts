@@ -160,6 +160,21 @@ describe('installed ledger and runtime instances', () => {
   // What must never appear is a THIRD copy -- a second of either line, which is
   // what compact-js's own `0.19.0-rc.0` would become if the root `resolutions`
   // pin stopped holding.
+  // The axis `Ledger8InstanceAxis` names, and the one the retired
+  // construction-time guard watched. `lib/v8/executable.ts` still imports the
+  // retained glue directly and compact-js resolves the same specifier for
+  // itself, so the two acquisition paths this guard compared are both still
+  // live -- only the runtime check is gone. A second copy here is exactly the
+  // dual instantiation that made a handle from one path unreadable by the
+  // other, reported from inside wasm as an unexpected type.
+  it('resolves exactly one @midnight-ntwrk/onchain-runtime-v3, at the pinned version', () => {
+    const pinned = versionOf(
+      manifestEntry('packages/protocol/package.json', 'dependencies', '@midnight-ntwrk/onchain-runtime-v3')
+    );
+
+    expect(resolvedVersionsOf('@midnight-ntwrk/onchain-runtime-v3')).toEqual([pinned]);
+  });
+
   it('resolves exactly one copy of each compact-runtime era line', () => {
     const currentEra = versionOf(manifestEntry('package.json', 'resolutions', '@midnight-ntwrk/compact-runtime'));
     const retainedEra = versionOf(
