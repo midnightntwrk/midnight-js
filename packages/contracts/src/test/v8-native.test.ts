@@ -2318,7 +2318,36 @@ describe('deploying a retained-era contract through deployContract', () => {
     // constructor builds every entry-point slot BLANK and the retained deploy
     // registers no keys of its own, so a map naming anything but exactly these
     // puts a contract on chain that nothing can call.
-    expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(Object.keys(contract.impureCircuits));
+    expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(Object.keys(contract.provableCircuits));
+  });
+
+  it('asks for a verifier key for every PROVABLE circuit, which is the map execution indexes', async () => {
+    // Arrange. An artifact whose two circuit maps DIFFER: `impureCircuits`
+    // carries an entry point `provableCircuits` does not, so it is not one the
+    // constructor registers on the state either. Keys sourced from
+    // `impureCircuits` name a circuit the state never declares, which the
+    // composer refuses -- a deploy broken by reading the wrong map.
+    // `provableCircuits` is what compact-js indexes to run a circuit and what
+    // the deploy pre-check demands keys for, so it is the one source.
+    const providers = deployProviders();
+    providers.zkConfigProvider.getVerifierKeys = vi
+      .fn()
+      .mockImplementation((ids: readonly string[]) =>
+        Promise.resolve(ids.map((id) => [id, STAND_IN_VERIFIER_KEY] as const))
+      );
+    const divergent = Object.create(Object.getPrototypeOf(contract) as object, {
+      ...Object.getOwnPropertyDescriptors(contract),
+      impureCircuits: {
+        value: { ...contract.impureCircuits, unprovable_entry_point: contract.impureCircuits[CIRCUIT_ID] },
+        enumerable: true
+      }
+    }) as CoinReceiver016Contract;
+
+    // Act.
+    await deployContract(providers, { compiledContract: divergent });
+
+    // Assert.
+    expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(Object.keys(divergent.provableCircuits));
   });
 
   it('refuses at the composer when the key map does not name what the state declares', async () => {

@@ -162,7 +162,7 @@ export const createLedger8CircuitCallTxInterface = <C extends Ledger8Contract>(
   privateStateId?: PrivateStateId
 ): Ledger8CircuitCallTxInterface<C> => {
   assertIsContractAddress(contractAddress);
-  const circuitIds = Object.keys(compiledContract.impureCircuits) as Ledger8CircuitId<C>[];
+  const circuitIds = Object.keys(compiledContract.provableCircuits) as Ledger8CircuitId<C>[];
   return circuitIds.reduce(
     (acc, circuitId) => ({
       ...acc,

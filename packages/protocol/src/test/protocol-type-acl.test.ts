@@ -107,20 +107,15 @@ describe('Protocol type ACL', () => {
       'DeployResultPojo',
       'DownConvertStage',
       'EncodedStateValue',
-      // What `Ledger8Engine.downConvertForExecution` returns and
-      // `ExecuteCircuitOptions.state` is: the down-converted state and the
-      // balances the contract holds, as ONE value.
-      // Named by the state handles the results carry: `DownConvertedState.data`
-      // is a `Ledger8ChargedState` and `.data.state` a `Ledger8StateValue`, and
-      // neither was nameable outside the package that declares them.
-      // Named by `ConstructorResultPojo.contractState`, which this barrel
-      // publishes: the state a retained constructor built, as the handle it is.
+      // The retained era's execution surface: a consumer holding one needs to
+      // name it to annotate a variable or write a helper. Its option and result
+      // types are published beside it for the same reason.
       'Ledger8Engine',
       'Ledger8InstanceAxis',
-      // Named by `ExecuteConstructorOptions.signingKey` and reported back on
-      // `ConstructorResultPojo`. The retained era's signing key is a different
-      // shape from the current era's, so a consumer cannot name it by reusing
-      // the current-era one.
+      // Named by `RunRetainedConstructorOptions.signingKey` and reported back
+      // on `ConstructorResultPojo`. The retained era's signing key is a
+      // different shape from the current era's, so a consumer cannot name it by
+      // reusing the current-era one.
       'Ledger8SigningKey',
       'LedgerEra',
       'LedgerParametersOption',

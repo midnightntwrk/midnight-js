@@ -43,7 +43,8 @@ import {
   type LedgerEra,
   loadLedgerEra,
   type RetainedContract,
-  type RunRetainedCircuitOptions} from '@midnight-ntwrk/midnight-js-protocol';
+  type RunRetainedCircuitOptions
+} from '@midnight-ntwrk/midnight-js-protocol';
 import { ContractState, LedgerParameters, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type RawContractState,

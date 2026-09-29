@@ -36,23 +36,12 @@ import type {
   LedgerVersion,
   TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
+import { ComposeFailedError } from '@midnight-ntwrk/midnight-js-protocol';
 import type { AlignedValue, Op, ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PublicDataProvider, RawContractState } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
-
-import type { Ledger8Contract } from '../ledger8-contract';
-
-/**
- * The retained era's contract-state handle, derived from the engine's own
- * result rather than restated: it is compact-js's ledger-8 `StateValue`, and
- * naming it structurally here keeps this package from importing that era's
- * runtime types directly.
- */
-export type RetainedStateValue = TranscriptPojo['postContractState'];
-
-import { ComposeFailedError } from '@midnight-ntwrk/midnight-js-protocol';
 
 import {
   Ledger8AmbiguousEntryPointError,
@@ -62,6 +51,7 @@ import {
   RetainedArtifactOnCurrentEraStateError,
   VerifierKeyMismatchError
 } from '../errors';
+import type { Ledger8Contract } from '../ledger8-contract';
 import type { Ledger8ContractCall } from '../ledger8-contract';
 import type { BreadcrumbSink } from './breadcrumbs';
 import { resolveContractStateEra } from './era';
@@ -74,6 +64,14 @@ import {
   zswapStateToSegmentedOffer
 } from './utils/zswap-utils';
 import { assertVerifierKeyMatches } from './verifier-key';
+
+/**
+ * The retained era's contract-state handle, derived from the engine's own
+ * result rather than restated: it is compact-js's ledger-8 `StateValue`, and
+ * naming it structurally here keeps this package from importing that era's
+ * runtime types directly.
+ */
+export type RetainedStateValue = TranscriptPojo['postContractState'];
 
 /**
  * The transcript members this pipeline is entitled to read, narrowed off the

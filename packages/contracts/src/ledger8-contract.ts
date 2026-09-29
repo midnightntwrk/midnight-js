@@ -47,6 +47,7 @@ import type {
   Ledger8SigningKey,
   TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
+
 /**
  * The retained era's contract-state handle, and the state a retained-era
  * constructor builds.
@@ -206,8 +207,13 @@ export type Ledger8PrivateState<C extends Ledger8Contract> =
 
 /**
  * The name of a callable circuit on a retained-era contract.
+ *
+ * Keyed off `provableCircuits`, NOT `impureCircuits`: `provableCircuits` is the
+ * map compact-js indexes to run a circuit, and the one the deploy pre-check
+ * demands a verifier key for. Naming the other map lets an artifact whose two
+ * maps differ ask for a key the caller cannot name, which is unsatisfiable.
  */
-export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['impureCircuits'] & string;
+export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['provableCircuits'] & string;
 
 /**
  * The arguments a caller supplies for circuit `K` on a retained-era contract.
@@ -226,7 +232,7 @@ export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['impureCircuit
  *      `Parameters<...>`.
  */
 export type Ledger8CircuitParameters<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
-  Parameters<C['impureCircuits'][K]> extends [Ledger8CircuitContext, ...infer A] ? A : never[];
+  Parameters<C['provableCircuits'][K]> extends [Ledger8CircuitContext, ...infer A] ? A : never[];
 
 /**
  * The providers a retained-era call transaction needs.
@@ -320,7 +326,7 @@ export type Ledger8CallTxOptions<C extends Ledger8Contract, K extends Ledger8Cir
  * has to check instead of one it cannot use.
  */
 export type Ledger8CircuitReturnType<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
-  ReturnType<C['impureCircuits'][K]> extends { readonly result: infer R } ? R : unknown;
+  ReturnType<C['provableCircuits'][K]> extends { readonly result: infer R } ? R : unknown;
 
 /**
  * The public, non-sensitive half of a retained-era circuit execution.

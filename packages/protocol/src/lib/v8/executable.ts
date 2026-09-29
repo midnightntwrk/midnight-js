@@ -327,6 +327,17 @@ const keysLayer = (coinPk: string, signingKey: Ledger8SigningKey | undefined): L
  * future read cannot quietly fall back to the wall clock.
  */
 export const pinnedClock = (nowSeconds: number): Clock.Clock => {
+  // BEFORE the rounding, because `Math.round` carries `NaN` and both infinities
+  // straight through to `BigInt(millis)`, which refuses them with a bare
+  // `RangeError` naming neither the option nor the era. `nowSeconds` is a plain
+  // `number` on the published option, and `Number(process.env.X)` with the
+  // variable unset is the obvious way to produce one.
+  if (!Number.isFinite(nowSeconds)) {
+    throw new Error(
+      `the retained era cannot pin its execution clock to '${String(nowSeconds)}'. ` +
+        '`nowSeconds` must be a finite number of seconds since the epoch.'
+    );
+  }
   // ROUNDED, not used raw. `nowSeconds` is a plain `number` on the published
   // option and `Date.now() / 1000` -- the expression a consumer reaches for --
   // is fractional, which makes `BigInt(millis)` throw `RangeError: ... not an
@@ -634,11 +645,15 @@ export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A
   // caller round the fix-and-rerun loop once per missing key.
   const failures = Array.from(Cause.failures(exit.cause));
   const error: unknown = failures.length > 0 ? failures[0] : Cause.squash(exit.cause);
-  // A coded error leaves with its CLASS intact. Flattening one erases the
-  // `code` and `stage` a caller discriminates on, and this boundary sees errors
-  // this package raised itself on the way through, not only compact-js's.
-  if (failures.length <= 1 && isCodedProtocolError(error)) {
-    throw error;
+  // A coded error leaves with its CLASS intact, however many failures arrived
+  // beside it. Flattening one erases the `code` and `stage` a caller
+  // discriminates on, and this boundary sees errors this package raised itself
+  // on the way through, not only compact-js's. When several fail at once the
+  // coded one wins: a caller can branch on a code but not on a joined message,
+  // and the rest stay readable on the cause chain.
+  const coded = failures.find(isCodedProtocolError);
+  if (coded !== undefined) {
+    throw coded;
   }
   const describe = (failure: unknown): string => {
     const chain = causeChain(failure);

@@ -589,6 +589,30 @@ describe('pinnedClock', () => {
   });
 });
 
+describe('pinnedClock refuses a second it cannot pin to', () => {
+  // `Number(process.env.NOW_SECONDS)` with the variable unset is `NaN`, and it
+  // is a plain `number` on the published option. Without a refusal it reaches
+  // `BigInt(millis)` and dies with a bare `RangeError` from inside the clock
+  // builder, naming neither the option nor the era -- the exact failure the
+  // rounding fix set out to remove.
+  it.each([
+    ['NaN', Number.NaN],
+    ['positive infinity', Number.POSITIVE_INFINITY],
+    ['negative infinity', Number.NEGATIVE_INFINITY]
+  ])('refuses %s by naming the option', (_label, nowSeconds) => {
+    // Act.
+    const refusal = (): unknown => pinnedClock(nowSeconds);
+
+    // Assert.
+    expect(refusal).toThrow(/nowSeconds/);
+  });
+
+  it('still accepts a finite second, so the refusal is not refusing everything', () => {
+    // Act & Assert.
+    expect(pinnedClock(1_700_000_000).unsafeCurrentTimeMillis()).toBe(1_700_000_000_000);
+  });
+});
+
 describe('soleCall', () => {
   it('reads the one call a retained-era execution produces', () => {
     expect(soleCall(['only'], 'increment')).toBe('only');
@@ -714,6 +738,24 @@ describe('runOrRethrow', () => {
     expect(String(rejection)).toContain('increment is missing');
     expect(String(rejection)).toContain('decrement is missing');
     expect(String(rejection)).toContain('reset is missing');
+  });
+
+  it('keeps the code when a CODED failure arrives beside others', async () => {
+    // Arrange. Two typed failures at once. Guarding the coded-error branch on
+    // the failure COUNT means every class is flattened here, so a consumer
+    // switching on `PROTOCOL_ERROR_CODES` gets nothing -- and the
+    // `@throws ComposeFailedError` on `executeConstructor` stops holding.
+    const coded = new ComposeFailedError('v8', 'deploy-verifier-key-blob', 'increment', new Error('ledger said no'));
+    const concurrentlyFailing = Effect.all([Effect.fail(coded), Effect.fail(new Error('reset is missing'))], {
+      concurrency: 'unbounded'
+    });
+
+    // Act.
+    const rejection = await runOrRethrow(concurrentlyFailing).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBeInstanceOf(ComposeFailedError);
+    expect((rejection as ComposeFailedError).stage).toBe('deploy-verifier-key-blob');
   });
 
   it('reports a DEFECT, which carries no typed failure to read', async () => {

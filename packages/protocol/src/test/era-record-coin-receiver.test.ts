@@ -38,7 +38,7 @@
  * file on every run, and `secondsSinceEpoch` and `lastBlockTime` had to be
  * overwritten in the result afterwards. compact-js takes the clock as an input
  * now (midnightntwrk/midnight-sdk#403), so the execution is handed
- * {@link FROZEN_SECONDS_SINCE_EPOCH} and the recording is the runtime's own
+ * {@link FROZEN_SECONDS} and the recording is the runtime's own
  * output end to end. The post-hoc substitution was removed only after both
  * members were shown to be deterministic without it: neutralising it left all
  * four assertions green.
@@ -75,7 +75,11 @@ const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
 // The two frozen clock values. Chosen as round numbers rather than as any real
 // block's time: nothing downstream reads them for meaning, and the assertions
 // below prove the composition does not depend on their being recent.
-const FROZEN_SECONDS_SINCE_EPOCH = 1_700_000_000n;
+// Declared as a NUMBER and widened to BigInt, never the other way round:
+// `Number(aBigInt)` is the conversion this repo rejects, and this is the
+// fixture-mint path -- a later constant above `Number.MAX_SAFE_INTEGER` would
+// lose precision silently and mint fixtures pinned to the wrong instant.
+const FROZEN_SECONDS = 1_700_000_000;
 
 // The coin the circuit receives. Fixed, so the recording is reproducible.
 const RECEIVED_COIN = { nonce: new Uint8Array(32).fill(0x07), color: new Uint8Array(32).fill(0), value: 42n };
@@ -169,7 +173,7 @@ const runReceiveCoin = async (): Promise<RealExecution> => {
     privateState: {},
     // The clock the recording is pinned to, supplied to the execution rather
     // than substituted into its result afterwards.
-    nowSeconds: Number(FROZEN_SECONDS_SINCE_EPOCH)
+    nowSeconds: FROZEN_SECONDS
   });
 
   return {

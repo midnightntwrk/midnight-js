@@ -1106,7 +1106,7 @@ const runLedger8CallEntry = async (
   // typo in the caller's own call.
   assertIsContractAddress(options.contractAddress);
   assertDefined(
-    Object.hasOwn(options.compiledContract.impureCircuits, options.circuitId) ? options.circuitId : undefined,
+    Object.hasOwn(options.compiledContract.provableCircuits, options.circuitId) ? options.circuitId : undefined,
     `Circuit '${options.circuitId}' is undefined`
   );
 
@@ -1310,7 +1310,7 @@ export const submitLedger8DeployTx = async (
     // Handed as a THUNK, so the fetch runs behind the era and seam gates rather
     // than ahead of them.
     resolveVerifierKeys: async () =>
-      new Map(await providers.zkConfigProvider.getVerifierKeys(Object.keys(options.compiledContract.impureCircuits))),
+      new Map(await providers.zkConfigProvider.getVerifierKeys(Object.keys(options.compiledContract.provableCircuits))),
     signingKey: options.signingKey
   });
 

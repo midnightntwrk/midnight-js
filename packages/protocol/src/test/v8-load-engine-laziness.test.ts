@@ -77,6 +77,37 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
       ])
     ).toBeDefined();
     expect(loadLedger8).not.toHaveBeenCalled();
+
+    // The two methods that could PLAUSIBLY reach the loader lazily, which the
+    // call above cannot speak for: it targets the current era, so it has no
+    // business touching the retained ledger either way. Both are driven far
+    // enough to run their own body -- each refuses its arguments before any
+    // execution -- which is all this gate needs: an `await loadLedger8()` added
+    // inside either one fires before the refusal does.
+    await engine
+      .executeCircuit({
+        contract: { provableCircuits: {}, initialState: () => undefined },
+        circuitId: 'increment',
+        args: [],
+        contractState: { state: { tag: 'null' }, balance: new Map(), entryPoints: [] },
+        address: '00'.repeat(32),
+        coinPk: '0'.repeat(64),
+        privateState: {}
+      })
+      .catch(() => undefined);
+    expect(loadLedger8).not.toHaveBeenCalled();
+
+    await engine
+      .executeConstructor({
+        contract: { provableCircuits: {}, initialState: () => undefined },
+        args: [],
+        privateState: {},
+        coinPk: '0'.repeat(64),
+        signingKey: 'not-a-signing-key',
+        verifierKeys: () => Promise.resolve(undefined)
+      })
+      .catch(() => undefined);
+    expect(loadLedger8).not.toHaveBeenCalled();
   });
 
   // The assertion above is only as good as its premise: it covers the surface

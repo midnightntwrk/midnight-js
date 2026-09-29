@@ -130,7 +130,12 @@ describe('createLedger8Engine', () => {
     const initial = contract.initialState(constructorContext);
 
     const options: RunRetainedCircuitOptions<CompiledCounterContract, Record<string, never>> = {
-      contract: new Contract({}),
+      // The SAME instance that built the state, which is what a caller holds:
+      // `containerFor`'s constructor-returns-the-instance trick exists because
+      // the witnesses are already bound to it. A second, empty-witness instance
+      // executes a different object than the one under test, and counter-016
+      // has no witnesses, so a binding regression would ship unseen.
+      contract,
       circuitId: 'increment',
       args: [],
       contractState: { state: initial.currentContractState.data.state.encode(), balance: new Map(), entryPoints: [] },
@@ -170,7 +175,12 @@ describe('createLedger8Engine', () => {
     const address = ocrt3.dummyContractAddress();
 
     const transcript = await engine.executeCircuit({
-      contract: new Contract({}),
+      // The SAME instance that built the state, which is what a caller holds:
+      // `containerFor`'s constructor-returns-the-instance trick exists because
+      // the witnesses are already bound to it. A second, empty-witness instance
+      // executes a different object than the one under test, and counter-016
+      // has no witnesses, so a binding regression would ship unseen.
+      contract,
       circuitId: 'increment',
       args: [],
       // Freshly constructed, so the contract holds nothing -- the empty balance

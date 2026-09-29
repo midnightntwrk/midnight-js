@@ -24,6 +24,7 @@ import {
   UnknownLedgerVersionError
 } from '../errors';
 import { extractEncodedStateValue, extractV9EncodedStateValue } from '../lib/era/envelope';
+import { structurallyEqual } from '../lib/v8/executable';
 import { readHexFixture } from './fixtures';
 
 // The engine's own retired suite (v8-down-convert.test.ts) built its envelopes
@@ -60,6 +61,29 @@ describe('reading a real migrated state', () => {
 
     expect(v9Encoded).toEqual(v8Encoded);
   });
+
+  // The CROSS-CODEC round trip, on real committed migrated states. This is the
+  // comparison `decodeExecutableStateValue` (`lib/v8/executable.ts`) runs on
+  // EVERY retained-era call, and in production it is cross-codec by
+  // construction: a migrated contract's state is encoded by ledger-v9 and
+  // decoded by compact-runtime 0.16. The rows above compare two extractions
+  // without decoding either, and the executable suite drives freshly built
+  // counter states, so neither reaches this property. If the two codecs
+  // disagreed on any real migrated shape, every call on every migrated contract
+  // would fail closed with `DownConvertFailedError` and both suites stay green.
+  it.each(['state-migrated-v9.hex', 'state-migrated-v9-merkle.hex'])(
+    'decodes %s with the retained runtime and re-encodes it to the same bytes',
+    (fixture) => {
+      // Arrange. Extracted by the era that WROTE it, as the pipeline does.
+      const v9Encoded = extractEncodedStateValue(readHexFixture(fixture), 'v9', ocrt3.ContractState);
+
+      // Act. Decoded by the retained runtime, which is the other codec.
+      const decoded = ocrt3.StateValue.decode(v9Encoded);
+
+      // Assert.
+      expect(structurallyEqual(decoded.encode(), v9Encoded)).toBe(true);
+    }
+  );
 
   it('reads the pre-fork tag-v6 envelope to the same state the post-fork envelope carries', () => {
     const fromLedger8 = extractEncodedStateValue(readHexFixture('state-v8-v6-envelope.hex'), 'v8', ocrt3.ContractState);
