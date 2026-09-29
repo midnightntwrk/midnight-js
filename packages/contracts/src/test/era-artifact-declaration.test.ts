@@ -50,7 +50,7 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
   it('places a current-era container without consulting the artifact set at all', async () => {
     // Arrange: the container carries its own era marker -- an own `tag` no build step rewrites --
     // so the current era pays nothing for this dispatch.
-    const source = declaring('0.20.0-rc.0');
+    const source = declaring('0.20.0');
 
     // Act
     const era = await resolveArtifactEra(createMockCompiledContract(), source);
@@ -78,7 +78,7 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
     // from a retained artifact -- `constructor.name` reads 'Function' on both -- so routing on that
     // name sent a current-era contract into the retained pipeline. The declared runtime version
     // separates them, and it is the same on both sides of any transpilation.
-    const source = declaring('0.20.0-rc.0');
+    const source = declaring('0.20.0');
 
     await expect(resolveArtifactEra(transpiledCurrentEraShape(), source)).rejects.toBeInstanceOf(
       EraArtifactMismatchError
