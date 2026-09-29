@@ -49,17 +49,11 @@ import { readHexFixture } from './fixtures';
 describe('reading a real migrated state', () => {
   // These used to run through `downConvertForExecution`, which decoded the
   // extracted state and re-encoded it. That function is gone with the
-  // hand-maintained execution layer: execution now takes the chain's own
-  // serialized `ContractState` bytes and compact-js decodes them. What the
-  // fixtures still pin is the property the down-convert existed to protect --
-  // that both envelopes carry the SAME primary state.
-  //
-  // One guard did not survive: `assertMerkleTreesRehashed` refused a state
-  // whose bounded Merkle trees had no computed root. It could only fire on a
-  // bare `EncodedStateValue`, which a caller could assemble by hand; the new
-  // path takes a whole serialized contract state read off a chain, where the
-  // trees are rehashed by construction. The precondition is no longer
-  // reachable from this package's surface.
+  // hand-maintained execution layer, but the round trip it ran did not go with
+  // it: `decodeExecutableStateValue` (`lib/v8/executable.ts`) still refuses a
+  // state that decodes without re-encoding to its source. What the fixtures
+  // pin is the property that comparison exists to protect -- that both
+  // envelopes carry the SAME primary state.
   it('reads a migrated post-fork envelope to the pre-migration v8 state', () => {
     const v9Encoded = extractEncodedStateValue(readHexFixture('state-migrated-v9.hex'), 'v9', ocrt3.ContractState);
     const v8Encoded = extractEncodedStateValue(readHexFixture('state-v8.hex'), 'v8', ocrt3.ContractState);

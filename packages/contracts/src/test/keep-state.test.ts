@@ -656,12 +656,12 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
 // compiling while it silently stopped passing one, and the only thing between
 // that and #1345 recurring would be the engine's own runtime guard.
 //
-// Whole-interface assignability is NOT the pin: `Ledger8ExecuteRequest.compiledContract`
+// Whole-interface assignability is NOT the pin: `Ledger8ExecuteRequest.contract`
 // is deliberately the wider slice, so the request is not assignable to the
 // engine's options and never was. What has to hold is that the request NAMES
 // every option the engine REQUIRES, and agrees with it on the one this file is
-// about -- which is now `contractStateBytes`, because the balance rides inside
-// those bytes.
+// about -- which is `contractState`, because the balance rides beside the
+// primary state on that one value.
 type RequiredKeys<T> = { [K in keyof T]-?: object extends Pick<T, K> ? never : K }[keyof T];
 
 type _RequestNamesEveryEngineOption = Assert<

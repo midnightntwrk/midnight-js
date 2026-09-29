@@ -224,16 +224,20 @@ export class Ledger8InstanceMismatchError extends Error {
  * came from. A closed union, so a consumer can `switch` on `stage`
  * exhaustively.
  *
+ * `'state down-convert'` is the structural round trip `lib/v8/executable.ts`
+ * runs before a circuit executes; the other two are the envelope reads in
+ * `lib/era/envelope.ts`.
+ *
  * @see {@link FailClosedDecoding}
  */
 export type DownConvertStage = 'v8 envelope extraction' | 'v9 envelope extraction' | 'state down-convert';
 
 /**
- * Thrown by the down-convert engine (`lib/era/envelope.ts`,
- * `lib/v8/down-convert.ts`) when it cannot turn a raw contract-state
- * envelope, or an already-extracted `EncodedStateValue`, into an executable
- * pre-fork state. Raised by `extractV9EncodedStateValue` (`lib/era/envelope.ts`)
- * and `downConvertForExecution` (`lib/v8/down-convert.ts`).
+ * Thrown when a raw contract-state envelope, or an already-extracted
+ * `EncodedStateValue`, cannot be turned into an executable pre-fork state.
+ * Raised by `extractV9EncodedStateValue` (`lib/era/envelope.ts`) and by
+ * `decodeExecutableStateValue` (`lib/v8/executable.ts`), which refuses a state
+ * that decodes but does not re-encode to the bytes it came from.
  *
  * Renders no raw hex and no decoded state contents — only the stage name and
  * the wrapped `cause`.
@@ -261,12 +265,23 @@ export class DownConvertFailedError extends Error {
 }
 
 /**
- * Thrown by `checkRoot` (`lib/v8/down-convert.ts`) when a bounded Merkle
- * tree's root is read before the tree has been rehashed. Reaches a caller
- * through `assertMerkleTreesRehashed` and `downConvertForExecution`, which
- * assert it on every tree they decode.
+ * Raised when a bounded Merkle tree's root is read before the tree has been
+ * rehashed.
  *
- * The remediation is always the caller's: call `rehash()` on the tree before
+ * NOTHING RAISES THIS ANY MORE: the walk it served
+ * (`assertMerkleTreesRehashed`, `lib/v8/down-convert.ts`) was removed with the
+ * hand-maintained execution layer, and the condition it named cannot reach the
+ * seam that replaced it. Execution now takes an already-encoded
+ * `EncodedStateValue`, and a tree's rehash state does not survive that
+ * encoding: a never-rehashed tree and a rehashed one encode IDENTICALLY, and
+ * decoding either yields the same root. Being un-rehashed is a property of a
+ * live in-memory handle only, so there is nothing left for a guard on this
+ * side to refuse. Measured against the pinned runtime, not inferred.
+ *
+ * Kept on the published surface, with its code, rather than removed from a
+ * consumer's error taxonomy as a side effect of an internal refactor.
+ *
+ * The remediation was always the caller's: call `rehash()` on the tree before
  * executing against it. Nothing here repairs the tree.
  *
  * @param cause The runtime's own failure, when reading the root threw. Absent

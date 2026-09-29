@@ -157,14 +157,14 @@ describe('Protocol type ACL', () => {
       // has to be able to name -- the same argument as `ContractEntryPointPojo`.
       'ContractBalance',
       'ContractEntryPointPojo',
-      // The decoded contract state a consumer reads off the chain before it
-      // hands the raw bytes to `executeCircuit`.
+      // The decoded contract state a consumer reads off the chain and hands
+      // to `executeCircuit`, primary state and balances together.
       'ContractStatePojo',
       'EncodedStateValue',
       'Ledger8Engine',
       'Ledger8SigningKey',
-      // `RunRetainedCircuitOptions.compiledContract` is one of these, so a
-      // consumer building the container cannot declare it without this name.
+      // `RunRetainedCircuitOptions.contract` is one of these, so a consumer
+      // building the container cannot declare it without this name.
       'RetainedContract',
       'RunRetainedCircuitOptions',
       'RunRetainedConstructorOptions',

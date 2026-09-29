@@ -427,10 +427,6 @@ export const createReplayEngine = (
     expect(options.circuitId).toBe(recording.circuitId);
     expect(options.args).toEqual([recording.receivedCoin]);
     expect(options.coinPk).toBe(recording.coinPublicKey);
-    // THE REPLAY CONDITION, and it now reads the value the pipeline actually
-    // threads: the chain's own serialized contract state. The recording is only
-    // replayed for the state it was recorded against, so this double cannot
-    // answer for a state the real runtime never ran on.
     // THE REPLAY CONDITION, and unconditional again. The recording is only
     // replayed for the state it was recorded against, so this double cannot
     // answer for a state the real runtime never ran on. Made opt-in during the
@@ -482,6 +478,14 @@ export const createReplayEngine = (
     // the constructor declares, and a pipeline that handed over a reader nobody
     // exercised would look identical here.
     const registered = await options.verifierKeys(recording.circuitId);
+    // AS STRICT AS THE REAL ENGINE, and unconditionally so. compact-js's
+    // `initialize` refuses a circuit the reader answers nothing for, before a
+    // state is built at all. A double that accepted one would let a pipeline
+    // ship an unanswerable key map and still look green here -- which is the
+    // "test double absorbed the consequence" trap this suite exists to close.
+    if (registered === undefined) {
+      throw new Error(`the verifier-key reader answered for no key for circuit '${recording.circuitId}'`);
+    }
     if (expectations?.constructorVerifierKey !== undefined) {
       expect(registered).toEqual(expectations.constructorVerifierKey);
     }

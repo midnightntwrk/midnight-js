@@ -61,13 +61,14 @@ export type {
  */
 export interface Ledger8Engine {
   /**
-   * Runs one circuit against the SERIALIZED contract state the chain serves.
+   * Runs one circuit against the decoded contract state the chain serves.
    *
-   * Takes chain bytes rather than an extracted primary state, because the
-   * balances a circuit reads live on the contract state and not in that
-   * primary state -- see {@link RunRetainedCircuitOptions.contractStateBytes}.
-   * The `downConvertForExecution` member that used to sit beside this one is
-   * gone with the hand-maintained execution layer; there is no separate
+   * Takes the state and the balances beside it as ONE value -- see
+   * {@link RunRetainedCircuitOptions.contractState} -- because the balances a
+   * circuit reads do not live inside the primary state, and two separate
+   * options could describe two different blocks. The
+   * `downConvertForExecution` member that used to sit beside this one is gone
+   * with the hand-maintained execution layer; there is no separate
    * down-convert step any more.
    */
   executeCircuit<C extends RetainedContract, PS>(

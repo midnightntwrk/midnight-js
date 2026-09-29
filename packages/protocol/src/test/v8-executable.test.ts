@@ -26,13 +26,14 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
+import * as glue from 'compact-runtime-ledger8';
 import { Effect } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ComposeOptionError } from '../errors';
+import { ComposeOptionError, DownConvertFailedError } from '../errors';
 import type { EncodedStateValue } from '../lib/era/envelope';
 import { loadLedgerEra } from '../lib/era/load-era';
-import type { ContractBalance } from '../lib/shared/contract-state';
+import type { ContractBalance, ContractStatePojo } from '../lib/shared/contract-state';
 import {
   causeChain,
   pinnedClock,
@@ -40,7 +41,8 @@ import {
   runOrRethrow,
   runRetainedCircuit,
   runRetainedConstructor,
-  soleCall
+  soleCall,
+  structurallyEqual
 } from '../lib/v8/executable';
 import { fixturePath } from './fixtures';
 
@@ -107,10 +109,40 @@ const loadCounter = async (): Promise<{ module: CounterModule; contract: Counter
  * envelope readers produce — which is what execution takes.
  */
 const freshCounterState = async (contractModule: CounterModule, balance: ContractBalance = new Map()) => {
-  const glue = await import('compact-runtime-ledger8');
   const contract = new contractModule.Contract({});
   const initial = contract.initialState(glue.createConstructorContext({}, SAMPLE_COIN_PUBLIC_KEY));
   return { state: initial.currentContractState.data.state.encode(), balance, entryPoints: [] };
+};
+
+/**
+ * The `StateValue` builders the state-guard suite needs, over the retained
+ * runtime's own algebra. A map is the only container whose encoding carries an
+ * ORDER, which is what makes the round-trip comparison testable against the
+ * real decoder rather than an injected one.
+ */
+const FIELD_ALIGNMENT: glue.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
+
+const fieldValue = (byte: number): glue.AlignedValue => ({
+  value: [new Uint8Array(32).fill(byte)],
+  alignment: FIELD_ALIGNMENT
+});
+
+const cellSv = (byte: number): glue.StateValue => glue.StateValue.newCell(fieldValue(byte));
+
+const mapOf = (...entries: readonly (readonly [number, glue.StateValue])[]): glue.StateValue =>
+  glue.StateValue.newMap(
+    entries.reduce((acc, [key, value]) => acc.insert(fieldValue(key), value), new glue.StateMap())
+  );
+
+/** The one {@link EncodedStateValue} variant whose encoding carries an order. */
+type EncodedMapStateValue = Extract<EncodedStateValue, { readonly tag: 'map' }>;
+
+const encodedThreeEntryMap = (): EncodedMapStateValue => {
+  const encoded = mapOf([0x33, cellSv(0x33)], [0x11, cellSv(0x11)], [0x77, cellSv(0x77)]).encode();
+  if (encoded.tag !== 'map') {
+    throw new Error(`the map builder produced a '${encoded.tag}', not a map`);
+  }
+  return encoded;
 };
 
 describe('runRetainedCircuit against the counter-016 artifact (real compact-runtime@0.16)', () => {
@@ -275,7 +307,18 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     expect(transcript.publicTranscript.length).toBeGreaterThan(0);
   });
 
-  it('refuses a malformed signing key before it runs the constructor', async () => {
+  // The retained runtime's own refusals name neither the option, the era, nor
+  // the caller: a short key reads back as `failed to fill whole buffer`, a
+  // non-hex one as `Invalid character 'z' at position 0`. Measured against the
+  // pinned runtime, a signing key is 32 bytes written as 64 hex characters, so
+  // the LENGTH boundaries are as much a part of the shape as the alphabet is.
+  it.each([
+    ['empty', ''],
+    ['not hex', 'z'.repeat(64)],
+    ['too short', 'a1'.repeat(31)],
+    ['too long', 'a1'.repeat(33)],
+    ['odd length', `${'a1'.repeat(31)}a`]
+  ])('refuses a signing key that is %s, by name and before the constructor runs', async (_label, signingKey) => {
     // Arrange. A key the retained runtime cannot read at all: the refusal has
     // to name the option, not leave the runtime's own buffer message to stand
     // for it, and it has to happen before anything executes.
@@ -288,7 +331,7 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
       args: [],
       privateState: {},
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      signingKey: 'not-hex',
+      signingKey,
       verifierKeys: () => {
         constructorRan = true;
         return Promise.resolve(undefined);
@@ -298,7 +341,32 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     // Assert.
     expect(rejection).toBeInstanceOf(ComposeOptionError);
     expect((rejection as ComposeOptionError).option).toBe('signingKey');
+    expect((rejection as ComposeOptionError).version).toBe('v8');
+    expect((rejection as ComposeOptionError).message).toContain('signingKey');
     expect(constructorRan).toBe(false);
+  });
+
+  it('never renders the refused signing key, which is a secret', async () => {
+    // Arrange. A key malformed only by LENGTH, so its characters are the real
+    // thing: a message that echoed its input would put a live secret into
+    // whatever log or issue tracker the error reaches, and on the sampled path
+    // that is the only copy in existence.
+    const { contract } = await loadCounter();
+    const nearMiss = 'c5'.repeat(31);
+
+    // Act.
+    const rejection = await runRetainedConstructor({
+      contract,
+      args: [],
+      privateState: {},
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      signingKey: nearMiss,
+      verifierKeys: () => Promise.resolve(undefined)
+    }).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBeInstanceOf(ComposeOptionError);
+    expect((rejection as ComposeOptionError).message).not.toContain(nearMiss.slice(0, 16));
   });
 
   it('refuses to build a state when the reader answers for no key', async () => {
@@ -376,6 +444,24 @@ describe('pinnedClock', () => {
     // type keeps the declared members.
     expect(typeof clock.sleep).toBe('function');
     await expect(Effect.runPromise(Effect.sleep('1 millis').pipe(Effect.withClock(clock)))).resolves.toBeUndefined();
+  });
+
+  it('accepts a FRACTIONAL second, which is what the obvious consumer expression produces', () => {
+    // Arrange. `nowSeconds` is a plain `number` on the published
+    // `RunRetainedCircuitOptions`, and `Date.now() / 1000` -- the expression a
+    // consumer reaches for -- is fractional. Unrounded, `BigInt(millis)` dies
+    // with `RangeError: ... cannot be converted to a BigInt because it is not
+    // an integer`, from inside the clock builder, naming neither the option nor
+    // the era.
+    const nowSeconds = 1_700_000_000.123_456;
+
+    // Act.
+    const clock = pinnedClock(nowSeconds);
+
+    // Assert. Rounded to the millisecond, which is the finest unit the
+    // interface carries -- compact-js divides it back down to seconds.
+    expect(clock.unsafeCurrentTimeMillis()).toBe(1_700_000_000_123);
+    expect(clock.unsafeCurrentTimeNanos()).toBe(1_700_000_000_123_000_000n);
   });
 });
 
@@ -476,5 +562,160 @@ describe('runOrRethrow', () => {
     const rejection = await runOrRethrow(Effect.fail(42)).catch((error: unknown) => error);
 
     expect((rejection as Error).message).toBe('42');
+  });
+});
+
+// The two state guards `runRetainedCircuit` runs BEFORE it executes anything.
+// Both used to live in the hand-maintained `lib/v8/down-convert.ts`; both are
+// reachable from the published seam, because `RunRetainedCircuitOptions` takes
+// a `ContractStatePojo` whose `state` is a bare `EncodedStateValue` a caller
+// can assemble by hand, and whose `balance` is an ordinary interface member.
+describe('runRetainedCircuit refuses a state it cannot execute against', () => {
+  const runAgainst = async (contractState: ContractStatePojo): Promise<unknown> => {
+    const { contract } = await loadCounter();
+    return runRetainedCircuit({
+      contract,
+      circuitId: 'increment',
+      args: [],
+      contractState,
+      address: ADDRESS,
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      privateState: {}
+    }).catch((error: unknown) => error);
+  };
+
+  // Every substitution `new Map(...)` accepts yields an EMPTY balance, which is
+  // indistinguishable from a contract that holds nothing -- the circuit then
+  // reads zero where the chain says otherwise, with every guard green. That is
+  // #1345, and the reason it is checked rather than trusted is that `tsc`
+  // reaches neither an untyped JavaScript caller nor an options object
+  // assembled dynamically.
+  const unusableBalances: readonly [label: string, balance: unknown][] = [
+    ['an absent balance', undefined],
+    ['a null balance', null],
+    ['an empty array', []],
+    ['an empty Set', new Set()],
+    ['a string', ''],
+    ['amounts that are not bigints', new Map([[{ tag: 'shielded', raw: '00'.repeat(32) }, 1]])]
+  ];
+
+  it.each(unusableBalances)('refuses %s rather than executing on an empty one', async (_label, balance) => {
+    // Arrange.
+    const { module: contractModule } = await loadCounter();
+    const fresh = await freshCounterState(contractModule);
+
+    // Act.
+    const rejection = await runAgainst({ ...fresh, balance: balance as ContractBalance });
+
+    // Assert.
+    expect(rejection).toBeInstanceOf(Error);
+    expect((rejection as Error).message).toMatch(/carries no usable balance/);
+  });
+
+  // The structural round trip: decode the state, re-encode it, and refuse a
+  // value that did not come back. The comparison is cross-codec in production
+  // -- a MIGRATED contract's state is encoded by ledger-v9 and decoded by the
+  // retained runtime -- so what it catches is the two disagreeing about a
+  // shape one of them accepts. Both rows below are refused by the REAL
+  // decoder; neither needs an injected one.
+  const notItsOwnSource: readonly [label: string, mangle: (encoded: EncodedMapStateValue) => EncodedStateValue][] = [
+    [
+      'a map whose entries are in non-canonical order',
+      (encoded) => ({ ...encoded, content: new Map([...encoded.content].reverse()) })
+    ],
+    // `Object.assign` rather than an object literal: an undeclared property on
+    // a literal is an excess-property error, and the value under test is
+    // exactly the one an untyped JavaScript caller can hand over.
+    [
+      'a value carrying a member the decoder ignores',
+      (encoded) => Object.assign({}, encoded, { extraneous: 'dropped' })
+    ]
+  ];
+
+  it.each(notItsOwnSource)('refuses %s, which decodes but does not re-encode to its source', async (_label, mangle) => {
+    // Arrange. A three-entry map, so reversing the order is observable at all.
+    const { module: contractModule } = await loadCounter();
+    const fresh = await freshCounterState(contractModule);
+
+    // Act.
+    const rejection = await runAgainst({ ...fresh, state: mangle(encodedThreeEntryMap()) });
+
+    // Assert. DOWN_CONVERT_FAILED at the down-convert stage, which is what a
+    // consumer switching on `stage` already discriminates on.
+    expect(rejection).toBeInstanceOf(DownConvertFailedError);
+    expect((rejection as DownConvertFailedError).stage).toBe('state down-convert');
+    expect((rejection as DownConvertFailedError).cause).toBeDefined();
+  });
+
+  it('executes a state that IS its own source, so the round trip is not refusing everything', async () => {
+    // Arrange. The positive control for the two rows above: the same builder,
+    // unmangled.
+    const { module: contractModule } = await loadCounter();
+    const fresh = await freshCounterState(contractModule);
+
+    // Act.
+    const rejection = await runAgainst(fresh);
+
+    // Assert.
+    expect(rejection).not.toBeInstanceOf(Error);
+  });
+});
+
+describe('structurallyEqual', () => {
+  it('holds for a state value and its own re-encoding, including a multi-entry map', () => {
+    // Also pins the assumption the comparison relies on: the runtime emits map
+    // entries in a canonical key order, so a value and its re-encoding iterate
+    // identically even when the entries were inserted out of order.
+    const encoded = mapOf([0x33, cellSv(0x33)], [0x11, cellSv(0x11)], [0x77, cellSv(0x77)]).encode();
+
+    expect(structurallyEqual(glue.StateValue.decode(encoded).encode(), encoded)).toBe(true);
+  });
+
+  it.each([
+    { name: 'identical primitives', a: 1, b: 1, equal: true },
+    { name: 'different primitives', a: 1, b: 2, equal: false },
+    { name: 'null against an object', a: null, b: {}, equal: false },
+    { name: 'an object against a primitive', a: {}, b: 1, equal: false },
+    { name: 'equal byte arrays', a: new Uint8Array([1, 2]), b: new Uint8Array([1, 2]), equal: true },
+    { name: 'byte arrays of different length', a: new Uint8Array([1, 2]), b: new Uint8Array([1]), equal: false },
+    { name: 'byte arrays differing in one byte', a: new Uint8Array([1, 2]), b: new Uint8Array([1, 3]), equal: false },
+    { name: 'a byte array against a plain array', a: new Uint8Array([1]), b: [1], equal: false },
+    { name: 'equal maps', a: new Map([['k', 1]]), b: new Map([['k', 1]]), equal: true },
+    { name: 'maps of different size', a: new Map([['k', 1]]), b: new Map(), equal: false },
+    { name: 'maps with different keys', a: new Map([['k', 1]]), b: new Map([['j', 1]]), equal: false },
+    { name: 'maps with different values', a: new Map([['k', 1]]), b: new Map([['k', 2]]), equal: false },
+    { name: 'a map against a plain object', a: new Map([['k', 1]]), b: { k: 1 }, equal: false },
+    { name: 'equal arrays', a: [1, 2], b: [1, 2], equal: true },
+    { name: 'arrays of different length', a: [1, 2], b: [1], equal: false },
+    { name: 'an array against an object', a: [1], b: { 0: 1 }, equal: false },
+    { name: 'equal objects', a: { x: 1, y: [2] }, b: { x: 1, y: [2] }, equal: true },
+    { name: 'objects with different key counts', a: { x: 1 }, b: { x: 1, y: 2 }, equal: false },
+    { name: 'objects with different values', a: { x: 1 }, b: { x: 2 }, equal: false },
+    { name: 'objects with different keys', a: { x: 1 }, b: { y: 1 }, equal: false },
+    // Key *counts* matching is not key *sets* matching. Looking each of a's
+    // keys up in b without checking the key exists reads `undefined` on both
+    // sides and short-circuits to equal, so these two disagree on every key
+    // and still compare equal. Unreachable in today's EncodedStateValue
+    // algebra, which has no undefined-valued fields -- and the reason this is
+    // pinned rather than left to that assumption holding forever.
+    { name: 'objects whose keys differ, with an undefined value', a: { x: undefined }, b: { y: 1 }, equal: false },
+    { name: 'objects whose keys differ, both undefined-valued', a: { x: undefined }, b: { y: undefined }, equal: false },
+    // Map order-sensitivity is deliberate, not incidental: it is what makes
+    // the re-encode comparison exact. A get()-based rewrite would pass every
+    // string-keyed row above and silently drop that property.
+    {
+      name: 'maps with the same entries in a different order',
+      a: new Map([
+        ['a', 1],
+        ['b', 2]
+      ]),
+      b: new Map([
+        ['b', 2],
+        ['a', 1]
+      ]),
+      equal: false
+    }
+  ])('is $equal for $name', ({ a, b, equal }) => {
+    expect(structurallyEqual(a, b)).toBe(equal);
   });
 });

@@ -52,6 +52,8 @@ import type { Ledger8Contract } from '../ledger8-contract';
  */
 export type RetainedStateValue = TranscriptPojo['postContractState'];
 
+import { ComposeFailedError } from '@midnight-ntwrk/midnight-js-protocol';
+
 import {
   Ledger8AmbiguousEntryPointError,
   Ledger8RecipientUnmappableError,
@@ -81,10 +83,9 @@ import { assertVerifierKeyMatches } from './verifier-key';
  * its own request. It stays in the `Pick` because the replay harness requires
  * the fixture to carry it.
  *
- * One member of the engine's result is deliberately left out,
- * `preContractState`. `postContractState` is generic rather than picked off
- * `TranscriptPojo`, because it is a live retained-runtime handle the replay
- * double cannot mint.
+ * `preContractState` and `postContractState` are declared below rather than
+ * picked off `TranscriptPojo`, because both are live retained-runtime handles
+ * the replay double cannot mint -- so both are generic in the state type.
  *
  * @see {@link KeepStatePipeline} for what is left out and why nothing is lost.
  */
@@ -108,50 +109,13 @@ export type Ledger8Transcript<TState = RetainedStateValue> = Pick<
 };
 
 /**
- * Everything either arm needs off a caller's retained-era contract: the UNION of
- * the two arms' slices, so one entry point can accept a contract it will route
- * to whichever arm applies.
- *
- * Each arm passes on only its own member — see {@link Ledger8CallableContract}
- * and {@link Ledger8ConstructibleContract}, and why they stay separate.
- */
-export interface Ledger8ContractSlice extends Ledger8CallableContract, Ledger8ConstructibleContract {}
-
-/**
- * The circuit collection alone, which is all the call arm passes on.
- *
- * Widened to `unknown` values on purpose. The circuits are the previous
- * runtime's own functions and nothing here calls them — only the engine does —
- * so naming their signature would tie this package to a shape it never uses,
- * and would stop the real engine's own narrower contract type from satisfying
- * this slice.
- */
-export interface Ledger8CallableContract {
-  readonly impureCircuits: Readonly<Record<string, unknown>>;
-}
-
-/**
- * The constructor alone, which is all the deploy arm passes on.
- *
- * Separate from {@link Ledger8CallableContract} rather than folded into one
- * slice, and that separation is load-bearing: each engine method declares only
- * the member it uses, which is what keeps the real engine's own narrower
- * request types comparable with these and so assignable to
- * {@link Ledger8ExecutionEngine}.
- */
-export interface Ledger8ConstructibleContract {
-  readonly initialState: unknown;
-}
-
-/**
  * What {@link Ledger8ExecutionEngine.executeCircuit} is asked to run.
  *
- * `contractStateBytes` is the chain's own SERIALIZED contract state, not an
- * extracted primary state. The balances a circuit reads live on the contract
- * state, and the retained runtime populates them only when it is handed the
- * whole thing; handed a bare state value it substitutes an empty map and a
- * circuit reading a balance sees nothing, with every guard green. Passing the
- * bytes through makes that substitution unreachable.
+ * `contractState` is the DECODED era-neutral state, balance included, not the
+ * chain's serialized bytes. The balances a circuit reads live beside the
+ * primary state rather than inside it, and the retained runtime populates them
+ * only when it is handed a whole contract state; the engine rebuilds one from
+ * both halves of this member, so neither can come off a different read.
  */
 export interface Ledger8ExecuteRequest {
   /**
@@ -883,6 +847,21 @@ export interface Ledger8DeployPipelineResult {
  * state's declared entry points.
  */
 export const runLedger8DeployPipeline = async (request: Ledger8DeployPipelineRequest): Promise<Ledger8DeployPipelineResult> => {
+  // BEFORE the constructor runs, and against `provableCircuits` because that is
+  // the set the engine asks for: compact-js's `initialize` reads one key per
+  // provable circuit and REFUSES a circuit the reader answers nothing for. Its
+  // refusal reaches a caller as an untyped `Error` -- the Effect runtime
+  // squashes the class away -- which is not the `ComposeFailedError` this
+  // function documents and a consumer switches on via `PROTOCOL_ERROR_CODES`.
+  // The composer checks the same map again, against the entry points the built
+  // state DECLARES; that check is unaffected and still the one that catches a
+  // key naming a circuit the state does not have.
+  for (const circuitId of Object.keys(request.contract.provableCircuits)) {
+    if (!request.verifierKeys.has(circuitId)) {
+      throw new ComposeFailedError(request.era.version, 'deploy-verifier-key', circuitId);
+    }
+  }
+
   const constructed = await request.engine.executeConstructor({
     contract: request.contract,
     verifierKeys: (circuitId) => Promise.resolve(request.verifierKeys.get(circuitId)),

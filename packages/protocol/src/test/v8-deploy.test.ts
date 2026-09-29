@@ -224,6 +224,30 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     expect(authority.threshold).toBe(1);
     expect(authority.counter).toBe(0n);
   });
+
+  it('accepts an UPPERCASE hex signing key, which the retained runtime accepts too', async () => {
+    const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
+    const uppercase = 'AB'.repeat(32);
+
+    const result = await runRetainedConstructor({
+      contract: new Contract({}),
+      args: [],
+      privateState: {},
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      signingKey: uppercase,
+      verifierKeys: readFixtureVerifierKey
+    });
+
+    // A shape check tighter than the runtime's would refuse keys the chain
+    // accepts, which is a deployment path closed for no reason. Asserted
+    // through the authority rather than through the echoed key alone: an
+    // accepted key that the runtime then failed to build a committee from
+    // would satisfy the echo on its own.
+    expect(result.signingKey).toBe(uppercase);
+    expect(LedgerV8.ContractState.deserialize(result.contractState.serialize()).maintenanceAuthority.committee).toEqual(
+      [ocrt3.signatureVerifyingKey(uppercase)]
+    );
+  });
 });
 
 describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
