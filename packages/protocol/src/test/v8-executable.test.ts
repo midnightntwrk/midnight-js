@@ -26,17 +26,20 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
+import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/ContractConfigurationError';
+import type { TokenType } from '@midnightntwrk/ledger-v9';
 import * as glue from 'compact-runtime-ledger8';
 import { Effect } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ComposeOptionError, DownConvertFailedError } from '../errors';
+import { ComposeFailedError, ComposeOptionError, DownConvertFailedError } from '../errors';
 import type { EncodedStateValue } from '../lib/era/envelope';
 import { loadLedgerEra } from '../lib/era/load-era';
 import type { ContractBalance, ContractStatePojo } from '../lib/shared/contract-state';
 import {
   causeChain,
   pinnedClock,
+  recodeVerifierKeyBlobFailure,
   refuseVerifierKeyRead,
   runOrRethrow,
   runRetainedCircuit,
@@ -391,6 +394,31 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     expect(String(rejection)).toContain("'increment'");
   });
 
+  it('codes a verifier key the ledger rejects, naming the circuit it was served for', async () => {
+    // Arrange. A blob the reader answers with but the ledger refuses. compact-js
+    // writes the keys itself inside `initialize`, so this is the first thing to
+    // touch the bytes -- the retained composer, which used to raise the coded
+    // refusal, is never reached.
+    const { contract } = await loadCounter();
+
+    // Act.
+    const rejection = await runRetainedConstructor({
+      contract,
+      args: [],
+      privateState: {},
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: () => Promise.resolve(new Uint8Array([0x00, 0x01, 0x02]))
+    }).catch((error: unknown) => error);
+
+    // Assert. The same stage the v9 arm raises for the same fault, so a
+    // consumer switching on `stage` is not told a different story per era.
+    expect(rejection).toBeInstanceOf(ComposeFailedError);
+    expect((rejection as ComposeFailedError).stage).toBe('deploy-verifier-key-blob');
+    expect((rejection as ComposeFailedError).circuitId).toBe('increment');
+    expect((rejection as ComposeFailedError).version).toBe('v8');
+    expect((rejection as ComposeFailedError).cause).toBeDefined();
+  });
+
   it('surfaces a verifier-key read failure rather than deploying without the key', async () => {
     // Arrange.
     const { contract } = await loadCounter();
@@ -555,6 +583,20 @@ describe('runOrRethrow', () => {
     expect((rejection as Error).cause).toBe(wrapped);
   });
 
+  it('rethrows a CODED protocol error unchanged, so a caller can still branch on it', async () => {
+    // Arrange. Flattening every failure to a bare `Error` erases the class, and
+    // with it the `code` and `stage` a consumer discriminates on -- including
+    // for errors this package raised itself on the way through.
+    const coded = new ComposeFailedError('v8', 'deploy-verifier-key-blob', 'increment', new Error('ledger said no'));
+
+    // Act.
+    const rejection = await runOrRethrow(Effect.fail(coded)).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBe(coded);
+    expect((rejection as ComposeFailedError).stage).toBe('deploy-verifier-key-blob');
+  });
+
   it('still says something when the failure carries no message', async () => {
     // A failure value that is not an `Error` at all. Without the fallback the
     // rethrown message would be empty, which is worse than the wrapper it
@@ -647,6 +689,53 @@ describe('runRetainedCircuit refuses a state it cannot execute against', () => {
     expect((rejection as DownConvertFailedError).cause).toBeDefined();
   });
 
+  // A state the retained decoder THROWS on, rather than one that decodes and
+  // fails the round trip. The retired `downConvertForExecution` wrapped the
+  // whole decode in a try/catch and coded every failure; only the round-trip
+  // mismatch is coded without one, so these leave as bare vendor errors
+  // carrying neither `code` nor `stage`.
+  const undecodable = (shape: Record<string, unknown>): EncodedStateValue =>
+    Object.assign({} as EncodedStateValue, shape);
+
+  const refusedByTheDecoder: readonly [label: string, state: EncodedStateValue][] = [
+    ['a tag no retained-era variant declares', undecodable({ tag: 'nonsense' })],
+    ['a value carrying no tag at all', undecodable({})],
+    ['a cell with no content', undecodable({ tag: 'cell' })]
+  ];
+
+  it.each(refusedByTheDecoder)('codes %s as a down-convert failure', async (_label, state) => {
+    // Arrange.
+    const { module: contractModule } = await loadCounter();
+    const fresh = await freshCounterState(contractModule);
+
+    // Act.
+    const rejection = await runAgainst({ ...fresh, state });
+
+    // Assert. The same discrimination the round-trip refusal offers, so a
+    // consumer switching on `stage` reaches the same remediation either way.
+    expect(rejection).toBeInstanceOf(DownConvertFailedError);
+    expect((rejection as DownConvertFailedError).stage).toBe('state down-convert');
+    expect((rejection as DownConvertFailedError).cause).toBeDefined();
+  });
+
+  it('codes a colour the retained runtime cannot read, rather than leaking the WASM error', async () => {
+    // Arrange. `isContractBalance` checks only that a colour's `tag` is a
+    // string -- never `raw` -- so this passes the guard and reaches the WASM
+    // `balance` setter, which refuses it. An untyped caller, or a migrated
+    // contract whose balance the ledger-v9 reader produced, is how it arrives.
+    const { module: contractModule } = await loadCounter();
+    const fresh = await freshCounterState(contractModule);
+    const colourWithoutRaw: TokenType = Object.assign({} as TokenType, { tag: 'shielded' });
+
+    // Act.
+    const rejection = await runAgainst({ ...fresh, balance: new Map([[colourWithoutRaw, 5n]]) });
+
+    // Assert.
+    expect(rejection).toBeInstanceOf(DownConvertFailedError);
+    expect((rejection as DownConvertFailedError).stage).toBe('state down-convert');
+    expect((rejection as DownConvertFailedError).cause).toBeDefined();
+  });
+
   it('executes a state that IS its own source, so the round trip is not refusing everything', async () => {
     // Arrange. The positive control for the two rows above: the same builder,
     // unmangled.
@@ -658,6 +747,102 @@ describe('runRetainedCircuit refuses a state it cannot execute against', () => {
 
     // Assert.
     expect(rejection).not.toBeInstanceOf(Error);
+  });
+});
+
+describe('runRetainedCircuit refuses a circuit the contract does not declare', () => {
+  // `provableCircuits` is a plain object literal in the 0.16 artifact, so its
+  // PROTOTYPE is live. compact-js resolves a circuit with `contract
+  // .provableCircuits[id]` guarded only by `if (!circuit)`, which a prototype
+  // member satisfies -- it then CALLS `Object.prototype.toString` with the
+  // runtime context and feeds the result to `readExecution`. The retired
+  // `executeCircuit` refused an unknown id by name before dispatching.
+  const inheritedFromObjectPrototype = ['toString', 'valueOf', 'constructor', 'hasOwnProperty'] as const;
+
+  it.each([...inheritedFromObjectPrototype, 'no_such_circuit'])(
+    'refuses %s rather than dispatching to it',
+    async (circuitId) => {
+      // Arrange.
+      const { module: contractModule, contract } = await loadCounter();
+      const contractState = await freshCounterState(contractModule);
+
+      // Act.
+      const rejection = await runRetainedCircuit({
+        contract,
+        circuitId,
+        args: [],
+        contractState,
+        address: ADDRESS,
+        coinPk: SAMPLE_COIN_PUBLIC_KEY,
+        privateState: {}
+      }).catch((error: unknown) => error);
+
+      // Assert.
+      expect(rejection).toBeInstanceOf(Error);
+      expect(String(rejection)).toContain(circuitId);
+      expect(String(rejection)).toContain('increment');
+    }
+  );
+
+  it('still runs the circuit the contract DOES declare, so the guard is not refusing everything', async () => {
+    // Arrange.
+    const { module: contractModule, contract } = await loadCounter();
+    const contractState = await freshCounterState(contractModule);
+
+    // Act.
+    const transcript = await runRetainedCircuit({
+      contract,
+      circuitId: 'increment',
+      args: [],
+      contractState,
+      address: ADDRESS,
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      privateState: {}
+    });
+
+    // Assert.
+    expect(transcript.circuitId).toBe('increment');
+  });
+});
+
+describe('recodeVerifierKeyBlobFailure', () => {
+  it('re-codes a blob the ledger refused, carrying the ledger\'s own error as the cause', () => {
+    // Arrange.
+    const ledgerSaidNo = new Error('malformed verifier key');
+    const reported = ContractConfigurationError.make(
+      "Failed to configure verifier key for circuit 'increment' for the given contract state",
+      undefined,
+      ledgerSaidNo
+    );
+
+    // Act.
+    const recoded = recodeVerifierKeyBlobFailure(reported);
+
+    // Assert.
+    expect(recoded).toBeInstanceOf(ComposeFailedError);
+    expect((recoded as ComposeFailedError).circuitId).toBe('increment');
+    expect((recoded as ComposeFailedError).cause).toBe(ledgerSaidNo);
+  });
+
+  // Each row is a configuration refusal that is NOT a rejected blob, and must
+  // reach the caller unchanged -- re-coding one would report a missing key, or
+  // an unrelated failure, as bytes the ledger refused.
+  it.each([
+    [
+      'a configuration error carrying no cause, which is a key that was never served',
+      ContractConfigurationError.make("Circuit 'increment' is undefined for the given contract state", undefined)
+    ],
+    [
+      'a configuration error whose message names no circuit',
+      ContractConfigurationError.make('something else entirely went wrong', undefined, new Error('why'))
+    ],
+    ['a failure that is not a configuration error at all', new Error('unrelated')]
+  ])('passes %s through unchanged', (_label, reported) => {
+    // Act.
+    const recoded = recodeVerifierKeyBlobFailure(reported);
+
+    // Assert.
+    expect(recoded).toBe(reported);
   });
 });
 

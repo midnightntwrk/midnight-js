@@ -31,6 +31,7 @@
  */
 
 import * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
+import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/ContractConfigurationError';
 import {
   CompiledContract,
   ContractExecutable,
@@ -44,7 +45,13 @@ import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import * as glue from 'compact-runtime-ledger8';
 import { Cause, Clock, Effect, Exit, Layer, Option, type Types } from 'effect';
 
-import { ComposeOptionError, DownConvertFailedError } from '../../errors';
+import {
+  ComposeFailedError,
+  ComposeOptionError,
+  DownConvertFailedError,
+  PROTOCOL_ERROR_CODES,
+  type ProtocolErrorCode
+} from '../../errors';
 import type { EncodedStateValue } from '../era/envelope';
 import type { PartitionContext } from '../shared/compose-types';
 import { type ContractStatePojo, describeValue, isContractBalance } from '../shared/contract-state';
@@ -480,14 +487,22 @@ export const structurallyEqual = (a: unknown, b: unknown): boolean => {
  * @see {@link FailClosedDecoding}
  */
 const decodeExecutableStateValue = (state: EncodedStateValue): glue.StateValue => {
-  const decoded = glue.StateValue.decode(state);
-  if (!structurallyEqual(decoded.encode(), state)) {
-    throw new DownConvertFailedError(
-      'state down-convert',
-      new Error(`decoded StateValue did not re-encode to its source (source tag '${state.tag}')`)
-    );
+  try {
+    const decoded = glue.StateValue.decode(state);
+    if (!structurallyEqual(decoded.encode(), state)) {
+      throw new DownConvertFailedError(
+        'state down-convert',
+        new Error(`decoded StateValue did not re-encode to its source (source tag '${state.tag}')`)
+      );
+    }
+    return decoded;
+  } catch (cause) {
+    // The decoder and the re-encoder both raise BARE vendor errors -- `missing
+    // field \`tag\``, `unknown variant \`x\`` -- carrying neither `code` nor
+    // `stage`. Coding them here is what the retired `downConvertForExecution`
+    // did, and what `fail-closed-decoding.md` still promises a caller.
+    throw cause instanceof DownConvertFailedError ? cause : new DownConvertFailedError('state down-convert', cause);
   }
-  return decoded;
 };
 
 /**
@@ -529,12 +544,20 @@ const executableStateFrom = (contractState: ContractStatePojo): glue.ContractSta
     );
   }
 
-  const state = new glue.ContractState();
-  state.data = new glue.ChargedState(decodeExecutableStateValue(contractState.state));
-  // Copied rather than shared, so an entry the caller adds or removes afterwards
-  // cannot reach a running circuit.
-  state.balance = new Map(balance);
-  return state;
+  try {
+    const state = new glue.ContractState();
+    state.data = new glue.ChargedState(decodeExecutableStateValue(contractState.state));
+    // Copied rather than shared, so an entry the caller adds or removes afterwards
+    // cannot reach a running circuit.
+    state.balance = new Map(balance);
+    return state;
+  } catch (cause) {
+    // Both setters are WASM, and both raise bare errors: `balance` refuses a
+    // colour `isContractBalance` admits by name but the runtime cannot read,
+    // and `data` refuses a `ChargedState` from another physical copy. Neither
+    // carries a `code` a caller can branch on.
+    throw cause instanceof DownConvertFailedError ? cause : new DownConvertFailedError('state down-convert', cause);
+  }
 };
 
 /**
@@ -565,12 +588,38 @@ export const causeChain = (error: unknown, seen: Set<unknown> = new Set()): read
  * plus `Cause.squash` recovers the real error, which is then rethrown with the
  * underlying reason spelled out and the original on `cause`.
  */
+const PROTOCOL_ERROR_CODE_VALUES: ReadonlySet<string> = new Set(Object.values(PROTOCOL_ERROR_CODES));
+
+/**
+ * Whether a value is one of this package's own coded errors.
+ *
+ * The registry is the test rather than `instanceof` against a list: every class
+ * in `errors.ts` carries a `code` drawn from {@link PROTOCOL_ERROR_CODES}, so a
+ * class added later is recognised without this predicate being touched.
+ *
+ * @param error The value to test.
+ * @returns `true` when the value carries a registered protocol error code.
+ */
+const isCodedProtocolError = (error: unknown): error is Error & { readonly code: ProtocolErrorCode } => {
+  if (!(error instanceof Error) || !('code' in error)) {
+    return false;
+  }
+  const { code } = error;
+  return typeof code === 'string' && PROTOCOL_ERROR_CODE_VALUES.has(code);
+};
+
 export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {
   const exit = await Effect.runPromiseExit(effect);
   if (Exit.isSuccess(exit)) {
     return exit.value;
   }
   const error: unknown = Cause.squash(exit.cause);
+  // A coded error leaves with its CLASS intact. Flattening one erases the
+  // `code` and `stage` a caller discriminates on, and this boundary sees errors
+  // this package raised itself on the way through, not only compact-js's.
+  if (isCodedProtocolError(error)) {
+    throw error;
+  }
   const chain = causeChain(error);
   throw new Error(chain.length > 0 ? chain.join(': ') : String(error), { cause: error });
 };
@@ -601,6 +650,34 @@ export const soleCall = <T>(calls: readonly T[], circuitId: string): T => {
 };
 
 /**
+ * Refuses a circuit id the contract does not declare, before compact-js
+ * dispatches on it.
+ *
+ * `Object.hasOwn`, NOT a bare truthiness check. A 0.16 artifact assigns
+ * `provableCircuits` a plain object literal, so its prototype is live, and
+ * compact-js resolves a circuit with `contract.provableCircuits[id]` guarded
+ * only by `if (!circuit)`. `'toString'`, `'valueOf'` and `'constructor'` all
+ * satisfy that guard: the prototype member is CALLED with the runtime context
+ * and its return value fed to `readExecution`. The id reaches here from the
+ * caller, so it is refused by name, the way the retired `executeCircuit` did.
+ *
+ * @param contract The contract the call names.
+ * @param circuitId The circuit the caller asked for.
+ * @throws Error If the contract declares no such circuit.
+ */
+const assertDeclaredCircuit = (contract: RetainedContract, circuitId: string): void => {
+  const circuit = Object.hasOwn(contract.provableCircuits, circuitId)
+    ? contract.provableCircuits[circuitId]
+    : undefined;
+  if (typeof circuit !== 'function') {
+    throw new Error(
+      `No circuit named '${circuitId}' on this retained-era contract instance. ` +
+        `Available circuits: ${Object.keys(contract.provableCircuits).sort().join(', ')}.`
+    );
+  }
+};
+
+/**
  * Runs one circuit on a retained-era contract and packages every artifact a
  * v9-native call prototype needs.
  *
@@ -615,6 +692,7 @@ export const soleCall = <T>(calls: readonly T[], circuitId: string): T => {
 export const runRetainedCircuit = async <C extends RetainedContract, PS>(
   options: RunRetainedCircuitOptions<C, PS>
 ): Promise<TranscriptPojo> => {
+  assertDeclaredCircuit(options.contract, options.circuitId);
   const executable = ContractExecutable.make(containerFor<PS>(options.contract));
   const contractState = executableStateFrom(options.contractState);
 
@@ -670,6 +748,34 @@ export const runRetainedCircuit = async <C extends RetainedContract, PS>(
 };
 
 /**
+ * Re-codes compact-js's refusal of a verifier-key blob as this package's own
+ * {@link ComposeFailedError}.
+ *
+ * compact-js writes the keys itself inside `initialize`, so it is the first
+ * thing to touch the bytes and the retained composer -- which raised the coded
+ * refusal before this move -- is never reached. Without this the same fault is
+ * reported as a coded error on the current era and an uncoded one on the
+ * retained era.
+ *
+ * The `cause` is what separates a rejected blob from the other configuration
+ * refusals: compact-js attaches the ledger's own error only when a key it was
+ * handed was refused, and leaves it absent for a key that was never served.
+ *
+ * @param error The failure compact-js reported.
+ * @returns A {@link ComposeFailedError} for a rejected blob; the error
+ *   unchanged for anything else.
+ */
+export const recodeVerifierKeyBlobFailure = (error: unknown): unknown => {
+  if (!ContractConfigurationError.isConfigurationError(error) || error.cause === undefined) {
+    return error;
+  }
+  const circuitId = /verifier key for circuit '([^']+)'/.exec(error.message)?.[1];
+  return circuitId === undefined
+    ? error
+    : new ComposeFailedError('v8', 'deploy-verifier-key-blob', circuitId, error.cause);
+};
+
+/**
  * Runs a retained-era contract's constructor and packages the result.
  *
  * compact-js's `initialize` also writes the maintenance authority and registers
@@ -705,6 +811,7 @@ export const runRetainedConstructor = async <C extends RetainedContract, PS>(
     executable
       .initialize(options.privateState, ...(options.args as readonly never[]))
       .pipe(
+        Effect.mapError(recodeVerifierKeyBlobFailure),
         Effect.provide(
           Layer.mergeAll(
             keysLayer(options.coinPk, options.signingKey),
