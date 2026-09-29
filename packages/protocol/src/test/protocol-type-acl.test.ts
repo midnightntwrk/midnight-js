@@ -105,30 +105,18 @@ describe('Protocol type ACL', () => {
       // writing for without these.
       'CurrentLedgerVersion',
       'DeployResultPojo',
-      'DownConvertedState',
       'DownConvertStage',
       'EncodedStateValue',
-      // What `Ledger8Engine.downConvertForExecution` returns and
-      // `ExecuteCircuitOptions.state` is: the down-converted state and the
-      // balances the contract holds, as ONE value.
-      'ExecutableContractState',
-      'ExecuteCircuitOptions',
-      'ExecuteConstructorOptions',
-      // Named by the state handles the results carry: `DownConvertedState.data`
-      // is a `Ledger8ChargedState` and `.data.state` a `Ledger8StateValue`, and
-      // neither was nameable outside the package that declares them.
-      'Ledger8ChargedState',
-      // Named by `ConstructorResultPojo.contractState`, which this barrel
-      // publishes: the state a retained constructor built, as the handle it is.
-      'Ledger8DeployableContractState',
+      // The retained era's execution surface: a consumer holding one needs to
+      // name it to annotate a variable or write a helper. Its option and result
+      // types are published beside it for the same reason.
       'Ledger8Engine',
       'Ledger8InstanceAxis',
-      // Named by `ExecuteConstructorOptions.signingKey` and reported back on
-      // `ConstructorResultPojo`. The retained era's signing key is a different
-      // shape from the current era's, so a consumer cannot name it by reusing
-      // the current-era one.
+      // Named by `RunRetainedConstructorOptions.signingKey` and reported back
+      // on `ConstructorResultPojo`. The retained era's signing key is a
+      // different shape from the current era's, so a consumer cannot name it by
+      // reusing the current-era one.
       'Ledger8SigningKey',
-      'Ledger8StateValue',
       'LedgerEra',
       'LedgerParametersOption',
       'LedgerVersion',
@@ -138,9 +126,13 @@ describe('Protocol type ACL', () => {
       'ProtocolV8',
       'ProtocolVersionSource',
       'ProtocolVersionUnknownReason',
+      'RetainedContract',
       'RetainedEraSubpath',
       'RetainedLedgerVersion',
+      'RunRetainedCircuitOptions',
+      'RunRetainedConstructorOptions',
       'TranscriptPojo',
+      'VerifierKeyReader',
       'VersionedRecord',
       'VersionResolutionPath',
       'WrapKeepStateCallOptions',
@@ -156,29 +148,25 @@ describe('Protocol type ACL', () => {
     // callable by a consumer that imports the engine through its own subpath.
     expect(engineTypeNames).toEqual([
       'ConstructorResultPojo',
-      // `ExecutableContractState` carries a REQUIRED balance of this type, so a
-      // consumer that imports the engine through its own subpath cannot name
-      // what it has to carry without it -- the same argument as
-      // `ContractEntryPointPojo`.
+      // A contract state's balances, which a consumer reading one off the chain
+      // has to be able to name -- the same argument as `ContractEntryPointPojo`.
       'ContractBalance',
       'ContractEntryPointPojo',
-      // `downConvertForExecution` TAKES one: the decoded contract state is the
-      // engine's execution entry point, and a consumer that cannot name it
-      // cannot declare the value it passes.
+      // The decoded contract state a consumer reads off the chain and hands
+      // to `executeCircuit`, primary state and balances together.
       'ContractStatePojo',
-      'DownConvertedState',
       'EncodedStateValue',
-      // What `downConvertForExecution` returns and `executeCircuit` takes as
-      // `state`: the down-converted state and its balance as ONE value.
-      'ExecutableContractState',
-      'ExecuteCircuitOptions',
-      'ExecuteConstructorOptions',
-      'Ledger8ChargedState',
-      'Ledger8DeployableContractState',
       'Ledger8Engine',
       'Ledger8SigningKey',
-      'Ledger8StateValue',
+      // `RunRetainedCircuitOptions.contract` is one of these, so a consumer
+      // building the container cannot declare it without this name.
+      'RetainedContract',
+      'RunRetainedCircuitOptions',
+      'RunRetainedConstructorOptions',
       'TranscriptPojo',
+      // `runRetainedConstructor` TAKES one: deployment registers verifier keys,
+      // so a consumer has to be able to declare the reader it supplies.
+      'VerifierKeyReader',
       'WrapKeepStateCallOptions'
     ]);
   });

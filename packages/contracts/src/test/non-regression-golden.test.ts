@@ -18,6 +18,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import {
   type CircuitContext,
   type CircuitResults,
@@ -225,6 +226,13 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
   let privateTranscriptOutputs: AlignedValue[];
   let input: AlignedValue;
   let output: AlignedValue;
+  /**
+   * The inputs the golden call's partition was built from
+   * (midnightntwrk/midnight-sdk#400), taken off the SAME query context the
+   * transcript above is read from rather than a synthetic one, so this fixture
+   * keeps describing one execution.
+   */
+  let partitionInputs: ContractExecutable.ContractExecutable.CallPartitionInputs;
 
   beforeAll(async () => {
     setNetworkId('testnet');
@@ -273,6 +281,12 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
       gas: gasCost,
       effects: context.callContext.currentQueryContext.effects,
       program: proofData.publicTranscript
+    };
+    partitionInputs = {
+      state: context.callContext.currentQueryContext.state.state,
+      block: context.callContext.currentQueryContext.block,
+      effects: context.callContext.currentQueryContext.effects,
+      comIndices: context.callContext.currentQueryContext.comIndices
     };
     privateTranscriptOutputs = proofData.privateTranscriptOutputs;
     input = proofData.input;
@@ -333,7 +347,8 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
             public: {
               contractState: shieldedInitialState.data.state,
               publicTranscript: [],
-              partitionedTranscript: partitioned
+              partitionedTranscript: partitioned,
+              partitionInputs
             },
             private: { input, output, privateTranscriptOutputs },
             communicationCommitment: boundCommitment
@@ -424,7 +439,8 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
             public: {
               contractState: shieldedInitialState.data.state,
               publicTranscript: [],
-              partitionedTranscript: partitioned
+              partitionedTranscript: partitioned,
+              partitionInputs
             },
             private: { input, output, privateTranscriptOutputs },
             communicationCommitment: Option.none()

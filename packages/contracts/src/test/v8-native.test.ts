@@ -130,7 +130,6 @@ import {
   type OrchestrationLog,
   readHfHexFixture,
   recordEraCalls,
-  type ReplayExecutableState,
   type ReplayState,
   RETAINED_ERA_TX_TAG,
   SAMPLED_SIGNING_KEY,
@@ -411,6 +410,13 @@ const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
   return { ...providers, seen };
 };
 
+/**
+ * A caller-supplied signing key in the shape the retained era actually reads:
+ * 32 bytes of hex. The replay double refuses anything else, as the real
+ * `runRetainedConstructor` does.
+ */
+const CALLER_OWN_SIGNING_KEY = 'ab'.repeat(32);
+
 describe('the retained-native pipeline (previous-toolchain contract, pre-fork head)', () => {
   let recording: CoinReceiverRecording;
   let contract: CoinReceiver016Contract;
@@ -448,7 +454,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       composed = options;
     });
 
-    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayState>({
       retainedEra: recorded,
       era: recorded,
       engine,
@@ -476,7 +482,6 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     expect(log).toEqual([
       'era.v8.extractState',
       'era.v8.decodeContractState',
-      'engine.downConvertForExecution',
       'engine.executeCircuit',
       'era.v8.composeCallTx',
       // INSIDE the composition, not before it: the composer resolves the split
@@ -518,7 +523,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       transcript: { ...recording.transcript, zswapLocalState }
     };
 
-    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayState>({
       era: retainedEra,
       retainedEra,
       engine: createReplayEngine(mintingRecording, log),
@@ -552,7 +557,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       .fn()
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
-    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayState>({
       era: retainedEra,
       retainedEra,
       engine: createReplayEngine(recording, log),
@@ -588,7 +593,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     // the current era's `contractState` means. Forwarded rather than
     // re-derived: the marker proves it is the executed-against handle and not a
     // second decode of the same bytes.
-    expect(rootCall?.public.preContractState).toEqual({ replayedCircuitId: CIRCUIT_ID, balance: new Map() });
+    expect(rootCall?.public.preContractState).toEqual({ replayedCircuitId: CIRCUIT_ID });
     expect(rootCall?.public.publicTranscript).toStrictEqual(recording.transcript.publicTranscript);
     expect(rootCall?.private.input).toStrictEqual(recording.transcript.input);
     expect(rootCall?.private.output).toStrictEqual(recording.transcript.output);
@@ -604,7 +609,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       .fn()
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
-    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayState>({
       era: retainedEra,
       retainedEra,
       engine: createReplayEngine(recording, log),
@@ -643,7 +648,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       .fn()
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
-    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayState>({
       retainedEra,
       era: recordEraCalls(retainedEra, log, undefined, (offers) => {
         routed = offers;
@@ -727,7 +732,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       }
     };
 
-    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayState>({
       retainedEra,
       era: fallibleOnlyEra,
       engine: createReplayEngine(recording, log),
@@ -781,7 +786,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     };
 
     await expect(
-      runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
+      runLedger8CallPipeline<ReplayState>({
         retainedEra,
         era: offerIgnoringEra,
         engine: createReplayEngine(recording, log),
@@ -812,7 +817,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       .fn()
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
-    await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
+    await runLedger8CallPipeline<ReplayState>({
       retainedEra,
       era: recordEraCalls(retainedEra, log, (options) => {
         composed = options;
@@ -868,7 +873,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       )
     );
 
-    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayState>({
       era: retainedEra,
       retainedEra,
       engine: createReplayEngine(recordingPayingUser(recording, thirdPartyCoinPublicKey), log),
@@ -965,7 +970,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       .fn()
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
-    await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
+    await runLedger8CallPipeline<ReplayState>({
       retainedEra,
       era: recordEraCalls(retainedEra, log, (options) => {
         composed = options;
@@ -1088,7 +1093,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // call bound to is a different object, published on `calls[0].public`.
     expect(finalized.public.nextContractState).toEqual({ replayedCircuitId: `${CIRCUIT_ID}:post` });
     expect(finalized.calls[0]?.public.contractState).toEqual({ replayedCircuitId: `${CIRCUIT_ID}:post` });
-    expect(finalized.calls[0]?.public.preContractState).toEqual({ replayedCircuitId: CIRCUIT_ID, balance: new Map() });
+    expect(finalized.calls[0]?.public.preContractState).toEqual({ replayedCircuitId: CIRCUIT_ID });
   });
 
   it('publishes every state handle with its ENCODED form beside it', async () => {
@@ -1215,14 +1220,14 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       args: [],
       privateState: {},
       resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]])),
-      signingKey: 'caller-own-signing-key'
+      signingKey: CALLER_OWN_SIGNING_KEY
     });
 
     // The key the caller named, not a sampled one: a caller supplies its own
     // precisely so two contracts can share one maintenance authority, and a
     // pipeline that sampled anyway would register an authority the caller
     // cannot sign for.
-    expect(deployed.deploy.signingKey).toBe('caller-own-signing-key');
+    expect(deployed.deploy.signingKey).toBe(CALLER_OWN_SIGNING_KEY);
   });
 
   it('reports the SAMPLED signing key when the caller named none, which exists nowhere else', async () => {
@@ -2298,10 +2303,10 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     const deployed = await deployContract(providers, {
       compiledContract: contract,
-      signingKey: 'caller-own-signing-key'
+      signingKey: CALLER_OWN_SIGNING_KEY
     });
 
-    expect(deployed.signingKey).toBe('caller-own-signing-key');
+    expect(deployed.signingKey).toBe(CALLER_OWN_SIGNING_KEY);
   });
 
   it('asks for a verifier key for EVERY entry point the artifact declares', async () => {
@@ -2313,7 +2318,36 @@ describe('deploying a retained-era contract through deployContract', () => {
     // constructor builds every entry-point slot BLANK and the retained deploy
     // registers no keys of its own, so a map naming anything but exactly these
     // puts a contract on chain that nothing can call.
-    expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(Object.keys(contract.impureCircuits));
+    expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(Object.keys(contract.provableCircuits));
+  });
+
+  it('asks for a verifier key for every PROVABLE circuit, which is the map execution indexes', async () => {
+    // Arrange. An artifact whose two circuit maps DIFFER: `impureCircuits`
+    // carries an entry point `provableCircuits` does not, so it is not one the
+    // constructor registers on the state either. Keys sourced from
+    // `impureCircuits` name a circuit the state never declares, which the
+    // composer refuses -- a deploy broken by reading the wrong map.
+    // `provableCircuits` is what compact-js indexes to run a circuit and what
+    // the deploy pre-check demands keys for, so it is the one source.
+    const providers = deployProviders();
+    providers.zkConfigProvider.getVerifierKeys = vi
+      .fn()
+      .mockImplementation((ids: readonly string[]) =>
+        Promise.resolve(ids.map((id) => [id, STAND_IN_VERIFIER_KEY] as const))
+      );
+    const divergent = Object.create(Object.getPrototypeOf(contract) as object, {
+      ...Object.getOwnPropertyDescriptors(contract),
+      impureCircuits: {
+        value: { ...contract.impureCircuits, unprovable_entry_point: contract.impureCircuits[CIRCUIT_ID] },
+        enumerable: true
+      }
+    }) as CoinReceiver016Contract;
+
+    // Act.
+    await deployContract(providers, { compiledContract: divergent });
+
+    // Assert.
+    expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(Object.keys(divergent.provableCircuits));
   });
 
   it('refuses at the composer when the key map does not name what the state declares', async () => {

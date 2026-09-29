@@ -58,13 +58,16 @@ never-deployed would send a caller comparing key hashes hunting a deployment
 bug that does not exist, so this leaves as `StateDecodeFailedError` like every
 other read failure here.
 
-The same refusal to repair quietly governs the Merkle assertion further down
-the pipeline. A bounded Merkle tree only has a readable root once every node
-hash has been computed; the vendor documents `root()` as returning `undefined`
-until then, and `rehash()` as necessary "because the onchain runtime does not
-automatically rehash trees". `downConvertForExecution` asserts this on every
-tree it decodes, failing fast with `MerkleNotRehashedError` instead of silently
-repairing.
+The same refusal to accept quietly governs the structural round trip further
+down the pipeline. `decodeExecutableStateValue` (`lib/v8/executable.ts`)
+decodes the primary state a circuit runs against, re-encodes it, and refuses a
+value that did not come back — `DownConvertFailedError` at stage `'state
+down-convert'`. The comparison is cross-codec by construction: a contract an
+earlier post-fork call migrated carries a current-era envelope, so its state is
+encoded by ledger-v9 and decoded by the retained runtime, and a retained
+envelope crosses between two physical copies of that runtime either way. A
+shape one side writes and the other merely tolerates would decode without
+complaint and execute against a state that is not the chain's.
 
 ## Three failures, three remediations
 

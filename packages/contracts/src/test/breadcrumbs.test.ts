@@ -548,7 +548,7 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
       findLedger8Contract(
         { ...providers, publicDataProvider, loggerProvider: sink },
         {
-          contract: { impureCircuits: {}, initialState: () => ({}) },
+          contract: { witnesses: {}, circuits: {}, impureCircuits: {}, provableCircuits: {}, initialState: () => ({ currentContractState: {}, currentPrivateState: undefined, currentZswapLocalState: {} }) },
           contractAddress: CONTRACT_ADDRESS,
           circuitIds: ['increment']
         }

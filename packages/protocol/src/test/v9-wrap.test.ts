@@ -28,8 +28,7 @@ import {
 import { describe, expect, it } from 'vitest';
 
 import { ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
-import type { DownConvertedState } from '../lib/v8/down-convert';
-import type { TranscriptPojo } from '../lib/v8/execute';
+import type { TranscriptPojo } from '../lib/v8/executable';
 import { wrapKeepStateCall } from '../lib/v9/wrap';
 import { emptyPartitionContext, emptyZswapLocalState } from './fixtures';
 
@@ -37,9 +36,7 @@ const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' }
 
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT });
 
-const buildState = (byte: number): DownConvertedState => ({
-  data: new ocrt3.ChargedState(ocrt3.StateValue.newCell(fieldValue(byte)))
-});
+const buildState = (byte: number): ocrt3.StateValue => ocrt3.StateValue.newCell(fieldValue(byte));
 
 const buildTranscript = (): TranscriptPojo => ({
   circuitId: 'increment',
@@ -51,7 +48,7 @@ const buildTranscript = (): TranscriptPojo => ({
   preContractState: buildState(0x01),
   postContractState: buildState(0x02),
   // The same state the handle holds, in the form that outlives the runtime.
-  postContractStateEncoded: buildState(0x02).data.state.encode(),
+  postContractStateEncoded: buildState(0x02).encode(),
   privateStateAfter: {},
   partitionContext: emptyPartitionContext(),
   zswapLocalState: emptyZswapLocalState()
