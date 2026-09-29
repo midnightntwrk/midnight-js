@@ -21,6 +21,7 @@ import {
   ContractOperation,
   ContractState as CompactContractState,
   createCircuitContext,
+  decodeZswapLocalState,
   QueryContext,
   type Recipient
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
@@ -311,7 +312,8 @@ describe('ledger-utils', () => {
         ],
         () => shieldedInitialState,
         new ZswapChainState(),
-        { outputs: [], inputs: [], coinPublicKey: shieldedCpk, currentIndex: 0n },
+        // The circuit's own state, because `receiveShielded` both claims the coin and outputs it.
+        decodeZswapLocalState(context.callContext.currentZswapLocalState),
         dummyEncPublicKey
       );
       expect(tx).toBeInstanceOf(Transaction);
@@ -902,7 +904,6 @@ describe('ledger-utils', () => {
       alignment: [{ tag: 'atom', value: { tag: 'field' } }]
     };
 
-    type Calls = Parameters<typeof createUnprovenLedgerCallTx>[0];
     type StateResolver = Parameters<typeof createUnprovenLedgerCallTx>[1];
 
     /**
@@ -927,7 +928,7 @@ describe('ledger-utils', () => {
       ]);
       const contractStateFor: StateResolver = (address) => states.get(String(address));
 
-      const calls: Calls = [
+      const calls: CallWithoutZswapLocalState[] = [
         {
           contractAddress: PlatformContractAddress.ContractAddress(calleeAddress),
           circuitId: 'calleeCircuit',
@@ -954,7 +955,7 @@ describe('ledger-utils', () => {
         }
       ];
 
-      const tx = createUnprovenLedgerCallTx(
+      const tx = callTxWithSingleState(
         calls,
         contractStateFor,
         new ZswapChainState(),

@@ -691,6 +691,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('contractStateEncoded');
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('preContractState');
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('preContractStateEncoded');
+    expectTypeOf<ContractExecutable.ContractExecutable.ContractCall['private']>().toHaveProperty('zswapLocalState');
   });
 
   it('carries the same top-level members in BOTH eras', () => {
@@ -738,7 +739,15 @@ describe('both eras resolve a call to the SAME result structure', () => {
     expectTypeOf<Exclude<keyof CurrentEraCall['public'], CurrentEraOnlyCallPublicMembers>>().toEqualTypeOf<
       Exclude<keyof Ledger8ContractCall['public'], RetainedEraOnlyCallPublicMembers>
     >();
-    expectTypeOf<keyof CurrentEraCall['private']>().toEqualTypeOf<keyof Ledger8ContractCall['private']>();
+
+    // `zswapLocalState` is per call because each cross-contract callee keeps its own, but a retained
+    // contract makes no cross-contract calls, so its one call's state is the execution's
+    // `nextZswapLocalState`.
+    type CurrentEraOnlyCallPrivateMembers = 'zswapLocalState';
+
+    expectTypeOf<Exclude<keyof CurrentEraCall['private'], CurrentEraOnlyCallPrivateMembers>>().toEqualTypeOf<
+      keyof Ledger8ContractCall['private']
+    >();
   });
 
   it('lifts every declared circuit onto `callTx` in BOTH eras', () => {

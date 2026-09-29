@@ -408,6 +408,7 @@ export const createMockContractCall = (
     input: {} as AlignedValue,
     output: {} as AlignedValue,
     privateTranscriptOutputs: [] as AlignedValue[],
+    zswapLocalState: createMockZswapLocalState(),
     ...overrides.private
   },
   communicationCommitment: overrides.communicationCommitment ?? Option.none()
