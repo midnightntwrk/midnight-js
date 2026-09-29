@@ -31,41 +31,40 @@ retained-runtime dependency of any kind, because the engine's own construction
 guard exists to detect a SECOND acquisition path for the retained runtime, and
 an alias here would create one by construction.
 
-That constraint shapes the engine type. `downConvertForExecution` returns a live
-retained-runtime state handle, and nothing in this package may construct one, so
-the slice is GENERIC in that state: the pipeline receives the value from
-`downConvertForExecution` and hands it straight to `executeCircuit` without
-looking inside. The real engine satisfies the slice at
-`TExecutable = ExecutableContractState` and `TState = DownConvertedState`, while
-a test replaying a committed recording satisfies it at plain marker types.
+That constraint shapes the engine type. The execution result carries live
+retained-runtime state handles, and nothing in this package may construct one,
+so the slice is GENERIC in that state: the pipeline receives the handles on the
+transcript and passes them on without looking inside. The real engine satisfies
+the slice at the retained runtime's own state type, while a test replaying a
+committed recording satisfies it at plain marker types.
 
-TWO parameters, because the state going IN carries the contract's balances and
-the state coming OUT on the transcript does not. The pipeline used to pass the
-balance as a second option beside the state, which meant a caller could hand the
-engine two halves of different reads and nothing could tell — the same class of
-defect as the one that produced #1345. `downConvertForExecution` now takes the
-DECODED contract state and answers with both halves as one value, and
-`TExecutable extends TState` is what keeps the transcript's own state readable
-from it.
+What goes IN is one value, not two. The pipeline used to pass the balance as a
+second option beside the state, which meant a caller could hand the engine two
+halves of different reads and nothing could tell — the defect that produced
+#1345. `Ledger8ExecuteRequest.contractState` is now the DECODED
+`ContractStatePojo`, state and balances together, and the engine rebuilds a
+whole retained `ContractState` from both halves; there is no second argument
+left to get wrong.
 
-Both members of the slice are declared with method syntax deliberately — their
+The engine's members are declared with method syntax deliberately — their
 parameters are then compared bivariantly, which is what lets the real engine
 satisfy the slice even though its own request type names the retained runtime's
 concrete contract and state shapes.
 
 The transcript is narrowed the same way, to the members the pipeline actually
-reads, all of them plain data. That is the same narrowing discipline
-`packages/protocol/src/lib/v8/execute.ts` applies to the runtime's own
-`QueryContext`.
+reads. That is the same narrowing discipline
+`packages/protocol/src/lib/v8/executable.ts` applies to what it accepts from a
+caller's artifact.
 
-### What the narrowed transcript leaves out
+### What the narrowed transcript carries, and what it used to drop
 
-ONE member of the engine's result is dropped: `preContractState`. Nothing is
-lost by it — the pre-call state the composition needs is the one
-`LedgerEra.extractState` already returned, and the down-convert refuses to
-return unless its decoding re-encodes to exactly that value, so reading it off
-the transcript would only be a second route to the same bytes. That same
-down-converted handle is what the call entry publishes as `preContractState`.
+`preContractState` used to be dropped. Nothing was lost by it — the pre-call
+state the composition needs is the one `LedgerEra.extractState` already
+returned, and the state guard refuses to execute unless its decoding re-encodes
+to exactly that value, so reading it off the transcript was only a second route
+to the same bytes. It is carried now, generically, because compact-js publishes
+it on `partitionInputs` and the fork-crossing re-partition in
+`assemble-call.ts` reads it.
 
 `postContractState` was dropped for the same reason until ADR-0010 reversed the
 rule it rested on. It carries a live retained-runtime handle, and such a handle
@@ -105,8 +104,8 @@ it.
 ## The order one call runs in
 
 `runLedger8CallPipeline` exists to fix this order: fetch the one snapshot, date
-it, read the state and the key set off it, check the key, down-convert, execute
-the circuit, compose the transaction.
+it, read the state and the key set off it, check the key, execute the circuit,
+compose the transaction.
 
 Note that reading and DECODING both precede the key check — `readLedger8Snapshot`
 dates the envelope, then extracts the state, then decodes the entry points, and
@@ -458,13 +457,18 @@ has been named, so a write made first would either throw or land under whichever
 contract the process touched last — and a later call, which names this address
 itself, would read its own key, find nothing, and report nothing.
 
-The constructor's own Zswap local state travels with the deploy. `executeConstructor`
-read two of the three members the artifact returns and dropped
-`currentZswapLocalState`, so a constructor that minted a coin composed a deploy
-carrying an output nothing funded — a transaction the ledger cannot balance. The
-constructor runtime slice now carries the same decoder the execution leg uses,
-and `runLedger8DeployPipeline` routes the decoded state into the deploy's
-guaranteed offer.
+The constructor's own Zswap local state travels with the deploy. The retired
+`executeConstructor` read two of the three members the artifact returns and
+dropped `currentZswapLocalState`, so a constructor that minted a coin composed a
+deploy carrying an output nothing funded — a transaction the ledger cannot
+balance. `ConstructorResultPojo` now reports it decoded, and
+`runLedger8DeployPipeline` routes it into the deploy's guaranteed offer.
+
+A deploy also refuses an incomplete verifier-key map BEFORE it runs the
+constructor, as `ComposeFailedError` at stage `'deploy-verifier-key'`. The
+engine's own `initialize` would refuse it too — it registers a key against every
+declared entry point — but its refusal arrives untyped, and this arm's
+documented contract is a coded error a consumer can switch on.
 
 ## Seeding a retained-era private state
 

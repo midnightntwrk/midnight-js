@@ -52,7 +52,7 @@ Nothing under `src/lib/` is a build entry, so this layout is internal and no con
 
 | Directory | Holds | Ledger reference |
 |---|---|---|
-| `lib/v8/` | the retained pre-fork era: `load.ts`, `engine.ts`, `load-engine.ts`, `instance-guard.ts`, `down-convert.ts`, `execute.ts`, `compose.ts`, `deploy.ts`, `adapt.ts` | acquires `ledger-v8`, `onchain-runtime-v3` and the 0.16 glue, always through a dynamic import |
+| `lib/v8/` | the retained pre-fork era: `load.ts`, `engine.ts`, `load-engine.ts`, `executable.ts`, `compose.ts`, `deploy.ts`, `prove.ts`, `adapt.ts` | acquires `ledger-v8`, `onchain-runtime-v3` and the 0.16 glue, always through a dynamic import |
 | `lib/v9/` | the current era's composition arms: `compose.ts`, `wrap.ts` | links `ledger-v9` statically |
 | `lib/shared/` | what both arms run: `ledger-version.ts`, `verifier-keys.ts`, `compose-options.ts`, `assemble-call.ts`, `compose-types.ts`, `unshielded.ts`, `contract-state.ts` | era passed in as a `LedgerVersion` parameter, never chosen here |
 | `lib/era/` | the facade and the dispatch: `load-era.ts`, `era.ts`, `envelope.ts` | reaches both, which is the point of the layer |
@@ -119,15 +119,15 @@ const engine = await loadLedger8Engine();
 const era = await loadLedgerEra(versionOfRecord(indexerRecord));
 
 // The DECODED state, not the extracted one: the balances a circuit reads are
-// not part of the primary state, and `downConvertForExecution` carries them
-// forward with it. One read in, one value out -- there is no second argument
-// that could describe a different block.
-const state = engine.downConvertForExecution(era.decodeContractState(rawContractState));
-const transcript = engine.executeCircuit({
+// not part of the primary state, and this value carries them alongside it.
+// One read in, one value out -- there is no second argument that could
+// describe a different block.
+const contractState = era.decodeContractState(rawContractState);
+const transcript = await engine.executeCircuit({
   contract,
   circuitId: 'increment',
   args: [],
-  state,
+  contractState,
   address: contractAddress,
   coinPk: coinPublicKey,
   privateState
@@ -135,7 +135,13 @@ const transcript = engine.executeCircuit({
 const prototype = engine.wrapKeepStateCall({ transcript, contractAddress, contractState: migratedV9ContractState });
 ```
 
-The engine exposes `downConvertForExecution`, `executeCircuit`, `executeConstructor` and `wrapKeepStateCall`, and they form a pipeline, each result being the next call's input. Reading a contract state and composing a call or a deploy are **not** here: both eras do those, so they live on the [ledger-era facade](#ledger-era-facade) instead.
+`executeCircuit` and `executeConstructor` are **asynchronous** — `await` them. There is no separate down-convert step: pass the decoded contract state straight in, and the engine builds the state the retained runtime executes against.
+
+Read it with the era the state's own envelope names, not with a fixed one. A contract an earlier post-fork call has MIGRATED carries a current-era envelope while its artifacts stay the retained toolchain's, so `era` above is the head's era for that contract and the retained era for one that has not migrated. Handing the retained reader a current-era envelope is refused on the tag.
+
+`contractState` must carry a usable `balance`. It is required rather than defaulted, because an empty balance is a legitimate value — a contract holding nothing has one — and defaulting would make "holds nothing" indistinguishable from "the caller forgot", which is a circuit reading zero where the chain says otherwise. `decodeContractState` produces both halves for you; assembling the value by hand is what the refusal is there for.
+
+The engine exposes `executeCircuit`, `executeConstructor` and `wrapKeepStateCall`, and they form a pipeline, each result being the next call's input. Reading a contract state and composing a call or a deploy are **not** here: both eras do those, so they live on the [ledger-era facade](#ledger-era-facade) instead.
 
 `migratedV9ContractState` passed to `wrapKeepStateCall` must be the migrated v9 state **as read from chain**, which is not `rawContractState` above: it is where the deployed operation and its verifier key come from, and the key location the prototype carries is derived from that key. A blank or constructor-built state throws `ComposeFailedError` (code `MIDNIGHT_JS_P_COMPOSE_FAILED`) with `stage` naming which lookup failed and `version` naming the ledger era it was composing for.
 

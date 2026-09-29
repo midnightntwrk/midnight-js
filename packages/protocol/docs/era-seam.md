@@ -57,8 +57,7 @@ fork-crossing work:
 
 | Operation | Why it cannot sit on the era facade |
 |---|---|
-| `downConvertForExecution` | Down-converts a post-fork state for pre-fork execution. |
-| `executeCircuit` | Runs a pre-fork circuit. |
+| `executeCircuit` | Runs a pre-fork circuit, on a state either era's reader may have decoded. |
 | `executeConstructor` | Runs a pre-fork constructor. |
 | `wrapKeepStateCall` | Binds a pre-fork transcript natively onto v9. |
 

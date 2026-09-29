@@ -41,34 +41,8 @@ runtime no longer has.
 `ContractState` statics, so a signature change in onchain-runtime-v3 fails the
 build here. It is narrowed to `deserialize` because that is the only member its
 seam calls. That narrowing carries one further consequence: it pins the slice to
-the pre-fork era, which is what `Ledger8CompactRuntime` depends on. That
-consequence is recorded in
-[RetainedEraExecution](./retained-era-execution.md).
-
-`Ledger8CompactRuntimeStateValue` (`lib/v8/down-convert.ts`) is derived the same
-way from the pre-fork `StateValue` statics, by reading its one member's type
-straight off `typeof OnchainRuntimeV3.StateValue` rather than by a `Pick`: a
-`decode` whose signature moves fails this build instead of leaving a mirror
-describing a static the runtime no longer has. It is narrowed to `decode`
-because that is the only static its seam calls, and because the narrowing is
-what lets `v8-down-convert.test.ts` drive the decode safety net with a
-one-member double (`StateValue: { decode }`) instead of a whole WASM class.
-
-`Ledger8DeployableContractState` (`lib/v8/deploy.ts`) is a `Pick` of the
-vendor's own class rather than a restatement of its one member, so a change to
-`serialize` in onchain-runtime-v3 fails this build; but picking one member keeps
-it structurally loose enough that unrelated serializables satisfy it, which is
-what lets the constructor test in `v8-deploy.test.ts` hand `executeConstructor`
-a plain `{ serialize: () => … }` object instead of invoking real WASM. The type
-therefore does not enforce that the bytes are a contract state at all —
-whichever deploy leg receives them is what turns that residual risk into a
-legible error rather than a raw decoder failure.
-
-`CostModel` on `Ledger8ExecutionRuntime` (`lib/v8/execute.ts`) is a `Pick` of
-the vendor's class narrowed to `initialCostModel`, the only static this seam
-calls, and the narrowing is what lets `v8-execute.test.ts` inject a stub cost
-model. The cost model is not a caller choice: `executeCircuit` always builds the
-context with the glue's own `initialCostModel()` and passes no gas limit.
+the pre-fork era, so a post-fork module cannot satisfy it. That consequence is
+recorded in [RetainedEraExecution](./retained-era-execution.md).
 
 ## Structural where a seam serves both eras
 
@@ -90,43 +64,26 @@ deriving the shape from either era's class would pick a side. Its `inputs` and
 because this seam only ever aggregates OUTPUTS, so `[]` is the only value that
 can be passed and the type says so instead of a comment.
 
-## Narrowed instead of derived
+## The retained engine no longer injects its runtime
 
-Two slices could have been derived and deliberately are not, because the
-vendor's own shape drags in a value no test can build.
-
-`createCircuitContext` on `Ledger8ExecutionRuntime` is the sharper case. The
-glue's own version is generic in the private state and returns a
-`CircuitContext` carrying a real `QueryContext`, a WASM class no test double can
-satisfy. Deriving it would make every execution test stand up real WASM just to
-check plumbing, so the seam narrows it to return `Ledger8CircuitContext`
-instead — whose own `currentQueryContext` is a `Pick` of the vendor's
-`QueryContext`, so the narrowing cannot drift away from the class it stands for.
-
-`Ledger8ConstructorRuntime` (`lib/v8/deploy.ts`) is narrowed rather than derived
-from the retained glue's own `createConstructorContext`: that one is generic in
-the private state and returns a `ConstructorContext`, a shape this seam never
-inspects, since it only hands the value straight back to the contract's
-`initialState`. Typing it as the glue's would force every constructor test to
-build a real context to check plumbing it does not read, so the return stays
-`unknown`.
-
-## The three injected runtime slices of the retained engine
-
-Three slices of the retained toolchain reach the engine's seams by injection
-rather than by import: `Ledger8CompactRuntime` (down-convert),
+It used to. Three slices — `Ledger8CompactRuntime` (down-convert),
 `Ledger8ExecutionRuntime` (circuit execution) and `Ledger8ConstructorRuntime`
-(constructor execution). Injection is what lets a caller target a specific
-WASM-backed instance, and what lets a test substitute a controlled fake instead
-of standing up real WASM. `createLedger8Engine` (`lib/v8/engine.ts`) assembles
-all three out of one acquisition and captures them in closure, so nothing on
-the engine's public surface takes a runtime parameter.
+(constructor execution) — reached the retained engine's seams by injection, and
+`createLedger8Engine` assembled all three out of one acquisition so that
+nothing on the engine's public surface took a runtime parameter.
 
-`Ledger8CompactRuntime` names `ContractState`, `StateValue` and `ChargedState`,
-each typed off onchain-runtime-v3; why `ContractState` is there at all is the
-era pin, in [RetainedEraExecution](./retained-era-execution.md).
-`Ledger8ExecutionRuntime` carries exactly what building and running a circuit
-context needs: `decodeZswapLocalState`, `createCircuitContext` and `CostModel`.
+All three are gone with the hand-maintained execution layer
+(`docs/adr/0015-retained-era-execution-on-compact-js.md`). compact-js owns the
+retained runtime now, `lib/v8/executable.ts` imports the 0.16 glue directly
+under this package's own alias, and what a test would once have substituted by
+injecting a fake is now supplied as an Effect service instead — the verifier-key
+reader, the key configuration and the pinned clock. Which service carries what,
+and why the clock is not one of them, is in
+[RetainedEraExecution](./retained-era-execution.md).
+
+`createLedger8Engine` (`lib/v8/engine.ts`) survives and still takes no
+parameters, but it no longer assembles anything: it builds the public surface
+over the module's own entry points.
 
 ## Type parameters callers never spell out
 
@@ -158,17 +115,25 @@ generic over the module, so it has no way to ask which axis it was handed.
 ## Payload types declared once against ledger-v9
 
 `CallAssemblyLedger`'s `AlignedValue` / `Op` / `EncodedStateValue` /
-`Transcript` payload types are declared once against ledger-v9: they are
-structurally identical across onchain-runtime-v3, ledger-v8 and ledger-v9,
-pinned by the compile-time drift gate at the bottom of
-`v8-down-convert.test.ts`, which covers all three axes.
+`Transcript` payload types are declared once against ledger-v9, because they
+are structurally identical across onchain-runtime-v3, ledger-v8 and ledger-v9.
+The recorded query context travels the same way: `PartitionContext`'s
+`CallContext` and `Effects` (`lib/shared/compose-types.ts`) are likewise
+declared once against ledger-v9 and identical on all three axes.
 
-The recorded query context a call carries travels the same way.
-`PartitionContext`'s `CallContext` and `Effects`
-(`lib/shared/compose-types.ts`) are likewise declared once against ledger-v9
-and are structurally identical on all three axes, pinned by the same gate —
-`_CallContextUnchanged`, `_EffectsUnchanged`, `_V8CallContextUnchanged` and
-`_V8EffectsUnchanged`.
+THAT IDENTITY IS CURRENTLY UNPINNED. The compile-time drift gate that asserted
+it across the three axes — `_CallContextUnchanged`, `_EffectsUnchanged`,
+`_V8CallContextUnchanged`, `_V8EffectsUnchanged` and the payload-type
+assertions beside them — lived at the bottom of `v8-down-convert.test.ts` and
+went with that file when the hand-maintained execution layer was retired. It
+was not moved. Until it is restored, a vendor bump that moved any of these
+shapes on one axis would be caught by nothing here; the single-declaration
+choice above rests on an assumption rather than on an assertion.
+
+What does survive is narrower: `shared-contract-state.test.ts` pins `TokenType`
+across ledger-v8, onchain-runtime-v3 and ledger-v9 with
+`Assert<MutuallyAssignable<…>>`, and pins that `any` does not satisfy the
+comparison — which is the canonical form a restored gate should copy.
 
 ## The byte crossing a dual-instantiation cannot affect
 
@@ -176,11 +141,12 @@ Not every era crossing in the engine is exposed to a dual-instantiation. A
 crossing that passes BYTES rather than a handle is immune by construction,
 because no object is handed between the two physical copies at all.
 
-`Ledger8DeployableContractState` is that case: `.serialize()` is how a caller
-turns the handle `executeConstructor` returned into the bytes every deploy leg
-takes. This is why the guard's blast radius is the crossings that pass handles,
-and why widening it to cover the byte crossings would assert something already
-true. The guard itself is in
+The deploy path is that case: `.serialize()` is how a caller turns the state
+handle `runRetainedConstructor` returned into the bytes every deploy leg takes,
+and `ConstructorResultPojo.contractState` is typed off compact-js's own result
+rather than restated. This is why the guard's blast radius is the crossings
+that pass handles, and why widening it to cover the byte crossings would assert
+something already true. The guard itself is in
 [DualInstantiationGuard](./dual-instantiation-guard.md).
 
 ## What holds each slice to its vendor
@@ -189,20 +155,16 @@ A narrowing is only worth having while it still describes the runtime it stands
 for, so each one is held to its vendor by something that fails rather than by
 prose:
 
-- `createLedger8Engine` (`lib/v8/engine.ts`) annotates all three engine slices
-  against the real glue and the real onchain-runtime-v3, so a member the vendor
-  moved fails to type-check there. `v8-load-engine.test.ts` then exercises that
-  assembled engine end-to-end against the real glue.
-- `v8-deploy.test.ts` annotates the real glue's `createConstructorContext` as a
-  `Ledger8ConstructorRuntime` directly, pinning that the glue still satisfies
-  the narrowing.
-- The compile-time drift gate at the bottom of `v8-down-convert.test.ts` pins
-  the payload types across all three axes. The negative assertion in the same
-  file that keeps a post-fork runtime out of `Ledger8CompactRuntime` belongs to
-  the era pin, in [RetainedEraExecution](./retained-era-execution.md).
+- `v8-load-engine.test.ts` exercises the assembled engine end-to-end against
+  the real glue, and `v8-executable.test.ts` and `v8-deploy.test.ts` drive the
+  real 0.16 artifacts through it, so a member the vendor moved fails there
+  rather than in production.
 - The blank-operation refusals in `v9-wrap.test.ts` and `v8-compose.test.ts`
   pin the `verifierKey`-reads-back-`undefined` behaviour the operation
   constraint is written for.
+- `shared-contract-state.test.ts` pins `TokenType` across all three axes.
+- The payload types have NO gate at present — see the section above. Restoring
+  one is outstanding work, not a decision.
 
 Those compile-time assertions are evaluated by `yarn typecheck:tests` on the
 pre-push hook rather than by CI, so a failure there is the only signal a drifted
