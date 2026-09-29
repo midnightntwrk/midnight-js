@@ -410,6 +410,13 @@ const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
   return { ...providers, seen };
 };
 
+/**
+ * A caller-supplied signing key in the shape the retained era actually reads:
+ * 32 bytes of hex. The replay double refuses anything else, as the real
+ * `runRetainedConstructor` does.
+ */
+const CALLER_OWN_SIGNING_KEY = 'ab'.repeat(32);
+
 describe('the retained-native pipeline (previous-toolchain contract, pre-fork head)', () => {
   let recording: CoinReceiverRecording;
   let contract: CoinReceiver016Contract;
@@ -1213,14 +1220,14 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       args: [],
       privateState: {},
       resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]])),
-      signingKey: 'caller-own-signing-key'
+      signingKey: CALLER_OWN_SIGNING_KEY
     });
 
     // The key the caller named, not a sampled one: a caller supplies its own
     // precisely so two contracts can share one maintenance authority, and a
     // pipeline that sampled anyway would register an authority the caller
     // cannot sign for.
-    expect(deployed.deploy.signingKey).toBe('caller-own-signing-key');
+    expect(deployed.deploy.signingKey).toBe(CALLER_OWN_SIGNING_KEY);
   });
 
   it('reports the SAMPLED signing key when the caller named none, which exists nowhere else', async () => {
@@ -2296,10 +2303,10 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     const deployed = await deployContract(providers, {
       compiledContract: contract,
-      signingKey: 'caller-own-signing-key'
+      signingKey: CALLER_OWN_SIGNING_KEY
     });
 
-    expect(deployed.signingKey).toBe('caller-own-signing-key');
+    expect(deployed.signingKey).toBe(CALLER_OWN_SIGNING_KEY);
   });
 
   it('asks for a verifier key for EVERY entry point the artifact declares', async () => {

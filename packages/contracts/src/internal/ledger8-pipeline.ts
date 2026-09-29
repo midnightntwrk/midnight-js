@@ -183,10 +183,10 @@ export interface Ledger8ConstructRequest {
 }
 
 /**
- * The retained execution capability this pipeline consumes: down-convert a
- * state for retained-era execution, then run one circuit on it.
+ * The retained execution capability this pipeline consumes: run one circuit, or
+ * one constructor, in the retained era.
  *
- * Both members use METHOD syntax deliberately, so their parameters compare
+ * All three members use METHOD syntax deliberately, so their parameters compare
  * bivariantly. Do not rewrite them as property-typed arrow signatures — the
  * real engine stops satisfying the slice.
  *
@@ -197,9 +197,9 @@ export interface Ledger8ExecutionEngine<TState> {
   /**
    * ASYNCHRONOUS, unlike the synchronous member it replaced: compact-js builds
    * a circuit call on `Effect.tryPromise`, so it cannot be discharged
-   * synchronously. There is no `downConvertForExecution` beside it any more --
-   * execution takes the chain's own bytes, so there is no separate
-   * down-convert step to expose.
+   * synchronously. There is no `downConvertForExecution` beside it any more:
+   * the state arrives already decoded on {@link Ledger8ExecuteRequest}, so
+   * there is no separate down-convert step for a caller to run first.
    */
   executeCircuit(options: Ledger8ExecuteRequest): Promise<Ledger8Transcript<TState>>;
   executeConstructor(options: Ledger8ConstructRequest): Promise<Ledger8ConstructedState>;
@@ -448,7 +448,7 @@ export interface Ledger8CallPipelineRequest<TState> {
 /**
  * What one retained-era call produced.
  *
- * @typeParam TState - The down-converted state type the engine works in. The
+ * @typeParam TState - The retained-era state type the engine works in. The
  * framework's own engine fills it with `RetainedStateValue`; the replay double
  * fills it with its own marker.
  */
@@ -539,8 +539,7 @@ export interface Ledger8CallPipelineResult<TState> {
 /**
  * Runs one call against a retained-era contract, in the order this module
  * exists to fix: fetch the one snapshot, date it, read the state and the key
- * set off it, check the key, down-convert, execute the circuit, compose the
- * transaction.
+ * set off it, check the key, execute the circuit, compose the transaction.
  *
  * @param request The era and engine to run against, the read surface, and the
  * call's own inputs.

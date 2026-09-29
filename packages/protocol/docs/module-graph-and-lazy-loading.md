@@ -100,15 +100,11 @@ rather than of a convention spread across files.
 annotate a variable or write a helper without a second, subpath-gated import,
 and without linking the engine chunk.
 
-The list is INCOMPLETE, and knowingly so as of this writing. `Ledger8Engine`
-has a fourth method, `executeConstructor(options: ExecuteConstructorOptions):
-ConstructorResultPojo` (`lib/v8/engine.ts`), and neither of those two types is
-re-exported — so neither reaches the root barrel, and `executeConstructor` is
-the one method on the seam whose argument and result a caller cannot annotate
-without the gated import. TypeDoc reports both as referenced-but-not-included.
-Closing it is a one-line change to the re-export list; it is left out of the
-documentation change that recorded this so that a docs-only commit does not
-alter the package's export surface.
+The list is complete for the execution seam: `executeConstructor(options:
+RunRetainedConstructorOptions): Promise<ConstructorResultPojo>`
+(`lib/v8/engine.ts`) has both its argument and its result type on the list
+above, so every method on the seam can be annotated without the gated
+import.
 
 ## The tests that enforce each property
 

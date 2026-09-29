@@ -26,7 +26,7 @@ import {
 import { extractEncodedStateValue, extractV9EncodedStateValue } from '../lib/era/envelope';
 import { readHexFixture } from './fixtures';
 
-// The engine's own suite (v8-down-convert.test.ts) builds its envelopes
+// The engine's own retired suite (v8-down-convert.test.ts) built its envelopes
 // in-process, so it never touches these files. What it cannot prove is what
 // this suite exists for: that a *real* migrated on-chain state down-converts
 // to data byte-identical with its pre-migration form, and that the deliberately

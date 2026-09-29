@@ -179,9 +179,21 @@ export interface TranscriptPojo {
   readonly output: ContractExecutable.ContractExecutable.ContractCallPrivate['output'];
   readonly publicTranscript: ContractExecutable.ContractExecutable.ContractCallPublic['publicTranscript'];
   readonly privateTranscriptOutputs: ContractExecutable.ContractExecutable.ContractCallPrivate['privateTranscriptOutputs'];
-  /** The state the call BOUND to, i.e. `partitionInputs.state`. */
+  /**
+   * The state the call BOUND to, i.e. `partitionInputs.state`.
+   *
+   * Indistinguishable from {@link TranscriptPojo.postContractState} BY TYPE:
+   * compact-js resolves both to the same declaration, so swapping the two is
+   * not a compile error. Partitioning against the wrong one rejects a state the
+   * transcript's reads do not fit, or silently mis-charges one that merely
+   * differs in value, so the distinction rests on the member name alone.
+   */
   readonly preContractState: ContractExecutable.ContractExecutable.CallPartitionInputs['state'];
-  /** The state the call LEFT, i.e. compact-js's own `contractState`. */
+  /**
+   * The state the call LEFT, i.e. compact-js's own `contractState`.
+   *
+   * See {@link TranscriptPojo.preContractState}: the two are the same type.
+   */
   readonly postContractState: ContractExecutable.ContractExecutable.ContractCallPublic['contractState'];
   /**
    * The post-call state as an {@link EncodedStateValue}: the same value
@@ -537,10 +549,13 @@ const executableStateFrom = (contractState: ContractStatePojo): glue.ContractSta
   // @see FailClosedDecoding
   const { balance } = contractState;
   if (!isContractBalance(balance)) {
-    throw new Error(
-      `a contract state carries no usable balance (received ${describeValue(balance)}), so it cannot be ` +
-        'executed against. Read it from a contract-state snapshot rather than assembling one; a contract that ' +
-        'holds nothing declares an empty Map.'
+    throw new DownConvertFailedError(
+      'state down-convert',
+      new Error(
+        `a contract state carries no usable balance (received ${describeValue(balance)}), so it cannot be ` +
+          'executed against. Read it from a contract-state snapshot rather than assembling one; a contract ' +
+          'that holds nothing declares an empty Map.'
+      )
     );
   }
 
@@ -613,15 +628,23 @@ export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A
   if (Exit.isSuccess(exit)) {
     return exit.value;
   }
-  const error: unknown = Cause.squash(exit.cause);
+  // EVERY failure, not just the squashed first one. Verifier keys are read with
+  // `concurrency: 'unbounded'`, so a deploy missing three circuits' artifacts
+  // fails three times at once and `Cause.squash` answers with one -- sending the
+  // caller round the fix-and-rerun loop once per missing key.
+  const failures = Array.from(Cause.failures(exit.cause));
+  const error: unknown = failures.length > 0 ? failures[0] : Cause.squash(exit.cause);
   // A coded error leaves with its CLASS intact. Flattening one erases the
   // `code` and `stage` a caller discriminates on, and this boundary sees errors
   // this package raised itself on the way through, not only compact-js's.
-  if (isCodedProtocolError(error)) {
+  if (failures.length <= 1 && isCodedProtocolError(error)) {
     throw error;
   }
-  const chain = causeChain(error);
-  throw new Error(chain.length > 0 ? chain.join(': ') : String(error), { cause: error });
+  const describe = (failure: unknown): string => {
+    const chain = causeChain(failure);
+    return chain.length > 0 ? chain.join(': ') : String(failure);
+  };
+  throw new Error(failures.length > 1 ? failures.map(describe).join('; ') : describe(error), { cause: error });
 };
 
 /**
@@ -684,7 +707,7 @@ const assertDeclaredCircuit = (contract: RetainedContract, circuitId: string): v
  * The balances the contract holds travel on the state it is given — see
  * {@link RunRetainedCircuitOptions.contractState}.
  *
- * @param options The compiled contract, circuit id, arguments, state bytes,
+ * @param options The retained contract, circuit id, arguments, decoded state,
  *   address, coin public key, private state and optional pinned clock.
  * @returns Every artifact a v9-native call prototype needs.
  * @see {@link RetainedEraExecution}

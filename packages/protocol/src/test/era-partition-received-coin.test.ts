@@ -32,7 +32,7 @@ import { fixturePath } from './fixtures';
 // The fixture's compiled module imports `@midnight-ntwrk/compact-runtime`
 // bare and asserts `checkRuntimeVersion('0.16.0')`, so the specifier is
 // redirected to the retained alias for this file only — the same redirect
-// v8-execute.test.ts uses for counter-016.
+// the retired v8-execute.test.ts used for counter-016.
 vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
 
 const CIRCUIT_ID = 'receive_coin';

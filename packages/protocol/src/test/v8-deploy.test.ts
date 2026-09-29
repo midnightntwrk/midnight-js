@@ -38,7 +38,7 @@ const TTL = new Date(Date.now() + 3_600_000);
 const KEYS_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys');
 const REGISTERED_VERIFIER_KEY = new Uint8Array(readFileSync(resolve(KEYS_DIR, 'increment.verifier')));
 
-// Same redirect precedent as v8-execute.test.ts: the ported artifact's
+// Same redirect precedent as the retired v8-execute.test.ts: the ported artifact's
 // bare `@midnight-ntwrk/compact-runtime` import is scoped to this file's
 // module registry, so it never leaks into other suites. Vitest hoists
 // `vi.mock` out of any nesting, so it is written at top level to read the way

@@ -66,7 +66,7 @@ import type { Assert } from './type-assertions';
 // The fixture module asserts `checkRuntimeVersion('0.16.0')` against a bare
 // `@midnight-ntwrk/compact-runtime` import, so the specifier is redirected to
 // the retained alias for this file only -- the same redirect
-// `v8-execute.test.ts` and `era-partition-received-coin.test.ts` use.
+// the retired `v8-execute.test.ts` and `era-partition-received-coin.test.ts` use.
 vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
 
 const CIRCUIT_ID = 'receive_coin';

@@ -66,14 +66,29 @@ export interface Ledger8Engine {
    * Takes the state and the balances beside it as ONE value -- see
    * {@link RunRetainedCircuitOptions.contractState} -- because the balances a
    * circuit reads do not live inside the primary state, and two separate
-   * options could describe two different blocks. The
-   * `downConvertForExecution` member that used to sit beside this one is gone
-   * with the hand-maintained execution layer; there is no separate
-   * down-convert step any more.
+   * options could describe two different blocks.
+   *
+   * @throws DownConvertFailedError At stage `'state down-convert'` when the
+   *   state cannot be decoded, does not re-encode to its source, or carries a
+   *   balance the retained runtime cannot read.
+   * @throws Error When the contract declares no circuit of that name.
    */
   executeCircuit<C extends RetainedContract, PS>(
     options: RunRetainedCircuitOptions<C, PS>
   ): Promise<TranscriptPojo>;
+  /**
+   * Runs one retained-era constructor and returns the state it built.
+   *
+   * ASYNCHRONOUS for the same reason {@link Ledger8Engine.executeCircuit} is.
+   * Stricter than the leg it replaced: compact-js registers a verifier key
+   * against every declared entry point and refuses a missing one, where the
+   * hand-written constructor left every slot blank.
+   *
+   * @throws ComposeOptionError Naming option `'signingKey'` when a supplied key
+   *   is not the 32 bytes of hex the retained runtime reads.
+   * @throws ComposeFailedError At stage `'deploy-verifier-key-blob'` when the
+   *   ledger refuses the bytes served for a circuit.
+   */
   executeConstructor<C extends RetainedContract, PS>(
     options: RunRetainedConstructorOptions<C, PS>
   ): Promise<ConstructorResultPojo>;

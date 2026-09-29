@@ -18,8 +18,12 @@
  *
  * Published for the same reason the current era's entry is: only
  * `packages/protocol/src/` may import compact-js directly, so a downstream
- * package that has to name a retained-era value — `CompiledContract.make` for
- * the container `executeCircuit` takes — reaches it through here.
+ * package that has to name a retained-era value reaches it through here.
+ *
+ * `executeCircuit` does NOT take one of these containers — it takes a
+ * {@link RetainedContract}, the constructed artifact the previous toolchain
+ * emits, and `containerFor` adapts it at that seam. Making `CompiledContract`
+ * the retained era's public surface was attempted and reverted; see ADR 0015.
  */
 
 export * from '@midnight-ntwrk/compact-js/v8/effect';

@@ -307,27 +307,14 @@ export const loadCoinReceiverRecording = (): CoinReceiverRecording => {
 export const SAMPLED_SIGNING_KEY = 'replay-sampled-signing-key';
 
 /**
- * The opaque marker the doubled engine hands back from its down-convert.
+ * The opaque marker the doubled engine hands back as a retained-era state.
  *
- * The pipeline is generic in the down-converted state and never looks inside
- * it, so a marker is all a replay needs — and the pipeline handing this exact
- * object back to `executeCircuit` is what proves it threaded the value through
- * rather than rebuilding one.
+ * The pipeline is generic in that state and never looks inside it, so a marker
+ * is all a replay needs — and the pipeline handing this exact object back is
+ * what proves it threaded the value through rather than rebuilding one.
  */
 export interface ReplayState {
   readonly replayedCircuitId: string;
-}
-
-/**
- * What the double's `downConvertForExecution` answers with: the replay marker
- * AND the balance it was handed, on one value.
- *
- * Carrying the balance here rather than taking it as a second option is the
- * point of the pairing -- the double cannot be handed a state from one read and
- * a balance from another, because there is only one argument.
- */
-export interface ReplayExecutableState extends ReplayState {
-  readonly balance: ContractBalance;
 }
 
 /** Every era-facade and engine call one operation made, in the order it made them. */
@@ -436,9 +423,19 @@ export const createReplayEngine = (
     // The CONTRACT the pipeline threaded through, not merely that one was
     // passed: an engine handed some other object would otherwise replay
     // happily, because the recording answers regardless of what it is given.
-    expect(Object.keys((options.contract as { readonly impureCircuits: object }).impureCircuits)).toContain(
+    // `provableCircuits` is the map the REAL engine indexes -- asserting on
+    // `impureCircuits` instead would pass for a contract whose two maps
+    // disagree, which is precisely what the real seam would refuse.
+    expect(Object.keys((options.contract as { readonly provableCircuits: object }).provableCircuits)).toContain(
       recording.circuitId
     );
+    // The real engine puts this on `block.ownAddress`, and the node re-runs the
+    // transcript against it. The recorded context supplies one regardless of
+    // what the pipeline passed, so without this an ABSENT or malformed address
+    // replays green. It is checked for shape rather than compared against the
+    // recording: a call made through a fresh deploy handle legitimately runs at
+    // the address that deploy minted, not the one the recording was made at.
+    expect(options.address).toMatch(/^[0-9a-f]{64}$/i);
     if (expectations !== undefined && 'privateState' in expectations) {
       expect(options.privateState).toEqual(expectations.privateState);
     }
@@ -477,6 +474,13 @@ export const createReplayEngine = (
     // Read rather than ignored: the real engine reads it for every entry point
     // the constructor declares, and a pipeline that handed over a reader nobody
     // exercised would look identical here.
+    expect(options.coinPk).toBe(recording.coinPublicKey);
+    // The real `runRetainedConstructor` refuses a key that is not 32 bytes of
+    // hex, by name and before anything runs. A double that took any string
+    // would let a pipeline forward a `0x`-prefixed or bech32 key and stay green.
+    if (options.signingKey !== undefined && !/^[0-9a-fA-F]{64}$/.test(options.signingKey)) {
+      throw new Error(`the signing key '${options.signingKey}' is not the 32 bytes of hex the retained era reads`);
+    }
     const registered = await options.verifierKeys(recording.circuitId);
     // AS STRICT AS THE REAL ENGINE, and unconditionally so. compact-js's
     // `initialize` refuses a circuit the reader answers nothing for, before a

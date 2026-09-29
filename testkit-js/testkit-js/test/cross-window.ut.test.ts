@@ -355,7 +355,7 @@ describe('private state across the ledger v8 to v9 fork window', () => {
    * specifier to — it pins 0.19.0, and the build's
    * `checkRuntimeVersion('0.16.0')` guard refuses it. `compact-runtime-ledger8`
    * IS that 0.16 instance, installed under an npm alias so the two can coexist;
-   * redirecting the specifier is the same move `v8-execute.test.ts` makes.
+   * redirecting the specifier is the same move the retired `v8-execute.test.ts` made.
    *
    * The redirect then has to be LIFTED, because the twin needs the very
    * 0.19.0 the repo does resolve. `vi.doMock` rather than `vi.mock` so the

@@ -409,7 +409,7 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     // blank, and the deploy composition was the only thing that checked
     // coverage. compact-js refuses before a state is built at all, naming the
     // circuit whose key is missing.
-    expect(rejection).toBeDefined();
+    expect(rejection).toBeInstanceOf(Error);
     expect(String(rejection)).toContain("'increment'");
   });
 
@@ -453,8 +453,85 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     }).catch((error: unknown) => error);
 
     // Assert.
-    expect(rejection).toBeDefined();
+    expect(rejection).toBeInstanceOf(Error);
     expect(String(rejection)).toContain('increment');
+    // The READER's own reason has to survive. Without this an implementation
+    // that swallowed it and reported only "could not read a key for
+    // 'increment'" passes -- which is the whole point of `causeChain`.
+    expect(String(rejection)).toContain('the key store was unreachable');
+    expect((rejection as Error).cause).toBeDefined();
+  });
+});
+
+const SENTINEL_NOT_CALLED = Symbol('the circuit was never called');
+
+/**
+ * The balance the runtime hands a circuit at the moment it runs.
+ *
+ * Read off the context the circuit itself receives, not off the transcript:
+ * `partitionContext.block` is the PRE-execution context, so asserting on it
+ * pins only that the property was set going in. #1345 was the runtime dropping
+ * the balance as the glue swapped contexts, which a pre-execution assertion
+ * cannot see.
+ */
+const balanceSeenByTheCircuit = (contract: CounterContract): { readonly read: () => unknown } => {
+  const circuits = contract as unknown as Record<string, Record<string, (...args: never[]) => unknown>>;
+  const inner = circuits.provableCircuits.increment;
+  let seen: unknown = SENTINEL_NOT_CALLED;
+  circuits.provableCircuits.increment = (context: never, ...args: never[]) => {
+    const queryContext = (context as unknown as Record<string, unknown>).currentQueryContext;
+    seen = ((queryContext as Record<string, unknown> | undefined)?.block as Record<string, unknown> | undefined)
+      ?.balance;
+    return inner(context, ...args);
+  };
+  return { read: () => seen };
+};
+
+describe('the balance a circuit actually reads', () => {
+  it('survives into the executing context, not merely into the one built beforehand', async () => {
+    // Arrange.
+    const { module: contractModule, contract } = await loadCounter();
+    const colour = { tag: 'shielded' as const, raw: '11'.repeat(32) };
+    const held = 4_200n;
+    const contractState = await freshCounterState(contractModule, new Map([[colour, held]]));
+    const observed = balanceSeenByTheCircuit(contract);
+
+    // Act.
+    await runRetainedCircuit({
+      contract,
+      circuitId: 'increment',
+      args: [],
+      contractState,
+      address: ADDRESS,
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      privateState: {}
+    });
+
+    // Assert. #1345 was exactly this map arriving EMPTY, with every other guard
+    // green and the node refusing the resulting transcript.
+    expect(observed.read()).toBeInstanceOf(Map);
+    expect([...(observed.read() as Map<unknown, unknown>)]).toEqual([[colour, held]]);
+  });
+
+  it('arrives empty when the contract holds nothing, so the row above is not vacuous', async () => {
+    // Arrange.
+    const { module: contractModule, contract } = await loadCounter();
+    const contractState = await freshCounterState(contractModule);
+    const observed = balanceSeenByTheCircuit(contract);
+
+    // Act.
+    await runRetainedCircuit({
+      contract,
+      circuitId: 'increment',
+      args: [],
+      contractState,
+      address: ADDRESS,
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      privateState: {}
+    });
+
+    // Assert.
+    expect([...(observed.read() as Map<unknown, unknown>)]).toEqual([]);
   });
 });
 
@@ -616,6 +693,42 @@ describe('runOrRethrow', () => {
     expect((rejection as ComposeFailedError).stage).toBe('deploy-verifier-key-blob');
   });
 
+  it('reports EVERY failure when concurrent work fails, not just the first', async () => {
+    // Arrange. `zkConfigurationLayer` reads verifier keys with
+    // `concurrency: 'unbounded'`, so a deploy whose ZK config is missing three
+    // circuits' artifacts fails three times at once. Reporting one sends the
+    // caller round the fix-and-rerun loop once per missing key.
+    const concurrentlyFailing = Effect.all(
+      [
+        Effect.tryPromise(() => Promise.reject(new Error('increment is missing'))),
+        Effect.tryPromise(() => Promise.reject(new Error('decrement is missing'))),
+        Effect.tryPromise(() => Promise.reject(new Error('reset is missing')))
+      ],
+      { concurrency: 'unbounded' }
+    );
+
+    // Act.
+    const rejection = await runOrRethrow(concurrentlyFailing).catch((error: unknown) => error);
+
+    // Assert.
+    expect(String(rejection)).toContain('increment is missing');
+    expect(String(rejection)).toContain('decrement is missing');
+    expect(String(rejection)).toContain('reset is missing');
+  });
+
+  it('reports a DEFECT, which carries no typed failure to read', async () => {
+    // Arrange. A throw outside the typed error channel -- what vendor code
+    // raising unexpectedly produces. `Cause.failures` is empty for one, so the
+    // squashed cause is the only thing left to report.
+    const defect = new Error('the runtime threw where it declared it would not');
+
+    // Act.
+    const rejection = await runOrRethrow(Effect.die(defect)).catch((error: unknown) => error);
+
+    // Assert.
+    expect(String(rejection)).toContain('the runtime threw where it declared it would not');
+  });
+
   it('still says something when the failure carries no message', async () => {
     // A failure value that is not an `Error` at all. Without the fallback the
     // rethrown message would be empty, which is worse than the wrapper it
@@ -669,8 +782,12 @@ describe('runRetainedCircuit refuses a state it cannot execute against', () => {
     const rejection = await runAgainst({ ...fresh, balance: balance as ContractBalance });
 
     // Assert.
-    expect(rejection).toBeInstanceOf(Error);
-    expect((rejection as Error).message).toMatch(/carries no usable balance/);
+    // CODED, like every other refusal on this seam: a consumer switching on
+    // `stage` must not be handed a classless error for the one refusal that
+    // exists to keep #1345 closed.
+    expect(rejection).toBeInstanceOf(DownConvertFailedError);
+    expect((rejection as DownConvertFailedError).stage).toBe('state down-convert');
+    expect(String((rejection as Error).cause)).toMatch(/carries no usable balance/);
   });
 
   // The structural round trip: decode the state, re-encode it, and refuse a

@@ -33,7 +33,7 @@ const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
 
 // Redirects the ported spike fixture's bare `@midnight-ntwrk/compact-runtime`
 // import to this package's own `compact-runtime-ledger8` (the real retained
-// 0.16 instance) — see v8-execute.test.ts for the full rationale. Scoped
+// 0.16 instance) — see v8-executable.test.ts for the full rationale. Scoped
 // to this test file's module registry only.
 vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
 
