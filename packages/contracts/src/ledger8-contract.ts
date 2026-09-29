@@ -17,7 +17,7 @@
  * The retained-era contract type family: the shape of a contract produced by
  * the PREVIOUS Compact toolchain (`compact-runtime@0.16`), which the current
  * entry points accept through an additive overload alongside the current
- * (`compact-runtime@0.19`) `CompiledContract` container.
+ * (`compact-runtime@0.20`) `CompiledContract` container.
  *
  * Every declaration here is hand-written. The retained toolchain DOES emit an
  * `index.d.ts`, but it describes one contract in terms of
@@ -912,7 +912,7 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  */
 // WHY NO VERSION NUMBERS. Earlier wordings named the toolchains -- "neither a 0.16- nor a
 // 0.18-generated contract" -- and that text contradicted itself as soon as the current side moved:
-// a consumer on `0.19.0-rc.0`, which this release pins, was told their object matched neither of
+// a consumer on `0.19.0-rc.0`, which that release pinned, was told their object matched neither of
 // two versions, neither of which was theirs. The message is about which ERA an object belongs to,
 // and the eras are named by role everywhere else in this package, so it names them that way here
 // too and no future toolchain release invalidates it.

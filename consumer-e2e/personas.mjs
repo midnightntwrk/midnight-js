@@ -20,7 +20,7 @@
 // A retained-era dApp pins `@midnight-ntwrk/compact-runtime@0.16.0`, because the
 // contract module its pre-fork toolchain emitted calls
 // `checkRuntimeVersion('0.16.0')` and throws otherwise. The framework it installs
-// pins 0.19 for itself. Both majors therefore have to be resolvable in one
+// pins the current line for itself. Both therefore have to be resolvable in one
 // install -- which a hoisted linker cannot do and an isolated one can. That is
 // the whole point of the smoke, and it is why the monorepo cannot show it: there
 // is only ever one copy in the workspace tree.

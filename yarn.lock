@@ -1884,16 +1884,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-runtime@npm:0.19.0":
-  version: 0.19.0
-  resolution: "@midnight-ntwrk/compact-runtime@npm:0.19.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.19.0%2Fd656257c511a3223f795f36110f835d0b48716ee"
+"@midnight-ntwrk/compact-runtime@npm:0.20.0-rc.0":
+  version: 0.20.0-rc.0
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.20.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.20.0-rc.0%2F114fd2a4219954dae123d0cdb80e75667fd77b50"
   dependencies:
     "@midnightntwrk/onchain-runtime-v4": "npm:^4.0.0-rc.3"
     "@noble/curves": "npm:^2.2.0"
     "@noble/hashes": "npm:^2.0.1"
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
-  checksum: 10/a5974971b88eed71991e4087bce055c7d205ed00496636f0c906a2049d51a060b810d38233dc8ec04a5667b5c085002cd745b7411d79a70f9acd472a73af2c0b
+  checksum: 10/d0c1aafc8fa5eb5713790756e815add6a24c2b89e28e0ea4688d3ab28616b905d6a654f2178785cc301e2a8b4073d9e29d5fe13cbebc3d5b9e0ebcfd719e583d
   languageName: node
   linkType: hard
 
@@ -2113,7 +2113,7 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-protocol@workspace:packages/protocol"
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:3.0.0-rc.2"
-    "@midnight-ntwrk/compact-runtime": "npm:0.19.0"
+    "@midnight-ntwrk/compact-runtime": "npm:0.20.0-rc.0"
     "@midnight-ntwrk/onchain-runtime-v3": "npm:3.1.1"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
     "@midnightntwrk/ledger-v8": "npm:8.1.2"
@@ -2234,7 +2234,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/testkit-js@workspace:testkit-js/testkit-js"
   dependencies:
-    "@midnight-ntwrk/compact-runtime": "npm:0.19.0"
+    "@midnight-ntwrk/compact-runtime": "npm:0.20.0-rc.0"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*"

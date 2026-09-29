@@ -162,7 +162,7 @@ describe('partitioning a transcript that received a shielded coin in-contract', 
 
     // The fixture is only worth anything while it emits the SYNC codegen the
     // retained leg runs. A recompile with the repo's own pinned compactc would
-    // silently produce 0.19-era async codegen that never reaches the seam under
+    // silently produce current-era async codegen that never reaches the seam under
     // test, so the artifact carries its provenance and this asserts it.
     expect(info['runtime-version']).toBe('0.16.0');
     expect(info['compiler-version']).toBe('0.31.1');

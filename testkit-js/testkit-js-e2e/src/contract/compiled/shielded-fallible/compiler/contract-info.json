@@ -1,7 +1,8 @@
 {
-  "compiler-version": "0.34.0",
-  "language-version": "0.26.0",
-  "runtime-version": "0.19.0",
+  "compiler-version": "0.35.0-rc.0",
+  "compiler-commit": "0e7a4b677d0b0aa0b03727604d4f5e80e765d588",
+  "language-version": "0.27.0",
+  "runtime-version": "0.20.0-rc.0",
   "circuits": [
     {
       "name": "heavyCheckpointMintAndSend",
