@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-bundled-contract-module-provider",
-  "version": "5.0.0-rc.1",
+  "version": "5.0.0-rc.2",
   "type": "module",
   "description": "MidnightJS module resolving cross-contract callees to the compiled contract modules bundled with an application",
   "types": "dist/index.d.ts",
