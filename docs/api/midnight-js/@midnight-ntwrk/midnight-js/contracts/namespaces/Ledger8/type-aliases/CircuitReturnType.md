@@ -6,7 +6,7 @@
 
 # Type Alias: CircuitReturnType\<C, K\>
 
-> **CircuitReturnType**\<`C`, `K`\> = `ReturnType`\<`C`\[`"impureCircuits"`\]\[`K`\]\> *extends* `object` ? `R` : `unknown`
+> **CircuitReturnType**\<`C`, `K`\> = `ReturnType`\<`C`\[`"provableCircuits"`\]\[`K`\]\> *extends* `object` ? `R` : `unknown`
 
 What a retained-era circuit's own return value narrows to.
 

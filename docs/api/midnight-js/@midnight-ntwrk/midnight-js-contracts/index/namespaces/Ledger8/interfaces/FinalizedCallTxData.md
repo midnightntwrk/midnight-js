@@ -30,7 +30,7 @@ they are, what stands in for them, and why.
 
 ### calls
 
-> `readonly` **calls**: readonly [`ContractCall`](ContractCall.md)\<`DownConvertedState`\>[]
+> `readonly` **calls**: readonly [`ContractCall`](ContractCall.md)\<`StateValue`\>[]
 
 See [Ledger8UnsubmittedCallTxData.calls](UnsubmittedCallTxData.md#calls).
 

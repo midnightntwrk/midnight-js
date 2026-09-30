@@ -6,8 +6,10 @@
 
 # Type Alias: Ledger8SigningKey
 
-> **Ledger8SigningKey** = `OnchainRuntimeV3.SigningKey`
+> **Ledger8SigningKey** = `string`
 
-A pre-fork signing key, under a name a consumer can write. The retained
-runtime's own alias, not a mirror of it: the current era's signing key is a
-different shape, so the two must never be spelled the same way here.
+A retained-era signing key: 32 bytes of hex.
+
+## See
+
+LEDGER8\_SIGNING\_KEY\_PATTERN

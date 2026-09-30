@@ -259,7 +259,7 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
     depositOperation.verifierKey = COMPILED_VERIFIER_KEY;
     shieldedInitialState.setOperation(circuitId, depositOperation);
 
-    // `time` is pinned because `createCircuitContext` otherwise defaults it to `Date.now()`.
+    // Passed explicitly: `createCircuitContext` otherwise defaults the block time to `Date.now()`.
     const ctx = createCircuitContext({
       circuitId,
       contractAddress,

@@ -79,6 +79,8 @@ feat: your commit message
 Signed-off-by: Your Name <your@email.com>
 ```
 
+The `commit-msg` hook rejects a commit whose message has no `Signed-off-by` trailer matching your git identity (`user.name` and `user.email`). Merge commits are exempt.
+
 By signing off, you agree to the [Developer Certificate of Origin (version 1.1)](https://developercertificate.org/).
 
 If you have forgotten to sign off past commits in a PR, you can amend them:

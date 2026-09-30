@@ -414,9 +414,8 @@ see below):
 | `private-counter-016/compiled/` | 0.31.1 | 0.23.0 | **0.16.0** | sync (retained, pre-fork) |
 | `private-counter-twin/compiled/` | 0.35.0 | 0.27.0 | **0.20.0** | async (current) |
 
-The two `contract-info.json` files are **identical apart from the toolchain
-fields**: the three versions above, plus the `compiler-commit` only the newer
-compiler writes. Same single circuit, same single ledger cell, same single
+The two `contract-info.json` files are **identical apart from those three
+version fields** (plus `compiler-commit`, which compilers from 0.35.0 on add) — same single circuit, same single ledger cell, same single
 witness — which is the machine-checkable form of the "PS-schema-identical twin"
 claim, and is asserted rather than assumed (see below).
 
@@ -729,11 +728,12 @@ perl -0pi -e 's{\n?//\# sourceMappingURL=index\.js\.map\n?\z}{\n}' \
 ```
 
 The current-side compiler is whichever one emits the `runtime-version` the repo
-resolves; the repo-pinned `0.35.0` is the one that emits `0.20.0` today,
-and the consuming test asserts that coupling, so a mismatch is caught rather than
-discovered at import. The gate compares the strings exactly, so moving the root
-pin needs a compiler that emits the new version, and the twin recompiled
-with it. Do not copy `index.js.map` or `zkir/` across: neither
+resolves; the repo-pinned `0.35.0` is the one that emits `0.20.0` today, and the
+consuming test asserts that coupling, so a mismatch is caught rather than
+discovered at import. Beware the near-miss: `compact`'s own `0.34.0` install
+directory carries an `-rc.0` suffix and emits `0.19.0-rc.0`, which the gate
+rejects -- take the current side from `packages/compact/managed/` rather than
+from `~/.compact/versions/`. Do not copy `index.js.map` or `zkir/` across: neither
 is committed.
 
 To re-mint `pre-fork-private-state-store/` — **read

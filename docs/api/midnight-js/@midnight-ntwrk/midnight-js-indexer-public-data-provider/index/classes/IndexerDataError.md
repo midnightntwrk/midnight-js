@@ -30,13 +30,17 @@ Construct via the static factory methods to ensure the message and
 
 ### Constructor
 
-> **new IndexerDataError**(`context`): `IndexerDataError`
+> **new IndexerDataError**(`context`, `options?`): `IndexerDataError`
 
 #### Parameters
 
 ##### context
 
 [`IndexerDataErrorContext`](../type-aliases/IndexerDataErrorContext.md)
+
+##### options?
+
+`ErrorOptions`
 
 #### Returns
 
@@ -237,6 +241,29 @@ Construct via the static factory methods to ensure the message and
 ##### value
 
 `string`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### unresolvableEra()
+
+> `static` **unresolvableEra**(`protocolVersion`, `cause`): `IndexerDataError`
+
+#### Parameters
+
+##### protocolVersion
+
+`number`
+
+##### cause
+
+`unknown`
+
+The protocol-layer failure, preserved so the resolution path
+             that refused the integer is still readable.
 
 #### Returns
 
