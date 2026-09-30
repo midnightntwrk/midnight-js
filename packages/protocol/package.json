@@ -89,11 +89,11 @@
   "dependencies": {
     "@midnight-ntwrk/compact-js": "3.0.0-rc.3",
     "@midnight-ntwrk/compact-runtime": "0.20.0",
-    "@midnight-ntwrk/onchain-runtime-v3": "3.1.1",
+    "@midnight-ntwrk/onchain-runtime-v3": "^3.0.0",
     "@midnight-ntwrk/platform-js": "3.0.0",
     "@midnightntwrk/ledger-v8": "8.1.2",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
-    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3",
+    "@midnightntwrk/onchain-runtime-v4": "^4.0.0-rc.3",
     "compact-runtime-ledger8": "npm:@midnight-ntwrk/compact-runtime@0.16.0",
     "effect": "^3.22.1"
   },

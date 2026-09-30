@@ -168,9 +168,7 @@ describe('installed ledger and runtime instances', () => {
   // dual instantiation that made a handle from one path unreadable by the
   // other, reported from inside wasm as an unexpected type.
   it('resolves exactly one @midnight-ntwrk/onchain-runtime-v3, at the pinned version', () => {
-    const pinned = versionOf(
-      manifestEntry('packages/protocol/package.json', 'dependencies', '@midnight-ntwrk/onchain-runtime-v3')
-    );
+    const pinned = versionOf(manifestEntry('package.json', 'resolutions', '@midnight-ntwrk/onchain-runtime-v3'));
 
     expect(resolvedVersionsOf('@midnight-ntwrk/onchain-runtime-v3')).toEqual([pinned]);
   });
