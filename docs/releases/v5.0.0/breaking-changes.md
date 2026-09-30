@@ -375,7 +375,7 @@ Nothing verifies the declaration. Listing an era you do not serve makes the
 failure later, not absent: the seam still narrows its own payload and still
 raises `V8PayloadUnsupportedError`.
 
-See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-arms.md).
+See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-handlers.md).
 
 ### 8g. New and changed exports
 
