@@ -61,16 +61,17 @@ import {
 } from './mapping';
 import {
   blockOffsetToBlock$,
-  blockOffsetToContractState$,
+  blockOffsetToState$,
   blockOffsetToUnshieldedBalances$,
-  blockToPositionedContractState$,
+  blockToPositionedState$,
   contractAddressToLatestBlockOffset$,
   contractEvents$,
+  type ContractStateMapper,
   dropReplayed,
   maybeThrowQueryError,
   pollUntilPresent,
   transactionIdToTransaction$,
-  transactionToContractState$,
+  transactionToState$,
   waitForBlockToAppear,
   waitForContractToAppear,
   waitForUnshieldedBalancesToAppear
@@ -104,6 +105,9 @@ import type { ApolloHandle } from './transport';
  */
 const toBlockOffset = (config?: BlockHeightConfig | BlockHashConfig): InputMaybe<BlockOffset> =>
   config ? (config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }) : null;
+
+/** The branch both contract-state streams select when the caller names none. */
+const DEFAULT_STATE_CONFIG: ContractStateObservableConfig = { type: 'latest' };
 
 export class IndexerPublicDataProvider implements PublicDataProvider {
   private readonly handle: ApolloHandle;
@@ -460,48 +464,41 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   }
 
   /**
-   * Creates a stream of contract states for `contractAddress`.
+   * The stream both public contract-state observables are built from, differing
+   * only in what one served contract action becomes.
    *
-   * WIRE TRAFFIC DIFFERS SHARPLY BY BRANCH. `all` is server-side filtered and
-   * light; `latest`, `blockHeight`, `blockHash` and `txId` stream every block on
-   * chain and filter client-side, which is heavy on a busy chain.
+   * See `docs/subscription-shapes.md` for why the topology is written once.
    *
-   * REPLAY SUPPRESSION IS NOT UNIFORM. A transport reconnect makes the indexer
-   * replay from the subscription's original offset. `latest`, `blockHeight` and
-   * `blockHash` suppress what they have already delivered; `all` and `txId` do
-   * not, so a consumer of those two should expect a state more than once.
-   *
-   * See {@link blockOffsetToBlock$}, {@link blockOffsetToContractState$},
-   * and {@link blockToPositionedContractState$} for per-subscription docs.
-   *
-   * @param contractAddress The address of the contract of interest.
-   * @param config The configuration of the stream. Defaults to `latest`.
-   * @see {@link SubscriptionShapes} for what each branch costs, and why the two
-   *   subscription shapes are not interchangeable.
+   * @param contractAddress Validated here, so both public members refuse an
+   *   invalid address synchronously.
+   * @param config Selects the branch; required here, defaulted by the callers.
+   * @param mapState Turns one served contract action into a stream element.
+   * @returns One element per contract action the selected branch delivers.
    */
-  contractStateObservable(
+  private contractStates$<T>(
     contractAddress: ContractAddress,
-    config: ContractStateObservableConfig = { type: 'latest' }
-  ): Rx.Observable<ContractState> {
+    config: ContractStateObservableConfig,
+    mapState: ContractStateMapper<T>
+  ): Rx.Observable<T> {
     assertIsContractAddress(contractAddress);
     if (config.type === 'txId') {
-      const contractStates = transactionIdToTransaction$(this.client, this.pollInterval)(config.txId).pipe(
+      const states = transactionIdToTransaction$(this.client, this.pollInterval)(config.txId).pipe(
         Rx.filter(isRegularTransaction),
-        Rx.concatMap(transactionToContractState$(config.txId))
+        Rx.concatMap(transactionToState$(mapState)(config.txId))
       );
-      return (config.inclusive ?? true) ? contractStates : contractStates.pipe(Rx.skip(1));
+      return (config.inclusive ?? true) ? states : states.pipe(Rx.skip(1));
     }
     if (config.type === 'latest') {
       return contractAddressToLatestBlockOffset$(this.client, this.pollInterval)(contractAddress).pipe(
         Rx.concatMap(blockOffsetToBlock$(this.client)),
-        Rx.concatMap(blockToPositionedContractState$(contractAddress)),
+        Rx.concatMap(blockToPositionedState$(mapState)(contractAddress)),
         dropReplayed(),
         Rx.map(({ state }) => state)
       );
     }
     if (config.type === 'all') {
       return waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(
-        Rx.concatMap(() => blockOffsetToContractState$(this.client)(contractAddress)(null))
+        Rx.concatMap(() => blockOffsetToState$(mapState)(this.client)(contractAddress)(null))
       );
     }
     const offset = toBlockOffset(config);
@@ -513,10 +510,90 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         ? Rx.iif(() => config.inclusive ?? true, blocks, blocks.pipe(Rx.skip(1)))
         : blocks;
     return maybeShortenedBlocks.pipe(
-      Rx.concatMap(blockToPositionedContractState$(contractAddress)),
+      Rx.concatMap(blockToPositionedState$(mapState)(contractAddress)),
       dropReplayed(),
       Rx.map(({ state }) => state)
     );
+  }
+
+  /**
+   * Creates a stream of contract states for `contractAddress`.
+   *
+   * DECODES WITH THE CURRENT ERA'S RUNTIME ONLY, and the decode runs inside the
+   * stream — so a state written by the retained runtime does not arrive as a
+   * skipped emission, it ends the subscription through the subscriber's `error`
+   * callback. A contract deployed before the ledger fork and not written to
+   * since serves exactly such a state, indefinitely. Use
+   * {@link rawContractStateObservable} where that is possible.
+   *
+   * WIRE TRAFFIC DIFFERS SHARPLY BY BRANCH. `all` is server-side filtered and
+   * light; `latest`, `blockHeight`, `blockHash` and `txId` stream every block on
+   * chain and filter client-side, which is heavy on a busy chain.
+   *
+   * REPLAY SUPPRESSION IS NOT UNIFORM. A transport reconnect makes the indexer
+   * replay from the subscription's original offset. `latest`, `blockHeight` and
+   * `blockHash` suppress what they have already delivered; `all` and `txId` do
+   * not, so a consumer of those two should expect a state more than once.
+   *
+   * See {@link blockOffsetToBlock$}, {@link blockOffsetToState$},
+   * and {@link blockToPositionedState$} for per-subscription docs.
+   *
+   * @param contractAddress The address of the contract of interest.
+   * @param config The configuration of the stream. Defaults to `latest`.
+   * @see {@link SubscriptionShapes} for what each branch costs, and why the two
+   *   subscription shapes are not interchangeable.
+   */
+  contractStateObservable(
+    contractAddress: ContractAddress,
+    config: ContractStateObservableConfig = DEFAULT_STATE_CONFIG
+  ): Rx.Observable<ContractState> {
+    return this.contractStates$(contractAddress, config, parseHexContractState);
+  }
+
+  /**
+   * Creates a stream of contract states for `contractAddress` as the bytes the
+   * indexer served, without deserializing them.
+   *
+   * The streaming twin of {@link queryRawContractState}: no era of contract
+   * state ends this subscription, because none is deserialized here.
+   * {@link contractStateObservable} decodes with the current era's runtime
+   * inside the pipeline, so one retained-era state terminates that
+   * subscription; here the era is carried on the record and the caller narrows
+   * on it.
+   *
+   * `ledgerParameters` IS ALWAYS ABSENT ON THIS STREAM, and the stream does not
+   * report which block a state came from, so the two CANNOT be paired through
+   * this member. Neither subscription asks for the parameters: the four
+   * block-subscription branches would receive one for every block on chain, and
+   * the `all` branch reads a per-contract-action feed with no block subtree to
+   * read them from. A caller that needs them reads
+   * {@link queryRawContractState} at a block height it obtained some other way.
+   *
+   * Every branch, every wire-traffic cost and every replay-suppression rule is
+   * exactly {@link contractStateObservable}'s; only the element type differs.
+   *
+   * WHAT IS WITHHELD, PRECISELY: the deserialization, and the envelope-versus-
+   * block era cross-check {@link parseHexContractState} runs. The envelope tag
+   * is still read, so a payload carrying no supported contract-state envelope
+   * still fails the stream. Two things can still end it on era grounds — an
+   * envelope from an era this client's tag table does not list, and a
+   * `protocolVersion` integer it cannot place on the era timeline. The second
+   * is the one asymmetry with {@link contractStateObservable}, which tolerates
+   * such an integer and decodes on the envelope alone; here `version` is a
+   * required field with nothing to fall back to, so the read is refused as
+   * {@link IndexerDataError} with `kind: 'unresolvable-era'` rather than
+   * guessed. Both arrive as an `IndexerError`, like every other failure from
+   * this package.
+   *
+   * @param contractAddress The address of the contract of interest.
+   * @param config The configuration of the stream. Defaults to `latest`.
+   * @see {@link SubscriptionShapes} for what each branch costs.
+   */
+  rawContractStateObservable(
+    contractAddress: ContractAddress,
+    config: ContractStateObservableConfig = DEFAULT_STATE_CONFIG
+  ): Rx.Observable<RawContractState> {
+    return this.contractStates$(contractAddress, config, toRawContractState);
   }
 
   /**
