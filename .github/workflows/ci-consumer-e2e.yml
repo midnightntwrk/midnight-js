@@ -6,8 +6,8 @@ name: CI - Consumer E2E
 # tarballs with an isolated linker, outside the workspace. This is the only place
 # the framework is exercised the way a consumer installs it: inside the monorepo
 # every package resolves through one hoisted tree, so a retained-era dApp holding
-# `@midnight-ntwrk/compact-runtime@0.16` alongside the framework's own 0.19 cannot
-# be represented at all.
+# `@midnight-ntwrk/compact-runtime@0.16` alongside the framework's own current line
+# cannot be represented at all.
 
 permissions:
   contents: read

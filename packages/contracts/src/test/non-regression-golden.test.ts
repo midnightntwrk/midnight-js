@@ -26,6 +26,7 @@ import {
   type ConstructorResult,
   type ContractState,
   createCircuitContext,
+  decodeZswapLocalState,
   type EncodedZswapLocalState,
   type ZswapLocalState
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
@@ -233,6 +234,8 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
    * keeps describing one execution.
    */
   let partitionInputs: ContractExecutable.ContractExecutable.CallPartitionInputs;
+  /** The deposit's own Zswap state, which carries the coin its `receiveShielded` claims. */
+  let zswapLocalState: ZswapLocalState;
 
   beforeAll(async () => {
     setNetworkId('testnet');
@@ -287,6 +290,7 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
     privateTranscriptOutputs = proofData.privateTranscriptOutputs;
     input = proofData.input;
     output = proofData.output;
+    zswapLocalState = decodeZswapLocalState(context.callContext.currentZswapLocalState!);
   });
 
   afterAll(() => {
@@ -326,7 +330,7 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
   describe('stages 2 and 3: the call createUnprovenLedgerCallTx actually assembled', () => {
     /** Assembles the single call bound to a fixed communication commitment. */
     const assembleBoundCall = (): ContractCall<PreProof> => {
-      const { contractAddress, circuitId, coinPublicKey, communicationCommitmentRand } = fixture.fixedInputs;
+      const { contractAddress, circuitId, communicationCommitmentRand } = fixture.fixedInputs;
       const platformAddress = PlatformContractAddress.ContractAddress(contractAddress);
       const partitioned: PartitionedTranscript = [transcript, undefined];
       // Production reads only `commCommRand` off this option; `commComm` is carried for shape.
@@ -346,13 +350,12 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
               partitionedTranscript: partitioned,
               partitionInputs
             },
-            private: { input, output, privateTranscriptOutputs, zswapLocalState: { outputs: [], inputs: [], coinPublicKey, currentIndex: 0n } },
+            private: { input, output, privateTranscriptOutputs, zswapLocalState },
             communicationCommitment: boundCommitment
           }
         ],
         () => shieldedInitialState,
-        new ZswapChainState(),
-        { outputs: [], inputs: [], coinPublicKey, currentIndex: 0n },
+        () => new ZswapChainState(),
         sampleEncryptionPublicKey()
       );
 
@@ -423,7 +426,7 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
 
   describe('stage 4: the assembled unproven transaction (structural only -- carries fresh randomness)', () => {
     it('is a real Transaction with exactly the one intent and action our single call produces', () => {
-      const { contractAddress, circuitId, coinPublicKey } = fixture.fixedInputs;
+      const { contractAddress, circuitId } = fixture.fixedInputs;
       const platformAddress = PlatformContractAddress.ContractAddress(contractAddress);
       const partitioned: PartitionedTranscript = [transcript, undefined];
 
@@ -438,13 +441,12 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
               partitionedTranscript: partitioned,
               partitionInputs
             },
-            private: { input, output, privateTranscriptOutputs, zswapLocalState: { outputs: [], inputs: [], coinPublicKey, currentIndex: 0n } },
+            private: { input, output, privateTranscriptOutputs, zswapLocalState },
             communicationCommitment: Option.none()
           }
         ],
         () => shieldedInitialState,
-        new ZswapChainState(),
-        { outputs: [], inputs: [], coinPublicKey, currentIndex: 0n },
+        () => new ZswapChainState(),
         sampleEncryptionPublicKey()
       );
 

@@ -59,7 +59,7 @@ const FROZEN_PRIVATE_STATE: CounterPrivateState = {
 // version gate below catches "recompiled one side only", but nothing else
 // catches "edited the source, recompiled neither" -- which would leave the
 // suite testing an artifact the source and the README no longer describe.
-const SOURCE_SHA256 = '183c8ca3b57d5c9d466a5d1915f6cfc4ebb45e33dbd056d46483e12ab1d736f0';
+const SOURCE_SHA256 = '647bf0af5ab8b8a71cce081fce0c23a5c12fc917bbb989a14505ba09fd494fcb';
 
 // Where a maintainer goes when one of the fixture gates below fires.
 const RECOMPILE = 'recompile BOTH sides from the one source and recommit them - see "Regenerating" in src/fixtures/hf/README.md';
@@ -490,7 +490,7 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     // throw from deep inside the twin's own module body. Exact equality is
     // stricter than the runtime's own `checkRuntimeVersion`, which strips the
     // prerelease tag and then requires equal major/minor plus a patch no higher
-    // than the runtime's -- so a 0.19.0-rc.0 -> 0.19.0 bump trips this while the
+    // than the runtime's -- so a 0.20.0-rc.0 -> 0.20.0 bump trips this while the
     // fixture would still load. That is the intent: the pair is recompiled
     // deliberately, never left to drift quietly.
     expect(twinInfo['runtime-version'], RECOMPILE).toBe(twin.runtime.versionString);

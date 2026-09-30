@@ -1904,6 +1904,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@midnight-ntwrk/midnight-js-bundled-contract-module-provider@workspace:packages/bundled-contract-module-provider":
+  version: 0.0.0-use.local
+  resolution: "@midnight-ntwrk/midnight-js-bundled-contract-module-provider@workspace:packages/bundled-contract-module-provider"
+  dependencies:
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    vitest: "npm:^4.1.7"
+  languageName: unknown
+  linkType: soft
+
 "@midnight-ntwrk/midnight-js-compact@workspace:*, @midnight-ntwrk/midnight-js-compact@workspace:packages/compact":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-compact@workspace:packages/compact"
@@ -2104,11 +2114,11 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:3.0.0-rc.3"
     "@midnight-ntwrk/compact-runtime": "npm:0.20.0"
-    "@midnight-ntwrk/onchain-runtime-v3": "npm:3.1.1"
+    "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
     "@midnightntwrk/ledger-v8": "npm:8.1.2"
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.5"
-    "@midnightntwrk/onchain-runtime-v4": "npm:4.0.0-rc.3"
+    "@midnightntwrk/onchain-runtime-v4": "npm:^4.0.0-rc.3"
     "@rollup/plugin-typescript": "npm:^12.3.0"
     "@vitest/coverage-v8": "npm:^4.1.10"
     compact-runtime-ledger8: "npm:@midnight-ntwrk/compact-runtime@0.16.0"
@@ -2285,10 +2295,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnightntwrk/onchain-runtime-v4@npm:4.0.0-rc.3":
-  version: 4.0.0-rc.3
-  resolution: "@midnightntwrk/onchain-runtime-v4@npm:4.0.0-rc.3"
-  checksum: 10/394a4ff27b575b0e30bcb5ca05c2f89dc3bc7915103aa592c1d89bb32ff8589ac732d4d0bdafb4a99a9757e1a41ce21955f68148f783edb83b21988b24154078
+"@midnightntwrk/onchain-runtime-v4@npm:4.0.0-rc.4":
+  version: 4.0.0-rc.4
+  resolution: "@midnightntwrk/onchain-runtime-v4@npm:4.0.0-rc.4"
+  checksum: 10/10ad61e3d8e54c0a0243519f322ca546496df6e7c5f8ea580a68647debd3df3a44aa87aedd80e0b776e1da725532d874c483eabd638a7891ae2dd2a36235a512
   languageName: node
   linkType: hard
 

@@ -2,7 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
-## [5.0.0-rc.1](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-beta.8...v5.0.0-rc.1) (2026-09-30)
+## [5.0.0-rc.2](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-rc.1...v5.0.0-rc.2) (2026-09-30)
+
+
+### Features
+
+* **midnight-js:** dynamic cross-contract calls ([#1307](https://github.com/midnightntwrk/midnight-js/pull/1307)) ([cb21fc3](https://github.com/midnightntwrk/midnight-js/commit/cb21fc3cd2104f2e9472d1f41f66ce925c4e6e02))
+
+## [5.0.0-rc.1](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-rc.0...v5.0.0-rc.1) (2026-09-30)
+
+
+### Improvements
+
+* **release:** bump version to 5.0.0-rc.1 ([#1388](https://github.com/midnightntwrk/midnight-js/pull/1388)) ([cc70e04](https://github.com/midnightntwrk/midnight-js/commit/cc70e045eb220aa5fe6cca440dd1783ca51ff352))
+
+## [5.0.0-rc.0](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-beta.8...v5.0.0-rc.0) (2026-09-30)
 
 
 ### ⚠ BREAKING CHANGES

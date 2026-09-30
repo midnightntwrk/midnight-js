@@ -1,8 +1,8 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-node-zk-config-provider",
+  "name": "@midnight-ntwrk/midnight-js-bundled-contract-module-provider",
   "version": "5.0.0-rc.2",
   "type": "module",
-  "description": "MidnightJS module for reading proving and verifying keys and ZK intermediate representation",
+  "description": "MidnightJS module resolving cross-contract callees to the compiled contract modules bundled with an application",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
@@ -21,11 +21,10 @@
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
   },
   "devDependencies": {
-    "rollup": "^4.60.4",
     "vitest": "^4.1.7"
   },
   "files": [

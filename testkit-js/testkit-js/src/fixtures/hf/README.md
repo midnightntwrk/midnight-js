@@ -299,7 +299,7 @@ reason one member over.
 
 The one change is the import specifier: `@midnight-ntwrk/compact-runtime` ->
 `compact-runtime-ledger8`. It is not cosmetic and it is not optional. The root
-`resolutions` pin the bare name to the CURRENT era (`0.19.0`), so left as
+`resolutions` pin the bare name to the CURRENT era (`0.20.0`), so left as
 emitted the declarations would resolve to the wrong runtime's `CircuitContext`.
 That is loud rather than silent -- the conformance assertions in
 `packages/contracts/src/test/typecheck/overloads.test-d.ts` go red -- but it
@@ -350,7 +350,7 @@ None of the generated files are read at import time; the module's only own-time 
 that specifier (module-registry-scoped to the one test file that imports this
 fixture) to this repo's own `compact-runtime-ledger8` — the same retained
 `@midnight-ntwrk/compact-runtime@0.16.0`, installed under an alias so it can
-coexist with the root's `0.19.0` pin (see
+coexist with the root's `0.20.0` pin (see
 `packages/protocol/package.json`).
 
 The `compiled/` path segment (mirroring `twin-contract/compiled/`) is not
@@ -424,7 +424,7 @@ retained build runs against the retained engine
 (`packages/protocol/src/lib/v8/executable.ts`, reached through `loadLedger8Engine()`),
 exactly as `counter-016` does. The twin's declared runtime is **the one this
 repo resolves** (root `resolutions` pins `@midnight-ntwrk/compact-runtime` to
-`0.19.0`), so unlike `twin-contract/` — pinned to `0.18.0-rc.1` and
+`0.20.0`), so unlike `twin-contract/` — pinned to `0.18.0-rc.1` and
 therefore refused by its own `checkRuntimeVersion` guard — this twin's module
 can be imported and driven. A cross-window test can consequently hand the
 post-fork build the very private state the pre-fork build wrote and watch it
@@ -449,7 +449,7 @@ reason while `packages/**` — test files included — is gated.
 consumed as typecheck and known-good-key fixtures across `packages/contracts`
 and `packages/protocol` — `grep -rl twin-contract packages/` answers *how many*
 at the time of asking, and the answer has only ever grown. None of them executes it,
-so its inability to run under 0.19 costs them nothing, while recompiling it
+so its inability to run under 0.20 costs them nothing, while recompiling it
 would change the key bytes and the codegen shape underneath all of them. It is
 left exactly as it is.
 
@@ -600,8 +600,8 @@ rewrite as `counter-016/`'s, for the same reason.
 
 `compiler/contract-info.json` is committed **as a gate, not as decoration**:
 the test asserts `runtime-version: 0.16.0` and `compiler-version: 0.31.1` on
-it, so a recompile with the repo's own pinned `compactc` (0.34.x → runtime
-0.19, async codegen) fails loudly instead of silently producing an artifact
+it, so a recompile with the repo's own pinned `compactc` (0.35.x → runtime
+0.20, async codegen) fails loudly instead of silently producing an artifact
 that never reaches the seam under test.
 
 The artifact is committed byte-verbatim, including its trailing
@@ -760,7 +760,7 @@ The brief asked for `@midnightntwrk/ledger-v8` **and**
 `@midnight-ntwrk/onchain-runtime-v3`/`compact-runtime@0.16.0` as
 `testkit-js/testkit-js` devDependencies, to mint the v6/v8-envelope fixtures
 directly on the 0.16 stack. This repo's root `package.json` `resolutions`
-already pins `@midnight-ntwrk/compact-runtime` to `0.19.0` repo-wide —
+already pins `@midnight-ntwrk/compact-runtime` to `0.20.0` repo-wide —
 installing `0.16.0` alongside it would be silently overridden by Yarn's
 resolution, not actually give a 0.16 runtime. Since mint-path (b) already
 supplied both fixtures that would have needed the 0.16 stack (as goldens),
