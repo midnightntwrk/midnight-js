@@ -17,7 +17,7 @@ import {
   type IndexerPublicDataProvider,
   indexerPublicDataProvider
 } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol';
+import { protocolVersionToLedger, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
 import type { BlockHeightConfig, BlockInfo } from '@midnight-ntwrk/midnight-js-types';
 import { createLogger, delay, type EnvironmentConfiguration, ForkTestEnvironment } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
@@ -116,8 +116,6 @@ describe('Fork-crossing environment', () => {
   let testEnvironment: ForkTestEnvironment;
   let preForkConfiguration: EnvironmentConfiguration;
   let publicDataProvider: IndexerPublicDataProvider;
-  /** The head as it stood before the fork was enacted, kept so a later test can re-read that block. */
-  let preForkBlock: BlockInfo | undefined;
 
   beforeAll(async () => {
     testEnvironment = new ForkTestEnvironment(logger);
@@ -139,10 +137,11 @@ describe('Fork-crossing environment', () => {
   }, FORK_STARTUP_TIMEOUT);
 
   test(
-    'reports a ledger-8 head before the fork and a ledger-9 head after it, through one unchanged provider',
+    'reports a ledger-8 head before the fork and a ledger-9 head after it through one unchanged provider, ' +
+      'and dates each block by the era it was produced in',
     async () => {
       // Arrange: the chain starts on the runtime genesis carries, which is the pre-fork one.
-      preForkBlock = await requireBlock(publicDataProvider);
+      const preForkBlock = await requireBlock(publicDataProvider);
       const beforeVersion = await publicDataProvider.queryLatestProtocolVersion();
       expect(protocolVersionToLedger(beforeVersion)).toBe('v8');
       expect(testEnvironment.hasForked).toBe(false);
@@ -164,35 +163,23 @@ describe('Fork-crossing environment', () => {
       // crosses the boundary, rather than in a later test that would depend on this one having run.
       expect(testEnvironment.hasForked).toBe(true);
       expect(testEnvironment.getEnvironmentConfiguration().proofServer).toBe(testEnvironment.getPostForkProofServer());
-    },
-    FORK_CROSSING_TIMEOUT
-  );
 
-  test(
-    'dates a block by the era it was produced in, not by where the head is',
-    async () => {
-      // Preconditions, not decoration: without the crossing above both reads below would land on the
-      // same era, and the test would pass while proving nothing.
-      expect(testEnvironment.hasForked).toBe(true);
-      if (preForkBlock === undefined) {
-        throw new Error('The fork-crossing test did not record a pre-fork block, so there is nothing to compare');
-      }
-
-      // Act: re-read that same pre-fork block by height, now that the chain has moved on, and the head.
+      // Assert: a block is dated by its own era, not by where the head is. The pre-fork block is
+      // re-read by height now that the chain has moved on; a `queryBlock` answering with the head's
+      // version would report 'v9' for it and fail. The hash check pins that the height offset
+      // resolved to the same block rather than merely to some other pre-fork one.
       const reReadPreFork = await requireBlock(publicDataProvider, {
         type: 'blockHeight',
         blockHeight: preForkBlock.height
       });
-      const postFork = await requireBlock(publicDataProvider);
-
-      // Assert: the old block still reports the old era. A `queryBlock` that answered with the head's
-      // version instead would report 'v9' here and fail.
-      expect(protocolVersionToLedger(reReadPreFork.protocolVersion)).toBe('v8');
-      expect(protocolVersionToLedger(postFork.protocolVersion)).toBe('v9');
-      expect(reReadPreFork.protocolVersion).toBe(preForkBlock.protocolVersion);
-      expect(postFork.height).toBeGreaterThan(reReadPreFork.height);
+      const postForkBlock = await requireBlock(publicDataProvider);
+      expect(reReadPreFork.hash).toBe(preForkBlock.hash);
+      expect(versionOfRecord(reReadPreFork)).toBe('v8');
+      expect(versionOfRecord(postForkBlock)).toBe('v9');
+      // Two different blocks, so the v8/v9 contrast cannot come from reading one block twice.
+      expect(postForkBlock.height).toBeGreaterThan(reReadPreFork.height);
     },
-    FAST_ASSERTION_TIMEOUT
+    FORK_CROSSING_TIMEOUT
   );
 
   test(

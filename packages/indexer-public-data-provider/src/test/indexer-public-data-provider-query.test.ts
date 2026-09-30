@@ -14,15 +14,15 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { BlockInfo } from '@midnight-ntwrk/midnight-js-types';
 import type { DocumentNode } from 'graphql';
 import { describe, expect, test, vi } from 'vitest';
 
 import { IndexerDataError } from '../errors';
+import type { BlockHashQueryQuery } from '../gen/graphql';
 import { IndexerPublicDataProvider } from '../provider';
 import { BLOCK_QUERY, CONTRACT_AND_ZSWAP_STATE_QUERY, HEAD_PROTOCOL_VERSION_QUERY } from '../query-definitions';
 import type { ApolloHandle } from '../transport';
-import { V8_ERA_PROTOCOL_VERSION, V9_ERA_PROTOCOL_VERSION } from './state-fixtures';
+import { UNRESOLVABLE_PROTOCOL_VERSION, V8_ERA_PROTOCOL_VERSION, V9_ERA_PROTOCOL_VERSION } from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
 
@@ -51,11 +51,12 @@ const headResponse = (protocolVersion: number | null): unknown => ({
 });
 
 /**
- * A `query` mock answering `BLOCK_QUERY` with exactly the fields the document
- * selects. Written as one literal so a test cannot quietly assert a shape the
- * indexer was never asked for.
+ * A `query` mock for the `queryBlock` tests. Its argument is typed from the
+ * generated `BLOCK_QUERY` result, so a test cannot answer with a field the
+ * document does not select, and dropping a field from the document breaks
+ * these tests at compile time.
  */
-const blockQueryReturning = (block: BlockInfo): ReturnType<typeof vi.fn> =>
+const blockQueryReturning = (block: NonNullable<BlockHashQueryQuery['block']>): ReturnType<typeof vi.fn> =>
   vi.fn().mockResolvedValue({ data: { block } });
 
 describe('IndexerPublicDataProvider query methods', () => {
@@ -86,7 +87,22 @@ describe('IndexerPublicDataProvider query methods', () => {
       const result = await providerWithQuery(query).queryBlock();
 
       expect(result).toEqual({ hash: '0x1', height: 1, protocolVersion: V9_ERA_PROTOCOL_VERSION });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ variables: { offset: null } }));
+      // `no-cache` is pinned on this case in particular: the latest-block read is the one a cached
+      // answer would date to a stale era across a fork.
+      expect(query).toHaveBeenCalledWith(
+        expect.objectContaining({ variables: { offset: null }, fetchPolicy: 'no-cache' })
+      );
+    });
+
+    test('carries a protocol version it cannot place on the era timeline through unchanged', async () => {
+      const query = blockQueryReturning({ hash: '0xabc', height: 7, protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION });
+
+      const result = await providerWithQuery(query).queryBlock({ type: 'blockHeight', blockHeight: 7 });
+
+      // Deliberate, and the reason this reads as an assertion rather than a `rejects.toThrow`:
+      // `queryBlock` decodes nothing, so it has no era to dispatch on and does not validate one.
+      // The failure belongs to whoever resolves the era.
+      expect(result).toEqual({ hash: '0xabc', height: 7, protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION });
     });
 
     test('returns null when the indexer has no matching block', async () => {
