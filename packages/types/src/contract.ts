@@ -122,10 +122,10 @@ export const exitResultOrError: <A, E>(exit: Exit.Exit<A, E>) => A =
  * Wraps an object into an `Option.some`.
  *
  * @param obj The value that should be wrapped into an `Option`.
- * @returns An `Option.some` for `obj`.
+ * @returns An `Option.some` for `obj`, or `Option.none` if `obj` is null or undefined.
  */
-export const asEffectOption = <T>(obj: unknown): Option.Option<T> => {
-  return Option.some(obj) as Option.Option<T>;
+export const asEffectOption = <T>(obj: T | null | undefined): Option.Option<T> => {
+  return Option.fromNullable(obj);
 }
 
 /**
