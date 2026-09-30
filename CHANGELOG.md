@@ -9,6 +9,11 @@ All notable changes to this project will be documented in this file. See [commit
 
 * **midnight-js:** dynamic cross-contract calls ([#1307](https://github.com/midnightntwrk/midnight-js/pull/1307)) ([cb21fc3](https://github.com/midnightntwrk/midnight-js/commit/cb21fc3cd2104f2e9472d1f41f66ce925c4e6e02))
 
+
+### Improvements
+
+* **release:** bump version to 5.0.0-rc.2 ([#1400](https://github.com/midnightntwrk/midnight-js/pull/1400)) ([cb65e04](https://github.com/midnightntwrk/midnight-js/commit/cb65e04666259fa2c040dc7e3bebfeb9b0d37936))
+
 ## [5.0.0-rc.1](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-rc.0...v5.0.0-rc.1) (2026-09-30)
 
 
