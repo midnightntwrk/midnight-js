@@ -31,7 +31,7 @@ import {
   type RetainedLedgerVersion
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
+import { assertValidRetainedEras, erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
 import type { VersionedTx } from './versioned';
 
 export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
@@ -159,23 +159,26 @@ export interface ProofProviderHandlers {
  * // proofProvider.supportedEras === ['v9', 'v8']
  * ```
  */
-export const createProofProviderFromHandlers = (handlers: ProofProviderHandlers): ProofProvider => ({
-  supportedEras: erasServedBy(handlers.retainedEras),
+export const createProofProviderFromHandlers = (handlers: ProofProviderHandlers): ProofProvider => {
+  assertValidRetainedEras('proveTx', handlers.retainedEras);
+  return {
+    supportedEras: erasServedBy(handlers.retainedEras),
 
-  async proveTx(
-    unprovenTx: VersionedUnprovenTransaction,
-    proveTxConfig?: ProveTxConfig
-  ): Promise<VersionedUnboundTransaction> {
-    const request = narrowToEraArm(unprovenTx, 'proveTx', handlers.retainedEras);
-    if (request.era === CURRENT_LEDGER_VERSION) {
-      return { version: CURRENT_LEDGER_VERSION, tx: await handlers.currentEra(request.tx, proveTxConfig) };
+    async proveTx(
+      unprovenTx: VersionedUnprovenTransaction,
+      proveTxConfig?: ProveTxConfig
+    ): Promise<VersionedUnboundTransaction> {
+      const request = narrowToEraArm(unprovenTx, 'proveTx', handlers.retainedEras);
+      if (request.era === CURRENT_LEDGER_VERSION) {
+        return { version: CURRENT_LEDGER_VERSION, tx: await handlers.currentEra(request.tx, proveTxConfig) };
+      }
+      // Answered in the arm it arrived in: a caller narrows the response and
+      // rejects the other era, so replying in the wrong one strands a submit
+      // mid-flight.
+      return { version: request.era, txBytes: await request.handler(request.txBytes, proveTxConfig) };
     }
-    // Answered in the arm it arrived in: a caller narrows the response and
-    // rejects the other era, so replying in the wrong one strands a submit
-    // mid-flight.
-    return { version: request.era, txBytes: await request.handler(request.txBytes, proveTxConfig) };
-  }
-});
+  };
+};
 
 /**
  * One {@link ProvingProvider} per ledger era, for
@@ -276,11 +279,22 @@ export const createProofProviderForEras = ({
   currentEra,
   retainedEras,
   costModel = CostModel.initialCostModel()
-}: ProvingProvidersByEra): ProofProvider =>
-  createProofProviderFromHandlers({
+}: ProvingProvidersByEra): ProofProvider => {
+  assertValidRetainedEras(
+    'proveTx',
+    retainedEras,
+    (entry): boolean =>
+      typeof entry === 'object' &&
+      entry !== null &&
+      typeof (entry as Record<string, unknown>).check === 'function' &&
+      typeof (entry as Record<string, unknown>).prove === 'function',
+    "expected an object with callable 'check' and 'prove' methods"
+  );
+  return createProofProviderFromHandlers({
     currentEra: (tx) => tx.prove(currentEra, costModel),
     retainedEras: retainedEras && toRetainedEraHandlers(retainedEras)
   });
+};
 
 /**
  * Creates a {@link ProofProvider} from a {@link ProvingProvider}.

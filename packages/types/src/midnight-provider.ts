@@ -16,7 +16,7 @@
 import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
+import { assertValidRetainedEras, erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
 import type { VersionedFinalizedTransaction } from './wallet-provider';
 
 /**
@@ -81,16 +81,19 @@ export interface MidnightProviderHandlers {
  * @param handlers The current-era handler, and one for each retained era served.
  * @returns A {@link MidnightProvider} routing each submission to its era's arm.
  */
-export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHandlers): MidnightProvider => ({
-  supportedEras: erasServedBy(handlers.retainedEras),
+export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHandlers): MidnightProvider => {
+  assertValidRetainedEras('submitTx', handlers.retainedEras);
+  return {
+    supportedEras: erasServedBy(handlers.retainedEras),
 
-  async submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId> {
-    const request = narrowToEraArm(tx, 'submitTx', handlers.retainedEras);
-    return request.era === CURRENT_LEDGER_VERSION
-      ? handlers.currentEra(request.tx)
-      : request.handler(request.txBytes);
-  }
-});
+    async submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId> {
+      const request = narrowToEraArm(tx, 'submitTx', handlers.retainedEras);
+      return request.era === CURRENT_LEDGER_VERSION
+        ? handlers.currentEra(request.tx)
+        : request.handler(request.txBytes);
+    }
+  };
+};
 
 /**
  * Lifts a v9-only submission function into the version-tagged

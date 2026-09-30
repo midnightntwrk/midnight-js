@@ -64,13 +64,19 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   // one means "this provider states it does not serve that era", raised from a
   // declaration before any payload exists.
   SEAM_ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED',
-  PRIVATE_STATE_NOT_SERIALIZABLE: 'MIDNIGHT_JS_PR_PRIVATE_STATE_NOT_SERIALIZABLE'
+  PRIVATE_STATE_NOT_SERIALIZABLE: 'MIDNIGHT_JS_PR_PRIVATE_STATE_NOT_SERIALIZABLE',
+  UNUSABLE_ERA_ARM: 'MIDNIGHT_JS_PR_UNUSABLE_ERA_ARM'
 } as const);
 /** The union of every value in {@link PROVIDER_ERROR_CODES}. */
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
 
-const { V8_PAYLOAD_UNSUPPORTED, UNTAGGED_PAYLOAD, SEAM_ERA_UNSUPPORTED, PRIVATE_STATE_NOT_SERIALIZABLE } =
-  PROVIDER_ERROR_CODES;
+const {
+  V8_PAYLOAD_UNSUPPORTED,
+  UNTAGGED_PAYLOAD,
+  SEAM_ERA_UNSUPPORTED,
+  PRIVATE_STATE_NOT_SERIALIZABLE,
+  UNUSABLE_ERA_ARM
+} = PROVIDER_ERROR_CODES;
 
 /**
  * Thrown by a provider that only speaks the v9 ledger runtime when it is
@@ -236,6 +242,34 @@ export class SeamEraUnsupportedError extends Error {
         `whole set serves.`
     );
     this.name = 'SeamEraUnsupportedError';
+  }
+}
+
+/**
+ * Thrown at provider construction when a retained-era handler or provider entry
+ * is non-callable or unusable.
+ *
+ * Catch it via its stable `code`, using `hasErrorCode` from
+ * `@midnight-ntwrk/midnight-js-utils`.
+ */
+export class UnusableEraArmError extends Error {
+  readonly code = UNUSABLE_ERA_ARM;
+
+  /**
+   * @param seam The provider method where the retained era was registered.
+   * @param era The retained ledger era whose entry was unusable.
+   * @param reason The specific reason the entry was rejected.
+   */
+  constructor(
+    readonly seam: ProviderSeam,
+    readonly era: string,
+    readonly reason: string
+  ) {
+    super(
+      `Cannot register retained era '${era}' at ${seam}: ${reason}. ` +
+        `A retained era entry must be usable at construction so supportedEras does not over-claim.`
+    );
+    this.name = 'UnusableEraArmError';
   }
 }
 
