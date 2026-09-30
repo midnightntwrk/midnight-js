@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -29,6 +29,16 @@ Parameter indicating the private state ID, sometimes a union of string literals.
 Parameter indicating the private state type stored, sometimes a union of private state types.
 
 ## Properties
+
+### contractModuleProvider?
+
+> `readonly` `optional` **contractModuleProvider?**: [`ContractModuleProvider`](https://github.com/LFDT-Minokawa/compact)
+
+Resolves a cross-contract callee's address to the compiled module implementing it. Only the
+application knows which modules it bundled, so there is no default; a circuit that makes a
+cross-contract call without one fails naming the call it could not bind.
+
+***
 
 ### loggerProvider?
 
