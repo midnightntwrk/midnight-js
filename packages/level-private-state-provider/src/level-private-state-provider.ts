@@ -47,8 +47,10 @@ import {
   decryptValue,
   getPasswordFromProvider,
   type PrivateStoragePasswordProvider,
-  StorageEncryption
+  StorageEncryption,
+  timingSafeEqual
 } from './storage-encryption';
+import { hmac } from '@noble/hashes/hmac.js';
 
 /**
  * The default name of the indexedDB database for Midnight.
@@ -215,6 +217,14 @@ const METADATA_KEY = '__midnight_encryption_metadata__';
 
 const DEFAULT_MAX_ROTATION_ENTRIES = 10000;
 
+// Per-process key for password fingerprinting — random at startup, never persisted.
+// Cache hits are validated with HMAC-SHA256(PROCESS_KEY, password + ":" + saltHex)
+// instead of re-running PBKDF2 (600 000 iterations) on every access.
+const PROCESS_KEY = randomBytes(32);
+
+const computePasswordFingerprint = (password: string, saltHex: string): Uint8Array =>
+  hmac(sha256, PROCESS_KEY, new TextEncoder().encode(`${password}:${saltHex}`));
+
 const encryptionInitPromises = new Map<string, Promise<Buffer>>();
 
 const passwordRotationLocks = new Map<string, Promise<void>>();
@@ -230,6 +240,7 @@ export interface PasswordRotationOptions {
 interface EncryptionCacheEntry {
   readonly encryption: StorageEncryption;
   readonly saltHex: string;
+  readonly passwordFingerprint: Uint8Array;
 }
 
 /**
@@ -289,21 +300,16 @@ const getOrCreateEncryption = async (
   const cacheKey = `${ctx.dbName}:${levelName}`;
   const salt = await getOrCreateSalt(ctx, levelName);
   const saltHex = salt.toString('hex');
+  const password = await getPasswordFromProvider(passwordProvider);
+  const fingerprint = computePasswordFingerprint(password, saltHex);
 
   const cached = encryptionCache.get(cacheKey);
-  if (cached && cached.saltHex === saltHex) {
-    const password = await getPasswordFromProvider(passwordProvider);
-    if (await cached.encryption.verifyPassword(password)) {
-      return cached.encryption;
-    }
-    const encryption = await StorageEncryption.create(password, { existingSalt: salt, cryptoBackend: ctx.cryptoBackend });
-    encryptionCache.set(cacheKey, { encryption, saltHex });
-    return encryption;
+  if (cached && cached.saltHex === saltHex && timingSafeEqual(fingerprint, cached.passwordFingerprint)) {
+    return cached.encryption;
   }
 
-  const password = await getPasswordFromProvider(passwordProvider);
   const encryption = await StorageEncryption.create(password, { existingSalt: salt, cryptoBackend: ctx.cryptoBackend });
-  encryptionCache.set(cacheKey, { encryption, saltHex });
+  encryptionCache.set(cacheKey, { encryption, saltHex, passwordFingerprint: fingerprint });
   return encryption;
 };
 
