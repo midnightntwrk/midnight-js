@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.19.0');
+__compactRuntime.checkRuntimeVersion('0.20.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeUnsignedInteger(18446744073709551615n, 8);
 
@@ -79,9 +79,26 @@ class _Either_1 {
 
 const _descriptor_8 = new _Either_1();
 
-const _descriptor_9 = new __compactRuntime.CompactTypeUnsignedInteger(255n, 1);
+class _Maybe_0 {
+  alignment() {
+    return _descriptor_1.alignment().concat(_descriptor_5.alignment());
+  }
+  fromValue(value_0) {
+    return {
+      is_some: _descriptor_1.fromValue(value_0),
+      value: _descriptor_5.fromValue(value_0)
+    }
+  }
+  toValue(value_0) {
+    return _descriptor_1.toValue(value_0.is_some).concat(_descriptor_5.toValue(value_0.value));
+  }
+}
 
-const _descriptor_10 = new __compactRuntime.CompactTypeUnsignedInteger(4294967295n, 4);
+const _descriptor_9 = new _Maybe_0();
+
+const _descriptor_10 = new __compactRuntime.CompactTypeUnsignedInteger(255n, 1);
+
+const _descriptor_11 = new __compactRuntime.CompactTypeUnsignedInteger(4294967295n, 4);
 
 export class Contract {
   witnesses;
@@ -871,7 +888,7 @@ export class Contract {
     state_0.setOperation('receiveNightTokens', new __compactRuntime.ContractOperation());
     state_0.setOperation('sendNightTokensToUser', new __compactRuntime.ContractOperation());
     state_0.setOperation('sendNightTokensToRecipient', new __compactRuntime.ContractOperation());
-    const context = __compactRuntime.createCircuitContext('constructor', __compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0.data, constructorContext_0.initialPrivateState);
+    const context = __compactRuntime.createCircuitContext({circuitId: 'constructor', contractAddress: __compactRuntime.dummyContractAddress(), coinPublicKeyOrZswapState: constructorContext_0.initialZswapLocalState.coinPublicKey, contractState: state_0.data, privateState: constructorContext_0.initialPrivateState});
     const partialProofData = {
       input: { value: [], alignment: [] },
       output: undefined,
@@ -915,8 +932,8 @@ export class Contract {
                                                 pushPath: true,
                                                 path: [
                                                        { tag: 'value',
-                                                         value: { value: _descriptor_9.toValue(5n),
-                                                                  alignment: _descriptor_9.alignment() } }] } },
+                                                         value: { value: _descriptor_10.toValue(5n),
+                                                                  alignment: _descriptor_10.alignment() } }] } },
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newCell({ value: _descriptor_2.toValue(domainSep_0),
                                                                                               alignment: _descriptor_2.alignment() }).encode() } },
@@ -946,8 +963,8 @@ export class Contract {
                                                                                                           pushPath: false,
                                                                                                           path: [
                                                                                                                  { tag: 'value',
-                                                                                                                   value: { value: _descriptor_9.toValue(0n),
-                                                                                                                            alignment: _descriptor_9.alignment() } }] } },
+                                                                                                                   value: { value: _descriptor_10.toValue(0n),
+                                                                                                                            alignment: _descriptor_10.alignment() } }] } },
                                                                                                  { popeq: { cached: true,
                                                                                                             result: undefined } }]).value));
     const tmp_0 = this._left_1(color_0);
@@ -960,8 +977,8 @@ export class Contract {
                                                 pushPath: true,
                                                 path: [
                                                        { tag: 'value',
-                                                         value: { value: _descriptor_9.toValue(8n),
-                                                                  alignment: _descriptor_9.alignment() } }] } },
+                                                         value: { value: _descriptor_10.toValue(8n),
+                                                                  alignment: _descriptor_10.alignment() } }] } },
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newCell(__compactRuntime.alignedConcat(
                                                                                               { value: _descriptor_8.toValue(tmp_0),
@@ -997,8 +1014,8 @@ export class Contract {
                                                                                           pushPath: false,
                                                                                           path: [
                                                                                                  { tag: 'value',
-                                                                                                   value: { value: _descriptor_9.toValue(0n),
-                                                                                                            alignment: _descriptor_9.alignment() } }] } },
+                                                                                                   value: { value: _descriptor_10.toValue(0n),
+                                                                                                            alignment: _descriptor_10.alignment() } }] } },
                                                                                  { popeq: { cached: true,
                                                                                             result: undefined } }]).value).bytes))
     {
@@ -1012,8 +1029,8 @@ export class Contract {
                                                   pushPath: true,
                                                   path: [
                                                          { tag: 'value',
-                                                           value: { value: _descriptor_9.toValue(6n),
-                                                                    alignment: _descriptor_9.alignment() } }] } },
+                                                           value: { value: _descriptor_10.toValue(6n),
+                                                                    alignment: _descriptor_10.alignment() } }] } },
                                          { push: { storage: false,
                                                    value: __compactRuntime.StateValue.newCell({ value: _descriptor_8.toValue(tmp_2),
                                                                                                 alignment: _descriptor_8.alignment() }).encode() } },
@@ -1052,8 +1069,8 @@ export class Contract {
                                                 pushPath: true,
                                                 path: [
                                                        { tag: 'value',
-                                                         value: { value: _descriptor_9.toValue(7n),
-                                                                  alignment: _descriptor_9.alignment() } }] } },
+                                                         value: { value: _descriptor_10.toValue(7n),
+                                                                  alignment: _descriptor_10.alignment() } }] } },
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newCell({ value: _descriptor_8.toValue(tmp_0),
                                                                                               alignment: _descriptor_8.alignment() }).encode() } },
@@ -1083,8 +1100,8 @@ export class Contract {
                                                 pushPath: true,
                                                 path: [
                                                        { tag: 'value',
-                                                         value: { value: _descriptor_9.toValue(8n),
-                                                                  alignment: _descriptor_9.alignment() } }] } },
+                                                         value: { value: _descriptor_10.toValue(8n),
+                                                                  alignment: _descriptor_10.alignment() } }] } },
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newCell(__compactRuntime.alignedConcat(
                                                                                               { value: _descriptor_8.toValue(tmp_1),
@@ -1120,8 +1137,8 @@ export class Contract {
                                                                                           pushPath: false,
                                                                                           path: [
                                                                                                  { tag: 'value',
-                                                                                                   value: { value: _descriptor_9.toValue(0n),
-                                                                                                            alignment: _descriptor_9.alignment() } }] } },
+                                                                                                   value: { value: _descriptor_10.toValue(0n),
+                                                                                                            alignment: _descriptor_10.alignment() } }] } },
                                                                                  { popeq: { cached: true,
                                                                                             result: undefined } }]).value).bytes))
     {
@@ -1134,8 +1151,8 @@ export class Contract {
                                                   pushPath: true,
                                                   path: [
                                                          { tag: 'value',
-                                                           value: { value: _descriptor_9.toValue(6n),
-                                                                    alignment: _descriptor_9.alignment() } }] } },
+                                                           value: { value: _descriptor_10.toValue(6n),
+                                                                    alignment: _descriptor_10.alignment() } }] } },
                                          { push: { storage: false,
                                                    value: __compactRuntime.StateValue.newCell({ value: _descriptor_8.toValue(tmp_2),
                                                                                                 alignment: _descriptor_8.alignment() }).encode() } },
@@ -1169,8 +1186,8 @@ export class Contract {
                                                 pushPath: true,
                                                 path: [
                                                        { tag: 'value',
-                                                         value: { value: _descriptor_9.toValue(6n),
-                                                                  alignment: _descriptor_9.alignment() } }] } },
+                                                         value: { value: _descriptor_10.toValue(6n),
+                                                                  alignment: _descriptor_10.alignment() } }] } },
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newCell({ value: _descriptor_8.toValue(tmp_0),
                                                                                               alignment: _descriptor_8.alignment() }).encode() } },
@@ -1203,8 +1220,8 @@ export class Contract {
                                                                                pushPath: false,
                                                                                path: [
                                                                                       { tag: 'value',
-                                                                                        value: { value: _descriptor_9.toValue(5n),
-                                                                                                 alignment: _descriptor_9.alignment() } }] } },
+                                                                                        value: { value: _descriptor_10.toValue(5n),
+                                                                                                 alignment: _descriptor_10.alignment() } }] } },
                                                                       { dup: { n: 0 } },
                                                                       { push: { storage: false,
                                                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_8.toValue(tmp_0),
@@ -1235,8 +1252,8 @@ export class Contract {
                                                                                pushPath: false,
                                                                                path: [
                                                                                       { tag: 'value',
-                                                                                        value: { value: _descriptor_9.toValue(5n),
-                                                                                                 alignment: _descriptor_9.alignment() } }] } },
+                                                                                        value: { value: _descriptor_10.toValue(5n),
+                                                                                                 alignment: _descriptor_10.alignment() } }] } },
                                                                       { dup: { n: 0 } },
                                                                       { push: { storage: false,
                                                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_8.toValue(tmp_0),
@@ -1280,8 +1297,8 @@ export class Contract {
                                                                                pushPath: false,
                                                                                path: [
                                                                                       { tag: 'value',
-                                                                                        value: { value: _descriptor_9.toValue(5n),
-                                                                                                 alignment: _descriptor_9.alignment() } }] } },
+                                                                                        value: { value: _descriptor_10.toValue(5n),
+                                                                                                 alignment: _descriptor_10.alignment() } }] } },
                                                                       { dup: { n: 0 } },
                                                                       { push: { storage: false,
                                                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_8.toValue(tmp_0),
@@ -1332,8 +1349,8 @@ export class Contract {
                                                                                                                                        pushPath: false,
                                                                                                                                        path: [
                                                                                                                                               { tag: 'value',
-                                                                                                                                                value: { value: _descriptor_9.toValue(0n),
-                                                                                                                                                         alignment: _descriptor_9.alignment() } }] } },
+                                                                                                                                                value: { value: _descriptor_10.toValue(0n),
+                                                                                                                                                         alignment: _descriptor_10.alignment() } }] } },
                                                                                                                               { popeq: { cached: true,
                                                                                                                                          result: undefined } }]).value)));
     return color_0;
@@ -1358,8 +1375,8 @@ export class Contract {
                                                                                            pushPath: false,
                                                                                            path: [
                                                                                                   { tag: 'value',
-                                                                                                    value: { value: _descriptor_9.toValue(0n),
-                                                                                                             alignment: _descriptor_9.alignment() } }] } },
+                                                                                                    value: { value: _descriptor_10.toValue(0n),
+                                                                                                             alignment: _descriptor_10.alignment() } }] } },
                                                                                   { popeq: { cached: true,
                                                                                              result: undefined } }]).value)))
     {
@@ -1396,8 +1413,8 @@ export class Contract {
                                                                                                                   pushPath: false,
                                                                                                                   path: [
                                                                                                                          { tag: 'value',
-                                                                                                                           value: { value: _descriptor_9.toValue(0n),
-                                                                                                                                    alignment: _descriptor_9.alignment() } }] } },
+                                                                                                                           value: { value: _descriptor_10.toValue(0n),
+                                                                                                                                    alignment: _descriptor_10.alignment() } }] } },
                                                                                                          { popeq: { cached: true,
                                                                                                                     result: undefined } }]).value)));
     return [];
@@ -1544,8 +1561,6 @@ const _emptyContext = {
 };
 const _dummyContract = new Contract({ });
 export const pureCircuits = {};
-export const contractReferenceLocations =
-  { tag: 'publicLedgerArray', indices: { } };
 export const expectedVk = {
   'getUnshieldedBalanceGtTest': '0d8df5d0cab71a135e63606fceb46607eb236712757654a17c0e4cadb51db68d',
   'getUnshieldedBalanceGteTest': '727366cba8899cc10987875c7b9af575d351c6e7698339f6642bee52caf42aea',
@@ -1563,5 +1578,25 @@ export const expectedVk = {
   'sendUnshieldedToSelfTest': '7727578b6a56689e9f1aa13e14c980e567be5803a247b55ec765e7722d6c73bc',
   'sendUnshieldedToUserTest': '57a047d2f3d1dae12c475f49b452214ae8737c842db618d1e619183c96551954',
 };
+
+export const circuitSignatures = {
+  'mintUnshieldedToSelfTest': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Uint', maxval: '18446744073709551615'}], resultType: {tag: 'Bytes', length: 32}},
+  'mintUnshieldedToContractTest': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Struct', name: 'ContractAddress', elements: [{name: 'bytes', type: {tag: 'Bytes', length: 32}}]}, {tag: 'Uint', maxval: '18446744073709551615'}], resultType: {tag: 'Bytes', length: 32}},
+  'mintUnshieldedToUserTest': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Struct', name: 'UserAddress', elements: [{name: 'bytes', type: {tag: 'Bytes', length: 32}}]}, {tag: 'Uint', maxval: '18446744073709551615'}], resultType: {tag: 'Bytes', length: 32}},
+  'sendUnshieldedToSelfTest': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Uint', maxval: '340282366920938463463374607431768211455'}], resultType: {tag: 'Tuple', types: []}},
+  'sendUnshieldedToContractTest': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Uint', maxval: '340282366920938463463374607431768211455'}, {tag: 'Struct', name: 'ContractAddress', elements: [{name: 'bytes', type: {tag: 'Bytes', length: 32}}]}], resultType: {tag: 'Tuple', types: []}},
+  'sendUnshieldedToUserTest': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Uint', maxval: '340282366920938463463374607431768211455'}, {tag: 'Struct', name: 'UserAddress', elements: [{name: 'bytes', type: {tag: 'Bytes', length: 32}}]}], resultType: {tag: 'Tuple', types: []}},
+  'receiveUnshieldedTest': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Uint', maxval: '340282366920938463463374607431768211455'}], resultType: {tag: 'Tuple', types: []}},
+  'getUnshieldedBalanceTest': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}], resultType: {tag: 'Uint', maxval: '340282366920938463463374607431768211455'}},
+  'getUnshieldedBalanceGtTest': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Uint', maxval: '340282366920938463463374607431768211455'}], resultType: {tag: 'Boolean'}},
+  'getUnshieldedBalanceLtTest': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Uint', maxval: '340282366920938463463374607431768211455'}], resultType: {tag: 'Boolean'}},
+  'getUnshieldedBalanceGteTest': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Uint', maxval: '340282366920938463463374607431768211455'}], resultType: {tag: 'Boolean'}},
+  'getUnshieldedBalanceLteTest': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Uint', maxval: '340282366920938463463374607431768211455'}], resultType: {tag: 'Boolean'}},
+  'receiveNightTokens': {pure: false, provable: true, argumentTypes: [{tag: 'Uint', maxval: '340282366920938463463374607431768211455'}], resultType: {tag: 'Tuple', types: []}},
+  'sendNightTokensToUser': {pure: false, provable: true, argumentTypes: [{tag: 'Uint', maxval: '18446744073709551615'}, {tag: 'Struct', name: 'UserAddress', elements: [{name: 'bytes', type: {tag: 'Bytes', length: 32}}]}], resultType: {tag: 'Tuple', types: []}},
+  'sendNightTokensToRecipient': {pure: false, provable: true, argumentTypes: [{tag: 'Uint', maxval: '18446744073709551615'}, {tag: 'Struct', name: 'Either', elements: [{name: 'is_left', type: {tag: 'Boolean'}}, {name: 'left', type: {tag: 'Struct', name: 'ContractAddress', elements: [{name: 'bytes', type: {tag: 'Bytes', length: 32}}]}}, {name: 'right', type: {tag: 'Struct', name: 'UserAddress', elements: [{name: 'bytes', type: {tag: 'Bytes', length: 32}}]}}]}], resultType: {tag: 'Tuple', types: []}},
+};
+
+export const declaredInterfaces = {};
 
 //# sourceMappingURL=index.js.map
