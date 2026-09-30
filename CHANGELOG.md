@@ -2,6 +2,140 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [5.0.0-rc.0](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-beta.8...v5.0.0-rc.0) (2026-09-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* **midnight-js:** retire the hand-maintained retained-era execution layer (#1375)
+* **midnight-js:** carry the contract balance into retained-era execution (#1349)
+* **midnight-js:** move the provider error codes to the package that throws them (#1310)
+* **midnight-js:** build a call's Zswap offer from the split the composer resolves (#1309)
+* **midnight-js:** reject a typo'd error code at compile time
+* **midnight-js:** build a call's Zswap offer from the split the composer resolves
+
+### Features
+
+* **midnight-js:** build a proof provider from one proving provider per era ([#1364](https://github.com/midnightntwrk/midnight-js/pull/1364)) ([9840044](https://github.com/midnightntwrk/midnight-js/commit/9840044ceec51aad2fbcfcd9b07ad31200cc95cb)), closes [#1363](https://github.com/midnightntwrk/midnight-js/pull/1363)
+* **midnight-js:** connect the retained-era deploy arm to its pipeline ([250ede5](https://github.com/midnightntwrk/midnight-js/commit/250ede58aa4bc2c15a866f3645ccc03097cc1b2a))
+* **midnight-js:** persist the retained-era contract signing key ([b0be371](https://github.com/midnightntwrk/midnight-js/commit/b0be371b678996b267df11c5136657d2f348acb5))
+* **midnight-js:** persist the retained-era contract signing key ([#1324](https://github.com/midnightntwrk/midnight-js/pull/1324)) ([3db2bef](https://github.com/midnightntwrk/midnight-js/commit/3db2bef630c3b5d014ae883a354f613c0a383e83)), closes [#1316](https://github.com/midnightntwrk/midnight-js/pull/1316) [#1316](https://github.com/midnightntwrk/midnight-js/pull/1316) [#1316](https://github.com/midnightntwrk/midnight-js/pull/1316) [#1322](https://github.com/midnightntwrk/midnight-js/pull/1322) [#1316](https://github.com/midnightntwrk/midnight-js/pull/1316)
+* **midnight-js:** publish an era-agnostic contract-state read ([#1358](https://github.com/midnightntwrk/midnight-js/pull/1358)) ([8d508e0](https://github.com/midnightntwrk/midnight-js/commit/8d508e0e2ae92786a40c657a85e2b3937e44f5a7)), closes [#1352](https://github.com/midnightntwrk/midnight-js/pull/1352) [#1352](https://github.com/midnightntwrk/midnight-js/pull/1352) [#1352](https://github.com/midnightntwrk/midnight-js/pull/1352) [#1352](https://github.com/midnightntwrk/midnight-js/pull/1352) [#1352](https://github.com/midnightntwrk/midnight-js/pull/1352)
+* **midnight-js:** retire the hand-maintained retained-era execution layer ([#1375](https://github.com/midnightntwrk/midnight-js/pull/1375)) ([a6e5598](https://github.com/midnightntwrk/midnight-js/commit/a6e5598ed430f904d1f10ff226a163099dd3f588)), closes [#1341](https://github.com/midnightntwrk/midnight-js/pull/1341) [#400](https://github.com/midnightntwrk/midnight-js/pull/400) [#401](https://github.com/midnightntwrk/midnight-js/pull/401) [#402](https://github.com/midnightntwrk/midnight-js/pull/402) [#403](https://github.com/midnightntwrk/midnight-js/pull/403) [#400](https://github.com/midnightntwrk/midnight-js/pull/400) [#403](https://github.com/midnightntwrk/midnight-js/pull/403) [#1349](https://github.com/midnightntwrk/midnight-js/pull/1349) [#1345](https://github.com/midnightntwrk/midnight-js/pull/1345) [#1345](https://github.com/midnightntwrk/midnight-js/pull/1345) [#1345](https://github.com/midnightntwrk/midnight-js/pull/1345) [midnightntwrk/midnight-sdk#402](https://github.com/midnightntwrk/midnight-js/pull/402)
+* **midnight-js:** set a maintenance authority on the retained deploy path ([5a238ac](https://github.com/midnightntwrk/midnight-js/commit/5a238ac1920d18b1f22b54f061738387273a8f4d))
+* **midnight-js:** stream contract state undecoded across the ledger fork ([#1374](https://github.com/midnightntwrk/midnight-js/pull/1374)) ([6221b2b](https://github.com/midnightntwrk/midnight-js/commit/6221b2b2871d18bfcb798924496f9ac2f64e00fa)), closes [#1358](https://github.com/midnightntwrk/midnight-js/pull/1358) [#1352](https://github.com/midnightntwrk/midnight-js/pull/1352)
+* **midnight-js:** type the retained-era deploy options and seed find private state ([6645dfd](https://github.com/midnightntwrk/midnight-js/commit/6645dfd5ce901fd05e15b7063672d93c39a5fea8))
+* **midnight-js:** wire deployContract's retained-era arm ([#1316](https://github.com/midnightntwrk/midnight-js/pull/1316)) ([ab5bd37](https://github.com/midnightntwrk/midnight-js/commit/ab5bd37a7a94acfe04dc6dfbd0451b8af6f091fe)), closes [#1005](https://github.com/midnightntwrk/midnight-js/pull/1005) [#1309](https://github.com/midnightntwrk/midnight-js/pull/1309) [#1311](https://github.com/midnightntwrk/midnight-js/pull/1311) [#1005](https://github.com/midnightntwrk/midnight-js/pull/1005)
+* **testkit-js:** upgrade wallet-sdk to the 2.0.0 canary and adopt WalletFacade.adoptTransaction ([#1337](https://github.com/midnightntwrk/midnight-js/pull/1337)) ([3cf04b2](https://github.com/midnightntwrk/midnight-js/commit/3cf04b26846c1e5d199b7a07281000649c54c9e1))
+
+
+### Bug Fixes
+
+* **midnight-js:** carry the contract balance into retained-era execution ([#1349](https://github.com/midnightntwrk/midnight-js/pull/1349)) ([bfc2d18](https://github.com/midnightntwrk/midnight-js/commit/bfc2d186fffabd2a514c2bfc1769fbe0c4da61db)), closes [#1312](https://github.com/midnightntwrk/midnight-js/pull/1312) [#1345](https://github.com/midnightntwrk/midnight-js/pull/1345) [/github.com/midnightntwrk/midnight-js/pull/1349#discussion_r4094226572](https://github.com/midnightntwrk/midnight-js/pull/discussion_r4094226572) [#1357](https://github.com/midnightntwrk/midnight-js/pull/1357) [#1345](https://github.com/midnightntwrk/midnight-js/pull/1345) [#1357](https://github.com/midnightntwrk/midnight-js/pull/1357)
+* **midnight-js:** close the retained deploy arm's private-state and key holes ([0525003](https://github.com/midnightntwrk/midnight-js/commit/0525003d4ba9ba8f896e30e594d6beb1796d9b1c))
+* **midnight-js:** close the review gaps in the retained-era context split ([ffbeb06](https://github.com/midnightntwrk/midnight-js/commit/ffbeb064da4c476d915113710f73245ddfa57c7f)), closes [#1312](https://github.com/midnightntwrk/midnight-js/pull/1312) [#1312](https://github.com/midnightntwrk/midnight-js/pull/1312) [#1312](https://github.com/midnightntwrk/midnight-js/pull/1312)
+* **midnight-js:** constrain CircuitKey and pin the defect it works around ([d5e86d7](https://github.com/midnightntwrk/midnight-js/commit/d5e86d73a7d60cf4e07eef4dab4f2a7038c474d2)), closes [midnightntwrk/midnight-sdk#402](https://github.com/midnightntwrk/midnight-js/pull/402)
+* **midnight-js:** correct the retained-era deploy surface and its docs ([0e5ed50](https://github.com/midnightntwrk/midnight-js/commit/0e5ed5064cfa18bf0e528e1198f4d8a9e598af33))
+* **midnight-js:** fail loud on a lost indexer subscription frame ([#1360](https://github.com/midnightntwrk/midnight-js/pull/1360)) ([d0a52b4](https://github.com/midnightntwrk/midnight-js/commit/d0a52b4bd9e36ec80b556f83f68f08bf647c2968)), closes [#1231](https://github.com/midnightntwrk/midnight-js/pull/1231) [#1359](https://github.com/midnightntwrk/midnight-js/pull/1359) [#1231](https://github.com/midnightntwrk/midnight-js/pull/1231)
+* **midnight-js:** keep the retained signing key reachable at every store seam ([f4bfbc8](https://github.com/midnightntwrk/midnight-js/commit/f4bfbc81aaf36c35cacc2495f3f2d478a2bedf29))
+* **midnight-js:** make an absent retained signing key impossible to ignore ([cbe646a](https://github.com/midnightntwrk/midnight-js/commit/cbe646a86f03be362f6d784225d3aa2b52a9720d))
+* **midnight-js:** make retained-era overloads reachable from TypeScript ([29e861e](https://github.com/midnightntwrk/midnight-js/commit/29e861ed9f07a77556b992d1bce12e6de2d2167d)), closes [#1312](https://github.com/midnightntwrk/midnight-js/pull/1312) [#1312](https://github.com/midnightntwrk/midnight-js/pull/1312)
+* **midnight-js:** make retained-era overloads reachable from TypeScript ([#1315](https://github.com/midnightntwrk/midnight-js/pull/1315)) ([71b42ed](https://github.com/midnightntwrk/midnight-js/commit/71b42edc58c9bb9543ce210b1e661790b6cbd48e)), closes [#1312](https://github.com/midnightntwrk/midnight-js/pull/1312) [#1312](https://github.com/midnightntwrk/midnight-js/pull/1312) [#1312](https://github.com/midnightntwrk/midnight-js/pull/1312) [#1314](https://github.com/midnightntwrk/midnight-js/pull/1314)
+* **midnight-js:** make the authority fake assignable to the injected signature ([cc328f2](https://github.com/midnightntwrk/midnight-js/commit/cc328f20bfb145159b8fe9a18f9b331393fdfe18))
+* **midnight-js:** name the contract address before the retained find seeds private state ([ed5967e](https://github.com/midnightntwrk/midnight-js/commit/ed5967e8af4469ac34b13439898a2c2e0ba81f94))
+* **midnight-js:** pair privateStateId with initialPrivateState on deploy options ([#1321](https://github.com/midnightntwrk/midnight-js/pull/1321)) ([9379fb7](https://github.com/midnightntwrk/midnight-js/commit/9379fb7fae15a666fc7ae4dea2e39c527c9fc6f5))
+* **midnight-js:** pair privateStateId with initialPrivateState on deploy options ([#1321](https://github.com/midnightntwrk/midnight-js/pull/1321)) ([#1325](https://github.com/midnightntwrk/midnight-js/pull/1325)) ([abae1ed](https://github.com/midnightntwrk/midnight-js/commit/abae1ed53f28ae7f9ae276614ccfad7d9ed53644)), closes [#1331](https://github.com/midnightntwrk/midnight-js/pull/1331) [#1331](https://github.com/midnightntwrk/midnight-js/pull/1331) [#1332](https://github.com/midnightntwrk/midnight-js/pull/1332)
+* **midnight-js:** pin ledger-v9 in generated persona manifests ([30e90e1](https://github.com/midnightntwrk/midnight-js/commit/30e90e122fae596d069642ea7e8c8f084112f9c5)), closes [#1309](https://github.com/midnightntwrk/midnight-js/pull/1309) [#1313](https://github.com/midnightntwrk/midnight-js/pull/1313)
+* **midnight-js:** pin ledger-v9 in generated persona manifests ([#1314](https://github.com/midnightntwrk/midnight-js/pull/1314)) ([23690ed](https://github.com/midnightntwrk/midnight-js/commit/23690ed1ea7492ceb97c26f1ab2c8d7d04272fa0)), closes [#1309](https://github.com/midnightntwrk/midnight-js/pull/1309) [#1313](https://github.com/midnightntwrk/midnight-js/pull/1313)
+* **midnight-js:** read a call's Zswap offer last on both era arms ([b19438e](https://github.com/midnightntwrk/midnight-js/commit/b19438ef42393543d152d56c40c3441794eb5902))
+* **midnight-js:** read an unusable retained signing-key entry as absent ([8a199d2](https://github.com/midnightntwrk/midnight-js/commit/8a199d2cd50a9e0c311badb641f03d77852f640b))
+* **midnight-js:** reject non-serialisable private state at write time ([#1365](https://github.com/midnightntwrk/midnight-js/pull/1365)) ([fa77745](https://github.com/midnightntwrk/midnight-js/commit/fa777457aabdc8dc0d7569ab7e06bc4eb731fef4)), closes [#1234](https://github.com/midnightntwrk/midnight-js/pull/1234)
+* **midnight-js:** restore the fixture types main started using, derived ([b884053](https://github.com/midnightntwrk/midnight-js/commit/b8840532a928ccfdbb5d4c82e15620c3ab63cea2))
+* **midnight-js:** type circuit arguments on current-era call options ([cf02074](https://github.com/midnightntwrk/midnight-js/commit/cf02074fefcfe7f7c6a068c1ebfda3575d1ad897)), closes [midnightntwrk/midnight-sdk#402](https://github.com/midnightntwrk/midnight-js/pull/402)
+* **midnight-js:** unbrand createCallTxOptions args and correct branch review findings ([ef8177a](https://github.com/midnightntwrk/midnight-js/commit/ef8177a7104a7b5cf200b4ae5cde91d5c1974e4a))
+* **testkit-js:** read connector bytes at the version the wallet is acting at ([9da7603](https://github.com/midnightntwrk/midnight-js/commit/9da7603c1ab6e8d983307105930fed4f77a67549))
+* **testkit-js:** refuse unreadable dApp bytes as the connector's InvalidRequest ([adad435](https://github.com/midnightntwrk/midnight-js/commit/adad4359850d715f698b086ba1076806522ad9bf))
+
+
+### Documentation
+
+* adopt DCO sign-off in CONTRIBUTING.md ([fcc7ab4](https://github.com/midnightntwrk/midnight-js/commit/fcc7ab453b8c2875d3b5d32c59575fc166441e38)), closes [midnightntwrk/midnight-iac#410](https://github.com/midnightntwrk/midnight-js/pull/410) [midnightntwrk/midnight-iac#433](https://github.com/midnightntwrk/midnight-js/pull/433)
+* adopt DCO sign-off in CONTRIBUTING.md ([#1377](https://github.com/midnightntwrk/midnight-js/pull/1377)) ([fe44397](https://github.com/midnightntwrk/midnight-js/commit/fe4439717964743a08f3b23120c5ebe3d5efc12a)), closes [midnightntwrk/midnight-iac#410](https://github.com/midnightntwrk/midnight-js/pull/410) [midnightntwrk/midnight-iac#433](https://github.com/midnightntwrk/midnight-js/pull/433) [midnight-iac#410](https://github.com/midnightntwrk/midnight-js/pull/410) [midnight-iac#433](https://github.com/midnightntwrk/midnight-js/pull/433)
+* API documentation update ([3a8f147](https://github.com/midnightntwrk/midnight-js/commit/3a8f1475e4ced681ca421d6d6f65a062bfa48957))
+* API documentation update ([0bb5d78](https://github.com/midnightntwrk/midnight-js/commit/0bb5d7899df23c32a7ac390288eeb416c5ddc16a))
+* API documentation update ([d035b44](https://github.com/midnightntwrk/midnight-js/commit/d035b449c7fbc2f2ffb99f4a895da5ecae00d3b7))
+* API documentation update ([5675ef9](https://github.com/midnightntwrk/midnight-js/commit/5675ef92739a2cfb4db3d5102a4bd1d4fdffb03c))
+* API documentation update ([#1306](https://github.com/midnightntwrk/midnight-js/pull/1306)) ([bd31808](https://github.com/midnightntwrk/midnight-js/commit/bd318088aa93437e8547f9778f4d4416af8d0981))
+* API documentation update ([#1320](https://github.com/midnightntwrk/midnight-js/pull/1320)) ([192731f](https://github.com/midnightntwrk/midnight-js/commit/192731f710a211b2c386d707139f21cdaea7970e))
+* API documentation update ([#1333](https://github.com/midnightntwrk/midnight-js/pull/1333)) ([02dac68](https://github.com/midnightntwrk/midnight-js/commit/02dac68333fd420492f369b2a58516c8e7bf3aa5))
+* API documentation update ([#1348](https://github.com/midnightntwrk/midnight-js/pull/1348)) ([4cae298](https://github.com/midnightntwrk/midnight-js/commit/4cae2986fc1bb8e1dda88abd80d1ecbf08c4a3e3))
+* API documentation update ([#1373](https://github.com/midnightntwrk/midnight-js/pull/1373)) ([39b9d2f](https://github.com/midnightntwrk/midnight-js/commit/39b9d2fde7bb753f2202184b5fe1a847b45a40c5))
+* API documentation update ([#1382](https://github.com/midnightntwrk/midnight-js/pull/1382)) ([673c1e3](https://github.com/midnightntwrk/midnight-js/commit/673c1e31c8b22427b26317dd28a97be7351e368d))
+* **midnight-js:** correct the claims the wired deploy arm falsified ([48e0d82](https://github.com/midnightntwrk/midnight-js/commit/48e0d8246126dde599e80879c390f2b7884c9bd4))
+* **midnight-js:** correct the retained signing-key claims that were false ([8c7b726](https://github.com/midnightntwrk/midnight-js/commit/8c7b726780ffcbbc4cbe4cb28f90b6fa673a6103))
+* **midnight-js:** correct the retained-era claims the wired arm falsified ([d6ef2c0](https://github.com/midnightntwrk/midnight-js/commit/d6ef2c00c998daf3544b5d3df87e8c8dd4541ecb))
+* **midnight-js:** correct who hits the branded-key degradation, and amend ADR-0010 ([54b0365](https://github.com/midnightntwrk/midnight-js/commit/54b03650be9dee3bdefe68fcf9740e839b033704))
+* **midnight-js:** extend the package-docs pattern to types, utils and the indexer provider ([e19cda9](https://github.com/midnightntwrk/midnight-js/commit/e19cda9f1e1644f7fea9ed01c077b62f81150295))
+* **midnight-js:** move design rationale out of API signatures into package docs ([#1335](https://github.com/midnightntwrk/midnight-js/pull/1335)) ([1377511](https://github.com/midnightntwrk/midnight-js/commit/137751179dcc0ae29b2e00f6884fa6cabe137565)), closes [#1334](https://github.com/midnightntwrk/midnight-js/pull/1334) [#1218](https://github.com/midnightntwrk/midnight-js/pull/1218)
+* **midnight-js:** move the contracts error taxonomy and attach-arm rationale into docs ([5f4ce1e](https://github.com/midnightntwrk/midnight-js/commit/5f4ce1ed860171308ff54c1b700484bd4c84ccdc))
+* **midnight-js:** move the remaining contracts and protocol rationale into docs ([a4e6e83](https://github.com/midnightntwrk/midnight-js/commit/a4e6e830a36e78f16c4d1f83124bb89216619c32))
+* **midnight-js:** record the code move in ADR 0006 and the 5.0.0 notes ([50ded80](https://github.com/midnightntwrk/midnight-js/commit/50ded803e9217a84a5c9bff0c3f4fd0605807d33)), closes [#1308](https://github.com/midnightntwrk/midnight-js/pull/1308)
+
+
+### Code Refactoring
+
+* **midnight-js:** build a call's Zswap offer from the split the composer resolves ([f1447b2](https://github.com/midnightntwrk/midnight-js/commit/f1447b26a9653ab96fd2f6af00c0be4cf9eaf4d8))
+* **midnight-js:** build a call's Zswap offer from the split the composer resolves ([#1309](https://github.com/midnightntwrk/midnight-js/pull/1309)) ([3188f6b](https://github.com/midnightntwrk/midnight-js/commit/3188f6bf1499f2cd4e0d26c4047d31ca66869c37)), closes [#1218](https://github.com/midnightntwrk/midnight-js/pull/1218) [#731](https://github.com/midnightntwrk/midnight-js/pull/731) [#877](https://github.com/midnightntwrk/midnight-js/pull/877) [#1313](https://github.com/midnightntwrk/midnight-js/pull/1313) [#1218](https://github.com/midnightntwrk/midnight-js/pull/1218)
+* **midnight-js:** close the foreign-code guard's escape hatch ([97b3e2c](https://github.com/midnightntwrk/midnight-js/commit/97b3e2ccff0664c194f864bca2dbd5f5c551cd82)), closes [#1308](https://github.com/midnightntwrk/midnight-js/pull/1308)
+* **midnight-js:** drop the deploy options cast and publish the shared arm ([fbc65b4](https://github.com/midnightntwrk/midnight-js/commit/fbc65b42703d65da7211d538e57d07ff553c4581))
+* **midnight-js:** fold the two post-submission deploy refusals into one ([023e34d](https://github.com/midnightntwrk/midnight-js/commit/023e34d91608e0c1cce207a5d4e1508f6f1e59c9))
+* **midnight-js:** move the provider error codes to the package that throws them ([7582472](https://github.com/midnightntwrk/midnight-js/commit/75824721d81719e099de216d8d6c126910909f79)), closes [#1218](https://github.com/midnightntwrk/midnight-js/pull/1218) [#1308](https://github.com/midnightntwrk/midnight-js/pull/1308)
+* **midnight-js:** move the provider error codes to the package that throws them ([#1310](https://github.com/midnightntwrk/midnight-js/pull/1310)) ([21925db](https://github.com/midnightntwrk/midnight-js/commit/21925dbde8cda77189b0969a30ba6039d08cb897)), closes [#1308](https://github.com/midnightntwrk/midnight-js/pull/1308) [#1218](https://github.com/midnightntwrk/midnight-js/pull/1218) [#1309](https://github.com/midnightntwrk/midnight-js/pull/1309)
+* **midnight-js:** reject a typo'd error code at compile time ([71464ac](https://github.com/midnightntwrk/midnight-js/commit/71464acc8f7988fcc7a6f5b9c2b1788e765a013b)), closes [#1308](https://github.com/midnightntwrk/midnight-js/pull/1308)
+
+
+### Tests
+
+* **midnight-js:** assert seam values survive a clone, not that cloning throws ([beb7335](https://github.com/midnightntwrk/midnight-js/commit/beb73354744c1666ada17c7ff0fd93415738da09))
+* **midnight-js:** assert the stale-head diagnosis on a live fork chain ([#1361](https://github.com/midnightntwrk/midnight-js/pull/1361)) ([987bb99](https://github.com/midnightntwrk/midnight-js/commit/987bb99dd7bda82c0802b245fb7218305aea4f34)), closes [#1353](https://github.com/midnightntwrk/midnight-js/pull/1353)
+* **midnight-js:** close three fork-crossing gaps ([#1346](https://github.com/midnightntwrk/midnight-js/pull/1346)) ([9971645](https://github.com/midnightntwrk/midnight-js/commit/997164501d21573772a82094d4aaa1744afdd64b)), closes [#1344](https://github.com/midnightntwrk/midnight-js/pull/1344) [#1344](https://github.com/midnightntwrk/midnight-js/pull/1344)
+* **midnight-js:** make the clone and duplicate guards catch what they claimed ([a600728](https://github.com/midnightntwrk/midnight-js/commit/a6007280e48721ea129ed532685a9cabcc48056a))
+* **midnight-js:** measure the retained deploy paths that shipped green ([4657cd9](https://github.com/midnightntwrk/midnight-js/commit/4657cd9556a2a4a244375535e96634f47bf8f2e9))
+* **midnight-js:** pin retained-era deploy handle to constructor private state ([1a9a8f3](https://github.com/midnightntwrk/midnight-js/commit/1a9a8f3a358d0c5aca176af5641e8108eb6b241e))
+* **midnight-js:** pin the branded circuit-id case for call options ([a4e827d](https://github.com/midnightntwrk/midnight-js/commit/a4e827d49eb6aed2d0c97504cadffe88aaea1357))
+* **midnight-js:** pin the three assertions review found vacuous ([2ce8cb2](https://github.com/midnightntwrk/midnight-js/commit/2ce8cb2d1524e6ff967d86a86d9098a9fe9f96a9))
+* **midnight-js:** put the fork gate's retained deploys on the public API ([52366a4](https://github.com/midnightntwrk/midnight-js/commit/52366a482f4ab6a6013776b70289db6d1c165074))
+* **midnight-js:** reject WASM handles by structural own-property walk ([19b3a77](https://github.com/midnightntwrk/midnight-js/commit/19b3a77260b7708ef4790df97ccdb25fd393a7b2))
+* **midnight-js:** restore what the converted error assertions proved ([86ce517](https://github.com/midnightntwrk/midnight-js/commit/86ce517cf33c9c210f987ad0aee6578f50214a3f)), closes [#1308](https://github.com/midnightntwrk/midnight-js/pull/1308)
+* **midnight-js:** typecheck the consumer-e2e fork harness ([#1344](https://github.com/midnightntwrk/midnight-js/pull/1344)) ([7023e03](https://github.com/midnightntwrk/midnight-js/commit/7023e031db422c45a3f6bb68bc3dc6fee4a09ff3))
+* **testkit-js:** drive the retained call pipeline on the v8era lane ([#1362](https://github.com/midnightntwrk/midnight-js/pull/1362)) ([fcb7342](https://github.com/midnightntwrk/midnight-js/commit/fcb7342b08c22b60fddee203fb4aef98ac166134)), closes [#1350](https://github.com/midnightntwrk/midnight-js/pull/1350) [#1349](https://github.com/midnightntwrk/midnight-js/pull/1349) [#1345](https://github.com/midnightntwrk/midnight-js/pull/1345) [#1345](https://github.com/midnightntwrk/midnight-js/pull/1345) [#1345](https://github.com/midnightntwrk/midnight-js/pull/1345)
+
+
+### Build System
+
+* **deps-dev:** bump rollup-plugin-dts from 6.4.1 to 6.5.1 ([7c50dd3](https://github.com/midnightntwrk/midnight-js/commit/7c50dd3ecb707279944b063aba6a52c5dff22156))
+* **deps-dev:** bump rollup-plugin-dts from 6.4.1 to 6.5.1 ([#1246](https://github.com/midnightntwrk/midnight-js/pull/1246)) ([8602f0c](https://github.com/midnightntwrk/midnight-js/commit/8602f0c6f3ec8a3ab87ad9eb0f79d5f4a9f59405))
+* **deps-dev:** bump turbo from 2.9.16 to 2.10.12 ([92f1687](https://github.com/midnightntwrk/midnight-js/commit/92f1687e40642d80580893b3827ec727f73c864a))
+* **deps-dev:** bump turbo from 2.9.16 to 2.10.12 ([#1248](https://github.com/midnightntwrk/midnight-js/pull/1248)) ([0f24a76](https://github.com/midnightntwrk/midnight-js/commit/0f24a768b19fe21319d8574f208c1c1ce4e3ea55))
+* **deps:** bump @noble/ciphers from 2.2.0 to 2.4.0 ([4cb9079](https://github.com/midnightntwrk/midnight-js/commit/4cb9079f1f5a066cf183ed4e454aa67a5609b7ff))
+* **deps:** bump @noble/ciphers from 2.2.0 to 2.4.0 ([#1247](https://github.com/midnightntwrk/midnight-js/pull/1247)) ([d2d60e2](https://github.com/midnightntwrk/midnight-js/commit/d2d60e217de9d1a1083104322676bf52e7ab34f9))
+* keep eslint out of in-repo worktree checkouts ([d9be60e](https://github.com/midnightntwrk/midnight-js/commit/d9be60ee96b02a861674d15180e8d36ca81d1889))
+* **midnight-js:** adopt compact-js 3.0.0-rc.0, and fix two defects the move exposed ([#1341](https://github.com/midnightntwrk/midnight-js/pull/1341)) ([ccf71ca](https://github.com/midnightntwrk/midnight-js/commit/ccf71cab5919e37e8249765700b998caeb64ed32)), closes [midnightntwrk/midnight-sdk#400](https://github.com/midnightntwrk/midnight-js/pull/400) [#403](https://github.com/midnightntwrk/midnight-js/pull/403) [midnightntwrk/midnight-sdk#401](https://github.com/midnightntwrk/midnight-js/pull/401) [midnightntwrk/midnight-sdk#400](https://github.com/midnightntwrk/midnight-js/pull/400) [#401](https://github.com/midnightntwrk/midnight-js/pull/401) [#402](https://github.com/midnightntwrk/midnight-js/pull/402) [#403](https://github.com/midnightntwrk/midnight-js/pull/403) [midnightntwrk/midnight-sdk#387](https://github.com/midnightntwrk/midnight-js/pull/387) [#388](https://github.com/midnightntwrk/midnight-js/pull/388)
+* **midnight-js:** declare the root manifest and lockfile as global deps ([54f8010](https://github.com/midnightntwrk/midnight-js/commit/54f8010fe020fc3b38d441471c22c739c6278872))
+* **midnight-js:** move to compact-js 3.0.0-rc.0 ([42ccbe9](https://github.com/midnightntwrk/midnight-js/commit/42ccbe97ea8f41c6018992e585354361a21e70cf)), closes [midnightntwrk/midnight-sdk#400](https://github.com/midnightntwrk/midnight-js/pull/400)
+
+
+### Continuous Integration
+
+* sign off automated commits for DCO ([#1380](https://github.com/midnightntwrk/midnight-js/pull/1380)) ([1944095](https://github.com/midnightntwrk/midnight-js/commit/19440957d76c06e3b9d0b22a03bde72e032e2480)), closes [#1379](https://github.com/midnightntwrk/midnight-js/pull/1379) [#1379](https://github.com/midnightntwrk/midnight-js/pull/1379)
+
+
+### Improvements
+
+* **deps:** bump @apollo/client from 4.2.5 to 4.2.12 ([540b4fe](https://github.com/midnightntwrk/midnight-js/commit/540b4fe082d0b43036b9694d95d734cff73b8203))
+* **deps:** bump @apollo/client from 4.2.5 to 4.2.12 ([#1201](https://github.com/midnightntwrk/midnight-js/pull/1201)) ([c78447d](https://github.com/midnightntwrk/midnight-js/commit/c78447d3337ae90132ee7fd33d920e350f2caf9f)), closes [#13400](https://github.com/midnightntwrk/midnight-js/pull/13400) [#13398](https://github.com/midnightntwrk/midnight-js/pull/13398) [#13392](https://github.com/midnightntwrk/midnight-js/pull/13392) [#13385](https://github.com/midnightntwrk/midnight-js/pull/13385) [#13382](https://github.com/midnightntwrk/midnight-js/pull/13382) [#13382](https://github.com/midnightntwrk/midnight-js/pull/13382) [#13383](https://github.com/midnightntwrk/midnight-js/pull/13383) [#13364](https://github.com/midnightntwrk/midnight-js/pull/13364) [#13367](https://github.com/midnightntwrk/midnight-js/pull/13367) [#13349](https://github.com/midnightntwrk/midnight-js/pull/13349) [#13320](https://github.com/midnightntwrk/midnight-js/pull/13320) [#13315](https://github.com/midnightntwrk/midnight-js/pull/13315) [#13307](https://github.com/midnightntwrk/midnight-js/pull/13307) [#13400](https://github.com/midnightntwrk/midnight-js/pull/13400) [#13398](https://github.com/midnightntwrk/midnight-js/pull/13398) [#13392](https://github.com/midnightntwrk/midnight-js/pull/13392) [#13385](https://github.com/midnightntwrk/midnight-js/pull/13385) [#13382](https://github.com/midnightntwrk/midnight-js/pull/13382) [#13382](https://github.com/midnightntwrk/midnight-js/pull/13382) [#13383](https://github.com/midnightntwrk/midnight-js/pull/13383) [#13364](https://github.com/midnightntwrk/midnight-js/pull/13364) [#13367](https://github.com/midnightntwrk/midnight-js/pull/13367) [#13349](https://github.com/midnightntwrk/midnight-js/pull/13349) [#13320](https://github.com/midnightntwrk/midnight-js/pull/13320) [#13411](https://github.com/midnightntwrk/midnight-js/pull/13411) [#13400](https://github.com/midnightntwrk/midnight-js/pull/13400) [#13410](https://github.com/midnightntwrk/midnight-js/pull/13410) [#13401](https://github.com/midnightntwrk/midnight-js/pull/13401) [#13392](https://github.com/midnightntwrk/midnight-js/pull/13392) [#13389](https://github.com/midnightntwrk/midnight-js/pull/13389) [#13385](https://github.com/midnightntwrk/midnight-js/pull/13385)
+* **deps:** bump wallet-sdk to 2.0.0-canary.20260917091532-7025e69 ([b951175](https://github.com/midnightntwrk/midnight-js/commit/b9511758d2a953a32e04ca76ec7eac6be8250543))
+
 ## [5.0.0-beta.8](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-beta.7...v5.0.0-beta.8) (2026-09-11)
 
 
@@ -499,6 +633,8 @@ All notable changes to this project will be documented in this file. See [commit
 * **midnight-js:** stop republishing vendor API docs from protocol ([1986d15](https://github.com/midnightntwrk/midnight-js/commit/1986d15767c72a2194ca58dd0992a240fa620a94)), closes [#1221](https://github.com/midnightntwrk/midnight-js/pull/1221)
 * **midnight-js:** stop republishing vendor API docs from protocol ([#1222](https://github.com/midnightntwrk/midnight-js/pull/1222)) ([41627e4](https://github.com/midnightntwrk/midnight-js/commit/41627e4e2f2e60c158c948f62e768c49750ff8f9)), closes [#1221](https://github.com/midnightntwrk/midnight-js/pull/1221) [#1221](https://github.com/midnightntwrk/midnight-js/pull/1221)
 * **midnight-js:** trigger CI ([4ad181b](https://github.com/midnightntwrk/midnight-js/commit/4ad181b5dc04cbd1e958c5d12c87cd503f387d88))
+* **release:** bump version to 5.0.0-beta.8 ([3dc073a](https://github.com/midnightntwrk/midnight-js/commit/3dc073aff553ac4f3904c487aa0844fe290bee26))
+* **release:** bump version to 5.0.0-beta.8 ([#1305](https://github.com/midnightntwrk/midnight-js/pull/1305)) ([98ab4ba](https://github.com/midnightntwrk/midnight-js/commit/98ab4ba7537f0a69b2188ebbe7f40aa2f4d6953f))
 * **testkit-js:** add ledger-v8 and ledger-v9 devDependencies ([f8a49a1](https://github.com/midnightntwrk/midnight-js/commit/f8a49a18f99cfbbec16bfe8ebca5c1465be3bbe9))
 
 
