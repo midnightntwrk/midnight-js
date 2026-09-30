@@ -288,7 +288,8 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
     // of these mocks assume; the raw-state read reports "no state at this
     // address" until a test overrides it.
     queryLatestProtocolVersion: vi.fn().mockResolvedValue(MOCK_HEAD_PROTOCOL_VERSION),
-    queryRawContractState: vi.fn().mockResolvedValue(null)
+    queryRawContractState: vi.fn().mockResolvedValue(null),
+    rawContractStateObservable: vi.fn()
   },
   privateStateProvider: {
     setContractAddress: vi.fn(),

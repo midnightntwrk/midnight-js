@@ -422,6 +422,30 @@ export const parseHexContractState = (
  * @param protocolVersion The protocol-version integer the network reported for
  *                        that state.
  */
+/**
+ * The era a raw contract-state record is tagged with, or an {@link IndexerDataError} if this build
+ * cannot place the integer at all.
+ *
+ * Re-reported rather than propagated so every failure of the raw reads reaches consumers as an
+ * `IndexerError`, which is the single `instanceof` this package's errors promise. The protocol-layer
+ * failure is preserved on `cause`.
+ *
+ * Deliberately NOT the tolerant treatment {@link reportedEra} gives the decode path. There the
+ * reported version is only a cross-check and the envelope can decide alone; here it is the value of
+ * a required field, so there is nothing to fall back to and guessing would put a wrong era on the
+ * record.
+ */
+const resolveRecordEra = (protocolVersion: number): LedgerVersion => {
+  try {
+    return protocolVersionToLedger(protocolVersion, 'read');
+  } catch (error) {
+    if (error instanceof UnknownProtocolVersionError) {
+      throw IndexerDataError.unresolvableEra(protocolVersion, error);
+    }
+    throw error;
+  }
+};
+
 export const toRawContractState = (
   hexState: string,
   protocolVersion: number,
@@ -434,7 +458,7 @@ export const toRawContractState = (
   // caller's to establish.
   const { raw } = stateBytesAndEnvelopeVersion(hexState);
   return {
-    version: protocolVersionToLedger(protocolVersion, 'read'),
+    version: resolveRecordEra(protocolVersion),
     protocolVersion,
     raw,
     // Passed through as bytes, undecoded and unexamined. They are era-tagged, and this function

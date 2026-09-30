@@ -58,7 +58,41 @@ Two quite different cases produce it:
 `createWalletProvider` and `createMidnightProvider` each lift a v9-ONLY
 implementation into the version-tagged interface. Refusing the retained arm is
 the adapter accurately reporting what it wraps, not a gap to be filled. To serve
-both eras, use the `…FromArms` constructors, or implement the interface directly.
+both eras, use the `…FromHandlers` constructors, or implement the interface
+directly. On the proof seam there is a shorter route for the common case:
+`createProofProviderForEras` takes one `ProvingProvider` per era and derives the
+handlers and the declaration from them. The section below says when you want it.
+
+## Why an in-process prover needs one proving provider per era
+
+A server-backed proving client — the proof server, the DApp Connector — can
+serve both arms from one `ProvingProvider`. It frames each request with the
+ledger version that produced the transaction, and resolves key material per
+request, so the era is a property of the call rather than of the client.
+
+An in-process prover works the other way round. It frames nothing: it drives a
+zkir runtime over bytes and never reads a ledger version. What it proves for is
+fixed when it is built, by the key material it was given.
+
+From `@midnightntwrk/wallet-sdk-prover-client` 2.0.0-rc.0 that key material is
+per era — `makeV8KeyMaterialProvider` and `makeV9KeyMaterialProvider`, where
+earlier versions had one line accepted by both. The eras' circuits were
+generated as separate generations, and a node rejects a proof made with the
+other era's, so one prover instance cannot serve both. The refusal lands at
+`submitTx`, after the proving has been paid for.
+
+`createProofProviderForEras` is where each prover is paired with the era it
+serves. It does not verify the pairing, and cannot:
+
+- the current era's `ProvingProvider` shape is a structural superset of the
+  retained era's, so registering the wrong one type-checks;
+- one prover's `asProvingProvider()` and `asV8ProvingProvider()` return
+  behaviourally identical objects — the era lives in the prover's key material,
+  not in the object handed over — so no runtime check can tell them apart
+  either.
+
+What the factory gives is one place where the pairing is written down, instead
+of every consumer assembling the handlers by hand.
 
 **Contingently, from a concrete provider.** `httpClientProofProvider` and
 `dappConnectorProofProvider` both DO serve the retained arm, taking and returning
