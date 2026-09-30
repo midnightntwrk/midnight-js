@@ -18,6 +18,7 @@ import {
   indexerPublicDataProvider
 } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol';
+import type { BlockHeightConfig, BlockInfo } from '@midnight-ntwrk/midnight-js-types';
 import { createLogger, delay, type EnvironmentConfiguration, ForkTestEnvironment } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
@@ -85,6 +86,23 @@ const waitForHeadVersion = async (
   }
 };
 
+/**
+ * Reads a block that has to be there, so an indexer that serves none says which block it could not
+ * serve instead of failing later as a property read on null.
+ */
+const requireBlock = async (
+  provider: IndexerPublicDataProvider,
+  config?: BlockHeightConfig
+): Promise<BlockInfo> => {
+  const block = await provider.queryBlock(config);
+  if (block === null) {
+    throw new Error(
+      `The indexer served no block for ${config === undefined ? 'the head' : `height ${config.blockHeight}`}`
+    );
+  }
+  return block;
+};
+
 /** Asks a proof server for its version, so "the endpoint is up" means it answered rather than that a socket is open. */
 const proofServerVersion = async (baseUrl: string): Promise<string> => {
   const response = await fetch(`${baseUrl}/version`);
@@ -98,6 +116,8 @@ describe('Fork-crossing environment', () => {
   let testEnvironment: ForkTestEnvironment;
   let preForkConfiguration: EnvironmentConfiguration;
   let publicDataProvider: IndexerPublicDataProvider;
+  /** The head as it stood before the fork was enacted, kept so a later test can re-read that block. */
+  let preForkBlock: BlockInfo | undefined;
 
   beforeAll(async () => {
     testEnvironment = new ForkTestEnvironment(logger);
@@ -122,6 +142,7 @@ describe('Fork-crossing environment', () => {
     'reports a ledger-8 head before the fork and a ledger-9 head after it, through one unchanged provider',
     async () => {
       // Arrange: the chain starts on the runtime genesis carries, which is the pre-fork one.
+      preForkBlock = await requireBlock(publicDataProvider);
       const beforeVersion = await publicDataProvider.queryLatestProtocolVersion();
       expect(protocolVersionToLedger(beforeVersion)).toBe('v8');
       expect(testEnvironment.hasForked).toBe(false);
@@ -145,6 +166,33 @@ describe('Fork-crossing environment', () => {
       expect(testEnvironment.getEnvironmentConfiguration().proofServer).toBe(testEnvironment.getPostForkProofServer());
     },
     FORK_CROSSING_TIMEOUT
+  );
+
+  test(
+    'dates a block by the era it was produced in, not by where the head is',
+    async () => {
+      // Preconditions, not decoration: without the crossing above both reads below would land on the
+      // same era, and the test would pass while proving nothing.
+      expect(testEnvironment.hasForked).toBe(true);
+      if (preForkBlock === undefined) {
+        throw new Error('The fork-crossing test did not record a pre-fork block, so there is nothing to compare');
+      }
+
+      // Act: re-read that same pre-fork block by height, now that the chain has moved on, and the head.
+      const reReadPreFork = await requireBlock(publicDataProvider, {
+        type: 'blockHeight',
+        blockHeight: preForkBlock.height
+      });
+      const postFork = await requireBlock(publicDataProvider);
+
+      // Assert: the old block still reports the old era. A `queryBlock` that answered with the head's
+      // version instead would report 'v9' here and fail.
+      expect(protocolVersionToLedger(reReadPreFork.protocolVersion)).toBe('v8');
+      expect(protocolVersionToLedger(postFork.protocolVersion)).toBe('v9');
+      expect(reReadPreFork.protocolVersion).toBe(preForkBlock.protocolVersion);
+      expect(postFork.height).toBeGreaterThan(reReadPreFork.height);
+    },
+    FAST_ASSERTION_TIMEOUT
   );
 
   test(

@@ -14,6 +14,7 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { BlockInfo } from '@midnight-ntwrk/midnight-js-types';
 import type { DocumentNode } from 'graphql';
 import { describe, expect, test, vi } from 'vitest';
 
@@ -21,7 +22,7 @@ import { IndexerDataError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
 import { BLOCK_QUERY, CONTRACT_AND_ZSWAP_STATE_QUERY, HEAD_PROTOCOL_VERSION_QUERY } from '../query-definitions';
 import type { ApolloHandle } from '../transport';
-import { V9_ERA_PROTOCOL_VERSION } from './state-fixtures';
+import { V8_ERA_PROTOCOL_VERSION, V9_ERA_PROTOCOL_VERSION } from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
 
@@ -49,32 +50,42 @@ const headResponse = (protocolVersion: number | null): unknown => ({
   data: { block: protocolVersion === null ? null : { protocolVersion } }
 });
 
+/**
+ * A `query` mock answering `BLOCK_QUERY` with exactly the fields the document
+ * selects. Written as one literal so a test cannot quietly assert a shape the
+ * indexer was never asked for.
+ */
+const blockQueryReturning = (block: BlockInfo): ReturnType<typeof vi.fn> =>
+  vi.fn().mockResolvedValue({ data: { block } });
+
 describe('IndexerPublicDataProvider query methods', () => {
   describe('queryBlock', () => {
-    test('maps a block-height config to a height offset and returns the block hash and height', async () => {
-      const query = vi.fn().mockResolvedValue({ data: { block: { hash: '0xabc', height: 42 } } });
+    test('maps a block-height config to a height offset and returns the whole block', async () => {
+      const query = blockQueryReturning({ hash: '0xabc', height: 42, protocolVersion: V8_ERA_PROTOCOL_VERSION });
 
       const result = await providerWithQuery(query).queryBlock({ type: 'blockHeight', blockHeight: 42 });
 
-      expect(result).toEqual({ hash: '0xabc', height: 42 });
+      expect(result).toEqual({ hash: '0xabc', height: 42, protocolVersion: V8_ERA_PROTOCOL_VERSION });
       expect(query).toHaveBeenCalledWith(
         expect.objectContaining({ query: BLOCK_QUERY, variables: { offset: { height: 42 } } })
       );
     });
 
-    test('maps a block-hash config to a hash offset', async () => {
-      const query = vi.fn().mockResolvedValue({ data: { block: { hash: '0xabc', height: 1 } } });
+    test('maps a block-hash config to a hash offset and returns the whole block', async () => {
+      const query = blockQueryReturning({ hash: '0xabc', height: 1, protocolVersion: V8_ERA_PROTOCOL_VERSION });
 
-      await providerWithQuery(query).queryBlock({ type: 'blockHash', blockHash: '0xdeadbeef' });
+      const result = await providerWithQuery(query).queryBlock({ type: 'blockHash', blockHash: '0xdeadbeef' });
 
+      expect(result).toEqual({ hash: '0xabc', height: 1, protocolVersion: V8_ERA_PROTOCOL_VERSION });
       expect(query).toHaveBeenCalledWith(expect.objectContaining({ variables: { offset: { hash: '0xdeadbeef' } } }));
     });
 
-    test('uses a null (latest) offset when no config is given', async () => {
-      const query = vi.fn().mockResolvedValue({ data: { block: { hash: '0x1', height: 1 } } });
+    test('uses a null (latest) offset when no config is given and returns the whole block', async () => {
+      const query = blockQueryReturning({ hash: '0x1', height: 1, protocolVersion: V9_ERA_PROTOCOL_VERSION });
 
-      await providerWithQuery(query).queryBlock();
+      const result = await providerWithQuery(query).queryBlock();
 
+      expect(result).toEqual({ hash: '0x1', height: 1, protocolVersion: V9_ERA_PROTOCOL_VERSION });
       expect(query).toHaveBeenCalledWith(expect.objectContaining({ variables: { offset: null } }));
     });
 

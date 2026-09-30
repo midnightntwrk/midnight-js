@@ -25,8 +25,9 @@ interface PublicDataProvider {
 }
 
 export type BlockInfo = {
-  readonly hash: string;   // hex-encoded block hash
+  readonly hash: string;            // hex-encoded block hash
   readonly height: number;
+  readonly protocolVersion: number; // this block's era; protocolVersionToLedger() maps it to 'v8' / 'v9'
 };
 ```
 

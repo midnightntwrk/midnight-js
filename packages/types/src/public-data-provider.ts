@@ -81,6 +81,15 @@ export type BlockInfo = {
    * The block height.
    */
   readonly height: number;
+  /**
+   * The protocol-version integer of this block, which dates it to a ledger
+   * era. Pass it to `protocolVersionToLedger` from
+   * `@midnight-ntwrk/midnight-js-protocol` to get the era itself.
+   *
+   * This is the era of *this* block, not of the network's head, so a block
+   * read from before a hard fork keeps reporting the era it was produced in.
+   */
+  readonly protocolVersion: number;
 }
 
 /**

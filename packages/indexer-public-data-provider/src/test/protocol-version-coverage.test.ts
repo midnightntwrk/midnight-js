@@ -55,15 +55,16 @@ const protocolVersionPaths = (document: DocumentNode): string[] => {
  * The era every document is expected to carry, stated exhaustively.
  *
  * Read as a contract in both directions. A document that decodes era-sensitive
- * bytes must date them, so a missing path fails here; and a document that has
- * no use for the era must not pay for the field, so an unexpected path fails
- * here too. That is why the empty entries are spelled out rather than omitted —
- * `BLOCK_QUERY` and `LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY` return no
- * serialized bytes at all, and the three unshielded-balance documents select
- * types the schema gives no `protocolVersion` to.
+ * bytes, or that hands the era to the caller as data, must ask for it, so a
+ * missing path fails here; and a document that has no use for the era must not
+ * pay for the field, so an unexpected path fails here too. That is why the
+ * empty entries are spelled out rather than omitted —
+ * `LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY` returns no serialized bytes at all,
+ * and the three unshielded-balance documents select types the schema gives no
+ * `protocolVersion` to.
  */
 const EXPECTED_PATHS: Readonly<Record<string, readonly string[]>> = {
-  BLOCK_QUERY: [],
+  BLOCK_QUERY: ['block.protocolVersion'],
   HEAD_PROTOCOL_VERSION_QUERY: ['block.protocolVersion'],
   TX_ID_QUERY: ['transactions.protocolVersion'],
   DEPLOY_TX_QUERY: [
