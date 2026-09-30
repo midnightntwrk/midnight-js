@@ -61,7 +61,7 @@ const protocolVersionPaths = (document: DocumentNode): string[] => {
  * not pay for the field, so an unexpected path fails here too.
  *
  * The empty entries cannot be omitted: the first test below requires one entry
- * per exported document. Each is empty on the conjunction above —
+ * per exported document. Each of the empty ones does neither —
  * `LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY` decodes nothing and returns a bare
  * height, and the three unshielded-balance documents select types the schema
  * gives no `protocolVersion` to.

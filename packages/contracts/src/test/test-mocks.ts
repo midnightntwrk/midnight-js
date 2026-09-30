@@ -256,13 +256,6 @@ export const createMockCoinInfo = (): ShieldedCoinInfo => ({
 const MOCK_HEAD_PROTOCOL_VERSION = 2_000_000;
 
 /**
- * The era the mocked blocks are dated to. Equal to the head's on a chain that
- * has not forked, but named apart from it: a test that means "the era of this
- * block" must not be able to read the head's reading by accident.
- */
-const MOCK_BLOCK_PROTOCOL_VERSION = MOCK_HEAD_PROTOCOL_VERSION;
-
-/**
  * What the three write seams declare here: BOTH eras, mirroring the testkit's
  * real `MidnightWalletProvider`, which serves both.
  *
@@ -281,9 +274,10 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
   publicDataProvider: {
     watchForDeployTxData: vi.fn(),
     queryDeployContractState: vi.fn(),
+    // The mocked chain has not forked, so the block carries the same era as the head.
     queryBlock: vi
       .fn()
-      .mockResolvedValue({ hash: '00'.repeat(32), height: 0, protocolVersion: MOCK_BLOCK_PROTOCOL_VERSION }),
+      .mockResolvedValue({ hash: '00'.repeat(32), height: 0, protocolVersion: MOCK_HEAD_PROTOCOL_VERSION }),
     queryContractState: vi.fn(),
     queryZSwapAndContractState: vi.fn(),
     queryUnshieldedBalances: vi.fn(),
