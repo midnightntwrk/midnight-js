@@ -148,10 +148,21 @@ export class Ledger8RuntimeMissingError extends Error {
 }
 
 /**
- * Which physical-copy axis `assertSharedLedger8Instance`
- * (`lib/v8/instance-guard.ts`) detected two distinct instances on.
+ * Which physical-copy axis a dual-instantiation was detected on.
  *
- * `'onchain-runtime-v3'` is the only member this framework version checks.
+ * `'onchain-runtime-v3'` is the only member this framework version names.
+ *
+ * NOTHING IN THIS PACKAGE RAISES THIS ANY MORE. The construction-time guard
+ * that did (`lib/v8/instance-guard.ts`) compared `onchain-runtime-v3` against
+ * the retained glue. Both are still reachable — `lib/v8/executable.ts` imports
+ * the glue directly and compact-js resolves the same specifier for itself — so
+ * the axis remains; what was removed is the runtime check on it. The invariant
+ * is held at install time instead, by `src/test/single-instance.test.ts`, which
+ * pins one resolved copy of each. That answers on THIS repo's lockfile, not on
+ * physical instance identity in a consumer's process, so it is a narrower check
+ * than the one it replaced. The error and its code stay on the published
+ * surface because a consumer may switch on them, and `loadLedger8Engine` still
+ * passes one through unwrapped if a lower layer ever raises it.
  *
  * @see {@link DualInstantiationGuard}
  */
@@ -180,9 +191,11 @@ const axisPackageNames = (axis: Ledger8InstanceAxis): readonly string[] =>
   PUBLISHED_SCOPES.map((scope) => `${scope}/${AXIS_BARE_PACKAGE_NAMES[axis]}`);
 
 /**
- * Thrown by `assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`)
- * when the same-named WASM package resolved to two physically distinct copies
- * in this process (a dual-instantiation).
+ * Raised when the same-named WASM package resolves to two physically distinct
+ * copies in this process (a dual-instantiation).
+ *
+ * See {@link Ledger8InstanceAxis} for why nothing in this package raises it any
+ * more, and what holds the invariant instead.
  *
  * Carries no `cause`: this is a direct reference-equality assertion failure,
  * not a wrapped lower-level exception.
@@ -214,16 +227,20 @@ export class Ledger8InstanceMismatchError extends Error {
  * came from. A closed union, so a consumer can `switch` on `stage`
  * exhaustively.
  *
+ * `'state down-convert'` is the structural round trip `lib/v8/executable.ts`
+ * runs before a circuit executes; the other two are the envelope reads in
+ * `lib/era/envelope.ts`.
+ *
  * @see {@link FailClosedDecoding}
  */
 export type DownConvertStage = 'v8 envelope extraction' | 'v9 envelope extraction' | 'state down-convert';
 
 /**
- * Thrown by the down-convert engine (`lib/era/envelope.ts`,
- * `lib/v8/down-convert.ts`) when it cannot turn a raw contract-state
- * envelope, or an already-extracted `EncodedStateValue`, into an executable
- * pre-fork state. Raised by `extractV9EncodedStateValue` (`lib/era/envelope.ts`)
- * and `downConvertForExecution` (`lib/v8/down-convert.ts`).
+ * Thrown when a raw contract-state envelope, or an already-extracted
+ * `EncodedStateValue`, cannot be turned into an executable pre-fork state.
+ * Raised by `extractV9EncodedStateValue` (`lib/era/envelope.ts`) and by
+ * `decodeExecutableStateValue` (`lib/v8/executable.ts`), which refuses a state
+ * that decodes but does not re-encode to the bytes it came from.
  *
  * Renders no raw hex and no decoded state contents — only the stage name and
  * the wrapped `cause`.
@@ -251,12 +268,23 @@ export class DownConvertFailedError extends Error {
 }
 
 /**
- * Thrown by `checkRoot` (`lib/v8/down-convert.ts`) when a bounded Merkle
- * tree's root is read before the tree has been rehashed. Reaches a caller
- * through `assertMerkleTreesRehashed` and `downConvertForExecution`, which
- * assert it on every tree they decode.
+ * Raised when a bounded Merkle tree's root is read before the tree has been
+ * rehashed.
  *
- * The remediation is always the caller's: call `rehash()` on the tree before
+ * NOTHING RAISES THIS ANY MORE: the walk it served
+ * (`assertMerkleTreesRehashed`, `lib/v8/down-convert.ts`) was removed with the
+ * hand-maintained execution layer, and the condition it named cannot reach the
+ * seam that replaced it. Execution now takes an already-encoded
+ * `EncodedStateValue`, and a tree's rehash state does not survive that
+ * encoding: a never-rehashed tree and a rehashed one encode IDENTICALLY, and
+ * decoding either yields the same root. Being un-rehashed is a property of a
+ * live in-memory handle only, so there is nothing left for a guard on this
+ * side to refuse. Measured against the pinned runtime, not inferred.
+ *
+ * Kept on the published surface, with its code, rather than removed from a
+ * consumer's error taxonomy as a side effect of an internal refactor.
+ *
+ * The remediation was always the caller's: call `rehash()` on the tree before
  * executing against it. Nothing here repairs the tree.
  *
  * @param cause The runtime's own failure, when reading the root threw. Absent
@@ -650,10 +678,11 @@ export class StateDecodeFailedError extends Error {
 /**
  * Thrown by `extractEncodedStateValue` (`lib/era/envelope.ts`) when the
  * injected pre-fork runtime cannot be used — it was not passed at all, or the
- * binding the decoder needs is absent from it. Also raised by
- * `downConvertForExecution` (`lib/v8/down-convert.ts`) and
- * `assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`), the latter for a
- * nullish instance probe.
+ * binding the decoder needs is absent from it.
+ *
+ * `downConvertForExecution` and the shared-instance guard used to raise it too;
+ * both are gone with the hand-maintained execution layer, so the envelope
+ * decoder is now its only source.
  *
  * Nothing is wrong with the caller's input here. Distinct from
  * {@link Ledger8RuntimeMissingError}, which reports the v8 chunk failing to
@@ -682,12 +711,14 @@ export class Ledger8RuntimeInvalidError extends Error {
 }
 
 /**
- * Thrown by `assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`)
- * when the `axis` it was handed is not a member of {@link Ledger8InstanceAxis}.
+ * Raised when a shared-instance guard is handed an `axis` that is not a member
+ * of {@link Ledger8InstanceAxis}.
  *
- * A TypeScript caller cannot produce this — `axis` is typed as
- * {@link Ledger8InstanceAxis}. It exists for the untyped JavaScript consumers
- * this package also serves.
+ * NOTHING RAISES THIS ANY MORE: the guard it served
+ * (`lib/v8/instance-guard.ts`) was removed with the hand-maintained execution
+ * layer — see {@link Ledger8InstanceAxis}. It is kept on the published surface,
+ * with its code, rather than removed from a consumer's error taxonomy as a side
+ * effect of an internal refactor.
  *
  * @param requestedAxis The offending value that was passed. Carried for
  *   programmatic use only; it is deliberately kept out of the message.

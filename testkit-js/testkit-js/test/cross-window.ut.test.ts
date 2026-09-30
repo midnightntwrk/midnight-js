@@ -20,8 +20,8 @@ import * as path from 'node:path';
 
 import type * as currentRuntimeModule from '@midnight-ntwrk/compact-runtime';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-import type { DownConvertedState, ExecuteCircuitOptions } from '@midnight-ntwrk/midnight-js-protocol';
-import { loadLedger8Engine } from '@midnight-ntwrk/midnight-js-protocol';
+import { type EncodedStateValue, loadLedger8Engine } from '@midnight-ntwrk/midnight-js-protocol';
+import type * as CompactContract from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 
 import { hfFixturePath } from '../src/fixtures-hf';
@@ -283,9 +283,12 @@ const withoutVersions = (info: CompiledContractInfo): Record<string, unknown> =>
   Object.fromEntries(Object.entries(info).filter(([member]) => !VERSION_MEMBERS.includes(member)));
 
 /** The retained build, typed as the engine's own `executeCircuit` demands it. */
-type RetainedContract = ExecuteCircuitOptions['contract'] & {
-  initialState(constructorContext: unknown): { readonly currentContractState: DownConvertedState };
-};
+interface RetainedContract extends CompactContract.Contract<CounterPrivateState> {
+  initialState(constructorContext: unknown): {
+    readonly currentPrivateState: CounterPrivateState;
+    readonly currentContractState: { data: { state: { encode(): EncodedStateValue } } };
+  };
+}
 
 interface RetainedModule {
   readonly Contract: new (witnesses: Witnesses) => RetainedContract;
@@ -352,7 +355,7 @@ describe('private state across the ledger v8 to v9 fork window', () => {
    * specifier to — it pins 0.19.0, and the build's
    * `checkRuntimeVersion('0.16.0')` guard refuses it. `compact-runtime-ledger8`
    * IS that 0.16 instance, installed under an npm alias so the two can coexist;
-   * redirecting the specifier is the same move `v8-execute.test.ts` makes.
+   * redirecting the specifier is the same move the retired `v8-execute.test.ts` made.
    *
    * The redirect then has to be LIFTED, because the twin needs the very
    * 0.19.0 the repo does resolve. `vi.doMock` rather than `vi.mock` so the
@@ -418,19 +421,17 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     const seen: WitnessView[] = [];
     const contract = new retained.module.Contract(recordingWitnesses(seen));
     const initial = contract.initialState(retained.runtime.createConstructorContext(privateState, COIN_PUBLIC_KEY));
+
     const engine = await loadLedger8Engine();
-    const transcript = engine.executeCircuit({
+
+    const transcript = await engine.executeCircuit({
       contract,
       circuitId: 'increment',
       args: [],
-      // The balance rides ON the state, so the two cannot come off different
-      // reads. Freshly constructed here, so it holds nothing.
-      //
-      // `.data` named explicitly, NOT a spread of `currentContractState`: that
-      // is a live WASM handle whose members are prototype getters, and a spread
-      // copies none of them -- the runtime then refuses the state as
-      // `undefined`.
-      state: { data: initial.currentContractState.data, balance: new Map() },
+      // The balance rides on the SAME value as the state, so the two cannot come
+      // off different reads. Freshly constructed here, so the contract holds
+      // nothing.
+      contractState: { state: initial.currentContractState.data.state.encode(), balance: new Map(), entryPoints: [] },
       address: retained.runtime.dummyContractAddress(),
       coinPk: COIN_PUBLIC_KEY,
       privateState
@@ -440,7 +441,7 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     }
     return {
       privateState: transcript.privateStateAfter,
-      round: retained.module.ledger(transcript.postContractState.data.state).round,
+      round: retained.module.ledger(transcript.postContractState).round,
       seen
     };
   };

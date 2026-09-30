@@ -14,7 +14,7 @@
  */
 
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { Contract, ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import type { ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
@@ -33,12 +33,12 @@ import type {
 } from '../ledger8-fixture-types';
 
 // The current era's twin of `overloads.test-d.ts`'s retained-era assertions.
-// compact-js's own `CircuitParameters` degrades to `unknown[]` -- not `never`
-// -- under the branded circuit id that `getProvableCircuitIds()` produces and
-// `circuit()` consumes (midnightntwrk/midnight-sdk#402). Because `unknown[]`
-// is a real, non-empty array type, `args` is NOT dropped: without the local
-// unbranding it stays present on every circuit, argument-taking or not, and
-// accepts any argument list at all.
+// compact-js's `CircuitParameters` unbrands the circuit id itself as of
+// 3.0.0-rc.2 (midnightntwrk/midnight-sdk#402), so a branded id and a plain
+// literal resolve to the same parameter tuple. These assertions hold both
+// keyings to that, so a regression to `unknown[]` -- which is a real,
+// non-empty array type, and so would keep `args` present on every circuit and
+// accept any argument list -- fails here rather than reaching a consumer.
 describe('CallOptionsWithArguments', () => {
   it('carries the circuit\'s real parameter tuple', () => {
     // `CoinReceiver016Coin` is read off the generated circuit signature rather than restated,
@@ -63,11 +63,9 @@ describe('CallOptionsWithArguments', () => {
   // The case real call sites produce. `getProvableCircuitIds()` is the producer real call sites
   // in this package go through -- compact-js also exports a `ProvableCircuitId(id)` smart
   // constructor that brands an id directly, so it is not the only one. `circuit()` consumes a
-  // branded id, it does not hand one back. Indexing
-  // `provableCircuits` with the brand degrades the lookup to `unknown[]`, so without
-  // `CircuitKey` the options type would keep `args` on every branded circuit but type it as
-  // `unknown[]`, accepting any argument list. The literal-keyed assertions above cannot catch
-  // that: no brand ever enters their computation.
+  // branded id, it does not hand one back. The literal-keyed assertions above cannot stand in
+  // for this one: no brand ever enters their computation, so they pass whether or not the
+  // branded lookup resolves.
   it('carries the real tuple for the BRANDED id that call sites produce', () => {
     type BrandedId = ProvableCircuitId<CoinReceiver016Contract, 'receive_coin'>;
     expectTypeOf<CallOptionsWithArguments<CoinReceiver016Contract, BrandedId>['args']>()
@@ -77,9 +75,8 @@ describe('CallOptionsWithArguments', () => {
   // The zero-argument arm of the same case, and the only assertion in this file that covers the
   // half of the failure mode the header states: `args` staying present on a circuit that takes
   // NONE. The literal-keyed omission assertion above cannot reach it -- no brand enters its
-  // computation, so it passes identically with and without `CircuitKey`. Drop the unbranding and
-  // the branded key resolves to `unknown[]`, which does NOT extend `[]`, so the conditional takes
-  // the wrong arm and this type gains a spurious REQUIRED `args`.
+  // computation. Should the branded key resolve to `unknown[]` again, it does NOT extend `[]`,
+  // so the conditional takes the wrong arm and this type gains a spurious REQUIRED `args`.
   it('omits args for a zero-argument circuit at the BRANDED id too', () => {
     type BrandedIncrementId = ProvableCircuitId<Counter016Contract, 'increment'>;
     expectTypeOf<CallOptionsWithArguments<Counter016Contract, BrandedIncrementId>>().not.toHaveProperty('args');
@@ -93,10 +90,10 @@ declare const contractAddress: ContractAddress;
 declare const brandedCircuitId: ReceiveCoinBrandedId;
 
 // `createCallTxOptions` is the exported function `CallOptionsWithArguments` only describes the
-// shape of -- see F1 in the branch review. Before this fix its `args` parameter indexed
-// `CircuitParameters` with the branded `PCK` directly, so it stayed `unknown[]` even though
-// `CallOptionsWithArguments` above was already fixed: the function accepted any argument list
-// and handed back a value TypeScript believed carried the real tuple.
+// shape of -- see F1 in the branch review. It is assented to separately because it is the
+// published entry point a consumer actually calls: were its `args` parameter to widen while the
+// return type kept the real tuple, it would accept any argument list and hand back a value
+// TypeScript believed was checked.
 describe('createCallTxOptions', () => {
   it('exposes the real tuple and rejects a wrongly-typed argument list for a branded id', () => {
     expectTypeOf(createCallTxOptions<CoinReceiver016Contract, ReceiveCoinBrandedId>)
@@ -112,23 +109,6 @@ describe('createCallTxOptions', () => {
       // @ts-expect-error -- a branded id must reject a wrongly-typed argument list, not accept unknown[]
       [1, 2, 3]
     );
-  });
-});
-
-// A DEFECT PIN: it deliberately asserts behaviour nobody wants.
-//
-// `CircuitKey` exists only because compact-js's `Contract.CircuitParameters` degrades to
-// `unknown[]` under a branded key (midnightntwrk/midnight-sdk#402). The workaround is idempotent,
-// so every other assertion in this file keeps passing once upstream fixes the defect and nothing
-// would ever say the workaround had become dead weight. This is the one assertion that goes RED on
-// that fix, and a red run here is the INSTRUCTION to delete `CircuitKey`, its use in
-// `tx-interfaces.ts` and this test -- NOT a regression to repair. `overloads.test-d.ts` pins the
-// era-agnostic `Contract.Any` widening the same way.
-describe('the upstream defect CircuitKey works around', () => {
-  it('still resolves a BRANDED key to unknown[] -- delete CircuitKey when this goes red', () => {
-    expectTypeOf<Contract.CircuitParameters<CoinReceiver016Contract, ReceiveCoinBrandedId>>().toEqualTypeOf<
-      unknown[]
-    >();
   });
 });
 

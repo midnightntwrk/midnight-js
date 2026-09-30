@@ -20,9 +20,11 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 // `yarn info` emits one NDJSON record per resolved version of a package. A
-// version this repo did not ask for means a second physical copy on that line,
-// which is the fault `lib/v8/instance-guard.ts` detects at run time on a
-// different axis.
+// version this repo did not ask for means a second physical copy on that line.
+// This IS the guard for that fault now: the construction-time check that used
+// to sit beside it (`lib/v8/instance-guard.ts`) compared two runtimes this
+// package imported directly, and compact-js owns both, so it had no subject
+// left and was removed.
 //
 // BOTH flags are load-bearing, do not drop either. Per `yarn info --help`:
 //   --all  "all versions of the package that are DIRECT dependencies of any of
@@ -148,10 +150,31 @@ describe('installed ledger and runtime instances', () => {
   });
 
   // TWO copies of compact-runtime are correct and load-bearing: the 0.16 line
-  // is the ledger-8 era's runtime, reached through the `compact-runtime-ledger8`
-  // npm alias, and 0.19 is the current era's. What must never appear is a THIRD
-  // -- a second copy of either line, which is what compact-js's own
-  // `0.19.0-rc.0` would become if the root `resolutions` pin stopped holding.
+  // is the ledger-8 era's runtime and 0.19 is the current era's. This package
+  // reaches the 0.16 line through BOTH compact-js and its own
+  // `compact-runtime-ledger8` alias: compact-js executes the circuit, and the
+  // alias supplies the `StateValue`/`ChargedState` VALUES its `CompactRuntime`
+  // binding does not re-export (spec finding E9), which is what builds the
+  // state a circuit runs against. One physical copy has to serve both.
+  //
+  // What must never appear is a THIRD copy -- a second of either line, which is
+  // what compact-js's own `0.19.0-rc.0` would become if the root `resolutions`
+  // pin stopped holding.
+  // The axis `Ledger8InstanceAxis` names, and the one the retired
+  // construction-time guard watched. `lib/v8/executable.ts` still imports the
+  // retained glue directly and compact-js resolves the same specifier for
+  // itself, so the two acquisition paths this guard compared are both still
+  // live -- only the runtime check is gone. A second copy here is exactly the
+  // dual instantiation that made a handle from one path unreadable by the
+  // other, reported from inside wasm as an unexpected type.
+  it('resolves exactly one @midnight-ntwrk/onchain-runtime-v3, at the pinned version', () => {
+    const pinned = versionOf(
+      manifestEntry('packages/protocol/package.json', 'dependencies', '@midnight-ntwrk/onchain-runtime-v3')
+    );
+
+    expect(resolvedVersionsOf('@midnight-ntwrk/onchain-runtime-v3')).toEqual([pinned]);
+  });
+
   it('resolves exactly one copy of each compact-runtime era line', () => {
     const currentEra = versionOf(manifestEntry('package.json', 'resolutions', '@midnight-ntwrk/compact-runtime'));
     const retainedEra = versionOf(

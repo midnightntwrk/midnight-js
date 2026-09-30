@@ -73,9 +73,11 @@ export default defineConfig({
         'src/lib/v8/prove.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/v8/load-engine.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/v8/engine.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/lib/v8/instance-guard.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/lib/v8/down-convert.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/lib/v8/execute.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // Replaced `down-convert.ts`, `execute.ts` and `instance-guard.ts`,
+        // which went with the hand-maintained execution layer. Their globs are
+        // deleted rather than left behind: a glob matching no file is ignored
+        // SILENTLY, so a stale entry reads as a floor while protecting nothing.
+        'src/lib/v8/executable.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/v8/compose.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/v8/deploy.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/v8/adapt.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },

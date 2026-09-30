@@ -232,8 +232,8 @@ export const contractPackageManifest = (contract) => ({
   // state value must mint it in THAT instance: `ledger()` checks its argument
   // with `instanceof`, and a handle from any other copy is refused. Resolving
   // the runtime from outside cannot answer which copy the wrapper got, so the
-  // wrapper hands it over instead -- the same injection `protocol` does with
-  // `Ledger8CompactRuntime`.
+  // wrapper hands it over instead -- the same reason `protocol` takes its
+  // retained-era values from one module rather than assembling them.
   exports: {
     '.': './contract/index.js',
     './contract/*': './contract/*',

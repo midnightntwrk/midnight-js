@@ -42,11 +42,23 @@
 // changed its own. It reaches here through the protocol barrel, so this package still takes no
 // dependency on the retained runtime, type-only or otherwise.
 import type {
-  DownConvertedState,
+  ConstructorResultPojo,
   EncodedStateValue,
-  Ledger8DeployableContractState,
-  Ledger8SigningKey
+  Ledger8SigningKey,
+  TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
+
+/**
+ * The retained era's contract-state handle, and the state a retained-era
+ * constructor builds.
+ *
+ * Both are DERIVED from the engine's own results rather than restated: they are
+ * compact-js's ledger-8 types, and naming them structurally keeps this package
+ * free of any dependency on the retained runtime.
+ */
+type RetainedStateValue = TranscriptPojo['postContractState'];
+type RetainedConstructedState = Pick<ConstructorResultPojo['contractState'], 'serialize'>;
+
 import type {
   CommunicationCommitmentData,
   ContractAddress,
@@ -195,8 +207,13 @@ export type Ledger8PrivateState<C extends Ledger8Contract> =
 
 /**
  * The name of a callable circuit on a retained-era contract.
+ *
+ * Keyed off `provableCircuits`, NOT `impureCircuits`: `provableCircuits` is the
+ * map compact-js indexes to run a circuit, and the one the deploy pre-check
+ * demands a verifier key for. Naming the other map lets an artifact whose two
+ * maps differ ask for a key the caller cannot name, which is unsatisfiable.
  */
-export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['impureCircuits'] & string;
+export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['provableCircuits'] & string;
 
 /**
  * The arguments a caller supplies for circuit `K` on a retained-era contract.
@@ -215,7 +232,7 @@ export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['impureCircuit
  *      `Parameters<...>`.
  */
 export type Ledger8CircuitParameters<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
-  Parameters<C['impureCircuits'][K]> extends [Ledger8CircuitContext, ...infer A] ? A : never[];
+  Parameters<C['provableCircuits'][K]> extends [Ledger8CircuitContext, ...infer A] ? A : never[];
 
 /**
  * The providers a retained-era call transaction needs.
@@ -309,7 +326,7 @@ export type Ledger8CallTxOptions<C extends Ledger8Contract, K extends Ledger8Cir
  * has to check instead of one it cannot use.
  */
 export type Ledger8CircuitReturnType<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
-  ReturnType<C['impureCircuits'][K]> extends { readonly result: infer R } ? R : unknown;
+  ReturnType<C['provableCircuits'][K]> extends { readonly result: infer R } ? R : unknown;
 
 /**
  * The public, non-sensitive half of a retained-era circuit execution.
@@ -332,7 +349,7 @@ export interface Ledger8CallResultPublic extends CallResultPublicBase {
    * means nothing outside its module. Serialize it yourself if you need to
    * keep it; see ADR-0010.
    */
-  readonly nextContractState: DownConvertedState;
+  readonly nextContractState: RetainedStateValue;
   /**
    * The same state as an {@link EncodedStateValue}: the form that survives this
    * process, a `structuredClone`, a worker transfer and storage.
@@ -418,10 +435,10 @@ export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, K extends
  * the same bytes, and both carry an {@link EncodedStateValue} twin for
  * everything else.
  *
- * @typeParam TState - The down-converted state type; the framework's own
- * retained runtime fills it with {@link DownConvertedState}.
+ * @typeParam TState - The retained-era state type; the framework's own
+ * retained runtime fills it with compact-js's ledger-8 state handle.
  */
-export interface Ledger8ContractCallPublic<TState = DownConvertedState> extends CallResultPublicBase {
+export interface Ledger8ContractCallPublic<TState = RetainedStateValue> extends CallResultPublicBase {
   /**
    * The state this call ENDED on.
    *
@@ -438,17 +455,23 @@ export interface Ledger8ContractCallPublic<TState = DownConvertedState> extends 
    */
   readonly contractStateEncoded: EncodedStateValue;
   /**
-   * The state this call BOUND to: the down-converted handle the pipeline
+   * The state this call BOUND to: the retained-era handle the pipeline
    * executed against, forwarded rather than re-derived.
    *
    * Retained-era only. The current era publishes no pre-call state on a call
    * entry, so era-agnostic code must not reach for this member.
+   *
+   * Indistinguishable from {@link Ledger8ContractCallPublic.postContractState}
+   * BY TYPE: compact-js resolves the pre- and post-execution state to the same
+   * declaration, so swapping the two is not a compile error. Partitioning
+   * against the wrong one rejects a state the transcript's reads do not fit, or
+   * silently mis-charges one that merely differs in value.
    */
   readonly preContractState: TState;
   /**
    * The same pre-call state as an {@link EncodedStateValue} — this one IS the
-   * snapshot's own primary state, the value the handle was down-converted from,
-   * so it is forwarded rather than re-encoded.
+   * snapshot's own primary state, the value the handle was decoded from, so it
+   * is forwarded rather than re-encoded.
    */
   readonly preContractStateEncoded: EncodedStateValue;
 }
@@ -464,7 +487,7 @@ export interface Ledger8ContractCallPublic<TState = DownConvertedState> extends 
  *
  * @typeParam TState - See {@link Ledger8ContractCallPublic}.
  */
-export interface Ledger8ContractCall<TState = DownConvertedState> {
+export interface Ledger8ContractCall<TState = RetainedStateValue> {
   readonly contractAddress: ContractAddress;
   readonly circuitId: string;
   readonly public: Ledger8ContractCallPublic<TState>;
@@ -820,7 +843,7 @@ export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledg
    * {@link Ledger8DeployedContract.initialState} for anything that has to
    * outlive the runtime instance.
    */
-  readonly initialContractState: Ledger8DeployableContractState;
+  readonly initialContractState: RetainedConstructedState;
   /**
    * The same state, serialized — the bytes the contract address was derived
    * from. A deploy mints a fresh nonce, so these bytes and that address belong

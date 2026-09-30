@@ -490,7 +490,7 @@ export async function findDeployedContract<C extends Contract.Any>(
       // EVERY circuit the artifact declares, off the ARTIFACT rather than off
       // the state -- see the attach section of `docs/keep-state-pipeline.md` for
       // what this costs and why both eras pay it.
-      circuitIds: Object.keys(options.compiledContract.impureCircuits)
+      circuitIds: Object.keys(options.compiledContract.provableCircuits)
     });
     // Seeded HERE rather than inside `findLedger8Contract`, which takes a three-member `Pick` of the
     // providers and is a pure READ path -- widening it to write would put the one storage decision

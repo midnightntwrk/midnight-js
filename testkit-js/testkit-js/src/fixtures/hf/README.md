@@ -267,8 +267,8 @@ a v9-era toolchain (`compactc 0.33.0-rc.2`, `runtime-version:
 0.18.0-rc.1`). The two are not interchangeable: `twin-contract/compiled/` emits
 0.18-era (async) codegen and cannot run against a `compact-runtime@0.16`
 instance; `counter-016/` emits the sync codegen the retained pre-fork engine
-(`packages/protocol/src/lib/v8/execute.ts`) actually exercises, and is the
-fixture `v8-execute.test.ts` runs `increment` against.
+(`packages/protocol/src/lib/v8/executable.ts`) actually exercises, and is the
+fixture `v8-executable.test.ts` runs `increment` against.
 
 Ported verbatim (byte-for-byte, only source-map generation trimmed — same
 "drop the map, keep the module minimal" precedent as `twin-contract/`) from
@@ -360,11 +360,11 @@ artifact — same as `twin-contract/compiled/contract/index.js` — must not
 carry.
 
 `counter-016/increment-transcript.golden.json` is a golden regression
-reference for the transcript `executeCircuit` (`lib/v8/execute.ts`) produces
+reference for the transcript `executeCircuit` (`lib/v8/executable.ts`) produces
 when running `increment()` against this contract's freshly-constructed
 initial state (`round: 0`). The spike carries no recorded transcript fixture
 of its own to port, so this one was minted once, directly from
-`v8-execute.test.ts`'s own real execution against this ported artifact
+the retired `v8-execute.test.ts`'s own real execution against this ported artifact
 (no proving involved — circuit execution through `compact-runtime@0.16` is
 fully deterministic), and is committed as JSON with bigints written as
 `` `${n}n` ``-suffixed strings and byte arrays as lower-case hex (the two
@@ -421,7 +421,7 @@ claim, and is asserted rather than assumed (see below).
 
 **Both builds EXECUTE**, and that is the difference from `twin-contract/`. The
 retained build runs against the retained engine
-(`packages/protocol/src/lib/v8/execute.ts`, reached through `loadLedger8Engine()`),
+(`packages/protocol/src/lib/v8/executable.ts`, reached through `loadLedger8Engine()`),
 exactly as `counter-016` does. The twin's declared runtime is **the one this
 repo resolves** (root `resolutions` pins `@midnight-ntwrk/compact-runtime` to
 `0.19.0`), so unlike `twin-contract/` — pinned to `0.18.0-rc.1` and
@@ -627,7 +627,7 @@ call can be driven without a retained runtime**. They are minted, and on every
 run re-verified against a live execution, by
 `packages/protocol/src/test/era-record-coin-receiver.test.ts` — the same
 provenance pattern as `counter-016/increment-transcript.golden.json`, which was
-itself minted from `v8-execute.test.ts`'s own real execution.
+itself minted from the retired `v8-execute.test.ts`'s own real execution.
 
 | File | What it is |
 |---|---|
@@ -638,15 +638,14 @@ itself minted from `v8-execute.test.ts`'s own real execution.
 Neither `.hex` is reachable through `readHfFixture` — that accessor covers the
 nine top-level state fixtures. Reach these by path, through `hfFixturePath`.
 
-> **The recording substitutes exactly two values, and nothing else.**
-> `partitionContext.block.secondsSinceEpoch` and `.lastBlockTime` carry the wall
-> clock the glue stamps when a circuit context is built, and `executeCircuit`
-> takes no clock — so a recording that kept them would be a different file on
-> every run. They are frozen to `1700000000n` and `0n`. Every other member is
-> the runtime's own output, and the minting suite asserts both halves of that:
-> that the recording matches a live execution everywhere else, and that the
-> frozen recording still composes on **both** eras, so the substitution is not
-> load-bearing.
+> **The recording substitutes NO members.** It used to freeze
+> `partitionContext.block.secondsSinceEpoch` and `.lastBlockTime`, because the
+> glue stamped the wall clock when a circuit context was built and the engine
+> took no clock — so a recording that kept them would have been a different file
+> on every run. `executeCircuit` now takes the execution clock as an input
+> (`RunRetainedCircuitOptions.nowSeconds`), so the recording is the runtime's own
+> output end to end. The minting suite asserts that it matches a live execution,
+> and that it still composes on **both** eras.
 
 > **THE VERIFIER KEY IN BOTH ENVELOPES IS A STAND-IN, AND IT IS NOT THE COIN
 > RECEIVER'S KEY.** `coin-receiver-016` ships no `keys/` — nothing in this repo

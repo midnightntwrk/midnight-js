@@ -23,8 +23,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
 import { type ComposeV8CallOptions, composeV8CallTx } from '../lib/v8/compose';
-import type { DownConvertedState } from '../lib/v8/down-convert';
-import type { TranscriptPojo } from '../lib/v8/execute';
+import type { TranscriptPojo } from '../lib/v8/executable';
 import { emptyPartitionContext, emptyZswapLocalState, V8_UNPROVEN_TX_TAG } from './fixtures';
 
 const NETWORK_ID = 'test-network';
@@ -32,7 +31,7 @@ const TTL = new Date(Date.now() + 3_600_000);
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT });
-const buildState = (byte: number): DownConvertedState => ({ data: new ocrt3.ChargedState(ocrt3.StateValue.newCell(fieldValue(byte))) });
+const buildState = (byte: number): ocrt3.StateValue => ocrt3.StateValue.newCell(fieldValue(byte));
 
 const buildTranscript = (): TranscriptPojo => {
   const postContractState = buildState(0x02);
@@ -46,7 +45,7 @@ const buildTranscript = (): TranscriptPojo => {
   preContractState: buildState(0x01),
   postContractState,
   // The same state the handle holds, in the form that outlives the runtime.
-  postContractStateEncoded: postContractState.data.state.encode(),
+  postContractStateEncoded: postContractState.encode(),
   partitionContext: emptyPartitionContext(),
   zswapLocalState: emptyZswapLocalState(),
   privateStateAfter: {}
@@ -87,7 +86,7 @@ const buildCallOptions = (contractState: LedgerV8.ContractState): ComposeV8CallO
     ledgerParameters: 'initial',
     transcript: {
       kind: 'unpartitioned',
-      preState: transcript.preContractState.data.state.encode(),
+      preState: transcript.preContractState.encode(),
       publicTranscript: transcript.publicTranscript,
       partitionContext: transcript.partitionContext
     },

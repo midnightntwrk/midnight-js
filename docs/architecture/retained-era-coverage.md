@@ -30,11 +30,12 @@ Two twins are built:
 | `unshielded` | `CallContext.balance` (slot 5) | the field #1345 was about, and the only one this framework carries |
 | `block-time` | `CallContext.secondsSinceEpoch` (slot 2) | a second artifact set through deploy, prove, balance and admission |
 
-**Only `balance` is carried by this framework.** `packages/protocol/src/lib/v8/execute.ts` calls
+**Both are carried by this framework now.** The retired `lib/v8/execute.ts` called
 `createCircuitContext` without the optional `time` argument, and `compact-runtime@0.16`'s
-`createInitialQueryContext` then stamps `secondsSinceEpoch: BigInt(time ?? Date.now() / 1000)` from
-its own clock while leaving `balance` an empty map for a `ChargedState` input. That asymmetry *is*
-#1345.
+`createInitialQueryContext` then stamped `secondsSinceEpoch: BigInt(time ?? Date.now() / 1000)` from
+its own clock while leaving `balance` an empty map for a `ChargedState` input. That asymmetry *was*
+#1345. `lib/v8/executable.ts` builds a whole `ContractState` so the balance is read natively, and
+takes the execution clock as an input (`RunRetainedCircuitOptions.nowSeconds`).
 
 So `block-time` is not a second reading of the same plumbing. It is a smoke test for a second
 retained artifact set, and it exercises the circuit-`assert` rejection path. It still earns its
