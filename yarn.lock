@@ -2213,7 +2213,7 @@ __metadata:
     "@midnight-ntwrk/testkit-js": "workspace:*"
     "@types/ws": "npm:^8.18.1"
     "@vitest/runner": "npm:^4.1.10"
-    allure-commandline: "npm:^2.43.0"
+    allure-commandline: "npm:^2.46.1"
     allure-js-commons: "npm:^3.9.0"
     allure-vitest: "npm:^3.10.2"
     axios: "npm:^1.16.1"
@@ -2254,7 +2254,7 @@ __metadata:
     "@scure/bip39": "npm:^2.3.0"
     "@types/ws": "npm:^8.18.1"
     "@vitest/runner": "npm:^4.1.10"
-    allure-commandline: "npm:^2.43.0"
+    allure-commandline: "npm:^2.46.1"
     allure-js-commons: "npm:^3.9.0"
     allure-vitest: "npm:^3.10.2"
     axios: "npm:^1.16.1"
@@ -4888,12 +4888,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"allure-commandline@npm:^2.43.0":
-  version: 2.43.0
-  resolution: "allure-commandline@npm:2.43.0"
+"allure-commandline@npm:^2.46.1":
+  version: 2.46.1
+  resolution: "allure-commandline@npm:2.46.1"
   bin:
     allure: bin/allure
-  checksum: 10/6630021c98e4d5a880beb8ef5f4e80ec766f0e7bfb0ceb5202312e3d51d962a0c0e3af2713b9b560997378a7eb9da753cdfca49d11dfa3afad9c6ca901be1b0a
+  checksum: 10/126a63a3d8c93389bedd1cad966133ccd9b82c3b4df4b5dd6a81067eb3a4ad44c2c24fd047b80189b7984a54756c71bb3573d2642908b8455ccae2397789db71
   languageName: node
   linkType: hard
 
