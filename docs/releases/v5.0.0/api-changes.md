@@ -27,9 +27,11 @@ interface PublicDataProvider {
 export type BlockInfo = {
   readonly hash: string;            // hex-encoded block hash
   readonly height: number;
-  readonly protocolVersion: number; // this block's era; protocolVersionToLedger() maps it to 'v8' / 'v9'
+  readonly protocolVersion: number; // dates the block to a ledger era
 };
 ```
+
+Resolve `protocolVersion` with `versionOfRecord(block)` from `@midnight-ntwrk/midnight-js-protocol` — `BlockInfo` satisfies that function's `VersionedRecord` parameter. Prefer it over `protocolVersionToLedger`, which tags a failure as a transaction-construct error rather than a read.
 
 `queryContractEvents`, `contractEventsObservable`, and `queryBlock` are **required** interface members — custom `PublicDataProvider` implementations must add them. Note the start cursor is passed via `opts.startAt`, **not** positionally. There is **no** `dispose` member on the `PublicDataProvider` interface; `dispose()` lives only on the concrete `IndexerPublicDataProvider` (see below).
 

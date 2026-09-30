@@ -70,7 +70,7 @@ export type BlockHashConfig = {
 }
 
 /**
- * Minimal identifying information for a block.
+ * Identifying information for a block, and the ledger era it was produced under.
  */
 export type BlockInfo = {
   /**
@@ -82,12 +82,22 @@ export type BlockInfo = {
    */
   readonly height: number;
   /**
-   * The protocol-version integer of this block, which dates it to a ledger
-   * era. Pass it to `protocolVersionToLedger` from
-   * `@midnight-ntwrk/midnight-js-protocol` to get the era itself.
+   * The protocol-version integer this block was produced under, which dates it
+   * to a ledger era.
    *
-   * This is the era of *this* block, not of the network's head, so a block
-   * read from before a hard fork keeps reporting the era it was produced in.
+   * Resolve it with `versionOfRecord` from `@midnight-ntwrk/midnight-js-protocol`:
+   * this type satisfies that function's `VersionedRecord` parameter, so
+   * `versionOfRecord(block)` is the whole call. It throws
+   * `UnknownProtocolVersionError` for a version this build cannot place on the
+   * era timeline.
+   *
+   * Implementations MUST report the era of *this* block, never the network
+   * head's, so a block read from before a hard fork keeps reporting the era it
+   * was produced in.
+   *
+   * Implementations carry the integer through as the network reported it, and
+   * do NOT reject a version this build cannot place. That failure surfaces
+   * when the caller resolves the era, not on the read.
    */
   readonly protocolVersion: number;
 }

@@ -436,8 +436,28 @@ Catch any of these by code with `hasErrorCode(error, CODE)` from
 
 ---
 
+## 9. `BlockInfo` gained a required `protocolVersion` field (#1395)
+
+`BlockInfo`, returned by `PublicDataProvider.queryBlock()`, now carries
+`readonly protocolVersion: number` — the protocol-version integer the block was
+produced under, which dates it to a ledger era. Any code that *constructs* a
+`BlockInfo` — test fixtures and custom `PublicDataProvider` implementations —
+must set it. Code that only reads a `BlockInfo` is unaffected.
+
+Resolve it with `versionOfRecord(block)` from
+`@midnight-ntwrk/midnight-js-protocol`. Implementations must report the era of
+*that* block, never the network head's, so a block read from before a hard fork
+keeps reporting the era it was produced in.
+
+`queryBlock` itself is new in 5.0.0, so a consumer who never implemented the
+interface sees only an added field. The break lands on anyone who wrote an
+implementation or a test double against `5.0.0-rc.0` / `5.0.0-rc.1`, where the
+type had two fields.
+
+---
+
 ## Non-breaking additions worth noting
 
-- **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)).
+- **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).
 - `dispose()` is exposed on the concrete `IndexerPublicDataProvider` returned by the factory (#961). It is **not** a member of the shared `PublicDataProvider` interface, so existing interface implementations are unaffected.
 - The new `queryContractEvents` / `contractEventsObservable` methods are **required** members of the `PublicDataProvider` interface; the framework's `IndexerPublicDataProvider` provides them. If you implement `PublicDataProvider` yourself, this is a required-method addition that will fail to type-check until you add both — see [api-changes.md](./api-changes.md).
