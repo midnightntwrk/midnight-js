@@ -33,7 +33,10 @@ import { CURRENT_PIPELINE_ERA } from './era';
 import { IncompleteCallTxPrivateStateConfig, isEffectContractError } from './errors';
 import { type ContractStates, getPublicStates, getStates, type PublicContractStates } from './get-states';
 import * as Transaction from './internal/transaction';
-import { createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver, zswapStateToNewCoins } from './internal/utils';
+import {
+  createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver,
+  zswapCallsToNewCoins
+} from './internal/utils';
 import { type TransactionContext } from './transaction';
 import type { UnsubmittedCallTxData } from './tx-model';
 
@@ -160,7 +163,17 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
     ): ContractState | undefined =>
       address === rootCall.contractAddress
         ? initialContractState
-        : calleeResolver?.resolvedStates.get(String(address));
+        : calleeResolver?.resolvedStates.get(String(address))?.contractState;
+
+    // Same split for the Zswap chain state, which a call needs only when it spends a coin already
+    // settled on chain. Each contract's view has every other contract's commitments collapsed out,
+    // so a callee's spend cannot be built against the root's.
+    const chainStateFor = (
+      address: ContractExecutable.ContractExecutable.ContractCall['contractAddress']
+    ): ZswapChainState | undefined =>
+      address === rootCall.contractAddress
+        ? initialZswapChainState
+        : calleeResolver?.resolvedStates.get(String(address))?.zswapChainState;
 
     return {
       era: CURRENT_PIPELINE_ERA,
@@ -181,8 +194,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
         unprovenTx: createUnprovenLedgerCallTx(
           calls,
           contractStateFor,
-          initialZswapChainState,
-          zswapLocalState,
+          chainStateFor,
           encryptionPublicKeyResolverForZswapState(
             zswapLocalState,
             options.coinPublicKey,
@@ -190,9 +202,12 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
             options.additionalCoinEncPublicKeyMappings
           )
         ),
-        newCoins: zswapStateToNewCoins(
+        // Every call, not just the root: the offers are assembled from the whole tree, so a coin a
+        // callee addresses to this wallet is genuinely created and belongs in what the caller is
+        // handed. `calls` carries the root as its last entry.
+        newCoins: zswapCallsToNewCoins(
           parseCoinPublicKeyToHex(coinPublicKey, getNetworkId()),
-          zswapLocalState
+          calls.map((call) => call.private.zswapLocalState)
         )
       },
       calls
@@ -338,7 +353,10 @@ const getContractPublicStates = async <C extends Contract.Any, PCK extends Contr
  * omit a private state provider if they're creating a call transaction for a
  * contract with no private state.
  */
-export type UnprovenCallTxProvidersBase = Pick<ContractProviders, 'zkConfigProvider' | 'publicDataProvider' | 'walletProvider'>;
+export type UnprovenCallTxProvidersBase = Pick<
+  ContractProviders,
+  'zkConfigProvider' | 'publicDataProvider' | 'walletProvider' | 'contractModuleProvider'
+>;
 
 /**
  * Same providers as {@link UnprovenCallTxProvidersBase} with an additional private
@@ -428,7 +446,7 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
         privateState
       ),
       providers.walletProvider.getEncryptionPublicKey(),
-      { publicDataProvider: providers.publicDataProvider, blockHash }
+      { publicDataProvider: providers.publicDataProvider, blockHash, moduleProvider: providers.contractModuleProvider }
     );
   }
 
@@ -446,6 +464,6 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
       zswapChainState
     ),
     providers.walletProvider.getEncryptionPublicKey(),
-    { publicDataProvider: providers.publicDataProvider, blockHash }
+    { publicDataProvider: providers.publicDataProvider, blockHash, moduleProvider: providers.contractModuleProvider }
   );
 }

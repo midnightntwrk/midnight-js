@@ -691,6 +691,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('contractStateEncoded');
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('preContractState');
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('preContractStateEncoded');
+    expectTypeOf<ContractExecutable.ContractExecutable.ContractCall['private']>().toHaveProperty('zswapLocalState');
   });
 
   it('carries the same top-level members in BOTH eras', () => {

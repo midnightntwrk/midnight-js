@@ -14,8 +14,8 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/onchain-runtime';
 import { type AnyProvableCircuitId, type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -267,6 +267,8 @@ export class TransactionContextImpl<
     const zswapChainState = this.cachedStates.states.zswapChainState; // Preserve the current Zswap chain state.
     const ledgerParameters = this.cachedStates.states.ledgerParameters; // Preserve the current ledger parameters.
 
+    // compact-runtime minted the StateValue and decoded the ContractState, therefore ChargedState comes from
+    // compact-runtime too: a WASM class rejects objects from another copy of onchain-runtime.
     contractState.data = new ChargedState(callData.public.nextContractState);
 
     // Preserve the pinned block: in-scope calls advance the contract state in memory but the scope
