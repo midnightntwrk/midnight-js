@@ -60,19 +60,21 @@ yarn upgrade \
 
 ## Step 2 — Pin the protocol packages to a single version
 
-The v9 / v4 protocol packages are release candidates and can be pulled in transitively by other dependencies under different publications, causing duplicate-major type clashes (TS2345, `Transaction<...>` mismatches). Pin them with resolutions so the whole tree dedupes:
+Two copies of a protocol package in one install break in two places: TypeScript sees two different classes (TS2345, `Transaction<...>` mismatches), and at run time each copy's WebAssembly classes reject objects made by the other (`expected instance of StateValue`). A resolver installs a second copy when two packages ask for the same one with different ranges and a newer publication matches only one of them.
+
+The framework asks for `@midnightntwrk/onchain-runtime-v4` and `@midnight-ntwrk/onchain-runtime-v3` with the same ranges `@midnight-ntwrk/compact-runtime` does, so each resolves to one copy on its own. `@midnight-ntwrk/compact-js` asks for `@midnightntwrk/ledger-v9` and `@midnight-ntwrk/platform-js` with a caret, but the framework — and, for `ledger-v9`, `@midnightntwrk/wallet-sdk` — asks for exact versions, so pin those two:
 
 ```jsonc
 // package.json
 {
   "resolutions": {
-    "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
-    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3",
-    "@midnight-ntwrk/platform-js": "3.0.0",
-    "@midnight-ntwrk/compact-runtime": "0.18.0-rc.1"
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
+    "@midnight-ntwrk/platform-js": "3.0.0"
   }
 }
 ```
+
+There is no `@midnight-ntwrk/compact-runtime` entry: depend on the version your contracts were compiled for, which with the current toolchain is `0.20.0`, the framework's own.
 
 Register the new scope if you import the protocol packages anywhere (the framework already does this in `packages/protocol`):
 
@@ -616,7 +618,7 @@ question to raise, not as an omission that implies "it just works".
 ## Verification checklist
 
 - [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.
-- [ ] `yarn install` clean with the resolutions in place (no duplicate ledger-v9 majors).
+- [ ] `yarn install` clean with the Step 2 resolutions in place, and one installed version each of `ledger-v9`, `onchain-runtime-v4` and `platform-js`.
 - [ ] `yarn build` and `yarn lint` succeed.
 - [ ] All signing-key construction sites use the `{ tag, value }` shape.
 - [ ] Persisted signing-key exports re-exported or transformed.
