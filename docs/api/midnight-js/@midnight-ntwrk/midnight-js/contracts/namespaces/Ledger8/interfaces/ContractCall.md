@@ -18,7 +18,7 @@ pre-call pair, which the current era has no counterpart for.
 
 ### TState
 
-`TState` = `DownConvertedState`
+`TState` = `RetainedStateValue`
 
 See [Ledger8ContractCallPublic](ContractCallPublic.md).
 

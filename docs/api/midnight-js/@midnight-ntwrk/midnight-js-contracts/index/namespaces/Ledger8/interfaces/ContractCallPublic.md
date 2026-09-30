@@ -23,10 +23,10 @@ everything else.
 
 ### TState
 
-`TState` = `DownConvertedState`
+`TState` = `RetainedStateValue`
 
-The down-converted state type; the framework's own
-retained runtime fills it with DownConvertedState.
+The retained-era state type; the framework's own
+retained runtime fills it with compact-js's ledger-8 state handle.
 
 ## Properties
 
@@ -71,11 +71,17 @@ fallible half may fail without invalidating it.
 
 > `readonly` **preContractState**: `TState`
 
-The state this call BOUND to: the down-converted handle the pipeline
+The state this call BOUND to: the retained-era handle the pipeline
 executed against, forwarded rather than re-derived.
 
 Retained-era only. The current era publishes no pre-call state on a call
 entry, so era-agnostic code must not reach for this member.
+
+Indistinguishable from Ledger8ContractCallPublic.postContractState
+BY TYPE: compact-js resolves the pre- and post-execution state to the same
+declaration, so swapping the two is not a compile error. Partitioning
+against the wrong one rejects a state the transcript's reads do not fit, or
+silently mis-charges one that merely differs in value.
 
 ***
 
@@ -84,8 +90,8 @@ entry, so era-agnostic code must not reach for this member.
 > `readonly` **preContractStateEncoded**: [`EncodedStateValue`](https://github.com/midnightntwrk/midnight-ledger)
 
 The same pre-call state as an [EncodedStateValue](https://github.com/midnightntwrk/midnight-ledger) — this one IS the
-snapshot's own primary state, the value the handle was down-converted from,
-so it is forwarded rather than re-encoded.
+snapshot's own primary state, the value the handle was decoded from, so it
+is forwarded rather than re-encoded.
 
 ***
 

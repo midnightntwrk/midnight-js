@@ -23,7 +23,7 @@ second absence from joining it unnoticed.
 
 ### nextContractState
 
-> `readonly` **nextContractState**: `DownConvertedState`
+> `readonly` **nextContractState**: `StateValue`
 
 The state the execution ENDED on, as a LIVE `onchain-runtime-v3` handle
 rather than as bytes.

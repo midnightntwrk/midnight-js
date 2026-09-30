@@ -6,12 +6,14 @@
 
 # Class: UnknownLedger8AxisError
 
-Thrown by `assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`)
-when the `axis` it was handed is not a member of [Ledger8InstanceAxis](../type-aliases/Ledger8InstanceAxis.md).
+Raised when a shared-instance guard is handed an `axis` that is not a member
+of [Ledger8InstanceAxis](../type-aliases/Ledger8InstanceAxis.md).
 
-A TypeScript caller cannot produce this — `axis` is typed as
-[Ledger8InstanceAxis](../type-aliases/Ledger8InstanceAxis.md). It exists for the untyped JavaScript consumers
-this package also serves.
+NOTHING RAISES THIS ANY MORE: the guard it served
+(`lib/v8/instance-guard.ts`) was removed with the hand-maintained execution
+layer — see [Ledger8InstanceAxis](../type-aliases/Ledger8InstanceAxis.md). It is kept on the published surface,
+with its code, rather than removed from a consumer's error taxonomy as a side
+effect of an internal refactor.
 
 ## Param
 

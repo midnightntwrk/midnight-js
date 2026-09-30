@@ -74,6 +74,13 @@ contract for cursor, completion, and at-least-once semantics.
 
 Creates a stream of contract states for `contractAddress`.
 
+DECODES WITH THE CURRENT ERA'S RUNTIME ONLY, and the decode runs inside the
+stream — so a state written by the retained runtime does not arrive as a
+skipped emission, it ends the subscription through the subscriber's `error`
+callback. A contract deployed before the ledger fork and not written to
+since serves exactly such a state, indefinitely. Use
+[rawContractStateObservable](#rawcontractstateobservable) where that is possible.
+
 WIRE TRAFFIC DIFFERS SHARPLY BY BRANCH. `all` is server-side filtered and
 light; `latest`, `blockHeight`, `blockHash` and `txId` stream every block on
 chain and filter client-side, which is heavy on a busy chain.
@@ -83,8 +90,8 @@ replay from the subscription's original offset. `latest`, `blockHeight` and
 `blockHash` suppress what they have already delivered; `all` and `txId` do
 not, so a consumer of those two should expect a state more than once.
 
-See blockOffsetToBlock$, blockOffsetToContractState$,
-and blockToPositionedContractState$ for per-subscription docs.
+See blockOffsetToBlock$, blockOffsetToState$,
+and blockToPositionedState$ for per-subscription docs.
 
 #### Parameters
 
@@ -96,7 +103,7 @@ The address of the contract of interest.
 
 ##### config?
 
-[`ContractStateObservableConfig`](../../../midnight-js/types/type-aliases/ContractStateObservableConfig.md) = `...`
+[`ContractStateObservableConfig`](../../../midnight-js/types/type-aliases/ContractStateObservableConfig.md) = `DEFAULT_STATE_CONFIG`
 
 The configuration of the stream. Defaults to `latest`.
 
@@ -386,6 +393,72 @@ The configuration of the query.
 #### Implementation of
 
 [`PublicDataProvider`](../../../midnight-js/types/interfaces/PublicDataProvider.md).[`queryZSwapAndContractState`](../../../midnight-js/types/interfaces/PublicDataProvider.md#queryzswapandcontractstate)
+
+***
+
+### rawContractStateObservable()
+
+> **rawContractStateObservable**(`contractAddress`, `config?`): `Observable`\<[`RawContractState`](../../../midnight-js/types/interfaces/RawContractState.md)\>
+
+Creates a stream of contract states for `contractAddress` as the bytes the
+indexer served, without deserializing them.
+
+The streaming twin of [queryRawContractState](#queryrawcontractstate): no era of contract
+state ends this subscription, because none is deserialized here.
+[contractStateObservable](#contractstateobservable) decodes with the current era's runtime
+inside the pipeline, so one retained-era state terminates that
+subscription; here the era is carried on the record and the caller narrows
+on it.
+
+`ledgerParameters` IS ALWAYS ABSENT ON THIS STREAM, and the stream does not
+report which block a state came from, so the two CANNOT be paired through
+this member. Neither subscription asks for the parameters: the four
+block-subscription branches would receive one for every block on chain, and
+the `all` branch reads a per-contract-action feed with no block subtree to
+read them from. A caller that needs them reads
+[queryRawContractState](#queryrawcontractstate) at a block height it obtained some other way.
+
+Every branch, every wire-traffic cost and every replay-suppression rule is
+exactly [contractStateObservable](#contractstateobservable)'s; only the element type differs.
+
+WHAT IS WITHHELD, PRECISELY: the deserialization, and the envelope-versus-
+block era cross-check [parseHexContractState](../functions/parseHexContractState.md) runs. The envelope tag
+is still read, so a payload carrying no supported contract-state envelope
+still fails the stream. Two things can still end it on era grounds — an
+envelope from an era this client's tag table does not list, and a
+`protocolVersion` integer it cannot place on the era timeline. The second
+is the one asymmetry with [contractStateObservable](#contractstateobservable), which tolerates
+such an integer and decodes on the envelope alone; here `version` is a
+required field with nothing to fall back to, so the read is refused as
+[IndexerDataError](IndexerDataError.md) with `kind: 'unresolvable-era'` rather than
+guessed. Both arrive as an `IndexerError`, like every other failure from
+this package.
+
+#### Parameters
+
+##### contractAddress
+
+`string`
+
+The address of the contract of interest.
+
+##### config?
+
+[`ContractStateObservableConfig`](../../../midnight-js/types/type-aliases/ContractStateObservableConfig.md) = `DEFAULT_STATE_CONFIG`
+
+The configuration of the stream. Defaults to `latest`.
+
+#### Returns
+
+`Observable`\<[`RawContractState`](../../../midnight-js/types/interfaces/RawContractState.md)\>
+
+#### See
+
+[SubscriptionShapes](../../documents/SubscriptionShapes.md) for what each branch costs.
+
+#### Implementation of
+
+[`PublicDataProvider`](../../../midnight-js/types/interfaces/PublicDataProvider.md).[`rawContractStateObservable`](../../../midnight-js/types/interfaces/PublicDataProvider.md#rawcontractstateobservable)
 
 ***
 

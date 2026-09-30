@@ -95,20 +95,18 @@ WASM copies at one and keeps the laziness a property of a single call site
 rather than of a convention spread across files.
 
 `lib/v8/load-engine.ts` re-exports engine option and result types type-only —
-`DownConvertedState`, `EncodedStateValue`, `ExecuteCircuitOptions`,
-`Ledger8Engine`, `TranscriptPojo` and `WrapKeepStateCallOptions` — so a consumer
-holding a `Ledger8Engine` can annotate a variable or write a helper without a
-second, subpath-gated import, and without linking the engine chunk.
+`ConstructorResultPojo`, `EncodedStateValue`, `Ledger8Engine`,
+`Ledger8SigningKey`, `RetainedContract`, `RunRetainedCircuitOptions`,
+`RunRetainedConstructorOptions`, `TranscriptPojo`, `VerifierKeyReader` and
+`WrapKeepStateCallOptions` — so a consumer holding a `Ledger8Engine` can
+annotate a variable or write a helper without a second, subpath-gated import,
+and without linking the engine chunk.
 
-The list is INCOMPLETE, and knowingly so as of this writing. `Ledger8Engine`
-has a fourth method, `executeConstructor(options: ExecuteConstructorOptions):
-ConstructorResultPojo` (`lib/v8/engine.ts`), and neither of those two types is
-re-exported — so neither reaches the root barrel, and `executeConstructor` is
-the one method on the seam whose argument and result a caller cannot annotate
-without the gated import. TypeDoc reports both as referenced-but-not-included.
-Closing it is a one-line change to the re-export list; it is left out of the
-documentation change that recorded this so that a docs-only commit does not
-alter the package's export surface.
+The list is complete for the execution seam: `executeConstructor(options:
+RunRetainedConstructorOptions): Promise<ConstructorResultPojo>`
+(`lib/v8/engine.ts`) has both its argument and its result type on the list
+above, so every method on the seam can be annotated without the gated
+import.
 
 ## The tests that enforce each property
 
@@ -150,9 +148,11 @@ cannot name a single vendor type — `lib/shared/unshielded.ts`, which runs on
 both eras — declares a structural slice rather than reaching for a value
 import.
 
-`lib/v8/down-convert.ts` reads the three pre-fork instance types it names off
-one type-only namespace import rather than adding a second named import of the
-same module. Those aliases are not mirrors: they are the vendor's types.
+`lib/v8/executable.ts` is the counter-example that proves the rule's limit: it
+needs `StateValue`, `ChargedState` and `ContractState` as VALUES, not as types,
+so it takes a plain namespace import of the retained glue. That import is what
+makes the module non-lazy, which is why it sits behind the subpath gate rather
+than on the package's own graph.
 
 ## Naming a type versus importing a value at the envelope seam
 

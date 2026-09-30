@@ -16,12 +16,16 @@ as a side effect of importing the package root.
 
 A failed load is not memoised: the next call retries the import. Exactly two
 rejections propagate unchanged — [Ledger8RuntimeMissingError](../classes/Ledger8RuntimeMissingError.md) from the
-retained-runtime acquisition, and [Ledger8InstanceMismatchError](../classes/Ledger8InstanceMismatchError.md) from
-the construction-time instance guard — keeping their class, code and
-discriminants intact for callers. Every other failure is wrapped in
-[Ledger8RuntimeMissingError](../classes/Ledger8RuntimeMissingError.md), including the coded
-`Ledger8RuntimeInvalidError` that same guard raises for an incomplete
+retained-runtime acquisition, and [Ledger8InstanceMismatchError](../classes/Ledger8InstanceMismatchError.md) —
+keeping their class, code and discriminants intact for callers. Every other
+failure is wrapped in [Ledger8RuntimeMissingError](../classes/Ledger8RuntimeMissingError.md), including the coded
+`Ledger8RuntimeInvalidError` the envelope decoder raises for an incomplete
 runtime, and a raw module-resolution error on the engine chunk itself.
+
+Nothing in this package raises [Ledger8InstanceMismatchError](../classes/Ledger8InstanceMismatchError.md) any more:
+the construction-time guard that did was retired with the hand-maintained
+execution layer. The passthrough stays so that a lower layer which ever
+raises one reaches the caller with its class intact, rather than wrapped.
 
 ## Returns
 
@@ -37,8 +41,9 @@ Ledger8RuntimeMissingError If the retained runtime, or the `./engine`
 
 ## Throws
 
-Ledger8InstanceMismatchError If the construction-time instance guard
-  found `onchain-runtime-v3` resolved to two physically distinct copies.
+Ledger8InstanceMismatchError Never raised here; passed through
+  unwrapped if a lower layer ever reports `onchain-runtime-v3` resolved to
+  two physically distinct copies.
 
 ## See
 

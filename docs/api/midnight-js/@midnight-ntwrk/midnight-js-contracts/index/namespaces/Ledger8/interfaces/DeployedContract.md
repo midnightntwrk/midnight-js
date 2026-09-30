@@ -108,7 +108,7 @@ produced the objects below.
 
 ### initialContractState
 
-> `readonly` **initialContractState**: `Ledger8DeployableContractState`
+> `readonly` **initialContractState**: `RetainedConstructedState`
 
 The state the contract was deployed with, as the LIVE handle the retained
 constructor built. See ADR-0010 for its lifetime, and prefer
