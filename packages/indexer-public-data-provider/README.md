@@ -126,13 +126,20 @@ recovery means subscribing again. (The Apollo `RetryLink` in `transport.ts`
 retries *transport* failures on HTTP queries; subscriptions are routed past it,
 and it sits below the decode in any case, so it cannot see a refusal.)
 
+`rawContractStateObservable` is the way out of this for a stream, as
+`queryRawContractState` is for a query: it never deserializes, so no era of
+contract state terminates it. See
+[Which state stream to use](#which-state-stream-to-use).
+
 On the `latest` branch the stream does not fail at subscribe time — it fails on
 the first matching contract action that flows through it.
 
 The `all` branch is the harsher case: it replays every contract action from the
 deploy onward, so for a contract deployed before the fork the replay always
 reaches its pre-fork deploy state. No later write can change what an earlier
-block already contains, so that branch does not recover.
+block already contains, so that branch does not recover — on the decoded stream
+it is unusable for such a contract for good, and `rawContractStateObservable` is
+the only way to read it.
 
 #### Reading a contract that may predate the fork
 
@@ -173,7 +180,9 @@ Two things that look interchangeable and are not:
 If you would rather decode the bytes yourself, `queryRawContractState` still
 serves them untouched — pair it with `contractStateEnvelopeVersion` from
 `@midnight-ntwrk/midnight-js-utils` to read the envelope's era, never with the
-record's own `version`.
+record's own `version`. `rawContractStateObservable` serves the same record
+type as a stream (without `ledgerParameters`), and the same caution applies to
+it.
 
 A state older than the block that dates the read is normal, not a fault: the
 indexer serves the latest contract action at or before that block, so any
@@ -249,12 +258,77 @@ contractStateObservable(
   config?: ContractStateObservableConfig
 ): Observable<ContractState>
 
+// Subscribe to contract state changes as raw bytes, not deserialized
+rawContractStateObservable(
+  contractAddress: ContractAddress,
+  config?: ContractStateObservableConfig
+): Observable<RawContractState>
+
 // Subscribe to unshielded balance changes
 unshieldedBalancesObservable(
   contractAddress: ContractAddress,
   config?: ContractStateObservableConfig
 ): Observable<UnshieldedBalances>
 ```
+
+#### Which state stream to use
+
+The two contract-state streams run the identical pipeline — same branches, same
+wire-traffic costs, same replay suppression — and differ only in what one served
+contract action becomes.
+
+| | `contractStateObservable` | `rawContractStateObservable` |
+|---|---|---|
+| Emits | `ContractState`, deserialized | `RawContractState`: the bytes, plus the era the record is dated to |
+| A state from a retained era | **ends the stream** (see [Reading State Across the Ledger Fork](#reading-state-across-the-ledger-fork)) | flows through; the caller narrows on `version` |
+| `ledgerParameters` | n/a | always absent — see below |
+| Reach for it when | the contract is known to be current-era | the contract may predate the fork, or you cannot rule it out |
+
+`rawContractStateObservable` is the streaming twin of `queryRawContractState`
+and narrows the same way, so one `switch (record.version)` serves both:
+
+```typescript
+import { assertNever } from '@midnight-ntwrk/midnight-js-utils';
+
+provider.rawContractStateObservable(contractAddress).subscribe((record) => {
+  switch (record.version) {
+    case 'v9':
+      // hand record.raw to the v9 deserializer
+      break;
+    case 'v8':
+      // hand record.raw to the v8 deserializer
+      break;
+    default:
+      assertNever(record, 'rawContractStateObservable subscriber');
+  }
+});
+```
+
+`ledgerParameters` is **always absent on this stream**, although
+`queryRawContractState` serves it. Neither subscription asks for it: the four
+block-subscription branches would receive one for every block on chain, whether
+or not that block touches this contract, and the `all` branch reads a
+per-contract-action feed that has no block subtree to read it from.
+
+**The stream does not report which block a state came from**, so a streamed
+record cannot be paired with its block's parameters through this API. If you
+need them, read `queryRawContractState` at a `blockHeight`/`blockHash` you
+obtained some other way. (`RawContractState` carries `version`,
+`protocolVersion`, `raw` and `ledgerParameters` — no height and no hash, and
+`protocolVersion` identifies an era, not a block.)
+
+Withholding the deserialization does not withhold the fail-fast, but be precise
+about what is withheld: the deserialization, and the envelope-versus-block era
+cross-check that `queryContractState` runs. The envelope **tag** is still read,
+so a payload carrying no supported contract-state envelope still errors the
+stream. Two things can still end the stream on era grounds — an envelope from an
+era this client's tag table does not list, and a `protocolVersion` integer it
+cannot place on the era timeline. The second is the one asymmetry with
+`contractStateObservable`, which tolerates such an integer and decodes on the
+envelope alone; on the raw reads `version` is a required field with nothing to
+fall back to, so the read is refused rather than guessed. Both surface as an
+`IndexerDataError` (`kind: 'unresolvable-era'` for the second), so one
+`instanceof IndexerError` still catches every failure from this provider.
 
 ### Observable Configuration
 

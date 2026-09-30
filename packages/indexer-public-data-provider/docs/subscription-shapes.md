@@ -4,10 +4,11 @@ title: SubscriptionShapes
 
 # Two subscription shapes, and why they are not unified
 
-`contractStateObservable` serves four branches through TWO different GraphQL
-subscriptions, with very different wire costs. The asymmetry is deliberate.
-This document records what each shape costs, and why collapsing them onto one
-subscription would change the meaning of a published option.
+`contractStateObservable` and `rawContractStateObservable` serve four branches
+through TWO different GraphQL subscriptions, with very different wire costs. The
+asymmetry is deliberate. This document records what each shape costs, why
+collapsing them onto one subscription would change the meaning of a published
+option, and why the two members share one implementation of the topology.
 
 The code is `src/provider.ts` and `src/observables.ts`.
 
@@ -32,8 +33,26 @@ the first state CHANGE, not the first BLOCK.
 That is what makes the two shapes non-interchangeable: `inclusive: false` on
 `blockHeight` and `blockHash` is defined in blocks. Served from a per-change
 feed, the same published option would quietly mean something else. The per-block
-view from `blockOffsetToBlock$` + `blockToPositionedContractState$` is what gives that
+view from `blockOffsetToBlock$` + `blockToPositionedState$` is what gives that
 option the meaning it documents.
+
+## Why one topology serves both members
+
+The two public state streams differ in exactly one thing: what one served
+contract action becomes. Everything else — which subscription each config
+reaches, where `dropReplayed` sits, which branches honour `inclusive` and
+whether `inclusive` counts blocks or states — is the part that is easy to get
+subtly wrong, and two copies of it would drift apart under maintenance.
+
+So the topology is written once, as the private `contractStates$<T>`, and the
+mapper is threaded through it: `parseHexContractState` for the decoded stream,
+`toRawContractState` for the raw one. Both public members are one-line binds.
+Because the type parameter is fixed once per stream, "the two streams cannot
+diverge branch by branch" is a fact the compiler holds, not a review habit.
+
+The cost of that sharing is that one transcription error breaks both members at
+once, which is why the branch behaviour that is invisible in a type — the two
+readings of `inclusive` above all — is pinned by tests rather than by review.
 
 ## Why the others cannot simply become `all`
 

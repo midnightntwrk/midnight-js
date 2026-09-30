@@ -52,7 +52,9 @@ describe('an invalid contract address is refused before any request is issued', 
     ['watchForContractState', (p) => p.watchForContractState(INVALID_ADDRESS)],
     ['watchForUnshieldedBalances', (p) => p.watchForUnshieldedBalances(INVALID_ADDRESS)],
     ['watchForDeployTxData', (p) => p.watchForDeployTxData(INVALID_ADDRESS)],
-    ['contractStateObservable', (p) => p.contractStateObservable(INVALID_ADDRESS, { type: 'all' })]
+    ['contractStateObservable', (p) => p.contractStateObservable(INVALID_ADDRESS, { type: 'all' })],
+    ['rawContractStateObservable', (p) => p.rawContractStateObservable(INVALID_ADDRESS, { type: 'all' })],
+    ['unshieldedBalancesObservable', (p) => p.unshieldedBalancesObservable(INVALID_ADDRESS, { type: 'all' })]
   ];
 
   test.each(throwsSynchronously)('%s throws synchronously, issuing nothing', (_name, call) => {

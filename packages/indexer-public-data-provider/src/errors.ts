@@ -104,7 +104,8 @@ export type IndexerDataErrorContext =
     }
   | { kind: 'unsupported-decode-era'; version: LedgerVersion }
   | { kind: 'malformed-parameters-encoding' }
-  | { kind: 'unsupported-parameters-era'; version: LedgerVersion };
+  | { kind: 'unsupported-parameters-era'; version: LedgerVersion }
+  | { kind: 'unresolvable-era'; protocolVersion: number };
 
 /**
  * An error raised when indexer-returned data is structurally inconsistent
@@ -124,8 +125,8 @@ export type IndexerDataErrorContext =
  * {@link context} stay in sync.
  */
 export class IndexerDataError extends IndexerError {
-  constructor(public readonly context: IndexerDataErrorContext) {
-    super(IndexerDataError.formatMessage(context));
+  constructor(public readonly context: IndexerDataErrorContext, options?: ErrorOptions) {
+    super(IndexerDataError.formatMessage(context), options);
     this.name = 'IndexerDataError';
   }
 
@@ -198,6 +199,14 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'unsupported-parameters-era', version });
   }
 
+  /**
+   * @param cause The protocol-layer failure, preserved so the resolution path
+   *              that refused the integer is still readable.
+   */
+  static unresolvableEra(protocolVersion: number, cause: unknown): IndexerDataError {
+    return new IndexerDataError({ kind: 'unresolvable-era', protocolVersion }, { cause });
+  }
+
   private static formatMessage(context: IndexerDataErrorContext): string {
     switch (context.kind) {
       case 'unknown-status':
@@ -236,6 +245,13 @@ export class IndexerDataError extends IndexerError {
         return `Contract event ${context.typename} is missing required field '${context.field}'`;
       case 'unknown-address-kind':
         return `Contract event ${context.typename} field '${context.field}' has unknown address kind '${context.value}'`;
+      case 'unresolvable-era':
+        return (
+          `The indexer reported protocolVersion ${context.protocolVersion} for a contract state, and this build ` +
+          'cannot place that value on the ledger-era timeline. The raw contract-state reads tag every record with ' +
+          'an era, so a value they cannot resolve is refused rather than guessed. Upgrade to a release that knows ' +
+          'this network, or read the state through a method that decodes on the envelope alone.'
+        );
       case 'era-disagreement':
         return (
           `The indexer served a contract state whose envelope was written by ledger ${context.envelopeVersion}, ` +

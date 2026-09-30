@@ -19,9 +19,10 @@ import * as Rx from 'rxjs';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { indexerPublicDataProvider } from '..';
+import { parseHexContractState } from '../codec';
 import {
   type Block,
-  blockToPositionedContractState$,
+  blockToPositionedState$,
   type ChainPosition,
   dropReplayed,
   type PositionedContractState
@@ -118,6 +119,9 @@ describe('dropReplayed', () => {
     ]);
   });
 });
+
+/** The decoded binding of the shared pipeline — the one `contractStateObservable` uses. */
+const blockToPositionedContractState$ = blockToPositionedState$(parseHexContractState);
 
 const action = (address: ContractAddress, state: string) => ({ state, address });
 

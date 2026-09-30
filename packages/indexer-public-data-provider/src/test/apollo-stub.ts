@@ -32,6 +32,12 @@ export type QueryStub = (request: ApolloRequest) => Promise<unknown>;
 export type WatchQueryStub = (request: ApolloRequest) => unknown;
 
 /**
+ * A stand-in for `ApolloClient.subscribe`. The provider only ever pipes the
+ * result, so an observable-shaped value is enough here too.
+ */
+export type SubscribeStub = (request: ApolloRequest) => unknown;
+
+/**
  * Builds an {@link ApolloHandle} around stubbed client entry points.
  *
  * `ApolloClient` is a class with private fields and invariant generics, so a
@@ -48,6 +54,7 @@ export type WatchQueryStub = (request: ApolloRequest) => unknown;
 export const stubApolloHandle = (stubs: {
   readonly query?: QueryStub;
   readonly watchQuery?: WatchQueryStub;
+  readonly subscribe?: SubscribeStub;
 }): ApolloHandle => {
   const client: Partial<ApolloClient> = {};
   if (stubs.query) {
@@ -55,6 +62,9 @@ export const stubApolloHandle = (stubs: {
   }
   if (stubs.watchQuery) {
     client.watchQuery = stubs.watchQuery as ApolloClient['watchQuery'];
+  }
+  if (stubs.subscribe) {
+    client.subscribe = stubs.subscribe as ApolloClient['subscribe'];
   }
   return {
     client: client as ApolloClient,
