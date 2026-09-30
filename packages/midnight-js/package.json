@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js",
-  "version": "5.0.0-rc.1",
+  "version": "5.0.0-rc.2",
   "type": "module",
   "description": "Barrel package for Midnight.js core framework",
   "types": "dist/index.d.ts",
