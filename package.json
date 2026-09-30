@@ -63,7 +63,7 @@
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-unused-imports": "^4.4.1",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.7",
+    "lint-staged": "^17.5.1",
     "pinst": "^3.0.0",
     "pnpm": "10.20.0",
     "prettier": "^3.9.4",
