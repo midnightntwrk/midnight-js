@@ -37,11 +37,9 @@ reason: a memoised era is one object shared by every caller in the process, so
 an unfrozen one lets any consumer reassign `composeCallTx` for all the others.
 
 The same construction — `Object.freeze` over an `Object.assign` onto
-`Object.create(null)` — is used for `KNOWN_AXES`
-(`packages/protocol/src/lib/v8/instance-guard.ts`) and for
-`AXIS_BARE_PACKAGE_NAMES` in `packages/protocol/src/errors.ts`, and
-`PUBLISHED_SCOPES` in the same module is frozen as a plain array for the reason
-`LEDGER_VERSIONS` is.
+`Object.create(null)` — is used for `AXIS_BARE_PACKAGE_NAMES` in
+`packages/protocol/src/errors.ts`, and `PUBLISHED_SCOPES` in the same module is
+frozen as a plain array for the reason `LEDGER_VERSIONS` is.
 
 ## Null-prototype lookup tables
 
@@ -63,10 +61,13 @@ Both are typed as an `EncodedStateValue`, and neither throws. That is the whole
 argument: the failure mode of a plain object literal here is not an exception,
 it is a plausible-looking value flowing on as if a decode had happened.
 
-`KNOWN_AXES` in `packages/protocol/src/lib/v8/instance-guard.ts` is
+`AXIS_BARE_PACKAGE_NAMES` in `packages/protocol/src/errors.ts` is
 null-prototype and frozen for the reason `ENVELOPE_DECODERS` is: the value
 indexing it is only type-checked for TypeScript callers, and a plain object
-literal answers `true` for every `Object.prototype` member.
+literal would resolve an `Object.prototype` member into the package name a
+remediation hint tells the reader to trace. `KNOWN_AXES` in the retired
+`lib/v8/instance-guard.ts` was the sibling case; the table it guarded is gone
+with the runtime probe, but the error that reads this one still ships.
 
 The same exposure is why `UnknownLedgerVersionError`
 (`packages/protocol/src/errors.ts`) exists at all. TypeScript callers cannot
@@ -77,27 +78,30 @@ decision — and, where that decision is a lookup table rather than a `switch`,
 could resolve an inherited `Object.prototype` member and yield a
 plausible-looking non-era.
 
-There is a second closed union this package validates at a boundary for the same
-reason, the ledger-8 instance axis. Its own argument — why the axis is not only
-a label — belongs with the guard that uses it; see [DualInstantiationGuard](./dual-instantiation-guard.md).
+There is a second closed union this package declares for the same reason, the
+ledger-8 instance axis. Nothing validates it at a boundary any more — the guard
+that did was retired — but the union and its error still ship, and the argument
+for why the axis was never only a label is recorded with them; see
+[DualInstantiationGuard](./dual-instantiation-guard.md).
 
 ## Own-property lookups where a null prototype is not available
 
-Two places index an object this package did not build, so they cannot give it a
-null prototype and use an own-property lookup instead.
+One place indexes an object this package did not build, so it cannot give it a
+null prototype.
 
-`executeCircuit` (`packages/protocol/src/lib/v8/execute.ts`) resolves a circuit
-by own property: `impureCircuits` is a plain object literal on every compiled
-contract, so a bare index would resolve `toString` or `constructor` off the
-prototype chain and dispatch into it.
+`structurallyEqual` (`packages/protocol/src/lib/v8/executable.ts`) is
+explicitly a partial guard, not a total one: the object it tests with `in` is a
+plain object, so `in` also succeeds for every `Object.prototype` member. Keys in
+the pinned algebra are only `tag`/`content`/`value`/`alignment`/`length`, none
+of them inherited, so the hole is unreachable today — but `Object.hasOwn` would
+close it outright and is the right move the moment that helper is used on
+anything wider.
 
-The structural comparison in
-`packages/protocol/src/lib/v8/down-convert.ts` is explicitly a partial guard,
-not a total one: the object it tests with `in` is a plain object, so `in` also
-succeeds for every `Object.prototype` member. Keys in the pinned algebra are
-only `tag`/`content`/`value`/`alignment`/`length`, none of them inherited, so
-the hole is unreachable today — but `Object.hasOwn` would close it outright and
-is the right move the moment that helper is used on anything wider.
+Circuit dispatch used to be the second such place: the retired `executeCircuit`
+indexed `impureCircuits` by own property, because a bare index would resolve
+`toString` or `constructor` off the prototype chain and dispatch into it.
+compact-js resolves the circuit now, so the lookup is no longer this package's
+to make.
 
 ## Compile-time exhaustiveness
 
@@ -111,16 +115,17 @@ guard: if `LEDGER_VERSIONS` ever grows without a matching entry being added to
 conditional type resolves to `never`.
 
 `loadLedgerEra` (`packages/protocol/src/lib/era/load-era.ts`) does the same in a
-`switch`, in the style of `version.ts`'s `_allLedgerVersionsAreMapped` and the
-Merkle walk in `packages/protocol/src/lib/v8/down-convert.ts`: a new member of
-`LEDGER_VERSIONS` stops the `const unhandled: never = version` assignment
-type-checking, so the omission is a build failure rather than a review miss.
+`switch`, in the style of `version.ts`'s `_allLedgerVersionsAreMapped`: a new
+member of `LEDGER_VERSIONS` stops the `const unhandled: never = version`
+assignment type-checking, so the omission is a build failure rather than a
+review miss.
 
-The Merkle rehash walk in `packages/protocol/src/lib/v8/down-convert.ts` uses
-the same `const unhandled: never` form against the vendor's `StateValue`
-variants, in the style of `version.ts`'s `_allLedgerVersionsAreMapped`: a vendor
-bump that adds a variant stops the assignment type-checking, so the omission is
-a build failure rather than a review miss.
+The retired Merkle rehash walk used the same `const unhandled: never` form
+against the vendor's `StateValue` variants. Nothing in the package walks that
+union any more — `structurallyEqual` compares the ENCODED algebra structurally
+rather than switching on a variant tag — so a vendor bump that adds a variant no
+longer fails a build here. Why that walk did not come back is in
+[RetainedEraExecution](./retained-era-execution.md).
 
 `KNOWN_AXES` and `AXIS_BARE_PACKAGE_NAMES` reach the same property through
 `satisfies` rather than an assignment: the duplication of the one axis literal

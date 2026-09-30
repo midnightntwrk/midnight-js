@@ -129,7 +129,7 @@ interface SegmentedOutputs {
 
 // Declared once against ledger-v9 and used on BOTH arms: `Transcript` and
 // `Effects` are structurally identical across the two eras (the drift gate at
-// the bottom of v8-down-convert.test.ts pins that), and `ComposeCallOptions`
+// the bottom of v8-executable.test.ts pins that), and `ComposeCallOptions`
 // declares this shape in the ledger-v9 algebra for exactly that reason.
 const payingTranscript = (payee: Payee, value: bigint): ledgerV9.Transcript<ledgerV9.AlignedValue> => ({
   gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },

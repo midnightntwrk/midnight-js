@@ -14,6 +14,7 @@
  */
 
 import { getNetworkId,setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import {
   type AlignedValue,
   type CommunicationCommitmentData,
@@ -70,6 +71,26 @@ import {
   toLedgerQueryContext,
   ZSWAP_MERKLE_ROOT_RETENTION_SECONDS} from '../../internal/utils';
 const emptyTranscript: PartitionedTranscript = [undefined, undefined];
+
+/**
+ * The four values compact-js publishes alongside a call's partition
+ * (midnightntwrk/midnight-sdk#400), read off a real `QueryContext` rather than
+ * restated as a literal, so these shapes cannot drift from the runtime's.
+ *
+ * No assertion in this file reads them back -- they are here because
+ * `ContractCallPublic` requires them. `state`, `block` and `effects` come from a
+ * pre-execution context and `comIndices` from a post-execution one; with no call
+ * having run, one context answers for both.
+ */
+const makePartitionInputs = (): ContractExecutable.ContractExecutable.CallPartitionInputs => {
+  const queryContext = new QueryContext(new CompactContractState().data, sampleContractAddress());
+  return {
+    state: queryContext.state.state,
+    block: queryContext.block,
+    effects: queryContext.effects,
+    comIndices: queryContext.comIndices
+  };
+};
 
 /**
  * A real, serialized verifier key. `createUnprovenLedgerCallTx` hashes each operation's verifier
@@ -149,7 +170,7 @@ describe('ledger-utils', () => {
         {
           contractAddress: PlatformContractAddress.ContractAddress(contractAddress),
           circuitId,
-          public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: emptyTranscript },
+          public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: emptyTranscript, partitionInputs: makePartitionInputs() },
           private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs },
           communicationCommitment: Option.none()
         }
@@ -182,7 +203,7 @@ describe('ledger-utils', () => {
           {
             contractAddress: PlatformContractAddress.ContractAddress(sampleContractAddress()),
             circuitId: unregisteredCircuitId,
-            public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: emptyTranscript },
+            public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: emptyTranscript, partitionInputs: makePartitionInputs() },
             private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
             communicationCommitment: Option.none()
           }
@@ -240,7 +261,7 @@ describe('ledger-utils', () => {
           {
             contractAddress: PlatformContractAddress.ContractAddress(shieldedAddr),
             circuitId: 'deposit',
-            public: { contractState: shieldedInitialState.data.state, publicTranscript: [], partitionedTranscript: partitioned },
+            public: { contractState: shieldedInitialState.data.state, publicTranscript: [], partitionedTranscript: partitioned, partitionInputs: makePartitionInputs() },
             private: {
               input: proofData.input,
               output: proofData.output,
@@ -338,7 +359,7 @@ describe('ledger-utils', () => {
           {
             contractAddress: PlatformContractAddress.ContractAddress(contractAddress),
             circuitId,
-            public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: partitioned },
+            public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: partitioned, partitionInputs: makePartitionInputs() },
             private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
             communicationCommitment: Option.none()
           }
@@ -384,7 +405,7 @@ describe('ledger-utils', () => {
           {
             contractAddress: PlatformContractAddress.ContractAddress(contractAddress),
             circuitId,
-            public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: partitioned },
+            public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: partitioned, partitionInputs: makePartitionInputs() },
             private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
             communicationCommitment: Option.none()
           }
@@ -429,7 +450,7 @@ describe('ledger-utils', () => {
           {
             contractAddress: PlatformContractAddress.ContractAddress(contractAddress),
             circuitId,
-            public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: partitioned },
+            public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: partitioned, partitionInputs: makePartitionInputs() },
             private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
             communicationCommitment: Option.none()
           }
@@ -478,7 +499,7 @@ describe('ledger-utils', () => {
           {
             contractAddress: PlatformContractAddress.ContractAddress(contractAddress),
             circuitId,
-            public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: partitioned },
+            public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: partitioned, partitionInputs: makePartitionInputs() },
             private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
             communicationCommitment: Option.none()
           }
@@ -527,7 +548,7 @@ describe('ledger-utils', () => {
           {
             contractAddress: PlatformContractAddress.ContractAddress(contractAddress),
             circuitId,
-            public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: partitioned },
+            public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: partitioned, partitionInputs: makePartitionInputs() },
             private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
             communicationCommitment: Option.none()
           }
@@ -707,7 +728,8 @@ describe('ledger-utils', () => {
             public: {
               contractState: contractState.data.state,
               publicTranscript: [],
-              partitionedTranscript: [guaranteed, fallible] as PartitionedTranscript
+              partitionedTranscript: [guaranteed, fallible] as PartitionedTranscript,
+              partitionInputs: makePartitionInputs()
             },
             private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs },
             communicationCommitment: Option.none()
@@ -864,7 +886,8 @@ describe('ledger-utils', () => {
           public: {
             contractState: states.get(calleeAddress)!.data.state,
             publicTranscript: [],
-            partitionedTranscript: calleeTranscripts
+            partitionedTranscript: calleeTranscripts,
+            partitionInputs: makePartitionInputs()
           },
           private: { input: callAlignedValue, output: callAlignedValue, privateTranscriptOutputs: [] },
           communicationCommitment: Option.none()
@@ -875,7 +898,8 @@ describe('ledger-utils', () => {
           public: {
             contractState: states.get(rootAddress)!.data.state,
             publicTranscript: [],
-            partitionedTranscript: rootTranscripts
+            partitionedTranscript: rootTranscripts,
+            partitionInputs: makePartitionInputs()
           },
           private: { input: callAlignedValue, output: callAlignedValue, privateTranscriptOutputs: [] },
           communicationCommitment: Option.none()
@@ -1103,7 +1127,7 @@ describe('createUnprovenLedgerCallTx multi-call assembly', () => {
   ) => ({
     contractAddress: PlatformContractAddress.ContractAddress(address),
     circuitId,
-    public: { contractState: state.data.state, publicTranscript: [], partitionedTranscript: emptyTranscript },
+    public: { contractState: state.data.state, publicTranscript: [], partitionedTranscript: emptyTranscript, partitionInputs: makePartitionInputs() },
     private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] as AlignedValue[] },
     communicationCommitment: commitment
   });

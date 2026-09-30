@@ -20,17 +20,14 @@ import type * as Engine from './engine.js';
 // barrel -- see ModuleGraphAndLazyLoading.
 export type {
   ConstructorResultPojo,
-  DownConvertedState,
   EncodedStateValue,
-  ExecutableContractState,
-  ExecuteCircuitOptions,
-  ExecuteConstructorOptions,
-  Ledger8ChargedState,
-  Ledger8DeployableContractState,
   Ledger8Engine,
   Ledger8SigningKey,
-  Ledger8StateValue,
+  RetainedContract,
+  RunRetainedCircuitOptions,
+  RunRetainedConstructorOptions,
   TranscriptPojo,
+  VerifierKeyReader,
   WrapKeepStateCallOptions
 } from './engine.js';
 
@@ -45,19 +42,24 @@ let enginePromise: Promise<Engine.Ledger8Engine> | undefined;
  *
  * A failed load is not memoised: the next call retries the import. Exactly two
  * rejections propagate unchanged — {@link Ledger8RuntimeMissingError} from the
- * retained-runtime acquisition, and {@link Ledger8InstanceMismatchError} from
- * the construction-time instance guard — keeping their class, code and
- * discriminants intact for callers. Every other failure is wrapped in
- * {@link Ledger8RuntimeMissingError}, including the coded
- * `Ledger8RuntimeInvalidError` that same guard raises for an incomplete
+ * retained-runtime acquisition, and {@link Ledger8InstanceMismatchError} —
+ * keeping their class, code and discriminants intact for callers. Every other
+ * failure is wrapped in {@link Ledger8RuntimeMissingError}, including the coded
+ * `Ledger8RuntimeInvalidError` the envelope decoder raises for an incomplete
  * runtime, and a raw module-resolution error on the engine chunk itself.
+ *
+ * Nothing in this package raises {@link Ledger8InstanceMismatchError} any more:
+ * the construction-time guard that did was retired with the hand-maintained
+ * execution layer. The passthrough stays so that a lower layer which ever
+ * raises one reaches the caller with its class intact, rather than wrapped.
  *
  * @returns The engine's public surface, memoised after the first successful
  *   load.
  * @throws Ledger8RuntimeMissingError If the retained runtime, or the `./engine`
  *   chunk itself, cannot be acquired.
- * @throws Ledger8InstanceMismatchError If the construction-time instance guard
- *   found `onchain-runtime-v3` resolved to two physically distinct copies.
+ * @throws Ledger8InstanceMismatchError Never raised here; passed through
+ *   unwrapped if a lower layer ever reports `onchain-runtime-v3` resolved to
+ *   two physically distinct copies.
  * @see {@link ModuleGraphAndLazyLoading}
  * @see {@link EraSeam}
  */

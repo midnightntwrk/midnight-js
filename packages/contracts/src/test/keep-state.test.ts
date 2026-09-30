@@ -40,10 +40,10 @@ import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import {
   type ComposeCallOptions,
   type ContractBalance,
-  type ExecutableContractState,
-  type ExecuteCircuitOptions,
   type LedgerEra,
-  loadLedgerEra
+  loadLedgerEra,
+  type RetainedContract,
+  type RunRetainedCircuitOptions
 } from '@midnight-ntwrk/midnight-js-protocol';
 import { ContractState, LedgerParameters, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
@@ -67,6 +67,13 @@ import { createEncryptionPublicKeyResolver } from '../internal/utils';
 import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx } from '../submit-call-tx';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
+
+/**
+ * A minimal contract instantiation for the option-shape pins below. They are
+ * about which OPTIONS the engine requires, not about any particular artifact,
+ * so the narrowest contract that satisfies compact-js's constraint is used.
+ */
+type AnyRetainedContract = RetainedContract;
 import {
   type CoinReceiverRecording,
   createReplayEngine,
@@ -76,7 +83,6 @@ import {
   type OrchestrationLog,
   readHfHexFixture,
   recordEraCalls,
-  type ReplayExecutableState,
   type ReplayState,
   RETAINED_ERA_TX_TAG,
   txTagPrefix
@@ -222,7 +228,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     let composed: ComposeCallOptions | undefined;
     const providers = postForkProviders(v6Envelope);
 
-    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayState>({
       era: recordEraCalls(currentEra, log, (options) => {
         composed = options;
       }),
@@ -259,7 +265,6 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(log).toEqual([
       'era.v8.extractState',
       'era.v8.decodeContractState',
-      'engine.downConvertForExecution',
       'engine.executeCircuit',
       'engine.reexpressOperationsForCurrentEra',
       'era.v9.composeCallTx',
@@ -296,7 +301,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     const log: OrchestrationLog = [];
     const providers = postForkProviders(v6Envelope);
 
-    const result = await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
+    const result = await runLedger8CallPipeline<ReplayState>({
       era: currentEra,
       retainedEra,
       engine: createReplayEngine(recording, log),
@@ -350,7 +355,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       decodeContractState: (raw) => ({ ...retainedEra.decodeContractState(raw), balance: held })
     };
 
-    await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
+    await runLedger8CallPipeline<ReplayState>({
       era: currentEra,
       retainedEra: retainedEraHolding,
       engine: createReplayEngine(recording, log, undefined, { balance: held }),
@@ -541,7 +546,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     const log: OrchestrationLog = [];
     let caught: unknown;
     try {
-      await runLedger8CallPipeline<ReplayExecutableState, ReplayState>({
+      await runLedger8CallPipeline<ReplayState>({
         era: recordEraCalls(currentEra, log),
         retainedEra: recordEraCalls(retainedEra, log),
         engine: createReplayEngine(recording, log),
@@ -655,19 +660,35 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
 // Whole-interface assignability is NOT the pin: `Ledger8ExecuteRequest.contract`
 // is deliberately the wider slice, so the request is not assignable to the
 // engine's options and never was. What has to hold is that the request NAMES
-// every option the engine requires, and agrees with it on the one this file is
-// about -- which is now `state`, because the balance rides on it.
+// every option the engine REQUIRES, and agrees with it on the one this file is
+// about -- which is `contractState`, because the balance rides beside the
+// primary state on that one value.
+type RequiredKeys<T> = { [K in keyof T]-?: object extends Pick<T, K> ? never : K }[keyof T];
+
 type _RequestNamesEveryEngineOption = Assert<
-  [Exclude<keyof ExecuteCircuitOptions, keyof Ledger8ExecuteRequest<ExecutableContractState>>] extends [never]
+  [
+    Exclude<
+      RequiredKeys<RunRetainedCircuitOptions<AnyRetainedContract, undefined>>,
+      keyof Ledger8ExecuteRequest
+    >
+  ] extends [never]
     ? true
     : false
 >;
-type _RequestAgreesOnTheExecutableState = Assert<
-  MutuallyAssignable<Ledger8ExecuteRequest<ExecutableContractState>['state'], ExecuteCircuitOptions['state']>
+type _RequestAgreesOnTheState = Assert<
+  MutuallyAssignable<
+    Ledger8ExecuteRequest['contractState'],
+    RunRetainedCircuitOptions<AnyRetainedContract, undefined>['contractState']
+  >
 >;
-// And that the state really does carry the balance: a `state` that lost it
-// would satisfy the two pins above and put the pipeline back where #1345 was,
-// with the engine's runtime guard as the only thing left.
-type _ExecutableStateCarriesTheBalance = Assert<
-  MutuallyAssignable<ExecuteCircuitOptions['state']['balance'], ContractBalance>
+// And on the CONTRACT. ONE-directional deliberately: the request is narrower
+// than what the engine accepts, and what has to hold is that the value this
+// package threads SATISFIES the engine -- not that the two are interchangeable.
+//
+// This is the pin the seam did not have. `compiledContract` was `unknown` on the
+// request side, so the two packages could and did disagree about what a retained
+// contract is, and the engine failed only at run time with a message naming
+// neither the contract nor the real cause.
+type _RequestContractSatisfiesTheEngine = Assert<
+  Ledger8ExecuteRequest['contract'] extends RetainedContract ? true : false
 >;

@@ -229,7 +229,7 @@ const TRANSCRIPT_MEMBERS = [
  * fit. Listing it here rather than dropping the drift check is what keeps a
  * member that SHOULD be recorded from quietly landing on this side.
  */
-type SynthesizedMember = 'postContractState';
+type SynthesizedMember = 'postContractState' | 'preContractState';
 
 type TranscriptMember = (typeof TRANSCRIPT_MEMBERS)[number] | SynthesizedMember;
 
@@ -307,27 +307,14 @@ export const loadCoinReceiverRecording = (): CoinReceiverRecording => {
 export const SAMPLED_SIGNING_KEY = 'replay-sampled-signing-key';
 
 /**
- * The opaque marker the doubled engine hands back from its down-convert.
+ * The opaque marker the doubled engine hands back as a retained-era state.
  *
- * The pipeline is generic in the down-converted state and never looks inside
- * it, so a marker is all a replay needs — and the pipeline handing this exact
- * object back to `executeCircuit` is what proves it threaded the value through
- * rather than rebuilding one.
+ * The pipeline is generic in that state and never looks inside it, so a marker
+ * is all a replay needs — and the pipeline handing this exact object back is
+ * what proves it threaded the value through rather than rebuilding one.
  */
 export interface ReplayState {
   readonly replayedCircuitId: string;
-}
-
-/**
- * What the double's `downConvertForExecution` answers with: the replay marker
- * AND the balance it was handed, on one value.
- *
- * Carrying the balance here rather than taking it as a second option is the
- * point of the pairing -- the double cannot be handed a state from one read and
- * a balance from another, because there is only one argument.
- */
-export interface ReplayExecutableState extends ReplayState {
-  readonly balance: ContractBalance;
 }
 
 /** Every era-facade and engine call one operation made, in the order it made them. */
@@ -349,15 +336,26 @@ export interface ReplayExpectations {
   /** The private state the pipeline must have handed the engine. */
   readonly privateState?: unknown;
   /**
-   * The contract BALANCE the pipeline must have handed the engine.
+   * The BALANCE the pipeline must have handed the engine, on the state itself.
    *
-   * It does not travel with the primary state — ledger-v8 keeps it on
-   * `ContractState.balance`, and the state this pipeline down-converts carries
-   * only `.data`. An engine that never receives it executes every circuit
-   * against an empty balance, so a circuit reading one back sees zero and the
-   * chain refuses the transcript it produced.
+   * Balances live on the contract state, not in the primary state, and the
+   * retained runtime reads them only from a whole contract state. An engine
+   * handed anything less executes every circuit against an empty balance, so a
+   * circuit reading one back sees zero and the chain refuses the transcript it
+   * produced.
    */
   readonly balance?: ContractBalance;
+  /**
+   * The verifier key the CONSTRUCTOR must be able to read for the recorded
+   * circuit.
+   *
+   * compact-js's `initialize` registers a key against every entry point as it
+   * builds the state, so the pipeline derives a reader from the deploy's own
+   * `verifierKeys` map. Asserting what that reader answers is what pins the
+   * keys written at construction and the keys the composer writes to ONE map --
+   * two maps that could disagree is the failure this closes.
+   */
+  readonly constructorVerifierKey?: Uint8Array;
   /**
    * The private state the pipeline must have handed the CONSTRUCTOR. Separate
    * from the circuit's, because a deploy's is the caller's `initialPrivateState`
@@ -410,42 +408,48 @@ export const createReplayEngine = (
   log: OrchestrationLog,
   constructedState?: Uint8Array,
   expectations?: ReplayExpectations
-): Ledger8ExecutionEngine<ReplayExecutableState, ReplayState> => ({
-  downConvertForExecution: (contractState): ReplayExecutableState => {
-    log.push('engine.downConvertForExecution');
-    // THE REPLAY CONDITION. The recording is only replayed for the state it was
-    // recorded against, so this double cannot answer for a state the real
-    // runtime never ran on. It is also the assertion that carries the read
-    // path: this value travelled from a committed on-chain envelope through the
-    // era facade's own `extractState`, and it arrives structurally identical to
-    // what the real retained runtime executed on.
-    expect(contractState.state).toEqual(recording.preState);
-    // The BALANCE arrives on the same value now, so the double carries it
-    // forward rather than taking it as a second argument it could contradict.
-    return { replayedCircuitId: recording.circuitId, balance: contractState.balance };
-  },
-  executeCircuit: (options): Ledger8Transcript<ReplayState> => {
+): Ledger8ExecutionEngine<ReplayState> => ({
+  executeCircuit: (options): Promise<Ledger8Transcript<ReplayState>> => {
     log.push('engine.executeCircuit');
     expect(options.circuitId).toBe(recording.circuitId);
     expect(options.args).toEqual([recording.receivedCoin]);
     expect(options.coinPk).toBe(recording.coinPublicKey);
-    expect(options.state.replayedCircuitId).toBe(recording.circuitId);
+    // THE REPLAY CONDITION, and unconditional again. The recording is only
+    // replayed for the state it was recorded against, so this double cannot
+    // answer for a state the real runtime never ran on. Made opt-in during the
+    // compact-js migration, which is how a pipeline feeding the wrong state
+    // stayed green.
+    expect(options.contractState.state).toEqual(recording.preState);
     // The CONTRACT the pipeline threaded through, not merely that one was
     // passed: an engine handed some other object would otherwise replay
     // happily, because the recording answers regardless of what it is given.
-    expect(Object.keys((options.contract as { readonly impureCircuits: object }).impureCircuits)).toContain(
+    // `provableCircuits` is the map the REAL engine indexes -- asserting on
+    // `impureCircuits` instead would pass for a contract whose two maps
+    // disagree, which is precisely what the real seam would refuse.
+    expect(Object.keys((options.contract as { readonly provableCircuits: object }).provableCircuits)).toContain(
       recording.circuitId
     );
+    // The real engine puts this on `block.ownAddress`, and the node re-runs the
+    // transcript against it. The recorded context supplies one regardless of
+    // what the pipeline passed, so without this an ABSENT or malformed address
+    // replays green. It is checked for shape rather than compared against the
+    // recording: a call made through a fresh deploy handle legitimately runs at
+    // the address that deploy minted, not the one the recording was made at.
+    expect(options.address).toMatch(/^[0-9a-f]{64}$/i);
     if (expectations !== undefined && 'privateState' in expectations) {
       expect(options.privateState).toEqual(expectations.privateState);
     }
     if (expectations !== undefined && 'balance' in expectations) {
-      expect(options.state.balance).toEqual(expectations.balance);
+      expect(options.contractState.balance).toEqual(expectations.balance);
     }
     // The post-call state the real engine answers with is a live handle; the
-    // double mints a marker DISTINCT from the down-converted one, so a test can
-    // tell the state a call bound to from the state it ended on.
-    return { ...recording.transcript, postContractState: { replayedCircuitId: `${recording.circuitId}:post` } };
+    // double mints markers DISTINCT from each other, so a test can tell the
+    // state a call bound to from the state it ended on.
+    return Promise.resolve({
+      ...recording.transcript,
+      preContractState: { replayedCircuitId: recording.circuitId },
+      postContractState: { replayedCircuitId: `${recording.circuitId}:post` }
+    });
   },
   // Reimplemented rather than delegated, deliberately: these suites test the
   // ORDER an operation touches the era and the engine in, and this package
@@ -465,8 +469,30 @@ export const createReplayEngine = (
     }
     return state.serialize();
   },
-  executeConstructor: (options): Ledger8ConstructedState => {
+  executeConstructor: async (options): Promise<Ledger8ConstructedState> => {
     log.push('engine.executeConstructor');
+    // Read rather than ignored: the real engine reads it for every entry point
+    // the constructor declares, and a pipeline that handed over a reader nobody
+    // exercised would look identical here.
+    expect(options.coinPk).toBe(recording.coinPublicKey);
+    // The real `runRetainedConstructor` refuses a key that is not 32 bytes of
+    // hex, by name and before anything runs. A double that took any string
+    // would let a pipeline forward a `0x`-prefixed or bech32 key and stay green.
+    if (options.signingKey !== undefined && !/^[0-9a-fA-F]{64}$/.test(options.signingKey)) {
+      throw new Error(`the signing key '${options.signingKey}' is not the 32 bytes of hex the retained era reads`);
+    }
+    const registered = await options.verifierKeys(recording.circuitId);
+    // AS STRICT AS THE REAL ENGINE, and unconditionally so. compact-js's
+    // `initialize` refuses a circuit the reader answers nothing for, before a
+    // state is built at all. A double that accepted one would let a pipeline
+    // ship an unanswerable key map and still look green here -- which is the
+    // "test double absorbed the consequence" trap this suite exists to close.
+    if (registered === undefined) {
+      throw new Error(`the verifier-key reader answered for no key for circuit '${recording.circuitId}'`);
+    }
+    if (expectations?.constructorVerifierKey !== undefined) {
+      expect(registered).toEqual(expectations.constructorVerifierKey);
+    }
     if (constructedState === undefined) {
       throw new Error('this replay engine was not given a constructed state to replay');
     }
@@ -476,7 +502,7 @@ export const createReplayEngine = (
     if (expectations !== undefined && 'constructorArgs' in expectations) {
       expect(options.args).toEqual(expectations.constructorArgs);
     }
-    return {
+    return Promise.resolve({
       // Sampled when the caller named none, exactly as the real engine does.
       signingKey: options.signingKey ?? SAMPLED_SIGNING_KEY,
       // The committed retained-era envelope for this same contract, which is a
@@ -498,7 +524,7 @@ export const createReplayEngine = (
         inputs: [],
         outputs: []
       }
-    };
+    });
   }
 });
 

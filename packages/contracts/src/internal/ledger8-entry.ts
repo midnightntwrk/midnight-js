@@ -33,8 +33,6 @@
 
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type {
-  DownConvertedState,
-  ExecutableContractState,
   Ledger8SigningKey,
   LedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
@@ -80,6 +78,7 @@ import {
   Ledger8SeamFailedError,
   type SubmittedOperation
 } from '../errors';
+import type { Ledger8Contract } from '../ledger8-contract';
 import type {
   AnyLedger8CallTxOptions,
   AnyLedger8FinalizedCallTxData,
@@ -100,10 +99,10 @@ import {
   assertSnapshotVerifierKey,
   type Ledger8CallPipelineResult,
   type Ledger8ConstructedState,
-  type Ledger8ContractSlice,
   type Ledger8DeployPipelineResult,
   type Ledger8ExecutionEngine,
   readLedger8Snapshot,
+  type RetainedStateValue,
   runLedger8CallPipeline,
   runLedger8DeployPipeline
 } from './ledger8-pipeline';
@@ -165,7 +164,7 @@ export interface Ledger8RuntimeProviders extends TransactionSeams {
  */
 export interface Ledger8Runtime {
   readonly resolved: ResolvedOperationEra;
-  readonly engine: Ledger8ExecutionEngine<ExecutableContractState, DownConvertedState>;
+  readonly engine: Ledger8ExecutionEngine<RetainedStateValue>;
   /**
    * The RETAINED era facade, which reads the contract's on-chain state.
    *
@@ -536,7 +535,7 @@ export const submitLedger8Tx = async (
 
 /** What a retained-era call arrived with. */
 export interface Ledger8CallRequest {
-  readonly contract: Ledger8ContractSlice;
+  readonly contract: Ledger8Contract;
   readonly contractAddress: string;
   readonly circuitId: string;
   readonly args: readonly unknown[];
@@ -546,7 +545,7 @@ export interface Ledger8CallRequest {
 /** A composed and submitted retained-era call. */
 export interface Ledger8SubmittedCall {
   readonly txId: string;
-  readonly call: Ledger8CallPipelineResult<DownConvertedState>;
+  readonly call: Ledger8CallPipelineResult<RetainedStateValue>;
   /**
    * The era the network head was on when this call started.
    *
@@ -650,7 +649,7 @@ export const runLedger8Call = async (
 
 /** What a retained-era deploy arrived with. */
 export interface Ledger8DeployRequest {
-  readonly contract: Ledger8ContractSlice;
+  readonly contract: Ledger8Contract;
   readonly args: readonly unknown[];
   readonly privateState: unknown;
   /**
@@ -720,7 +719,7 @@ export const runLedger8Deploy = async (
   // form rather than relying on the resolver normalizing again internally.
   const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId());
 
-  const deploy = runLedger8DeployPipeline({
+  const deploy = await runLedger8DeployPipeline({
     era: resolved.era,
     engine,
     contract: request.contract,
@@ -758,7 +757,7 @@ export const runLedger8Deploy = async (
 
 /** What attaching to an already-deployed retained-era contract arrived with. */
 export interface Ledger8FindRequest {
-  readonly contract: Ledger8ContractSlice;
+  readonly contract: Ledger8Contract;
   readonly contractAddress: string;
   /** Every entry point whose key is checked against the chain's slot. */
   readonly circuitIds: readonly string[];
@@ -998,7 +997,7 @@ const readLedger8PrivateState = async (
 
 /** The options a retained-era call entry point received, in the shape this layer reads them. */
 export interface Ledger8CallEntryOptions {
-  readonly compiledContract: Ledger8ContractSlice;
+  readonly compiledContract: Ledger8Contract;
   readonly contractAddress: string;
   readonly circuitId: string;
   readonly args?: readonly unknown[];
@@ -1044,7 +1043,7 @@ export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Led
  * same call.
  */
 const toLedger8CallTxData = (
-  call: Ledger8CallPipelineResult<DownConvertedState>
+  call: Ledger8CallPipelineResult<RetainedStateValue>
 ): AnyLedger8UnsubmittedCallTxData => ({
   era: RETAINED_PIPELINE_ERA,
   public: {
@@ -1107,7 +1106,7 @@ const runLedger8CallEntry = async (
   // typo in the caller's own call.
   assertIsContractAddress(options.contractAddress);
   assertDefined(
-    Object.hasOwn(options.compiledContract.impureCircuits, options.circuitId) ? options.circuitId : undefined,
+    Object.hasOwn(options.compiledContract.provableCircuits, options.circuitId) ? options.circuitId : undefined,
     `Circuit '${options.circuitId}' is undefined`
   );
 
@@ -1215,7 +1214,7 @@ export const submitLedger8CallTx = async (
 
 /** The options a retained-era deploy entry point received, in the shape this layer reads them. */
 export interface Ledger8DeployEntryOptions {
-  readonly compiledContract: Ledger8ContractSlice;
+  readonly compiledContract: Ledger8Contract;
   readonly args?: readonly unknown[];
   readonly privateStateId?: PrivateStateId;
   readonly initialPrivateState?: unknown;
@@ -1311,7 +1310,7 @@ export const submitLedger8DeployTx = async (
     // Handed as a THUNK, so the fetch runs behind the era and seam gates rather
     // than ahead of them.
     resolveVerifierKeys: async () =>
-      new Map(await providers.zkConfigProvider.getVerifierKeys(Object.keys(options.compiledContract.impureCircuits))),
+      new Map(await providers.zkConfigProvider.getVerifierKeys(Object.keys(options.compiledContract.provableCircuits))),
     signingKey: options.signingKey
   });
 

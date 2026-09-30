@@ -49,6 +49,10 @@
       "types": "./dist/compact-js-effect-contract.d.ts",
       "default": "./dist/compact-js-effect-contract.js"
     },
+    "./compact-js/v8/effect": {
+      "types": "./dist/compact-js-v8-effect.d.ts",
+      "default": "./dist/compact-js-v8-effect.js"
+    },
     "./onchain-runtime": {
       "types": "./dist/onchain-runtime.d.ts",
       "default": "./dist/onchain-runtime.js"
@@ -83,20 +87,20 @@
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/compact-js": "3.0.0-rc.0",
+    "@midnight-ntwrk/compact-js": "3.0.0-rc.2",
     "@midnight-ntwrk/compact-runtime": "0.19.0",
     "@midnight-ntwrk/onchain-runtime-v3": "3.1.1",
     "@midnight-ntwrk/platform-js": "3.0.0",
     "@midnightntwrk/ledger-v8": "8.1.2",
-    "@midnightntwrk/ledger-v9": "1.0.0-rc.4",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
     "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3",
-    "compact-runtime-ledger8": "npm:@midnight-ntwrk/compact-runtime@0.16.0"
+    "compact-runtime-ledger8": "npm:@midnight-ntwrk/compact-runtime@0.16.0",
+    "effect": "^3.22.1"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
     "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.8.1",
-    "onchain-runtime-v3-test-only": "npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0",
     "rollup": "^4.60.4",
     "rollup-plugin-dts": "^6.5.1",
     "typescript": "^6.0.3",

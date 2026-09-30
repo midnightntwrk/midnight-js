@@ -1,5 +1,5 @@
 {
-  "documentation": "Recording of the transcript the real retained-era (compact-runtime@0.16) runtime produces for coin-receiver-016's receive_coin circuit, minted by real execution from packages/protocol/src/test/era-record-coin-receiver.test.ts. Values are tagged: {\"__bigint\"}, {\"__bytes\"} (lower-case hex) and {\"__map\"}. partitionContext.block.secondsSinceEpoch and .lastBlockTime are the only substituted members -- the runtime stamps a wall clock there and executeCircuit takes no clock, so they are frozen to make the recording reproducible. Everything else is the runtime's own output. Regenerate with MINT_HF_FIXTURES=1.",
+  "documentation": "Recording of the transcript the real retained-era (compact-runtime@0.16) runtime produces for coin-receiver-016's receive_coin circuit, minted by real execution from packages/protocol/src/test/era-record-coin-receiver.test.ts. Values are tagged: {\"__bigint\"}, {\"__bytes\"} (lower-case hex) and {\"__map\"}. NO member is substituted: the execution clock is an input, pinned to partitionContext.block.secondsSinceEpoch, so every value here is the runtime's own output. Regenerate with MINT_HF_FIXTURES=1.",
   "circuitId": "receive_coin",
   "coinPublicKey": "cacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacaca",
   "contractAddress": "0000000000000000000000000000000000000000000000000000000000000000",

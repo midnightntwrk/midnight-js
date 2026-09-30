@@ -22,6 +22,7 @@ import {
   type ContractState,
   emptyZswapLocalState,
   finalizeCallProofData,  type Op,
+  QueryContext,
   sampleSigningKey,
   type SigningKey,
   StateValue,
@@ -373,6 +374,24 @@ export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDep
   ...overrides
 });
 
+/**
+ * The four values compact-js publishes alongside a call's partition
+ * (midnightntwrk/midnight-sdk#400).
+ *
+ * Read off a real `QueryContext` rather than restated as a literal: `CallContext`
+ * alone carries eight members, and a hand-written copy would silently stop
+ * matching the runtime's when either changes.
+ */
+const createMockPartitionInputs = (): ContractExecutable.ContractExecutable.CallPartitionInputs => {
+  const queryContext = new QueryContext(new ChargedState(StateValue.newNull()), createMockContractAddress());
+  return {
+    state: queryContext.state.state,
+    block: queryContext.block,
+    effects: queryContext.effects,
+    comIndices: queryContext.comIndices
+  };
+};
+
 export const createMockContractCall = (
   overrides: Partial<ContractExecutable.ContractExecutable.ContractCall> = {}
 ): ContractExecutable.ContractExecutable.ContractCall => ({
@@ -383,6 +402,7 @@ export const createMockContractCall = (
     contractState: StateValue.newNull(),
     publicTranscript: [] as Op<AlignedValue>[],
     partitionedTranscript: [undefined, undefined],
+    partitionInputs: createMockPartitionInputs(),
     ...overrides.public
   },
   private: {
