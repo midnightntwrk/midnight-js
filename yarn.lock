@@ -1867,12 +1867,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-js@npm:3.0.0-rc.2":
-  version: 3.0.0-rc.2
-  resolution: "@midnight-ntwrk/compact-js@npm:3.0.0-rc.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F3.0.0-rc.2%2Fe23d5055a4cc191d2badd0224096abd83dcf5096"
+"@midnight-ntwrk/compact-js@npm:3.0.0-rc.3":
+  version: 3.0.0-rc.3
+  resolution: "@midnight-ntwrk/compact-js@npm:3.0.0-rc.3::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F3.0.0-rc.3%2F9d5bf6641de082c366726f35f5db8e01afdd424a"
   dependencies:
     "@effect/platform": "npm:^0.97.0"
-    "@midnight-ntwrk/compact-runtime": "npm:0.19.0-rc.0"
+    "@midnight-ntwrk/compact-runtime": "npm:0.20.0"
     "@midnight-ntwrk/platform-js": "npm:^3.0.0"
     "@midnightntwrk/ledger-v8": "npm:8.1.2"
     "@midnightntwrk/ledger-v9": "npm:^1.0.0-rc.5"
@@ -1880,20 +1880,20 @@ __metadata:
     compact-runtime-ledger8: "npm:@midnight-ntwrk/compact-runtime@0.16.0"
     effect: "npm:^3.22.1"
     tslib: "npm:^2.8.1"
-  checksum: 10/ec295747ad73e53ae819657f49c9e109208ffe86bb4730cfd8cb3730ad6219709769d596730968f8d2ba6388b1c1ff16d686d524c542aef95a5f63c9e85c3c20
+  checksum: 10/9e5785e754b1be6027461b5bfd597a86bfb722e2b40fe3f3e6c802d989c6b3a48d820ac3a5d4b4a36f4af4814c83fb7a2ad6306ee8224170fe7ed0eb4400bd2a
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-runtime@npm:0.19.0":
-  version: 0.19.0
-  resolution: "@midnight-ntwrk/compact-runtime@npm:0.19.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.19.0%2Fd656257c511a3223f795f36110f835d0b48716ee"
+"@midnight-ntwrk/compact-runtime@npm:0.20.0":
+  version: 0.20.0
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.20.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.20.0%2F83b1b6f5cae3274d99dc912c6d2f12a944304020"
   dependencies:
     "@midnightntwrk/onchain-runtime-v4": "npm:^4.0.0-rc.3"
     "@noble/curves": "npm:^2.2.0"
     "@noble/hashes": "npm:^2.0.1"
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
-  checksum: 10/a5974971b88eed71991e4087bce055c7d205ed00496636f0c906a2049d51a060b810d38233dc8ec04a5667b5c085002cd745b7411d79a70f9acd472a73af2c0b
+  checksum: 10/434df123cdc74a8e70c849e109dd375a1b0ad612deccca25f86a32e74903c1f9afd2a4318b7a90cc92a79c9567ac43b30c9e0d286d6d9833fa4dd288eea79d46
   languageName: node
   linkType: hard
 
@@ -2102,8 +2102,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-protocol@workspace:packages/protocol"
   dependencies:
-    "@midnight-ntwrk/compact-js": "npm:3.0.0-rc.2"
-    "@midnight-ntwrk/compact-runtime": "npm:0.19.0"
+    "@midnight-ntwrk/compact-js": "npm:3.0.0-rc.3"
+    "@midnight-ntwrk/compact-runtime": "npm:0.20.0"
     "@midnight-ntwrk/onchain-runtime-v3": "npm:3.1.1"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
     "@midnightntwrk/ledger-v8": "npm:8.1.2"
@@ -2224,7 +2224,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/testkit-js@workspace:testkit-js/testkit-js"
   dependencies:
-    "@midnight-ntwrk/compact-runtime": "npm:0.19.0"
+    "@midnight-ntwrk/compact-runtime": "npm:0.20.0"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*"

@@ -26,7 +26,7 @@ import { describe, expectTypeOf, it } from 'vitest';
 // the same way, from the declarations `compactc` 0.31.1 emitted beside the module the runtime test
 // loads (see `../ledger8-fixture-types.ts`).
 //
-// The twin is a `0.18.0-rc.1` artifact while the installed runtime is `0.19.0-rc.0` -- it was not
+// The twin is a `0.18.0-rc.1` artifact while the installed runtime is `0.20.0` -- it was not
 // regenerated when the repo bumped. That does not weaken these assertions: the generated
 // `Contract` class declaration is IDENTICAL across the two (same four members, same async
 // `initialState`), so the shape they discriminate on is the current era's. If the twin is ever
@@ -738,7 +738,15 @@ describe('both eras resolve a call to the SAME result structure', () => {
     expectTypeOf<Exclude<keyof CurrentEraCall['public'], CurrentEraOnlyCallPublicMembers>>().toEqualTypeOf<
       Exclude<keyof Ledger8ContractCall['public'], RetainedEraOnlyCallPublicMembers>
     >();
-    expectTypeOf<keyof CurrentEraCall['private']>().toEqualTypeOf<keyof Ledger8ContractCall['private']>();
+
+    // `zswapLocalState` is per call because each cross-contract callee keeps its own, but a retained
+    // contract makes no cross-contract calls, so its one call's state is the execution's
+    // `nextZswapLocalState`.
+    type CurrentEraOnlyCallPrivateMembers = 'zswapLocalState';
+
+    expectTypeOf<Exclude<keyof CurrentEraCall['private'], CurrentEraOnlyCallPrivateMembers>>().toEqualTypeOf<
+      keyof Ledger8ContractCall['private']
+    >();
   });
 
   it('lifts every declared circuit onto `callTx` in BOTH eras', () => {

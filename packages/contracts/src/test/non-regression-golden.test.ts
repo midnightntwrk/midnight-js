@@ -256,19 +256,15 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
     depositOperation.verifierKey = COMPILED_VERIFIER_KEY;
     shieldedInitialState.setOperation(circuitId, depositOperation);
 
-    // Passed explicitly (argument 9): `createCircuitContext` otherwise defaults the block time to
-    // `Date.now()`.
-    const ctx = createCircuitContext(
+    // Passed explicitly: `createCircuitContext` otherwise defaults the block time to `Date.now()`.
+    const ctx = createCircuitContext({
       circuitId,
       contractAddress,
-      coinPublicKey,
-      shieldedInitialState,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      blockTimeSeconds
-    );
+      coinPublicKeyOrZswapState: coinPublicKey,
+      contractState: shieldedInitialState,
+      privateState: undefined,
+      time: blockTimeSeconds
+    });
     const coinArg = {
       nonce: Uint8Array.from(Buffer.from(coin.nonce, 'hex')),
       color: Uint8Array.from(Buffer.from(coin.color, 'hex')),
@@ -350,7 +346,7 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
               partitionedTranscript: partitioned,
               partitionInputs
             },
-            private: { input, output, privateTranscriptOutputs },
+            private: { input, output, privateTranscriptOutputs, zswapLocalState: { outputs: [], inputs: [], coinPublicKey, currentIndex: 0n } },
             communicationCommitment: boundCommitment
           }
         ],
@@ -442,7 +438,7 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
               partitionedTranscript: partitioned,
               partitionInputs
             },
-            private: { input, output, privateTranscriptOutputs },
+            private: { input, output, privateTranscriptOutputs, zswapLocalState: { outputs: [], inputs: [], coinPublicKey, currentIndex: 0n } },
             communicationCommitment: Option.none()
           }
         ],

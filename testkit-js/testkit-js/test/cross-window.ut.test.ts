@@ -271,8 +271,8 @@ interface CompiledContractInfo {
 const readContractInfo = async (contractInfoPath: string): Promise<CompiledContractInfo> =>
   JSON.parse(await fs.readFile(contractInfoPath, 'utf8')) as CompiledContractInfo;
 
-/** The three members two builds of one source are ALLOWED to disagree on. */
-const VERSION_MEMBERS = ['compiler-version', 'language-version', 'runtime-version'];
+/** The toolchain members two builds of one source are ALLOWED to disagree on. */
+const VERSION_MEMBERS = ['compiler-version', 'compiler-commit', 'language-version', 'runtime-version'];
 
 /**
  * Everything a compiled contract declares except its toolchain versions: the
@@ -322,15 +322,15 @@ interface CompactRuntimeLike {
 
 /**
  * The CURRENT runtime, by its own types — which are the right ones for it,
- * since this repo resolves `@midnight-ntwrk/compact-runtime` to 0.19.0.
+ * since this repo resolves `@midnight-ntwrk/compact-runtime` to 0.20.0.
  * The retained arm cannot use them (its VALUE is the 0.16 glue while these
- * types are 0.19's), which is why {@link CompactRuntimeLike} above spells out
+ * types are 0.20's), which is why {@link CompactRuntimeLike} above spells out
  * by hand the few members that exist, and agree, on both sides.
  */
 type CurrentRuntime = typeof currentRuntimeModule;
 
 /** The contract-state shape the current runtime's circuit context accepts. */
-type CurrentContractState = Parameters<CurrentRuntime['createCircuitContext']>[3];
+type CurrentContractState = Parameters<CurrentRuntime['createCircuitContext']>[0]['contractState'];
 
 interface RetainedToolchain {
   readonly runtime: CompactRuntimeLike;
@@ -352,13 +352,13 @@ describe('private state across the ledger v8 to v9 fork window', () => {
    *
    * The retained build's own bare `@midnight-ntwrk/compact-runtime` import has
    * to reach a real 0.16 instance, which this repo does not resolve that
-   * specifier to — it pins 0.19.0, and the build's
+   * specifier to — it pins 0.20.0, and the build's
    * `checkRuntimeVersion('0.16.0')` guard refuses it. `compact-runtime-ledger8`
    * IS that 0.16 instance, installed under an npm alias so the two can coexist;
    * redirecting the specifier is the same move the retired `v8-execute.test.ts` made.
    *
    * The redirect then has to be LIFTED, because the twin needs the very
-   * 0.19.0 the repo does resolve. `vi.doMock` rather than `vi.mock` so the
+   * 0.20.0 the repo does resolve. `vi.doMock` rather than `vi.mock` so the
    * redirect is not hoisted over the whole file, and both modules are pulled in
    * here so no test has to care which redirect is in force when it runs.
    *
@@ -452,13 +452,13 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     const contract = new twin.module.Contract(recordingWitnesses(seen));
     const initial = await contract.initialState(twin.runtime.createConstructorContext(privateState, COIN_PUBLIC_KEY));
     const result = await contract.impureCircuits.increment(
-      twin.runtime.createCircuitContext(
-        'increment',
-        twin.runtime.dummyContractAddress(),
-        COIN_PUBLIC_KEY,
-        initial.currentContractState,
+      twin.runtime.createCircuitContext({
+        circuitId: 'increment',
+        contractAddress: twin.runtime.dummyContractAddress(),
+        coinPublicKeyOrZswapState: COIN_PUBLIC_KEY,
+        contractState: initial.currentContractState,
         privateState
-      )
+      })
     );
     return {
       round: twin.module.ledger(result.context.callContext.currentQueryContext.state).round,

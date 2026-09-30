@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.19.0');
+__compactRuntime.checkRuntimeVersion('0.20.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeBytes(113);
 
@@ -148,9 +148,60 @@ class _Either_1 {
 
 const _descriptor_20 = new _Either_1();
 
-const _descriptor_21 = new __compactRuntime.CompactTypeUnsignedInteger(255n, 1);
+class _UserAddress_0 {
+  alignment() {
+    return _descriptor_1.alignment();
+  }
+  fromValue(value_0) {
+    return {
+      bytes: _descriptor_1.fromValue(value_0)
+    }
+  }
+  toValue(value_0) {
+    return _descriptor_1.toValue(value_0.bytes);
+  }
+}
 
-const _descriptor_22 = new __compactRuntime.CompactTypeUnsignedInteger(4294967295n, 4);
+const _descriptor_21 = new _UserAddress_0();
+
+class _Either_2 {
+  alignment() {
+    return _descriptor_11.alignment().concat(_descriptor_14.alignment().concat(_descriptor_21.alignment()));
+  }
+  fromValue(value_0) {
+    return {
+      is_left: _descriptor_11.fromValue(value_0),
+      left: _descriptor_14.fromValue(value_0),
+      right: _descriptor_21.fromValue(value_0)
+    }
+  }
+  toValue(value_0) {
+    return _descriptor_11.toValue(value_0.is_left).concat(_descriptor_14.toValue(value_0.left).concat(_descriptor_21.toValue(value_0.right)));
+  }
+}
+
+const _descriptor_22 = new _Either_2();
+
+class _Maybe_3 {
+  alignment() {
+    return _descriptor_11.alignment().concat(_descriptor_22.alignment());
+  }
+  fromValue(value_0) {
+    return {
+      is_some: _descriptor_11.fromValue(value_0),
+      value: _descriptor_22.fromValue(value_0)
+    }
+  }
+  toValue(value_0) {
+    return _descriptor_11.toValue(value_0.is_some).concat(_descriptor_22.toValue(value_0.value));
+  }
+}
+
+const _descriptor_23 = new _Maybe_3();
+
+const _descriptor_24 = new __compactRuntime.CompactTypeUnsignedInteger(255n, 1);
+
+const _descriptor_25 = new __compactRuntime.CompactTypeUnsignedInteger(4294967295n, 4);
 
 export class Contract {
   witnesses;
@@ -619,7 +670,7 @@ export class Contract {
     state_0.setOperation('emitUnshieldedMint', new __compactRuntime.ContractOperation());
     state_0.setOperation('emitUnshieldedBurn', new __compactRuntime.ContractOperation());
     state_0.setOperation('emitLifecycle', new __compactRuntime.ContractOperation());
-    const context = __compactRuntime.createCircuitContext('constructor', __compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0.data, constructorContext_0.initialPrivateState);
+    const context = __compactRuntime.createCircuitContext({circuitId: 'constructor', contractAddress: __compactRuntime.dummyContractAddress(), coinPublicKeyOrZswapState: constructorContext_0.initialZswapLocalState.coinPublicKey, contractState: state_0.data, privateState: constructorContext_0.initialPrivateState});
     const partialProofData = {
       input: { value: [], alignment: [] },
       output: undefined,
@@ -646,9 +697,9 @@ export class Contract {
                                       [
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newArray()
-                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_22.toValue(1n),
-                                                                                                           alignment: _descriptor_22.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_21.toValue(10n),
-                                                                                                                                                                                                     alignment: _descriptor_21.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_9.toValue((t_0 = { name:
+                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_25.toValue(1n),
+                                                                                                           alignment: _descriptor_25.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_24.toValue(10n),
+                                                                                                                                                                                                     alignment: _descriptor_24.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_9.toValue((t_0 = { name:
                                                                                                                                                                                                                                                                                                                                        name_0,
                                                                                                                                                                                                                                                                                                                                      payload:
                                                                                                                                                                                                                                                                                                                                        payload_0 },
@@ -668,9 +719,9 @@ export class Contract {
                                       [
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newArray()
-                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_22.toValue(1n),
-                                                                                                           alignment: _descriptor_22.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_21.toValue(0n),
-                                                                                                                                                                                                     alignment: _descriptor_21.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_1.toValue({ nullifier:
+                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_25.toValue(1n),
+                                                                                                           alignment: _descriptor_25.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_24.toValue(0n),
+                                                                                                                                                                                                     alignment: _descriptor_24.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_1.toValue({ nullifier:
                                                                                                                                                                                                                                                                                                                                 nullifier_0 }.nullifier),
                                                                                                                                                                                                                                                                                                alignment: _descriptor_1.alignment() }))
                                                           .encode() } },
@@ -684,9 +735,9 @@ export class Contract {
                                       [
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newArray()
-                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_22.toValue(1n),
-                                                                                                           alignment: _descriptor_22.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_21.toValue(1n),
-                                                                                                                                                                                                     alignment: _descriptor_21.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_7.toValue((t_1 = { commitment:
+                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_25.toValue(1n),
+                                                                                                           alignment: _descriptor_25.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_24.toValue(1n),
+                                                                                                                                                                                                     alignment: _descriptor_24.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_7.toValue((t_1 = { commitment:
                                                                                                                                                                                                                                                                                                                                        commitment_0,
                                                                                                                                                                                                                                                                                                                                      ciphertext:
                                                                                                                                                                                                                                                                                                                                        this._none_0(),
@@ -723,9 +774,9 @@ export class Contract {
                                       [
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newArray()
-                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_22.toValue(1n),
-                                                                                                           alignment: _descriptor_22.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_21.toValue(2n),
-                                                                                                                                                                                                     alignment: _descriptor_21.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_8.toValue((t_0 = { commitment:
+                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_25.toValue(1n),
+                                                                                                           alignment: _descriptor_25.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_24.toValue(2n),
+                                                                                                                                                                                                     alignment: _descriptor_24.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_8.toValue((t_0 = { commitment:
                                                                                                                                                                                                                                                                                                                                        commitment_0,
                                                                                                                                                                                                                                                                                                                                      domainSep:
                                                                                                                                                                                                                                                                                                                                        new Uint8Array(32),
@@ -758,9 +809,9 @@ export class Contract {
                                       [
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newArray()
-                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_22.toValue(1n),
-                                                                                                           alignment: _descriptor_22.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_21.toValue(3n),
-                                                                                                                                                                                                     alignment: _descriptor_21.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_6.toValue((t_0 = { nullifier:
+                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_25.toValue(1n),
+                                                                                                           alignment: _descriptor_25.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_24.toValue(3n),
+                                                                                                                                                                                                     alignment: _descriptor_24.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_6.toValue((t_0 = { nullifier:
                                                                                                                                                                                                                                                                                                                                        nullifier_0,
                                                                                                                                                                                                                                                                                                                                      amount:
                                                                                                                                                                                                                                                                                                                                        this._some_0(1n) },
@@ -791,9 +842,9 @@ export class Contract {
                                       [
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newArray()
-                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_22.toValue(1n),
-                                                                                                           alignment: _descriptor_22.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_21.toValue(4n),
-                                                                                                                                                                                                     alignment: _descriptor_21.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_4.toValue((t_0 = { sender:
+                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_25.toValue(1n),
+                                                                                                           alignment: _descriptor_25.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_24.toValue(4n),
+                                                                                                                                                                                                     alignment: _descriptor_24.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_4.toValue((t_0 = { sender:
                                                                                                                                                                                                                                                                                                                                        sender_0,
                                                                                                                                                                                                                                                                                                                                      domainSep:
                                                                                                                                                                                                                                                                                                                                        new Uint8Array(32),
@@ -837,9 +888,9 @@ export class Contract {
                                       [
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newArray()
-                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_22.toValue(1n),
-                                                                                                           alignment: _descriptor_22.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_21.toValue(5n),
-                                                                                                                                                                                                     alignment: _descriptor_21.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_4.toValue((t_0 = { recipient:
+                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_25.toValue(1n),
+                                                                                                           alignment: _descriptor_25.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_24.toValue(5n),
+                                                                                                                                                                                                     alignment: _descriptor_24.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_4.toValue((t_0 = { recipient:
                                                                                                                                                                                                                                                                                                                                        recipient_0,
                                                                                                                                                                                                                                                                                                                                      domainSep:
                                                                                                                                                                                                                                                                                                                                        new Uint8Array(32),
@@ -879,9 +930,9 @@ export class Contract {
                                       [
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newArray()
-                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_22.toValue(1n),
-                                                                                                           alignment: _descriptor_22.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_21.toValue(6n),
-                                                                                                                                                                                                     alignment: _descriptor_21.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_5.toValue((t_0 = { domainSep:
+                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_25.toValue(1n),
+                                                                                                           alignment: _descriptor_25.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_24.toValue(6n),
+                                                                                                                                                                                                     alignment: _descriptor_24.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_5.toValue((t_0 = { domainSep:
                                                                                                                                                                                                                                                                                                                                        new Uint8Array(32),
                                                                                                                                                                                                                                                                                                                                      tokenType:
                                                                                                                                                                                                                                                                                                                                        tokenType_0,
@@ -910,9 +961,9 @@ export class Contract {
                                       [
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newArray()
-                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_22.toValue(1n),
-                                                                                                           alignment: _descriptor_22.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_21.toValue(7n),
-                                                                                                                                                                                                     alignment: _descriptor_21.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue((t_0 = { sender:
+                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_25.toValue(1n),
+                                                                                                           alignment: _descriptor_25.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_24.toValue(7n),
+                                                                                                                                                                                                     alignment: _descriptor_24.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue((t_0 = { sender:
                                                                                                                                                                                                                                                                                                                                        sender_0,
                                                                                                                                                                                                                                                                                                                                      tokenType:
                                                                                                                                                                                                                                                                                                                                        tokenType_0,
@@ -946,9 +997,9 @@ export class Contract {
                                       [
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newArray()
-                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_22.toValue(1n),
-                                                                                                           alignment: _descriptor_22.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_21.toValue(8n),
-                                                                                                                                                                                                     alignment: _descriptor_21.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_3.toValue(new Uint8Array([])),
+                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_25.toValue(1n),
+                                                                                                           alignment: _descriptor_25.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_24.toValue(8n),
+                                                                                                                                                                                                     alignment: _descriptor_24.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_3.toValue(new Uint8Array([])),
                                                                                                                                                                                                                                                                                                alignment: _descriptor_3.alignment() }))
                                                           .encode() } },
                                        'log']);
@@ -957,9 +1008,9 @@ export class Contract {
                                       [
                                        { push: { storage: false,
                                                  value: __compactRuntime.StateValue.newArray()
-                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_22.toValue(1n),
-                                                                                                           alignment: _descriptor_22.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_21.toValue(9n),
-                                                                                                                                                                                                     alignment: _descriptor_21.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_3.toValue(new Uint8Array([])),
+                                                          .arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_25.toValue(1n),
+                                                                                                           alignment: _descriptor_25.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_24.toValue(9n),
+                                                                                                                                                                                                     alignment: _descriptor_24.alignment() })).arrayPush(__compactRuntime.StateValue.newCell({ value: _descriptor_3.toValue(new Uint8Array([])),
                                                                                                                                                                                                                                                                                                alignment: _descriptor_3.alignment() }))
                                                           .encode() } },
                                        'log']);
@@ -987,8 +1038,6 @@ const _emptyContext = {
 };
 const _dummyContract = new Contract({ });
 export const pureCircuits = {};
-export const contractReferenceLocations =
-  { tag: 'publicLedgerArray', indices: { } };
 export const expectedVk = {
   'emitLifecycle': 'c243f9e5f77e653549df88e04de684597303b4340e594b38d1d64275c3a9719d',
   'emitMisc': 'cca8c6279dc27634bd6fcdcf0d00e2b880d8f5fe8311baddb04747995ce3ef8e',
@@ -1001,5 +1050,20 @@ export const expectedVk = {
   'emitUnshieldedReceive': '07d3cbbe44cab6680798420c7c85cba4b1779211724f3ff347e59e448092804d',
   'emitUnshieldedSpend': 'f7f4dfe824f3173ccb7ad28e20421f7b8a134b097d98f10e9f153a67cbb078e2',
 };
+
+export const circuitSignatures = {
+  'emitMisc': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Bytes', length: 256}], resultType: {tag: 'Tuple', types: []}},
+  'emitShieldedSpend': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}], resultType: {tag: 'Tuple', types: []}},
+  'emitShieldedReceive': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}], resultType: {tag: 'Tuple', types: []}},
+  'emitShieldedMint': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}], resultType: {tag: 'Tuple', types: []}},
+  'emitShieldedBurn': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}], resultType: {tag: 'Tuple', types: []}},
+  'emitUnshieldedSpend': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Uint', maxval: '340282366920938463463374607431768211455'}], resultType: {tag: 'Tuple', types: []}},
+  'emitUnshieldedReceive': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Uint', maxval: '340282366920938463463374607431768211455'}], resultType: {tag: 'Tuple', types: []}},
+  'emitUnshieldedMint': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Uint', maxval: '340282366920938463463374607431768211455'}], resultType: {tag: 'Tuple', types: []}},
+  'emitUnshieldedBurn': {pure: false, provable: true, argumentTypes: [{tag: 'Bytes', length: 32}, {tag: 'Uint', maxval: '340282366920938463463374607431768211455'}], resultType: {tag: 'Tuple', types: []}},
+  'emitLifecycle': {pure: false, provable: true, argumentTypes: [], resultType: {tag: 'Tuple', types: []}},
+};
+
+export const declaredInterfaces = {};
 
 //# sourceMappingURL=index.js.map

@@ -93,6 +93,17 @@ const makePartitionInputs = (): ContractExecutable.ContractExecutable.CallPartit
 };
 
 /**
+ * The Zswap local state a single call reports. Assembly still takes the execution's state as its
+ * own argument, so these tests fill the per-call member with an empty one.
+ */
+const makeCallZswapLocalState = (): ContractExecutable.ContractExecutable.ContractCall['private']['zswapLocalState'] => ({
+  outputs: [],
+  inputs: [],
+  coinPublicKey: sampleCoinPublicKey(),
+  currentIndex: 0n
+});
+
+/**
  * A real, serialized verifier key. `createUnprovenLedgerCallTx` hashes each operation's verifier
  * key into the call's key location (see `ZKConfigRegistry`), and the `ContractOperation.verifierKey`
  * setter rejects untagged bytes — so fixtures cannot use arbitrary bytes. We reuse a committed
@@ -171,7 +182,7 @@ describe('ledger-utils', () => {
           contractAddress: PlatformContractAddress.ContractAddress(contractAddress),
           circuitId,
           public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: emptyTranscript, partitionInputs: makePartitionInputs() },
-          private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs },
+          private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs, zswapLocalState: makeCallZswapLocalState() },
           communicationCommitment: Option.none()
         }
       ],
@@ -204,7 +215,7 @@ describe('ledger-utils', () => {
             contractAddress: PlatformContractAddress.ContractAddress(sampleContractAddress()),
             circuitId: unregisteredCircuitId,
             public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: emptyTranscript, partitionInputs: makePartitionInputs() },
-            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
+            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [], zswapLocalState: makeCallZswapLocalState() },
             communicationCommitment: Option.none()
           }
         ],
@@ -241,7 +252,13 @@ describe('ledger-utils', () => {
 
     it('succeeds with deposit circuit that calls receiveShielded', async () => {
       const coin = { nonce: new Uint8Array(32).fill(1), color: new Uint8Array(32).fill(2), value: 100n };
-      const ctx = createCircuitContext('deposit', shieldedAddr, shieldedCpk, shieldedInitialState, undefined);
+      const ctx = createCircuitContext({
+        circuitId: 'deposit',
+        contractAddress: shieldedAddr,
+        coinPublicKeyOrZswapState: shieldedCpk,
+        contractState: shieldedInitialState,
+        privateState: undefined
+      });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { context, gasCost } = await (shieldedContract.circuits as any).deposit(ctx, coin);
       // The root circuit completes last, so its proof data is the final entry in the trace.
@@ -265,7 +282,8 @@ describe('ledger-utils', () => {
             private: {
               input: proofData.input,
               output: proofData.output,
-              privateTranscriptOutputs: proofData.privateTranscriptOutputs
+              privateTranscriptOutputs: proofData.privateTranscriptOutputs,
+              zswapLocalState: makeCallZswapLocalState()
             },
             communicationCommitment: Option.none()
           }
@@ -360,7 +378,7 @@ describe('ledger-utils', () => {
             contractAddress: PlatformContractAddress.ContractAddress(contractAddress),
             circuitId,
             public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: partitioned, partitionInputs: makePartitionInputs() },
-            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
+            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [], zswapLocalState: makeCallZswapLocalState() },
             communicationCommitment: Option.none()
           }
         ],
@@ -406,7 +424,7 @@ describe('ledger-utils', () => {
             contractAddress: PlatformContractAddress.ContractAddress(contractAddress),
             circuitId,
             public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: partitioned, partitionInputs: makePartitionInputs() },
-            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
+            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [], zswapLocalState: makeCallZswapLocalState() },
             communicationCommitment: Option.none()
           }
         ],
@@ -451,7 +469,7 @@ describe('ledger-utils', () => {
             contractAddress: PlatformContractAddress.ContractAddress(contractAddress),
             circuitId,
             public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: partitioned, partitionInputs: makePartitionInputs() },
-            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
+            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [], zswapLocalState: makeCallZswapLocalState() },
             communicationCommitment: Option.none()
           }
         ],
@@ -500,7 +518,7 @@ describe('ledger-utils', () => {
             contractAddress: PlatformContractAddress.ContractAddress(contractAddress),
             circuitId,
             public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: partitioned, partitionInputs: makePartitionInputs() },
-            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
+            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [], zswapLocalState: makeCallZswapLocalState() },
             communicationCommitment: Option.none()
           }
         ],
@@ -549,7 +567,7 @@ describe('ledger-utils', () => {
             contractAddress: PlatformContractAddress.ContractAddress(contractAddress),
             circuitId,
             public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: partitioned, partitionInputs: makePartitionInputs() },
-            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
+            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [], zswapLocalState: makeCallZswapLocalState() },
             communicationCommitment: Option.none()
           }
         ],
@@ -731,7 +749,7 @@ describe('ledger-utils', () => {
               partitionedTranscript: [guaranteed, fallible] as PartitionedTranscript,
               partitionInputs: makePartitionInputs()
             },
-            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs },
+            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs, zswapLocalState: makeCallZswapLocalState() },
             communicationCommitment: Option.none()
           }
         ],
@@ -889,7 +907,7 @@ describe('ledger-utils', () => {
             partitionedTranscript: calleeTranscripts,
             partitionInputs: makePartitionInputs()
           },
-          private: { input: callAlignedValue, output: callAlignedValue, privateTranscriptOutputs: [] },
+          private: { input: callAlignedValue, output: callAlignedValue, privateTranscriptOutputs: [], zswapLocalState: makeCallZswapLocalState() },
           communicationCommitment: Option.none()
         },
         {
@@ -901,7 +919,7 @@ describe('ledger-utils', () => {
             partitionedTranscript: rootTranscripts,
             partitionInputs: makePartitionInputs()
           },
-          private: { input: callAlignedValue, output: callAlignedValue, privateTranscriptOutputs: [] },
+          private: { input: callAlignedValue, output: callAlignedValue, privateTranscriptOutputs: [], zswapLocalState: makeCallZswapLocalState() },
           communicationCommitment: Option.none()
         }
       ];
@@ -1128,7 +1146,7 @@ describe('createUnprovenLedgerCallTx multi-call assembly', () => {
     contractAddress: PlatformContractAddress.ContractAddress(address),
     circuitId,
     public: { contractState: state.data.state, publicTranscript: [], partitionedTranscript: emptyTranscript, partitionInputs: makePartitionInputs() },
-    private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] as AlignedValue[] },
+    private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] as AlignedValue[], zswapLocalState: makeCallZswapLocalState() },
     communicationCommitment: commitment
   });
 

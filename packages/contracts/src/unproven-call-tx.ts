@@ -16,7 +16,7 @@
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { type Contract, ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import { type CoinPublicKey, type ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { type CoinPublicKey, type ContractModuleProvider, type ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import { exitResultOrError, makeContractExecutableRuntime, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
@@ -50,6 +50,11 @@ export interface CrossContractConfig {
    * given to the call were read.
    */
   readonly blockHash: string;
+  /**
+   * Resolves a callee's address to the module implementing it. Absent when the application
+   * registered none, which a circuit that actually makes a call then fails on.
+   */
+  readonly moduleProvider?: ContractModuleProvider;
 }
 
 export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
@@ -116,15 +121,24 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
     address: ContractAddress(contractAddress),
     contractState: initialContractState,
     privateState: initialPrivateState,
-    ledgerParameters
+    ledgerParameters,
+    // The block reaches the VM's block context whether or not anything is called, so it is set here
+    // rather than only alongside the providers.
+    parentBlockHash: crossContract?.blockHash
   };
-  // `calleeResolver` is defined exactly when cross-contract calls are enabled, and it carries the
-  // block its callee states are resolved as of, so a single check drives both the resolver wiring
-  // and `parentBlockHash`.
+  // Both providers or neither: resolving a callee needs its state and the module implementing it,
+  // and an application that registered no modules cannot make the call at all. Leaving both out is
+  // what makes that failure name the missing provider rather than a callee that would not resolve.
+  const moduleProvider = crossContract?.moduleProvider;
   const circuitContext =
-    calleeResolver === undefined
+    calleeResolver === undefined || moduleProvider === undefined
       ? baseCircuitContext
-      : { ...baseCircuitContext, stateProvider: calleeResolver.stateProvider, parentBlockHash: calleeResolver.blockHash };
+      : {
+          ...baseCircuitContext,
+          stateProvider: calleeResolver.stateProvider,
+          moduleProvider,
+          parentBlockHash: calleeResolver.blockHash
+        };
 
   const exitResult = await contractRuntime.runPromiseExit(contractExec.circuit(
     ProvableCircuitId<C>(options.circuitId as any), // eslint-disable-line @typescript-eslint/no-explicit-any, no-restricted-syntax
