@@ -6,15 +6,13 @@
 
 # Interface: ConstructorResultPojo
 
-The result of running a pre-fork constructor: the freshly built contract
-state (still carrying blank verifier keys on every operation slot — see
-composeV8DeployTx) and the resulting private state.
+The freshly built state a retained-era constructor produced.
 
 ## Properties
 
 ### contractState
 
-> `readonly` **contractState**: [`Ledger8DeployableContractState`](../type-aliases/Ledger8DeployableContractState.md)
+> `readonly` **contractState**: `ContractState`
 
 ***
 
@@ -28,17 +26,16 @@ composeV8DeployTx) and the resulting private state.
 
 > `readonly` **signingKey**: `string`
 
-The key the state's maintenance authority was built from — the caller's
-own when one was supplied, otherwise the sampled one. Reported because a
-sampled key exists nowhere else: without it the deployment is as
-unmaintainable as the empty committee the constructor left.
+The key the state's maintenance authority was built from: the caller's own
+when one was named, otherwise the one compact-js sampled.
+
+REQUIRED, unlike the request's, and that asymmetry is the point — a sampled
+key exists nowhere else, so a result that did not report it would leave the
+deployment as unmaintainable as the empty committee the retained
+constructor writes on its own.
 
 ***
 
 ### zswapLocalState
 
 > `readonly` **zswapLocalState**: `ZswapLocalState`
-
-The constructor's own Zswap local state, DECODED — plain data in both
-runtimes. Empty for the ordinary constructor that mints nothing; carries
-the outputs for one that does, which is what lets the deploy be balanced.

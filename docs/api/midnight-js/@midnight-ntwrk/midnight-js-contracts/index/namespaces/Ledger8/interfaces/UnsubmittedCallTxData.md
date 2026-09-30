@@ -26,7 +26,7 @@ for finalization cannot answer with.
 
 ### calls
 
-> `readonly` **calls**: readonly [`ContractCall`](ContractCall.md)\<`DownConvertedState`\>[]
+> `readonly` **calls**: readonly [`ContractCall`](ContractCall.md)\<`StateValue`\>[]
 
 Proof data for every contract call this circuit made, as the current era's
 `CallResult.calls` carries. Always exactly ONE entry, the root call: a

@@ -12,6 +12,10 @@ Which step of the down-convert pipeline a [DownConvertFailedError](../classes/Do
 came from. A closed union, so a consumer can `switch` on `stage`
 exhaustively.
 
+`'state down-convert'` is the structural round trip `lib/v8/executable.ts`
+runs before a circuit executes; the other two are the envelope reads in
+`lib/era/envelope.ts`.
+
 ## See
 
 [FailClosedDecoding](../../documents/FailClosedDecoding.md)
