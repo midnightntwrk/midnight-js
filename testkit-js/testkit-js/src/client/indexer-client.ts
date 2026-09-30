@@ -39,7 +39,7 @@ export class IndexerClient {
    */
   async health() {
     const url = buildUrlWithPath(this.indexerUrl, '/ready');
-    const response = await axios.get(url, { timeout: 1000 });
+    const response = await axios.get(url, { timeout: 15000 });
     this.logger.info(`Connected to indexer ${url}: ${JSON.stringify(response.data)}`);
     return response;
   }
