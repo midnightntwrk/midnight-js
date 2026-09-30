@@ -95,7 +95,7 @@
     "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
     "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3",
     "compact-runtime-ledger8": "npm:@midnight-ntwrk/compact-runtime@0.16.0",
-    "effect": "^3.22.1"
+    "effect": "^3.22.2"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
