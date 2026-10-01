@@ -141,28 +141,34 @@ describe('era cross-check on the contract-state decode path', () => {
     expect((rejection as IndexerDataError).context).toEqual({ kind: 'malformed-state-encoding' });
   });
 
-  test('decodes on the envelope alone when the reported version resolves to no era', () => {
-    // The envelope is self-describing and the decoder is tag-strict, so an
-    // unresolvable reported version withholds only the upper-bound check, not
-    // the safety of the decode. Refusing here would strand a perfectly
-    // readable state behind an integer this client happens not to map.
+  test('refuses a state when the reported version resolves to no era', async () => {
+    // Both decoded and raw reads refuse an integer this client cannot place on the
+    // era timeline rather than guessing or decoding on the envelope alone.
     const hexState = mintV9ContractStateHex();
 
-    const state = parseHexContractState(hexState, UNRESOLVABLE_PROTOCOL_VERSION);
+    const rejection = await rejectionOf(
+      Promise.resolve().then(() => parseHexContractState(hexState, UNRESOLVABLE_PROTOCOL_VERSION))
+    );
 
-    expect(Buffer.from(state.serialize()).toString('hex')).toBe(hexState);
+    expect(rejection).toBeInstanceOf(IndexerDataError);
+    expect((rejection as IndexerDataError).context).toEqual({
+      kind: 'unresolvable-era',
+      protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION
+    });
+    expect((rejection as Error).cause).toBeInstanceOf(Error);
   });
 
-  test('still refuses an undecodable envelope when the reported version resolves to no era', async () => {
+  test('refuses an unresolvable version even when the envelope is from a retained era', async () => {
     const rejection = await rejectionOf(
       mintV8ContractStateHex().then((hex) => parseHexContractState(hex, UNRESOLVABLE_PROTOCOL_VERSION))
     );
 
     expect(rejection).toBeInstanceOf(IndexerDataError);
     expect((rejection as IndexerDataError).context).toEqual({
-      kind: 'unsupported-decode-era',
-      version: 'v8'
+      kind: 'unresolvable-era',
+      protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION
     });
+    expect((rejection as Error).cause).toBeInstanceOf(Error);
   });
 });
 
@@ -265,16 +271,24 @@ describe('queryContractState dates the state it decodes', () => {
     expect(headRequestCount(query)).toBe(before + 1);
   });
 
-  test('decodes an unpinned read whose dating block reports an unresolvable version', async () => {
-    // The decode is safe on the envelope alone: a version this client cannot
-    // place on the era timeline must not fail a read whose bytes are readable.
+  test('refuses an unpinned read whose dating block reports an unresolvable version', async () => {
+    // Both decoded and raw reads refuse an integer this client cannot place on the
+    // era timeline: an integer the client cannot place means the client is older
+    // than the network.
     const query = dispatchingQuery(
       new Map<DocumentNode, unknown>([
         [CONTRACT_STATE_QUERY, stateResponse(mintV9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION)]
       ])
     );
 
-    await expect(buildProvider(query).queryContractState(ADDRESS)).resolves.not.toBeNull();
+    const rejection = await rejectionOf(buildProvider(query).queryContractState(ADDRESS));
+
+    expect(rejection).toBeInstanceOf(IndexerDataError);
+    expect((rejection as IndexerDataError).context).toEqual({
+      kind: 'unresolvable-era',
+      protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION
+    });
+    expect((rejection as Error).cause).toBeInstanceOf(Error);
   });
 
   test('decodes an unpinned read whose state is newer than the block dating it', async () => {

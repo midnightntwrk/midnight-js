@@ -27,7 +27,7 @@ import {
   dropReplayed,
   type PositionedContractState
 } from '../observables';
-import { mintV9ContractStateHex } from './state-fixtures';
+import { mintV9ContractStateHex, V9_ERA_PROTOCOL_VERSION } from './state-fixtures';
 
 const contractAddress =
   '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' as ContractAddress;
@@ -35,7 +35,7 @@ const otherAddress =
   'fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321' as ContractAddress;
 
 /** The protocol version the v9 ledger runtime answers to, matching the fixtures below. */
-const V9_PROTOCOL_VERSION = 1000;
+const V9_PROTOCOL_VERSION = V9_ERA_PROTOCOL_VERSION;
 
 const positions = (...pairs: [number, number][]): Rx.Observable<ChainPosition> =>
   Rx.from(pairs.map(([height, ordinal]) => ({ height, ordinal })));

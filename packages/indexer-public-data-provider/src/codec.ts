@@ -298,26 +298,29 @@ const isNewerEra = (left: LedgerVersion, right: LedgerVersion): boolean =>
   LEDGER_VERSIONS.indexOf(left) > LEDGER_VERSIONS.indexOf(right);
 
 /**
- * The era an indexer-reported `protocolVersion` resolves to, or `undefined`
- * when this client cannot place that integer on the era timeline at all.
+ * The era an indexer-reported `protocolVersion` resolves to, or an {@link IndexerDataError} if this build
+ * cannot place that integer on the era timeline at all.
  *
- * Unresolvable is a distinct answer from wrong, and the two must not be
- * conflated: the reported version is a cross-check on the envelope here, never
- * the authority on the bytes, so "I cannot place this integer" has to leave the
- * decode to the envelope rather than fail the caller's read. Only
- * {@link UnknownProtocolVersionError} is treated that way — anything else is a
- * real failure and propagates.
+ * Re-reported rather than propagated so every failure of contract-state reads reaches consumers as an
+ * `IndexerError`, which is the single `instanceof` this package's errors promise. The protocol-layer
+ * failure is preserved on `cause`.
+ *
+ * Both decoded and raw contract-state reads refuse an integer this client cannot place: failing
+ * loudly on every path is clearer than decoding on a guess while the raw read refuses.
  */
-export const reportedEra = (protocolVersion: number): LedgerVersion | undefined => {
+export const resolveRecordEra = (protocolVersion: number): LedgerVersion => {
   try {
     return protocolVersionToLedger(protocolVersion, 'read');
   } catch (error) {
     if (error instanceof UnknownProtocolVersionError) {
-      return undefined;
+      throw IndexerDataError.unresolvableEra(protocolVersion, error);
     }
     throw error;
   }
 };
+
+/** @deprecated Use {@link resolveRecordEra}. */
+export const reportedEra = resolveRecordEra;
 
 /**
  * Whether the `protocolVersion` handed to {@link parseHexContractState} may be
@@ -374,7 +377,8 @@ export type EnvelopeUpperBound = 'enforced' | 'withheld';
  *                 serves it.
  * @param protocolVersion The protocol-version integer of the block that dates
  *                        the read. An integer this client cannot resolve
- *                        withholds the upper-bound check and nothing else.
+ *                        refuses the read with {@link IndexerDataError} with
+ *                        `kind: 'unresolvable-era'`.
  * @param options `upperBound` states whether `protocolVersion` certainly
  *                describes the same block as the bytes, and so whether it may
  *                bound the envelope. Defaults to `'enforced'`, so a call site
@@ -382,8 +386,9 @@ export type EnvelopeUpperBound = 'enforced' | 'withheld';
  *                by omission. See {@link EnvelopeUpperBound}.
  *
  * @throws {IndexerDataError} When the state is not hex-encoded, when its
- *   envelope is newer than the block that dates it and that bound is enforced,
- *   or when its era is not decodable here.
+ *   protocolVersion cannot be resolved to a known era, when its envelope is
+ *   newer than the block that dates it and that bound is enforced, or when its
+ *   era is not decodable here.
  * @throws {TagParseError} When the payload carries no supported contract-state
  *   envelope.
  * @throws {DeserializationError} When the envelope is decodable but the state
@@ -395,9 +400,9 @@ export const parseHexContractState = (
   options?: { readonly upperBound?: EnvelopeUpperBound }
 ): ContractState => {
   const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
+  const reportedVersion = resolveRecordEra(protocolVersion);
   if ((options?.upperBound ?? 'enforced') === 'enforced') {
-    const reportedVersion = reportedEra(protocolVersion);
-    if (reportedVersion !== undefined && isNewerEra(envelopeVersion, reportedVersion)) {
+    if (isNewerEra(envelopeVersion, reportedVersion)) {
       throw IndexerDataError.eraDisagreement(protocolVersion, reportedVersion, envelopeVersion);
     }
   }
@@ -422,29 +427,6 @@ export const parseHexContractState = (
  * @param protocolVersion The protocol-version integer the network reported for
  *                        that state.
  */
-/**
- * The era a raw contract-state record is tagged with, or an {@link IndexerDataError} if this build
- * cannot place the integer at all.
- *
- * Re-reported rather than propagated so every failure of the raw reads reaches consumers as an
- * `IndexerError`, which is the single `instanceof` this package's errors promise. The protocol-layer
- * failure is preserved on `cause`.
- *
- * Deliberately NOT the tolerant treatment {@link reportedEra} gives the decode path. There the
- * reported version is only a cross-check and the envelope can decide alone; here it is the value of
- * a required field, so there is nothing to fall back to and guessing would put a wrong era on the
- * record.
- */
-const resolveRecordEra = (protocolVersion: number): LedgerVersion => {
-  try {
-    return protocolVersionToLedger(protocolVersion, 'read');
-  } catch (error) {
-    if (error instanceof UnknownProtocolVersionError) {
-      throw IndexerDataError.unresolvableEra(protocolVersion, error);
-    }
-    throw error;
-  }
-};
 
 export const toRawContractState = (
   hexState: string,
