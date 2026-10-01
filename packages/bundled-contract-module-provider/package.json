@@ -11,7 +11,11 @@
     }
   },
   "author": "IOG",
-  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git",
+    "directory": "packages/bundled-contract-module-provider"
+  },
   "packageManager": "yarn@4.14.1",
   "license": "Apache-2.0",
   "scripts": {

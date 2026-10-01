@@ -16,7 +16,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git",
+    "directory": "testkit-js/testkit-js"
   },
   "packageManager": "yarn@4.14.1",
   "author": "IOHK",

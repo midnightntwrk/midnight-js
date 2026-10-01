@@ -213,19 +213,6 @@ jobs:
             midnight-js: 'packages/**'
             testkit-js: 'testkit-js/**'
 
-      - name: Verify npm supports OIDC trusted publishing
-        run: |
-          # OIDC trusted publishing requires npm >= 11.5.1. The npm version is pinned
-          # via .nvmrc (node 24.11.1 bundles npm 11.6.2) — this only asserts the floor,
-          # it does NOT install/upgrade npm (that would unpin the toolchain).
-          need="11.5.1"
-          have="$(npm --version)"
-          if [ "$(printf '%s\n%s\n' "$need" "$have" | sort -V | head -n1)" != "$need" ]; then
-            echo "::error::npm $have < $need — OIDC trusted publishing unsupported. Bump .nvmrc node so its bundled npm is >= $need."
-            exit 1
-          fi
-          echo "npm $have supports OIDC trusted publishing"
-
       - name: Validate Packages Before Publishing
         if: steps.changes.outputs.midnight-js == 'true'
         uses: ./.github/actions/validate-packages
@@ -237,11 +224,11 @@ jobs:
         run: node .github/scripts/publish-packages.mjs
         env:
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          MIDNIGHT_WORKSPACE_GLOB: 'packages'
+          MIDNIGHT_WORKSPACE_DIR: 'packages'
           MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN || 'false' }}
 
       - name: Create GitHub Release
-        if: steps.changes.outputs.midnight-js == 'true'
+        if: steps.changes.outputs.midnight-js == 'true' && vars.NPM_PUBLISH_DRY_RUN != 'true'
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # ratchet:softprops/action-gh-release@v3.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -278,5 +265,5 @@ jobs:
         run: node .github/scripts/publish-packages.mjs
         env:
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          MIDNIGHT_WORKSPACE_GLOB: 'testkit-js'
+          MIDNIGHT_WORKSPACE_DIR: 'testkit-js'
           MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN || 'false' }}

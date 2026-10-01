@@ -205,7 +205,7 @@ yarn lint:fix
 | `yarn check:core` | Same as `check` but excludes testkit |
 | `yarn typecheck:tests` | Type-check test files |
 
-#### Release & Publish
+#### Release
 
 | Script | Description |
 | ------ | ----------- |
@@ -320,8 +320,9 @@ Trigger it manually from the Actions tab with the target `version`; it bumps ver
 all workspaces, regenerates `CHANGELOG.md`, and opens a `release/v<version>` PR. Full CI
 runs on that PR and gates the merge. Merging it to `main` triggers the `publish` job in the
 [CI workflow](./.github/workflows/ci.yml): once the build, unit, integration, and e2e jobs
-pass, it publishes packages to GitHub Packages and creates the GitHub Release (which creates
-the `v<version>` tag on the main merge commit). Publishing is gated on the same test run, so
+pass, it publishes packages to npmjs as `@midnightntwrk/*` (plus the transitional
+`@midnight-ntwrk/*` alias, both via OIDC trusted publishing) and the alias to GitHub Packages,
+then creates the GitHub Release (which creates the `v<version>` tag on the main merge commit). Publishing is gated on the same test run, so
 no release can ship ahead of its e2e.
 
 #### Preparing a release
@@ -357,7 +358,7 @@ publishes the release.
 When the release PR is merged, the version bump on `main` triggers the `publish` job in the CI workflow. Once the build, unit, integration, and e2e jobs pass in the same run, it:
 
 1. Extracts release notes from `CHANGELOG.md` (section `## [<VERSION>]`)
-2. Validates and publishes `packages/*` to GitHub Packages
+2. Validates and publishes `packages/*` with [`publish-packages.mjs`](./.github/scripts/publish-packages.mjs): `@midnightntwrk/*` and the `@midnight-ntwrk/*` alias to npmjs, the alias to GitHub Packages. Versions already published are skipped, so re-running a failed job finishes it.
 3. Creates a GitHub Release with the extracted notes (creating the `v<VERSION>` tag on the merge commit)
 4. Publishes `testkit-js/*` if those paths changed
 

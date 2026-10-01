@@ -32,7 +32,11 @@
     "./package.json": "./package.json"
   },
   "sideEffects": false,
-  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git",
+    "directory": "packages/midnight-js"
+  },
   "packageManager": "yarn@4.14.1",
   "author": "IOHK",
   "license": "Apache-2.0",

@@ -172,7 +172,7 @@ export type Ledger8InstanceAxis = 'onchain-runtime-v3';
  * The npm scopes this package and its retained pre-fork runtimes are published
  * under, while the scope migration runs.
  *
- * Do not join a scope to the `/` in one literal -- the dual-publish rewrite
+ * Do not join a scope to the `/` in one literal -- a pack-time scope rewrite
  * would collapse both names into one. See DualInstantiationGuard.
  */
 const PUBLISHED_SCOPES = Object.freeze(['@midnight-ntwrk', '@midnightntwrk'] as const);

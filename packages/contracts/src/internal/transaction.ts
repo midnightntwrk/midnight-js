@@ -61,15 +61,15 @@ export interface PinnedContractStates<PS> {
 }
 
 /** @internal */
-export const TypeId: Transaction.TypeId = Symbol.for('@midnightntwrk/midnight-js#Transaction') as Transaction.TypeId;
+export const TypeId: Transaction.TypeId = Symbol.for('@midnight-ntwrk/midnight-js#Transaction') as Transaction.TypeId;
 /** @internal */
-export const Submit = Symbol.for('@midnightntwrk/midnight-js#Transaction/Submit');
+export const Submit = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/Submit');
 /** @internal */
-export const MergeUnsubmittedCallTxData = Symbol.for('@midnightntwrk/midnight-js#Transaction/MergeUnsubmittedCallTxData');
+export const MergeUnsubmittedCallTxData = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/MergeUnsubmittedCallTxData');
 /** @internal */
-export const CacheStates = Symbol.for('@midnightntwrk/midnight-js#Transaction/CacheStates');
+export const CacheStates = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/CacheStates');
 /** @internal */
-export const GetCurrentStatesForIdentity = Symbol.for('@midnightntwrk/midnight-js#Transaction/GetCurrentStatesForIdentity');
+export const GetCurrentStatesForIdentity = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/GetCurrentStatesForIdentity');
 
 const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
   current: SubmitTxOptions<PCK> | undefined,

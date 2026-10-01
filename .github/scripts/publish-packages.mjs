@@ -12,25 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Publishes every non-private workspace under MIDNIGHT_WORKSPACE_GLOB to:
+// Publishes every non-private workspace under MIDNIGHT_WORKSPACE_DIR, in
+// dependency order, to:
 //   1. @midnightntwrk  on registry.npmjs.org  (OIDC trusted publishing + provenance)
 //   2. @midnight-ntwrk on registry.npmjs.org  (transitional alias, OIDC + provenance)
-//   3. @midnight-ntwrk on npm.pkg.github.com  (GitHub Packages, NODE_AUTH_TOKEN)
+//   3. @midnight-ntwrk on npm.pkg.github.com  (token from the .npmrc that
+//      setup-build-env writes from NODE_AUTH_TOKEN)
 //
 // Each workspace is packed once with `yarn pack` (resolves `workspace:*`). The
-// alias is that tarball unpacked, with only this repo's own packages renamed;
-// external dependencies keep their scope. A version already present on a target is skipped, so a
-// failed run can be re-run safely.
+// alias is that tarball unpacked with this repo's own package names renamed in
+// package.json and in built files: bundles keep sibling import specifiers
+// verbatim, so without it the alias would pull in the canonical packages.
+// External dependencies keep their scope.
 //
-// npmjs uses OIDC: the job needs `id-token: write` and every package must have
-// this repository + the calling workflow registered as a Trusted Publisher.
+// A version already present on a target is skipped, so re-running a failed
+// publish finishes it.
+//
+// npmjs trusted publishing checks the calling workflow (ci.yml for the reusable
+// prerelease workflows) and its environment; every package in both scopes needs
+// those registered on npmjs.com.
 //
 // Env:
-//   MIDNIGHT_WORKSPACE_GLOB   workspace dir to publish ("packages" | "testkit-js")
+//   MIDNIGHT_WORKSPACE_DIR    workspace dir to publish ("packages" | "testkit-js")
 //   MIDNIGHT_PUBLISH_DRY_RUN  "true" => npm publish --dry-run
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -38,6 +45,7 @@ const CANONICAL_SCOPE = '@midnightntwrk';
 const ALIAS_SCOPE = '@midnight-ntwrk';
 const NPMJS = 'https://registry.npmjs.org/';
 const GITHUB_PACKAGES = 'https://npm.pkg.github.com/';
+const MIN_NPM_FOR_OIDC = '11.5.1';
 
 const TARGETS = [
   { scope: CANONICAL_SCOPE, registry: NPMJS, provenance: true },
@@ -45,13 +53,25 @@ const TARGETS = [
   { scope: ALIAS_SCOPE, registry: GITHUB_PACKAGES, provenance: false }
 ];
 
-const WORKSPACE_GLOB = process.env.MIDNIGHT_WORKSPACE_GLOB || 'packages';
+const WORKSPACE_DIR = process.env.MIDNIGHT_WORKSPACE_DIR || 'packages';
 const DRY_RUN = process.env.MIDNIGHT_PUBLISH_DRY_RUN === 'true';
 
 const DEP_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'];
 
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: 'inherit', ...opts });
 
+const assertNpmSupportsOidc = () => {
+  const have = execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim();
+  const [a, b] = [have, MIN_NPM_FOR_OIDC].map((v) => v.split('.').map(Number));
+  const tooOld = a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+  if (tooOld < 0) {
+    throw new Error(`npm ${have} < ${MIN_NPM_FOR_OIDC}: OIDC trusted publishing unsupported. Bump .nvmrc.`);
+  }
+  return have;
+};
+
+// CI prereleases are `<base>-pre.<sha>` and the base may itself carry `rc`, so
+// `-pre.` must win before the alpha/beta/rc match.
 const distTagFor = (version) => {
   if (!version.includes('-')) return 'latest';
   if (/-pre\./.test(version)) return 'pre';
@@ -59,19 +79,37 @@ const distTagFor = (version) => {
   return m ? m[1].toLowerCase() : 'prerelease';
 };
 
-const ownPackageNames = () =>
-  execFileSync('yarn', ['workspaces', 'list', '--json'], { encoding: 'utf8' })
+const listWorkspaces = () =>
+  execFileSync('yarn', ['workspaces', 'list', '--json', '--verbose'], { encoding: 'utf8' })
     .trim()
     .split('\n')
-    .map((line) => JSON.parse(line).name)
-    .filter((name) => name.startsWith(`${CANONICAL_SCOPE}/`));
+    .map((line) => JSON.parse(line));
+
+// Dependencies first, so a dist-tag never points at a package whose sibling
+// dependency is not on the registry yet.
+const inDependencyOrder = (workspaces) => {
+  const byLocation = new Map(workspaces.map((w) => [w.location, w]));
+  const ordered = [];
+  const seen = new Set();
+  const visit = (location) => {
+    if (seen.has(location) || !byLocation.has(location)) return;
+    seen.add(location);
+    byLocation.get(location).workspaceDependencies.forEach(visit);
+    ordered.push(byLocation.get(location));
+  };
+  workspaces.forEach((w) => visit(w.location));
+  return ordered;
+};
 
 const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// The lookahead stops `midnight-js` from matching the start of `midnight-js-types`.
 const aliasRewriter = (ownNames) => {
   const bareNames = ownNames.map((n) => escapeRegExp(n.slice(CANONICAL_SCOPE.length + 1)));
   const pattern = new RegExp(`${escapeRegExp(CANONICAL_SCOPE)}/(${bareNames.join('|')})(?=$|[/'"\`])`, 'g');
-  return (text) => text.replace(pattern, `${ALIAS_SCOPE}/$1`);
+  const alias = (text) => text.replace(pattern, `${ALIAS_SCOPE}/$1`);
+  alias.leftoverIn = (text) => text.match(pattern);
+  return alias;
 };
 
 const rewriteManifest = (pkg, alias) => {
@@ -84,16 +122,30 @@ const rewriteManifest = (pkg, alias) => {
   return pkg;
 };
 
-const rewriteBuiltFiles = (dir, alias) => {
+const BUILT_FILE = /\.(m|c)?[jt]s$/;
+
+const forEachBuiltFile = (dir, fn) => {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const fullPath = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      rewriteBuiltFiles(fullPath, alias);
-    } else if (/\.(m|c)?[jt]s$/.test(entry.name)) {
-      const content = readFileSync(fullPath, 'utf8');
-      const rewritten = alias(content);
-      if (rewritten !== content) writeFileSync(fullPath, rewritten);
-    }
+    if (entry.isDirectory()) forEachBuiltFile(fullPath, fn);
+    else if (BUILT_FILE.test(entry.name)) fn(fullPath);
+  }
+};
+
+const rewriteBuiltFiles = (dir, alias) =>
+  forEachBuiltFile(dir, (file) => {
+    const content = readFileSync(file, 'utf8');
+    const rewritten = alias(content);
+    if (rewritten !== content) writeFileSync(file, rewritten);
+  });
+
+const assertFullyAliased = (dir, alias) => {
+  const manifest = readFileSync(join(dir, 'package.json'), 'utf8');
+  const leftovers = [manifest];
+  forEachBuiltFile(dir, (file) => leftovers.push(readFileSync(file, 'utf8')));
+  const found = leftovers.flatMap((text) => alias.leftoverIn(text) ?? []);
+  if (!JSON.parse(manifest).name.startsWith(`${ALIAS_SCOPE}/`) || found.length > 0) {
+    throw new Error(`alias package in ${dir} still references canonical names: ${[...new Set(found)].join(', ')}`);
   }
 };
 
@@ -107,18 +159,10 @@ const isPublished = (name, version, target) => {
     });
     return out.trim() === version;
   } catch (err) {
-    if (/E404/.test(String(err.stderr))) return false;
-    throw err;
+    const stderr = String(err.stderr ?? '');
+    if (err.status === 1 && /npm error code E404/.test(stderr)) return false;
+    throw new Error(`npm view ${name}@${version} on ${target.registry} failed:\n${stderr}`, { cause: err });
   }
-};
-
-const discoverWorkspaces = () => {
-  const root = join(process.cwd(), WORKSPACE_GLOB);
-  if (!existsSync(root)) throw new Error(`Workspace dir not found: ${root}`);
-  return readdirSync(root, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => join(root, d.name))
-    .filter((dir) => existsSync(join(dir, 'package.json')));
 };
 
 const packArtifacts = (dir, alias) => {
@@ -132,46 +176,75 @@ const packArtifacts = (dir, alias) => {
   const manifest = rewriteManifest(JSON.parse(readFileSync(manifestPath, 'utf8')), alias);
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   rewriteBuiltFiles(aliased, alias);
+  assertFullyAliased(aliased, alias);
 
   return { [CANONICAL_SCOPE]: canonical, [ALIAS_SCOPE]: aliased };
 };
+
+// npmjs can serve a stale "not found" for minutes after a publish; the
+// registry's own conflict answer is authoritative.
+const PUBLISH_CONFLICT = /EPUBLISHCONFLICT|cannot publish over the previously published versions/;
 
 const publishArtifact = (artifact, name, version, tag, target) => {
   const where = `${name}@${version} -> ${target.registry} (tag: ${tag})`;
   if (isPublished(name, version, target)) {
     console.log(`  skip (already published): ${where}`);
-    return { name, version, target, status: 'skipped' };
+    return 'skipped';
   }
   const args = ['publish', artifact, ...registryArgs(target), '--access', 'public', '--tag', tag, '--ignore-scripts'];
   if (target.provenance) args.push('--provenance');
   if (DRY_RUN) args.push('--dry-run');
   console.log(`  publish: ${where}`);
-  run('npm', args);
-  return { name, version, target, status: DRY_RUN ? 'dry-run' : 'published' };
+  try {
+    execFileSync('npm', args, { stdio: ['ignore', 'inherit', 'pipe'] });
+  } catch (err) {
+    const stderr = String(err.stderr ?? '');
+    process.stderr.write(stderr);
+    if (PUBLISH_CONFLICT.test(stderr)) {
+      console.log(`  skip (registry reports already published): ${where}`);
+      return 'skipped';
+    }
+    throw err;
+  }
+  return DRY_RUN ? 'dry-run' : 'published';
 };
 
-const publishWorkspace = (dir, alias) => {
-  const { name, version, private: isPrivate } = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+const publishWorkspace = (workspace, alias, results) => {
+  const { name, version, private: isPrivate } = JSON.parse(readFileSync(join(workspace.location, 'package.json'), 'utf8'));
   if (isPrivate) {
     console.log(`\nskip (private): ${name}`);
-    return [];
+    return;
   }
   console.log(`\n=== ${name}@${version} ===`);
   const tag = distTagFor(version);
-  const artifacts = packArtifacts(dir, alias);
-  return TARGETS.map((target) =>
-    publishArtifact(artifacts[target.scope], target.scope === ALIAS_SCOPE ? alias(name) : name, version, tag, target)
-  );
+  const artifacts = packArtifacts(workspace.location, alias);
+  for (const target of TARGETS) {
+    const targetName = target.scope === ALIAS_SCOPE ? alias(name) : name;
+    const status = publishArtifact(artifacts[target.scope], targetName, version, tag, target);
+    results.push({ name: targetName, version, registry: target.registry, status });
+  }
+};
+
+const printSummary = (results) => {
+  console.log('\nSummary:');
+  for (const r of results) console.log(`  ${r.status.padEnd(9)} ${r.name}@${r.version} -> ${r.registry}`);
+  if (DRY_RUN) console.log('::warning::DRY RUN - nothing was published');
 };
 
 const main = () => {
-  const npmVersion = execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim();
-  console.log(`Publishing ./${WORKSPACE_GLOB}/* | dry-run: ${DRY_RUN} | npm ${npmVersion}`);
-  const alias = aliasRewriter(ownPackageNames());
-  const results = discoverWorkspaces().flatMap((dir) => publishWorkspace(dir, alias));
+  const npmVersion = assertNpmSupportsOidc();
+  console.log(`Publishing ./${WORKSPACE_DIR}/* | dry-run: ${DRY_RUN} | npm ${npmVersion}`);
+  const workspaces = listWorkspaces();
+  const alias = aliasRewriter(workspaces.map((w) => w.name).filter((n) => n.startsWith(`${CANONICAL_SCOPE}/`)));
+  const toPublish = inDependencyOrder(workspaces).filter((w) => w.location.startsWith(`${WORKSPACE_DIR}/`));
+  if (toPublish.length === 0) throw new Error(`No workspaces found under ./${WORKSPACE_DIR}`);
 
-  console.log('\nSummary:');
-  for (const r of results) console.log(`  ${r.status.padEnd(9)} ${r.name}@${r.version} -> ${r.target.registry}`);
+  const results = [];
+  try {
+    for (const workspace of toPublish) publishWorkspace(workspace, alias, results);
+  } finally {
+    printSummary(results);
+  }
 };
 
 main();

@@ -3,7 +3,8 @@
   "description": "Compact fetcher",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git",
+    "directory": "packages/compact"
   },
   "author": "IOG",
   "engines": {
