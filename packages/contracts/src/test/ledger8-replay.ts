@@ -46,9 +46,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { ComposeCallOptions, ContractBalance, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ComposeCallOptions, ContractBalance, LedgerEra } from '@midnightntwrk/midnight-js-protocol';
+import type { ZswapLocalState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import { ContractOperation, ContractState } from '@midnightntwrk/midnight-js-protocol/ledger';
 import { expect } from 'vitest';
 
 import type {
@@ -61,7 +61,7 @@ import type { Assert } from './type-assertions';
 
 // The fixture tree lives in testkit-js because that is where it is produced and
 // where the e2e suites consume it. Reached by RELATIVE path, never through
-// `@midnight-ntwrk/testkit-js`: a dependency on that package from here would
+// `@midnightntwrk/testkit-js`: a dependency on that package from here would
 // close a workspace cycle. `packages/protocol/src/test/fixtures.ts` reaches the
 // same tree the same way.
 const FIXTURES_DIR = resolve(

@@ -14,10 +14,10 @@
  */
 
 import { type CompiledContract, Contract, type ContractExecutable, ContractExecutableRuntime,
-  ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect';
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js';
-import * as Configuration from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/Configuration';
+  ZKConfiguration, ZKConfigurationReadError } from '@midnightntwrk/midnight-js-protocol/compact-js/effect';
+import type { SigningKey } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import { ContractAddress } from '@midnightntwrk/midnight-js-protocol/platform-js';
+import * as Configuration from '@midnightntwrk/midnight-js-protocol/platform-js/effect/Configuration';
 import { Cause, type ConfigError, ConfigProvider, Effect, Exit,Layer, Option } from 'effect';
 import { type ManagedRuntime } from 'effect/ManagedRuntime';
 

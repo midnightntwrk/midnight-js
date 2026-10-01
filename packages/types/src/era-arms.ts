@@ -19,7 +19,7 @@ import {
   type LedgerVersion,
   RETAINED_LEDGER_VERSIONS,
   type RetainedLedgerVersion
-} from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/version';
 
 import { type ProviderSeam, UntaggedPayloadError, V8PayloadUnsupportedError } from './errors';
 import type { VersionedTx } from './versioned';

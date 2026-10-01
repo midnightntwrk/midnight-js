@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ContractState as CompactContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { ContractState as CompactContractState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import {
   type Binding,
   ContractState as LedgerContractState,
@@ -24,7 +24,7 @@ import {
   StateValue as LedgerStateValue,
   Transaction as LedgerTransaction,
   ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
 
 import { withDeserializationContext } from './with-deserialization-context';
 
@@ -52,7 +52,7 @@ export interface CallSiteContext {
  * @example
  * ```ts
  * const state = deserializeContractState(buf, {
- *   caller: '@midnight-ntwrk/midnight-js-indexer-public-data-provider:queryContractState'
+ *   caller: '@midnightntwrk/midnight-js-indexer-public-data-provider:queryContractState'
  * });
  * ```
  *

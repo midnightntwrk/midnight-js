@@ -47,7 +47,7 @@ See [breaking-changes.md section 8](./breaking-changes.md) and
 - `@midnight-ntwrk/ledger-v8@8.1.0` → `@midnightntwrk/ledger-v9@1.0.0-rc.3`
 - `@midnight-ntwrk/onchain-runtime-v3@3.0.0` → `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3`
 
-The subpath re-exports `@midnight-ntwrk/midnight-js-protocol/ledger` and `/onchain-runtime` now resolve to the v9 / v4 packages. The new `@midnightntwrk` scope is registered in `.yarnrc.yml` and both scope variants are flagged by the ESLint `no-restricted-imports` ACL outside `packages/protocol/src/`.
+The subpath re-exports `@midnightntwrk/midnight-js-protocol/ledger` and `/onchain-runtime` now resolve to the v9 / v4 packages. The new `@midnightntwrk` scope is registered in `.yarnrc.yml` and both scope variants are flagged by the ESLint `no-restricted-imports` ACL outside `packages/protocol/src/`.
 
 This pulls through a coordinated dependency set: `@midnight-ntwrk/platform-js@3.0.0`, `@midnight-ntwrk/compact-runtime@0.18.0-rc.1`, `@midnight-ntwrk/compact-js@2.5.5-rc.7`, and `compactc 0.33.0-rc.1` (compiler 0.33.0 / language 0.25.0 / runtime 0.18.0-rc.1).
 
@@ -57,7 +57,7 @@ This pulls through a coordinated dependency set: `@midnight-ntwrk/platform-js@3.
 
 - `ContractExecutableRuntimeOptions.signingKey` now takes the structured `SigningKey`; the Configuration layer maps it to the `KEYS_SIGNING` / `KEYS_SIGNING_KIND` config values.
 - Signing-key **import validation** (`level-private-state-provider` and the testkit in-memory provider) validates the structured shape — a non-null object with a known `schnorr`/`ecdsa` tag and an even-length hex `value` (min 6 chars) — instead of the old string check.
-- The shared predicate `isValidSigningKey` was extracted into `@midnight-ntwrk/midnight-js-utils`; each provider keeps a thin wrapper that throws its own `InvalidExportFormatError`.
+- The shared predicate `isValidSigningKey` was extracted into `@midnightntwrk/midnight-js-utils`; each provider keeps a thin wrapper that throws its own `InvalidExportFormatError`.
 - The DApp-connector wallet adapter (testkit) now round-trips structured `Signature` / `SignatureVerifyingKey`, emitting the `.value` (schnorr) on the wire to preserve the previous plain-hex contract.
 
 ### `ContractState` structural version bumped `[v6]` → `[v8]` (#970)
@@ -82,8 +82,8 @@ The testkit wallet stack moved to the 2.0.0 major beta line (`@midnightntwrk/wal
 
 The framework can now assemble, prove, and submit **cross-contract call** transactions — a call whose tree spans several deployed contracts, each carrying its own proof:
 
-- `ZKConfigRegistry` (in `@midnight-ntwrk/midnight-js-types`) resolves ZK artifacts across a *set* of compiled-contract sources. It requires **no address registration**: the binding is derived by joining a call's deployed verifier-key hash against each source's local verifier key, which makes resolution immune to redeploys, multiple deployments of one contract, and circuit-name collisions.
-- The canonical `ContractKeyLocation` grammar (`contract:<address>/<circuitId>?vk=<sha-256>`) is re-exported from `@midnight-ntwrk/midnight-js-protocol/compact-js`, so transaction assemblers and provers share one definition.
+- `ZKConfigRegistry` (in `@midnightntwrk/midnight-js-types`) resolves ZK artifacts across a *set* of compiled-contract sources. It requires **no address registration**: the binding is derived by joining a call's deployed verifier-key hash against each source's local verifier key, which makes resolution immune to redeploys, multiple deployments of one contract, and circuit-name collisions.
+- The canonical `ContractKeyLocation` grammar (`contract:<address>/<circuitId>?vk=<sha-256>`) is re-exported from `@midnightntwrk/midnight-js-protocol/compact-js`, so transaction assemblers and provers share one definition.
 - `PublicDataProvider` gains an "as-of" `queryBlock(config?)` endpoint returning `BlockInfo { hash, height }` (latest block when called with no argument), used to resolve on-chain state at transaction-assembly time.
 
 ### MIP-0002 contract events via `PublicDataProvider` (#988)
@@ -123,7 +123,7 @@ The indexer provider negotiates the `graphql-transport-ws+deflate` WebSocket sub
 
 ### ZK artifact integrity manifest module (#1015)
 
-A new `zk-artifact-manifest` module in `@midnight-ntwrk/midnight-js-utils` parses the `compactc` `contract-manifest.json`, exposing `ZkArtifactManifest`, `ZkConfigIntegrityOptions` (`verify`, `expectedManifestHash`, `onWarn`), `ZkArtifactIntegrityMode` (`'require' | 'require-if-present' | 'warn' | 'off'`), and `ZkArtifactIntegrityError`. Both ZK config providers consume it (see Breaking Changes).
+A new `zk-artifact-manifest` module in `@midnightntwrk/midnight-js-utils` parses the `compactc` `contract-manifest.json`, exposing `ZkArtifactManifest`, `ZkConfigIntegrityOptions` (`verify`, `expectedManifestHash`, `onWarn`), `ZkArtifactIntegrityMode` (`'require' | 'require-if-present' | 'warn' | 'off'`), and `ZkArtifactIntegrityError`. Both ZK config providers consume it (see Breaking Changes).
 
 ### Disposable `IndexerPublicDataProvider` with structured config (#961)
 
@@ -135,7 +135,7 @@ Phase 2 of #808 (closes #820):
 
 ### Classified deserialization / versioning errors (#955)
 
-A new `deserialization` module in `@midnight-ntwrk/midnight-js-utils` turns cryptic ledger/runtime deserialization failures into structured errors:
+A new `deserialization` module in `@midnightntwrk/midnight-js-utils` turns cryptic ledger/runtime deserialization failures into structured errors:
 
 - `DeserializationError` with classification (`version-mismatch` / `generic-param-mismatch` / `format-mismatch` / `unknown`), direction inference, per-source mitigation hints, and structural-tag extraction.
 - `isDeserializationError` type guard with a cross-realm brand-check fallback (Web Worker boundaries, npm hoist mismatches).

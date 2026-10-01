@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-protocol",
+  "name": "@midnightntwrk/midnight-js-protocol",
   "version": "5.0.0-rc.3",
   "type": "module",
   "description": "Protocol type re-exports for midnight-js framework",
@@ -80,8 +80,7 @@
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
     "build": "rollup -c rollup.config.mjs",
     "lint": "eslint src/",
-    "test": "vitest run",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "test": "vitest run"
   },
   "files": [
     "dist/"

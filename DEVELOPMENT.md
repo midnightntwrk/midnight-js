@@ -104,7 +104,7 @@ Create `.vscode/launch.json`:
 2. Copy structure from existing package (e.g., `network-id`)
 3. Update `package.json` with correct name and dependencies
 4. Add to `tsconfig.base.json` references if needed
-5. Build to verify: `yarn turbo run build --filter=@midnight-ntwrk/midnight-js-<name>`
+5. Build to verify: `yarn turbo run build --filter=@midnightntwrk/midnight-js-<name>`
 
 ### Updating Dependencies
 
@@ -145,19 +145,19 @@ yarn typecheck:tests
 
 ```bash
 # Single package
-yarn turbo run build --filter=@midnight-ntwrk/midnight-js-utils
+yarn turbo run build --filter=@midnightntwrk/midnight-js-utils
 
 # Packages matching pattern
-yarn turbo run build --filter='@midnight-ntwrk/midnight-js-*-provider'
+yarn turbo run build --filter='@midnightntwrk/midnight-js-*-provider'
 
 # Exclude packages
-yarn turbo run build --filter='!@midnight-ntwrk/testkit-*'
+yarn turbo run build --filter='!@midnightntwrk/testkit-*'
 
 # Package and dependencies
-yarn turbo run build --filter=@midnight-ntwrk/midnight-js-contracts...
+yarn turbo run build --filter=@midnightntwrk/midnight-js-contracts...
 
 # Package and dependents
-yarn turbo run build --filter=...@midnight-ntwrk/midnight-js-types
+yarn turbo run build --filter=...@midnightntwrk/midnight-js-types
 ```
 
 ### Caching

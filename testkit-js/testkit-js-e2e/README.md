@@ -156,7 +156,7 @@ runtime import is rewritten, and which `ledger-v8` instance the wallet seam uses
 ### Test Template
 
 ```typescript
-import { createLogger, getTestEnvironment, initializeMidnightProviders } from '@midnight-ntwrk/testkit-js';
+import { createLogger, getTestEnvironment, initializeMidnightProviders } from '@midnightntwrk/testkit-js';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `feature_${new Date().toISOString()}.log`)

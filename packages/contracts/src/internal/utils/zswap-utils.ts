@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { type Recipient, type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { getNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import { type Recipient, type ZswapLocalState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import {
   type AlignedValue,
   type CoinCommitment,
@@ -35,13 +35,13 @@ import {
   ZswapInput,
   ZswapOffer,
   ZswapOutput,
-  ZswapTransient} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+  ZswapTransient} from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   assertDefined,
   assertIsContractAddress,
   parseCoinPublicKeyToHex,
   parseEncPublicKeyToHex
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 
 /**
  * Resolves a CoinPublicKey to the corresponding EncPublicKey for output encryption.

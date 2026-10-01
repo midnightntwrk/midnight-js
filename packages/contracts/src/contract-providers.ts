@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type {
   MidnightProviders,
   PrivateStateId
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 
 /**
  * Convenience type for representing the set of providers necessary to use

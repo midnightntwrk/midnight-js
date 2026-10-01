@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
-import type { LedgerEra, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
-import { PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { hasErrorCode, TagParseError } from '@midnight-ntwrk/midnight-js-utils';
+import type * as protocol from '@midnightntwrk/midnight-js-protocol';
+import type { LedgerEra, LedgerVersion } from '@midnightntwrk/midnight-js-protocol';
+import { PROTOCOL_ERROR_CODES } from '@midnightntwrk/midnight-js-protocol/errors';
+import { hasErrorCode, TagParseError } from '@midnightntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getAnyEraContractState } from '../get-states';
@@ -44,7 +44,7 @@ const { loadLedgerEraSpy } = vi.hoisted(() => ({
   loadLedgerEraSpy: vi.fn<(version: LedgerVersion) => Promise<LedgerEra>>()
 }));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const original = await importOriginal<typeof protocol>();
   loadLedgerEraSpy.mockImplementation(original.loadLedgerEra);
   return { ...original, loadLedgerEra: loadLedgerEraSpy };

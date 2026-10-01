@@ -5,13 +5,13 @@ ZK configuration provider that reads proving keys, verifier keys, and ZK interme
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-node-zk-config-provider
+yarn add @midnightntwrk/midnight-js-node-zk-config-provider
 ```
 
 ## Quick Start
 
 ```typescript
-import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+import { NodeZkConfigProvider } from '@midnightntwrk/midnight-js-node-zk-config-provider';
 
 const zkConfigProvider = new NodeZkConfigProvider('/path/to/zk-artifacts');
 
@@ -67,7 +67,7 @@ retained-era (pre-fork) contracts.
 ## Exports
 
 ```typescript
-import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+import { NodeZkConfigProvider } from '@midnightntwrk/midnight-js-node-zk-config-provider';
 ```
 
 ## Resources

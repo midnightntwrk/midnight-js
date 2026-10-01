@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-bundled-contract-module-provider",
+  "name": "@midnightntwrk/midnight-js-bundled-contract-module-provider",
   "version": "5.0.0-rc.3",
   "type": "module",
   "description": "MidnightJS module resolving cross-contract callees to the compiled contract modules bundled with an application",
@@ -17,12 +17,11 @@
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
     "build": "rollup -c rollup.config.mjs",
-    "test": "vitest run",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "test": "vitest run"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    "@midnightntwrk/midnight-js-protocol": "workspace:*",
+    "@midnightntwrk/midnight-js-utils": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^4.1.7"

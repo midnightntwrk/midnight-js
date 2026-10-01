@@ -19,8 +19,8 @@ import {
   loadLedger8,
   protocolVersionToLedger,
   UnknownProtocolVersionError
-} from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol';
+import type { ContractState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import {
   type Binding,
   type ContractAddress,
@@ -31,12 +31,12 @@ import {
   type SignatureEnabled,
   type Transaction as LedgerTransaction,
   type ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
 // Type-only, so nothing here links the v8 chunk: the runtime is acquired
 // through `loadLedger8()` and only when a v8-era record asks for it. Same
-// precedent as `FinalizedTxDataV8` in `@midnight-ntwrk/midnight-js-types`.
-import type { FinalizedTransaction as V8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
-import type { RawContractState, ReadSeam, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+// precedent as `FinalizedTxDataV8` in `@midnightntwrk/midnight-js-types`.
+import type { FinalizedTransaction as V8FinalizedTransaction } from '@midnightntwrk/midnight-js-protocol/v8';
+import type { RawContractState, ReadSeam, VersionedFinalizedTxData } from '@midnightntwrk/midnight-js-types';
 import {
   FailEntirely,
   FailFallible,
@@ -48,7 +48,7 @@ import {
   type UnshieldedBalances,
   type UnshieldedUtxo,
   type UnshieldedUtxos
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import {
   contractStateEnvelopeVersion,
   deserializeCompactContractState,
@@ -59,7 +59,7 @@ import {
   ledgerParametersEnvelopeVersion,
   parseHex,
   withDeserializationContext
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
 import { EraUnsupportedError, IndexerDataError } from './errors';
@@ -77,7 +77,7 @@ import type { ContractBalance, Segment, TransactionResult } from './gen/schema-t
  */
 const toByteArray = (s: string): Buffer => Buffer.from(parseHex(s).byteChars, 'hex');
 
-const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+const PKG = '@midnightntwrk/midnight-js-indexer-public-data-provider';
 
 /**
  * Facts identifying one read, carried onto a decode failure so it names the
@@ -101,7 +101,7 @@ const DECODABLE_LEDGER_VERSION: LedgerVersion = 'v9';
 
 /**
  * Adapters that take hex-encoded indexer payloads, decode to bytes, and
- * dispatch to the typed deserialization wrappers from `@midnight-ntwrk/midnight-js-utils`.
+ * dispatch to the typed deserialization wrappers from `@midnightntwrk/midnight-js-utils`.
  * They exist (rather than inlining) so the `caller` string is centralized and
  * regression-testable. Re-exported from the package entry point, so their
  * signatures are public API.
@@ -186,7 +186,7 @@ export type DecodedVersionedTransaction = DistributivePick<VersionedFinalizedTxD
  * `packages/protocol/docs/shared-table-discipline.md`. The era set is gated by
  * `LedgerVersion`: an era added there stops this table type-checking. That an
  * era also has a *read arm* is asserted separately, by `_EveryEraHasAReadArm`
- * in `@midnight-ntwrk/midnight-js-types`.
+ * in `@midnightntwrk/midnight-js-types`.
  */
 type TransactionDecoders = {
   readonly [V in LedgerVersion]: (
@@ -245,7 +245,7 @@ export interface TransactionDecodeContext {
  * @throws EraUnsupportedError if `era` is not a member of `LEDGER_VERSIONS`.
  * @throws Ledger8RuntimeMissingError if a v8-era record needs the pre-fork
  *   runtime and it cannot be acquired. From
- *   `@midnight-ntwrk/midnight-js-protocol`, and deliberately not an
+ *   `@midnightntwrk/midnight-js-protocol`, and deliberately not an
  *   `IndexerError` — see {@link IndexerError}.
  * @throws DeserializationError for every decode failure.
  */

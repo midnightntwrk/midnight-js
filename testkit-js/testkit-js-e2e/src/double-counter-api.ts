@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+import { deployContract } from '@midnightntwrk/midnight-js-contracts';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/ledger';
+import type { FinalizedTxData } from '@midnightntwrk/midnight-js-types';
+import { assertIsContractAddress } from '@midnightntwrk/midnight-js-utils';
 import {
   type ContractConfiguration,
   type EnvironmentConfiguration,
   initializeMidnightProviders,
   type MidnightWalletProvider
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import path from 'path';
 import type { Logger } from 'pino';
 import { WebSocket } from 'ws';

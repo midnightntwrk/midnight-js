@@ -72,10 +72,10 @@ describe('PROTOCOL_ERROR_CODES', () => {
   });
 });
 
-// The dual-publish (.github/scripts/publish-public-npm.mjs) rewrites
-// `@midnight-ntwrk/` -> `@midnightntwrk/` inside built .js/.d.ts files, not
-// only in package.json. Any scoped package name written as a single literal
-// here therefore ships rewritten: two names that differ only by scope collapse
+// The alias publish (.github/scripts/publish-packages.mjs) rewrites scoped
+// package names inside built .js/.d.ts files, not only in package.json. Any
+// scoped package name written as a single literal here is exposed to that
+// pack-time rewrite: two names that differ only by scope collapse
 // into one, and a remediation hint that names both scopes silently degrades to
 // naming one of them twice. The scope fragments must stay separated from the
 // `/` so the rewrite has nothing to match.

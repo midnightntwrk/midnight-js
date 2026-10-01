@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { AnyPrivateState } from '@midnight-ntwrk/midnight-js-types';
+import { type Contract } from '@midnightntwrk/midnight-js-protocol/compact-js';
+import { type ZswapLocalState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import { type UnprovenTransaction } from '@midnightntwrk/midnight-js-protocol/ledger';
+import type { AnyPrivateState } from '@midnightntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 
 import { type ContractProviders } from '../contract-providers';

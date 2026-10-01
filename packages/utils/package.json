@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-utils",
+  "name": "@midnightntwrk/midnight-js-utils",
   "version": "5.0.0-rc.3",
   "type": "module",
   "description": "Shared utilities for MidnightJS modules",
@@ -17,16 +17,15 @@
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
     "build": "rollup -c rollup.config.mjs",
-    "test": "vitest run",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "test": "vitest run"
   },
   "files": [
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
-    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/midnight-js-network-id": "workspace:*",
+    "@midnightntwrk/midnight-js-protocol": "workspace:*",
+    "@midnightntwrk/midnight-js-types": "workspace:*",
     "@midnightntwrk/wallet-sdk-address-format": "4.0.0-rc.0",
     "@noble/hashes": "^2.2.0"
   },

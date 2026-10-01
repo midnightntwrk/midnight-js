@@ -4,7 +4,7 @@ title: BarrelPublishedSurface
 
 # What the barrel publishes, and what importing it costs
 
-`@midnight-ntwrk/midnight-js` is the front door: the package a dApp developer
+`@midnightntwrk/midnight-js` is the front door: the package a dApp developer
 installs first and imports without thinking about layering. Two decisions
 follow from that and are recorded here rather than in the source, because both
 are arguments rather than instructions — which names qualify for the top level,

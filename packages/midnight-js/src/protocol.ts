@@ -14,5 +14,5 @@
  */
 
 
-export { CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-export type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+export { CompiledContract, ContractExecutable } from '@midnightntwrk/midnight-js-protocol/compact-js';
+export type { Contract } from '@midnightntwrk/midnight-js-protocol/compact-js/effect/Contract';

@@ -21,15 +21,15 @@ import {
   type SignatureEnabled,
   type Transaction,
   type UnprovenTransaction
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
-import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
+import { proveV8Transaction } from '@midnightntwrk/midnight-js-protocol/prove';
+import type { ProvingProvider as RetainedEraProvingProvider } from '@midnightntwrk/midnight-js-protocol/v8';
 import {
   CURRENT_LEDGER_VERSION,
   type LedgerVersion,
   RETAINED_LEDGER_VERSIONS,
   type RetainedLedgerVersion
-} from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/version';
 
 import { erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
 import type { VersionedTx } from './versioned';
@@ -100,7 +100,7 @@ export interface ProofProvider {
    *         so it refuses the v8 arm on the way in, which is the honest answer for what it wraps.
    * @throws PayloadNotATransactionError if the v8 arm's `txBytes` is not a serialized transaction.
    *         Raised by the providers that serve that arm and defined in
-   *         `@midnight-ntwrk/midnight-js-protocol/errors` (not a runtime dependency of this
+   *         `@midnightntwrk/midnight-js-protocol/errors` (not a runtime dependency of this
    *         package, so it is named here rather than imported); match it with `hasErrorCode`
    *         against `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`.
    * @throws UntaggedPayloadError if `version` is missing or unrecognised.
@@ -259,7 +259,7 @@ const toRetainedEraHandlers = (
  *         serialized transaction.
  * @throws Ledger8RuntimeMissingError if a retained arm is reached and that
  *         era's runtime cannot be loaded. Both are defined in
- *         `@midnight-ntwrk/midnight-js-protocol/errors`.
+ *         `@midnightntwrk/midnight-js-protocol/errors`.
  *
  * @example
  * ```typescript

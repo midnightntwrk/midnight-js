@@ -4,7 +4,7 @@ import {
   tryDeleteDirectory,
   defaultContainersConfiguration,
   setContainersConfiguration
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import path from 'path';
 
 const logger = await createLogger('default.log');

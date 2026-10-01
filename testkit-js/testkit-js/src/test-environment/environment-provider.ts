@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { setNetworkId } from '@midnightntwrk/midnight-js-network-id';
 import type { Logger } from 'pino';
 
 import { getEnvVarEnvironment } from '../env-vars';

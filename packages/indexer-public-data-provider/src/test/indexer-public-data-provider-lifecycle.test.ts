@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
+import type { PublicDataProvider } from '@midnightntwrk/midnight-js-types';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 const wsClientDisposeSpy = vi.fn(() => Promise.resolve());

@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import { type ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { type FinalizedTxData, type PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
+import { type ContractState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import { type FinalizedTxData, type PublicDataProvider } from '@midnightntwrk/midnight-js-types';
 import {
   createLogger,
   getTestEnvironment,
   initializeMidnightProviders,
   type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import path from 'path';
 import { type Observable, toArray } from 'rxjs';
 

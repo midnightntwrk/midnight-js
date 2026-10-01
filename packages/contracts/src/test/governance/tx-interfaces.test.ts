@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { VerifierKey } from '@midnight-ntwrk/midnight-js-types';
+import type { VerifierKey } from '@midnightntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {

@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-indexer-public-data-provider",
+  "name": "@midnightntwrk/midnight-js-indexer-public-data-provider",
   "version": "5.0.0-rc.3",
   "type": "module",
   "description": "Implementation of public data provider based on the Midnight Pub-sub indexer",
@@ -18,16 +18,15 @@
     "gen": "rm -rf gen && graphql-codegen",
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache",
     "build": "rollup -c rollup.config.mjs",
-    "test": "vitest run",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "test": "vitest run"
   },
   "dependencies": {
     "@apollo/client": "^4.2.12",
     "@graphql-typed-document-node/core": "^3.2.0",
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
-    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
+    "@midnightntwrk/midnight-js-network-id": "workspace:*",
+    "@midnightntwrk/midnight-js-protocol": "workspace:*",
+    "@midnightntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/midnight-js-utils": "workspace:*",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.1.0",
     "graphql": "^17.0.1",

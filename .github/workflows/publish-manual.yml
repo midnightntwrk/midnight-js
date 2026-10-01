@@ -34,6 +34,7 @@ jobs:
   publish:
     name: Publish current main
     runs-on: ubuntu-latest
+    environment: npm-publish
     steps:
       - name: Guard - main only
         if: github.ref != 'refs/heads/main'
@@ -58,13 +59,11 @@ jobs:
       # there is no override — bump the version to publish new code.
       - name: Guard - refuse if version already published
         id: guard
-        env:
-          YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
         run: |
           set -euo pipefail
           version=$(jq -r .version package.json)
-          echo "Checking whether @midnight-ntwrk/midnight-js@${version} is already published..."
-          exists=$(yarn npm info "@midnight-ntwrk/midnight-js" --json 2>/dev/null \
+          echo "Checking whether @midnightntwrk/midnight-js@${version} is already published..."
+          exists=$(yarn npm info "@midnightntwrk/midnight-js" --json 2>/dev/null \
             | jq -r --arg v "$version" '.versions | has($v)' 2>/dev/null || echo "false")
           if [ "$exists" = "true" ]; then
             echo "::error::v${version} is already published — refusing to run. Bump the version to publish new code."
@@ -102,15 +101,20 @@ jobs:
           workspace-path: './packages'
 
       - name: Publish packages
-        run: |
-          yarn deploy --filter="./packages/*" --cache-dir ./turbo --concurrency=1
+        run: node .github/scripts/publish-packages.mjs
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          MIDNIGHT_WORKSPACE_GLOB: 'packages'
 
       - name: Bump testkit-js versions
         env:
           VERSION_NUMBER: ${{ steps.guard.outputs.version }}
         run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./packages/*" version "$VERSION_NUMBER"
+
+      - name: Build testkit-js packages
+        run: yarn build:testkit
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Validate testkit-js packages before publishing
         uses: ./.github/actions/validate-packages
@@ -118,11 +122,10 @@ jobs:
           workspace-path: './testkit-js'
 
       - name: Publish testkit-js packages
-        run: |
-          yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo --concurrency=1
+        run: node .github/scripts/publish-packages.mjs
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          MIDNIGHT_WORKSPACE_GLOB: 'testkit-js'
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # ratchet:softprops/action-gh-release@v3.0.2

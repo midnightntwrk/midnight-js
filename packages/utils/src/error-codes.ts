@@ -17,10 +17,10 @@
 // the root barrel re-exports the ledger/compact-js/onchain-runtime/platform
 // namespaces too, and pulling those into every `utils` consumer just to read
 // a handful of error-code strings would be a needless dependency footprint.
-import { PROTOCOL_ERROR_CODES, type ProtocolErrorCode } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { PROTOCOL_ERROR_CODES, type ProtocolErrorCode } from '@midnightntwrk/midnight-js-protocol/errors';
 // Same leaf-subpath reasoning as above: the `types` root barrel pulls `effect`
 // and the protocol ledger namespace, neither of which reading a code needs.
-import { PROVIDER_ERROR_CODES, type ProviderErrorCode } from '@midnight-ntwrk/midnight-js-types/errors';
+import { PROVIDER_ERROR_CODES, type ProviderErrorCode } from '@midnightntwrk/midnight-js-types/errors';
 
 // Declared here, above the package that throws them, because the no-argument
 // `hasErrorCode` needs a COMPLETE registry. That form is called from `contracts`
@@ -50,7 +50,7 @@ export const CONTRACTS_ERROR_CODES = Object.freeze({
 } as const);
 export type ContractsErrorCode = (typeof CONTRACTS_ERROR_CODES)[keyof typeof CONTRACTS_ERROR_CODES];
 
-// Re-exported, not re-declared: the group is owned by `@midnight-ntwrk/midnight-js-types`.
+// Re-exported, not re-declared: the group is owned by `@midnightntwrk/midnight-js-types`.
 // Kept on this module so the published surface of this package is unchanged.
 export { PROVIDER_ERROR_CODES, type ProviderErrorCode };
 

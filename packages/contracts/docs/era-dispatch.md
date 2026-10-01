@@ -346,7 +346,7 @@ The order is load-bearing:
    from the wrong era. The tag-to-era mapping is NOT declared here: it decides
    which era's decoder is handed attacker-supplied bytes, so it lives in exactly
    one place, as `contractStateEnvelopeVersion` in
-   `@midnight-ntwrk/midnight-js-utils`, beside the tag parser it is built on
+   `@midnightntwrk/midnight-js-utils`, beside the tag parser it is built on
    (`packages/protocol/docs/shared-table-discipline.md`).
 2. ERAS are compared, never raw `protocolVersion` integers — a same-era node
    minor bump (2_000_000 to 2_001_000) is not a disagreement and must not be
@@ -372,7 +372,7 @@ window. So it is rethrown wrapped, naming both eras that disagreed.
 v9 arm. The flows in this package only ever send v9 payloads, so a v8 response
 cannot be handled.
 
-Both are distinct from `unwrapV9` in `@midnight-ntwrk/midnight-js-types`, which
+Both are distinct from `unwrapV9` in `@midnightntwrk/midnight-js-types`, which
 guards the INBOUND direction of a v9-only provider. These guard the outbound
 direction: a v8 answer here is a broken provider, not an unsupported request, so
 it reports `EraInvariantViolationError` rather than `V8PayloadUnsupportedError`.
@@ -388,7 +388,7 @@ The table above pairs the ARTIFACT's era with the NETWORK's. A third pairing
 exists and is checked separately: the era an operation runs on against the eras
 the three write seams say they serve.
 
-`assertSeamsSupportEra(era, providers)` from `@midnight-ntwrk/midnight-js-types`
+`assertSeamsSupportEra(era, providers)` from `@midnightntwrk/midnight-js-types`
 reads `supportedEras` off `proofProvider`, `walletProvider` and
 `midnightProvider`, in that order, and refuses with `SeamEraUnsupportedError`
 naming the first that does not list `era`.

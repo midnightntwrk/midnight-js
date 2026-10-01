@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { ContractState, LedgerState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { BlockHash } from '@midnight-ntwrk/midnight-js-types';
+import { getNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import { ContractState, LedgerState } from '@midnightntwrk/midnight-js-protocol/ledger';
+import type { BlockHash } from '@midnightntwrk/midnight-js-types';
 import axios, { type AxiosResponse } from 'axios';
 import type { Logger } from 'pino';
 

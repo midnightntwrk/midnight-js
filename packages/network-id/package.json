@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-network-id",
+  "name": "@midnightntwrk/midnight-js-network-id",
   "version": "5.0.0-rc.3",
   "type": "module",
   "description": "Package for setting the network ID of runtime and ledger WASM API",
@@ -17,8 +17,7 @@
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache",
     "build": "rollup -c rollup.config.mjs",
-    "test": "vitest run --passWithNoTests",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "test": "vitest run --passWithNoTests"
   },
   "files": [
     "dist/"

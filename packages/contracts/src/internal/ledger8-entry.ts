@@ -31,18 +31,18 @@
  * @see {@link Breadcrumbs} for all four readings and what each provenance means.
  */
 
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { getNetworkId } from '@midnightntwrk/midnight-js-network-id';
 import type {
   Ledger8SigningKey,
   LedgerEra
-} from '@midnight-ntwrk/midnight-js-protocol';
+} from '@midnightntwrk/midnight-js-protocol';
 import {
   type LedgerVersion,
   loadLedger8Engine,
   loadLedgerEra,
   UnknownLedgerVersionError
-} from '@midnight-ntwrk/midnight-js-protocol';
-import { Transaction, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnightntwrk/midnight-js-protocol';
+import { Transaction, type UnprovenTransaction } from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   assertSeamsSupportEra,
   type MidnightProvider,
@@ -56,14 +56,14 @@ import {
   type VersionedFinalizedTxData,
   type WalletProvider,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import {
   assertDefined,
   assertIsContractAddress,
   hasErrorCode,
   parseCoinPublicKeyToHex,
   ttlOneHour
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 
 import { RETAINED_PIPELINE_ERA } from '../era';
 import {

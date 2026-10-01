@@ -17,8 +17,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol';
-import type { RawContractState } from '@midnight-ntwrk/midnight-js-types';
+import { protocolVersionToLedger } from '@midnightntwrk/midnight-js-protocol';
+import type { RawContractState } from '@midnightntwrk/midnight-js-types';
 import { vi } from 'vitest';
 
 import type { AnyEraContractStateReadSurface } from '../get-states';

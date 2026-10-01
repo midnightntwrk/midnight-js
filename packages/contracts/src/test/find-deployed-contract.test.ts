@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
-import { UntaggedPayloadError } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { type Contract } from '@midnightntwrk/midnight-js-protocol/compact-js';
+import { ContractOperation } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import type * as midnightJsTypes from '@midnightntwrk/midnight-js-types';
+import { UntaggedPayloadError } from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ContractTypeError, EraInvariantViolationError } from '../errors';
@@ -42,7 +42,7 @@ vi.mock('../governance/tx-interfaces', () => ({
   createContractMaintenanceTxInterface: vi.fn().mockReturnValue({ contractMaintenance: 'mock-contract-maintenance' })
 }));
 
-vi.mock('@midnight-ntwrk/midnight-js-types', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-types', async (importOriginal) => {
   const actual = await importOriginal<typeof midnightJsTypes>();
   return {
     ...actual,

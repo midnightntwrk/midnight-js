@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { fromHex, toHex, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import {
   type KeyMaterialProvider as ZkirKeyMaterialProvider,
   provingProvider as createLocalProvingProvider,
@@ -34,6 +33,7 @@ import type {
   WalletConnectedAPI,
 } from '@midnightntwrk/dapp-connector-api';
 import { ErrorCodes } from '@midnightntwrk/dapp-connector-api';
+import { fromHex, toHex, ttlOneHour } from '@midnightntwrk/midnight-js-utils';
 import type { WalletTransaction } from '@midnightntwrk/wallet-sdk';
 import { DustAddress, MidnightBech32m } from '@midnightntwrk/wallet-sdk/address-format';
 import { type BalancingRecipe } from '@midnightntwrk/wallet-sdk/facade';

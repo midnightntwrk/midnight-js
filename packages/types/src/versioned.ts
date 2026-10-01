@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { FinalizedTransaction as V8Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { FinalizedTransaction as V8Transaction } from '@midnightntwrk/midnight-js-protocol/v8';
+import type { LedgerVersion } from '@midnightntwrk/midnight-js-protocol/version';
 
 import type { FinalizedTxData, FinalizedTxRecord } from './midnight-types';
 
@@ -114,7 +114,7 @@ export interface FinalizedTxDataV8 extends FinalizedTxRecord {
 export type VersionedFinalizedTxData = FinalizedTxDataV8 | FinalizedTxData;
 
 // Compile-time-only bridge to the era vocabulary in
-// `@midnight-ntwrk/midnight-js-protocol`, which owns the mapping from a raw
+// `@midnightntwrk/midnight-js-protocol`, which owns the mapping from a raw
 // `protocolVersion` to an era. These four assertions keep the discriminant set
 // here and `LedgerVersion` there as one fact: if either side gains an era the
 // other lacks, the difference is non-empty and `Assert` fails to satisfy its

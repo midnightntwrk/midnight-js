@@ -147,7 +147,7 @@ const readDistExports = (): string[] => {
 
 describe('Contracts value ACL', () => {
   /**
-   * @given the built bundle of `@midnight-ntwrk/midnight-js-contracts`
+   * @given the built bundle of `@midnightntwrk/midnight-js-contracts`
    * @when its export statements are reduced to exported names
    * @then they equal the pinned set exactly, so neither a dropped export nor a
    *       leaked one goes unnoticed

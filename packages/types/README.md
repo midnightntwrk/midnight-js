@@ -5,7 +5,7 @@ Shared data types, interfaces, and provider contracts for all Midnight.js module
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-types
+yarn add @midnightntwrk/midnight-js-types
 ```
 
 ## Quick Start
@@ -18,7 +18,7 @@ import {
   SucceedEntirely,
   FailFallible,
   FailEntirely
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 ```
 
 ## Provider Interfaces
@@ -100,7 +100,7 @@ Narrow with `unwrapV9`, which reports a coded error instead of letting a bare
 `TypeError` surface from inside a WASM call:
 
 ```typescript
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { unwrapV9 } from '@midnightntwrk/midnight-js-types';
 
 const provenTx = unwrapV9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
 ```
@@ -114,7 +114,7 @@ v8 arm carries `tx` rather than `txBytes` — narrow that one with
 implementation rather than tagging by hand:
 
 ```typescript
-import { createMidnightProvider, createWalletProvider } from '@midnight-ntwrk/midnight-js-types';
+import { createMidnightProvider, createWalletProvider } from '@midnightntwrk/midnight-js-types';
 
 const walletProvider = createWalletProvider({
   balanceTx: (tx, ttl) => wallet.balanceAndProveTransaction(tx, ttl),
@@ -148,7 +148,7 @@ era you did not supply are all handled for you, and `supportedEras` is computed
 from the handlers, so it cannot disagree with what the provider does:
 
 ```typescript
-import { createProofProviderFromHandlers } from '@midnight-ntwrk/midnight-js-types';
+import { createProofProviderFromHandlers } from '@midnightntwrk/midnight-js-types';
 
 const proofProvider = createProofProviderFromHandlers({
   currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
@@ -248,7 +248,7 @@ import {
   ExportDecryptionError,
   InvalidExportFormatError,
   ImportConflictError
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 ```
 
 ## Exports
@@ -358,7 +358,7 @@ import {
 
   // Re-exports
   Transaction
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 ```
 
 ## Architecture Documents

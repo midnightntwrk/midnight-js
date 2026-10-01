@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import type { FinalizedTxData } from '@midnightntwrk/midnight-js-types';
 
 import { TxFailedError } from '../errors';
 

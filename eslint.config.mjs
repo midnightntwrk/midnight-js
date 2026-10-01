@@ -29,7 +29,7 @@ const unsafeCastSelectors = [
 // `loadLedger8()` may reach it at runtime, so no consumer can grow a direct v8
 // dependency that pulls that WASM into an eagerly-loaded module graph.
 const V8_RUNTIME_MESSAGE =
-  'Runtime v8 access only via loadLedger8() from @midnight-ntwrk/midnight-js-protocol.';
+  'Runtime v8 access only via loadLedger8() from @midnightntwrk/midnight-js-protocol.';
 
 // Blocks dynamic `import(...)` of protocol/v8 (and any subpath under it) in
 // both of its statically matchable forms: a plain string literal, and a
@@ -38,12 +38,12 @@ const V8_RUNTIME_MESSAGE =
 // interpolation cannot be matched statically and is not covered here.
 const v8DynamicImportSelectors = [
   {
-    selector: "ImportExpression > Literal[value=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(\\/|$)/]",
+    selector: "ImportExpression > Literal[value=/^@midnightntwrk\\/midnight-js-protocol\\/v8(\\/|$)/]",
     message: `${V8_RUNTIME_MESSAGE} Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.`
   },
   {
     selector:
-      "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(\\/|$)/]",
+      "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnightntwrk\\/midnight-js-protocol\\/v8(\\/|$)/]",
     message: `${V8_RUNTIME_MESSAGE} Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.`
   }
 ];
@@ -51,16 +51,16 @@ const v8DynamicImportSelectors = [
 // The engine's heavy chunk is reachable only through loadLedger8Engine(); the
 // gate mirrors the v8 pair above, on the `./engine` subpath.
 const ENGINE_RUNTIME_MESSAGE =
-  'Runtime engine access only via loadLedger8Engine() from @midnight-ntwrk/midnight-js-protocol.';
+  'Runtime engine access only via loadLedger8Engine() from @midnightntwrk/midnight-js-protocol.';
 
 const engineDynamicImportSelectors = [
   {
-    selector: "ImportExpression > Literal[value=/^@midnight-ntwrk\\/midnight-js-protocol\\/engine(\\/|$)/]",
+    selector: "ImportExpression > Literal[value=/^@midnightntwrk\\/midnight-js-protocol\\/engine(\\/|$)/]",
     message: `${ENGINE_RUNTIME_MESSAGE} Dynamic imports of protocol/engine are not allowed outside packages/protocol/src/.`
   },
   {
     selector:
-      "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnight-ntwrk\\/midnight-js-protocol\\/engine(\\/|$)/]",
+      "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnightntwrk\\/midnight-js-protocol\\/engine(\\/|$)/]",
     message: `${ENGINE_RUNTIME_MESSAGE} Dynamic imports of protocol/engine are not allowed outside packages/protocol/src/.`
   }
 ];
@@ -90,32 +90,32 @@ const protocolImportPatterns = [
   {
     group: ['@midnight-ntwrk/ledger-v*', '@midnightntwrk/ledger-v*'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/ledger instead. Only packages/protocol/src/ may import from ledger directly.'
+      'Import from @midnightntwrk/midnight-js-protocol/ledger instead. Only packages/protocol/src/ may import from ledger directly.'
   },
   {
     group: ['@midnight-ntwrk/compact-runtime'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/compact-runtime instead. Only packages/protocol/src/ may import from compact-runtime directly.'
+      'Import from @midnightntwrk/midnight-js-protocol/compact-runtime instead. Only packages/protocol/src/ may import from compact-runtime directly.'
   },
   {
     group: ['@midnight-ntwrk/compact-js', '@midnight-ntwrk/compact-js/*'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
+      'Import from @midnightntwrk/midnight-js-protocol/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
   },
   {
     group: ['@midnight-ntwrk/onchain-runtime-v*', '@midnightntwrk/onchain-runtime-v*'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/onchain-runtime instead. Only packages/protocol/src/ may import from onchain-runtime directly.'
+      'Import from @midnightntwrk/midnight-js-protocol/onchain-runtime instead. Only packages/protocol/src/ may import from onchain-runtime directly.'
   },
   {
     group: ['@midnight-ntwrk/platform-js', '@midnight-ntwrk/platform-js/*'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/platform-js instead. Only packages/protocol/src/ may import from platform-js directly.'
+      'Import from @midnightntwrk/midnight-js-protocol/platform-js instead. Only packages/protocol/src/ may import from platform-js directly.'
   },
   {
     group: ['compact-runtime-ledger8'],
     message:
-      'The retained pre-fork compact-runtime@0.16 glue is a packages/protocol/src/ implementation detail. Use loadLedger8Engine() from @midnight-ntwrk/midnight-js-protocol instead.'
+      'The retained pre-fork compact-runtime@0.16 glue is a packages/protocol/src/ implementation detail. Use loadLedger8Engine() from @midnightntwrk/midnight-js-protocol instead.'
   }
 ];
 
@@ -299,14 +299,14 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['@midnight-ntwrk/midnight-js-protocol/v8', '@midnight-ntwrk/midnight-js-protocol/v8/*'],
+              group: ['@midnightntwrk/midnight-js-protocol/v8', '@midnightntwrk/midnight-js-protocol/v8/*'],
               allowTypeImports: true,
               message: `${V8_RUNTIME_MESSAGE} Type-only imports are allowed.`
             },
             {
               group: [
-                '@midnight-ntwrk/midnight-js-protocol/engine',
-                '@midnight-ntwrk/midnight-js-protocol/engine/*'
+                '@midnightntwrk/midnight-js-protocol/engine',
+                '@midnightntwrk/midnight-js-protocol/engine/*'
               ],
               allowTypeImports: true,
               message: `${ENGINE_RUNTIME_MESSAGE} Type-only imports are allowed.`

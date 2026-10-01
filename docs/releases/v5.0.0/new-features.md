@@ -7,7 +7,7 @@ v5.0.0 can assemble, prove, and submit **cross-contract calls** — a single tra
 Because one such transaction needs artifacts for every contract in the tree, proving is driven by a `ZKConfigRegistry` that resolves artifacts across a *set* of compiled-contract sources — the per-contract `ZKConfigProvider`s the application already builds:
 
 ```ts
-import { ZKConfigRegistry } from '@midnight-ntwrk/midnight-js-types';
+import { ZKConfigRegistry } from '@midnightntwrk/midnight-js-types';
 
 // One source per compiled contract the app can call (its own + call targets).
 const registry = new ZKConfigRegistry([myContractZkConfig, tokenContractZkConfig]);
@@ -15,12 +15,12 @@ const registry = new ZKConfigRegistry([myContractZkConfig, tokenContractZkConfig
 
 - **No address registration.** The binding from a call to its artifacts is *derived* by joining on the verifier key: each key location embeds the SHA-256 of the call's deployed verifier key (known at assembly from the contract's resolved on-chain state), and resolution selects the source whose local verifier key for that circuit matches. The join is exactly the predicate the chain enforces (a proof must verify against the deployed key), so it is immune to redeploys, multiple deployments of one contract, and circuit-name collisions across contracts. Resolutions are memoized.
 - `resolveKeyLocation()` returns `undefined` for non-contract key locations (e.g. a `midnight/` protocol builtin) and throws `ZKArtifactNotFoundError` when a contract location's embedded hash matches no source.
-- The canonical grammar — `contract:<address-hex>/<circuitId>?vk=<sha-256 of the deployed verifier key>` — is defined once upstream in `@midnight-ntwrk/compact-js` and re-exported via `@midnight-ntwrk/midnight-js-protocol/compact-js` (`ContractKeyLocation`, `encodeContractKeyLocation`, `parseContractKeyLocation`, `hashVerifierKey`).
+- The canonical grammar — `contract:<address-hex>/<circuitId>?vk=<sha-256 of the deployed verifier key>` — is defined once upstream in `@midnight-ntwrk/compact-js` and re-exported via `@midnightntwrk/midnight-js-protocol/compact-js` (`ContractKeyLocation`, `encodeContractKeyLocation`, `parseContractKeyLocation`, `hashVerifierKey`).
 
 Cross-contract call assembly resolves on-chain state at a chosen block via the new **"as-of" endpoint** on `PublicDataProvider`:
 
 ```ts
-import type { BlockInfo } from '@midnight-ntwrk/midnight-js-types';
+import type { BlockInfo } from '@midnightntwrk/midnight-js-types';
 
 const latest: BlockInfo | null = await publicDataProvider.queryBlock();                        // latest block
 const at = await publicDataProvider.queryBlock({ type: 'blockHeight', blockHeight: 12_345 });  // by height
@@ -36,7 +36,7 @@ The `PublicDataProvider` can now read and stream decoded on-chain **contract eve
 ### Querying (point-in-time, paged)
 
 ```ts
-import type { ContractEvent, ContractEventQueryFilter } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractEvent, ContractEventQueryFilter } from '@midnightntwrk/midnight-js-types';
 
 const filter: ContractEventQueryFilter = {
   contractAddress,
@@ -55,7 +55,7 @@ const events: ContractEvent[] = await publicDataProvider.queryContractEvents(
 ### Iterating every matching event
 
 ```ts
-import { getAllContractEvents } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { getAllContractEvents } from '@midnightntwrk/midnight-js-indexer-public-data-provider';
 
 for await (const event of getAllContractEvents(publicDataProvider, filter)) {
   handle(event);
@@ -65,7 +65,7 @@ for await (const event of getAllContractEvents(publicDataProvider, filter)) {
 ### Streaming (replay-from-cursor, then live tail)
 
 ```ts
-import type { ContractEventCursor, ContractEventSubscriptionFilter } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractEventCursor, ContractEventSubscriptionFilter } from '@midnightntwrk/midnight-js-types';
 
 const cursor: ContractEventCursor = { fromBlock: 100 }; // or { fromId: 42 } — fromId xor fromBlock, both numbers
 const subscription: ContractEventSubscriptionFilter = { contractAddress /*, toBlock */ };
@@ -124,7 +124,7 @@ interface CallResultPublic {
 Events are carried **raw** (no eager decode). Decode them with the `ContractLog` helper, re-exported from `compact-js` through the `midnight-js` barrel — so you never take a direct dependency on `compact-js`:
 
 ```ts
-import { contracts } from '@midnight-ntwrk/midnight-js';
+import { contracts } from '@midnightntwrk/midnight-js';
 
 const result = await callTx(/* ... */);
 
@@ -143,7 +143,7 @@ The provider layer moves toward a uniform `provider(options)` convention: wire a
 `httpClientProofProvider` gains an object-options form with a flattened config:
 
 ```ts
-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
 
 // new — preferred
 const proofProvider = httpClientProofProvider({
@@ -160,8 +160,8 @@ const legacy = httpClientProofProvider('https://proof-server.example', zkConfigP
 The ZK-config providers gain thin factory functions alongside the existing classes (the classes stay exported for subclassing/composition):
 
 ```ts
-import { nodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
-import { fetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
+import { nodeZkConfigProvider } from '@midnightntwrk/midnight-js-node-zk-config-provider';
+import { fetchZkConfigProvider } from '@midnightntwrk/midnight-js-fetch-zk-config-provider';
 
 const zkNode = nodeZkConfigProvider(options);
 const zkFetch = fetchZkConfigProvider(options);
@@ -179,7 +179,7 @@ Phase 2 of #808 (closes #820). The indexer provider gains a structured configura
 import {
   indexerPublicDataProvider,
   IndexerPublicDataProvider,
-} from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+} from '@midnightntwrk/midnight-js-indexer-public-data-provider';
 
 // Preferred: object-config form. Returns the concrete IndexerPublicDataProvider.
 const provider: IndexerPublicDataProvider = indexerPublicDataProvider({
@@ -201,13 +201,13 @@ await provider.dispose(); // releases the underlying graphql-ws WebSocket
 
 ## Classified deserialization / versioning errors (#955)
 
-Foundation for issue #816. A new `deserialization` module in `@midnight-ntwrk/midnight-js-utils` converts cryptic ledger/runtime deserialization failures into structured, classified errors.
+Foundation for issue #816. A new `deserialization` module in `@midnightntwrk/midnight-js-utils` converts cryptic ledger/runtime deserialization failures into structured, classified errors.
 
 ```ts
 import {
   deserializeContractState,
   isDeserializationError,
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 
 try {
   const state = deserializeContractState(bytes);
@@ -228,10 +228,10 @@ try {
 
 ## ZK artifact integrity verification (#1015)
 
-`FetchZkConfigProvider` and `NodeZkConfigProvider` now verify every ZK artifact they load against the `compactc`-emitted integrity manifest (`compiler/contract-manifest.json`). A new `zk-artifact-manifest` module in `@midnight-ntwrk/midnight-js-utils` parses the manifest and drives the check.
+`FetchZkConfigProvider` and `NodeZkConfigProvider` now verify every ZK artifact they load against the `compactc`-emitted integrity manifest (`compiler/contract-manifest.json`). A new `zk-artifact-manifest` module in `@midnightntwrk/midnight-js-utils` parses the manifest and drives the check.
 
 ```ts
-import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+import { NodeZkConfigProvider } from '@midnightntwrk/midnight-js-node-zk-config-provider';
 
 // Default: fail-closed. A missing manifest or a digest mismatch throws ZkArtifactIntegrityError.
 const provider = new NodeZkConfigProvider(baseDir);
@@ -244,7 +244,7 @@ const lenient = new NodeZkConfigProvider(baseDir, {
 });
 ```
 
-Exports from `@midnight-ntwrk/midnight-js-utils`: `ZkArtifactManifest`, `ZkArtifactManifestFile`, `ZkConfigIntegrityOptions`, `ZkArtifactIntegrityMode`, `ZkArtifactIntegrityError`, and the `ZK_MANIFEST_DIR` / `ZK_MANIFEST_FILE_NAME` constants. See [breaking-changes.md](./breaking-changes.md) for the fail-closed default.
+Exports from `@midnightntwrk/midnight-js-utils`: `ZkArtifactManifest`, `ZkArtifactManifestFile`, `ZkConfigIntegrityOptions`, `ZkArtifactIntegrityMode`, `ZkArtifactIntegrityError`, and the `ZK_MANIFEST_DIR` / `ZK_MANIFEST_FILE_NAME` constants. See [breaking-changes.md](./breaking-changes.md) for the fail-closed default.
 
 ---
 

@@ -13,20 +13,20 @@
  * limitations under the License.
  */
 
-import type { Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
-import { type CompiledContract, type Contract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { Ledger8SigningKey } from '@midnightntwrk/midnight-js-protocol';
+import { type CompiledContract, type Contract, ContractExecutable } from '@midnightntwrk/midnight-js-protocol/compact-js';
 import {
   type ContractAddress,
   type ContractState,
   sampleSigningKey,
   type SigningKey
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import {
   type AnyProvableCircuitId,
   type PrivateStateId,
   type PrivateStateProvider,
-  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, toHex } from '@midnight-ntwrk/midnight-js-utils';
+  type VerifierKey} from '@midnightntwrk/midnight-js-types';
+import { assertDefined, assertIsContractAddress, toHex } from '@midnightntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
 import { CURRENT_PIPELINE_ERA, type CurrentPipelineEra, RETAINED_PIPELINE_ERA } from './era';

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import type { LedgerVersion } from '@midnightntwrk/midnight-js-protocol';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { PipelineEra } from '../../era';

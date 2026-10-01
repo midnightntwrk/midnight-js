@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type Contract } from '@midnightntwrk/midnight-js-protocol/compact-js';
+import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import { type UnprovenTransaction } from '@midnightntwrk/midnight-js-protocol/ledger';
 import type {
   FinalizedTxData,
   SubmittedCallTxBase,
   UnsubmittedTxDataBase
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 
 import type { CallResult, CallResultPrivate, CallResultPublic } from './call';
 import type { CurrentPipelineEra } from './era';

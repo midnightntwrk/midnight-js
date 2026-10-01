@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { type Contract } from '@midnightntwrk/midnight-js-protocol/compact-js';
+import { SucceedEntirely } from '@midnightntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
 import { CURRENT_PIPELINE_ERA } from './era';

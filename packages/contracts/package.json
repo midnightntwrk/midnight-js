@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-contracts",
+  "name": "@midnightntwrk/midnight-js-contracts",
   "version": "5.0.0-rc.3",
   "type": "module",
   "description": "MidnightJS module for interacting with contracts",
@@ -21,14 +21,13 @@
     "compact-shielded": "run-compactc src/test/resources/shielded-map.compact ./src/test/resources/compiled/shielded-map",
     "build": "rollup -c rollup.config.mjs",
     "test": "vitest run",
-    "test-no-utils": "vitest run --exclude src/test/*.test.ts",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "test-no-utils": "vitest run --exclude src/test/*.test.ts"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
-    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
+    "@midnightntwrk/midnight-js-network-id": "workspace:*",
+    "@midnightntwrk/midnight-js-protocol": "workspace:*",
+    "@midnightntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/midnight-js-utils": "workspace:*",
     "effect": "^3.22.1"
   },
   "files": [
@@ -36,7 +35,7 @@
   ],
   "devDependencies": {
     "@fast-check/vitest": "^0.4.1",
-    "@midnight-ntwrk/midnight-js-compact": "workspace:*",
+    "@midnightntwrk/midnight-js-compact": "workspace:*",
     "rollup": "^4.60.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7"

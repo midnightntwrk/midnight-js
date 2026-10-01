@@ -5,13 +5,13 @@ Public data provider implementation based on the Midnight Pub-sub Indexer. Provi
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-indexer-public-data-provider
+yarn add @midnightntwrk/midnight-js-indexer-public-data-provider
 ```
 
 ## Quick Start
 
 ```typescript
-import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { indexerPublicDataProvider } from '@midnightntwrk/midnight-js-indexer-public-data-provider';
 
 const provider = indexerPublicDataProvider(
   'https://indexer.example.com/graphql',     // Query URL (HTTP/HTTPS)
@@ -144,11 +144,11 @@ the only way to read it.
 #### Reading a contract that may predate the fork
 
 Use `getAnyEraContractState` from
-`@midnight-ntwrk/midnight-js-contracts`. It reads the era off the envelope,
+`@midnightntwrk/midnight-js-contracts`. It reads the era off the envelope,
 decodes with that era's runtime, and hands back plain data:
 
 ```typescript
-import { getAnyEraContractState } from '@midnight-ntwrk/midnight-js-contracts';
+import { getAnyEraContractState } from '@midnightntwrk/midnight-js-contracts';
 // From YOUR OWN generated contract module, not from the framework — which is why
 // `read.state` is plain data rather than a handle.
 import { Counter, StateValue } from './managed/counter/contract/index.cjs';
@@ -179,7 +179,7 @@ Two things that look interchangeable and are not:
 
 If you would rather decode the bytes yourself, `queryRawContractState` still
 serves them untouched — pair it with `contractStateEnvelopeVersion` from
-`@midnight-ntwrk/midnight-js-utils` to read the envelope's era, never with the
+`@midnightntwrk/midnight-js-utils` to read the envelope's era, never with the
 record's own `version`. `rawContractStateObservable` serves the same record
 type as a stream (without `ledgerParameters`), and the same caution applies to
 it.
@@ -202,10 +202,10 @@ what keeps a wrong-era payload away from the decoder either way.
 Contract events carry the same dating: every `ContractEvent` has a
 `protocolVersion`, so a consumer decoding the opaque `raw` payload can tell
 which runtime wrote it. Resolve it with `versionOfRecord` from
-`@midnight-ntwrk/midnight-js-protocol`:
+`@midnightntwrk/midnight-js-protocol`:
 
 ```typescript
-import { versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
+import { versionOfRecord } from '@midnightntwrk/midnight-js-protocol';
 
 const era = versionOfRecord(event); // 'v8' | 'v9'
 ```
@@ -288,7 +288,7 @@ contract action becomes.
 and narrows the same way, so one `switch (record.version)` serves both:
 
 ```typescript
-import { assertNever } from '@midnight-ntwrk/midnight-js-utils';
+import { assertNever } from '@midnightntwrk/midnight-js-utils';
 
 provider.rawContractStateObservable(contractAddress).subscribe((record) => {
   switch (record.version) {
@@ -392,7 +392,7 @@ custom payload arrives with the future compact-js decoder.
 ### Example — watch my contract's events with resumption
 
 ```typescript
-import { getAllContractEvents } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { getAllContractEvents } from '@midnightntwrk/midnight-js-indexer-public-data-provider';
 
 // Tail live events, resuming after the last event the app persisted.
 const sub = provider
@@ -483,7 +483,7 @@ import {
   toUnshieldedUtxos,
   toUnshieldedBalances,
   type IndexerUtxo
-} from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+} from '@midnightntwrk/midnight-js-indexer-public-data-provider';
 ```
 
 ## Architecture Documents

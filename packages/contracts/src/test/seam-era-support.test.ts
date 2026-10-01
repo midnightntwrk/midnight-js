@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type * as Protocol from '@midnightntwrk/midnight-js-protocol';
+import type { LedgerVersion } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   SeamEraUnsupportedError,
   V8PayloadUnsupportedError
-} from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { acquireLedger8Runtime, type Ledger8RuntimeProviders } from '../internal/ledger8-entry';
@@ -32,7 +32,7 @@ import { createMockProviders, createMockUnprovenTx } from './test-mocks';
 // every era name on the genuine timeline.
 const ENGINE_STAND_IN = vi.hoisted((): Record<string, never> => ({}));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return { ...actual, loadLedger8Engine: (): Promise<unknown> => Promise.resolve(ENGINE_STAND_IN) };
 });

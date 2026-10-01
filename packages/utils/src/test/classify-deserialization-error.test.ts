@@ -21,19 +21,19 @@ import type { DeserializationCallSite, SourceLibrary } from '../deserialization/
 const ledgerCallSite: DeserializationCallSite = {
   dataType: 'ContractState',
   source: 'ledger',
-  caller: '@midnight-ntwrk/midnight-js-indexer-public-data-provider:queryContractState'
+  caller: '@midnightntwrk/midnight-js-indexer-public-data-provider:queryContractState'
 };
 
 const compactCallSite: DeserializationCallSite = {
   dataType: 'ContractState',
   source: 'compact-runtime',
-  caller: '@midnight-ntwrk/midnight-js-contracts:fromLedgerContractState'
+  caller: '@midnightntwrk/midnight-js-contracts:fromLedgerContractState'
 };
 
 const onchainCallSite: DeserializationCallSite = {
   dataType: 'StateValue',
   source: 'onchain-runtime',
-  caller: '@midnight-ntwrk/midnight-js-contracts:toLedgerQueryContext'
+  caller: '@midnightntwrk/midnight-js-contracts:toLedgerQueryContext'
 };
 
 describe('classify — Pattern #1 (tag mismatch with two-stage match)', () => {

@@ -50,8 +50,8 @@ export type Seam = ProviderSeam | ReadSeam;
  * Declared in this package because this is where the payload union the seam codes
  * refuse is defined, and where the classes for three of them live; two others
  * come from
- * `@midnight-ntwrk/midnight-js-indexer-public-data-provider`, which depends on
- * this package. `@midnight-ntwrk/midnight-js-utils` re-exports the group and
+ * `@midnightntwrk/midnight-js-indexer-public-data-provider`, which depends on
+ * this package. `@midnightntwrk/midnight-js-utils` re-exports the group and
  * folds it into the registry `hasErrorCode` consults.
  */
 export const PROVIDER_ERROR_CODES = Object.freeze({
@@ -82,7 +82,7 @@ const { V8_PAYLOAD_UNSUPPORTED, UNTAGGED_PAYLOAD, SEAM_ERA_UNSUPPORTED, PRIVATE_
  * for the lifting adapters, contingently for a concrete provider.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from
- * `@midnight-ntwrk/midnight-js-utils`.
+ * `@midnightntwrk/midnight-js-utils`.
  *
  * @see {@link SeamEraDeclarations} for which providers raise it and why, and for
  * how it differs from {@link SeamEraUnsupportedError}.
@@ -208,7 +208,7 @@ export class UntaggedPayloadError extends Error {
  *   wrong.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from
- * `@midnight-ntwrk/midnight-js-utils`.
+ * `@midnightntwrk/midnight-js-utils`.
  */
 export class SeamEraUnsupportedError extends Error {
   readonly code = SEAM_ERA_UNSUPPORTED;

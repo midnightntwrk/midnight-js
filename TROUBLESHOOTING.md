@@ -276,7 +276,7 @@ yarn build
 **Solution:**
 ```bash
 # Build with dependencies
-yarn turbo run build --filter=@midnight-ntwrk/midnight-js-<package>...
+yarn turbo run build --filter=@midnightntwrk/midnight-js-<package>...
 ```
 
 ### Type Errors: `Property 'X' does not exist`
@@ -324,7 +324,7 @@ docker compose ps
 ## Midnight.js error codes
 
 Every error midnight-js raises with a stable `code` is listed here. Discriminate on
-one with `hasErrorCode(error, code)` from `@midnight-ntwrk/midnight-js-utils`; the
+one with `hasErrorCode(error, code)` from `@midnightntwrk/midnight-js-utils`; the
 one-argument form answers "is this one of ours" and returns `false` for a foreign
 coded error such as Node's `ECONNREFUSED`.
 

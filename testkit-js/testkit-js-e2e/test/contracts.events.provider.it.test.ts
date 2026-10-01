@@ -18,8 +18,8 @@ import {
   type ContractEventCursor,
   type ContractEventQueryFilter,
   type FinalizedTxData
-} from '@midnight-ntwrk/midnight-js-types';
-import { createLogger } from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/midnight-js-types';
+import { createLogger } from '@midnightntwrk/testkit-js';
 import path from 'path';
 import * as Rx from 'rxjs';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';

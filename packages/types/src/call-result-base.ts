@@ -29,8 +29,8 @@ import type {
   AlignedValue,
   Op,
   ZswapLocalState
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnightntwrk/midnight-js-protocol/ledger';
 
 /**
  * The public, non-sensitive half of a circuit execution that every era carries.

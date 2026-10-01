@@ -12,19 +12,19 @@ TypeScript application development framework for the Midnight blockchain. Simila
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js
+yarn add @midnightntwrk/midnight-js
 ```
 
 ## Quick Start
 
 ```typescript
-import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+import { deployContract } from '@midnightntwrk/midnight-js-contracts';
+import { levelPrivateStateProvider } from '@midnightntwrk/midnight-js-level-private-state-provider';
+import { indexerPublicDataProvider } from '@midnightntwrk/midnight-js-indexer-public-data-provider';
+import { httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
+import { FetchZkConfigProvider } from '@midnightntwrk/midnight-js-fetch-zk-config-provider';
+import { setNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import type { MidnightProviders } from '@midnightntwrk/midnight-js-types';
 
 // Set network
 setNetworkId('testnet');
@@ -78,20 +78,20 @@ const result = await deployed.callTx.increment();
 
 | Package | Description |
 | ------- | ----------- |
-| [@midnight-ntwrk/midnight-js](packages/midnight-js) | Barrel package for Midnight.js core framework |
-| [@midnight-ntwrk/midnight-js-types](packages/types) | Shared types, interfaces, and provider contracts |
-| [@midnight-ntwrk/midnight-js-contracts](packages/contracts) | Contract deployment and interaction utilities |
-| [@midnight-ntwrk/midnight-js-dapp-connector-proof-provider](packages/dapp-connector-proof-provider) | Proof provider delegating to DApp Connector wallet |
-| [@midnight-ntwrk/midnight-js-indexer-public-data-provider](packages/indexer-public-data-provider) | GraphQL-based blockchain data provider |
-| [@midnight-ntwrk/midnight-js-level-private-state-provider](packages/level-private-state-provider) | Encrypted LevelDB private state storage |
-| [@midnight-ntwrk/midnight-js-http-client-proof-provider](packages/http-client-proof-provider) | HTTP client for proof server |
-| [@midnight-ntwrk/midnight-js-fetch-zk-config-provider](packages/fetch-zk-config-provider) | Browser-based ZK artifact retrieval |
-| [@midnight-ntwrk/midnight-js-node-zk-config-provider](packages/node-zk-config-provider) | Node.js filesystem-based ZK artifact retrieval |
-| [@midnight-ntwrk/midnight-js-network-id](packages/network-id) | Network identifier management |
-| [@midnight-ntwrk/midnight-js-logger-provider](packages/logger-provider) | Pino logger wrapper for diagnostics |
-| [@midnight-ntwrk/midnight-js-compact](packages/compact) | Compact compiler manager |
-| [@midnight-ntwrk/midnight-js-protocol](packages/protocol) | Version-agnostic re-exports of Midnight protocol packages |
-| [@midnight-ntwrk/midnight-js-utils](packages/utils) | General utility functions |
+| [@midnightntwrk/midnight-js](packages/midnight-js) | Barrel package for Midnight.js core framework |
+| [@midnightntwrk/midnight-js-types](packages/types) | Shared types, interfaces, and provider contracts |
+| [@midnightntwrk/midnight-js-contracts](packages/contracts) | Contract deployment and interaction utilities |
+| [@midnightntwrk/midnight-js-dapp-connector-proof-provider](packages/dapp-connector-proof-provider) | Proof provider delegating to DApp Connector wallet |
+| [@midnightntwrk/midnight-js-indexer-public-data-provider](packages/indexer-public-data-provider) | GraphQL-based blockchain data provider |
+| [@midnightntwrk/midnight-js-level-private-state-provider](packages/level-private-state-provider) | Encrypted LevelDB private state storage |
+| [@midnightntwrk/midnight-js-http-client-proof-provider](packages/http-client-proof-provider) | HTTP client for proof server |
+| [@midnightntwrk/midnight-js-fetch-zk-config-provider](packages/fetch-zk-config-provider) | Browser-based ZK artifact retrieval |
+| [@midnightntwrk/midnight-js-node-zk-config-provider](packages/node-zk-config-provider) | Node.js filesystem-based ZK artifact retrieval |
+| [@midnightntwrk/midnight-js-network-id](packages/network-id) | Network identifier management |
+| [@midnightntwrk/midnight-js-logger-provider](packages/logger-provider) | Pino logger wrapper for diagnostics |
+| [@midnightntwrk/midnight-js-compact](packages/compact) | Compact compiler manager |
+| [@midnightntwrk/midnight-js-protocol](packages/protocol) | Version-agnostic re-exports of Midnight protocol packages |
+| [@midnightntwrk/midnight-js-utils](packages/utils) | General utility functions |
 
 ## Architecture
 
@@ -101,11 +101,11 @@ const result = await deployed.callTx.increment();
 
 | Element | Package |
 | ------- | ------- |
-| Contracts | @midnight-ntwrk/midnight-js-contracts |
-| PublicDataProvider | @midnight-ntwrk/midnight-js-indexer-public-data-provider |
-| PrivateStateProvider | @midnight-ntwrk/midnight-js-level-private-state-provider |
-| ProofProvider | @midnight-ntwrk/midnight-js-http-client-proof-provider or @midnight-ntwrk/midnight-js-dapp-connector-proof-provider |
-| ZKConfigProvider | @midnight-ntwrk/midnight-js-fetch-zk-config-provider |
+| Contracts | @midnightntwrk/midnight-js-contracts |
+| PublicDataProvider | @midnightntwrk/midnight-js-indexer-public-data-provider |
+| PrivateStateProvider | @midnightntwrk/midnight-js-level-private-state-provider |
+| ProofProvider | @midnightntwrk/midnight-js-http-client-proof-provider or @midnightntwrk/midnight-js-dapp-connector-proof-provider |
+| ZKConfigProvider | @midnightntwrk/midnight-js-fetch-zk-config-provider |
 | DappConnector | @midnight-ntwrk/dapp-connector-api |
 | Wallet | @midnight-ntwrk/wallet |
 | Ledger | @midnight-ntwrk/ledger |
@@ -118,7 +118,7 @@ const result = await deployed.callTx.increment();
 
 ## Providers
 
-Midnight.js uses a provider pattern for modularity. Each provider implements an interface from `@midnight-ntwrk/midnight-js-types`:
+Midnight.js uses a provider pattern for modularity. Each provider implements an interface from `@midnightntwrk/midnight-js-types`:
 
 ```typescript
 interface MidnightProviders {
@@ -210,8 +210,6 @@ yarn lint:fix
 | Script | Description |
 | ------ | ----------- |
 | `yarn changelog` | Generate/update `CHANGELOG.md` |
-| `yarn deploy` | Publish all packages |
-| `yarn deploy:core` | Publish core packages (excludes testkit) |
 | `yarn build:markdown-docs` | Generate API docs via TypeDoc |
 
 ### Further Reading
@@ -265,7 +263,7 @@ New functionality must include unit and integration tests (TDD — tests first).
 #### Modularity
 
 - Allows custom implementations of API clients via the "provider" pattern
-- Collects commonly used types in `@midnight-ntwrk/midnight-js-types` to standardize across applications
+- Collects commonly used types in `@midnightntwrk/midnight-js-types` to standardize across applications
 
 #### Interoperability
 
@@ -306,7 +304,7 @@ If the Compact source includes `witness` declarations, the `Witnesses` type is a
 
 ### Architecture Details
 
-The `Contracts` element contains utilities for creating and submitting transactions. All clients are concrete instances of provider interfaces defined in `@midnight-ntwrk/midnight-js-types`.
+The `Contracts` element contains utilities for creating and submitting transactions. All clients are concrete instances of provider interfaces defined in `@midnightntwrk/midnight-js-types`.
 
 Key relationships:
 - `Ledger` and `Compact Runtime` both depend on `Impact VM` (on-chain runtime)

@@ -32,13 +32,13 @@ Before using the testing library, ensure you have the following prerequisites:
 
 Install the testing library by running the following command in your terminal:
 ```
-yarn add -D @midnight-ntwrk/testkit-js
+yarn add -D @midnightntwrk/testkit-js
 ```
 
 ## Getting Started
 To use the testing library, create a new file called `midnight.test.js` in the `__tests__` directory of your project. In this file, import the necessary dependencies:
 ```typescript
-import { getTestEnvironment } from '@midnight-ntwrk/testkit-js';
+import { getTestEnvironment } from '@midnightntwrk/testkit-js';
 
 beforeAll(async () => {
   testEnvironment = getTestEnvironment(logger);
@@ -307,7 +307,7 @@ Controls the proof server container used in both standalone and remote environme
 import {
   defaultContainersConfiguration,
   setContainersConfiguration
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 
 setContainersConfiguration({
   ...defaultContainersConfiguration,
@@ -331,7 +331,7 @@ import { Wait } from 'testcontainers';
 import {
   defaultContainersConfiguration,
   setContainersConfiguration
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 
 setContainersConfiguration({
   ...defaultContainersConfiguration,
@@ -365,7 +365,7 @@ The testkit uses [pino](https://github.com/pinojs/pino) with pretty-printing. Lo
 import {
   defaultContainersConfiguration,
   setContainersConfiguration
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 
 setContainersConfiguration({
   ...defaultContainersConfiguration,
@@ -381,7 +381,7 @@ setContainersConfiguration({
 **Creating custom loggers:**
 
 ```typescript
-import { createLogger, createDefaultTestLogger } from '@midnight-ntwrk/testkit-js';
+import { createLogger, createDefaultTestLogger } from '@midnightntwrk/testkit-js';
 
 // Logger with default configuration
 const logger = createDefaultTestLogger();
@@ -398,7 +398,7 @@ const absoluteLogger = createLogger('/tmp/my-test.log');
 To use the latest container images instead of the default pinned versions:
 
 ```typescript
-import { latestContainersConfiguration, setContainersConfiguration } from '@midnight-ntwrk/testkit-js';
+import { latestContainersConfiguration, setContainersConfiguration } from '@midnightntwrk/testkit-js';
 
 setContainersConfiguration(latestContainersConfiguration);
 ```

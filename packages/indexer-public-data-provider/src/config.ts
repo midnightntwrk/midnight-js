@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';
-import { warnIfInsecureRemoteUrl } from '@midnight-ntwrk/midnight-js-utils';
+import { InvalidProtocolSchemeError } from '@midnightntwrk/midnight-js-types';
+import { warnIfInsecureRemoteUrl } from '@midnightntwrk/midnight-js-utils';
 // Default import, not `import * as ws` + `ws.WebSocket`: isomorphic-ws is CJS
 // (`module.exports = require('ws')`) with no `exports` map. Node's CJS-to-ESM
 // interop exposes only the `default` export, so the named `ws.WebSocket` resolves

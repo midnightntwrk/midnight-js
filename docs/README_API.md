@@ -25,37 +25,37 @@ MidnightProviders
 
 | Package | Purpose |
 |---------|---------|
-| `@midnight-ntwrk/midnight-js` | Barrel package re-exporting the framework's public API |
-| `@midnight-ntwrk/midnight-js-types` | Shared types, interfaces, and provider contracts |
-| `@midnight-ntwrk/midnight-js-contracts` | Contract deployment, circuit calls, and transaction submission |
-| `@midnight-ntwrk/midnight-js-network-id` | Network identifier configuration for runtime and ledger WASM APIs |
-| `@midnight-ntwrk/midnight-js-protocol` | Version-agnostic re-exports of Midnight protocol packages |
-| `@midnight-ntwrk/midnight-js-utils` | Shared utilities (hex encoding, bech32m, assertions) |
+| `@midnightntwrk/midnight-js` | Barrel package re-exporting the framework's public API |
+| `@midnightntwrk/midnight-js-types` | Shared types, interfaces, and provider contracts |
+| `@midnightntwrk/midnight-js-contracts` | Contract deployment, circuit calls, and transaction submission |
+| `@midnightntwrk/midnight-js-network-id` | Network identifier configuration for runtime and ledger WASM APIs |
+| `@midnightntwrk/midnight-js-protocol` | Version-agnostic re-exports of Midnight protocol packages |
+| `@midnightntwrk/midnight-js-utils` | Shared utilities (hex encoding, bech32m, assertions) |
 
 ### Providers
 
 | Package | Purpose |
 |---------|---------|
-| `@midnight-ntwrk/midnight-js-indexer-public-data-provider` | GraphQL-based blockchain data provider (queries and subscriptions) |
-| `@midnight-ntwrk/midnight-js-level-private-state-provider` | AES-256-GCM encrypted persistent state storage via [LevelDB](https://github.com/Level/level) |
-| `@midnight-ntwrk/midnight-js-http-client-proof-provider` | HTTP client for the Midnight proof server |
-| `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider` | Proof provider delegating proof generation to the DApp Connector wallet |
-| `@midnight-ntwrk/midnight-js-fetch-zk-config-provider` | Browser-compatible ZK artifact provider using the [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) |
-| `@midnight-ntwrk/midnight-js-node-zk-config-provider` | Node.js filesystem-based ZK artifact provider |
-| `@midnight-ntwrk/midnight-js-logger-provider` | Application-specific [Pino](https://github.com/pinojs/pino) logger configuration |
+| `@midnightntwrk/midnight-js-indexer-public-data-provider` | GraphQL-based blockchain data provider (queries and subscriptions) |
+| `@midnightntwrk/midnight-js-level-private-state-provider` | AES-256-GCM encrypted persistent state storage via [LevelDB](https://github.com/Level/level) |
+| `@midnightntwrk/midnight-js-http-client-proof-provider` | HTTP client for the Midnight proof server |
+| `@midnightntwrk/midnight-js-dapp-connector-proof-provider` | Proof provider delegating proof generation to the DApp Connector wallet |
+| `@midnightntwrk/midnight-js-fetch-zk-config-provider` | Browser-compatible ZK artifact provider using the [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) |
+| `@midnightntwrk/midnight-js-node-zk-config-provider` | Node.js filesystem-based ZK artifact provider |
+| `@midnightntwrk/midnight-js-logger-provider` | Application-specific [Pino](https://github.com/pinojs/pino) logger configuration |
 
 ### Tooling
 
 | Package | Purpose |
 |---------|---------|
-| `@midnight-ntwrk/midnight-js-compact` | Compact compiler manager for contract compilation |
+| `@midnightntwrk/midnight-js-compact` | Compact compiler manager for contract compilation |
 
 ## Quick Start
 
 ### 1. Configure the network
 
 ```typescript
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { setNetworkId } from '@midnightntwrk/midnight-js-network-id';
 
 setNetworkId('testnet');
 ```
@@ -63,10 +63,10 @@ setNetworkId('testnet');
 ### 2. Assemble providers
 
 ```typescript
-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
+import { levelPrivateStateProvider } from '@midnightntwrk/midnight-js-level-private-state-provider';
+import { indexerPublicDataProvider } from '@midnightntwrk/midnight-js-indexer-public-data-provider';
+import { httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
+import { FetchZkConfigProvider } from '@midnightntwrk/midnight-js-fetch-zk-config-provider';
 
 const zkConfigProvider = new FetchZkConfigProvider(zkArtifactsUrl);
 
@@ -86,7 +86,7 @@ const providers: MidnightProviders = {
 ### 3. Deploy and interact with a contract
 
 ```typescript
-import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract, findDeployedContract } from '@midnightntwrk/midnight-js-contracts';
 
 const deployed = await deployContract(providers, {
   compiledContract,
@@ -100,7 +100,7 @@ const result = await deployed.callTx.increment();
 ### 4. Query state
 
 ```typescript
-import { getStates, getPublicStates } from '@midnight-ntwrk/midnight-js-contracts';
+import { getStates, getPublicStates } from '@midnightntwrk/midnight-js-contracts';
 
 const states = await getStates(providers, contractAddress, privateStateId);
 const publicStates = await getPublicStates(providers, contractAddress);

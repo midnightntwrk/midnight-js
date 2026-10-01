@@ -23,8 +23,8 @@
  * by using the low-level ProvingProvider internally.
  *
  * ```typescript
- * import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
- * import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+ * import { httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
+ * import { unwrapV9 } from '@midnightntwrk/midnight-js-types';
  *
  * const proofProvider = httpClientProofProvider(
  *   'http://localhost:6300',
@@ -56,7 +56,7 @@
  * ```
  *
  * The era is carried by the `version` tag, never inferred from the payload. Note that
- * `createProofProvider` in `@midnight-ntwrk/midnight-js-types` refuses the retained arm — it
+ * `createProofProvider` in `@midnightntwrk/midnight-js-types` refuses the retained arm — it
  * adapts a current-era-only `ProvingProvider` — so reach for this provider, not that helper, when
  * you need both eras.
  *
@@ -73,7 +73,7 @@
  * control over individual circuit proving operations.
  *
  * ```typescript
- * import { httpClientProvingProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+ * import { httpClientProvingProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
  *
  * const provingProvider = httpClientProvingProvider(
  *   'http://localhost:6300',

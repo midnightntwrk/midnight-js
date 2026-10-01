@@ -15,7 +15,7 @@
 
 // The `./version` leaf subpath, not the package root: the root barrel re-exports the
 // ledger/compact-js/onchain-runtime namespaces, which every `utils` consumer would then pull in.
-import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_VERSIONS, type LedgerVersion } from '@midnightntwrk/midnight-js-protocol/version';
 
 import { parseSerializedTag, TagParseError } from './serialized-tag';
 

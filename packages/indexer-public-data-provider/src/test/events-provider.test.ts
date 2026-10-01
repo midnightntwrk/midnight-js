@@ -15,7 +15,7 @@
 
 import { ApolloClient, InMemoryCache } from '@apollo/client/core';
 import { HttpLink } from '@apollo/client/link/http';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/ledger';
 import * as Rx from 'rxjs';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 

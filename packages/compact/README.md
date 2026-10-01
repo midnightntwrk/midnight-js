@@ -5,7 +5,7 @@ Compact compiler manager for Midnight smart contracts. Fetches, manages, and run
 ## Installation
 
 ```bash
-yarn add -D @midnight-ntwrk/midnight-js-compact
+yarn add -D @midnightntwrk/midnight-js-compact
 ```
 
 ## Quick Start
@@ -92,7 +92,7 @@ When `COMPACT_HOME` is not set and no specific version is requested, the latest 
 ### VersionManager
 
 ```typescript
-import { VersionManager } from '@midnight-ntwrk/midnight-js-compact';
+import { VersionManager } from '@midnightntwrk/midnight-js-compact';
 
 const manager = new VersionManager(packageDir);
 
@@ -107,7 +107,7 @@ manager.cleanupOldVersions(3);           // Keep only latest 3 versions
 ### Utility Functions
 
 ```typescript
-import { resolveCompactPath } from '@midnight-ntwrk/midnight-js-compact';
+import { resolveCompactPath } from '@midnightntwrk/midnight-js-compact';
 
 // Resolves path to compactc (respects COMPACT_HOME, falls back to managed versions)
 const compactPath = resolveCompactPath(packageDir, optionalVersion);

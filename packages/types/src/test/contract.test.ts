@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import * as Configuration from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/Configuration';
+import { sampleSigningKey, type SigningKey } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import * as Configuration from '@midnightntwrk/midnight-js-protocol/platform-js/effect/Configuration';
 import { Effect, Option } from 'effect';
 import { describe, expect, it } from 'vitest';
 

@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import { UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { UnknownProtocolVersionError } from '@midnightntwrk/midnight-js-protocol/errors';
 import {
   type LedgerVersion,
   type VersionedRecord,
   versionOfRecord
-} from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { ReadSeam } from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-protocol/version';
+import type { ReadSeam } from '@midnightntwrk/midnight-js-types';
 
 import { EraUnresolvableError } from './errors';
 

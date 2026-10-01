@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import type { ConstructorResultPojo, Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
-import type { CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import type { ContractAddress, LogEvent, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import type { ConstructorResultPojo, Ledger8SigningKey } from '@midnightntwrk/midnight-js-protocol';
+import type { CompiledContract, ContractExecutable } from '@midnightntwrk/midnight-js-protocol/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import type { ContractAddress, LogEvent, SigningKey } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import type { PrivateStateId } from '@midnightntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 // The current-era twin of the retained-era fixture. Imported TYPE-ONLY from the artifact's own

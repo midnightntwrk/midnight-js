@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/compact-js';
+import type { SigningKey } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   ExportDecryptionError,
   type ExportPrivateStatesOptions,
@@ -34,8 +34,8 @@ import {
   type PrivateStateProvider,
   type SigningKeyExport,
   SigningKeyExportError
-} from '@midnight-ntwrk/midnight-js-types';
-import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { isValidSigningKey } from '@midnightntwrk/midnight-js-utils';
 import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';

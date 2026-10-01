@@ -13,4 +13,4 @@
  * limitations under the License.
  */
 
-export * from '@midnight-ntwrk/midnight-js-contracts';
+export * from '@midnightntwrk/midnight-js-contracts';

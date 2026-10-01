@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/ledger';
 import type {
   ContractEvent,
   ContractEventQueryFilter,
   ContractEventsPage,
   PublicDataProvider
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import { describe, expect, test, vi } from 'vitest';
 
 import { DEFAULT_CONTRACT_EVENTS_PAGE_SIZE } from '../config';
