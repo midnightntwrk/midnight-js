@@ -33,6 +33,7 @@ import { type ApolloRequest, stubApolloHandle } from './apollo-stub';
 import {
   mintV8ContractStateHex,
   mintV9ContractStateHex,
+  UNRESOLVABLE_PROTOCOL_VERSION,
   V8_ERA_PROTOCOL_VERSION,
   V9_ERA_PROTOCOL_VERSION
 } from './state-fixtures';
@@ -284,6 +285,22 @@ describe('queryRawContractState', () => {
 
       expect((rejection as Error).message).not.toContain('attacker');
       expect((rejection as Error).message).not.toContain(stateHex.slice(0, 16));
+    });
+
+    test('rejects a state whose dating block reports an unresolvable version', async () => {
+      const provider = providerServing(mintV9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION);
+
+      const rejection = await provider.queryRawContractState(ADDRESS).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      expect(rejection).toBeInstanceOf(IndexerDataError);
+      expect((rejection as IndexerDataError).context).toEqual({
+        kind: 'unresolvable-era',
+        protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION
+      });
+      expect((rejection as Error).cause).toBeInstanceOf(Error);
     });
   });
 });

@@ -248,9 +248,9 @@ export class IndexerDataError extends IndexerError {
       case 'unresolvable-era':
         return (
           `The indexer reported protocolVersion ${context.protocolVersion} for a contract state, and this build ` +
-          'cannot place that value on the ledger-era timeline. The raw contract-state reads tag every record with ' +
-          'an era, so a value they cannot resolve is refused rather than guessed. Upgrade to a release that knows ' +
-          'this network, or read the state through a method that decodes on the envelope alone.'
+          'cannot place that value on the ledger-era timeline. An integer this client cannot place means the client ' +
+          'is older than the network, so contract-state reads refuse it rather than guess. Upgrade to a release ' +
+          'that knows this network.'
         );
       case 'era-disagreement':
         return (

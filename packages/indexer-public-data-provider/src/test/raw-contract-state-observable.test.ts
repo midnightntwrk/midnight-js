@@ -106,7 +106,7 @@ const contractActionFrame = (state: string, protocolVersion: number): unknown =>
   data: { contractActions: { state, transaction: { protocolVersion } } }
 });
 
-const collect = (source: Rx.Observable<RawContractState>): Promise<RawContractState[]> =>
+const collect = <T>(source: Rx.Observable<T>): Promise<T[]> =>
   Rx.lastValueFrom(source.pipe(Rx.toArray()));
 
 const rejectionOf = async (work: Promise<unknown>): Promise<unknown> =>
@@ -243,9 +243,7 @@ describe('rawContractStateObservable — latest', () => {
 
   test('reports an unplaceable protocol version as an indexer error, not a bare protocol one', async () => {
     // `version` is not optional on the record, so a `protocolVersion` this
-    // client cannot place on the era timeline ends the stream -- the one
-    // asymmetry with `contractStateObservable`, which withholds only its
-    // upper-bound check and decodes on the envelope alone. What must NOT
+    // client cannot place on the era timeline ends the stream. What must NOT
     // happen is that the failure escapes this package's error contract: a
     // consumer catches every failure from this provider with one
     // `instanceof IndexerError`.
@@ -268,10 +266,10 @@ describe('rawContractStateObservable — latest', () => {
     expect((rejection as Error).cause).toBeInstanceOf(Error);
   });
 
-  test('the decoded stream keeps going on that same unplaceable version', async () => {
-    // The contrast that makes the asymmetry a documented fact rather than an
-    // accident: the decoded path treats "cannot place this integer" as a
-    // withheld check, not a failure, and decodes on the envelope.
+  test('the decoded stream terminates on that same unplaceable version', async () => {
+    // Both decoded and raw streams fail on an unplaceable version rather than
+    // decoding on a guess: an integer the client cannot place means the client
+    // is older than the network.
     const hexState = mintV9ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
@@ -280,11 +278,16 @@ describe('rawContractStateObservable — latest', () => {
       ])
     });
 
-    const seen = await Rx.lastValueFrom(
-      provider.contractStateObservable(ADDRESS, { type: 'latest' }).pipe(Rx.toArray())
-    );
+    const rejection = await rejectionOf(collect(provider.contractStateObservable(ADDRESS, { type: 'latest' })));
 
-    expect(seen).toHaveLength(1);
+    expect(rejection).toBeInstanceOf(IndexerError);
+    expect(rejection).toBeInstanceOf(IndexerDataError);
+    expect((rejection as IndexerDataError).context).toEqual({
+      kind: 'unresolvable-era',
+      protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION
+    });
+    // The protocol-level failure is preserved rather than discarded.
+    expect((rejection as Error).cause).toBeInstanceOf(Error);
   });
 
   test('reports the version of the BLOCK, not of the envelope the bytes carry', async () => {
