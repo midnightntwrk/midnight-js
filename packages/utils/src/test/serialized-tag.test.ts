@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { ContractState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import { describe, expect, it } from 'vitest';
 
 import { UTILS_ERROR_CODES } from '../error-codes';

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import type { LedgerVersion } from '@midnightntwrk/midnight-js-protocol';
 
 /**
  * A contract's on-chain state exactly as the network returned it: the

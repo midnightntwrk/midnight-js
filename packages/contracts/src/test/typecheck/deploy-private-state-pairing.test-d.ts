@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import type { CompiledContract } from '@midnightntwrk/midnight-js-protocol/compact-js';
+import type { PrivateStateId } from '@midnightntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 // The same real generated current-era declaration `./overloads.test-d.ts` types its current-era

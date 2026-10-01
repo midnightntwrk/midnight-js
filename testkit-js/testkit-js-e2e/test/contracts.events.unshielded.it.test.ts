@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { type ContractEvent } from '@midnight-ntwrk/midnight-js-types';
-import { createLogger } from '@midnight-ntwrk/testkit-js';
+import { type ContractEvent } from '@midnightntwrk/midnight-js-types';
+import { createLogger } from '@midnightntwrk/testkit-js';
 import path from 'path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 

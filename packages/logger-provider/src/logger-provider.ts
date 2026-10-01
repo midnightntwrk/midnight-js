@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LogLevel } from '@midnight-ntwrk/midnight-js-types';
+import type { LogLevel } from '@midnightntwrk/midnight-js-types';
 import type { LogFn,Logger } from 'pino';
 
 /**

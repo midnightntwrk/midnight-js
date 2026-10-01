@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type FinalizedTxData, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+import type { CompiledContract } from '@midnightntwrk/midnight-js-protocol/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import type { ContractAddress, SigningKey } from '@midnightntwrk/midnight-js-protocol/ledger';
+import { type FinalizedTxData, SucceedEntirely } from '@midnightntwrk/midnight-js-types';
+import { assertDefined, assertIsContractAddress } from '@midnightntwrk/midnight-js-utils';
 
 import { type ContractProviders } from '../contract-providers';
 import { submitTx } from '../submit-tx';

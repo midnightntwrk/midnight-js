@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import type { LedgerVersion } from '@midnightntwrk/midnight-js-protocol';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 // Imported from the package BARREL, not from `../errors`: every other suite reaches into the module

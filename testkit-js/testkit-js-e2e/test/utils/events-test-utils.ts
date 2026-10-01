@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { type ContractEvent, type ContractEventType, type PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
-import { getTestEnvironment, initializeMidnightProviders, type TestEnvironment } from '@midnight-ntwrk/testkit-js';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import { type ContractEvent, type ContractEventType, type PublicDataProvider } from '@midnightntwrk/midnight-js-types';
+import { getTestEnvironment, initializeMidnightProviders, type TestEnvironment } from '@midnightntwrk/testkit-js';
 import type { Logger } from 'pino';
 import { expect } from 'vitest';
 

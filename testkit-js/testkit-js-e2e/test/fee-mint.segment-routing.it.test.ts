@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { createUnprovenCallTx, deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { createUnprovenCallTx, deployContract } from '@midnightntwrk/midnight-js-contracts';
+import { type ContractAddress, sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import {
   type ContractConfiguration,
   createLogger,
@@ -24,7 +24,7 @@ import {
   initializeMidnightProviders,
   type MidnightWalletProvider,
   type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import path from 'path';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 

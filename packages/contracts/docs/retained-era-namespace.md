@@ -16,7 +16,7 @@ removing them would be a second breaking change after the one this release
 already makes. They are published as ONE name instead:
 
 ```typescript
-import { Ledger8, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import { Ledger8, submitCallTx } from '@midnightntwrk/midnight-js-contracts';
 
 const result: Ledger8.FinalizedCallTxData<C, 'increment'> = await submitCallTx(providers, options);
 

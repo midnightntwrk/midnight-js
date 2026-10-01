@@ -5,13 +5,13 @@ Utilities for deploying and interacting with Midnight smart contracts.
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-contracts
+yarn add @midnightntwrk/midnight-js-contracts
 ```
 
 ## Quick Start
 
 ```typescript
-import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract, findDeployedContract } from '@midnightntwrk/midnight-js-contracts';
 
 // Deploy a new contract
 const deployed = await deployContract(providers, {
@@ -69,7 +69,7 @@ const found = await findDeployedContract(providers, {
 ### Transaction Submission
 
 ```typescript
-import { submitCallTx, submitDeployTx, submitTx } from '@midnight-ntwrk/midnight-js-contracts';
+import { submitCallTx, submitDeployTx, submitTx } from '@midnightntwrk/midnight-js-contracts';
 
 // Submit a call transaction
 await submitCallTx(providers, callOptions);
@@ -88,7 +88,7 @@ import {
   submitInsertVerifierKeyTx,
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
-} from '@midnight-ntwrk/midnight-js-contracts';
+} from '@midnightntwrk/midnight-js-contracts';
 
 // Insert a verifier key for a circuit
 await submitInsertVerifierKeyTx(providers, options);
@@ -103,7 +103,7 @@ await submitReplaceAuthorityTx(providers, options);
 ### State Queries
 
 ```typescript
-import { getPublicStates, getStates, getUnshieldedBalances } from '@midnight-ntwrk/midnight-js-contracts';
+import { getPublicStates, getStates, getUnshieldedBalances } from '@midnightntwrk/midnight-js-contracts';
 
 // Get contract states (public + private)
 const states = await getStates(
@@ -126,7 +126,7 @@ For those, and wherever a contract's era is not known in advance, use
 `getAnyEraContractState`:
 
 ```typescript
-import { getAnyEraContractState } from '@midnight-ntwrk/midnight-js-contracts';
+import { getAnyEraContractState } from '@midnightntwrk/midnight-js-contracts';
 // `StateValue` and the contract class both come from YOUR OWN generated contract
 // module and its Compact runtime — not from the framework. That is the point:
 // `read.state` is plain data precisely so your runtime can accept it.
@@ -150,13 +150,13 @@ import {
   createCircuitCallTxInterface,
   createCircuitMaintenanceTxInterface,
   createContractMaintenanceTxInterface
-} from '@midnight-ntwrk/midnight-js-contracts';
+} from '@midnightntwrk/midnight-js-contracts';
 ```
 
 ### Utility Functions
 
 ```typescript
-import { verifierKeysEqual, verifyContractState } from '@midnight-ntwrk/midnight-js-contracts';
+import { verifierKeysEqual, verifyContractState } from '@midnightntwrk/midnight-js-contracts';
 
 // Compare verifier keys
 const equal = verifierKeysEqual(keyA, keyB);
@@ -236,7 +236,7 @@ import {
   EraInvariantViolationError,
   type EraSeam,
   TxFailedError
-} from '@midnight-ntwrk/midnight-js-contracts';
+} from '@midnightntwrk/midnight-js-contracts';
 ```
 
 ## Architecture Documents

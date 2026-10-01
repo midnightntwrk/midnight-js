@@ -13,20 +13,20 @@
  * limitations under the License.
  */
 
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import { type Contract, ProvableCircuitId, VerifierKey as ContractVerifierKey } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { getNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import { type CompiledContract, ContractExecutable } from '@midnightntwrk/midnight-js-protocol/compact-js';
+import { type Contract, ProvableCircuitId, VerifierKey as ContractVerifierKey } from '@midnightntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type {
   CoinPublicKey,
   ContractAddress,
   ContractState,
   SigningKey
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import {
   Intent,
   type MaintenanceUpdate,
   type UnprovenTransaction
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   asContractAddress,
   asEffectOption,
@@ -34,8 +34,8 @@ import {
   Transaction,
   type VerifierKey,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { ttlOneHour } from '@midnightntwrk/midnight-js-utils';
 
 export const unprovenTxFromContractUpdates = async (
   updateAndSignFn: () => Promise<MaintenanceUpdate>

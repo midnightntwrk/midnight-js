@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { CompiledContract } from '@midnightntwrk/midnight-js-protocol/compact-js';
 
 import * as CompiledBlockTime from './compiled/block-time/contract/index.js';
 import * as CompiledCounter from './compiled/counter/contract/index.js';

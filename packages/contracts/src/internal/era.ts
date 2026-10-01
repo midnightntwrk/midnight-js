@@ -19,7 +19,7 @@ import {
   loadLedgerEra,
   protocolVersionToLedger,
   UnknownLedgerVersionError
-} from '@midnight-ntwrk/midnight-js-protocol';
+} from '@midnightntwrk/midnight-js-protocol';
 import {
   ArtifactRuntimeVersionUnavailableError,
   type FinalizedTxData,
@@ -29,8 +29,8 @@ import {
   type VersionedFinalizedTxData,
   type VersionedTx,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { contractStateEnvelopeVersion, ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { contractStateEnvelopeVersion, ZkArtifactContractInfoError } from '@midnightntwrk/midnight-js-utils';
 
 import { CURRENT_PIPELINE_ERA, type PipelineEra, RETAINED_PIPELINE_ERA } from '../era';
 import {
@@ -89,7 +89,7 @@ export function requireV9<T>(
  * Note which refusal is NOT this function's. A provider that does not handle
  * the retained arm at all rejects it on the way IN, with
  * `V8PayloadUnsupportedError` from `unwrapV9` in
- * `@midnight-ntwrk/midnight-js-types` — that is the inbound guard a
+ * `@midnightntwrk/midnight-js-types` — that is the inbound guard a
  * current-era-only provider implementation runs, and it is deliberately left
  * where it is so a retained-era submit against a provider that has not been
  * widened fails with one coherent typed refusal at the seam it entered, rather
@@ -691,7 +691,7 @@ export const assertEraCompatible = (
  * carry (see its own documentation in `packages/types/src/raw-contract-state.ts`).
  *
  * Do not declare the tag-to-era mapping here — it lives once, as `contractStateEnvelopeVersion` in
- * `@midnight-ntwrk/midnight-js-utils`.
+ * `@midnightntwrk/midnight-js-utils`.
  *
  * @see {@link EraDispatch} for what each step buys and what breaks if it moves.
  *

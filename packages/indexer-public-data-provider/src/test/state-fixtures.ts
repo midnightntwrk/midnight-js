@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { ledger, loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
-import { toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { ledger, loadLedger8 } from '@midnightntwrk/midnight-js-protocol';
+import { toHex } from '@midnightntwrk/midnight-js-utils';
 
 import type { RegularTransaction } from '../gen/schema-types';
 

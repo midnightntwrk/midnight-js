@@ -46,7 +46,7 @@ import type {
   EncodedStateValue,
   Ledger8SigningKey,
   TranscriptPojo
-} from '@midnight-ntwrk/midnight-js-protocol';
+} from '@midnightntwrk/midnight-js-protocol';
 
 /**
  * The retained era's contract-state handle, and the state a retained-era
@@ -63,7 +63,7 @@ import type {
   CommunicationCommitmentData,
   ContractAddress,
   ZswapLocalState
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import type {
   CallResultPrivateBase,
   CallResultPublicBase,
@@ -73,7 +73,7 @@ import type {
   SubmittedCallTxBase,
   UnsubmittedTxDataBase,
   VersionedFinalizedTxData
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import type { Option } from 'effect';
 
 import type { RetainedPipelineEra } from './era';

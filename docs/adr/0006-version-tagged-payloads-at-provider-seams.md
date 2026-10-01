@@ -31,7 +31,7 @@ Constraints shaping the decision:
   table in `CLAUDE.md` places `utils` below it, so `types` importing values
   from `utils` would invert the documented order.
 - The indexer reports a `protocolVersion` integer per record.
-  `@midnight-ntwrk/midnight-js-protocol` already resolves that integer to a
+  `@midnightntwrk/midnight-js-protocol` already resolves that integer to a
   ledger era (`versionOfRecord`, `protocolVersionToLedger`), mapping node major
   1 to v8 and node major 2 to v9 and failing closed on anything else.
 - No v8 deserializer is wired into any provider yet. The read path decodes with
@@ -65,7 +65,7 @@ asserting it.
 
 4. **The discriminant is derived, never asserted.** A provider that produces a
    finalized record resolves the era with `versionOfRecord(record)` from
-   `@midnight-ntwrk/midnight-js-protocol/version`. It does not hardcode a
+   `@midnightntwrk/midnight-js-protocol/version`. It does not hardcode a
    literal. If the record resolves to an era the provider cannot decode, it
    throws rather than mislabelling the record.
 
@@ -74,7 +74,7 @@ asserting it.
    v8 payload with `EraInvariantViolationError`, and narrows the read surface at
    its own boundary so `submitTx` and `findDeployedContract` keep their v9
    return types. Both errors carry a stable `code` matching the registry in
-   `@midnight-ntwrk/midnight-js-utils` — declared locally, for the reason in
+   `@midnightntwrk/midnight-js-utils` — declared locally, for the reason in
    point 8 — and a closed `seam` identifier.
 
 6. **One narrowing helper, not a switch per seam.** `unwrapV9(payload, seam)`,
@@ -93,7 +93,7 @@ asserting it.
    era is therefore a compile error, not a runtime surprise.
 
 7. **One era vocabulary.** The discriminant literals are tied to
-   `LedgerVersion` in `@midnight-ntwrk/midnight-js-protocol` by type-only
+   `LedgerVersion` in `@midnightntwrk/midnight-js-protocol` by type-only
    `Exclude` assertions in `versioned.ts`. The era set is one fact, not two.
 
 8. **`types` stays free of internal runtime dependencies.** The two values the
@@ -282,7 +282,7 @@ belongs here rather than in the code it describes.
 
 ### The seam lives in `packages/protocol`, on a leaf subpath
 
-`proveV8Transaction` is published from `@midnight-ntwrk/midnight-js-protocol/prove`
+`proveV8Transaction` is published from `@midnightntwrk/midnight-js-protocol/prove`
 and `PayloadNotATransactionError` from `.../protocol/errors`.
 
 It was first written into `packages/utils`, which forced three things that the
@@ -444,7 +444,7 @@ Three facts recorded here because they are not visible from the code alone:
   and the protocol ledger namespace; `packages/types/src/errors.ts` imports
   nothing at all. Reading a code string must not cost a consumer either. This is
   the same reasoning `utils` already applies to
-  `@midnight-ntwrk/midnight-js-protocol/errors`.
+  `@midnightntwrk/midnight-js-protocol/errors`.
 
 **What holds the registry in step now.** `packages/utils/src/test/troubleshooting-coverage.test.ts`
 pins `MIDNIGHT_JS_ERROR_CODES` against the `TROUBLESHOOTING.md` table with

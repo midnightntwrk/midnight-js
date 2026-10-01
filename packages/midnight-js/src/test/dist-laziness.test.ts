@@ -48,7 +48,7 @@ const PKG_ROOT = resolve(__dirname, '..', '..');
 const DIST_INDEX_PATH = 'dist/index.js';
 
 /** The protocol package ROOT. Its `version` and `errors` leaves are the sanctioned way in. */
-const PROTOCOL_BARREL = '@midnight-ntwrk/midnight-js-protocol';
+const PROTOCOL_BARREL = '@midnightntwrk/midnight-js-protocol';
 
 /** The subpaths carrying the retained pre-fork runtime. Off the eager path in any form. */
 const RETAINED_ERA_SUBPATHS = [`${PROTOCOL_BARREL}/v8`, `${PROTOCOL_BARREL}/engine`];
@@ -125,7 +125,7 @@ describe('dist laziness gate', () => {
     // the names that needed it are genuinely still there, so the assertions
     // above are statements about shipped code rather than about a bundle that
     // quietly lost the vocabulary.
-    const barrel = await import('@midnight-ntwrk/midnight-js');
+    const barrel = await import('@midnightntwrk/midnight-js');
 
     expect(typeof barrel.versionOfRecord).toBe('function');
     expect(typeof barrel.networkHeadVersion).toBe('function');

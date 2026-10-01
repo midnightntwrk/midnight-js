@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { ProvingProvider } from '@midnightntwrk/dapp-connector-api';
 import {
   createProverKey,
   createVerifierKey,
@@ -21,8 +22,7 @@ import {
   hashVerifierKey,
   ZKConfigProvider,
   ZKConfigRegistry
-} from '@midnight-ntwrk/midnight-js-types';
-import type { ProvingProvider } from '@midnightntwrk/dapp-connector-api';
+} from '@midnightntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from '../dapp-connector-proving-provider';

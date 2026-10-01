@@ -5,13 +5,13 @@ Global network identifier management for Midnight.js applications. Required by t
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-network-id
+yarn add @midnightntwrk/midnight-js-network-id
 ```
 
 ## Quick Start
 
 ```typescript
-import { setNetworkId, getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { setNetworkId, getNetworkId } from '@midnightntwrk/midnight-js-network-id';
 
 // Set the network ID at application startup (required before any chain operations)
 setNetworkId('testnet');
@@ -77,7 +77,7 @@ import {
   setNetworkId,
   getNetworkId,
   type NetworkId
-} from '@midnight-ntwrk/midnight-js-network-id';
+} from '@midnightntwrk/midnight-js-network-id';
 ```
 
 ## Implementation Details
@@ -101,8 +101,8 @@ Within this monorepo, the network ID is consumed by:
 
 | Package | Usage |
 |---------|-------|
-| `@midnight-ntwrk/midnight-js-contracts` | Transaction building and contract deployment |
-| `@midnight-ntwrk/midnight-js-utils` | Type imports |
+| `@midnightntwrk/midnight-js-contracts` | Transaction building and contract deployment |
+| `@midnightntwrk/midnight-js-utils` | Type imports |
 
 These packages call `getNetworkId()` internally, so setting it once affects the entire application.
 

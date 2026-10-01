@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { ArtifactRuntimeVersionUnavailableError, type ProverKey, type VerifierKey, ZKConfigProvider, type ZKIR } from '@midnight-ntwrk/midnight-js-types';
-import { ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
+import { ArtifactRuntimeVersionUnavailableError, type ProverKey, type VerifierKey, ZKConfigProvider, type ZKIR } from '@midnightntwrk/midnight-js-types';
+import { ZkArtifactContractInfoError } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it, type Mock, vi } from 'vitest';
 
 import { type PipelineEra } from '../era';

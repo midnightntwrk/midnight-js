@@ -9,7 +9,7 @@
   "entryPointStrategy": "packages",
   "exclude": ["packages/compact"],
   "externalSymbolLinkMappings": {
-    "@midnight-ntwrk/midnight-js-types": {
+    "@midnightntwrk/midnight-js-types": {
       "ProofProvider": "#",
       "PublicDataProvider": "#",
       "PrivateStateProvider": "#",

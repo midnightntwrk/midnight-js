@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/ledger';
 
 import { indexerPublicDataProvider } from '..';
 import { IndexerProviderConfigError } from '../errors';

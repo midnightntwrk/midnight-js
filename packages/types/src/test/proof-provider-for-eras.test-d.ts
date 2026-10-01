@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { ProvingProvider } from '@midnightntwrk/midnight-js-protocol/ledger';
+import type { ProvingProvider as RetainedEraProvingProvider } from '@midnightntwrk/midnight-js-protocol/v8';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import { createProofProviderForEras, type ProofProvider } from '../proof-provider';

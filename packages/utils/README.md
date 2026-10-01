@@ -5,7 +5,7 @@ Shared utility functions for all Midnight.js modules.
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-utils
+yarn add @midnightntwrk/midnight-js-utils
 ```
 
 ## Quick Start
@@ -16,7 +16,7 @@ import {
   fromHex,
   assertDefined,
   assertIsContractAddress
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 
 // Convert bytes to hex
 const hex = toHex(new Uint8Array([0xab, 0xcd])); // 'abcd'
@@ -112,7 +112,7 @@ CONTRACTS_ERROR_CODES
 PROVIDER_ERROR_CODES
 UTILS_ERROR_CODES
 // Protocol-layer codes are not re-exported here — import PROTOCOL_ERROR_CODES
-// from '@midnight-ntwrk/midnight-js-protocol/errors'.
+// from '@midnightntwrk/midnight-js-protocol/errors'.
 
 // The combined, frozen registry of every code carried by a *coded* midnight-js
 // error. Not every midnight-js error carries a code, so a `false` from
@@ -204,7 +204,7 @@ import {
   // Serialized tag parsing
   parseSerializedTag,
   TagParseError
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 ```
 
 ## Architecture Documents

@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import { type FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type FinalizedTransaction } from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   type ProviderSeam,
   UntaggedPayloadError,
   type VersionedFinalizedTransaction,
   type VersionedUnboundTransaction
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import {
   type FinalizedTx,
   ProtocolVersion,

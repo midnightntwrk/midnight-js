@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { ContractModuleProvider, ModuleThunk } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+import type { ContractModuleProvider, ModuleThunk } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import { assertIsContractAddress } from '@midnightntwrk/midnight-js-utils';
 
 /**
  * Which module implements the contract deployed at each address. A deployment puts no code on

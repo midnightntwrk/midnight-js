@@ -16,8 +16,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { type AnyProvableCircuitId, UntaggedPayloadError } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { type AnyProvableCircuitId, UntaggedPayloadError } from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EraInvariantViolationError } from '../errors';

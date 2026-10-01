@@ -17,8 +17,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { type ContractStatePojo, loadLedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import { type ContractStatePojo, loadLedgerEra } from '@midnightntwrk/midnight-js-protocol';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { BlankVerifierKeySlotError, VerifierKeyMismatchError } from '../errors';

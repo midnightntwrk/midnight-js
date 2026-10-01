@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { type IndexerPublicDataProvider,indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { networkHeadVersion, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
-import { createLogger, getTestEnvironment, type TestEnvironment } from '@midnight-ntwrk/testkit-js';
+import { type IndexerPublicDataProvider,indexerPublicDataProvider } from '@midnightntwrk/midnight-js-indexer-public-data-provider';
+import { networkHeadVersion, versionOfRecord } from '@midnightntwrk/midnight-js-protocol';
+import { createLogger, getTestEnvironment, type TestEnvironment } from '@midnightntwrk/testkit-js';
 import fetch from 'cross-fetch';
 import path from 'path';
 

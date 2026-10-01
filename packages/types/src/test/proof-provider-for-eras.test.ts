@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
-import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import { loadLedger8 } from '@midnightntwrk/midnight-js-protocol';
+import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midnightntwrk/midnight-js-protocol/ledger';
+import type { ProvingProvider as RetainedEraProvingProvider } from '@midnightntwrk/midnight-js-protocol/v8';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { PROVIDER_ERROR_CODES, V8PayloadUnsupportedError } from '../errors';

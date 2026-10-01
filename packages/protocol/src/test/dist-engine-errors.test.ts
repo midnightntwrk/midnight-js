@@ -79,7 +79,7 @@ describe('dist engine error gate', () => {
   });
 
   it('loads the engine facade out of the built package and binds the retained era', async () => {
-    const { loadLedger8Engine } = await import('@midnight-ntwrk/midnight-js-protocol');
+    const { loadLedger8Engine } = await import('@midnightntwrk/midnight-js-protocol');
 
     const engine = await loadLedger8Engine();
 
@@ -90,7 +90,7 @@ describe('dist engine error gate', () => {
 
   it('throws an error the root package can still discriminate by class and by code', async () => {
     const { loadLedger8Engine, ComposeFailedError, PROTOCOL_ERROR_CODES } = await import(
-      '@midnight-ntwrk/midnight-js-protocol'
+      '@midnightntwrk/midnight-js-protocol'
     );
     const engine = await loadLedger8Engine();
 
@@ -120,7 +120,7 @@ describe('dist engine error gate', () => {
   // raised inside the era arm, and must still find its discriminants.
   it('raises an era composition failure the root package can discriminate by class and by code', async () => {
     const { loadLedgerEra, ComposeFailedError, PROTOCOL_ERROR_CODES } = await import(
-      '@midnight-ntwrk/midnight-js-protocol'
+      '@midnightntwrk/midnight-js-protocol'
     );
     const era = await loadLedgerEra('v8');
 
@@ -164,7 +164,7 @@ describe('dist engine error gate', () => {
 
   it('raises a state-decode failure the root package can discriminate by class and by code', async () => {
     const { loadLedgerEra, StateDecodeFailedError, PROTOCOL_ERROR_CODES } = await import(
-      '@midnight-ntwrk/midnight-js-protocol'
+      '@midnightntwrk/midnight-js-protocol'
     );
     const era = await loadLedgerEra('v9');
 

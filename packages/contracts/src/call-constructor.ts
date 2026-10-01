@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import { type CompiledContract, type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { type CompiledContract, type Contract } from '@midnightntwrk/midnight-js-protocol/compact-js';
 import {
   type CoinPublicKey,
   type ContractState,
   type ZswapLocalState
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 
 import type { CurrentPipelineEra } from './era';
 

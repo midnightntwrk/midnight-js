@@ -15,7 +15,7 @@
 
 import { createHash } from 'node:crypto';
 
-import { PasswordValidationError,type PasswordValidationFailure } from '@midnight-ntwrk/midnight-js-utils';
+import { PasswordValidationError,type PasswordValidationFailure } from '@midnightntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
 import { decryptValue, getPasswordFromProvider, StorageEncryption, timingSafeEqual } from '../storage-encryption';

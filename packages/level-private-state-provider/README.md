@@ -13,13 +13,13 @@ Encrypted LevelDB storage for Midnight private states and signing keys.
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-level-private-state-provider
+yarn add @midnightntwrk/midnight-js-level-private-state-provider
 ```
 
 ## Quick Start
 
 ```typescript
-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
+import { levelPrivateStateProvider } from '@midnightntwrk/midnight-js-level-private-state-provider';
 
 const provider = levelPrivateStateProvider({
   privateStoragePasswordProvider: () => 'your-secure-password',
@@ -133,7 +133,7 @@ Cache is automatically invalidated after password rotation.
 ### From Unscoped Storage
 
 ```typescript
-import { migrateToAccountScoped } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
+import { migrateToAccountScoped } from '@midnightntwrk/midnight-js-level-private-state-provider';
 
 const result = await migrateToAccountScoped({ accountId: walletAddress });
 // Original data is preserved for rollback
@@ -157,7 +157,7 @@ import {
   type PrivateStoragePasswordProvider,
   type PasswordRotationResult,
   type MigrationResult
-} from '@midnight-ntwrk/midnight-js-level-private-state-provider';
+} from '@midnightntwrk/midnight-js-level-private-state-provider';
 ```
 
 ---

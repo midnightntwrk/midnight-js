@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { FinalizedTransaction, TransactionId } from '@midnightntwrk/midnight-js-protocol/ledger';
+import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnightntwrk/midnight-js-protocol/version';
 
 import { erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
 import type { VersionedFinalizedTransaction } from './wallet-provider';

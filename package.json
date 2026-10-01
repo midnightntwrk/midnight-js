@@ -1,9 +1,12 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-monorepo",
+  "name": "@midnightntwrk/midnight-js-monorepo",
   "description": "Midnight application development framework",
   "version": "5.0.0-rc.3",
   "packageManager": "yarn@4.14.1",
-  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git"
+  },
   "engines": {
     "node": ">=22.12"
   },
@@ -14,11 +17,11 @@
   "scripts": {
     "clean": "turbo run clean",
     "build": "turbo run build",
-    "build:core": "turbo run build --filter='!@midnight-ntwrk/testkit-*'",
-    "build:testkit": "turbo run build --filter='@midnight-ntwrk/testkit-*'",
+    "build:core": "turbo run build --filter='!@midnightntwrk/testkit-*'",
+    "build:testkit": "turbo run build --filter='@midnightntwrk/testkit-*'",
     "clean-build": "turbo run clean-build",
     "test": "turbo run test",
-    "test:unit": "turbo run test --filter='!@midnight-ntwrk/testkit-*'",
+    "test:unit": "turbo run test --filter='!@midnightntwrk/testkit-*'",
     "it": "turbo run it",
     "test:workflow-scripts": "vitest run --config .github/scripts/vitest.config.mjs",
     "test:consumer-e2e": "vitest run --config consumer-e2e/vitest.config.mjs",
@@ -29,9 +32,7 @@
     "typecheck:tests:core": "bash -c 'for cfg in packages/*/tsconfig.json; do tsc --noEmit --composite false -p \"$cfg\" || exit 1; done'",
     "typecheck:tests:testkit": "bash -c 'for cfg in testkit-js/*/tsconfig.json; do tsc --noEmit --composite false -p \"$cfg\" || exit 1; done'",
     "typecheck:consumer-e2e": "tsc -p consumer-e2e/tsconfig.json",
-    "check:core": "turbo run check --filter='!@midnight-ntwrk/testkit-*' && yarn lint",
-    "deploy": "turbo run deploy",
-    "deploy:core": "turbo run deploy --filter='!@midnight-ntwrk/testkit-*'",
+    "check:core": "turbo run check --filter='!@midnightntwrk/testkit-*' && yarn lint",
     "build:markdown-docs": "typedoc --validation --plugin typedoc-plugin-markdown --options typedoc.json",
     "lint": "eslint",
     "lint:fix": "NODE_OPTIONS=--max-old-space-size=16192 eslint ./packages --fix",

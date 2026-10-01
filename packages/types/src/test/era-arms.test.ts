@@ -19,7 +19,7 @@ import type {
   FinalizedTransaction,
   TransactionId,
   UnprovenTransaction
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PROVIDER_ERROR_CODES, UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';

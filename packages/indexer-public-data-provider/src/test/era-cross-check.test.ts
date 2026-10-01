@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { DeserializationError, deserializeCompactContractState, TagParseError } from '@midnight-ntwrk/midnight-js-utils';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/ledger';
+import { DeserializationError, deserializeCompactContractState, TagParseError } from '@midnightntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';

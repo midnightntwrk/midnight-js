@@ -72,18 +72,17 @@ describe('PROTOCOL_ERROR_CODES', () => {
   });
 });
 
-// The dual-publish (.github/scripts/publish-public-npm.mjs) rewrites
-// `@midnight-ntwrk/` -> `@midnightntwrk/` inside built .js/.d.ts files, not
-// only in package.json. Any scoped package name written as a single literal
-// here therefore ships rewritten: two names that differ only by scope collapse
-// into one, and a remediation hint that names both scopes silently degrades to
-// naming one of them twice. The scope fragments must stay separated from the
-// `/` so the rewrite has nothing to match.
-describe('resilience to the dual-publish scope rewrite', () => {
+// The alias publish (.github/scripts/publish-packages.mjs) rewrites this repo's
+// own `@midnightntwrk/` names to `@midnight-ntwrk/` inside built .js/.d.ts
+// files. A scoped package name written as a single literal is exposed to any
+// such pack-time rewrite: two names that differ only by scope collapse into one,
+// and a hint that names both scopes degrades to naming one twice. The scope
+// fragments stay separated from the `/` so no rewrite has anything to match.
+describe('resilience to the alias-publish scope rewrite', () => {
   const source = readFileSync(resolve(__dirname, '../errors.ts'), 'utf8');
 
   it('holds no scoped package literal that the pack-time rewrite would collapse', () => {
-    expect(source).not.toContain('@midnight-ntwrk/');
+    expect(source).not.toMatch(/@midnight-?ntwrk\//);
   });
 
   it('names two distinct scopes in the remediation hint, not one twice', () => {
@@ -140,9 +139,8 @@ describe('Ledger8RuntimeMissingError', () => {
     expect(error.cause).toBe(cause);
     expect(error.message).toContain('midnight-js-protocol/v8');
     expect(error.message).toContain('reinstall');
-    // Self-reference, so it must name no scope at all: the dual-publish renames
-    // this package in `package.json` but never in a compiled string, and the
-    // subpath alone identifies the import under either scope.
+    // Self-reference, so it names no scope: the subpath alone identifies the
+    // import under either published scope.
     expect(packageNamesIn(error.message)).toEqual([]);
   });
 

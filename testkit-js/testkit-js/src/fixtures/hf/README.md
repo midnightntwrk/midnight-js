@@ -29,7 +29,7 @@ here against the real `@midnightntwrk/ledger-v8@8.1.2` /
 ## Consuming these fixtures
 
 The whole tree below `src/fixtures/hf/` is **published** with
-`@midnight-ntwrk/testkit-js`. The build copies it verbatim into
+`@midnightntwrk/testkit-js`. The build copies it verbatim into
 `dist/fixtures/hf/`, and `src/fixtures-hf.ts` resolves it relative to its own
 module URL, so the same accessors work from source inside this repo and from
 the installed package outside it:
@@ -40,7 +40,7 @@ import {
   hfFixturePath,
   hfFixturesManifest,
   readHfFixture
-} from '@midnight-ntwrk/testkit-js/fixtures-hf';
+} from '@midnightntwrk/testkit-js/fixtures-hf';
 
 const bytes = readHfFixture('state-v8.hex');                    // Uint8Array
 const era = hfFixturesManifest['state-v8.hex'].protocolVersion; // 1000000
@@ -477,7 +477,7 @@ artifact with that single line as the only difference, which is the property the
 "byte-verbatim" rule was protecting.
 
 **A consumer who wants to RUN these needs the runtime.** The fixture tree ships
-with `@midnight-ntwrk/testkit-js`, but `@midnight-ntwrk/compact-runtime` is a
+with `@midnightntwrk/testkit-js`, but `@midnight-ntwrk/compact-runtime` is a
 devDependency of that package, not a dependency — so importing either
 `contract/index.js` from an installed copy fails to resolve its own
 `@midnight-ntwrk/compact-runtime` import unless the consumer has one in their own
@@ -696,7 +696,7 @@ cp /tmp/coin-receiver-out/compiler/contract-info.json  testkit-js/testkit-js/src
 To recompile `twin-contract/`:
 
 ```
-yarn fetch-compactc   # from packages/contracts/, once, if packages/compact isn't built yet — run `yarn turbo run build --filter=@midnight-ntwrk/midnight-js-compact` first
+yarn fetch-compactc   # from packages/contracts/, once, if packages/compact isn't built yet — run `yarn turbo run build --filter=@midnightntwrk/midnight-js-compact` first
 node packages/compact/dist/run-compactc.cjs testkit-js/testkit-js/src/fixtures/hf/twin-contract/counter.compact testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled
 rm testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/contract/index.js.map   # trim: not needed, keeps the fixture minimal
 ```

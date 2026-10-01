@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractAddress, ContractState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import type { ZswapChainState } from '@midnightntwrk/midnight-js-protocol/ledger';
+import type { PublicDataProvider } from '@midnightntwrk/midnight-js-types';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeCalleeStateResolver } from '../../internal/utils';

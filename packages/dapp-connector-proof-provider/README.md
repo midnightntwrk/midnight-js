@@ -5,14 +5,14 @@ Proof provider implementation that delegates zero-knowledge proof generation to 
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-dapp-connector-proof-provider
+yarn add @midnightntwrk/midnight-js-dapp-connector-proof-provider
 ```
 
 ## Quick Start
 
 ```typescript
-import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { dappConnectorProofProvider } from '@midnightntwrk/midnight-js-dapp-connector-proof-provider';
+import { unwrapV9 } from '@midnightntwrk/midnight-js-types';
 
 const proofProvider = await dappConnectorProofProvider(
   walletConnectedAPI,
@@ -56,8 +56,8 @@ DApp Connector Wallet (getProvingProvider)
 Use `dappConnectorProofProvider` for most use cases. It wraps the wallet's proving capabilities with a cost model to handle complete transactions.
 
 ```typescript
-import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { dappConnectorProofProvider } from '@midnightntwrk/midnight-js-dapp-connector-proof-provider';
+import { unwrapV9 } from '@midnightntwrk/midnight-js-types';
 
 const proofProvider = await dappConnectorProofProvider(
   walletConnectedAPI,
@@ -76,7 +76,7 @@ const provenTx = unwrapV9(
 Use `dappConnectorProvingProvider` for advanced scenarios requiring direct access to the wallet's proving provider without cost model integration.
 
 ```typescript
-import { dappConnectorProvingProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+import { dappConnectorProvingProvider } from '@midnightntwrk/midnight-js-dapp-connector-proof-provider';
 
 const provingProvider = await dappConnectorProvingProvider(
   walletConnectedAPI,
@@ -127,7 +127,7 @@ import {
   // Low-level: Circuit proving
   dappConnectorProvingProvider,
   type DAppConnectorProvingAPI
-} from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+} from '@midnightntwrk/midnight-js-dapp-connector-proof-provider';
 ```
 
 ## Resources

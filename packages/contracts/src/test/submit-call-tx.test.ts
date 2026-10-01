@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { type CompiledContract, type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import { StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { type AlignedValue, type ContractAddress, type IntentHash, type PartitionedTranscript, type RawTokenType } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type CompiledContract, type Contract } from '@midnightntwrk/midnight-js-protocol/compact-js';
+import { StateValue } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import { type AlignedValue, type ContractAddress, type IntentHash, type PartitionedTranscript, type RawTokenType } from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
@@ -25,7 +25,7 @@ import {
   type PrivateStateId,
   SegmentFail,
   SegmentSuccess
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CURRENT_PIPELINE_ERA } from '../era';

@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
-import { type MidnightProviders, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import { httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
+import { indexerPublicDataProvider } from '@midnightntwrk/midnight-js-indexer-public-data-provider';
+import { levelPrivateStateProvider } from '@midnightntwrk/midnight-js-level-private-state-provider';
+import { NodeZkConfigProvider } from '@midnightntwrk/midnight-js-node-zk-config-provider';
+import { type MidnightProviders, type PrivateStateId } from '@midnightntwrk/midnight-js-types';
 
 import { type EnvironmentConfiguration } from '../test-environment';
 import { type MidnightWalletProvider } from '../wallet';

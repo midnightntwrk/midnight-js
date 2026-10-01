@@ -35,12 +35,12 @@ import type {
   LedgerEra,
   LedgerVersion,
   TranscriptPojo
-} from '@midnight-ntwrk/midnight-js-protocol';
-import { ComposeFailedError } from '@midnight-ntwrk/midnight-js-protocol';
-import type { AlignedValue, Op, ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { PublicDataProvider, RawContractState } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-protocol';
+import { ComposeFailedError } from '@midnightntwrk/midnight-js-protocol';
+import type { AlignedValue, Op, ZswapLocalState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnightntwrk/midnight-js-protocol/ledger';
+import type { PublicDataProvider, RawContractState } from '@midnightntwrk/midnight-js-types';
+import { assertDefined } from '@midnightntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
 import {

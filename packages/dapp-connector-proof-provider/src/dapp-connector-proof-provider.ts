@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import type { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
+import type { CostModel } from '@midnightntwrk/midnight-js-protocol/ledger';
+import { proveV8Transaction } from '@midnightntwrk/midnight-js-protocol/prove';
 import {
   createProofProviderFromHandlers,
   type ProofProvider,
   type ZKConfigProvider,
   type ZKConfigRegistry
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 
 import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from './dapp-connector-proving-provider';
 

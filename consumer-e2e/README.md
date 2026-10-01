@@ -31,7 +31,7 @@ node consumer-e2e/fork-matrix-smoke.mjs pnp           # needs Docker
 `yarn typecheck:consumer-e2e` runs `tsc` over every `.mjs` here through
 [`tsconfig.json`](./tsconfig.json). CI runs it on the **Consumer E2E** lane,
 before the pack — that lane is the one with an unfiltered `yarn build`, and
-`fork-matrix-smoke.mjs` imports `@midnight-ntwrk/testkit-js` by name, so a leg
+`fork-matrix-smoke.mjs` imports `@midnightntwrk/testkit-js` by name, so a leg
 that builds only `packages/*` cannot resolve what the check is checking. It is
 also in the pre-push hook, so a push carries it whether or not you remember.
 
@@ -68,8 +68,8 @@ Two conventions follow from the check, both recorded at their call sites:
   time — every entry point normalises an absent `args` to the empty tuple — and
   it is what lets a helper generic over many circuits typecheck at all.
 - **The framework is imported the way a consumer imports it.** Entry points come
-  off `@midnight-ntwrk/midnight-js-contracts`; `networkHeadVersion` and
-  `CompiledContract` come off the `@midnight-ntwrk/midnight-js` barrel, not
+  off `@midnightntwrk/midnight-js-contracts`; `networkHeadVersion` and
+  `CompiledContract` come off the `@midnightntwrk/midnight-js` barrel, not
   `protocol`'s root. The single remaining non-consumer import is
   `loadLedgerEra`, and it is a gap in `contracts` rather than a shortcut taken
   here — `readRetainedLedger` explains it.

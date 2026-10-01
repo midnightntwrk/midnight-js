@@ -32,7 +32,7 @@
  * asserted in the typecheck suite.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { type Contract } from '@midnightntwrk/midnight-js-protocol/compact-js';
 
 import { CURRENT_PIPELINE_ERA, type PipelineEra, RETAINED_PIPELINE_ERA, type RetainedPipelineEra } from './era';
 import { UnrecognisedResultEraError } from './errors';

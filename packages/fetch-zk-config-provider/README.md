@@ -5,13 +5,13 @@ ZK configuration provider that retrieves proving keys, verifier keys, and ZK int
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-fetch-zk-config-provider
+yarn add @midnightntwrk/midnight-js-fetch-zk-config-provider
 ```
 
 ## Quick Start
 
 ```typescript
-import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
+import { FetchZkConfigProvider } from '@midnightntwrk/midnight-js-fetch-zk-config-provider';
 
 const zkConfigProvider = new FetchZkConfigProvider('https://example.com/zk-artifacts');
 
@@ -68,7 +68,7 @@ retained-era (pre-fork) contracts.
 ## Exports
 
 ```typescript
-import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
+import { FetchZkConfigProvider } from '@midnightntwrk/midnight-js-fetch-zk-config-provider';
 ```
 
 ## Resources

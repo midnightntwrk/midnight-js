@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { ReadSeam } from '@midnight-ntwrk/midnight-js-types';
-import { PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types/errors';
+import type { LedgerVersion } from '@midnightntwrk/midnight-js-protocol/version';
+import type { ReadSeam } from '@midnightntwrk/midnight-js-types';
+import { PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-types/errors';
 import type { GraphQLFormattedError } from 'graphql';
 
 /**
@@ -23,12 +23,12 @@ import type { GraphQLFormattedError } from 'graphql';
  * them with a single `instanceof IndexerError` check.
  *
  * NOT EXHAUSTIVE OVER A READ. Two failure classes deliberately escape this
- * check: `DeserializationError` (`@midnight-ntwrk/midnight-js-utils`) and
- * `Ledger8RuntimeMissingError` (`@midnight-ntwrk/midnight-js-protocol`).
+ * check: `DeserializationError` (`@midnightntwrk/midnight-js-utils`) and
+ * `Ledger8RuntimeMissingError` (`@midnightntwrk/midnight-js-protocol`).
  *
  * A consumer that needs to catch everything a read can raise should catch
  * broadly and branch, or match on `code` via `hasErrorCode` from
- * `@midnight-ntwrk/midnight-js-utils`.
+ * `@midnightntwrk/midnight-js-utils`.
  *
  * @see {@link ErrorBoundaries} for what each escaping class reports, and why
  * wrapping it here would mislead.
@@ -339,7 +339,7 @@ export class IndexerInvariantError extends IndexerError {
  * Within one build this cannot happen: the era is a `LedgerVersion` and the
  * decoder table is total over that union, so a missing entry is a compile
  * error. It is reachable across builds — a consumer whose installed
- * `@midnight-ntwrk/midnight-js-protocol` is newer than this package, whose era
+ * `@midnightntwrk/midnight-js-protocol` is newer than this package, whose era
  * resolver therefore answers an era this decoder table predates.
  *
  * `protocolVersion` is the raw integer the indexer reported, kept so a report
@@ -389,7 +389,7 @@ export class EraUnsupportedError extends IndexerError {
  * Exists so that both era-resolution failures reach a consumer through
  * `IndexerError`.
  * The underlying `UnknownProtocolVersionError` from
- * `@midnight-ntwrk/midnight-js-protocol` is preserved on `cause`.
+ * `@midnightntwrk/midnight-js-protocol` is preserved on `cause`.
  */
 export class EraUnresolvableError extends IndexerError {
   readonly code = PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE;

@@ -21,7 +21,7 @@ import {
   PRIVATE_STATE_ROOT_PATH,
   PrivateStateSerializationError,
   type PrivateStateSerializationFailure
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import { Buffer } from 'buffer';
 import * as superjson from 'superjson';
 

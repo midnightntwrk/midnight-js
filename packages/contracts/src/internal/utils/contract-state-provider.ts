@@ -17,9 +17,9 @@ import type {
   ContractAddress,
   ContractState,
   ContractStateProvider
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import type { ZswapChainState } from '@midnightntwrk/midnight-js-protocol/ledger';
+import type { PublicDataProvider } from '@midnightntwrk/midnight-js-types';
 
 /**
  * The chain-side state of one cross-contract callee, as of the resolver's block.

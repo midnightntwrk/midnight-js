@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractEvent } from '@midnight-ntwrk/midnight-js-types';
+import { versionOfRecord } from '@midnightntwrk/midnight-js-protocol';
+import type { ContractEvent } from '@midnightntwrk/midnight-js-types';
 import { describe, expect, test } from 'vitest';
 
 import { IndexerDataError } from '../errors';

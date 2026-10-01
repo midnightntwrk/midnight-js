@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import { ledger, loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { ledger, loadLedger8 } from '@midnightntwrk/midnight-js-protocol';
 import {
   DeserializationError,
   ledgerParametersEnvelopeVersion,
   parseSerializedTag,
   TagParseError,
   toHex
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, test } from 'vitest';
 
 import { parseHexLedgerParameters, parseHexZswapState } from '../codec';

@@ -100,7 +100,7 @@ it.
 `V8PayloadUnsupportedError` lives in this package rather than in each provider
 package because the payload union it rejects is defined here, on the provider
 interfaces every implementation shares. Catch it via its stable `code`, using
-`hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
+`hasErrorCode` from `@midnightntwrk/midnight-js-utils`.
 
 ## Why the lifting adapters exist at all
 

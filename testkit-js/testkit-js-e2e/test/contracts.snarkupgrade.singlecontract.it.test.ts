@@ -20,17 +20,17 @@ import {
   submitInsertVerifierKeyTx,
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { SucceedEntirely, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-contracts';
+import { sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/ledger';
+import { SucceedEntirely, type VerifierKey } from '@midnightntwrk/midnight-js-types';
 import {
   createLogger,
   type EnvironmentConfiguration,
   getTestEnvironment,
   initializeMidnightProviders,
   type MidnightWalletProvider,
-  type TestEnvironment} from '@midnight-ntwrk/testkit-js';
+  type TestEnvironment} from '@midnightntwrk/testkit-js';
 import path from 'path';
 
 import { UNDEPLOYED_CONTRACT_ADDRESS } from '../src/constants';

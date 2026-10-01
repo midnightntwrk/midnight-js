@@ -17,7 +17,7 @@ happened:
    network's, so the tag in the payload does not match the tag the installed
    binding expects. Same era on both sides; ordinary dependency skew.
 
-The deserialization layer in `@midnight-ntwrk/midnight-js-utils` classifies the
+The deserialization layer in `@midnightntwrk/midnight-js-utils` classifies the
 underlying failure and attaches a mitigation. For `version-mismatch` that
 mitigation is "align the version of `@midnightntwrk/ledger`-vN … with the
 protocol version of the network and indexer you are connecting to" — case 2.

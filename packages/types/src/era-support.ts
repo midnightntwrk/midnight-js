@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerVersion } from '@midnightntwrk/midnight-js-protocol/version';
 
 import { type ProviderSeam, SeamEraUnsupportedError } from './errors';
 

@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { ContractState as CompactContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { setNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import { ContractState as CompactContractState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import {
   MaintenanceUpdate,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleSigningKey,
   Transaction
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import {

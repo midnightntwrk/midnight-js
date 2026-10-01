@@ -7,7 +7,7 @@
 
 ## Context
 
-`@midnight-ntwrk/midnight-js-contracts` dispatches two Compact toolchains
+`@midnightntwrk/midnight-js-contracts` dispatches two Compact toolchains
 through one set of entry points, so it carries two families of nearly the same
 types. The current era's family is permanent. The retained era's family exists
 only while the fork window is open: 29 types (`Ledger8FoundContract`,
@@ -80,7 +80,7 @@ one file, and a declaration named `Ledger8X` is published as `Ledger8.X`.
   window closes and stays flat here, because filing it under a name that says
   `Ledger8` would misname it. Its removal is a separate change, and whether it
   earns a namespace of its own is an open question.
-- **Follow-ups:** `@midnight-ntwrk/midnight-js-protocol` still publishes
+- **Follow-ups:** `@midnightntwrk/midnight-js-protocol` still publishes
   `Ledger8RuntimeMissingError` and `Ledger8InstanceMismatchError` flat, so the
   umbrella package shows both policies side by side. Deciding whether protocol
   follows is deferred.

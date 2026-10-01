@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractEvent, ContractEventQueryFilter, PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractEvent, ContractEventQueryFilter, PublicDataProvider } from '@midnightntwrk/midnight-js-types';
 
 import { DEFAULT_CONTRACT_EVENTS_PAGE_SIZE } from './config';
 

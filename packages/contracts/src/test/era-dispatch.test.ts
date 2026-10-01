@@ -17,14 +17,14 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { type LedgerVersion, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
-import type { RawContractState } from '@midnight-ntwrk/midnight-js-types';
+import { type LedgerVersion, UnknownLedgerVersionError } from '@midnightntwrk/midnight-js-protocol';
+import type { RawContractState } from '@midnightntwrk/midnight-js-types';
 import {
   CONTRACTS_ERROR_CODES,
   type ContractsErrorCode,
   hasErrorCode,
   TagParseError
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it, type Mock, vi } from 'vitest';
 
 import {

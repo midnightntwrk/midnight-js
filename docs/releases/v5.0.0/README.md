@@ -25,7 +25,7 @@ v5.0.0 is the major a dApp must be on **before** the ledger v8 to v9 hard fork. 
 
 ## Breaking Changes (high level)
 
-1. **Protocol bindings moved to ledger-v9 / onchain-runtime-v4 under the `@midnightntwrk` scope** — `@midnight-ntwrk/midnight-js-protocol/ledger` and `/onchain-runtime` now re-export the v9 / v4 packages (#970).
+1. **Protocol bindings moved to ledger-v9 / onchain-runtime-v4 under the `@midnightntwrk` scope** — `@midnightntwrk/midnight-js-protocol/ledger` and `/onchain-runtime` now re-export the v9 / v4 packages (#970).
 2. **`SigningKey` is now a structured object** — `{ tag: 'schnorr' | 'ecdsa', value: <hex> }` instead of a plain hex string. Affects `ContractExecutableRuntimeOptions.signingKey`, signing-key import/export validation, and the DApp-connector wallet adapter (#970).
 3. **`ContractState` structural version bumped `[v6]` → `[v8]`** — state persisted/serialized under the old protocol is rejected by the version canary (#970).
 4. **`@midnightntwrk/wallet-sdk` 2.0.0-beta** (testkit-js) — keystore and signature/verifying-key APIs adopt the structured key/signature types (#970, #967).

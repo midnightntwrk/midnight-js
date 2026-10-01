@@ -14,8 +14,8 @@ implementations consult their sources in the order they do.
 
 The reader is `parseZkArtifactRuntimeVersion`
 (`packages/utils/src/zk-artifact-contract-info.ts`). The providers that call it
-are `@midnight-ntwrk/midnight-js-node-zk-config-provider` and
-`@midnight-ntwrk/midnight-js-fetch-zk-config-provider`.
+are `@midnightntwrk/midnight-js-node-zk-config-provider` and
+`@midnightntwrk/midnight-js-fetch-zk-config-provider`.
 
 ## Only the runtime version is read
 

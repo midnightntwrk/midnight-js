@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import { type Contract, ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import { type CoinPublicKey, type ContractModuleProvider, type ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
-import { exitResultOrError, makeContractExecutableRuntime, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import { getNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/compact-js';
+import { type Contract, ProvableCircuitId } from '@midnightntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { type CoinPublicKey, type ContractModuleProvider, type ContractState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '@midnightntwrk/midnight-js-protocol/ledger';
+import { ContractAddress } from '@midnightntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+import { exitResultOrError, makeContractExecutableRuntime, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnightntwrk/midnight-js-types';
+import { assertDefined, assertIsContractAddress, parseCoinPublicKeyToHex } from '@midnightntwrk/midnight-js-utils';
 
 import type {
   CallOptions,
