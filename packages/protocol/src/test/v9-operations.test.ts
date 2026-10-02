@@ -29,6 +29,7 @@ import * as LedgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { ComposeOptionError } from '../errors';
+import { entryPointName } from '../lib/shared/verifier-keys';
 import { reexpressOperationsForCurrentEra } from '../lib/v9/operations';
 import { fixturePath } from './fixtures';
 
@@ -129,4 +130,58 @@ describe('reexpressOperationsForCurrentEra', () => {
       reexpressOperationsForCurrentEra([{ circuitId: 'increment', verifierKey: notAKey, verifierKeyHash: undefined }])
     ).toThrow();
   });
+
+  it('registers an entry point whose circuitId was decoded from bytes, relying on the v8 decoder', () => {
+    // `reexpressOperationsForCurrentEra` receives `ContractEntryPointPojo` where `circuitId` is
+    // already a string (decoded by `entryPointName` in `decodeContractStateWith`).
+    //
+    // As noted in `packages/protocol/docs/verifier-keys.md:81-82`, registering by resolved name
+    // rather than declared key would be a hazard for deploy (leaving a byte-declared slot blank).
+    // For keep-state re-expression, this design relies on the vendor behavior that ledger-v8 decodes
+    // even a byte-set entry point back to a string (pinned by the `entryPointName` suite in
+    // `v8-deploy.test.ts:58-63`).
+    const byteDeclaredId = new TextEncoder().encode('increment');
+    const resolvedName = entryPointName(byteDeclaredId);
+
+    const entryPoints = [
+      { circuitId: resolvedName, verifierKey: RETAINED_VERIFIER_KEY, verifierKeyHash: undefined }
+    ];
+
+    const state = LedgerV9.ContractState.deserialize(reexpressOperationsForCurrentEra(entryPoints));
+
+    expect(state.operation(resolvedName)?.verifierKey).toEqual(RETAINED_VERIFIER_KEY);
+    expect([...state.operations()].map(String)).toEqual(['increment']);
+  });
+
+  it('handles name collisions by overwriting under the decoded name, documenting the deploy-vs-reexpression seam', () => {
+    // 0xff and 0xfe are distinct invalid UTF-8 byte sequences that both decode to the Unicode
+    // replacement character (U+FFFD). In deploy (`composeV8DeployTx`), such collisions are detected
+    // and refused early as `deploy-ambiguous-circuit` (see `v8-deploy.test.ts:489-510`).
+    //
+    // For keep-state operations, `ContractEntryPointPojo` only carries the decoded `circuitId` string.
+    // If two entry points arrive with the same decoded name, `state.setOperation(entryPoint.circuitId, operation)`
+    // maps them to the same slot, with the latter entry point winning. This test pins that behavior
+    // and documents that keep-state relies on on-chain contracts having already passed the deploy-time
+    // ambiguity check.
+    const ambiguousA = new Uint8Array([0xff]);
+    const ambiguousB = new Uint8Array([0xfe]);
+    expect(entryPointName(ambiguousA)).toBe(entryPointName(ambiguousB));
+
+    const collidedName = entryPointName(ambiguousA);
+    const secondKey = new Uint8Array(RETAINED_VERIFIER_KEY);
+    secondKey[30] = (secondKey[30]! ^ 0xff);
+
+    const entryPoints = [
+      { circuitId: collidedName, verifierKey: RETAINED_VERIFIER_KEY, verifierKeyHash: undefined },
+      { circuitId: collidedName, verifierKey: secondKey, verifierKeyHash: undefined }
+    ];
+
+    const state = LedgerV9.ContractState.deserialize(reexpressOperationsForCurrentEra(entryPoints));
+
+    // The collision collapses into a single registered operation under the common name
+    expect([...state.operations()].map(String)).toEqual([collidedName]);
+    // The second entry point overwrote the first in registration order
+    expect(state.operation(collidedName)?.verifierKey).toEqual(secondKey);
+  });
 });
+
