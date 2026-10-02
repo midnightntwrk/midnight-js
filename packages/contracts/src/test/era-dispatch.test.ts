@@ -246,6 +246,10 @@ const ACCEPTED_CELLS: readonly (DispatchCell & { readonly route: string })[] = [
 const REFUSED_CELLS: readonly (DispatchCell & {
   readonly reason: EraMismatchReason;
 })[] = [
+  // Current-era artifacts on a pre-fork head (both call and deploy).
+  // Note: these rows exercise the table specification directly. In shipped code,
+  // assertEraCompatible is called only with literal 'ledger8' because the current-era
+  // single-call path buys no head read (see packages/contracts/docs/era-dispatch.md:239-253).
   {
     artifact: 'current-era (0.18)',
     pipeline: 'v9',
@@ -353,6 +357,12 @@ describe('the era dispatch table: artifact era x network head era x operation ki
   });
 
   it('names the reason on a current-era artifact refused by a pre-fork head', () => {
+    // Note: this case exercises the ERA_PAIRING table specification directly, not a reachable
+    // production path. Every shipped call site passes literal 'ledger8', because the current era's
+    // single-call path buys no head read (see packages/contracts/docs/era-dispatch.md:239-253).
+    // A current-era call on a pre-fork head fails late (at a provider seam or node).
+    // If a head read is ever bought on the current era's single-call path, this note is what tells
+    // the next reader that the cells became live.
     try {
       assertEraCompatible('v9', 'v8', 'call');
       expect.unreachable('a current-era artifact was accepted on a pre-fork head');
