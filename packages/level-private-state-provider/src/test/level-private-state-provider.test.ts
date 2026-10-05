@@ -1657,6 +1657,39 @@ describe('Level Private State Provider', (): void => {
       return { replacement, exported: await source.exportSigningKeys({ password: EXPORT_PASSWORD }) };
     };
 
+    const putUndecodableSigningKeyEntry = async (address: string): Promise<void> => {
+      const level = new Level(LEGACY_TEST_DB, { createIfMissing: true });
+      const subLevel = level.sublevel<string, string>(SIGNING_KEY_SUBLEVEL, { valueEncoding: 'utf-8' });
+      try {
+        await level.open();
+        await subLevel.open();
+        await subLevel.put(address, 'not-json-and-not-encrypted');
+      } finally {
+        await subLevel.close();
+        await level.close();
+      }
+    };
+
+    test("importSigningKeys with the default 'error' strategy reports a malformed entry as a conflict", async () => {
+      const db = await openStoreWithEntry('ab'.repeat(31));
+      const { exported } = await exportReplacementFor(LEGACY_ADDRESS);
+
+      await expect(db.importSigningKeys(exported, { password: EXPORT_PASSWORD })).rejects.toThrow(ImportConflictError);
+      await expect(db.getSigningKey(LEGACY_ADDRESS)).rejects.toThrow(StoredSigningKeyFormatError);
+    });
+
+    test("importSigningKeys with 'overwrite' repairs an entry that cannot be decoded", async () => {
+      const db = levelPrivateStateProvider<string, string>(legacyConfig);
+      await db.setSigningKey(OTHER_ADDRESS, sampleSigningKey());
+      await putUndecodableSigningKeyEntry(LEGACY_ADDRESS);
+      const { replacement, exported } = await exportReplacementFor(LEGACY_ADDRESS);
+
+      const result = await db.importSigningKeys(exported, { password: EXPORT_PASSWORD, conflictStrategy: 'overwrite' });
+
+      expect(result).toEqual({ imported: 0, skipped: 0, overwritten: 1 });
+      expect(await db.getSigningKey(LEGACY_ADDRESS)).toEqual(replacement);
+    });
+
     test("importSigningKeys with 'overwrite' repairs a malformed entry", async () => {
       const db = await openStoreWithEntry('ab'.repeat(31));
       const { replacement, exported } = await exportReplacementFor(LEGACY_ADDRESS);

@@ -780,8 +780,12 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     return `${contractAddress}:${privateStateId}`;
   };
 
-  const hasStoredSigningKey = async (address: ContractAddress): Promise<boolean> =>
-    (await subLevelMaybeGet<ContractAddress, unknown>(ctx, scopedNames.signingKey, address, passwordProvider)) !== null;
+  const hasStoredSigningKey = async (address: ContractAddress): Promise<boolean> => {
+    await waitForRotationLock(ctx.dbName, scopedNames.signingKey);
+    return withSubLevel<ContractAddress, string, boolean>(ctx, scopedNames.signingKey, async (subLevel) =>
+      (await subLevel.get(address)) !== undefined
+    );
+  };
 
   return {
     /** {@inheritDoc PrivateStateProvider.setContractAddress} */
