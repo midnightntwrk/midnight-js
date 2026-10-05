@@ -343,10 +343,16 @@ compiler tells you to.
 no further code change**, and most of this step is about timing and operations
 rather than code. This includes re-attaching to a contract deployed before the
 fork: `findDeployedContract` accepts it, and reports its deploy record tagged `v8`
-(see Step 13). One limit applies: the contract must have had at least one call
-after the fork. Until then the indexer serves its state in the ledger-8 format,
-and `queryContractState` refuses it with `IndexerDataError`. Nothing in that path asks you to call a new API, branch on
+(see Step 13). Nothing in that path asks you to call a new API, branch on
 the network's era, or maintain a second code path.
+
+One case does need more. A contract deployed before the fork that has had **no
+state-changing call since the fork** still has its state in the ledger-8 format.
+The indexer serves it that way, so `findDeployedContract` itself throws
+`IndexerDataError`, and so does any call through recompiled artifacts. The first
+state-changing call after the fork must therefore go through the pre-fork
+artifacts (see the next paragraph). After that call, recompiled artifacts find
+and call the contract as described above.
 
 **If you keep pre-fork artifacts callable instead**, there is more to it, and it
 is not optional reading: those calls run the retained pipeline and answer with

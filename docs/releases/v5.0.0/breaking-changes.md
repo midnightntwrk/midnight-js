@@ -259,8 +259,11 @@ contract deployed before the fork keeps a ledger-8 deploy record.
 `FoundContract.deployTxData.public` is therefore `FoundDeployTxPublicData`, a
 union tagged by `version`. `contractAddress` is on both arms. Narrow on
 `version` before reading `tx` or `initialContractState`; the `v8` arm has no
-`initialContractState`. Code that reads `found.deployTxData.public.initialContractState`
-without narrowing no longer compiles. `DeployedContract` is unchanged.
+`initialContractState`. Code that does any of the following without narrowing no
+longer compiles: reads `found.deployTxData.public.initialContractState`, uses
+`found.deployTxData.public.tx` as a v9 `Transaction`, or passes
+`found.deployTxData` where a `FinalizedDeployTxDataBase<C>` is expected.
+`DeployedContract` is unchanged.
 
 `indexerPublicDataProvider` produces both arms. It decodes each record with the
 ledger runtime of the era that record's own `protocolVersion` reports, so a
