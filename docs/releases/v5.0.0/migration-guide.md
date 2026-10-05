@@ -487,9 +487,11 @@ either era.
 
 Two limits to plan around. Both eras now name the circuit on the result, and
 both handles carry `compiledContract` and `contractAddress`, so the contract
-HANDLES differ in only two places: the retained handle has no maintenance
-interfaces (the retained era has no governance arm), and its `deployTxData` is
-the flat record where the current era's is `{ era, public, private }`. And `getStates` / `getPublicStates` have no retained
+HANDLES differ in only three places: the retained handle has no maintenance
+interfaces (the retained era has no governance arm), its `deployTxData` is
+the flat record where the current era's is `{ era, public, private }`, and its
+`callTx.<circuit>(...)` takes no `TransactionContext`, so it cannot carry
+recipient key mappings (see below). And `getStates` / `getPublicStates` have no retained
 arm: they decode with the current-era deserializer and refuse anything else, so
 for a contract whose state envelope is still pre-fork, read the state through
 `queryRawContractState` and narrow on its `version`, or read
@@ -498,11 +500,12 @@ for a contract whose state envelope is still pre-fork, read the state through
 **Paying a shielded coin to someone else.** A retained-era circuit that pays a
 shielded coin to a recipient other than the calling wallet needs that
 recipient's encryption public key. Pass it in
-`additionalCoinEncPublicKeyMappings` on the `submitCallTx` options, as you
-would for a current-era call. Without it the call is refused with
-`Ledger8RecipientUnmappableError` before anything is proven. The
-`callTx.<circuit>(...)` handle on a found retained contract cannot carry
-mappings; call `submitCallTx` directly for these circuits.
+`additionalCoinEncPublicKeyMappings` on the `submitCallTx` or
+`submitCallTxAsync` options, as you would for a current-era call. Without it
+the call is refused with `Ledger8RecipientUnmappableError` before anything is
+proven. The `callTx.<circuit>(...)` handle on a deployed or found retained
+contract cannot carry mappings; call `submitCallTx` or `submitCallTxAsync`
+directly for these circuits.
 
 ### Catching a failure in either era
 
