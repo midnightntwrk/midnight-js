@@ -95,8 +95,8 @@ Register the new scope if you import the protocol packages anywhere (the framewo
 ```diff
   const options: ContractExecutableRuntimeOptions = {
     // ...
--   signingKey: '0102030a1b2c3d4e5f',
-+   signingKey: { tag: 'schnorr', value: '0102030a1b2c3d4e5f' },
+-   signingKey: keyHex, // 64 hex characters (32 bytes)
++   signingKey: { tag: 'schnorr', value: keyHex },
   };
 ```
 
@@ -114,8 +114,11 @@ The key round-trips through the config layer, so the returned value is structura
 ```ts
 import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 
-isValidSigningKey({ tag: 'schnorr', value: '0102030a1b2c3d4e5f' }); // true
-isValidSigningKey('0102030a1b2c3d4e5f');                            // false (old string shape)
+const keyHex = 'ab'.repeat(32); // 64 hex characters (32 bytes)
+
+isValidSigningKey({ tag: 'schnorr', value: keyHex }); // true
+isValidSigningKey(keyHex);                            // false (old string shape)
+isValidSigningKey({ tag: 'schnorr', value: 'abcdef' }); // false (not 32 bytes)
 ```
 
 ---

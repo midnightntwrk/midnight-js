@@ -1534,7 +1534,7 @@ describe('Level Private State Provider', (): void => {
 
       test('importSigningKeys accepts a well-formed structured signing key', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
-        const wellFormed = { tag: 'schnorr', value: '0102030a1b2c3d4e5f' };
+        const wellFormed = { tag: 'schnorr', value: 'ab'.repeat(32) };
         const goodExport = await buildBadExport({ [CONTRACT_ADDRESS_1]: wellFormed });
 
         const result = await db.importSigningKeys(goodExport, { password: VALID_PASSWORD });
@@ -1601,7 +1601,7 @@ describe('Level Private State Provider', (): void => {
 
     test('getSigningKey returns a stored ecdsa key unchanged', async () => {
       const db = levelPrivateStateProvider<string, string>(legacyConfig);
-      const ecdsaKey = { tag: 'ecdsa', value: 'cd'.repeat(33) } as const;
+      const ecdsaKey = { tag: 'ecdsa', value: 'cd'.repeat(32) } as const;
       await db.setSigningKey(LEGACY_ADDRESS, ecdsaKey);
 
       const key = await db.getSigningKey(LEGACY_ADDRESS);
@@ -1613,6 +1613,14 @@ describe('Level Private State Provider', (): void => {
       const db = await openStoreWithEntry('ab'.repeat(31));
 
       await expect(db.getSigningKey(LEGACY_ADDRESS)).rejects.toThrow(StoredSigningKeyFormatError);
+    });
+
+    test('getSigningKey refuses a structured key whose value is not 32 bytes', async () => {
+      const db = await openStoreWithEntry({ tag: 'schnorr', value: 'ab'.repeat(31) });
+
+      await expect(db.getSigningKey(LEGACY_ADDRESS)).rejects.toThrow(
+        expect.objectContaining({ name: 'StoredSigningKeyFormatError', contractAddress: LEGACY_ADDRESS })
+      );
     });
 
     test('a malformed entry does not block other addresses', async () => {

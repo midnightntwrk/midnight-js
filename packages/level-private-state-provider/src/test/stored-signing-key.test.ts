@@ -32,7 +32,7 @@ describe('readStoredSigningKey', () => {
 
   test.each([
     ['schnorr', { tag: 'schnorr', value: LEGACY_KEY }],
-    ['ecdsa', { tag: 'ecdsa', value: 'cd'.repeat(33) }]
+    ['ecdsa', { tag: 'ecdsa', value: 'cd'.repeat(32) }]
   ])('returns a structured %s key unchanged', (_kind, stored) => {
     const result = readStoredSigningKey(stored, ADDRESS);
 
@@ -42,6 +42,7 @@ describe('readStoredSigningKey', () => {
   test.each([
     ['62-char hex string', 'ab'.repeat(31)],
     ['66-char hex string', 'ab'.repeat(33)],
+    ['structured key with a 62-char value', { tag: 'schnorr', value: 'ab'.repeat(31) }],
     ['64-char non-hex string', 'zz'.repeat(32)],
     ['empty string', ''],
     ['object with unknown tag', { tag: 'rsa', value: LEGACY_KEY }],

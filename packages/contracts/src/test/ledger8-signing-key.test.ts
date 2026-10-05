@@ -39,11 +39,9 @@
  * - a change in the LENGTH a retained sampler answers, which is what the
  *   assertion against `RETAINED_SIGNING_KEY_HEX_LENGTH` measures.
  *
- * It does NOT catch a vendor shape change on its own. `isValidSigningKey`
- * admits any even-length hex string of six characters or more, so the
- * 70-character version-prefixed value the `onchain-runtime-v3` typings describe
- * would pass it unremarked. The length assertion is the half that would see
- * such a change; the predicate cannot.
+ * `isValidSigningKey` admits exactly 64 hex characters, so the 70-character
+ * version-prefixed value the `onchain-runtime-v3` typings describe would fail
+ * it as well as the length assertion.
  *
  * THE SAMPLER HERE IS A SUBSTITUTE, and that is a measurement rather than an
  * assumption. The deploy arm samples through `onchain-runtime-v3`; this file
@@ -111,13 +109,10 @@ describe('a retained-era signing key crossing the private-state provider', () =>
   it.each([
     ['two characters short', (key: string): string => key.slice(0, -2)],
     ['two characters long', (key: string): string => `${key}00`]
-  ])('reads an entry %s as absent, where the import rule alone admits it', (_case, reshape) => {
+  ])('reads an entry %s as absent, and the import rule refuses it too', (_case, reshape) => {
     const entry = toStoredLedger8SigningKey(reshape(retainedKey));
 
-    // The first assertion is the reason the second one is not redundant: the import rule admits any
-    // even-length hex of six characters or more, so it says nothing about this era's key length --
-    // and `signatureVerifyingKey()` on a truncated key answers an authority nobody holds.
-    expect(isValidSigningKey(entry)).toBe(true);
+    expect(isValidSigningKey(entry)).toBe(false);
     expect(fromStoredLedger8SigningKey(entry, CONTRACT_ADDRESS, undefined)).toBeUndefined();
   });
 });
