@@ -1315,9 +1315,10 @@ export class Ledger8AmbiguousEntryPointError extends Error {
 
 /**
  * An error indicating that a retained-era call would pay a shielded coin to a
- * user-owned recipient whose encryption public key this call cannot resolve:
- * not the calling wallet, not the burn address, and not a key in the caller's
- * `additionalCoinEncPublicKeyMappings`.
+ * user-owned recipient whose encryption public key it cannot resolve: not the
+ * calling wallet, not the burn address, and not a key in the caller's
+ * `additionalCoinEncPublicKeyMappings`. Raised by a retained-era deploy too,
+ * whose options carry no mappings, with `circuitId` set to `'initialState'`.
  *
  * Raised BEFORE the offer is built. Without it the condition surfaced from
  * inside `createZswapOutput` as a bare `Error` naming neither the era nor the
@@ -1339,11 +1340,13 @@ export class Ledger8RecipientUnmappableError extends Error {
   ) {
     super(
       `Circuit '${circuitId}' pays a shielded coin to recipient '${recipientCoinPublicKey}', whose ` +
-        "encryption public key this call cannot resolve: it is not the calling wallet's own key, " +
+        "encryption public key cannot be resolved: it is not the calling wallet's own key, " +
         'the burn address, or a key in `additionalCoinEncPublicKeyMappings`. Refusing is deliberate - ' +
         "encrypting the coin to the caller's own key would submit successfully and leave the " +
-        "recipient unable to discover it. Add the recipient's coin public key and encryption public " +
-        'key to `additionalCoinEncPublicKeyMappings` on the call options.'
+        "recipient unable to discover it. For a call, add the recipient's coin public key and " +
+        'encryption public key to `additionalCoinEncPublicKeyMappings` on the call options. A ' +
+        'retained-era deploy takes no `additionalCoinEncPublicKeyMappings`, so its constructor ' +
+        'cannot pay a shielded coin to a third party.'
     );
     this.name = 'Ledger8RecipientUnmappableError';
   }

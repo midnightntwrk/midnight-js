@@ -36,6 +36,7 @@ import {
   Ledger8DeployNotStoredError,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
+  Ledger8RecipientUnmappableError,
   Ledger8SigningKeyUnusableError,
   TxFailedError
 } from '../errors';
@@ -393,5 +394,24 @@ describe('Ledger8SigningKeyUnusableError', () => {
     // copy -- and an error message reaches logs and issue trackers.
     expect(error.message).not.toContain(supplied);
     expect('signingKey' in error).toBe(false);
+  });
+});
+
+describe('Ledger8RecipientUnmappableError', () => {
+  const RECIPIENT = 'be'.repeat(32);
+
+  it('tells a CALL to add the recipient to the mappings option', () => {
+    const error = new Ledger8RecipientUnmappableError('mintAndSendShielded', RECIPIENT);
+
+    expect(error.circuitId).toBe('mintAndSendShielded');
+    expect(error.recipientCoinPublicKey).toBe(RECIPIENT);
+    expect(error.message).toContain(RECIPIENT);
+    expect(error.message).toContain('additionalCoinEncPublicKeyMappings');
+  });
+
+  it('does not send a DEPLOY after a mappings option the retained deploy options do not have', () => {
+    const error = new Ledger8RecipientUnmappableError('initialState', RECIPIENT);
+
+    expect(error.message).toMatch(/retained-era deploy takes no `additionalCoinEncPublicKeyMappings`/);
   });
 });
