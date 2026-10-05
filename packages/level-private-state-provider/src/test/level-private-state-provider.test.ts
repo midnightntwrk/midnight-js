@@ -34,7 +34,7 @@ import { Level } from 'level';
 import * as superjson from 'superjson';
 import { vi } from 'vitest';
 
-import { type DatabaseLevel, levelPrivateStateProvider, migrateToAccountScoped } from '../index';
+import { type DatabaseLevel, levelPrivateStateProvider, migrateToAccountScoped, StoredSigningKeyFormatError } from '../index';
 import { StorageEncryption } from '../storage-encryption';
 
 const captureError = async (action: () => Promise<unknown>): Promise<unknown> => {
@@ -1542,6 +1542,126 @@ describe('Level Private State Provider', (): void => {
         expect(result.imported).toBe(1);
         expect(await db.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(wellFormed);
       });
+    });
+  });
+
+  describe('Signing keys written by a 4.x client', () => {
+    const LEGACY_TEST_DB = 'midnight-legacy-signing-key-db';
+    const LEGACY_IMPORT_DB = 'midnight-legacy-signing-key-import-db';
+    const LEGACY_ADDRESS = 'legacy-contract' as ContractAddress;
+    const OTHER_ADDRESS = 'other-contract' as ContractAddress;
+    const LEGACY_KEY = 'ab'.repeat(32);
+    const EXPORT_PASSWORD = 'Export-Legacy-Pass9!';
+    const METADATA_KEY = '__midnight_encryption_metadata__';
+    const SIGNING_KEY_SUBLEVEL =
+      `signing-keys:${crypto.createHash('sha256').update(TEST_ACCOUNT_ID).digest('hex').substring(0, 32)}`;
+
+    const legacyConfig = {
+      midnightDbName: LEGACY_TEST_DB,
+      privateStoragePasswordProvider: () => TEST_PASSWORD,
+      accountId: TEST_ACCOUNT_ID
+    };
+
+    const putRawSigningKeyEntry = async (address: string, stored: unknown): Promise<void> => {
+      const level = new Level(LEGACY_TEST_DB, { createIfMissing: true });
+      const subLevel = level.sublevel<string, string>(SIGNING_KEY_SUBLEVEL, { valueEncoding: 'utf-8' });
+      try {
+        await level.open();
+        await subLevel.open();
+        const metadata: { salt: string } = JSON.parse(await subLevel.get(METADATA_KEY) ?? '');
+        const encryption = await StorageEncryption.create(TEST_PASSWORD, {
+          existingSalt: Buffer.from(metadata.salt, 'hex')
+        });
+        await subLevel.put(address, await encryption.encrypt(superjson.stringify(stored)));
+      } finally {
+        await subLevel.close();
+        await level.close();
+      }
+    };
+
+    const openStoreWithEntry = async (stored: unknown) => {
+      const db = levelPrivateStateProvider<string, string>(legacyConfig);
+      await db.setSigningKey(OTHER_ADDRESS, sampleSigningKey());
+      await putRawSigningKeyEntry(LEGACY_ADDRESS, stored);
+      return db;
+    };
+
+    afterEach(async () => {
+      await fs.rm(path.join('.', LEGACY_TEST_DB), { recursive: true, force: true });
+      await fs.rm(path.join('.', LEGACY_IMPORT_DB), { recursive: true, force: true });
+    });
+
+    test('getSigningKey reads a bare hex key as a schnorr key', async () => {
+      const db = await openStoreWithEntry(LEGACY_KEY);
+
+      const key = await db.getSigningKey(LEGACY_ADDRESS);
+
+      expect(key).toEqual({ tag: 'schnorr', value: LEGACY_KEY });
+    });
+
+    test('getSigningKey returns a stored ecdsa key unchanged', async () => {
+      const db = levelPrivateStateProvider<string, string>(legacyConfig);
+      const ecdsaKey = { tag: 'ecdsa', value: 'cd'.repeat(33) } as const;
+      await db.setSigningKey(LEGACY_ADDRESS, ecdsaKey);
+
+      const key = await db.getSigningKey(LEGACY_ADDRESS);
+
+      expect(key).toEqual(ecdsaKey);
+    });
+
+    test('getSigningKey refuses a malformed entry with StoredSigningKeyFormatError', async () => {
+      const db = await openStoreWithEntry('ab'.repeat(31));
+
+      await expect(db.getSigningKey(LEGACY_ADDRESS)).rejects.toThrow(StoredSigningKeyFormatError);
+    });
+
+    test('a malformed entry does not block other addresses', async () => {
+      const db = await openStoreWithEntry('ab'.repeat(31));
+
+      const otherKey = await db.getSigningKey(OTHER_ADDRESS);
+
+      expect(otherKey).not.toBeNull();
+    });
+
+    test('an export of a store with a legacy entry imports back as a schnorr key', async () => {
+      const db = await openStoreWithEntry(LEGACY_KEY);
+      const exported = await db.exportSigningKeys({ password: EXPORT_PASSWORD });
+      const target = levelPrivateStateProvider<string, string>({ ...legacyConfig, midnightDbName: LEGACY_IMPORT_DB });
+
+      await target.importSigningKeys(exported, { password: EXPORT_PASSWORD });
+
+      expect(await target.getSigningKey(LEGACY_ADDRESS)).toEqual({ tag: 'schnorr', value: LEGACY_KEY });
+    });
+
+    test('exportSigningKeys refuses the whole export when one entry is malformed', async () => {
+      const db = await openStoreWithEntry('ab'.repeat(31));
+
+      await expect(db.exportSigningKeys({ password: EXPORT_PASSWORD })).rejects.toThrow(
+        expect.objectContaining({ name: 'StoredSigningKeyFormatError', contractAddress: LEGACY_ADDRESS })
+      );
+    });
+
+    test('import conflict check over a legacy entry reports ImportConflictError', async () => {
+      const source = await openStoreWithEntry(LEGACY_KEY);
+      const exported = await source.exportSigningKeys({ password: EXPORT_PASSWORD });
+
+      await expect(
+        source.importSigningKeys(exported, { password: EXPORT_PASSWORD, conflictStrategy: 'error' })
+      ).rejects.toThrow(ImportConflictError);
+    });
+
+    test('a legacy entry still reads as a schnorr key after signing-key password rotation', async () => {
+      const NEW_PASSWORD = 'Rotated-Legacy-Pass9!';
+      const db = await openStoreWithEntry(LEGACY_KEY);
+      await db.changeSigningKeysPassword(() => TEST_PASSWORD, () => NEW_PASSWORD);
+      const rotated = levelPrivateStateProvider<string, string>({
+        ...legacyConfig,
+        privateStoragePasswordProvider: () => NEW_PASSWORD
+      });
+
+      const key = await rotated.getSigningKey(LEGACY_ADDRESS);
+
+      expect(key).toEqual({ tag: 'schnorr', value: LEGACY_KEY });
     });
   });
 
