@@ -57,6 +57,8 @@ The Configuration layer maps the object to the `KEYS_SIGNING` / `KEYS_SIGNING_KI
 
 A v4.x export that stored a bare hex string will fail import with `InvalidExportFormatError`. Re-export signing keys from a v5.0.0 client, or transform stored exports to the structured shape before import.
 
+Signing keys already in a level private-state store are read in the new shape automatically; only export files made by v4.x need this step.
+
 The shared predicate is exported as `isValidSigningKey` from `@midnight-ntwrk/midnight-js-utils`.
 
 ### 2c. DApp-connector wallet adapter (testkit)

@@ -122,6 +122,10 @@ isValidSigningKey('0102030a1b2c3d4e5f');                            // false (ol
 
 ## Step 4 — Re-export or transform persisted signing-key exports
 
+**Keys already in a level private-state store need no action.** A 4.x client stored each signing key as a bare hex string. The 5.x level provider reads such an entry as `{ tag: 'schnorr', value: <stored string> }`, so maintenance calls, `findDeployedContract` and `exportSigningKeys` work on an upgraded store as they are. A stored entry that is neither shape is refused with `StoredSigningKeyFormatError`, which names the contract address. Fix it with `setSigningKey(address, { tag, value })` or remove it with `removeSigningKey(address)`.
+
+The steps below apply only to export *files* made by a 4.x client.
+
 `importSigningKey` now validates the structured shape **before** any write. A v4.x export that stored a bare hex string fails with `InvalidExportFormatError`.
 
 - **Preferred:** re-export signing keys from a v5.0.0 client.
