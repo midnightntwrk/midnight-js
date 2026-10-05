@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+
 const SIGNING_KEY_MIN_HEX_LENGTH = 6;
 const SIGNING_KEY_KINDS: readonly string[] = ['schnorr', 'ecdsa'];
 
@@ -30,9 +32,9 @@ const isValidSigningKeyHex = (value: string): boolean =>
  * Pure predicate (never throws) so callers can attach their own domain error.
  *
  * @param value The value to validate (typically a parsed import payload entry).
- * @returns `true` if `value` matches the structured signing-key shape.
+ * @returns `true` (narrowing `value` to `SigningKey`) if `value` matches the structured signing-key shape.
  */
-export const isValidSigningKey = (value: unknown): boolean => {
+export const isValidSigningKey = (value: unknown): value is SigningKey => {
   if (typeof value !== 'object' || value === null) {
     return false;
   }
