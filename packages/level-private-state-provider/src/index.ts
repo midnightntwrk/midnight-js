@@ -34,3 +34,4 @@ export {
   StorageEncryption,
   type StorageEncryptionOptions,
 } from './storage-encryption';
+export { StoredSigningKeyFormatError } from './stored-signing-key';

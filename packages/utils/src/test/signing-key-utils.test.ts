@@ -19,9 +19,9 @@ import { isValidSigningKey } from '../signing-key-utils';
 
 describe('isValidSigningKey', () => {
   it.each([
-    ['schnorr key', { tag: 'schnorr', value: '0102030a1b2c3d4e5f' }],
-    ['ecdsa key', { tag: 'ecdsa', value: 'deadbeef' }],
-    ['minimum length value', { tag: 'schnorr', value: 'abcdef' }]
+    ['schnorr key', { tag: 'schnorr', value: 'ab'.repeat(32) }],
+    ['ecdsa key', { tag: 'ecdsa', value: 'cd'.repeat(32) }],
+    ['uppercase hex value', { tag: 'schnorr', value: 'AB'.repeat(32) }]
   ])('accepts a well-formed %s', (_label, key) => {
     expect(isValidSigningKey(key)).toBe(true);
   });
@@ -29,15 +29,17 @@ describe('isValidSigningKey', () => {
   it.each([
     ['null', null],
     ['undefined', undefined],
-    ['plain object without tag', { sk: 'deadbeef' }],
-    ['legacy hex string', 'deadbeef'],
+    ['plain object without tag', { sk: 'ab'.repeat(32) }],
+    ['legacy hex string', 'ab'.repeat(32)],
     ['number', 12345],
-    ['array', ['deadbeef']],
-    ['unknown tag', { tag: 'rsa', value: 'deadbeef' }],
+    ['array', ['ab'.repeat(32)]],
+    ['unknown tag', { tag: 'rsa', value: 'ab'.repeat(32) }],
     ['missing value', { tag: 'schnorr' }],
-    ['non-hex value', { tag: 'schnorr', value: 'zz'.repeat(8) }],
-    ['odd-length value', { tag: 'schnorr', value: 'abcde' }],
-    ['too-short value', { tag: 'schnorr', value: 'ab' }],
+    ['non-hex value', { tag: 'schnorr', value: 'zz'.repeat(32) }],
+    ['odd-length value', { tag: 'schnorr', value: 'a'.repeat(63) }],
+    ['62-char value', { tag: 'schnorr', value: 'ab'.repeat(31) }],
+    ['66-char value', { tag: 'ecdsa', value: 'cd'.repeat(33) }],
+    ['short value', { tag: 'schnorr', value: 'abcdef' }],
     ['empty value', { tag: 'schnorr', value: '' }]
   ])('rejects %s', (_label, key) => {
     expect(isValidSigningKey(key)).toBe(false);
