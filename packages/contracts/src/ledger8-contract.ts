@@ -785,13 +785,14 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
    *    under the same address in the same provider, or one whose value is not
    *    the shape a retained-era key has;
    * 3. the entry could not be READ at all, because `getSigningKey` rejected: a
-   *    wrong store password, a rotation-lock timeout, store I/O.
+   *    wrong store password, a rotation-lock timeout, store I/O, or an entry the
+   *    provider refuses as not a signing key.
    *
    * Neither 2 nor 3 fails the attach. Both are reported to the logger provider
    * as a DEBUG-level dispatch breadcrumb, which is the only place the three
    * cases are distinguishable.
    *
-   * The remedy for case 2 is the caller's either way: pass the retained-era key
+   * The remedy for case 2, and for a refused entry in case 3, is the caller's either way: pass the retained-era key
    * on {@link Ledger8FindDeployedContractOptions.signingKey}, which replaces the
    * entry, or remove the entry with
    * `privateStateProvider.removeSigningKey(address)` first.

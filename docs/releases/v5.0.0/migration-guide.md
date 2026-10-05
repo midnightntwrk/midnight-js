@@ -95,8 +95,8 @@ Register the new scope if you import the protocol packages anywhere (the framewo
 ```diff
   const options: ContractExecutableRuntimeOptions = {
     // ...
--   signingKey: '0102030a1b2c3d4e5f',
-+   signingKey: { tag: 'schnorr', value: '0102030a1b2c3d4e5f' },
+-   signingKey: keyHex, // 64 hex characters (32 bytes)
++   signingKey: { tag: 'schnorr', value: keyHex },
   };
 ```
 
@@ -114,17 +114,30 @@ The key round-trips through the config layer, so the returned value is structura
 ```ts
 import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 
-isValidSigningKey({ tag: 'schnorr', value: '0102030a1b2c3d4e5f' }); // true
-isValidSigningKey('0102030a1b2c3d4e5f');                            // false (old string shape)
+const keyHex = 'ab'.repeat(32); // 64 hex characters (32 bytes)
+
+isValidSigningKey({ tag: 'schnorr', value: keyHex }); // true
+isValidSigningKey(keyHex);                            // false (old string shape)
+isValidSigningKey({ tag: 'schnorr', value: 'abcdef' }); // false (not 32 bytes)
 ```
 
 ---
 
 ## Step 4 — Re-export or transform persisted signing-key exports
 
-`importSigningKey` now validates the structured shape **before** any write. A v4.x export that stored a bare hex string fails with `InvalidExportFormatError`.
+**Keys already in a level private-state store need no action.** A 4.x client stored each signing key as a bare 64-character hex string. The 5.x level provider reads such an entry as `{ tag: 'schnorr', value: <stored string> }`, so current-era maintenance calls, `findDeployedContract` and `exportSigningKeys` work on an upgraded store as they are.
 
-- **Preferred:** re-export signing keys from a v5.0.0 client.
+A stored entry that is neither shape makes `getSigningKey`, `exportSigningKeys` (for the whole export) and current-era `findDeployedContract` throw `StoredSigningKeyFormatError`, which names the contract address. A retained-era (ledger-8) attach reports no stored key instead and logs an `unreadable-entry` breadcrumb. To fix the entry, do one of:
+
+- store a valid key with `setSigningKey(address, { tag, value })`;
+- import a valid key with `importSigningKeys(export, { conflictStrategy: 'overwrite' })`;
+- remove it with `removeSigningKey(address)`.
+
+The steps below apply only to export *files* made by a 4.x client.
+
+`importSigningKeys` now validates the structured shape **before** any write. A v4.x export that stored a bare hex string fails with `InvalidExportFormatError`.
+
+- **Preferred:** open the store the 4.x client wrote with a v5.0.0 client and run `exportSigningKeys` again.
 - **Alternatively:** transform stored exports to `{ tag: 'schnorr', value: <oldHexString> }` (or `ecdsa`, per your key type) before import.
 
 ---
