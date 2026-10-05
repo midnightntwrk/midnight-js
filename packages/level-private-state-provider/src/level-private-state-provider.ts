@@ -780,6 +780,9 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     return `${contractAddress}:${privateStateId}`;
   };
 
+  const hasStoredSigningKey = async (address: ContractAddress): Promise<boolean> =>
+    (await subLevelMaybeGet<ContractAddress, unknown>(ctx, scopedNames.signingKey, address, passwordProvider)) !== null;
+
   return {
     /** {@inheritDoc PrivateStateProvider.setContractAddress} */
     setContractAddress(address: ContractAddress): void {
@@ -1147,8 +1150,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       if (conflictStrategy === 'error') {
         let conflictCount = 0;
         for (const address of addresses) {
-          const existing = await this.getSigningKey(address);
-          if (existing !== null) {
+          if (await hasStoredSigningKey(address)) {
             conflictCount++;
           }
         }
@@ -1163,9 +1165,9 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
       for (const address of addresses) {
         const signingKey = payload.keys[address];
-        const existingKey = await this.getSigningKey(address);
+        const exists = await hasStoredSigningKey(address);
 
-        if (existingKey !== null) {
+        if (exists) {
           if (conflictStrategy === 'skip') {
             skipped++;
             continue;
@@ -1176,7 +1178,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
         await this.setSigningKey(address, signingKey);
 
-        if (existingKey === null) {
+        if (!exists) {
           imported++;
         }
       }

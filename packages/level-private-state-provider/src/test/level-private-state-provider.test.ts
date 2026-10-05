@@ -1650,6 +1650,32 @@ describe('Level Private State Provider', (): void => {
       ).rejects.toThrow(ImportConflictError);
     });
 
+    const exportReplacementFor = async (address: ContractAddress) => {
+      const source = levelPrivateStateProvider<string, string>({ ...legacyConfig, midnightDbName: LEGACY_IMPORT_DB });
+      const replacement = sampleSigningKey();
+      await source.setSigningKey(address, replacement);
+      return { replacement, exported: await source.exportSigningKeys({ password: EXPORT_PASSWORD }) };
+    };
+
+    test("importSigningKeys with 'overwrite' repairs a malformed entry", async () => {
+      const db = await openStoreWithEntry('ab'.repeat(31));
+      const { replacement, exported } = await exportReplacementFor(LEGACY_ADDRESS);
+
+      const result = await db.importSigningKeys(exported, { password: EXPORT_PASSWORD, conflictStrategy: 'overwrite' });
+
+      expect(result).toEqual({ imported: 0, skipped: 0, overwritten: 1 });
+      expect(await db.getSigningKey(LEGACY_ADDRESS)).toEqual(replacement);
+    });
+
+    test("importSigningKeys with 'skip' counts a malformed entry as skipped", async () => {
+      const db = await openStoreWithEntry('ab'.repeat(31));
+      const { exported } = await exportReplacementFor(LEGACY_ADDRESS);
+
+      const result = await db.importSigningKeys(exported, { password: EXPORT_PASSWORD, conflictStrategy: 'skip' });
+
+      expect(result).toEqual({ imported: 0, skipped: 1, overwritten: 0 });
+    });
+
     test('a legacy entry still reads as a schnorr key after signing-key password rotation', async () => {
       const NEW_PASSWORD = 'Rotated-Legacy-Pass9!';
       const db = await openStoreWithEntry(LEGACY_KEY);
