@@ -558,8 +558,7 @@ const RETAINED_MATRIX = [
       read: (ledgerState) => BigInt(ledgerState.round),
       preFork: 1n,
       postFork: 2n,
-      secondCall: 3n,
-      afterRecompiledFind: 4n
+      secondCall: 3n
     }
   },
   {
@@ -2639,6 +2638,9 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
 // The path the migration guide recommends: recompile, then re-attach to the
 // contract that already exists. Its deploy record stays ledger-8 forever.
 //
+// Runs after (c) and (c2): the find is refused until a state-changing call after
+// the fork has re-written the state in the ledger-9 format.
+//
 // The compiled contract is built inline, as the pre-fork probe does, because
 // `MATRIX` and `compiledContractFor` are declared further down this module.
 if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
@@ -2673,17 +2675,17 @@ if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
     if (found.deployTxData.public.contractAddress !== deployed.contractAddress) {
       failures.push(`${name}: the deploy record names a different contract address`);
     }
+    const { state } = retainedEntry('simple');
+    const before = await readRetainedLedger('simple', providers, deployed.contractAddress, state.read);
     const called = await found.callTx.noop();
+    const after = await readRetainedLedger('simple', providers, deployed.contractAddress, state.read);
+    if (after !== before + 1n) {
+      failures.push(`${name}: ledger ${state.label} went from ${before} to ${after}, expected ${before + 1n}`);
+    }
     return {
       deployRecordVersion: found.deployTxData.public.version,
       afterFindCall: { circuitId: called.circuitId, txId: called.public.txId },
-      ...((await checkLedgerState(
-        name,
-        retainedEntry('simple'),
-        'afterRecompiledFind',
-        providers,
-        deployed.contractAddress
-      )) ?? {})
+      [state.label]: { before: before.toString(), after: after.toString() }
     };
   });
 }
