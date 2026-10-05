@@ -193,10 +193,10 @@ Every caller hands a real resolver built by
 `createEncryptionPublicKeyResolver` — the same era-independent helper the
 current era's `unproven-call-tx.ts` resolves through. The wallet's own coin
 public key maps to its encryption key, the well-known burn address maps to
-`BURN_ENCRYPTION_PUBLIC_KEY`, and the caller's
+`BURN_ENCRYPTION_PUBLIC_KEY`, and on a CALL the caller's
 `additionalCoinEncPublicKeyMappings` from `Ledger8CallTxOptions` are passed to
 the same resolver, exactly as the current era passes them. Anyone not in those
-three sources resolves to `undefined`.
+sources resolves to `undefined`.
 
 The refusal is raised BEFORE the offer is built, as
 `Ledger8RecipientUnmappableError`, naming the era, the circuit and the
@@ -207,6 +207,14 @@ lose a recipient's coin.
 The found-contract handle (`createLedger8CircuitCallTxInterface`) has no place
 to carry mappings, so a circuit that pays a third party must be called through
 `submitCallTx` or `submitCallTxAsync`.
+
+A retained-era DEPLOY builds its resolver WITHOUT mappings:
+`Ledger8DeployContractOptions` has no `additionalCoinEncPublicKeyMappings`
+member, by decision. Retained deploys run only before the fork, so no contract
+that must keep its state after the fork depends on them, and widening the
+deploy options belongs with the first constructor that needs it. Until then a
+constructor that pays a third party is refused with the same
+`Ledger8RecipientUnmappableError`, with `circuitId` set to `'initialState'`.
 
 ## Reading the private state, and why an empty id is an error
 
