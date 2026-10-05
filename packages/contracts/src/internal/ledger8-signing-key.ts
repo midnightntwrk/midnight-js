@@ -106,7 +106,7 @@ export const toStoredLedger8SigningKey = (signingKey: Ledger8SigningKey): Signin
 
 /**
  * Reads a stored entry back as the bare string the retained runtime takes, or
- * reports ABSENT for an entry this framework did not write.
+ * reports ABSENT for an entry that is not a retained-era key.
  *
  * TWO ways an entry is not this era's key, and both read as absent:
  *

@@ -122,13 +122,19 @@ isValidSigningKey('0102030a1b2c3d4e5f');                            // false (ol
 
 ## Step 4 — Re-export or transform persisted signing-key exports
 
-**Keys already in a level private-state store need no action.** A 4.x client stored each signing key as a bare hex string. The 5.x level provider reads such an entry as `{ tag: 'schnorr', value: <stored string> }`, so maintenance calls, `findDeployedContract` and `exportSigningKeys` work on an upgraded store as they are. A stored entry that is neither shape is refused with `StoredSigningKeyFormatError`, which names the contract address. Fix it with `setSigningKey(address, { tag, value })` or remove it with `removeSigningKey(address)`.
+**Keys already in a level private-state store need no action.** A 4.x client stored each signing key as a bare 64-character hex string. The 5.x level provider reads such an entry as `{ tag: 'schnorr', value: <stored string> }`, so current-era maintenance calls, `findDeployedContract` and `exportSigningKeys` work on an upgraded store as they are.
+
+A stored entry that is neither shape makes `getSigningKey`, `exportSigningKeys` (for the whole export) and current-era `findDeployedContract` throw `StoredSigningKeyFormatError`, which names the contract address. A retained-era (ledger-8) attach reports no stored key instead and logs an `unreadable-entry` breadcrumb. To fix the entry, do one of:
+
+- store a valid key with `setSigningKey(address, { tag, value })`;
+- import a valid key with `importSigningKeys(export, { conflictStrategy: 'overwrite' })`;
+- remove it with `removeSigningKey(address)`.
 
 The steps below apply only to export *files* made by a 4.x client.
 
-`importSigningKey` now validates the structured shape **before** any write. A v4.x export that stored a bare hex string fails with `InvalidExportFormatError`.
+`importSigningKeys` now validates the structured shape **before** any write. A v4.x export that stored a bare hex string fails with `InvalidExportFormatError`.
 
-- **Preferred:** re-export signing keys from a v5.0.0 client.
+- **Preferred:** open the store the 4.x client wrote with a v5.0.0 client and run `exportSigningKeys` again.
 - **Alternatively:** transform stored exports to `{ tag: 'schnorr', value: <oldHexString> }` (or `ecdsa`, per your key type) before import.
 
 ---

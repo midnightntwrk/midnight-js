@@ -129,7 +129,8 @@ const setOrGetLedger8SigningKey = async (
   } catch {
     // SWALLOWS: the READ of a value nothing on this arm consumes, and nothing else.
     // `getSigningKey` is documented as THROWING -- a wrong store password, a password-policy
-    // failure, a rotation-lock timeout, store I/O -- so propagated, a store whose signing-key
+    // failure, a rotation-lock timeout, store I/O, an entry the provider refuses as not a signing
+    // key -- so propagated, a store whose signing-key
     // sublevel was written under a different password fails EVERY retained attach to this address
     // and makes its circuit calls unreachable over a value none of them reads. That is the same
     // blast radius an unusable ENTRY is already refused for; this extends the guarantee from the
