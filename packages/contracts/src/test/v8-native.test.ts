@@ -93,12 +93,7 @@ import {
 import { findDeployedContract } from '../find-deployed-contract';
 import { DISPATCH_BREADCRUMB_MESSAGE } from '../internal/breadcrumbs';
 import { resolveArtifactEra } from '../internal/era';
-import {
-  findLedger8Contract,
-  runLedger8Deploy,
-  submitLedger8CallTx,
-  toLedger8CallEntryOptions
-} from '../internal/ledger8-entry';
+import { findLedger8Contract, runLedger8Deploy, submitLedger8CallTx } from '../internal/ledger8-entry';
 import {
   assertSnapshotVerifierKey,
   type Ledger8Snapshot,
@@ -111,7 +106,6 @@ import {
   SHIELDED_BURN_COIN_PUBLIC_KEY
 } from '../internal/utils';
 import type {
-  AnyLedger8CallTxOptions,
   Ledger8CallTxOptions,
   Ledger8Contract,
   Ledger8ContractProviders,
@@ -1252,6 +1246,39 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(deployed.deploy.signingKey).toBe(SAMPLED_SIGNING_KEY);
   });
 
+  it('refuses a CONSTRUCTOR that pays a third party, telling the caller a retained deploy takes no mappings', async () => {
+    const providers = preForkProviders(v6Envelope);
+    const thirdPartyCoinPublicKey = sampleCoinPublicKey();
+    engineSlot.engine = createReplayEngine(recording, [], v6Envelope, {
+      constructorZswapLocalState: {
+        ...recording.transcript.zswapLocalState,
+        outputs: [
+          {
+            coinInfo: recording.transcript.zswapLocalState.outputs[0]!.coinInfo,
+            recipient: { is_left: true, left: thirdPartyCoinPublicKey, right: recording.contractAddress }
+          }
+        ]
+      }
+    });
+
+    const deploying = runLedger8Deploy(providers, {
+      contract,
+      args: [],
+      privateState: {},
+      resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
+    });
+
+    await expect(deploying).rejects.toBeInstanceOf(Ledger8RecipientUnmappableError);
+    await expect(deploying).rejects.toMatchObject({
+      circuitId: 'initialState',
+      recipientCoinPublicKey: thirdPartyCoinPublicKey
+    });
+    await expect(deploying).rejects.toThrow(/retained-era deploy takes no `additionalCoinEncPublicKeyMappings`/);
+    await expect(deploying).rejects.not.toThrow(/on the call options/);
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+    expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+  });
+
   it('routes a coin the CONSTRUCTOR minted into the deploy own guaranteed offer', async () => {
     const providers = preForkProviders(v6Envelope);
     // A constructor that mints a coin to the deployer. Dropping this state is
@@ -1898,20 +1925,22 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
     });
 
-    it('carries recipient mappings through the entry reshaping both submit arms share, unchanged', () => {
-      const mappings = new Map([[sampleCoinPublicKey(), sampleEncryptionPublicKey()]]);
+    it('composes a mapped THIRD PARTY through submitCallTxAsync too', async () => {
+      const providers = preForkProviders(v6Envelope);
+      const thirdPartyCoinPublicKey = sampleCoinPublicKey();
+      engineSlot.engine = createReplayEngine(
+        recordingPayingUser(loadCoinReceiverRecording(), thirdPartyCoinPublicKey),
+        [],
+        v6Envelope
+      );
 
-      const options: AnyLedger8CallTxOptions = {
-        compiledContract: contract,
-        contractAddress: recording.contractAddress,
-        circuitId: CIRCUIT_ID,
-        args: [],
-        additionalCoinEncPublicKeyMappings: mappings
-      };
+      const submitted = await submitCallTxAsync(providers, {
+        ...callOptions(),
+        additionalCoinEncPublicKeyMappings: new Map([[thirdPartyCoinPublicKey, sampleEncryptionPublicKey()]])
+      });
 
-      const entry = toLedger8CallEntryOptions(options);
-
-      expect(entry.additionalCoinEncPublicKeyMappings).toBe(mappings);
+      expect(submitted.circuitId).toBe(CIRCUIT_ID);
+      expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
     });
 
     it("composes an output paying the caller's OWN key", async () => {
