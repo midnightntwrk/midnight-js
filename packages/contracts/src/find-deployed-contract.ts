@@ -25,8 +25,9 @@ import {
   type AnyProvableCircuitId,
   type PrivateStateId,
   type PrivateStateProvider,
-  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, toHex } from '@midnight-ntwrk/midnight-js-utils';
+  type VerifierKey,
+  type VersionedFinalizedTxData} from '@midnight-ntwrk/midnight-js-types';
+import { assertDefined, assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
 import { CURRENT_PIPELINE_ERA, type CurrentPipelineEra, RETAINED_PIPELINE_ERA } from './era';
@@ -42,7 +43,7 @@ import {
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
 import { type BreadcrumbSink, emitRetainedSigningKeyEntry } from './internal/breadcrumbs';
-import { isLedger8Request, requireV9Record, resolveArtifactEra } from './internal/era';
+import { isLedger8Request, requireTaggedRecord, resolveArtifactEra } from './internal/era';
 import { findLedger8Contract } from './internal/ledger8-entry';
 import { fromStoredLedger8SigningKey, toStoredLedger8SigningKey } from './internal/ledger8-signing-key';
 import {
@@ -60,7 +61,7 @@ import {
   createCircuitCallTxInterface,
   createLedger8CircuitCallTxInterface
 } from './tx-interfaces';
-import type { FoundDeployTxData } from './tx-model';
+import type { FoundDeployTxData, FoundDeployTxPublicData } from './tx-model';
 
 const setOrGetInitialSigningKey = async <C extends Contract.Any>(
   privateStateProvider: PrivateStateProvider,
@@ -77,6 +78,24 @@ const setOrGetInitialSigningKey = async <C extends Contract.Any>(
   const freshSigningKey = sampleSigningKey();
   await privateStateProvider.setSigningKey(options.contractAddress, freshSigningKey);
   return freshSigningKey;
+};
+
+const queryFoundDeployTxPublicData = async (
+  publicDataProvider: ContractProviders['publicDataProvider'],
+  deployRecord: VersionedFinalizedTxData,
+  contractAddress: ContractAddress
+): Promise<FoundDeployTxPublicData> => {
+  switch (deployRecord.version) {
+    case 'v8':
+      return { ...deployRecord, contractAddress };
+    case 'v9': {
+      const initialContractState = await publicDataProvider.queryDeployContractState(contractAddress);
+      assertDefined(initialContractState, `No contract deployed at contract address '${contractAddress}'`);
+      return { ...deployRecord, contractAddress, initialContractState };
+    }
+    default:
+      return assertNever(deployRecord, 'findDeployedContract');
+  }
 };
 
 /**
@@ -553,13 +572,15 @@ export async function findDeployedContract<C extends Contract.Any>(
   assertIsContractAddress(contractAddress);
   providers.privateStateProvider.setContractAddress(contractAddress);
 
-  const finalizedTxData = requireV9Record(
+  const deployRecord = requireTaggedRecord(
     await providers.publicDataProvider.watchForDeployTxData(contractAddress),
     'watchForDeployTxData'
   );
-
-  const initialContractState = await providers.publicDataProvider.queryDeployContractState(contractAddress);
-  assertDefined(initialContractState, `No contract deployed at contract address '${contractAddress}'`);
+  const deployPublicData = await queryFoundDeployTxPublicData(
+    providers.publicDataProvider,
+    deployRecord,
+    contractAddress
+  );
 
   const currentContractState = await providers.publicDataProvider.queryContractState(contractAddress);
   assertDefined(currentContractState, `No contract deployed at contract address '${contractAddress}'`);
@@ -582,11 +603,7 @@ export async function findDeployedContract<C extends Contract.Any>(
         signingKey,
         initialPrivateState
       },
-      public: {
-        ...finalizedTxData,
-        contractAddress,
-        initialContractState
-      }
+      public: deployPublicData
     },
     callTx: createCircuitCallTxInterface(
       providers,

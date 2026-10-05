@@ -17,16 +17,17 @@ import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
 import { UntaggedPayloadError } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ContractTypeError, EraInvariantViolationError } from '../errors';
+import { ContractTypeError } from '../errors';
 import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
 import {
   createMockCompiledContract,
   createMockContractAddress,
   createMockContractState,
   createMockFinalizedTxData,
+  createMockFinalizedTxDataV8,
   createMockPrivateStateId,
   createMockProviders,
   createMockSigningKey,
@@ -100,29 +101,12 @@ describe('findDeployedContract', () => {
     setupCommonMocks();
   });
 
-  // The only `requireV9Record` call site outside `submit-tx`, and the only one
-  // that passes no `circuitId` — so the seam string is all that distinguishes
-  // its error from the four others.
-  describe('a deploy record from an era this flow cannot handle', () => {
+  describe('a deploy record with no readable era tag', () => {
     const rejectionOf = async (): Promise<unknown> =>
       findDeployedContract(providers, { compiledContract, contractAddress }).then(
         () => undefined,
         (error: unknown) => error
       );
-
-    it('rejects a v8-tagged deploy record and never queries the contract state', async () => {
-      vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue({
-        ...finalizedTxData,
-        version: 'v8'
-      } as unknown as midnightJsTypes.FinalizedTxData);
-
-      const rejection = await rejectionOf();
-
-      expect(rejection).toBeInstanceOf(EraInvariantViolationError);
-      expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
-      expect((rejection as EraInvariantViolationError).seam).toBe('watchForDeployTxData');
-      expect(providers.publicDataProvider.queryDeployContractState).not.toHaveBeenCalled();
-    });
 
     it('rejects an untagged deploy record, the pre-5.0.0 shape', async () => {
       const { version: _dropped, ...untaggedRecord } = finalizedTxData;
@@ -135,6 +119,76 @@ describe('findDeployedContract', () => {
       expect(rejection).toBeInstanceOf(UntaggedPayloadError);
       expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
       expect((rejection as UntaggedPayloadError).seam).toBe('watchForDeployTxData');
+    });
+  });
+
+  describe('a contract deployed before the ledger fork, found with recompiled artifacts', () => {
+    const v8DeployRecord = createMockFinalizedTxDataV8();
+
+    beforeEach(() => {
+      vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(v8DeployRecord);
+      vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
+      vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
+    });
+
+    it('attaches and reports the deploy record tagged v8 with the contract address', async () => {
+      const result = await findDeployedContract(providers, { compiledContract, contractAddress });
+
+      expect(result.contractAddress).toBe(contractAddress);
+      expect(result.deployTxData.public.version).toBe('v8');
+      expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
+      expect(result.deployTxData.public.txId).toBe(v8DeployRecord.txId);
+      expect(result.deployTxData.public).not.toHaveProperty('initialContractState');
+      expect(result.callTx).toBeDefined();
+      expect(result.circuitMaintenanceTx).toBeDefined();
+      expect(result.contractMaintenanceTx).toBeDefined();
+    });
+
+    it('never reads the deploy-time state, which this era cannot decode', async () => {
+      await findDeployedContract(providers, { compiledContract, contractAddress });
+
+      expect(providers.publicDataProvider.queryDeployContractState).not.toHaveBeenCalled();
+      expect(providers.publicDataProvider.queryContractState).toHaveBeenCalledWith(contractAddress);
+      expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(['testCircuit']);
+    });
+
+    it('stores and returns the initial private state exactly as for a current-era deploy', async () => {
+      const privateStateId = createMockPrivateStateId();
+      const initialPrivateState = { test: 'initial-private-state' };
+      vi.mocked(providers.privateStateProvider.set).mockResolvedValue(undefined);
+
+      const result = await findDeployedContract(providers, {
+        compiledContract,
+        contractAddress,
+        privateStateId,
+        initialPrivateState
+      });
+
+      expect(result.deployTxData.private.initialPrivateState).toBe(initialPrivateState);
+      expect(providers.privateStateProvider.set).toHaveBeenCalledWith(privateStateId, initialPrivateState);
+    });
+
+    it('still refuses artifacts whose verifier key the current state does not carry', async () => {
+      vi.mocked(contractState.operation).mockReturnValue(new ContractOperation());
+
+      const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      assert(rejection instanceof ContractTypeError);
+      expect(rejection.keylessCircuitIds).toEqual(['testCircuit']);
+      expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+      expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    });
+
+    it('still refuses an address with no current contract state', async () => {
+      vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(null);
+
+      await expect(findDeployedContract(providers, { compiledContract, contractAddress })).rejects.toThrow(
+        `No contract deployed at contract address '${contractAddress}'`
+      );
+      expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
     });
   });
 
