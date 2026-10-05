@@ -87,7 +87,7 @@ There is no base for them and there will not be one.
 Almost every member the two arms share has an era-specific type: `era` is
 `CurrentPipelineEra` against `RetainedPipelineEra`, `callTx` is
 `CircuitCallTxInterface<C>` against `Ledger8CircuitCallTxInterface<C>`,
-`deployTxData` is `FinalizedDeployTxDataBase<C>` against
+`deployTxData` is `FoundDeployTxData<C>` against
 `VersionedFinalizedTxData`, and `compiledContract` is the era's own artifact
 type. A base over those four declares a key set and nothing else — the same
 shape this ADR already rejected for a top-level `FinalizedCallTxDataBase`, and
