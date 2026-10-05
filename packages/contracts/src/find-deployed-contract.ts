@@ -60,7 +60,7 @@ import {
   createCircuitCallTxInterface,
   createLedger8CircuitCallTxInterface
 } from './tx-interfaces';
-import type { FinalizedDeployTxDataBase } from './tx-model';
+import type { FoundDeployTxData } from './tx-model';
 
 const setOrGetInitialSigningKey = async <C extends Contract.Any>(
   privateStateProvider: PrivateStateProvider,
@@ -374,9 +374,11 @@ export interface FoundContract<C extends Contract.Any> {
    */
   readonly contractAddress: ContractAddress;
   /**
-   * Data for the finalized deploy transaction corresponding to this contract.
+   * Data for the finalized deploy transaction corresponding to this contract. The deploy record is
+   * tagged with the ledger era that recorded it: narrow on `public.version` before reading `tx` or
+   * `initialContractState`.
    */
-  readonly deployTxData: FinalizedDeployTxDataBase<C>;
+  readonly deployTxData: FoundDeployTxData<C>;
   /**
    * Interface for creating call transactions for a contract.
    */

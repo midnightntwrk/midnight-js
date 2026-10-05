@@ -75,6 +75,7 @@ describe('findDeployedContract', () => {
     expect(result.contractAddress).toBe(contractAddress);
     expect(result.deployTxData).toBeDefined();
     expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
+    assert(result.deployTxData.public.version === 'v9');
     expect(result.deployTxData.public.initialContractState).toBe(contractState);
     expect(result.callTx).toBeDefined();
     expect(result.circuitMaintenanceTx).toBeDefined();
