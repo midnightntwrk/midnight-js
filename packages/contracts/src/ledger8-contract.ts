@@ -752,8 +752,8 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
    * at the time — narrow it with `switch (deployTxData.version)`.
    *
    * SHAPED DIFFERENTLY from the current era's `FoundContract.deployTxData`,
-   * which is a `FinalizedDeployTxData` whose transaction id sits under
-   * `.public`. Here the record is the read surface's own
+   * which is a `FoundDeployTxData` whose record sits under `.public` and is
+   * tagged on `.public.version`. Here the record is the read surface's own
    * `VersionedFinalizedTxData`, so `txId`, `status` and the rest are top-level
    * members. Code written against one era does not read the other's record
    * unchanged.

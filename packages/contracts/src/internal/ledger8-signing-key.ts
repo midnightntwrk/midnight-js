@@ -85,11 +85,13 @@ export const RETAINED_SIGNING_KEY_HEX_LENGTH = 64;
  * would be read back by the retained arm as that contract's authority, when it
  * is a key the chain never heard of.
  *
- * What stands between the two today is an ORDERING and not a guard:
- * `find-deployed-contract.ts` runs `verifyContractState` BEFORE it reaches the
- * signing-key rule, so a current-era artifact pointed at a retained contract's
- * address fails verification first and never reaches the sample-and-store. Move
- * the key rule ahead of the verification and the confusion becomes reachable.
+ * This is REACHABLE. Recompiled current-era artifacts pass `verifyContractState`
+ * against a contract deployed before the fork, so a current-era find on a store
+ * that holds no key for that address samples one and stores it, as it does for
+ * any contract. The retained arm then reports that key as `signingKey`. It signs
+ * nothing there -- the retained handle carries no maintenance interfaces -- but
+ * the value it reports is not the contract's authority. A key the pre-fork deploy
+ * stored is never replaced: the current era samples only into an empty slot.
  *
  * DOCUMENTED rather than fixed here on purpose: an address-prefixed record, or
  * any other change to the stored shape, changes what

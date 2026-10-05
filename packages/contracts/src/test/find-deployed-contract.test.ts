@@ -22,6 +22,7 @@ import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ContractTypeError } from '../errors';
 import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
+import { toStoredLedger8SigningKey } from '../internal/ledger8-signing-key';
 import {
   createMockCompiledContract,
   createMockContractAddress,
@@ -150,6 +151,36 @@ describe('findDeployedContract', () => {
       expect(providers.publicDataProvider.queryDeployContractState).not.toHaveBeenCalled();
       expect(providers.publicDataProvider.queryContractState).toHaveBeenCalledWith(contractAddress);
       expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(['testCircuit']);
+    });
+
+    it('samples and stores a signing key when none is stored, exactly as for a current-era deploy', async () => {
+      const result = await findDeployedContract(providers, { compiledContract, contractAddress });
+
+      expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledTimes(1);
+      expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(
+        contractAddress,
+        result.deployTxData.private.signingKey
+      );
+    });
+
+    it('keeps the signing key the pre-fork deploy stored and writes none', async () => {
+      const storedByPreForkDeploy = toStoredLedger8SigningKey('ab'.repeat(32));
+      vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(storedByPreForkDeploy);
+
+      const result = await findDeployedContract(providers, { compiledContract, contractAddress });
+
+      expect(result.deployTxData.private.signingKey).toEqual(storedByPreForkDeploy);
+      expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+    });
+
+    it('stores a supplied signing key once and reports it', async () => {
+      const signingKey = createMockSigningKey();
+
+      const result = await findDeployedContract(providers, { compiledContract, contractAddress, signingKey });
+
+      expect(result.deployTxData.private.signingKey).toBe(signingKey);
+      expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledTimes(1);
+      expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(contractAddress, signingKey);
     });
 
     it('stores and returns the initial private state exactly as for a current-era deploy', async () => {
