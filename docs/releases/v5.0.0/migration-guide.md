@@ -495,6 +495,15 @@ for a contract whose state envelope is still pre-fork, read the state through
 `queryRawContractState` and narrow on its `version`, or read
 `public.nextContractStateEncoded` off a call result.
 
+**Paying a shielded coin to someone else.** A retained-era circuit that pays a
+shielded coin to a recipient other than the calling wallet needs that
+recipient's encryption public key. Pass it in
+`additionalCoinEncPublicKeyMappings` on the `submitCallTx` options, as you
+would for a current-era call. Without it the call is refused with
+`Ledger8RecipientUnmappableError` before anything is proven. The
+`callTx.<circuit>(...)` handle on a found retained contract cannot carry
+mappings; call `submitCallTx` directly for these circuits.
+
 ### Catching a failure in either era
 
 A call the chain recorded with a non-success status throws by class, and the

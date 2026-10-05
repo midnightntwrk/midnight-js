@@ -382,7 +382,8 @@ const spendsHeldCoin = (zswapLocalState: Ledger8Transcript['zswapLocalState']): 
  *
  * Without this the condition surfaces from inside `createZswapOutput` as a bare
  * `Error` naming neither the era nor the circuit, and advising a resolver
- * mapping the retained-era options carry no field for.
+ * mapping rather than the `additionalCoinEncPublicKeyMappings` option the
+ * caller actually sets.
  *
  * Only USER-owned outputs are checked. A contract-owned output takes
  * `ZswapOutput.newContractOwned`, which is given an address and never consults

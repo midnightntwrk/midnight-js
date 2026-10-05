@@ -1823,15 +1823,18 @@ describe('the retained-native pipeline through the unchanged entry points', () =
         caught = error;
       }
 
-      // A TYPED refusal naming the era, the circuit and the recipient. The bare
-      // `Error` the offer builder raises names none of them, and its advice --
-      // supply a resolver mapping -- points at a field the retained call
-      // options do not have, so a caller could not act on it.
+      // A TYPED refusal naming the era, the circuit and the recipient, and
+      // pointing at the option that fixes it. The bare `Error` the offer
+      // builder raises names none of them, and its advice -- supply a resolver
+      // mapping -- names a knob the caller never sees.
       expect(caught).toBeInstanceOf(Ledger8RecipientUnmappableError);
       expect((caught as Ledger8RecipientUnmappableError).circuitId).toBe(CIRCUIT_ID);
       expect((caught as Ledger8RecipientUnmappableError).recipientCoinPublicKey).toBe(thirdPartyCoinPublicKey);
-      // The message must not send the caller after a knob this arm lacks.
+      // The message names the caller-facing option, not the internal resolver.
       expect((caught as Error).message).not.toMatch(/Provide a mapping via the encryptionPublicKeyResolver/);
+      expect((caught as Error).message).toContain('additionalCoinEncPublicKeyMappings');
+      expect((caught as Error).message).not.toMatch(/carry no field/);
+      expect((caught as Error).message).not.toMatch(/current toolchain/);
 
       // Refused BEFORE the offer is built, so nothing was proven, balanced or submitted.
       expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();

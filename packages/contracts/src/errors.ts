@@ -1315,21 +1315,22 @@ export class Ledger8AmbiguousEntryPointError extends Error {
 
 /**
  * An error indicating that a retained-era call would pay a shielded coin to a
- * recipient whose encryption public key this arm cannot resolve.
+ * user-owned recipient whose encryption public key this call cannot resolve:
+ * not the calling wallet, not the burn address, and not a key in the caller's
+ * `additionalCoinEncPublicKeyMappings`.
  *
  * Raised BEFORE the offer is built. Without it the condition surfaced from
  * inside `createZswapOutput` as a bare `Error` naming neither the era nor the
- * circuit, and advising a `encryptionPublicKeyResolver` mapping that the
- * retained-era options carry no field for — advice a caller structurally could
- * not follow.
+ * circuit, and advising an `encryptionPublicKeyResolver` mapping the caller
+ * never handles directly.
  *
  * Refusal rather than a best effort is the only answer that cannot lose a coin:
  * encrypting the output to the caller's own key instead would compose, prove,
  * balance and submit, and leave the recipient owning a coin it could never
  * discover.
  *
- * @see {@link KeepStatePipeline} for why the retained arm resolves only the
- *      caller's own key and the burn address.
+ * @see {@link KeepStatePipeline} for how the retained arm resolves each
+ *      recipient's encryption key.
  */
 export class Ledger8RecipientUnmappableError extends Error {
   constructor(
@@ -1338,12 +1339,11 @@ export class Ledger8RecipientUnmappableError extends Error {
   ) {
     super(
       `Circuit '${circuitId}' pays a shielded coin to recipient '${recipientCoinPublicKey}', whose ` +
-        'encryption public key a retained-era call cannot resolve: this arm resolves the calling ' +
-        "wallet's own key and the burn address, and its options carry no field for additional " +
-        'recipient mappings. Refusing is deliberate - encrypting the coin to the caller\'s own key ' +
-        'would submit successfully and leave the recipient unable to discover it. Run this circuit ' +
-        'against a contract produced by the current toolchain, which accepts ' +
-        '`additionalCoinEncPublicKeyMappings`.'
+        "encryption public key this call cannot resolve: it is not the calling wallet's own key, " +
+        'the burn address, or a key in `additionalCoinEncPublicKeyMappings`. Refusing is deliberate - ' +
+        "encrypting the coin to the caller's own key would submit successfully and leave the " +
+        "recipient unable to discover it. Add the recipient's coin public key and encryption public " +
+        'key to `additionalCoinEncPublicKeyMappings` on the call options.'
     );
     this.name = 'Ledger8RecipientUnmappableError';
   }
