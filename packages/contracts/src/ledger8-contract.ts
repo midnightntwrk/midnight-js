@@ -64,6 +64,7 @@ import type {
   ContractAddress,
   ZswapLocalState
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
   CallResultPrivateBase,
   CallResultPublicBase,
@@ -266,6 +267,14 @@ export interface Ledger8CallTxTarget<C extends Ledger8Contract, K extends Ledger
    * The identifier of the circuit to call.
    */
   readonly circuitId: K;
+  /**
+   * An optional mapping of {@link CoinPublicKey} to {@link EncPublicKey} used to
+   * encrypt shielded coins the circuit pays to a recipient other than the
+   * calling wallet. A user-owned recipient that is neither the calling wallet,
+   * the burn address, nor a key in this map is refused with
+   * `Ledger8RecipientUnmappableError` before anything is proven.
+   */
+  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
 }
 
 /**
