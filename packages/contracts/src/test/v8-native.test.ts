@@ -93,7 +93,12 @@ import {
 import { findDeployedContract } from '../find-deployed-contract';
 import { DISPATCH_BREADCRUMB_MESSAGE } from '../internal/breadcrumbs';
 import { resolveArtifactEra } from '../internal/era';
-import { findLedger8Contract, runLedger8Deploy, submitLedger8CallTx } from '../internal/ledger8-entry';
+import {
+  findLedger8Contract,
+  runLedger8Deploy,
+  submitLedger8CallTx,
+  toLedger8CallEntryOptions
+} from '../internal/ledger8-entry';
 import {
   assertSnapshotVerifierKey,
   type Ledger8Snapshot,
@@ -106,6 +111,7 @@ import {
   SHIELDED_BURN_COIN_PUBLIC_KEY
 } from '../internal/utils';
 import type {
+  AnyLedger8CallTxOptions,
   Ledger8CallTxOptions,
   Ledger8Contract,
   Ledger8ContractProviders,
@@ -1796,8 +1802,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       const providers = preForkProviders(v6Envelope);
       // Some other wallet's coin public key: not this caller's, and not the
       // burn address, so nothing this arm knows can map it to an encryption
-      // key. The retained call options carry no additional mappings for the
-      // caller to supply one through either.
+      // key. The caller supplied no additional mappings.
       const thirdPartyCoinPublicKey = sampleCoinPublicKey();
       engineSlot.engine = createReplayEngine(
         recordingPayingUser(loadCoinReceiverRecording(), thirdPartyCoinPublicKey),
@@ -1831,6 +1836,79 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       // Refused BEFORE the offer is built, so nothing was proven, balanced or submitted.
       expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
       expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+    });
+
+    it('composes an output paying a THIRD PARTY the caller mapped to an encryption key', async () => {
+      const providers = preForkProviders(v6Envelope);
+      const thirdPartyCoinPublicKey = sampleCoinPublicKey();
+      engineSlot.engine = createReplayEngine(
+        recordingPayingUser(loadCoinReceiverRecording(), thirdPartyCoinPublicKey),
+        [],
+        v6Envelope
+      );
+
+      const finalized = await submitCallTx(providers, {
+        ...callOptions(),
+        additionalCoinEncPublicKeyMappings: new Map([[thirdPartyCoinPublicKey, sampleEncryptionPublicKey()]])
+      });
+
+      expect(finalized.circuitId).toBe(CIRCUIT_ID);
+      expect(providers.proofProvider.proveTx).toHaveBeenCalledTimes(1);
+      expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
+    });
+
+    it('still refuses a third party when the mappings name a DIFFERENT recipient', async () => {
+      const providers = preForkProviders(v6Envelope);
+      const thirdPartyCoinPublicKey = sampleCoinPublicKey();
+      engineSlot.engine = createReplayEngine(
+        recordingPayingUser(loadCoinReceiverRecording(), thirdPartyCoinPublicKey),
+        [],
+        v6Envelope
+      );
+
+      await expect(
+        submitCallTx(providers, {
+          ...callOptions(),
+          additionalCoinEncPublicKeyMappings: new Map([[sampleCoinPublicKey(), sampleEncryptionPublicKey()]])
+        })
+      ).rejects.toBeInstanceOf(Ledger8RecipientUnmappableError);
+      expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+      expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+    });
+
+    it('matches a mapping keyed by the Bech32m form a wallet hands out against the hex recipient the circuit emits', async () => {
+      const BECH32M_COIN_PUBLIC_KEY = 'mn_shield-cpk_undeployed1mjngjmnlutcq50trhcsk3hugvt9wyjnhq3c7prryd5nqmvtzva0sn7kq7h';
+      const BECH32M_DECODED_HEX = 'dca6896e7fe2f00a3d63be2168df8862cae24a770471e08c646d260db162675f';
+      const providers = preForkProviders(v6Envelope);
+      engineSlot.engine = createReplayEngine(
+        recordingPayingUser(loadCoinReceiverRecording(), BECH32M_DECODED_HEX),
+        [],
+        v6Envelope
+      );
+
+      const finalized = await submitCallTx(providers, {
+        ...callOptions(),
+        additionalCoinEncPublicKeyMappings: new Map([[BECH32M_COIN_PUBLIC_KEY, sampleEncryptionPublicKey()]])
+      });
+
+      expect(finalized.circuitId).toBe(CIRCUIT_ID);
+      expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
+    });
+
+    it('carries recipient mappings through the entry reshaping both submit arms share, unchanged', () => {
+      const mappings = new Map([[sampleCoinPublicKey(), sampleEncryptionPublicKey()]]);
+
+      const options: AnyLedger8CallTxOptions = {
+        compiledContract: contract,
+        contractAddress: recording.contractAddress,
+        circuitId: CIRCUIT_ID,
+        args: [],
+        additionalCoinEncPublicKeyMappings: mappings
+      };
+
+      const entry = toLedger8CallEntryOptions(options);
+
+      expect(entry.additionalCoinEncPublicKeyMappings).toBe(mappings);
     });
 
     it("composes an output paying the caller's OWN key", async () => {

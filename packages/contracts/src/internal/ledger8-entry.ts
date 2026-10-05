@@ -42,7 +42,12 @@ import {
   loadLedgerEra,
   UnknownLedgerVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
-import { Transaction, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import {
+  type CoinPublicKey,
+  type EncPublicKey,
+  Transaction,
+  type UnprovenTransaction
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   assertSeamsSupportEra,
   type MidnightProvider,
@@ -540,6 +545,7 @@ export interface Ledger8CallRequest {
   readonly circuitId: string;
   readonly args: readonly unknown[];
   readonly privateState: unknown;
+  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
 }
 
 /** A composed and submitted retained-era call. */
@@ -584,7 +590,8 @@ export interface Ledger8SubmittedCall {
  * @throws Ledger8ShieldedSpendUnsupportedError if the circuit spends a coin the
  * contract already held.
  * @throws Ledger8RecipientUnmappableError if a shielded output pays a recipient
- * this arm cannot resolve.
+ * that is not the calling wallet, the burn address, or a key in
+ * `additionalCoinEncPublicKeyMappings`.
  * @throws V8PayloadUnsupportedError if a provider does not serve the pre-fork arm.
  * @throws EraInvariantViolationError if a provider answers in the other era.
  * @throws Ledger8SeamFailedError if a provider rejects.
@@ -633,7 +640,8 @@ export const runLedger8Call = async (
     ttl: ttlOneHour(),
     encryptionPublicKey: createEncryptionPublicKeyResolver(
       coinPublicKey,
-      providers.walletProvider.getEncryptionPublicKey()
+      providers.walletProvider.getEncryptionPublicKey(),
+      request.additionalCoinEncPublicKeyMappings
     )
   });
 
@@ -1002,6 +1010,7 @@ export interface Ledger8CallEntryOptions {
   readonly circuitId: string;
   readonly args?: readonly unknown[];
   readonly privateStateId?: string;
+  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
 }
 
 /**
@@ -1033,7 +1042,8 @@ export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Led
   contractAddress: options.contractAddress,
   circuitId: options.circuitId,
   args: 'args' in options ? options.args : [],
-  privateStateId: 'privateStateId' in options ? options.privateStateId : undefined
+  privateStateId: 'privateStateId' in options ? options.privateStateId : undefined,
+  additionalCoinEncPublicKeyMappings: options.additionalCoinEncPublicKeyMappings
 });
 
 /**
@@ -1124,7 +1134,8 @@ const runLedger8CallEntry = async (
     contractAddress: options.contractAddress,
     circuitId: options.circuitId,
     args: options.args ?? [],
-    privateState
+    privateState,
+    additionalCoinEncPublicKeyMappings: options.additionalCoinEncPublicKeyMappings
   });
 
   return {
