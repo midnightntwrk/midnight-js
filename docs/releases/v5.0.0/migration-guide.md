@@ -314,6 +314,21 @@ Do not narrow this one by throwing on anything that is not `'v9'`. A v8-era
 record is a record the provider decodes and returns, not an error condition,
 and a dApp that reads its own pre-fork history will meet one.
 
+`findDeployedContract` reports the deploy record the same way. A contract deployed
+before the ledger fork keeps a ledger-8 deploy record forever, so
+`found.deployTxData.public` is tagged too. `contractAddress` is on both arms; narrow
+on `version` before reading `tx` or `initialContractState`. The `v8` arm has no
+`initialContractState`, because the current runtime cannot decode a ledger-8
+deploy-time state — read the current state with `queryContractState` instead.
+
+```ts
+const found = await findDeployedContract(providers, { compiledContract, contractAddress });
+const address = found.deployTxData.public.contractAddress; // both eras
+if (found.deployTxData.public.version === 'v9') {
+  use(found.deployTxData.public.initialContractState);
+}
+```
+
 If you *implement* `WalletProvider` or `MidnightProvider`, wrap a v9-only
 implementation with `createWalletProvider` / `createMidnightProvider` rather
 than tagging by hand — see [breaking-changes.md 8e](./breaking-changes.md).
@@ -339,8 +354,18 @@ compiler tells you to.
 
 **If you recompile your contracts with the current Compact toolchain, there is
 no further code change**, and most of this step is about timing and operations
-rather than code. Nothing in that path asks you to call a new API, branch on
+rather than code. This includes re-attaching to a contract deployed before the
+fork: `findDeployedContract` accepts it, and reports its deploy record tagged `v8`
+(see Step 13). Nothing in that path asks you to call a new API, branch on
 the network's era, or maintain a second code path.
+
+One case does need more. A contract deployed before the fork that has had **no
+state-changing call since the fork** still has its state in the ledger-8 format.
+The indexer serves it that way, so `findDeployedContract` itself throws
+`IndexerDataError`, and so does any call through recompiled artifacts. The first
+state-changing call after the fork must therefore go through the pre-fork
+artifacts (see the next paragraph). After that call, recompiled artifacts find
+and call the contract as described above.
 
 **If you keep pre-fork artifacts callable instead**, there is more to it, and it
 is not optional reading: those calls run the retained pipeline and answer with

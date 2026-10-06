@@ -19,6 +19,7 @@ import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/e
 import type {
   CoinPublicKey,
   ContractAddress,
+  ContractState,
   LogEvent,
   SigningKey
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
@@ -82,7 +83,13 @@ import {
 import { submitCallTx, submitCallTxAsync, type SubmitCallTxProviders } from '../../submit-call-tx';
 import type { SubmitTxProviders } from '../../submit-tx';
 import type { TransactionContext } from '../../transaction';
-import type { FinalizedCallTxData, SubmittedCallTx } from '../../tx-model';
+import type {
+  FinalizedCallTxData,
+  FinalizedDeployTxPublicData,
+  FoundDeployTxPublicData,
+  FoundDeployTxPublicDataV8,
+  SubmittedCallTx
+} from '../../tx-model';
 import type { CallTxOptions, CallTxOptionsBase, CallTxOptionsWithPrivateStateId } from '../../unproven-call-tx';
 import type {
   CoinReceiver016Coin,
@@ -1238,5 +1245,32 @@ describe('the retained-era private state flows through the family', () => {
 
     // Guards against the whole block going vacuous if `compact-runtime-ledger8` stops resolving.
     expectTypeOf<Parameters<PrivateCounter016Witness>[0]>().not.toBeAny();
+  });
+});
+
+describe('a found contract may have been deployed in either ledger era', () => {
+  type Found = FoundContract<Twin018>;
+  type FoundPublic = Found['deployTxData']['public'];
+
+  it('tags the deploy record with the ledger era that recorded it', () => {
+    expectTypeOf<FoundPublic>().toEqualTypeOf<FoundDeployTxPublicData>();
+    expectTypeOf<FoundPublic['version']>().toEqualTypeOf<'v8' | 'v9'>();
+  });
+
+  it('exposes the contract address on both arms without narrowing', () => {
+    expectTypeOf<FoundPublic['contractAddress']>().toEqualTypeOf<ContractAddress>();
+  });
+
+  it('requires narrowing on `version` before the deploy-time state is read', () => {
+    expectTypeOf<FoundPublic>().not.toHaveProperty('initialContractState');
+    expectTypeOf<Extract<FoundPublic, { version: 'v9' }>>().toEqualTypeOf<FinalizedDeployTxPublicData>();
+    expectTypeOf<Extract<FoundPublic, { version: 'v9' }>['initialContractState']>().toEqualTypeOf<ContractState>();
+    expectTypeOf<Extract<FoundPublic, { version: 'v8' }>>().toEqualTypeOf<FoundDeployTxPublicDataV8>();
+    expectTypeOf<FoundDeployTxPublicDataV8>().not.toHaveProperty('initialContractState');
+  });
+
+  it('keeps a deployed contract usable wherever a found contract is expected', () => {
+    expectTypeOf<DeployedContract<Twin018>>().toMatchTypeOf<FoundContract<Twin018>>();
+    expectTypeOf<DeployedContract<Twin018>['deployTxData']['public']>().toEqualTypeOf<FinalizedDeployTxPublicData>();
   });
 });

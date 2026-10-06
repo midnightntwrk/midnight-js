@@ -252,12 +252,22 @@ switch (record.version) {
 }
 ```
 
-`submitTx` and `findDeployedContract` in `midnight-js-contracts` are v9-only
-flows: they narrow internally, so their return types are unchanged — `submitTx`
-still resolves `FinalizedTxData`, and `findDeployedContract` still resolves a
-`FoundContract`. Callers of those two are unaffected. A record from another era
-is reported as `EraInvariantViolationError`, which carries the `seam` and, where
-the flow knows it, the `circuitId`.
+`submitTx` in `midnight-js-contracts` is a v9-only flow: it narrows
+internally, so its return type is unchanged — it still resolves
+`FinalizedTxData`. A record from another era is reported as
+`EraInvariantViolationError`, which carries the `seam` and, where the flow knows
+it, the `circuitId`.
+
+`findDeployedContract` accepts a deploy record from either era, because a
+contract deployed before the fork keeps a ledger-8 deploy record.
+`FoundContract.deployTxData.public` is therefore `FoundDeployTxPublicData`, a
+union tagged by `version`. `contractAddress` is on both arms. Narrow on
+`version` before reading `tx` or `initialContractState`; the `v8` arm has no
+`initialContractState`. Code that does any of the following without narrowing no
+longer compiles: reads `found.deployTxData.public.initialContractState`, uses
+`found.deployTxData.public.tx` as a v9 `Transaction`, or passes
+`found.deployTxData` where a `FinalizedDeployTxDataBase<C>` is expected.
+`DeployedContract` is unchanged.
 
 `indexerPublicDataProvider` produces both arms. It decodes each record with the
 ledger runtime of the era that record's own `protocolVersion` reports, so a
