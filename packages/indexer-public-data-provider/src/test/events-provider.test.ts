@@ -32,7 +32,10 @@ const ADDRESS = '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcde
  */
 const buildProvider = () => {
   const client = new ApolloClient({ link: new HttpLink({ uri: 'http://localhost:4000/graphql' }), cache: new InMemoryCache() });
-  const provider = new IndexerPublicDataProvider({ client, dispose: () => Promise.resolve() }, 1000);
+  const provider = new IndexerPublicDataProvider(
+    { client, connectionCount: () => 1, dispose: () => Promise.resolve() },
+    1000
+  );
   return { client, provider };
 };
 

@@ -367,6 +367,25 @@ describe('createApolloClient — liveness teardown', () => {
   });
 });
 
+describe('createApolloClient — connection count', () => {
+  test('counts no connection before the first one is established', async () => {
+    const handle = await buildHandle();
+
+    expect(handle.connectionCount()).toBe(0);
+  });
+
+  test('counts every established connection, reconnects included', async () => {
+    const handle = await buildHandle();
+    const { on } = lastClientOptions();
+
+    on?.connected?.(fakeSocket());
+    on?.closed?.({ code: 1006 });
+    on?.connected?.(fakeSocket());
+
+    expect(handle.connectionCount()).toBe(2);
+  });
+});
+
 /** The close codes `graphql-ws` names as fatal, read back from the library at run time. */
 const FATAL_MEMBERS = [
   'InternalServerError',

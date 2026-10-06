@@ -60,19 +60,18 @@ import {
   toFinalizedTxData
 } from './mapping';
 import {
-  blockOffsetToBlock$,
   blockOffsetToState$,
   blockOffsetToUnshieldedBalances$,
-  blockToPositionedState$,
+  type ChainPosition,
   contractAddressToLatestBlockOffset$,
   contractEvents$,
   type ContractStateMapper,
   dropReplayed,
+  fromTransaction,
   maybeThrowQueryError,
+  ordinalWithinBlock,
   pollUntilPresent,
-  type Positioned,
-  transactionIdToTransaction$,
-  transactionToState$,
+  transactionToBlockOffset$,
   waitForBlockToAppear,
   waitForContractToAppear,
   waitForUnshieldedBalancesToAppear
@@ -100,21 +99,27 @@ import type { ApolloHandle } from './transport';
  * TODO: Re-examine caching when 'ContractCall' and 'ContractDeploy' have
  * transaction identifiers included.
  */
+const toStartOffset = (config: BlockHeightConfig | BlockHashConfig): BlockOffset =>
+  config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash };
+
 /**
  * Maps an optional block-height/block-hash config to the indexer's `BlockOffset` input, or `null`
  * to select the latest block.
  */
 const toBlockOffset = (config?: BlockHeightConfig | BlockHashConfig): InputMaybe<BlockOffset> =>
-  config ? (config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }) : null;
+  config ? toStartOffset(config) : null;
 
-const toPositionedRecord = <T>({ state, height, hash }: Positioned<T>): PositionedRecord<T> => ({
-  value: state,
-  blockHeight: height,
-  blockHash: hash
+const toPositionedRecord = <T>({ value, blockHeight, blockHash }: PositionedRecord<T>): PositionedRecord<T> => ({
+  value,
+  blockHeight,
+  blockHash
 });
 
 /** The branch both contract-state streams select when the caller names none. */
 const DEFAULT_STATE_CONFIG: ContractStateObservableConfig = { type: 'latest' };
+
+/** The offset `all` subscribes from: the feed serves a contract's actions from its deploy onward. */
+const GENESIS: BlockOffset = { height: 0 };
 
 export class IndexerPublicDataProvider implements PublicDataProvider {
   private readonly handle: ApolloHandle;
@@ -488,37 +493,53 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     mapState: ContractStateMapper<T>
   ): Rx.Observable<PositionedRecord<T>> {
     assertIsContractAddress(contractAddress);
-    if (config.type === 'txId') {
-      const states = transactionIdToTransaction$(this.client, this.pollInterval)(config.txId).pipe(
-        Rx.concatMap(transactionToState$(mapState)(config.txId))
+    const feed = (offset: BlockOffset) =>
+      blockOffsetToState$(mapState)(this.client)(contractAddress)(offset).pipe(
+        ordinalWithinBlock(this.handle.connectionCount)
       );
-      return (config.inclusive ?? true) ? states : states.pipe(Rx.skip(1));
-    }
-    if (config.type === 'latest') {
-      return contractAddressToLatestBlockOffset$(this.client, this.pollInterval)(contractAddress).pipe(
-        Rx.concatMap(blockOffsetToBlock$(this.client)),
-        Rx.concatMap(blockToPositionedState$(mapState)(contractAddress)),
-        dropReplayed(),
-        Rx.map(toPositionedRecord)
+    return this.contractStatesFeed$(contractAddress, config, feed).pipe(dropReplayed(), Rx.map(toPositionedRecord));
+  }
+
+  private contractStatesFeed$<R extends ChainPosition & { readonly identifiers: readonly string[] }>(
+    contractAddress: ContractAddress,
+    config: ContractStateObservableConfig,
+    feed: (offset: BlockOffset) => Rx.Observable<R>
+  ): Rx.Observable<R> {
+    if (config.type === 'txId') {
+      const inclusive = config.inclusive ?? true;
+      return transactionToBlockOffset$(this.client, this.pollInterval)(config.txId).pipe(
+        Rx.concatMap((offset) => feed(offset).pipe(fromTransaction(config.txId, offset.height, inclusive)))
       );
     }
     if (config.type === 'all') {
       return waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(
-        Rx.concatMap(() => blockOffsetToState$(mapState)(this.client)(contractAddress)(null))
+        Rx.concatMap(() => feed(GENESIS))
       );
     }
-    const offset = toBlockOffset(config);
-    const blocks = waitForBlockToAppear(this.client, this.pollInterval)(offset).pipe(
-      Rx.concatMap(() => blockOffsetToBlock$(this.client)(offset))
-    );
-    const maybeShortenedBlocks =
-      config.type === 'blockHeight' || config.type === 'blockHash'
-        ? Rx.iif(() => config.inclusive ?? true, blocks, blocks.pipe(Rx.skip(1)))
-        : blocks;
-    return maybeShortenedBlocks.pipe(
-      Rx.concatMap(blockToPositionedState$(mapState)(contractAddress)),
-      dropReplayed(),
-      Rx.map(toPositionedRecord)
+    return this.fromBlock$(contractAddress, config, feed);
+  }
+
+  /**
+   * Starts a per-contract feed at the block a `latest`, `blockHeight` or
+   * `blockHash` config names. `inclusive: false` is a filter on the block
+   * height rather than a count of skipped records, so a reconnect cannot spend it.
+   */
+  private fromBlock$<R extends ChainPosition>(
+    contractAddress: ContractAddress,
+    config: Exclude<ContractStateObservableConfig, { readonly type: 'txId' | 'all' }>,
+    feed: (offset: BlockOffset) => Rx.Observable<R>
+  ): Rx.Observable<R> {
+    if (config.type === 'latest') {
+      return contractAddressToLatestBlockOffset$(this.client, this.pollInterval)(contractAddress).pipe(
+        Rx.concatMap(feed)
+      );
+    }
+    const offset = toStartOffset(config);
+    const inclusive = config.inclusive ?? true;
+    return waitForBlockToAppear(this.client, this.pollInterval)(offset).pipe(
+      Rx.concatMap((start) =>
+        inclusive ? feed(offset) : feed(offset).pipe(Rx.filter((record) => record.blockHeight > start.height))
+      )
     );
   }
 
@@ -532,22 +553,15 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * since serves exactly such a state, indefinitely. Use
    * {@link rawContractStateObservable} where that is possible.
    *
-   * WIRE TRAFFIC DIFFERS SHARPLY BY BRANCH. `all` is server-side filtered and
-   * light; `latest`, `blockHeight`, `blockHash` and `txId` stream every block on
-   * chain and filter client-side, which is heavy on a busy chain.
-   *
-   * REPLAY SUPPRESSION IS NOT UNIFORM. A transport reconnect makes the indexer
-   * replay from the subscription's original offset. `latest`, `blockHeight` and
-   * `blockHash` suppress what they have already delivered; `all` and `txId` do
-   * not, so a consumer of those two should expect a state more than once.
-   *
-   * See {@link blockOffsetToBlock$}, {@link blockOffsetToState$},
-   * and {@link blockToPositionedState$} for per-subscription docs.
+   * Every branch reads the indexer's feed of this contract's actions, filtered
+   * by address on the server. A transport reconnect makes the indexer replay
+   * from the subscription's original offset; every branch suppresses what it
+   * has already delivered, and `inclusive: false` keeps holding.
    *
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the stream. Defaults to `latest`.
-   * @see {@link SubscriptionShapes} for what each branch costs, and why the two
-   *   subscription shapes are not interchangeable.
+   * @see {@link SubscriptionShapes} for how each branch starts and how replays
+   *   are suppressed.
    */
   contractStateObservable(
     contractAddress: ContractAddress,
@@ -567,14 +581,13 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * subscription; here the era is carried on the record and the caller narrows
    * on it.
    *
-   * `ledgerParameters` IS ALWAYS ABSENT ON THIS STREAM. Neither subscription
-   * asks for the parameters: the four block-subscription branches would receive
-   * one for every block on chain, and the `all` branch one for every contract
-   * action. A caller that needs them reads {@link queryRawContractState} with
-   * the `blockHash` of the same record.
+   * `ledgerParameters` IS ALWAYS ABSENT ON THIS STREAM. The subscription does
+   * not ask for the parameters, which would cost one blob per contract action.
+   * A caller that needs them reads {@link queryRawContractState} with the
+   * `blockHash` of the same record.
    *
-   * Every branch, every wire-traffic cost and every replay-suppression rule is
-   * exactly {@link contractStateObservable}'s; only the element type differs.
+   * Every branch and every replay-suppression rule is exactly
+   * {@link contractStateObservable}'s; only the element type differs.
    *
    * WHAT IS WITHHELD, PRECISELY: the deserialization, and the envelope-versus-
    * block era cross-check {@link parseHexContractState} runs. The envelope tag
@@ -591,7 +604,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    *
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the stream. Defaults to `latest`.
-   * @see {@link SubscriptionShapes} for what each branch costs.
+   * @see {@link SubscriptionShapes} for how each branch starts.
    */
   rawContractStateObservable(
     contractAddress: ContractAddress,
@@ -603,12 +616,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   /**
    * Creates a stream of unshielded balances for `contractAddress`.
    *
-   * All three non-`txId` branches (`latest`/`all`/`blockHeight`/`blockHash`)
-   * use `UNSHIELDED_BALANCE_SUB($address, $offset)` as the terminal
-   * subscription. **Wire traffic is uniformly light** — server-side
-   * filtered by `contractAddress`. The indexer has no per-block
-   * subscription analogue for balances, so there is no light/heavy
-   * asymmetry comparable to {@link contractStateObservable}.
+   * Reads the same feed of this contract's actions as
+   * {@link contractStateObservable}, through `UNSHIELDED_BALANCE_SUB`, with the
+   * same start rules and the same replay suppression.
    *
    * The `txId` configuration is not supported and throws
    * {@link IndexerProviderConfigError}. Tx-anchored balance streams are
@@ -630,26 +640,17 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         'txId configuration not supported for unshielded balances observable'
       );
     }
-    if (config.type === 'latest') {
-      return contractAddressToLatestBlockOffset$(this.client, this.pollInterval)(contractAddress).pipe(
-        Rx.concatMap(blockOffsetToUnshieldedBalances$(this.client)(contractAddress))
+    const feed = (offset: BlockOffset) =>
+      blockOffsetToUnshieldedBalances$(this.client)(contractAddress)(offset).pipe(
+        ordinalWithinBlock(this.handle.connectionCount)
       );
-    }
-    if (config.type === 'all') {
-      return waitForUnshieldedBalancesToAppear(this.client, this.pollInterval)(contractAddress).pipe(
-        Rx.concatMap(() => blockOffsetToUnshieldedBalances$(this.client)(contractAddress)(null))
-      );
-    }
-    const offset = toBlockOffset(config);
-    const inclusive = config.inclusive ?? true;
-    return waitForBlockToAppear(this.client, this.pollInterval)(offset).pipe(
-      Rx.concatMap((startBlock) => {
-        const balances = blockOffsetToUnshieldedBalances$(this.client)(contractAddress)(offset);
-        return inclusive
-          ? balances
-          : balances.pipe(Rx.skipWhile((record) => record.blockHeight === startBlock.height));
-      })
-    );
+    const balances =
+      config.type === 'all'
+        ? waitForUnshieldedBalancesToAppear(this.client, this.pollInterval)(contractAddress).pipe(
+            Rx.concatMap(() => feed(GENESIS))
+          )
+        : this.fromBlock$(contractAddress, config, feed);
+    return balances.pipe(dropReplayed(), Rx.map(toPositionedRecord));
   }
 
   /**

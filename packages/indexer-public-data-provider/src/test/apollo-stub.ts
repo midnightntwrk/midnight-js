@@ -57,6 +57,7 @@ export const stubApolloHandle = (stubs: {
   readonly query?: QueryStub;
   readonly watchQuery?: WatchQueryStub;
   readonly subscribe?: SubscribeStub;
+  readonly connectionCount?: () => number;
 }): ApolloHandle => {
   const client: Partial<ApolloClient> = {};
   if (stubs.query) {
@@ -70,8 +71,32 @@ export const stubApolloHandle = (stubs: {
   }
   return {
     client: client as ApolloClient,
+    connectionCount: stubs.connectionCount ?? (() => 1),
     dispose: () => Promise.resolve()
   };
+};
+
+/**
+ * Serves `frames`, then does what `graphql-ws` does after a reconnect: counts a
+ * new connection and pushes `replayed` into the same stream.
+ */
+export const reconnectingSubscription = (
+  frames: readonly unknown[],
+  replayed: readonly unknown[]
+): { readonly subscribe: SubscribeMock; readonly connectionCount: () => number } => {
+  let connections = 1;
+  const subscribe = vi
+    .fn<(request: ApolloRequest) => unknown>()
+    .mockImplementation(() =>
+      Rx.concat(
+        Rx.from(frames),
+        Rx.defer(() => {
+          connections += 1;
+          return Rx.from(replayed);
+        })
+      )
+    );
+  return { subscribe, connectionCount: () => connections };
 };
 
 /** One subscription frame, tagged with the height of the block it belongs to. */

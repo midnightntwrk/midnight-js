@@ -67,6 +67,12 @@ const asClosableSocket = (socket: unknown): ClosableSocket => {
 export type ApolloHandle = {
   readonly client: ApolloClient;
   /**
+   * How many subscription connections have been established so far. The indexer
+   * replays every open subscription from its original offset on each new one, so
+   * a change in this count marks where a replay begins.
+   */
+  connectionCount(): number;
+  /**
    * Stops the Apollo client (`client.stop()` is void in Apollo Client 4.x
    * — it unsubscribes active observables, rejects in-flight queries, and
    * clears the suspense cache; the `InMemoryCache` itself is not cleared),
@@ -110,6 +116,7 @@ export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => 
   });
   const apolloLink = from([retryLink, httpLink]);
 
+  let connections = 0;
   let activeSocket: ClosableSocket | null = null;
   let pongTimer: ReturnType<typeof setTimeout> | undefined;
   const clearPongDeadline = (): void => {
@@ -128,6 +135,7 @@ export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => 
     connectionAckWaitTimeout: CONNECTION_ACK_WAIT_MS,
     on: {
       connected: (socket) => {
+        connections += 1;
         activeSocket = asClosableSocket(socket);
       },
       closed: () => {
@@ -169,6 +177,7 @@ export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => 
 
   return {
     client,
+    connectionCount: () => connections,
     dispose(): Promise<void> {
       disposePromise ??= (async () => {
         clearPongDeadline();

@@ -265,27 +265,6 @@ export const LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY = gql(
   }`
 );
 
-export const TXS_FROM_BLOCK_SUB = gql(
-  `
-  subscription TXS_FROM_BLOCK_SUB($offset: BlockOffset) {
-    blocks(offset: $offset) {
-      hash,
-      height,
-      protocolVersion,
-      transactions {
-        hash
-        contractActions {
-          state
-          address
-        }
-        ... on RegularTransaction {
-          identifiers
-        }
-      }
-    }
-  }`
-);
-
 export const CONTRACT_STATE_QUERY = gql(
   `
   query CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: BlockOffset) {
@@ -326,6 +305,9 @@ export const CONTRACT_STATE_SUB = gql(
         block {
           height
           hash
+        }
+        ... on RegularTransaction {
+          identifiers
         }
       }
     }

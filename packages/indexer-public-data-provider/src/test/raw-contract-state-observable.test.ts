@@ -27,8 +27,7 @@ import {
   CONTRACT_STATE_QUERY,
   CONTRACT_STATE_SUB,
   LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
-  TX_ID_QUERY,
-  TXS_FROM_BLOCK_SUB
+  TX_ID_QUERY
 } from '../query-definitions';
 import { type ApolloRequest, resumableSubscribe, stubApolloHandle, subscribedOffsets } from './apollo-stub';
 import {
@@ -41,7 +40,6 @@ import {
 } from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
-const OTHER_ADDRESS = 'ab'.repeat(32) as ContractAddress;
 const INVALID_ADDRESS = 'not-a-contract-address' as ContractAddress;
 const TX_ID = 'test-tx-id' as TransactionId;
 
@@ -79,31 +77,16 @@ const buildProvider = (stubs: {
   readonly subscribe?: SubscribeMock;
 }): IndexerPublicDataProvider => new IndexerPublicDataProvider(stubApolloHandle(stubs), 1000);
 
-const action = (address: ContractAddress, state: string) => ({ state, address });
-
-/** One `TXS_FROM_BLOCK_SUB` frame: a block, its era, and one transaction per action group. */
-const blockFrame = (
-  height: number,
+/** One `CONTRACT_STATE_SUB` frame: a single contract action, dated and identified by its own transaction. */
+const actionFrame = (
+  state: string,
   protocolVersion: number,
-  transactions: readonly (readonly { state: string; address: string }[])[]
+  height = 10,
+  identifiers: readonly string[] = [TX_ID]
 ): unknown => ({
   data: {
-    blocks: {
-      hash: `0x${height}`,
-      height,
-      protocolVersion,
-      transactions: transactions.map((contractActions, index) => ({
-        hash: `0xtx${height}-${index}`,
-        identifiers: [TX_ID],
-        contractActions
-      }))
-    }
+    contractActions: { state, transaction: { protocolVersion, identifiers, block: { height, hash: `0x${height}` } } }
   }
-});
-
-/** One `CONTRACT_STATE_SUB` frame: a single contract action, dated by its own transaction. */
-const contractActionFrame = (state: string, protocolVersion: number, height = 10): unknown => ({
-  data: { contractActions: { state, transaction: { protocolVersion, block: { height, hash: `0x${height}` } } } }
 });
 
 const collect = (
@@ -131,8 +114,8 @@ describe('rawContractStateObservable — latest', () => {
     const hexState = await mintV8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        blockFrame(10, V8_ERA_PROTOCOL_VERSION, [[action(ADDRESS, hexState)]])
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -140,7 +123,7 @@ describe('rawContractStateObservable — latest', () => {
 
     // The WHOLE record, not field by field: this is the one assertion that
     // fails if the record grows a field, and the one that pins
-    // `ledgerParameters` as absent -- a promise three docs make and the block
+    // `ledgerParameters` as absent -- a promise three docs make and the
     // subscription's field list is the only thing keeping.
     expect(seen).toEqual([
       {
@@ -164,10 +147,10 @@ describe('rawContractStateObservable — latest', () => {
     // stream's value is only visible against what the decoded one does with
     // the identical bytes.
     const hexState = await mintV8ContractStateHex();
-    const frames = [blockFrame(10, V8_ERA_PROTOCOL_VERSION, [[action(ADDRESS, hexState)]])];
+    const frames = [actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)];
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, frames)
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, frames)
     });
 
     const rejection = await rejectionOf(
@@ -183,9 +166,9 @@ describe('rawContractStateObservable — latest', () => {
     const v9State = mintV9ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        blockFrame(10, V8_ERA_PROTOCOL_VERSION, [[action(ADDRESS, v8State)]]),
-        blockFrame(11, V9_ERA_PROTOCOL_VERSION, [[action(ADDRESS, v9State)]])
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(v8State, V8_ERA_PROTOCOL_VERSION, 10),
+        actionFrame(v9State, V9_ERA_PROTOCOL_VERSION, 11)
       ])
     });
 
@@ -195,43 +178,6 @@ describe('rawContractStateObservable — latest', () => {
     expect(envelopesOf(seen)).toEqual(['v8', 'v9']);
   });
 
-  test('still suppresses the blocks the indexer replays after a reconnect', async () => {
-    // Block 11 carries two actions, so the emission count alone tells a
-    // correctly deduplicated stream (3) from one that dropped block 11 and
-    // delivered block 10 twice (2).
-    const hexState = mintV9ContractStateHex();
-    const ten = blockFrame(10, V9_ERA_PROTOCOL_VERSION, [[action(ADDRESS, hexState)]]);
-    const eleven = blockFrame(11, V9_ERA_PROTOCOL_VERSION, [
-      [action(ADDRESS, hexState), action(ADDRESS, hexState)]
-    ]);
-    const provider = buildProvider({
-      watchQuery: dispatchingWatchQuery(latestPoll),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [ten, eleven, ten, eleven])
-    });
-
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
-
-    expect(seen).toHaveLength(3);
-  });
-
-  test('skips the actions of other contracts sharing a block', async () => {
-    const mine = mintV9ContractStateHex();
-    const theirs = await mintV8ContractStateHex();
-    const provider = buildProvider({
-      watchQuery: dispatchingWatchQuery(latestPoll),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        blockFrame(10, V9_ERA_PROTOCOL_VERSION, [
-          [action(OTHER_ADDRESS, theirs), action(ADDRESS, mine)],
-          [action(OTHER_ADDRESS, theirs)]
-        ])
-      ])
-    });
-
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
-
-    expect(seen.map((record) => toHex(record.value.raw))).toEqual([mine]);
-  });
-
   test('refuses a payload that is not a contract state at all', async () => {
     // Fail-fast is what the raw stream keeps: it withholds the DECODE, not the
     // envelope check. A transaction served where a state belongs is indexer
@@ -239,8 +185,8 @@ describe('rawContractStateObservable — latest', () => {
     // the failure to a caller who has no way to attribute it.
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        blockFrame(10, V9_ERA_PROTOCOL_VERSION, [[action(ADDRESS, mintV9TransactionHex())]])
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(mintV9TransactionHex(), V9_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -259,8 +205,8 @@ describe('rawContractStateObservable — latest', () => {
     // `instanceof IndexerError`.
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        blockFrame(10, UNRESOLVABLE_PROTOCOL_VERSION, [[action(ADDRESS, mintV9ContractStateHex())]])
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(mintV9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -283,8 +229,8 @@ describe('rawContractStateObservable — latest', () => {
     const hexState = mintV9ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        blockFrame(10, UNRESOLVABLE_PROTOCOL_VERSION, [[action(ADDRESS, hexState)]])
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(hexState, UNRESOLVABLE_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -295,16 +241,16 @@ describe('rawContractStateObservable — latest', () => {
     expect(seen).toHaveLength(1);
   });
 
-  test('reports the version of the BLOCK, not of the envelope the bytes carry', async () => {
+  test('reports the version the action was served under, not that of the envelope the bytes carry', async () => {
     // The documented divergence. A contract dormant across the fork keeps its
-    // v8 envelope under a v9 block indefinitely, so `version` and the envelope
+    // v8 envelope under a v9 transaction indefinitely, so `version` and the envelope
     // disagree for exactly the records this member was added to serve. A
     // caller that needs the writing era reads it off `raw`.
     const hexState = await mintV8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        blockFrame(10, V9_ERA_PROTOCOL_VERSION, [[action(ADDRESS, hexState)]])
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(hexState, V9_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -318,7 +264,7 @@ describe('rawContractStateObservable — latest', () => {
 describe('rawContractStateObservable — address validation', () => {
   test('refuses an invalid address synchronously, issuing nothing', () => {
     const watchQuery = dispatchingWatchQuery(new Map());
-    const subscribe = dispatchingSubscribe(TXS_FROM_BLOCK_SUB, []);
+    const subscribe = dispatchingSubscribe(CONTRACT_STATE_SUB, []);
     const provider = buildProvider({ watchQuery, subscribe });
 
     // Matched on what the hex validator says, not merely on `TypeError`: a
@@ -337,8 +283,8 @@ describe('rawContractStateObservable — every configuration branch', () => {
     const hexState = await mintV8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map([[BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }]])),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        blockFrame(10, V8_ERA_PROTOCOL_VERSION, [[action(ADDRESS, hexState)]])
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -353,8 +299,8 @@ describe('rawContractStateObservable — every configuration branch', () => {
     const hexState = await mintV8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map([[BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }]])),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        blockFrame(10, V8_ERA_PROTOCOL_VERSION, [[action(ADDRESS, hexState)]])
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -379,8 +325,8 @@ describe('rawContractStateObservable — every configuration branch', () => {
         ])
       ),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        contractActionFrame(v8State, V8_ERA_PROTOCOL_VERSION),
-        contractActionFrame(v9State, V9_ERA_PROTOCOL_VERSION)
+        actionFrame(v8State, V8_ERA_PROTOCOL_VERSION),
+        actionFrame(v9State, V9_ERA_PROTOCOL_VERSION)
       ])
     });
 
@@ -394,8 +340,8 @@ describe('rawContractStateObservable — every configuration branch', () => {
     const hexState = await mintV8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 } }] }]])),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        blockFrame(10, V8_ERA_PROTOCOL_VERSION, [[action(ADDRESS, hexState)]])
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -406,29 +352,16 @@ describe('rawContractStateObservable — every configuration branch', () => {
   });
 
   test('txId: withholds the states of transactions that precede the named one', async () => {
-    // The identifier match is the ONLY filter on this branch -- it does not
-    // filter by contract address -- so if the skip stops working the caller
-    // silently receives every earlier transaction's states as though they were
-    // its own. The two payloads differ by era so the emitted bytes say which
-    // transaction they came from.
+    // The feed starts at the named transaction's block, so an earlier
+    // transaction in that block is served too. The two payloads differ by era
+    // so the emitted bytes say which transaction they came from.
     const earlier = await mintV8ContractStateHex();
     const named = mintV9ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 } }] }]])),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        {
-          data: {
-            blocks: {
-              hash: '0x10',
-              height: 10,
-              protocolVersion: V9_ERA_PROTOCOL_VERSION,
-              transactions: [
-                { hash: '0xtx-earlier', identifiers: ['a-different-tx-id'], contractActions: [action(ADDRESS, earlier)] },
-                { hash: '0xtx-named', identifiers: [TX_ID], contractActions: [action(ADDRESS, named)] }
-              ]
-            }
-          }
-        }
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(earlier, V9_ERA_PROTOCOL_VERSION, 10, ['a-different-tx-id']),
+        actionFrame(named, V9_ERA_PROTOCOL_VERSION, 10, [TX_ID])
       ])
     });
 
@@ -442,23 +375,9 @@ describe('rawContractStateObservable — every configuration branch', () => {
     const second = await mintV8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 } }] }]])),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        {
-          data: {
-            blocks: {
-              hash: '0x10',
-              height: 10,
-              protocolVersion: V9_ERA_PROTOCOL_VERSION,
-              transactions: [
-                {
-                  hash: '0xtx10',
-                  identifiers: [TX_ID, 'a-later-tx-id'],
-                  contractActions: [action(ADDRESS, first), action(ADDRESS, second)]
-                }
-              ]
-            }
-          }
-        }
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(first, V9_ERA_PROTOCOL_VERSION, 10, [TX_ID]),
+        actionFrame(second, V8_ERA_PROTOCOL_VERSION, 10, ['a-later-tx-id'])
       ])
     });
 
@@ -470,16 +389,17 @@ describe('rawContractStateObservable — every configuration branch', () => {
   });
 
   test('blockHeight: inclusive false drops the requested block, not merely the first state', async () => {
-    // This branch skips a BLOCK, while `txId` above skips a STATE. The two
-    // readings diverge exactly when the first block carries more than one
+    // This branch skips a BLOCK, while `txId` above skips a TRANSACTION. The
+    // two readings diverge exactly when the first block carries more than one
     // action, which is what this fixture builds.
     const dropped = mintV9ContractStateHex();
     const kept = await mintV8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map([[BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }]])),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        blockFrame(10, V9_ERA_PROTOCOL_VERSION, [[action(ADDRESS, dropped), action(ADDRESS, dropped)]]),
-        blockFrame(11, V8_ERA_PROTOCOL_VERSION, [[action(ADDRESS, kept)]])
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(dropped, V9_ERA_PROTOCOL_VERSION, 10),
+        actionFrame(dropped, V9_ERA_PROTOCOL_VERSION, 10),
+        actionFrame(kept, V8_ERA_PROTOCOL_VERSION, 11)
       ])
     });
 
@@ -506,8 +426,9 @@ describe('rawContractStateObservable — every record carries the block that ser
     const v9 = mintV9ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map<DocumentNode, unknown>([[pollDocument, pollAnswer]])),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        blockFrame(10, V9_ERA_PROTOCOL_VERSION, [[action(ADDRESS, v8), action(OTHER_ADDRESS, v9)], [action(ADDRESS, v9)]])
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(v8, V9_ERA_PROTOCOL_VERSION, 10),
+        actionFrame(v9, V9_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -530,8 +451,8 @@ describe('rawContractStateObservable — every record carries the block that ser
         ])
       ),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        contractActionFrame(v8, V8_ERA_PROTOCOL_VERSION, 10),
-        contractActionFrame(v9, V9_ERA_PROTOCOL_VERSION, 11)
+        actionFrame(v8, V8_ERA_PROTOCOL_VERSION, 10),
+        actionFrame(v9, V9_ERA_PROTOCOL_VERSION, 11)
       ])
     });
 
@@ -548,8 +469,8 @@ describe('rawContractStateObservable — every record carries the block that ser
     const hexState = await mintV8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 } }] }]])),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        blockFrame(10, V8_ERA_PROTOCOL_VERSION, [[action(ADDRESS, hexState)]])
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -579,10 +500,11 @@ describe('rawContractStateObservable — resume from an emitted position', () =>
     const v9 = mintV9ContractStateHex();
     const subscribe = resumableSubscribe(
       [
-        { height: 10, frame: blockFrame(10, V9_ERA_PROTOCOL_VERSION, [[action(ADDRESS, v8)], [action(ADDRESS, v9)]]) },
-        { height: 11, frame: blockFrame(11, V9_ERA_PROTOCOL_VERSION, [[action(ADDRESS, v8)]]) }
+        { height: 10, frame: actionFrame(v8, V9_ERA_PROTOCOL_VERSION, 10) },
+        { height: 10, frame: actionFrame(v9, V9_ERA_PROTOCOL_VERSION, 10) },
+        { height: 11, frame: actionFrame(v8, V9_ERA_PROTOCOL_VERSION, 11) }
       ],
-      1,
+      2,
       STUBBED_FAILURE
     );
     const provider = buildProvider({
@@ -634,8 +556,8 @@ describe('rawContractStateObservable — the bytes are the indexer’s, unchange
           [LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY, { contractAction: { transaction: { block: { height: 10 } } } }]
         ])
       ),
-      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
-        blockFrame(10, V8_ERA_PROTOCOL_VERSION, [[action(ADDRESS, hexState)]])
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
