@@ -14,6 +14,7 @@
  */
 
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';
 
@@ -26,6 +27,13 @@ import {
   blockToPositionedState$,
   transactionToState$
 } from '../observables';
+import { IndexerPublicDataProvider } from '../provider';
+import {
+  BLOCK_QUERY,
+  LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
+  UNSHIELDED_BALANCE_QUERY,
+  UNSHIELDED_BALANCE_SUB
+} from '../query-definitions';
 import { type ApolloRequest, stubApolloHandle } from './apollo-stub';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
@@ -111,5 +119,48 @@ describe('stream pipelines carry the block that served each value', () => {
       { height: 10, hash: '0x0a', ordinal: 0, state: 'd1' },
       { height: 10, hash: '0x0a', ordinal: 1, state: 'd2' }
     ]);
+  });
+});
+
+describe('unshieldedBalancesObservable — every element carries the block that served it', () => {
+  const balances = [{ tokenType: 'ab'.repeat(32), amount: '5' }];
+
+  const balanceFrame = (height: number): unknown => ({
+    data: { contractActions: { unshieldedBalances: balances, transaction: { block: { height, hash: `0x${height}` } } } }
+  });
+
+  const providerAnswering = (pollDocument: DocumentNode, pollAnswer: unknown): IndexerPublicDataProvider =>
+    new IndexerPublicDataProvider(
+      stubApolloHandle({
+        watchQuery: vi.fn<(request: ApolloRequest) => unknown>().mockImplementation(({ query }: ApolloRequest) =>
+          query === pollDocument
+            ? Rx.of({ data: pollAnswer, dataState: 'complete', loading: false, networkStatus: 7, partial: false })
+            : Rx.throwError(() => new Error('test setup: no poll response registered for the requested document'))
+        ),
+        subscribe: vi.fn<(request: ApolloRequest) => unknown>().mockImplementation(({ query }: ApolloRequest) =>
+          query === UNSHIELDED_BALANCE_SUB
+            ? Rx.of(balanceFrame(10))
+            : Rx.throwError(() => new Error('test setup: unexpected subscription document'))
+        )
+      }),
+      1000
+    );
+
+  test.each([
+    [
+      'latest',
+      { type: 'latest' },
+      LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
+      { contractAction: { transaction: { block: { height: 10 } } } }
+    ],
+    ['all', { type: 'all' }, UNSHIELDED_BALANCE_QUERY, { contractAction: { unshieldedBalances: balances } }],
+    ['blockHeight', { type: 'blockHeight', blockHeight: 10 }, BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }],
+    ['blockHash', { type: 'blockHash', blockHash: '0x10' }, BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }]
+  ] as const)('%s', async (_name, config, pollDocument, pollAnswer) => {
+    const provider = providerAnswering(pollDocument, pollAnswer);
+
+    const seen = await toArray(provider.unshieldedBalancesObservable(ADDRESS, config));
+
+    expect(seen).toEqual([{ value: toUnshieldedBalances(balances), blockHeight: 10, blockHash: '0x10' }]);
   });
 });

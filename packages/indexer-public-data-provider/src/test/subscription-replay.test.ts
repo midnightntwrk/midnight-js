@@ -272,7 +272,11 @@ describe('contractStateObservable — replayed blocks', () => {
       provider.contractStateObservable(contractAddress, { type: 'latest' }).pipe(Rx.toArray())
     );
 
-    expect(seen).toHaveLength(3);
+    expect(seen.map(({ blockHeight, blockHash }) => ({ blockHeight, blockHash }))).toEqual([
+      { blockHeight: 10, blockHash: '0x10' },
+      { blockHeight: 11, blockHash: '0x11' },
+      { blockHeight: 11, blockHash: '0x11' }
+    ]);
   });
 
   test('latest: emits every distinct block the subscription delivers', async () => {

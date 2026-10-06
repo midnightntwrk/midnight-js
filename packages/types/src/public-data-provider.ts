@@ -450,8 +450,15 @@ export interface PublicDataProvider {
    * Waits indefinitely for matching data to appear.
    * @param address The address of the contract of interest.
    * @param config The configuration for the observable.
+   * @returns One {@link PositionedRecord} per value, carrying the block that
+   *   served it. Passing its `blockHeight` or `blockHash` back as the config
+   *   resumes the stream from that block; values from that block may be
+   *   delivered again.
    */
-  contractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<ContractState>;
+  contractStateObservable(
+    address: ContractAddress,
+    config: ContractStateObservableConfig
+  ): Observable<PositionedRecord<ContractState>>;
 
   /**
    * Creates a stream of contract states as the raw serialized bytes the network
@@ -479,26 +486,36 @@ export interface PublicDataProvider {
    * where the same implementation serves it on
    * {@link queryRawContractState}. The parameters are a per-block blob, and a
    * stream may have no cheap way to obtain one per emission; an implementation
-   * is free to refuse that cost. The record carries no block identifier either,
-   * so a caller that needs the parameters for a streamed state must read
-   * {@link queryRawContractState} at a block it obtained some other way.
+   * is free to refuse that cost. A caller that needs the parameters for a
+   * streamed state reads {@link queryRawContractState} with
+   * `{ type: 'blockHash', blockHash }` from the same {@link PositionedRecord}.
    *
    * @param address The address of the contract of interest.
    * @param config The configuration for the observable.
+   * @returns One {@link PositionedRecord} per value, carrying the block that
+   *   served it. Passing its `blockHeight` or `blockHash` back as the config
+   *   resumes the stream from that block; values from that block may be
+   *   delivered again.
    */
   rawContractStateObservable(
     address: ContractAddress,
     config: ContractStateObservableConfig
-  ): Observable<RawContractState>;
+  ): Observable<PositionedRecord<RawContractState>>;
 
   /**
    * Retrieves an observable that tracks the unshielded balances for a specific contract address.
    *
    * @param {ContractAddress} address - The contract address for which unshielded balances are being observed.
    * @param {ContractStateObservableConfig} config - The configuration object for observing contract state changes.
-   * @return {Observable<UnshieldedBalances>} An observable that emits the unshielded balances for the provided address.
+   * @returns One {@link PositionedRecord} per balance change, carrying the block
+   *   that served it. Passing its `blockHeight` or `blockHash` back as the
+   *   config resumes the stream from that block; values from that block may be
+   *   delivered again.
    */
-  unshieldedBalancesObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<UnshieldedBalances>;
+  unshieldedBalancesObservable(
+    address: ContractAddress,
+    config: ContractStateObservableConfig
+  ): Observable<PositionedRecord<UnshieldedBalances>>;
 
   /**
    * Queries contract events for a contract address — a finite, paginated,

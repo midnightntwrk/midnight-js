@@ -14,7 +14,7 @@
  */
 
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { RawContractState } from '@midnight-ntwrk/midnight-js-types';
+import type { PositionedRecord, RawContractState } from '@midnight-ntwrk/midnight-js-types';
 import { contractStateEnvelopeVersion, fromHex, TagParseError, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
@@ -106,8 +106,9 @@ const contractActionFrame = (state: string, protocolVersion: number, height = 10
   data: { contractActions: { state, transaction: { protocolVersion, block: { height, hash: `0x${height}` } } } }
 });
 
-const collect = (source: Rx.Observable<RawContractState>): Promise<RawContractState[]> =>
-  Rx.lastValueFrom(source.pipe(Rx.toArray()));
+const collect = (
+  source: Rx.Observable<PositionedRecord<RawContractState>>
+): Promise<PositionedRecord<RawContractState>[]> => Rx.lastValueFrom(source.pipe(Rx.toArray()));
 
 const rejectionOf = async (work: Promise<unknown>): Promise<unknown> =>
   work.then(
@@ -115,8 +116,11 @@ const rejectionOf = async (work: Promise<unknown>): Promise<unknown> =>
     (error: unknown) => error
   );
 
-const envelopesOf = (records: readonly RawContractState[]): string[] =>
-  records.map((record) => contractStateEnvelopeVersion(record.raw));
+const envelopesOf = (records: readonly PositionedRecord<RawContractState>[]): string[] =>
+  records.map((record) => contractStateEnvelopeVersion(record.value.raw));
+
+const positionsOf = (records: readonly PositionedRecord<unknown>[]) =>
+  records.map(({ blockHeight, blockHash }) => ({ blockHeight, blockHash }));
 
 describe('rawContractStateObservable — latest', () => {
   const latestPoll = new Map<DocumentNode, unknown>([
@@ -140,10 +144,14 @@ describe('rawContractStateObservable — latest', () => {
     // subscription's field list is the only thing keeping.
     expect(seen).toEqual([
       {
-        version: 'v8',
-        protocolVersion: V8_ERA_PROTOCOL_VERSION,
-        raw: new Uint8Array(fromHex(hexState)),
-        ledgerParameters: undefined
+        value: {
+          version: 'v8',
+          protocolVersion: V8_ERA_PROTOCOL_VERSION,
+          raw: new Uint8Array(fromHex(hexState)),
+          ledgerParameters: undefined
+        },
+        blockHeight: 10,
+        blockHash: '0x10'
       }
     ]);
     expect(envelopesOf(seen)).toEqual(['v8']);
@@ -183,7 +191,7 @@ describe('rawContractStateObservable — latest', () => {
 
     const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
 
-    expect(seen.map((record) => record.version)).toEqual(['v8', 'v9']);
+    expect(seen.map((record) => record.value.version)).toEqual(['v8', 'v9']);
     expect(envelopesOf(seen)).toEqual(['v8', 'v9']);
   });
 
@@ -221,7 +229,7 @@ describe('rawContractStateObservable — latest', () => {
 
     const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
 
-    expect(seen.map((record) => toHex(record.raw))).toEqual([mine]);
+    expect(seen.map((record) => toHex(record.value.raw))).toEqual([mine]);
   });
 
   test('refuses a payload that is not a contract state at all', async () => {
@@ -302,8 +310,8 @@ describe('rawContractStateObservable — latest', () => {
 
     const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
 
-    expect(seen[0]!.version).toBe('v9');
-    expect(contractStateEnvelopeVersion(seen[0]!.raw)).toBe('v8');
+    expect(seen[0]!.value.version).toBe('v9');
+    expect(contractStateEnvelopeVersion(seen[0]!.value.raw)).toBe('v8');
   });
 });
 
@@ -379,7 +387,7 @@ describe('rawContractStateObservable — every configuration branch', () => {
     const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'all' }));
 
     expect(envelopesOf(seen)).toEqual(['v8', 'v9']);
-    expect(seen.map((record) => record.version)).toEqual(['v8', 'v9']);
+    expect(seen.map((record) => record.value.version)).toEqual(['v8', 'v9']);
   });
 
   test('txId: streams the states from the named transaction onward', async () => {
@@ -393,7 +401,7 @@ describe('rawContractStateObservable — every configuration branch', () => {
 
     const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID }));
 
-    expect(seen.map((record) => toHex(record.raw))).toEqual([hexState]);
+    expect(seen.map((record) => toHex(record.value.raw))).toEqual([hexState]);
     expect(envelopesOf(seen)).toEqual(['v8']);
   });
 
@@ -426,7 +434,7 @@ describe('rawContractStateObservable — every configuration branch', () => {
 
     const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID }));
 
-    expect(seen.map((record) => toHex(record.raw))).toEqual([named]);
+    expect(seen.map((record) => toHex(record.value.raw))).toEqual([named]);
   });
 
   test('txId: inclusive false drops the state of the named transaction itself', async () => {
@@ -458,7 +466,7 @@ describe('rawContractStateObservable — every configuration branch', () => {
       provider.rawContractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID, inclusive: false })
     );
 
-    expect(seen.map((record) => toHex(record.raw))).toEqual([second]);
+    expect(seen.map((record) => toHex(record.value.raw))).toEqual([second]);
   });
 
   test('blockHeight: inclusive false drops the requested block, not merely the first state', async () => {
@@ -479,7 +487,75 @@ describe('rawContractStateObservable — every configuration branch', () => {
       provider.rawContractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 10, inclusive: false })
     );
 
-    expect(seen.map((record) => toHex(record.raw))).toEqual([kept]);
+    expect(seen.map((record) => toHex(record.value.raw))).toEqual([kept]);
+  });
+});
+
+describe('rawContractStateObservable — every record carries the block that served it', () => {
+  test.each([
+    [
+      'latest',
+      { type: 'latest' },
+      LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
+      { contractAction: { transaction: { block: { height: 10 } } } }
+    ],
+    ['blockHeight', { type: 'blockHeight', blockHeight: 10 }, BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }],
+    ['blockHash', { type: 'blockHash', blockHash: '0x10' }, BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }]
+  ] as const)('%s: two states in one block both carry that block', async (_name, config, pollDocument, pollAnswer) => {
+    const v8 = await mintV8ContractStateHex();
+    const v9 = mintV9ContractStateHex();
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(new Map<DocumentNode, unknown>([[pollDocument, pollAnswer]])),
+      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
+        blockFrame(10, V9_ERA_PROTOCOL_VERSION, [[action(ADDRESS, v8), action(OTHER_ADDRESS, v9)], [action(ADDRESS, v9)]])
+      ])
+    });
+
+    const seen = await collect(provider.rawContractStateObservable(ADDRESS, config));
+
+    expect(positionsOf(seen)).toEqual([
+      { blockHeight: 10, blockHash: '0x10' },
+      { blockHeight: 10, blockHash: '0x10' }
+    ]);
+    expect(envelopesOf(seen)).toEqual(['v8', 'v9']);
+  });
+
+  test('all: each state carries the block of its own transaction', async () => {
+    const v8 = await mintV8ContractStateHex();
+    const v9 = mintV9ContractStateHex();
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(
+        new Map([
+          [CONTRACT_STATE_QUERY, { block: { protocolVersion: V9_ERA_PROTOCOL_VERSION }, contract: { state: v9 } }]
+        ])
+      ),
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        contractActionFrame(v8, V8_ERA_PROTOCOL_VERSION, 10),
+        contractActionFrame(v9, V9_ERA_PROTOCOL_VERSION, 11)
+      ])
+    });
+
+    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'all' }));
+
+    expect(positionsOf(seen)).toEqual([
+      { blockHeight: 10, blockHash: '0x10' },
+      { blockHeight: 11, blockHash: '0x11' }
+    ]);
+    expect(envelopesOf(seen)).toEqual(['v8', 'v9']);
+  });
+
+  test('txId: the named transaction’s state carries its block', async () => {
+    const hexState = await mintV8ContractStateHex();
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 } }] }]])),
+      subscribe: dispatchingSubscribe(TXS_FROM_BLOCK_SUB, [
+        blockFrame(10, V8_ERA_PROTOCOL_VERSION, [[action(ADDRESS, hexState)]])
+      ])
+    });
+
+    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID }));
+
+    expect(positionsOf(seen)).toEqual([{ blockHeight: 10, blockHash: '0x10' }]);
   });
 });
 
@@ -499,6 +575,6 @@ describe('rawContractStateObservable — the bytes are the indexer’s, unchange
 
     const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
 
-    expect(Array.from(seen[0]!.raw)).toEqual(Array.from(new Uint8Array(fromHex(hexState))));
+    expect(Array.from(seen[0]!.value.raw)).toEqual(Array.from(new Uint8Array(fromHex(hexState))));
   });
 });
