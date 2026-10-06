@@ -17,6 +17,7 @@ import { type ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact
 import {
   type All,
   type FinalizedTxData,
+  type FinalizedTxRecord,
   type Latest,
   type PositionedRecord,
   type PublicDataProvider
@@ -28,7 +29,7 @@ import {
   type TestEnvironment
 } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
-import { firstValueFrom, type Observable, ReplaySubject, take, timeout, toArray } from 'rxjs';
+import { firstValueFrom, type Observable, ReplaySubject, take, timeout, timer, toArray } from 'rxjs';
 
 import { SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '../src/constants';
 import { CompiledCounter } from '../src/contract';
@@ -43,6 +44,7 @@ const logger = createLogger(
 const { ledger } = CompiledCounter;
 
 const STATE_WAIT_MS = 120_000;
+const QUIET_WINDOW_MS = 30_000;
 
 describe('Indexer API', () => {
   let publicDataProvider: PublicDataProvider;
@@ -54,19 +56,19 @@ describe('Indexer API', () => {
 
   const expectObservedContractStatesToEqual = async (
     observable$: Observable<PositionedRecord<ContractState>>,
-    expectedStates: bigint[]
+    expected: readonly (readonly [round: bigint, writtenBy: FinalizedTxRecord])[]
   ): Promise<void> => {
     const records = await firstValueFrom(
-      observable$.pipe(timeout({ each: STATE_WAIT_MS }), take(expectedStates.length), toArray())
+      observable$.pipe(timeout({ each: STATE_WAIT_MS }), take(expected.length), toArray())
     );
     for (const { value } of records) {
       expect([...value.operations()].sort()).toEqual([...CONTRACT_CIRCUITS].sort());
     }
-    expect(records.map(({ value }) => ledger(value.data).round)).toEqual(expectedStates);
-    for (const { blockHeight, blockHash } of records) {
-      expect(blockHeight).toBeGreaterThan(0);
-      expect(blockHash).toMatch(/^[0-9a-f]{64}$/);
-    }
+    expect(
+      records.map(({ value, blockHeight, blockHash }) => ({ round: ledger(value.data).round, blockHeight, blockHash }))
+    ).toEqual(
+      expected.map(([round, { blockHeight, blockHash }]) => ({ round, blockHeight, blockHash }))
+    );
   };
 
   const observeFromFirstState = async (
@@ -113,12 +115,9 @@ describe('Indexer API', () => {
    * @then Should return correct state history based on inclusive flag
    * @and Should observe states in proper chronological order from block height
    */
-  test.each([
-    [true, [1n, 2n]],
-    [false, [2n]]
-  ])(
-    'should return the history of states starting from defined blockHeight (inclusive:%s, expected states:%s) [@slow]',
-    async (inclusive, expectedStates) => {
+  test.each([true, false])(
+    'should return the history of states starting from defined blockHeight (inclusive:%s) [@slow]',
+    async (inclusive) => {
       const observable$ = publicDataProvider.contractStateObservable(
         deployedContractObserved.deployTxData.public.contractAddress,
         {
@@ -127,9 +126,17 @@ describe('Indexer API', () => {
           inclusive
         }
       );
-      await api.increment(deployedContractObserved);
+      const secondIncrement = await api.increment(deployedContractObserved);
 
-      await expectObservedContractStatesToEqual(observable$, expectedStates);
+      await expectObservedContractStatesToEqual(
+        observable$,
+        inclusive
+          ? [
+              [1n, incrementFinalizedTxData],
+              [2n, secondIncrement]
+            ]
+          : [[2n, secondIncrement]]
+      );
     },
     SLOW_TEST_TIMEOUT
   );
@@ -145,29 +152,58 @@ describe('Indexer API', () => {
    * @and Should return recent history for 'latest' configuration
    * @and Should observe states matching the configuration type requirements
    */
-  const expectStatesObservedAcrossAnIncrement = async (config: All | Latest, expectedStates: bigint[]) => {
+  const expectStatesObservedAcrossAnIncrement = async (
+    config: All | Latest,
+    expectedBeforeIncrement: readonly (readonly [round: bigint, writtenBy: FinalizedTxRecord])[]
+  ) => {
     const { observed$, stop } = await observeFromFirstState(
       publicDataProvider.contractStateObservable(deployedContractObserved.deployTxData.public.contractAddress, config)
     );
     try {
-      await api.increment(deployedContractObserved);
+      const secondIncrement = await api.increment(deployedContractObserved);
 
-      await expectObservedContractStatesToEqual(observed$, expectedStates);
+      await expectObservedContractStatesToEqual(observed$, [...expectedBeforeIncrement, [2n, secondIncrement]]);
     } finally {
       stop();
     }
   };
 
-  // Known defect #1398: `all` subscribes from the latest block, not from the deploy.
-  test.fails(
-    'should return the entire history of states of the contract with the given address (config:all, expected states:0,1,2) [@slow]',
-    () => expectStatesObservedAcrossAnIncrement({ type: 'all' }, [0n, 1n, 2n]),
+  /**
+   * Pins known defect #1398: `all` subscribes from the latest block, not from the deploy, so the
+   * deploy state never arrives and the increment's state arrives only if no block was produced
+   * between it and the subscription. When #1398 is fixed this test fails; replace it with
+   * `expectStatesObservedAcrossAnIncrement` with `{ type: 'all' }`, expecting round 0n at the deploy's
+   * block and 1n at the increment's.
+   */
+  test(
+    'known defect #1398: the all stream starts at the latest block, not at the deploy (config:all) [@slow]',
+    async () => {
+      const rounds: bigint[] = [];
+      let failure: unknown;
+      const subscription = publicDataProvider
+        .contractStateObservable(deployedContractObserved.deployTxData.public.contractAddress, { type: 'all' })
+        .subscribe({
+          next: ({ value }) => rounds.push(ledger(value.data).round),
+          error: (error: unknown) => {
+            failure = error;
+          }
+        });
+      try {
+        await api.increment(deployedContractObserved);
+        await firstValueFrom(timer(QUIET_WINDOW_MS));
+      } finally {
+        subscription.unsubscribe();
+      }
+
+      expect(failure).toBeUndefined();
+      expect([[2n], [1n, 2n]]).toContainEqual(rounds);
+    },
     SLOW_TEST_TIMEOUT
   );
 
   test(
     'should return the history of states of the contract with the given address, starting with the most recent state (config:latest, expected states:1,2) [@slow]',
-    () => expectStatesObservedAcrossAnIncrement({ type: 'latest' }, [1n, 2n]),
+    () => expectStatesObservedAcrossAnIncrement({ type: 'latest' }, [[1n, incrementFinalizedTxData]]),
     SLOW_TEST_TIMEOUT
   );
 
@@ -176,28 +212,32 @@ describe('Indexer API', () => {
    *
    * @given A deployed contract with incremented state
    * @and A record emitted by an observable started at the increment's block
-   * @when Creating a new observable from that record's blockHeight
+   * @when Creating a new observable from that record's blockHeight or blockHash
    * @and Executing additional increment operation
    * @then Should return every state from the record's block onward, with no gap
    */
-  test(
-    'should resume from an emitted blockHeight without a gap [@slow]',
-    async () => {
+  test.each(['blockHeight', 'blockHash'] as const)(
+    'should resume from an emitted %s without a gap [@slow]',
+    async (resumeBy) => {
       const contractAddress = deployedContractObserved.deployTxData.public.contractAddress;
       const first = await firstValueFrom(
-        publicDataProvider.contractStateObservable(contractAddress, {
-          type: 'blockHash',
-          blockHash: incrementFinalizedTxData.blockHash
-        })
+        publicDataProvider
+          .contractStateObservable(contractAddress, { type: 'blockHash', blockHash: incrementFinalizedTxData.blockHash })
+          .pipe(timeout({ first: STATE_WAIT_MS }))
       );
 
-      const resumed$ = publicDataProvider.contractStateObservable(contractAddress, {
-        type: 'blockHeight',
-        blockHeight: first.blockHeight
-      });
-      await api.increment(deployedContractObserved);
+      const resumed$ = publicDataProvider.contractStateObservable(
+        contractAddress,
+        resumeBy === 'blockHeight'
+          ? { type: 'blockHeight', blockHeight: first.blockHeight }
+          : { type: 'blockHash', blockHash: first.blockHash }
+      );
+      const secondIncrement = await api.increment(deployedContractObserved);
 
-      await expectObservedContractStatesToEqual(resumed$, [1n, 2n]);
+      await expectObservedContractStatesToEqual(resumed$, [
+        [1n, incrementFinalizedTxData],
+        [2n, secondIncrement]
+      ]);
     },
     SLOW_TEST_TIMEOUT
   );
