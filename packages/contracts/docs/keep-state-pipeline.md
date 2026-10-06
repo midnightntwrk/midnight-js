@@ -193,25 +193,30 @@ Every caller hands a real resolver built by
 `createEncryptionPublicKeyResolver` — the same era-independent helper the
 current era's `unproven-call-tx.ts` resolves through. The wallet's own coin
 public key maps to its encryption key, the well-known burn address maps to
-`BURN_ENCRYPTION_PUBLIC_KEY`, and anyone else resolves to `undefined`, which
-`createZswapOutput` turns into a refusal.
-
-No additional recipient mappings are passed, because the retained-era call
-options carry none: `Ledger8CallTxOptions` has no
-`additionalCoinEncPublicKeyMappings` member. So a third-party recipient is
-REFUSED here where the current era would consult the caller's mappings.
+`BURN_ENCRYPTION_PUBLIC_KEY`, and on a CALL the caller's
+`additionalCoinEncPublicKeyMappings` from `Ledger8CallTxOptions` are passed to
+the same resolver, exactly as the current era passes them. Anyone not in those
+sources resolves to `undefined`.
 
 The refusal is raised BEFORE the offer is built, as
-`Ledger8RecipientUnmappableError`, naming the era, the circuit and the
-recipient. It deliberately does NOT repeat `createZswapOutput`'s advice to
-supply a resolver mapping: that advice points at a field the retained-era
-options do not have, so a caller could not act on it. What it says instead is
-what is true — this arm resolves the calling wallet's own key and the burn
-address, and a third-party recipient needs a current-toolchain contract.
+`Ledger8RecipientUnmappableError`, naming the circuit and the recipient, and
+telling the caller to add the recipient to
+`additionalCoinEncPublicKeyMappings`. A refusal is the one answer that cannot
+lose a recipient's coin.
 
-Widening the retained options to accept mappings is additive and belongs with
-the first contract that needs it. A refusal is the correct answer until then,
-and is the one answer that cannot lose a recipient's coin.
+The retained contract handle — from `deployContract` or `findDeployedContract`,
+both built by `createLedger8CircuitCallTxInterface` — has no place to carry
+mappings, so a circuit that pays a third party must be called through
+`submitCallTx` or `submitCallTxAsync`.
+
+A retained-era DEPLOY builds its resolver WITHOUT mappings:
+`Ledger8DeployContractOptions` has no `additionalCoinEncPublicKeyMappings`
+member, by decision. Retained deploys run only before the fork, so no contract
+that must keep its state after the fork depends on them, and widening the
+deploy options belongs with the first constructor that needs it. Until then a
+constructor that pays a third party is refused with the same
+`Ledger8RecipientUnmappableError`, with `circuitId` set to `'initialState'` and
+a message that names the constructor and says the deploy takes no mappings.
 
 ## Reading the private state, and why an empty id is an error
 

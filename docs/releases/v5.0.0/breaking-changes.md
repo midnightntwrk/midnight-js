@@ -38,8 +38,8 @@ type SigningKey = { tag: 'schnorr' | 'ecdsa'; value: string /* hex */ };
 ```diff
   const options: ContractExecutableRuntimeOptions = {
     // ...
--   signingKey: '0102030a1b2c3d4e5f',
-+   signingKey: { tag: 'schnorr', value: '0102030a1b2c3d4e5f' },
+-   signingKey: keyHex, // 64 hex characters (32 bytes)
++   signingKey: { tag: 'schnorr', value: keyHex },
   };
 ```
 
@@ -49,13 +49,17 @@ The Configuration layer maps the object to the `KEYS_SIGNING` / `KEYS_SIGNING_KI
 
 ### 2b. Signing-key import / export validation
 
-`importSigningKey` (LevelDB and the testkit in-memory provider) now validates the **structured shape** before any write:
+`importSigningKeys` (LevelDB and the testkit in-memory provider) now validates the **structured shape** before any write:
 
 - non-null object,
 - `tag` ∈ `{ 'schnorr', 'ecdsa' }`,
-- `value` an even-length hex string of length ≥ 6.
+- `value` exactly 64 hex characters (32 bytes, the only size the runtime accepts for either kind).
 
 A v4.x export that stored a bare hex string will fail import with `InvalidExportFormatError`. Re-export signing keys from a v5.0.0 client, or transform stored exports to the structured shape before import.
+
+Signing keys already in a level private-state store (bare 64-character hex strings written by v4.x) are read in the new shape automatically; only export files made by v4.x need this step. A stored entry that is neither shape throws `StoredSigningKeyFormatError`, exported from `@midnight-ntwrk/midnight-js-level-private-state-provider`.
+
+`isValidSigningKey` is now a type guard (`value is SigningKey`).
 
 The shared predicate is exported as `isValidSigningKey` from `@midnight-ntwrk/midnight-js-utils`.
 

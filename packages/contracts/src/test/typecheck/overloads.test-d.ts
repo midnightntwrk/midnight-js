@@ -16,7 +16,14 @@
 import type { ConstructorResultPojo, Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
 import type { CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import type { ContractAddress, ContractState, LogEvent, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type {
+  CoinPublicKey,
+  ContractAddress,
+  ContractState,
+  LogEvent,
+  SigningKey
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
@@ -302,6 +309,16 @@ describe('an argument-taking retained-era contract works, not just a zero-argume
     expectTypeOf<Ledger8CallTxOptionsBase<CoinReceiver016Contract, 'receive_coin'>['args']>().toEqualTypeOf<
       [coin: CoinReceiver016Coin]
     >();
+  });
+
+  it('accepts additional recipient mappings on retained call options, typed as the current era types them', () => {
+    expectTypeOf<Ledger8CallTxOptionsBase<CoinReceiver016Contract, 'receive_coin'>>()
+      .toHaveProperty('additionalCoinEncPublicKeyMappings')
+      .toEqualTypeOf<ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined>();
+    expectTypeOf<Ledger8CallTxOptionsBase<Counter016Contract, 'increment'>>().toHaveProperty(
+      'additionalCoinEncPublicKeyMappings'
+    );
+    expectTypeOf<AnyLedger8CallTxOptions>().toHaveProperty('additionalCoinEncPublicKeyMappings');
   });
 
   it('RESOLVES to the retained-era arm, which is the assertion the unknown[] tail failed', () => {

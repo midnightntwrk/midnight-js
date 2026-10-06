@@ -62,11 +62,12 @@ const RETAINED_SIGNING_KEY_TAG: SigningKey['tag'] = 'schnorr';
 /**
  * How many hex characters a retained-era key is: 32 bytes, so 64.
  *
- * Its own rule rather than {@link isValidSigningKey}'s, which is the
- * IMPORT-FORMAT rule and admits any even-length hex string of six characters or
- * more. A 62-character entry -- a truncated or half-written one -- passes that
- * predicate, and `signatureVerifyingKey()` on it answers a maintenance
- * authority nobody holds, with nothing erroring at any stage.
+ * Its own rule rather than only {@link isValidSigningKey}'s, which is the
+ * IMPORT-FORMAT rule shared with the current era. Both answer 64 today; this
+ * one is the retained era's, so a change to the shared rule cannot widen what
+ * this read admits. A 62-character entry -- a truncated or half-written one --
+ * would otherwise make `signatureVerifyingKey()` answer a maintenance authority
+ * nobody holds, with nothing erroring at any stage.
  *
  * The number is MEASURED rather than declared: `src/test/ledger8-signing-key.test.ts`
  * samples a key from a retained runtime and asserts its length against this
@@ -108,7 +109,7 @@ export const toStoredLedger8SigningKey = (signingKey: Ledger8SigningKey): Signin
 
 /**
  * Reads a stored entry back as the bare string the retained runtime takes, or
- * reports ABSENT for an entry this framework did not write.
+ * reports ABSENT for an entry that is not a retained-era key.
  *
  * TWO ways an entry is not this era's key, and both read as absent:
  *
@@ -121,9 +122,8 @@ export const toStoredLedger8SigningKey = (signingKey: Ledger8SigningKey): Signin
  * - a VALUE that is not a retained-era key's. TWO rules, because one does not
  *   cover the other: {@link isValidSigningKey} is the shape the level-backed
  *   provider validates an IMPORT against, so an entry this read admits is one a
- *   restore will too -- but it is the import-format rule and admits any
- *   even-length hex of six characters or more, which a truncated 62-character
- *   entry satisfies. {@link RETAINED_SIGNING_KEY_HEX_LENGTH} is this era's own
+ *   restore will too -- but it is the import-format rule, shared with the
+ *   current era. {@link RETAINED_SIGNING_KEY_HEX_LENGTH} is this era's own
  *   rule, and without it `signatureVerifyingKey()` on such an entry answers an
  *   authority nobody holds, silently.
  *
