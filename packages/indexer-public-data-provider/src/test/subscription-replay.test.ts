@@ -133,6 +133,8 @@ const blockWith = (height: number, transactions: { state: string; address: strin
     hash: `0xtx${height}-${index}`,
     identifiers: [],
     protocolVersion: V9_PROTOCOL_VERSION,
+    blockHeight: height,
+    blockHash: `0x${height}`,
     contractActions
   }))
 });

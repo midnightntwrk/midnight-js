@@ -30,6 +30,7 @@ import type {
   ContractEventsPage,
   ContractEventSubscriptionFilter,
   ContractStateObservableConfig,
+  PositionedRecord,
   PublicDataProvider,
   RawContractState,
   UnshieldedBalances,
@@ -483,8 +484,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     assertIsContractAddress(contractAddress);
     if (config.type === 'txId') {
       const states = transactionIdToTransaction$(this.client, this.pollInterval)(config.txId).pipe(
-        Rx.filter(isRegularTransaction),
-        Rx.concatMap(transactionToState$(mapState)(config.txId))
+        Rx.filter((transaction) => isRegularTransaction(transaction)),
+        Rx.concatMap(transactionToState$(mapState)(config.txId)),
+        Rx.map(({ value }) => value)
       );
       return (config.inclusive ?? true) ? states : states.pipe(Rx.skip(1));
     }
@@ -498,7 +500,8 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     }
     if (config.type === 'all') {
       return waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(
-        Rx.concatMap(() => blockOffsetToState$(mapState)(this.client)(contractAddress)(null))
+        Rx.concatMap(() => blockOffsetToState$(mapState)(this.client)(contractAddress)(null)),
+        Rx.map(({ value }) => value)
       );
     }
     const offset = toBlockOffset(config);
@@ -620,6 +623,13 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     contractAddress: ContractAddress,
     config: ContractStateObservableConfig = { type: 'latest' }
   ): Rx.Observable<UnshieldedBalances> {
+    return this.unshieldedBalances$(contractAddress, config).pipe(Rx.map(({ value }) => value));
+  }
+
+  private unshieldedBalances$(
+    contractAddress: ContractAddress,
+    config: ContractStateObservableConfig
+  ): Rx.Observable<PositionedRecord<UnshieldedBalances>> {
     assertIsContractAddress(contractAddress);
     if (config.type === 'txId') {
       throw new IndexerProviderConfigError(

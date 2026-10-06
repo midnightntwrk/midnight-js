@@ -17,7 +17,7 @@ import type { ApolloClient, ApolloQueryResult, FetchResult, OperationVariables }
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { ContractEvent } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractEvent, PositionedRecord, UnshieldedBalances } from '@midnight-ntwrk/midnight-js-types';
 import * as Rx from 'rxjs';
 
 import { toUnshieldedBalances } from './codec';
@@ -52,16 +52,18 @@ export type Block = {
 };
 
 /**
- * A transaction as the block subscription serves it. `protocolVersion` is the
- * containing block's, copied onto every transaction when the block is
- * flattened: the block is what dates the serialized states its transactions
- * carry, and downstream operators see transactions with the block already
- * gone.
+ * A transaction as the block subscription serves it. `protocolVersion`,
+ * `blockHeight` and `blockHash` are the containing block's, copied onto every
+ * transaction when the block is flattened: the block is what dates and
+ * positions the serialized states its transactions carry, and downstream
+ * operators see transactions with the block already gone.
  */
 export type Transaction = {
   hash: string;
   identifiers: readonly string[];
   protocolVersion: number;
+  blockHeight: number;
+  blockHash: string;
   contractActions: readonly { state: string; address: string }[];
 };
 
@@ -78,6 +80,7 @@ export type ChainPosition = {
 
 /** A stream element carrying the {@link ChainPosition} it was served at. */
 export type Positioned<T> = ChainPosition & {
+  readonly hash: string;
   readonly state: T;
 };
 
@@ -249,6 +252,8 @@ export const blockOffsetToBlock$ = (apolloClient: ApolloClient) => (offset: Inpu
               hash: tx.hash,
               identifiers: tx.identifiers,
               protocolVersion: blocks.protocolVersion,
+              blockHeight: blocks.height,
+              blockHash: blocks.hash,
               contractActions: tx.contractActions
             }))
         };
@@ -284,10 +289,10 @@ export const transactionIdToTransaction$ =
 export const transactionToState$ =
   <T>(mapState: ContractStateMapper<T>) =>
   (transactionId: TransactionId) =>
-  ({ identifiers, contractActions, protocolVersion }: Transaction): Rx.Observable<T> =>
+  ({ identifiers, contractActions, protocolVersion, blockHeight, blockHash }: Transaction): Rx.Observable<PositionedRecord<T>> =>
     Rx.zip(identifiers, contractActions).pipe(
       Rx.skipWhile((pair) => pair[0] !== transactionId),
-      Rx.map((pair) => mapState(pair[1].state, protocolVersion))
+      Rx.map((pair) => ({ value: mapState(pair[1].state, protocolVersion), blockHeight, blockHash }))
     );
 
 /**
@@ -316,6 +321,7 @@ export const blockToPositionedState$ =
     ).pipe(
       Rx.map((call, ordinal) => ({
         height: block.height,
+        hash: block.hash,
         ordinal,
         state: mapState(call.state, block.protocolVersion)
       }))
@@ -342,8 +348,9 @@ export const contractAddressToLatestBlockOffset$ =
  * used by `latest`/`blockHeight`/`blockHash`, which need the per-block view
  * from {@link blockOffsetToBlock$} + {@link blockToPositionedState$}.
  *
- * Carries no position, so {@link dropReplayed} cannot guard it: a reconnect
- * re-delivers the states the indexer replays.
+ * Each element carries the block of the action's transaction but no ordinal,
+ * so {@link dropReplayed} is not applied: a reconnect re-delivers the states
+ * the indexer replays.
  *
  * Assumes block already exists.
  *
@@ -354,7 +361,7 @@ export const blockOffsetToState$ =
   <T>(mapState: ContractStateMapper<T>) =>
   (apolloClient: ApolloClient) =>
   (contractAddress: ContractAddress) =>
-  (offset: InputMaybe<BlockOffset>): Rx.Observable<T> =>
+  (offset: InputMaybe<BlockOffset>): Rx.Observable<PositionedRecord<T>> =>
     apolloClient
       .subscribe({
         query: CONTRACT_STATE_SUB,
@@ -373,9 +380,11 @@ export const blockOffsetToState$ =
           }
           return contractActions;
         }),
-        Rx.map((contractActions) =>
-          mapState(contractActions.state, contractActions.transaction.protocolVersion)
-        )
+        Rx.map((contractAction) => ({
+          value: mapState(contractAction.state, contractAction.transaction.protocolVersion),
+          blockHeight: contractAction.transaction.block.height,
+          blockHash: contractAction.transaction.block.hash
+        }))
       );
 
 export const waitForContractToAppear =
@@ -431,7 +440,7 @@ export const waitForUnshieldedBalancesToAppear =
 export const blockOffsetToUnshieldedBalances$ =
   (apolloClient: ApolloClient) =>
   (contractAddress: ContractAddress) =>
-  (offset: InputMaybe<BlockOffset>) =>
+  (offset: InputMaybe<BlockOffset>): Rx.Observable<PositionedRecord<UnshieldedBalances>> =>
     apolloClient
       .subscribe({
         query: UNSHIELDED_BALANCE_SUB,
@@ -448,9 +457,12 @@ export const blockOffsetToUnshieldedBalances$ =
           if (!contractAction) {
             throw new IndexerSubscriptionDataError('contractActions');
           }
-          return extractUnshieldedBalances(contractAction, 'blockOffsetToUnshieldedBalances$');
-        }),
-        Rx.map(toUnshieldedBalances)
+          return {
+            value: toUnshieldedBalances(extractUnshieldedBalances(contractAction, 'blockOffsetToUnshieldedBalances$')),
+            blockHeight: contractAction.transaction.block.height,
+            blockHash: contractAction.transaction.block.hash
+          };
+        })
       );
 
 /**

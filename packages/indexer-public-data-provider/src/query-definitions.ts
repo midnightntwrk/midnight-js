@@ -323,6 +323,10 @@ export const CONTRACT_STATE_SUB = gql(
       state
       transaction {
         protocolVersion
+        block {
+          height
+          hash
+        }
       }
     }
   }`
@@ -402,6 +406,12 @@ export const UNSHIELDED_BALANCE_SUB = gql(
   `
   subscription UNSHIELDED_BALANCE_SUB($address: HexEncoded!, $offset: BlockOffset) {
     contractActions(address: $address, offset: $offset) {
+      transaction {
+        block {
+          height
+          hash
+        }
+      }
       ... on ContractDeploy {
         unshieldedBalances {
           tokenType

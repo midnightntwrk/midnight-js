@@ -102,8 +102,8 @@ const blockFrame = (
 });
 
 /** One `CONTRACT_STATE_SUB` frame: a single contract action, dated by its own transaction. */
-const contractActionFrame = (state: string, protocolVersion: number): unknown => ({
-  data: { contractActions: { state, transaction: { protocolVersion } } }
+const contractActionFrame = (state: string, protocolVersion: number, height = 10): unknown => ({
+  data: { contractActions: { state, transaction: { protocolVersion, block: { height, hash: `0x${height}` } } } }
 });
 
 const collect = (source: Rx.Observable<RawContractState>): Promise<RawContractState[]> =>
