@@ -22,6 +22,7 @@ import { getContainersConfiguration } from '../../configuration';
 import type { StandaloneContainersConfiguration } from '../../configuration-types';
 import { getEnvVarWalletSeeds } from '../../env-vars';
 import type { ProofServerContainer } from '../../proof-server-container';
+import { redactedJson } from '../../utils';
 import { MidnightWalletProvider } from '../../wallet';
 import type { EnvironmentConfiguration } from '..';
 import { TestEnvironment } from './test-environment';
@@ -147,7 +148,7 @@ export class LocalTestEnvironment extends TestEnvironment {
     this.logger.info(`Starting test environment...`);
     this.dockerEnv = dockerEnv;
     this.environmentConfiguration = new LocalTestConfiguration(ports);
-    this.logger.info(`Test environment configuration: ${JSON.stringify(this.environmentConfiguration)}`);
+    this.logger.info(`Test environment configuration: ${redactedJson(this.environmentConfiguration)}`);
     return this.environmentConfiguration;
   };
 
@@ -179,7 +180,7 @@ export class LocalTestEnvironment extends TestEnvironment {
       })
       .up();
     this.environmentConfiguration = new LocalTestConfiguration(this.getMappedPorts());
-    this.logger.info(`Test environment configuration: ${JSON.stringify(this.environmentConfiguration)}`);
+    this.logger.info(`Test environment configuration: ${redactedJson(this.environmentConfiguration)}`);
     return this.environmentConfiguration;
   };
 
