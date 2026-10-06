@@ -335,8 +335,8 @@ balance stream, suppresses the values the indexer replays.
 
 #### Which state stream to use
 
-The two contract-state streams run the identical pipeline — same branches, same
-wire-traffic costs, same replay suppression — and differ only in what one served
+The two contract-state streams run the identical pipeline — same branches and
+replay suppression — and differ only in what one served
 contract action becomes.
 
 | | `contractStateObservable` | `rawContractStateObservable` |

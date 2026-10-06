@@ -68,6 +68,7 @@ import {
   type ContractStateMapper,
   dropReplayed,
   fromTransaction,
+  type Identified,
   maybeThrowQueryError,
   ordinalWithinBlock,
   pollUntilPresent,
@@ -90,15 +91,7 @@ import {
 } from './query-definitions';
 import type { ApolloHandle } from './transport';
 
-/**
- * Indexer-backed `PublicDataProvider`. Every method that takes a
- * `ContractAddress` validates the input up front via
- * `assertIsContractAddress`. The constructor shape `(handle, pollInterval)`
- * maps directly onto `Layer.scoped` in the future Effect migration (#843).
- *
- * TODO: Re-examine caching when 'ContractCall' and 'ContractDeploy' have
- * transaction identifiers included.
- */
+/** Maps a block-height/block-hash config to the indexer's `BlockOffset` input. */
 const toStartOffset = (config: BlockHeightConfig | BlockHashConfig): BlockOffset =>
   config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash };
 
@@ -109,6 +102,7 @@ const toStartOffset = (config: BlockHeightConfig | BlockHashConfig): BlockOffset
 const toBlockOffset = (config?: BlockHeightConfig | BlockHashConfig): InputMaybe<BlockOffset> =>
   config ? toStartOffset(config) : null;
 
+/** Rebuilds the public record so the feed's ordinal and identifiers never reach a consumer. */
 const toPositionedRecord = <T>({ value, blockHeight, blockHash }: PositionedRecord<T>): PositionedRecord<T> => ({
   value,
   blockHeight,
@@ -121,6 +115,15 @@ const DEFAULT_STATE_CONFIG: ContractStateObservableConfig = { type: 'latest' };
 /** The offset `all` subscribes from: the feed serves a contract's actions from its deploy onward. */
 const GENESIS: BlockOffset = { height: 0 };
 
+/**
+ * Indexer-backed `PublicDataProvider`. Every method that takes a
+ * `ContractAddress` validates the input up front via
+ * `assertIsContractAddress`. The constructor shape `(handle, pollInterval)`
+ * maps directly onto `Layer.scoped` in the future Effect migration (#843).
+ *
+ * TODO: Re-examine caching when 'ContractCall' and 'ContractDeploy' have
+ * transaction identifiers included.
+ */
 export class IndexerPublicDataProvider implements PublicDataProvider {
   private readonly handle: ApolloHandle;
   private readonly pollInterval: number;
@@ -500,14 +503,14 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     return this.contractStatesFeed$(contractAddress, config, feed).pipe(dropReplayed(), Rx.map(toPositionedRecord));
   }
 
-  private contractStatesFeed$<R extends ChainPosition & { readonly identifiers: readonly string[] }>(
+  private contractStatesFeed$<R extends ChainPosition & Identified>(
     contractAddress: ContractAddress,
     config: ContractStateObservableConfig,
     feed: (offset: BlockOffset) => Rx.Observable<R>
   ): Rx.Observable<R> {
     if (config.type === 'txId') {
       const inclusive = config.inclusive ?? true;
-      return transactionToBlockOffset$(this.client, this.pollInterval)(config.txId).pipe(
+      return transactionToBlockOffset$(this.client, this.pollInterval)(config.txId, contractAddress).pipe(
         Rx.concatMap((offset) => feed(offset).pipe(fromTransaction(config.txId, offset.height, inclusive)))
       );
     }
@@ -520,9 +523,10 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   }
 
   /**
-   * Starts a per-contract feed at the block a `latest`, `blockHeight` or
-   * `blockHash` config names. `inclusive: false` is a filter on the block
-   * height rather than a count of skipped records, so a reconnect cannot spend it.
+   * Starts a per-contract feed at the block a `blockHeight` or `blockHash`
+   * config names, or at the block of the latest action for `latest`.
+   * `inclusive: false` is a filter on the block height rather than a count of
+   * skipped records, so a reconnect cannot spend it.
    */
   private fromBlock$<R extends ChainPosition>(
     contractAddress: ContractAddress,
@@ -590,7 +594,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * {@link contractStateObservable}'s; only the element type differs.
    *
    * WHAT IS WITHHELD, PRECISELY: the deserialization, and the envelope-versus-
-   * block era cross-check {@link parseHexContractState} runs. The envelope tag
+   * served-era cross-check {@link parseHexContractState} runs. The envelope tag
    * is still read, so a payload carrying no supported contract-state envelope
    * still fails the stream. Two things can still end it on era grounds — an
    * envelope from an era this client's tag table does not list, and a
@@ -621,9 +625,8 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * same start rules and the same replay suppression.
    *
    * The `txId` configuration is not supported and throws
-   * {@link IndexerProviderConfigError}. Tx-anchored balance streams are
-   * not exposed by the indexer's subscription surface — for the related
-   * contract-state stream see {@link contractStateObservable}.
+   * {@link IndexerProviderConfigError}; this provider offers no tx-anchored
+   * balance stream.
    *
    * See {@link blockOffsetToUnshieldedBalances$} for the per-subscription doc.
    *

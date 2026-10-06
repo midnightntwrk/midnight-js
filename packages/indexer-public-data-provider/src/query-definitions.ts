@@ -45,6 +45,9 @@ export const TX_ID_QUERY = gql(
       protocolVersion
       raw
       hash
+      contractActions {
+        address
+      }
       unshieldedCreatedOutputs {
         owner
         intentHash

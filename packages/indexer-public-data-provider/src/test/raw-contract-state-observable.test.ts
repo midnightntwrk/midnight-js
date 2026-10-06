@@ -123,8 +123,8 @@ describe('rawContractStateObservable — latest', () => {
 
     // The WHOLE record, not field by field: this is the one assertion that
     // fails if the record grows a field, and the one that pins
-    // `ledgerParameters` as absent -- a promise three docs make and the
-    // subscription's field list is the only thing keeping.
+    // `ledgerParameters` as absent, which only the subscription's field list
+    // guarantees.
     expect(seen).toEqual([
       {
         value: {
@@ -339,7 +339,7 @@ describe('rawContractStateObservable — every configuration branch', () => {
   test('txId: streams the states from the named transaction onward', async () => {
     const hexState = await mintV8ContractStateHex();
     const provider = buildProvider({
-      watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 } }] }]])),
+      watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 }, contractActions: [{ address: ADDRESS }] }] }]])),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
         actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)
       ])
@@ -358,7 +358,7 @@ describe('rawContractStateObservable — every configuration branch', () => {
     const earlier = await mintV8ContractStateHex();
     const named = mintV9ContractStateHex();
     const provider = buildProvider({
-      watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 } }] }]])),
+      watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 }, contractActions: [{ address: ADDRESS }] }] }]])),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
         actionFrame(earlier, V9_ERA_PROTOCOL_VERSION, 10, ['a-different-tx-id']),
         actionFrame(named, V9_ERA_PROTOCOL_VERSION, 10, [TX_ID])
@@ -374,7 +374,7 @@ describe('rawContractStateObservable — every configuration branch', () => {
     const first = mintV9ContractStateHex();
     const second = await mintV8ContractStateHex();
     const provider = buildProvider({
-      watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 } }] }]])),
+      watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 }, contractActions: [{ address: ADDRESS }] }] }]])),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
         actionFrame(first, V9_ERA_PROTOCOL_VERSION, 10, [TX_ID]),
         actionFrame(second, V8_ERA_PROTOCOL_VERSION, 10, ['a-later-tx-id'])
@@ -468,7 +468,7 @@ describe('rawContractStateObservable — every record carries the block that ser
   test('txId: the named transaction’s state carries its block', async () => {
     const hexState = await mintV8ContractStateHex();
     const provider = buildProvider({
-      watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 } }] }]])),
+      watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 }, contractActions: [{ address: ADDRESS }] }] }]])),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
         actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)
       ])

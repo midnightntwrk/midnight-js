@@ -67,11 +67,11 @@ const asClosableSocket = (socket: unknown): ClosableSocket => {
 export type ApolloHandle = {
   readonly client: ApolloClient;
   /**
-   * How many subscription connections have been established so far. The indexer
-   * replays every open subscription from its original offset on each new one, so
-   * a change in this count marks where a replay begins.
+   * How many WebSocket connections have been established so far. On a reconnect
+   * `graphql-ws` subscribes every open subscription again with its original
+   * variables, so a change in this count marks where a replay begins.
    */
-  connectionCount(): number;
+  readonly connectionCount: () => number;
   /**
    * Stops the Apollo client (`client.stop()` is void in Apollo Client 4.x
    * — it unsubscribes active observables, rejects in-flight queries, and

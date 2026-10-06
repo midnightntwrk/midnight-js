@@ -24,6 +24,7 @@ import {
   IndexerDataError,
   IndexerFormattedError,
   IndexerInvariantError,
+  IndexerProviderConfigError,
   IndexerQueryError,
   IndexerSubscriptionDataError
 } from './errors';
@@ -53,10 +54,13 @@ export type ChainPosition = {
   readonly ordinal: number;
 };
 
-/** One contract action off the per-contract feed, with the identifiers of the transaction that carried it. */
-export type FeedRecord<T> = PositionedRecord<T> & {
+/** The identifiers of the transaction that carried a record; empty for a system transaction. */
+export type Identified = {
   readonly identifiers: readonly string[];
 };
+
+/** One contract action off the per-contract feed. */
+export type FeedRecord<T> = PositionedRecord<T> & Identified;
 
 /**
  * Turns one served contract action into a stream element.
@@ -82,7 +86,6 @@ export type ContractStateMapper<T> = (hexState: string, protocolVersion: number)
 export const ordinalWithinBlock =
   (connectionCount: () => number) =>
   <R extends { readonly blockHeight: number }>(source: Rx.Observable<R>): Rx.Observable<R & ChainPosition> =>
-    // `defer` so the count belongs to the subscription, as in `dropReplayed`.
     Rx.defer(() => {
       let previous: { connection: number; blockHeight: number; ordinal: number } | null = null;
       return source.pipe(
@@ -131,15 +134,13 @@ export const dropReplayed =
  * the named transaction's own when `inclusive` is false.
  *
  * The named transaction's rank is remembered once seen. A replay reproduces
- * ranks exactly, so the remembered rank keeps holding after a reconnect. A
- * transaction that carries no action for the contract is never seen, so
- * nothing from its block is kept.
+ * ranks exactly, so the remembered rank keeps holding after a reconnect. The
+ * named transaction must carry an action for the contract, which
+ * {@link transactionToBlockOffset$} checks before the feed is subscribed.
  */
 export const fromTransaction =
   (transactionId: TransactionId, blockHeight: number, inclusive: boolean) =>
-  <R extends ChainPosition & { readonly identifiers: readonly string[] }>(
-    source: Rx.Observable<R>
-  ): Rx.Observable<R> =>
+  <R extends ChainPosition & Identified>(source: Rx.Observable<R>): Rx.Observable<R> =>
     Rx.defer(() => {
       let named: number | null = null;
       return source.pipe(
@@ -240,9 +241,21 @@ export function pollUntilPresent<TQuery, TVars extends OperationVariables, TResu
     );
 }
 
-/** Waits for the transaction `identifier` to be indexed, then emits the height of its block. */
+/**
+ * Apollo shares an in-flight subscription between identical requests without
+ * replaying it, so a second subscriber would join mid-stream and miss the
+ * history its offset asks for, and every rank after it.
+ */
+const FRESH_SUBSCRIPTION = { queryDeduplication: false };
+
+/**
+ * Waits for the transaction `identifier` to be indexed, then emits the height of
+ * its block. Refuses a transaction that carries no action for `contractAddress`:
+ * a stream started from it has no transaction to start at.
+ */
 export const transactionToBlockOffset$ =
-  (apolloClient: ApolloClient, pollInterval: number) => (identifier: TransactionId) =>
+  (apolloClient: ApolloClient, pollInterval: number) =>
+  (identifier: TransactionId, contractAddress: ContractAddress) =>
     pollUntilPresent(
       apolloClient,
       TX_ID_QUERY,
@@ -253,6 +266,11 @@ export const transactionToBlockOffset$ =
         if (first === undefined) {
           throw new IndexerInvariantError(
             'transactionToBlockOffset$: transactions array unexpectedly empty after predicate'
+          );
+        }
+        if (!first.contractActions.some(({ address }) => address === contractAddress)) {
+          throw new IndexerProviderConfigError(
+            `Transaction ${identifier} carries no action for contract ${contractAddress}`
           );
         }
         return { height: first.block.height };
@@ -295,7 +313,8 @@ export const blockOffsetToState$ =
           address: contractAddress,
           offset
         },
-        fetchPolicy: 'no-cache'
+        fetchPolicy: 'no-cache',
+        context: FRESH_SUBSCRIPTION
       })
       .pipe(
         withValidFetchData(),
@@ -372,7 +391,8 @@ export const blockOffsetToUnshieldedBalances$ =
           address: contractAddress,
           offset
         },
-        fetchPolicy: 'no-cache'
+        fetchPolicy: 'no-cache',
+        context: FRESH_SUBSCRIPTION
       })
       .pipe(
         withValidFetchData(),

@@ -17,13 +17,19 @@ The code is `src/provider.ts` and `src/observables.ts`.
 
 `contractActions(address, offset)` serves every action of the contract from the
 block at `offset` onward, that block included, and then continues live. Each
-action carries its transaction, and the selection asks that transaction for its
-block (`height`, `hash`), its `protocolVersion` and, for a regular transaction,
-its `identifiers`. A system transaction has no identifiers, and its actions are
-served like any other.
+action carries its transaction, and both selections ask that transaction for
+its block (`height`, `hash`).
 
-`CONTRACT_STATE_SUB` selects the action's `state`; `UNSHIELDED_BALANCE_SUB`
-selects its `unshieldedBalances`. Everything below applies to both.
+`CONTRACT_STATE_SUB` also selects the action's `state`, the transaction's
+`protocolVersion` and, for a regular transaction, its `identifiers`. A system
+transaction has no identifiers, and its actions are served like any other.
+`UNSHIELDED_BALANCE_SUB` selects the action's `unshieldedBalances` only. The
+block is all the replay suppression below needs, so it applies to both.
+
+Neither subscription is shared between identical requests: each passes
+`queryDeduplication: false`, because Apollo would otherwise attach a second
+subscriber to the first one's stream mid-way, without the history its offset
+asks for.
 
 ## How each branch starts
 
@@ -32,7 +38,7 @@ selects its `unshieldedBalances`. Everything below applies to both.
 | `latest` | the block of the contract's latest action (`LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY`) | none |
 | `all` | `{ height: 0 }`, once the contract exists | none |
 | `blockHeight` / `blockHash` | the named block, once it exists | `inclusive: false` keeps only records with a greater block height |
-| `txId` | the block of the named transaction (`TX_ID_QUERY`) | records of that block before the named transaction are dropped; `inclusive: false` drops the named transaction's own |
+| `txId` | the block of the named transaction (`TX_ID_QUERY`); a transaction with no action for the contract is refused with `IndexerProviderConfigError` before anything is subscribed | records of that block before the named transaction are dropped; `inclusive: false` drops the named transaction's own |
 
 `all` passes `{ height: 0 }` explicitly. The schema documents an omitted offset
 as "the latest block", so the full history is not left to that reading.
@@ -68,14 +74,16 @@ from, where `ordinalWithinBlock` and `dropReplayed` sit, how each branch reads
 `inclusive` — is the part that is easy to get subtly wrong, and two copies of
 it would drift apart under maintenance.
 
-So the topology is written once, as the private `contractStates$<T>`, and the
-mapper is threaded through it: `parseHexContractState` for the decoded stream,
+So the topology is written once, as the private `contractStates$<T>` with the
+branch routing in `contractStatesFeed$` and `fromBlock$`, and the mapper is
+threaded through it: `parseHexContractState` for the decoded stream,
 `toRawContractState` for the raw one. Both public members are one-line binds.
 Because the type parameter is fixed once per stream, "the two streams cannot
 diverge branch by branch" is a fact the compiler holds, not a review habit.
 
-The balance stream reuses the block-anchored part of that topology
-(`fromBlock$`) with its own feed, and has no `txId` branch.
+The balance stream reuses `fromBlock$` for `latest`, `blockHeight` and
+`blockHash`, and repeats the rest: its own `all` branch, the
+`ordinalWithinBlock` wiring and `dropReplayed`. It has no `txId` branch.
 
 The cost of that sharing is that one transcription error breaks every member at
 once, which is why the branch behaviour that is invisible in a type — the start
