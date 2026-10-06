@@ -103,6 +103,23 @@ export type BlockInfo = {
 }
 
 /**
+ * A value served by a stream, together with the block that carried it.
+ *
+ * `blockHeight` and `blockHash` have the types of {@link BlockHeightConfig}
+ * and {@link BlockHashConfig}: passing either back as the stream's config
+ * resumes it from that block. Resuming includes that block, so values from it
+ * may be delivered again; no value after it is skipped.
+ */
+export type PositionedRecord<T> = {
+  /** The value the stream served. */
+  readonly value: T;
+  /** The height of the block that carried the value. */
+  readonly blockHeight: number;
+  /** The hex-encoded hash of the block that carried the value, as the network served it. */
+  readonly blockHash: string;
+};
+
+/**
  * The configuration for a contract state observable. The corresponding observables may begin at different
  * places (e.g. after a specific transaction identifier / block height) depending on the configuration, but
  * all state updates after the beginning are always included.

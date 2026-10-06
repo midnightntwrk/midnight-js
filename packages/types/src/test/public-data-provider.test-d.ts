@@ -21,6 +21,7 @@ import type {
   BlockHashConfig,
   BlockHeightConfig,
   ContractStateObservableConfig,
+  PositionedRecord,
   PublicDataProvider
 } from '../public-data-provider';
 import type { RawContractState } from '../raw-contract-state';
@@ -168,5 +169,22 @@ describe('PublicDataProvider head-version and raw-state members', () => {
 
     expectTypeOf(record.raw).toEqualTypeOf<Uint8Array>();
     expectTypeOf(record.version).toEqualTypeOf<'v8' | 'v9'>();
+  });
+});
+
+type PositionedRecordFixture<T> = {
+  readonly value: T;
+  readonly blockHeight: number;
+  readonly blockHash: string;
+};
+
+describe('PositionedRecord', () => {
+  it('pins PositionedRecord to exactly value, blockHeight and blockHash', () => {
+    expectTypeOf<PositionedRecord<RawContractState>>().toEqualTypeOf<PositionedRecordFixture<RawContractState>>();
+  });
+
+  it('types its position like the block configs, so a record resumes a stream unchanged', () => {
+    expectTypeOf<PositionedRecord<RawContractState>['blockHeight']>().toEqualTypeOf<BlockHeightConfig['blockHeight']>();
+    expectTypeOf<PositionedRecord<RawContractState>['blockHash']>().toEqualTypeOf<BlockHashConfig['blockHash']>();
   });
 });
