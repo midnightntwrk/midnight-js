@@ -282,22 +282,33 @@ block that carried it.
 after an error:
 
 ```typescript
+import { IndexerDataError } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+
+const MAX_RESUMES = 5;
 let last: PositionedRecord<ContractState> | undefined;
+let resumes = 0;
 
 const follow = (config: ContractStateObservableConfig) =>
   provider.contractStateObservable(contractAddress, config).subscribe({
     next: (record) => {
       last = record;
     },
-    error: () => {
-      if (last !== undefined) {
-        follow({ type: 'blockHeight', blockHeight: last.blockHeight });
+    error: (error: unknown) => {
+      if (error instanceof IndexerDataError || last === undefined || resumes >= MAX_RESUMES) {
+        console.error('Contract state stream ended', error);
+        return;
       }
+      resumes += 1;
+      follow({ type: 'blockHeight', blockHeight: last.blockHeight });
     }
   });
 
 follow({ type: 'latest' });
 ```
+
+Do not resume after an `IndexerDataError`: the data that caused it is still on
+chain, so the resumed stream fails on it again. A retained-era state is the
+common case; read such a contract with `rawContractStateObservable`.
 
 Resuming includes the block you resume from, so values from that block can
 arrive again; nothing after it is skipped. The `all` and `txId` branches and the
@@ -347,10 +358,19 @@ If you need the parameters for a streamed state, read them at the block the
 record names:
 
 ```typescript
-provider.rawContractStateObservable(contractAddress).subscribe(async ({ blockHash }) => {
-  const atBlock = await provider.queryRawContractState(contractAddress, { type: 'blockHash', blockHash });
-  // atBlock?.ledgerParameters
-});
+provider
+  .rawContractStateObservable(contractAddress)
+  .pipe(
+    concatMap(({ blockHash }) =>
+      from(provider.queryRawContractState(contractAddress, { type: 'blockHash', blockHash }))
+    )
+  )
+  .subscribe({
+    next: (atBlock) => {
+      // atBlock?.ledgerParameters
+    },
+    error: (error: unknown) => console.error('Contract state stream ended', error)
+  });
 ```
 
 Withholding the deserialization does not withhold the fail-fast, but be precise
