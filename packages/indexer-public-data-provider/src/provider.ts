@@ -491,7 +491,6 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     assertIsContractAddress(contractAddress);
     if (config.type === 'txId') {
       const states = transactionIdToTransaction$(this.client, this.pollInterval)(config.txId).pipe(
-        Rx.filter((transaction) => isRegularTransaction(transaction)),
         Rx.concatMap(transactionToState$(mapState)(config.txId))
       );
       return (config.inclusive ?? true) ? states : states.pipe(Rx.skip(1));
@@ -625,13 +624,6 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   unshieldedBalancesObservable(
     contractAddress: ContractAddress,
     config: ContractStateObservableConfig = { type: 'latest' }
-  ): Rx.Observable<PositionedRecord<UnshieldedBalances>> {
-    return this.unshieldedBalances$(contractAddress, config);
-  }
-
-  private unshieldedBalances$(
-    contractAddress: ContractAddress,
-    config: ContractStateObservableConfig
   ): Rx.Observable<PositionedRecord<UnshieldedBalances>> {
     assertIsContractAddress(contractAddress);
     if (config.type === 'txId') {
