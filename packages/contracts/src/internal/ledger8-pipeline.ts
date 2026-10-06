@@ -44,6 +44,7 @@ import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
 import {
+  LEDGER8_CONSTRUCTOR_ENTRY_POINT,
   Ledger8AmbiguousEntryPointError,
   Ledger8RecipientUnmappableError,
   Ledger8ShieldedSpendUnsupportedError,
@@ -382,7 +383,8 @@ const spendsHeldCoin = (zswapLocalState: Ledger8Transcript['zswapLocalState']): 
  *
  * Without this the condition surfaces from inside `createZswapOutput` as a bare
  * `Error` naming neither the era nor the circuit, and advising a resolver
- * mapping the retained-era options carry no field for.
+ * mapping rather than the `additionalCoinEncPublicKeyMappings` option the
+ * caller actually sets.
  *
  * Only USER-owned outputs are checked. A contract-owned output takes
  * `ZswapOutput.newContractOwned`, which is given an address and never consults
@@ -872,7 +874,7 @@ export const runLedger8DeployPipeline = async (request: Ledger8DeployPipelineReq
   // builder, exactly as the call arm refuses it. A constructor cannot SPEND --
   // a contract that does not exist yet holds nothing -- so the recipient check
   // is the only one this arm needs.
-  assertRecipientsResolvable(constructed.zswapLocalState, request.encryptionPublicKey, 'initialState');
+  assertRecipientsResolvable(constructed.zswapLocalState, request.encryptionPublicKey, LEDGER8_CONSTRUCTOR_ENTRY_POINT);
 
   // A deploy has no transcript to partition against, and `composeDeployTx`
   // takes a guaranteed offer only, so the whole of the constructor's output

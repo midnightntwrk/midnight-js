@@ -95,8 +95,8 @@ Register the new scope if you import the protocol packages anywhere (the framewo
 ```diff
   const options: ContractExecutableRuntimeOptions = {
     // ...
--   signingKey: '0102030a1b2c3d4e5f',
-+   signingKey: { tag: 'schnorr', value: '0102030a1b2c3d4e5f' },
+-   signingKey: keyHex, // 64 hex characters (32 bytes)
++   signingKey: { tag: 'schnorr', value: keyHex },
   };
 ```
 
@@ -114,17 +114,30 @@ The key round-trips through the config layer, so the returned value is structura
 ```ts
 import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 
-isValidSigningKey({ tag: 'schnorr', value: '0102030a1b2c3d4e5f' }); // true
-isValidSigningKey('0102030a1b2c3d4e5f');                            // false (old string shape)
+const keyHex = 'ab'.repeat(32); // 64 hex characters (32 bytes)
+
+isValidSigningKey({ tag: 'schnorr', value: keyHex }); // true
+isValidSigningKey(keyHex);                            // false (old string shape)
+isValidSigningKey({ tag: 'schnorr', value: 'abcdef' }); // false (not 32 bytes)
 ```
 
 ---
 
 ## Step 4 — Re-export or transform persisted signing-key exports
 
-`importSigningKey` now validates the structured shape **before** any write. A v4.x export that stored a bare hex string fails with `InvalidExportFormatError`.
+**Keys already in a level private-state store need no action.** A 4.x client stored each signing key as a bare 64-character hex string. The 5.x level provider reads such an entry as `{ tag: 'schnorr', value: <stored string> }`, so current-era maintenance calls, `findDeployedContract` and `exportSigningKeys` work on an upgraded store as they are.
 
-- **Preferred:** re-export signing keys from a v5.0.0 client.
+A stored entry that is neither shape makes `getSigningKey`, `exportSigningKeys` (for the whole export) and current-era `findDeployedContract` throw `StoredSigningKeyFormatError`, which names the contract address. A retained-era (ledger-8) attach reports no stored key instead and logs an `unreadable-entry` breadcrumb. To fix the entry, do one of:
+
+- store a valid key with `setSigningKey(address, { tag, value })`;
+- import a valid key with `importSigningKeys(export, { conflictStrategy: 'overwrite' })`;
+- remove it with `removeSigningKey(address)`.
+
+The steps below apply only to export *files* made by a 4.x client.
+
+`importSigningKeys` now validates the structured shape **before** any write. A v4.x export that stored a bare hex string fails with `InvalidExportFormatError`.
+
+- **Preferred:** open the store the 4.x client wrote with a v5.0.0 client and run `exportSigningKeys` again.
 - **Alternatively:** transform stored exports to `{ tag: 'schnorr', value: <oldHexString> }` (or `ecdsa`, per your key type) before import.
 
 ---
@@ -301,6 +314,21 @@ Do not narrow this one by throwing on anything that is not `'v9'`. A v8-era
 record is a record the provider decodes and returns, not an error condition,
 and a dApp that reads its own pre-fork history will meet one.
 
+`findDeployedContract` reports the deploy record the same way. A contract deployed
+before the ledger fork keeps a ledger-8 deploy record forever, so
+`found.deployTxData.public` is tagged too. `contractAddress` is on both arms; narrow
+on `version` before reading `tx` or `initialContractState`. The `v8` arm has no
+`initialContractState`, because the current runtime cannot decode a ledger-8
+deploy-time state — read the current state with `queryContractState` instead.
+
+```ts
+const found = await findDeployedContract(providers, { compiledContract, contractAddress });
+const address = found.deployTxData.public.contractAddress; // both eras
+if (found.deployTxData.public.version === 'v9') {
+  use(found.deployTxData.public.initialContractState);
+}
+```
+
 If you *implement* `WalletProvider` or `MidnightProvider`, wrap a v9-only
 implementation with `createWalletProvider` / `createMidnightProvider` rather
 than tagging by hand — see [breaking-changes.md 8e](./breaking-changes.md).
@@ -326,8 +354,18 @@ compiler tells you to.
 
 **If you recompile your contracts with the current Compact toolchain, there is
 no further code change**, and most of this step is about timing and operations
-rather than code. Nothing in that path asks you to call a new API, branch on
+rather than code. This includes re-attaching to a contract deployed before the
+fork: `findDeployedContract` accepts it, and reports its deploy record tagged `v8`
+(see Step 13). Nothing in that path asks you to call a new API, branch on
 the network's era, or maintain a second code path.
+
+One case does need more. A contract deployed before the fork that has had **no
+state-changing call since the fork** still has its state in the ledger-8 format.
+The indexer serves it that way, so `findDeployedContract` itself throws
+`IndexerDataError`, and so does any call through recompiled artifacts. The first
+state-changing call after the fork must therefore go through the pre-fork
+artifacts (see the next paragraph). After that call, recompiled artifacts find
+and call the contract as described above.
 
 **If you keep pre-fork artifacts callable instead**, there is more to it, and it
 is not optional reading: those calls run the retained pipeline and answer with
@@ -487,13 +525,25 @@ either era.
 
 Two limits to plan around. Both eras now name the circuit on the result, and
 both handles carry `compiledContract` and `contractAddress`, so the contract
-HANDLES differ in only two places: the retained handle has no maintenance
-interfaces (the retained era has no governance arm), and its `deployTxData` is
-the flat record where the current era's is `{ era, public, private }`. And `getStates` / `getPublicStates` have no retained
+HANDLES differ in only three places: the retained handle has no maintenance
+interfaces (the retained era has no governance arm), its `deployTxData` is
+the flat record where the current era's is `{ era, public, private }`, and its
+`callTx.<circuit>(...)` takes no `TransactionContext`, so it cannot carry
+recipient key mappings (see below). And `getStates` / `getPublicStates` have no retained
 arm: they decode with the current-era deserializer and refuse anything else, so
 for a contract whose state envelope is still pre-fork, read the state through
 `queryRawContractState` and narrow on its `version`, or read
 `public.nextContractStateEncoded` off a call result.
+
+**Paying a shielded coin to someone else.** A retained-era circuit that pays a
+shielded coin to a recipient other than the calling wallet needs that
+recipient's encryption public key. Pass it in
+`additionalCoinEncPublicKeyMappings` on the `submitCallTx` or
+`submitCallTxAsync` options, as you would for a current-era call. Without it
+the call is refused with `Ledger8RecipientUnmappableError` before anything is
+proven. The `callTx.<circuit>(...)` handle on a deployed or found retained
+contract cannot carry mappings; call `submitCallTx` or `submitCallTxAsync`
+directly for these circuits.
 
 ### Catching a failure in either era
 

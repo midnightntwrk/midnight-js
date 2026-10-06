@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/testkit-js",
-  "version": "5.0.0-rc.2",
+  "version": "5.0.0-rc.3",
   "type": "module",
   "description": "Testing kit for Midnight JS packages",
   "types": "dist/index.d.ts",

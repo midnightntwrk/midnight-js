@@ -128,9 +128,10 @@ export function requireV8<T>(
  * Refuses a finalized-transaction record that carries no readable era tag,
  * accepting either arm.
  *
- * The retained arm's counterpart to {@link requireV9Record}, for the paths
- * where BOTH tags are legitimate answers and there is therefore no era to
- * refuse. A contract found on chain was deployed in whichever era was current
+ * The counterpart to {@link requireV9Record}, for the paths where BOTH tags
+ * are legitimate answers and there is therefore no era to refuse: the retained
+ * arm, and the current-era attach, which must accept a contract deployed before
+ * the fork. A contract found on chain was deployed in whichever era was current
  * then, so its deploy record is genuinely either arm. What is still refusable
  * is a tag that names no era at all: `version` selects the runtime of the live
  * `tx` handle beside it, so an unreadable tag hands a caller a handle it cannot

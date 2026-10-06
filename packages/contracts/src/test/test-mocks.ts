@@ -58,6 +58,7 @@ import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
   type FinalizedTxData,
+  type FinalizedTxDataV8,
   type PrivateStateId,
   type ProverKey,
   SucceedEntirely,
@@ -359,6 +360,14 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
     paidFees: '',
     estimatedFees: ''
   }
+});
+
+export const createMockFinalizedTxDataV8 = (status: TxStatus = SucceedEntirely): FinalizedTxDataV8 => ({
+  ...createMockFinalizedTxData(status),
+  version: 'v8',
+  tx: {} as FinalizedTxDataV8['tx'],
+  // A node 1.x protocolVersion, which the resolver in `midnight-js-protocol` maps to ledger v8.
+  protocolVersion: 1_000_000
 });
 
 export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDeployTxData<Contract.Any>> = {}): UnsubmittedDeployTxData<Contract.Any> => ({

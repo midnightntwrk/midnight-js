@@ -16,7 +16,14 @@
 import type { ConstructorResultPojo, Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
 import type { CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import type { ContractAddress, LogEvent, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type {
+  CoinPublicKey,
+  ContractAddress,
+  ContractState,
+  LogEvent,
+  SigningKey
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
@@ -76,7 +83,13 @@ import {
 import { submitCallTx, submitCallTxAsync, type SubmitCallTxProviders } from '../../submit-call-tx';
 import type { SubmitTxProviders } from '../../submit-tx';
 import type { TransactionContext } from '../../transaction';
-import type { FinalizedCallTxData, SubmittedCallTx } from '../../tx-model';
+import type {
+  FinalizedCallTxData,
+  FinalizedDeployTxPublicData,
+  FoundDeployTxPublicData,
+  FoundDeployTxPublicDataV8,
+  SubmittedCallTx
+} from '../../tx-model';
 import type { CallTxOptions, CallTxOptionsBase, CallTxOptionsWithPrivateStateId } from '../../unproven-call-tx';
 import type {
   CoinReceiver016Coin,
@@ -296,6 +309,16 @@ describe('an argument-taking retained-era contract works, not just a zero-argume
     expectTypeOf<Ledger8CallTxOptionsBase<CoinReceiver016Contract, 'receive_coin'>['args']>().toEqualTypeOf<
       [coin: CoinReceiver016Coin]
     >();
+  });
+
+  it('accepts additional recipient mappings on retained call options, typed as the current era types them', () => {
+    expectTypeOf<Ledger8CallTxOptionsBase<CoinReceiver016Contract, 'receive_coin'>>()
+      .toHaveProperty('additionalCoinEncPublicKeyMappings')
+      .toEqualTypeOf<ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined>();
+    expectTypeOf<Ledger8CallTxOptionsBase<Counter016Contract, 'increment'>>().toHaveProperty(
+      'additionalCoinEncPublicKeyMappings'
+    );
+    expectTypeOf<AnyLedger8CallTxOptions>().toHaveProperty('additionalCoinEncPublicKeyMappings');
   });
 
   it('RESOLVES to the retained-era arm, which is the assertion the unknown[] tail failed', () => {
@@ -1222,5 +1245,32 @@ describe('the retained-era private state flows through the family', () => {
 
     // Guards against the whole block going vacuous if `compact-runtime-ledger8` stops resolving.
     expectTypeOf<Parameters<PrivateCounter016Witness>[0]>().not.toBeAny();
+  });
+});
+
+describe('a found contract may have been deployed in either ledger era', () => {
+  type Found = FoundContract<Twin018>;
+  type FoundPublic = Found['deployTxData']['public'];
+
+  it('tags the deploy record with the ledger era that recorded it', () => {
+    expectTypeOf<FoundPublic>().toEqualTypeOf<FoundDeployTxPublicData>();
+    expectTypeOf<FoundPublic['version']>().toEqualTypeOf<'v8' | 'v9'>();
+  });
+
+  it('exposes the contract address on both arms without narrowing', () => {
+    expectTypeOf<FoundPublic['contractAddress']>().toEqualTypeOf<ContractAddress>();
+  });
+
+  it('requires narrowing on `version` before the deploy-time state is read', () => {
+    expectTypeOf<FoundPublic>().not.toHaveProperty('initialContractState');
+    expectTypeOf<Extract<FoundPublic, { version: 'v9' }>>().toEqualTypeOf<FinalizedDeployTxPublicData>();
+    expectTypeOf<Extract<FoundPublic, { version: 'v9' }>['initialContractState']>().toEqualTypeOf<ContractState>();
+    expectTypeOf<Extract<FoundPublic, { version: 'v8' }>>().toEqualTypeOf<FoundDeployTxPublicDataV8>();
+    expectTypeOf<FoundDeployTxPublicDataV8>().not.toHaveProperty('initialContractState');
+  });
+
+  it('keeps a deployed contract usable wherever a found contract is expected', () => {
+    expectTypeOf<DeployedContract<Twin018>>().toMatchTypeOf<FoundContract<Twin018>>();
+    expectTypeOf<DeployedContract<Twin018>['deployTxData']['public']>().toEqualTypeOf<FinalizedDeployTxPublicData>();
   });
 });

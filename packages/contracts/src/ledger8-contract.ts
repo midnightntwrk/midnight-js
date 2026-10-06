@@ -64,6 +64,7 @@ import type {
   ContractAddress,
   ZswapLocalState
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
   CallResultPrivateBase,
   CallResultPublicBase,
@@ -266,6 +267,14 @@ export interface Ledger8CallTxTarget<C extends Ledger8Contract, K extends Ledger
    * The identifier of the circuit to call.
    */
   readonly circuitId: K;
+  /**
+   * An optional mapping of {@link CoinPublicKey} to {@link EncPublicKey} used to
+   * encrypt shielded coins the circuit pays to a recipient other than the
+   * calling wallet. A user-owned recipient that is neither the calling wallet,
+   * the burn address, nor a key in this map is refused with
+   * `Ledger8RecipientUnmappableError` before anything is proven.
+   */
+  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
 }
 
 /**
@@ -752,8 +761,8 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
    * at the time — narrow it with `switch (deployTxData.version)`.
    *
    * SHAPED DIFFERENTLY from the current era's `FoundContract.deployTxData`,
-   * which is a `FinalizedDeployTxData` whose transaction id sits under
-   * `.public`. Here the record is the read surface's own
+   * which is a `FoundDeployTxData` whose record sits under `.public` and is
+   * tagged on `.public.version`. Here the record is the read surface's own
    * `VersionedFinalizedTxData`, so `txId`, `status` and the rest are top-level
    * members. Code written against one era does not read the other's record
    * unchanged.
@@ -785,13 +794,14 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
    *    under the same address in the same provider, or one whose value is not
    *    the shape a retained-era key has;
    * 3. the entry could not be READ at all, because `getSigningKey` rejected: a
-   *    wrong store password, a rotation-lock timeout, store I/O.
+   *    wrong store password, a rotation-lock timeout, store I/O, or an entry the
+   *    provider refuses as not a signing key.
    *
    * Neither 2 nor 3 fails the attach. Both are reported to the logger provider
    * as a DEBUG-level dispatch breadcrumb, which is the only place the three
    * cases are distinguishable.
    *
-   * The remedy for case 2 is the caller's either way: pass the retained-era key
+   * The remedy for case 2, and for a refused entry in case 3, is the caller's either way: pass the retained-era key
    * on {@link Ledger8FindDeployedContractOptions.signingKey}, which replaces the
    * entry, or remove the entry with
    * `privateStateProvider.removeSigningKey(address)` first.
