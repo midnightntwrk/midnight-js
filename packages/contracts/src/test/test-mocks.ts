@@ -275,7 +275,10 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
   publicDataProvider: {
     watchForDeployTxData: vi.fn(),
     queryDeployContractState: vi.fn(),
-    queryBlock: vi.fn().mockResolvedValue({ hash: '00'.repeat(32), height: 0 }),
+    // The mocked chain has not forked, so the block carries the same era as the head.
+    queryBlock: vi
+      .fn()
+      .mockResolvedValue({ hash: '00'.repeat(32), height: 0, protocolVersion: MOCK_HEAD_PROTOCOL_VERSION }),
     queryContractState: vi.fn(),
     queryZSwapAndContractState: vi.fn(),
     queryUnshieldedBalances: vi.fn(),

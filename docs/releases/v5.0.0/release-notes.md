@@ -84,7 +84,7 @@ The framework can now assemble, prove, and submit **cross-contract call** transa
 
 - `ZKConfigRegistry` (in `@midnight-ntwrk/midnight-js-types`) resolves ZK artifacts across a *set* of compiled-contract sources. It requires **no address registration**: the binding is derived by joining a call's deployed verifier-key hash against each source's local verifier key, which makes resolution immune to redeploys, multiple deployments of one contract, and circuit-name collisions.
 - The canonical `ContractKeyLocation` grammar (`contract:<address>/<circuitId>?vk=<sha-256>`) is re-exported from `@midnight-ntwrk/midnight-js-protocol/compact-js`, so transaction assemblers and provers share one definition.
-- `PublicDataProvider` gains an "as-of" `queryBlock(config?)` endpoint returning `BlockInfo { hash, height }` (latest block when called with no argument), used to resolve on-chain state at transaction-assembly time.
+- `PublicDataProvider` gains an "as-of" `queryBlock(config?)` endpoint returning `BlockInfo { hash, height, protocolVersion }` (latest block when called with no argument), used to resolve on-chain state at transaction-assembly time. `protocolVersion` dates the block to a ledger era, so a caller can tell which side of a hard fork a block sits on without a second request (#1395).
 
 ### MIP-0002 contract events via `PublicDataProvider` (#988)
 
