@@ -334,6 +334,10 @@ export interface PublicDataProvider {
    * Retrieves the on-chain state of a contract. If no block hash or block height are provided, the
    * contract state at the address in the latest block is returned.
    * Immediately returns null if no matching data is found.
+   *
+   * An unresolvable `protocolVersion` (an integer this client cannot place on the
+   * ledger-era timeline) causes the read to fail rather than decode on a guess.
+   *
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the query.
    *               If `undefined` returns the latest states.
@@ -431,6 +435,11 @@ export interface PublicDataProvider {
    * Creates a stream of contract states. The observable emits a value every time a state is either
    * created or updated at the given address.
    * Waits indefinitely for matching data to appear.
+   *
+   * Both decoded and raw streams fail when the dating block reports an
+   * unresolvable `protocolVersion` (an integer this client cannot place on the
+   * ledger-era timeline), rather than decoding on the envelope alone.
+   *
    * @param address The address of the contract of interest.
    * @param config The configuration for the observable.
    */
@@ -465,6 +474,10 @@ export interface PublicDataProvider {
    * is free to refuse that cost. The record carries no block identifier either,
    * so a caller that needs the parameters for a streamed state must read
    * {@link queryRawContractState} at a block it obtained some other way.
+   *
+   * Both decoded and raw streams fail when the dating block reports an
+   * unresolvable `protocolVersion` (an integer this client cannot place on the
+   * ledger-era timeline), rather than tagging the record with an ungrounded era.
    *
    * @param address The address of the contract of interest.
    * @param config The configuration for the observable.
@@ -570,6 +583,10 @@ export interface PublicDataProvider {
    * that era's deserializer. Both eras' envelopes are returned unchanged. The
    * era comes from the record's protocol version and is not checked against
    * the envelope the bytes carry.
+   *
+   * An unresolvable `protocolVersion` (an integer this client cannot place on the
+   * ledger-era timeline) causes the read to fail rather than tagging the record
+   * with an ungrounded era.
    *
    * Immediately returns null if no matching data is found.
    *

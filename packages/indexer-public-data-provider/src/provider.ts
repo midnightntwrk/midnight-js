@@ -524,7 +524,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * skipped emission, it ends the subscription through the subscriber's `error`
    * callback. A contract deployed before the ledger fork and not written to
    * since serves exactly such a state, indefinitely. Use
-   * {@link rawContractStateObservable} where that is possible.
+   * {@link rawContractStateObservable} where that is possible. An unresolvable
+   * `protocolVersion` terminates the subscription with an error, the same as
+   * {@link rawContractStateObservable}.
    *
    * WIRE TRAFFIC DIFFERS SHARPLY BY BRANCH. `all` is server-side filtered and
    * light; `latest`, `blockHeight`, `blockHash` and `txId` stream every block on
@@ -577,13 +579,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * is still read, so a payload carrying no supported contract-state envelope
    * still fails the stream. Two things can still end it on era grounds — an
    * envelope from an era this client's tag table does not list, and a
-   * `protocolVersion` integer it cannot place on the era timeline. The second
-   * is the one asymmetry with {@link contractStateObservable}, which tolerates
-   * such an integer and decodes on the envelope alone; here `version` is a
-   * required field with nothing to fall back to, so the read is refused as
-   * {@link IndexerDataError} with `kind: 'unresolvable-era'` rather than
-   * guessed. Both arrive as an `IndexerError`, like every other failure from
-   * this package.
+   * `protocolVersion` integer it cannot place on the era timeline. Both
+   * decoded and raw contract-state reads refuse such an integer with
+   * {@link IndexerDataError} (`kind: 'unresolvable-era'`) rather than guessing
+   * or decoding on the envelope alone. Both arrive as an `IndexerError`, like
+   * every other failure from this package.
    *
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the stream. Defaults to `latest`.
