@@ -25,6 +25,19 @@ per-block "states at this block" view. The light path emits one value per state
 change, straight from the server-filtered subscription, so bandwidth scales with
 state changes rather than with chain activity.
 
+## Where each element's position comes from
+
+Both shapes report the block that served each value, which is what the public
+`PositionedRecord` carries as `blockHeight` and `blockHash`:
+
+| Shape | Source of the block |
+|---|---|
+| `TXS_FROM_BLOCK_SUB` (`latest`, `blockHeight`, `blockHash`, `txId`) | the subscribed block itself; `txId` copies it onto each transaction when the block is flattened |
+| `CONTRACT_STATE_SUB` (`all`) and `UNSHIELDED_BALANCE_SUB` | `transaction { block { height hash } }` on each contract action |
+
+Only the block feed also carries an ordinal within the block, so only its
+branches run `dropReplayed`.
+
 ## Why `all` cannot simply become the others
 
 `CONTRACT_STATE_SUB` is a PER-CHANGE feed. A downstream `Rx.skip(1)` on it skips

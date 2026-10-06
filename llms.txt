@@ -162,6 +162,7 @@ providers.publicDataProvider.watchForContractState(address);
 
 // Subscribe (real-time)
 providers.publicDataProvider.contractStateObservable(address, config);
+// emits { value, blockHeight, blockHash }
 ```
 
 ### Contract Events `@beta`

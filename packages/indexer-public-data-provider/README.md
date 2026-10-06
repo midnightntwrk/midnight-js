@@ -25,8 +25,8 @@ const state = await provider.queryContractState(contractAddress);
 const txData = await provider.watchForTxData(transactionId);
 
 // Subscribe to contract state changes
-provider.contractStateObservable(contractAddress).subscribe(state => {
-  console.log('New state:', state);
+provider.contractStateObservable(contractAddress).subscribe(({ value, blockHeight }) => {
+  console.log(`State at block ${blockHeight}:`, value);
 });
 ```
 
@@ -256,20 +256,53 @@ Real-time subscriptions via RxJS:
 contractStateObservable(
   contractAddress: ContractAddress,
   config?: ContractStateObservableConfig
-): Observable<ContractState>
+): Observable<PositionedRecord<ContractState>>
 
 // Subscribe to contract state changes as raw bytes, not deserialized
 rawContractStateObservable(
   contractAddress: ContractAddress,
   config?: ContractStateObservableConfig
-): Observable<RawContractState>
+): Observable<PositionedRecord<RawContractState>>
 
 // Subscribe to unshielded balance changes
 unshieldedBalancesObservable(
   contractAddress: ContractAddress,
   config?: ContractStateObservableConfig
-): Observable<UnshieldedBalances>
+): Observable<PositionedRecord<UnshieldedBalances>>
 ```
+
+All three emit a `PositionedRecord`: `{ value, blockHeight, blockHash }`, where
+`value` is what the stream serves and `blockHeight` / `blockHash` identify the
+block that carried it.
+
+#### Resuming a stream
+
+`blockHeight` and `blockHash` have the types of `BlockHeightConfig` and
+`BlockHashConfig`, so the last record you received is all you need to resume
+after an error:
+
+```typescript
+let last: PositionedRecord<ContractState> | undefined;
+
+const follow = (config: ContractStateObservableConfig) =>
+  provider.contractStateObservable(contractAddress, config).subscribe({
+    next: (record) => {
+      last = record;
+    },
+    error: () => {
+      if (last !== undefined) {
+        follow({ type: 'blockHeight', blockHeight: last.blockHeight });
+      }
+    }
+  });
+
+follow({ type: 'latest' });
+```
+
+Resuming includes the block you resume from, so values from that block can
+arrive again; nothing after it is skipped. The `all` and `txId` branches and the
+balance stream can also repeat values after a transport reconnect, because they
+do not suppress the indexer's replay.
 
 #### Which state stream to use
 
@@ -279,9 +312,9 @@ contract action becomes.
 
 | | `contractStateObservable` | `rawContractStateObservable` |
 |---|---|---|
-| Emits | `ContractState`, deserialized | `RawContractState`: the bytes, plus the era the record is dated to |
+| `value` | `ContractState`, deserialized | `RawContractState`: the bytes, plus the era the record is dated to |
 | A state from a retained era | **ends the stream** (see [Reading State Across the Ledger Fork](#reading-state-across-the-ledger-fork)) | flows through; the caller narrows on `version` |
-| `ledgerParameters` | n/a | always absent — see below |
+| `ledgerParameters` | n/a | absent on the stream; read `queryRawContractState` with the record's `blockHash` — see below |
 | Reach for it when | the contract is known to be current-era | the contract may predate the fork, or you cannot rule it out |
 
 `rawContractStateObservable` is the streaming twin of `queryRawContractState`
@@ -290,7 +323,7 @@ and narrows the same way, so one `switch (record.version)` serves both:
 ```typescript
 import { assertNever } from '@midnight-ntwrk/midnight-js-utils';
 
-provider.rawContractStateObservable(contractAddress).subscribe((record) => {
+provider.rawContractStateObservable(contractAddress).subscribe(({ value: record }) => {
   switch (record.version) {
     case 'v9':
       // hand record.raw to the v9 deserializer
@@ -307,15 +340,18 @@ provider.rawContractStateObservable(contractAddress).subscribe((record) => {
 `ledgerParameters` is **always absent on this stream**, although
 `queryRawContractState` serves it. Neither subscription asks for it: the four
 block-subscription branches would receive one for every block on chain, whether
-or not that block touches this contract, and the `all` branch reads a
-per-contract-action feed that has no block subtree to read it from.
+or not that block touches this contract, and the `all` branch one for every
+contract action.
 
-**The stream does not report which block a state came from**, so a streamed
-record cannot be paired with its block's parameters through this API. If you
-need them, read `queryRawContractState` at a `blockHeight`/`blockHash` you
-obtained some other way. (`RawContractState` carries `version`,
-`protocolVersion`, `raw` and `ledgerParameters` — no height and no hash, and
-`protocolVersion` identifies an era, not a block.)
+If you need the parameters for a streamed state, read them at the block the
+record names:
+
+```typescript
+provider.rawContractStateObservable(contractAddress).subscribe(async ({ blockHash }) => {
+  const atBlock = await provider.queryRawContractState(contractAddress, { type: 'blockHash', blockHash });
+  // atBlock?.ledgerParameters
+});
+```
 
 Withholding the deserialization does not withhold the fail-fast, but be precise
 about what is withheld: the deserialization, and the envelope-versus-block era
