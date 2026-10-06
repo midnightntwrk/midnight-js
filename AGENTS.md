@@ -95,7 +95,7 @@ try {
 
 ```typescript
 // ✅ Use RxJS for streams and subscriptions
-function contractStateObservable(address: string): Observable<ContractState> {
+function stateChanges(address: string): Observable<ContractState> {
   return new Observable(subscriber => {
     const subscription = pollForChanges(address, state => {
       subscriber.next(state);

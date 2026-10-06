@@ -30,6 +30,7 @@ import type {
   ContractEventsPage,
   ContractEventSubscriptionFilter,
   ContractStateObservableConfig,
+  PositionedRecord,
   PublicDataProvider,
   RawContractState,
   UnshieldedBalances,
@@ -54,7 +55,6 @@ import type { InputMaybe, RegularTransaction } from './gen/schema-types';
 import {
   type ExcludeEmptyAndNull,
   extractRegularDeployTransaction,
-  extractUnshieldedBalances,
   isRegularTransaction,
   toFinalizedDeployTxData,
   toFinalizedTxData
@@ -70,6 +70,7 @@ import {
   dropReplayed,
   maybeThrowQueryError,
   pollUntilPresent,
+  type Positioned,
   transactionIdToTransaction$,
   transactionToState$,
   waitForBlockToAppear,
@@ -105,6 +106,12 @@ import type { ApolloHandle } from './transport';
  */
 const toBlockOffset = (config?: BlockHeightConfig | BlockHashConfig): InputMaybe<BlockOffset> =>
   config ? (config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }) : null;
+
+const toPositionedRecord = <T>({ state, height, hash }: Positioned<T>): PositionedRecord<T> => ({
+  value: state,
+  blockHeight: height,
+  blockHash: hash
+});
 
 /** The branch both contract-state streams select when the caller names none. */
 const DEFAULT_STATE_CONFIG: ContractStateObservableConfig = { type: 'latest' };
@@ -345,7 +352,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       .then((queryResult) => {
         const contractAction = queryResult.data?.contractAction;
         if (!contractAction) return null;
-        return extractUnshieldedBalances(contractAction, 'queryUnshieldedBalances');
+        return contractAction.unshieldedBalances;
       })
       .then((maybeUnshieldedBalances) =>
         maybeUnshieldedBalances ? toUnshieldedBalances(maybeUnshieldedBalances) : null
@@ -479,11 +486,10 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     contractAddress: ContractAddress,
     config: ContractStateObservableConfig,
     mapState: ContractStateMapper<T>
-  ): Rx.Observable<T> {
+  ): Rx.Observable<PositionedRecord<T>> {
     assertIsContractAddress(contractAddress);
     if (config.type === 'txId') {
       const states = transactionIdToTransaction$(this.client, this.pollInterval)(config.txId).pipe(
-        Rx.filter(isRegularTransaction),
         Rx.concatMap(transactionToState$(mapState)(config.txId))
       );
       return (config.inclusive ?? true) ? states : states.pipe(Rx.skip(1));
@@ -493,7 +499,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         Rx.concatMap(blockOffsetToBlock$(this.client)),
         Rx.concatMap(blockToPositionedState$(mapState)(contractAddress)),
         dropReplayed(),
-        Rx.map(({ state }) => state)
+        Rx.map(toPositionedRecord)
       );
     }
     if (config.type === 'all') {
@@ -512,7 +518,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     return maybeShortenedBlocks.pipe(
       Rx.concatMap(blockToPositionedState$(mapState)(contractAddress)),
       dropReplayed(),
-      Rx.map(({ state }) => state)
+      Rx.map(toPositionedRecord)
     );
   }
 
@@ -546,7 +552,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   contractStateObservable(
     contractAddress: ContractAddress,
     config: ContractStateObservableConfig = DEFAULT_STATE_CONFIG
-  ): Rx.Observable<ContractState> {
+  ): Rx.Observable<PositionedRecord<ContractState>> {
     return this.contractStates$(contractAddress, config, parseHexContractState);
   }
 
@@ -561,13 +567,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * subscription; here the era is carried on the record and the caller narrows
    * on it.
    *
-   * `ledgerParameters` IS ALWAYS ABSENT ON THIS STREAM, and the stream does not
-   * report which block a state came from, so the two CANNOT be paired through
-   * this member. Neither subscription asks for the parameters: the four
-   * block-subscription branches would receive one for every block on chain, and
-   * the `all` branch reads a per-contract-action feed with no block subtree to
-   * read them from. A caller that needs them reads
-   * {@link queryRawContractState} at a block height it obtained some other way.
+   * `ledgerParameters` IS ALWAYS ABSENT ON THIS STREAM. Neither subscription
+   * asks for the parameters: the four block-subscription branches would receive
+   * one for every block on chain, and the `all` branch one for every contract
+   * action. A caller that needs them reads {@link queryRawContractState} with
+   * the `blockHash` of the same record.
    *
    * Every branch, every wire-traffic cost and every replay-suppression rule is
    * exactly {@link contractStateObservable}'s; only the element type differs.
@@ -592,7 +596,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   rawContractStateObservable(
     contractAddress: ContractAddress,
     config: ContractStateObservableConfig = DEFAULT_STATE_CONFIG
-  ): Rx.Observable<RawContractState> {
+  ): Rx.Observable<PositionedRecord<RawContractState>> {
     return this.contractStates$(contractAddress, config, toRawContractState);
   }
 
@@ -619,7 +623,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   unshieldedBalancesObservable(
     contractAddress: ContractAddress,
     config: ContractStateObservableConfig = { type: 'latest' }
-  ): Rx.Observable<UnshieldedBalances> {
+  ): Rx.Observable<PositionedRecord<UnshieldedBalances>> {
     assertIsContractAddress(contractAddress);
     if (config.type === 'txId') {
       throw new IndexerProviderConfigError(
@@ -637,12 +641,15 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       );
     }
     const offset = toBlockOffset(config);
-    const balances = waitForBlockToAppear(this.client, this.pollInterval)(offset).pipe(
-      Rx.concatMap(() => blockOffsetToUnshieldedBalances$(this.client)(contractAddress)(offset))
+    const inclusive = config.inclusive ?? true;
+    return waitForBlockToAppear(this.client, this.pollInterval)(offset).pipe(
+      Rx.concatMap((startBlock) => {
+        const balances = blockOffsetToUnshieldedBalances$(this.client)(contractAddress)(offset);
+        return inclusive
+          ? balances
+          : balances.pipe(Rx.skipWhile((record) => record.blockHeight === startBlock.height));
+      })
     );
-    return config.type === 'blockHeight' || config.type === 'blockHash'
-      ? Rx.iif(() => config.inclusive ?? true, balances, balances.pipe(Rx.skip(1)))
-      : balances;
   }
 
   /**

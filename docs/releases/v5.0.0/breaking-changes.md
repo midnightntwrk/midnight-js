@@ -470,6 +470,33 @@ type had two fields.
 
 ---
 
+## 10. Contract-state and balance streams emit `PositionedRecord<T>` (#1399)
+
+`PublicDataProvider.contractStateObservable`, `rawContractStateObservable` and
+`unshieldedBalancesObservable` now emit `PositionedRecord<T>` instead of the bare
+value:
+
+```ts
+type PositionedRecord<T> = {
+  readonly value: T;           // what the stream emitted before
+  readonly blockHeight: number; // the block that carried the value
+  readonly blockHash: BlockHash;
+};
+```
+
+- **Consumers:** read `record.value` where you read the emitted value before.
+- **Custom `PublicDataProvider` implementations:** the three members return
+  `Observable<PositionedRecord<T>>`.
+
+The position lets a consumer resume a stream after a restart: pass
+`{ type: 'blockHeight', blockHeight: record.blockHeight }` (or the `blockHash`
+form) as the config. With `inclusive` unset or `true` the stream resumes at that
+block, so values from it may arrive again but none after it is skipped.
+`contractEventsObservable` is unchanged; it already resumes from
+`ContractEvent.id`.
+
+---
+
 ## Non-breaking additions worth noting
 
 - **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).

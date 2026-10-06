@@ -323,6 +323,10 @@ export const CONTRACT_STATE_SUB = gql(
       state
       transaction {
         protocolVersion
+        block {
+          height
+          hash
+        }
       }
     }
   }`
@@ -346,25 +350,9 @@ export const UNSHIELDED_BALANCE_QUERY = gql(
   `
   query UNSHIELDED_BALANCE_QUERY($address: HexEncoded!) {
     contractAction(address: $address) {
-      ... on ContractDeploy {
-        unshieldedBalances {
-          tokenType
-          amount
-        }
-      }
-      ... on ContractUpdate {
-        unshieldedBalances {
-          tokenType
-          amount
-        }
-      }
-      ... on ContractCall {
-        deploy {
-          unshieldedBalances {
-            tokenType
-            amount
-          }
-        }
+      unshieldedBalances {
+        tokenType
+        amount
       }
     }
   }`
@@ -374,25 +362,9 @@ export const QUERY_UNSHIELDED_BALANCES_WITH_OFFSET = gql(
   `
   query QUERY_UNSHIELDED_BALANCES_WITH_OFFSET($address: HexEncoded!, $offset: ContractActionOffset) {
     contractAction(address: $address, offset: $offset) {
-      ... on ContractDeploy {
-        unshieldedBalances {
-          tokenType
-          amount
-        }
-      }
-      ... on ContractUpdate {
-        unshieldedBalances {
-          tokenType
-          amount
-        }
-      }
-      ... on ContractCall {
-        deploy {
-          unshieldedBalances {
-            tokenType
-            amount
-          }
-        }
+      unshieldedBalances {
+        tokenType
+        amount
       }
     }
   }`
@@ -402,25 +374,15 @@ export const UNSHIELDED_BALANCE_SUB = gql(
   `
   subscription UNSHIELDED_BALANCE_SUB($address: HexEncoded!, $offset: BlockOffset) {
     contractActions(address: $address, offset: $offset) {
-      ... on ContractDeploy {
-        unshieldedBalances {
-          tokenType
-          amount
+      transaction {
+        block {
+          height
+          hash
         }
       }
-      ... on ContractUpdate {
-        unshieldedBalances {
-          tokenType
-          amount
-        }
-      }
-      ... on ContractCall {
-        deploy {
-          unshieldedBalances {
-            tokenType
-            amount
-          }
-        }
+      unshieldedBalances {
+        tokenType
+        amount
       }
     }
   }`

@@ -76,6 +76,10 @@ The testkit wallet stack moved to the 2.0.0 major beta line (`@midnightntwrk/wal
 
 `FetchZkConfigProvider` and `NodeZkConfigProvider` now verify every ZK artifact they load against the `compactc`-emitted `contract-manifest.json` (in the `compiler/` directory). Verification is **fail-closed by default** (`verify: 'require'`): a missing manifest or a digest mismatch throws `ZkArtifactIntegrityError`. Artifacts compiled before `compactc` 0.33 carry no manifest at all and cannot satisfy `require`; `'require-if-present'` is the mode for them — it tolerates a wholly absent manifest but still requires a manifest that does exist to cover the artifact. Opt further down to `'warn'` or `'off'`, and pin `expectedManifestHash` (SHA-256 of the manifest bytes) to defend against a coordinated swap of both the artifacts and their co-located manifest. This is a breaking change for any deployment whose local artifacts are stale, partial, or missing the manifest. See [breaking-changes.md](./breaking-changes.md).
 
+### Contract-state and balance streams emit `PositionedRecord<T>` (#1399)
+
+`contractStateObservable`, `rawContractStateObservable` and `unshieldedBalancesObservable` emit `{ value, blockHeight, blockHash }`. Read `record.value` where you read the emitted value before; pass the position back as a `blockHeight` / `blockHash` config to resume the stream. See [breaking-changes.md](./breaking-changes.md).
+
 ## New Features
 
 ### Cross-contract call support (#967)
@@ -147,6 +151,8 @@ The generated contract-event GraphQL schema gains transaction references and bet
 
 ## Bug Fixes
 
+- **indexer-public-data-provider:** read a contract call's own unshielded balances (#1399). `queryUnshieldedBalances`, `watchForUnshieldedBalances` and `unshieldedBalancesObservable` read the balances of a `ContractCall` action from its deploy, so a balance changed by a call was reported as the balance at deploy time.
+- **indexer-public-data-provider:** `unshieldedBalancesObservable` with `inclusive: false` skips the whole start block (#1399). It skipped one balance change, so a start block with several changes re-delivered the rest, and a start block with none dropped the next real change.
 - **midnight-js:** honor per-call `proveTxConfig.timeout` (#1054, closes #974). `httpClientProofProvider().proveTx()` accepted a `ProveTxConfig` but silently discarded it — the underlying proving provider was built once with a fixed timeout, so `proveTxConfig.timeout` had no effect. The per-call timeout is now threaded down to the underlying request (per-call > construction-time > `DEFAULT_TIMEOUT`) while the provider is still built once, keeping eager URL validation and the insecure-URL warning firing only once.
 - **contracts:** robustness fixes for cross-contract calls (#1034) — corrects the cached transaction context and unshielded outputs, hardens verifier-key resolution in `ZKConfigRegistry`, and realigns the indexer provider's generated GraphQL schema and query definitions.
 - **midnight-js:** pass the signing-key kind via the `KEYS_SIGNING_KIND` config key (#999). The runtime previously wrote `KEYS_SIGNINGKIND`, which the config reader never matched, so `signingKind` silently fell back to `schnorr` — dropping ECDSA maintenance authority keys at deploy time and getting later ECDSA-signed updates rejected as `Malformed(InvalidCommitteeSignature)`.
