@@ -78,7 +78,7 @@ export type ChainPosition = {
   readonly ordinal: number;
 };
 
-/** A stream element carrying the {@link ChainPosition} it was served at. */
+/** A stream element carrying the {@link ChainPosition} it was served at, plus the hash of that block. */
 export type Positioned<T> = ChainPosition & {
   readonly hash: string;
   readonly state: T;

@@ -27,7 +27,7 @@ state changes rather than with chain activity.
 
 ## Where each element's position comes from
 
-Both shapes report the block that served each value, which is what the public
+Every subscription reports the block that served each value, which is what the public
 `PositionedRecord` carries as `blockHeight` and `blockHash`:
 
 | Shape | Source of the block |
@@ -35,8 +35,9 @@ Both shapes report the block that served each value, which is what the public
 | `TXS_FROM_BLOCK_SUB` (`latest`, `blockHeight`, `blockHash`, `txId`) | the subscribed block itself; `txId` copies it onto each transaction when the block is flattened |
 | `CONTRACT_STATE_SUB` (`all`) and `UNSHIELDED_BALANCE_SUB` | `transaction { block { height hash } }` on each contract action |
 
-Only the block feed also carries an ordinal within the block, so only its
-branches run `dropReplayed`.
+Only `blockToPositionedState$` (`latest`, `blockHeight`, `blockHash`) assigns an
+ordinal within the block, so only those branches run `dropReplayed`. `txId`
+flattens the block into transactions and carries no ordinal.
 
 ## Why `all` cannot simply become the others
 
@@ -48,6 +49,11 @@ That is what makes the two shapes non-interchangeable: `inclusive: false` on
 feed, the same published option would quietly mean something else. The per-block
 view from `blockOffsetToBlock$` + `blockToPositionedState$` is what gives that
 option the meaning it documents.
+
+The balance stream has no per-block feed to fall back on: `UNSHIELDED_BALANCE_SUB`
+is per-change on every branch. Its `inclusive: false` therefore skips records
+while their `blockHeight` equals the start block's height, which keeps the
+option defined in blocks.
 
 ## Why one topology serves both members
 

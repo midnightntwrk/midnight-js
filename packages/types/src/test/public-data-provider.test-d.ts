@@ -121,7 +121,7 @@ describe('PublicDataProvider head-version and raw-state members', () => {
         queryRawContractState: RawStateQuery;
         rawContractStateObservable: RawStateStream;
       }
-    >().toMatchTypeOf<PublicDataProvider>();
+    >().toExtend<PublicDataProvider>();
   });
 
   it('pins queryLatestProtocolVersion to a no-argument query resolving to a version integer', () => {
@@ -188,6 +188,13 @@ describe('PositionedRecord', () => {
   it('types its position like the block configs, so a record resumes a stream unchanged', () => {
     expectTypeOf<PositionedRecord<RawContractState>['blockHeight']>().toEqualTypeOf<BlockHeightConfig['blockHeight']>();
     expectTypeOf<PositionedRecord<RawContractState>['blockHash']>().toEqualTypeOf<BlockHashConfig['blockHash']>();
+  });
+
+  it('wraps into a stream config without a cast', () => {
+    const record = {} as PositionedRecord<RawContractState>;
+
+    expectTypeOf({ type: 'blockHeight', blockHeight: record.blockHeight } as const).toExtend<ContractStateObservableConfig>();
+    expectTypeOf({ type: 'blockHash', blockHash: record.blockHash } as const).toExtend<ContractStateObservableConfig>();
   });
 });
 

@@ -665,6 +665,27 @@ question to raise, not as an omission that implies "it just works".
 
 ---
 
+## Step 15 — Read `record.value` from the contract-state and balance streams
+
+`contractStateObservable`, `rawContractStateObservable` and
+`unshieldedBalancesObservable` emit `PositionedRecord<T>` (#1399). Read the value
+from `record.value`:
+
+```ts
+// Before
+publicDataProvider.contractStateObservable(address, { type: 'latest' }).subscribe((state) => render(state));
+
+// After
+publicDataProvider.contractStateObservable(address, { type: 'latest' }).subscribe((record) => render(record.value));
+```
+
+To resume after a restart, keep the last record's `blockHeight` (or `blockHash`)
+and pass it back as `{ type: 'blockHeight', blockHeight }`. Leave `inclusive`
+unset: the stream then repeats that block rather than skipping the rest of it.
+See [breaking-changes.md](./breaking-changes.md#10-contract-state-and-balance-streams-emit-positionedrecordt-1399).
+
+---
+
 ## Verification checklist
 
 - [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.
@@ -685,3 +706,4 @@ question to raise, not as an omission that implies "it just works".
 - [ ] Contracts deployed at runtime have current-toolchain artifacts shipped.
 - [ ] Bundle checked: retained-era chunk separate, not preloaded, retained runtime not duplicated.
 - [ ] Checked back for the pending operator, wallet and connector-proving sections.
+- [ ] Every `contractStateObservable` / `rawContractStateObservable` / `unshieldedBalancesObservable` subscriber reads `record.value`.

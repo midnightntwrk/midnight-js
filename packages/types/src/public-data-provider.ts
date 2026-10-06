@@ -17,7 +17,7 @@ import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact
 import type { ContractAddress, LedgerParameters, TransactionId, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { Observable } from 'rxjs';
 
-import type { UnshieldedBalances } from './midnight-types';
+import type { BlockHash, UnshieldedBalances } from './midnight-types';
 import type { RawContractState } from './raw-contract-state';
 import type { VersionedFinalizedTxData } from './versioned';
 
@@ -64,9 +64,9 @@ export type BlockHeightConfig = {
 export type BlockHashConfig = {
   readonly type: 'blockHash';
   /**
-   * The block height indicating where to begin the state stream.
+   * The block hash indicating where to begin the state stream.
    */
-  readonly blockHash: string;
+  readonly blockHash: BlockHash;
 }
 
 /**
@@ -106,9 +106,15 @@ export type BlockInfo = {
  * A value served by a stream, together with the block that carried it.
  *
  * `blockHeight` and `blockHash` have the types of {@link BlockHeightConfig}
- * and {@link BlockHashConfig}: passing either back as the stream's config
- * resumes it from that block. Resuming includes that block, so values from it
- * may be delivered again; no value after it is skipped.
+ * and {@link BlockHashConfig}, so a record resumes its stream when wrapped as
+ * `{ type: 'blockHeight', blockHeight }` or `{ type: 'blockHash', blockHash }`.
+ * With `inclusive` left unset or `true`, resuming includes that block: values
+ * from it may be delivered again, and no value after it is skipped. With
+ * `inclusive: false` the whole block is skipped, including any values in it
+ * that came after this record.
+ *
+ * A resumed stream is always a `blockHeight` or `blockHash` stream, whatever
+ * config the original stream had.
  */
 export type PositionedRecord<T> = {
   /** The value the stream served. */
@@ -116,7 +122,7 @@ export type PositionedRecord<T> = {
   /** The height of the block that carried the value. */
   readonly blockHeight: number;
   /** The hex-encoded hash of the block that carried the value, as the network served it. */
-  readonly blockHash: string;
+  readonly blockHash: BlockHash;
 };
 
 /**

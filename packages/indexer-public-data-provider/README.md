@@ -282,7 +282,17 @@ block that carried it.
 after an error:
 
 ```typescript
-import { IndexerDataError } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { IndexerError, IndexerQueryError } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import type { ContractStateObservableConfig, PositionedRecord } from '@midnight-ntwrk/midnight-js-types';
+import { hasErrorCode, isDeserializationError, UTILS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+
+const recursOnResume = (error: unknown): boolean =>
+  (error instanceof IndexerError && !(error instanceof IndexerQueryError)) ||
+  isDeserializationError(error) ||
+  hasErrorCode(error, UTILS_ERROR_CODES.TAG_PARSE_FAILED) ||
+  hasErrorCode(error, PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING);
 
 const MAX_RESUMES = 5;
 let last: PositionedRecord<ContractState> | undefined;
@@ -294,7 +304,7 @@ const follow = (config: ContractStateObservableConfig) =>
       last = record;
     },
     error: (error: unknown) => {
-      if (error instanceof IndexerDataError || last === undefined || resumes >= MAX_RESUMES) {
+      if (recursOnResume(error) || last === undefined || resumes >= MAX_RESUMES) {
         console.error('Contract state stream ended', error);
         return;
       }
@@ -306,12 +316,21 @@ const follow = (config: ContractStateObservableConfig) =>
 follow({ type: 'latest' });
 ```
 
-Do not resume after an `IndexerDataError`: the data that caused it is still on
-chain, so the resumed stream fails on it again. A retained-era state is the
-common case; read such a contract with `rawContractStateObservable`.
+Resume only after a transport failure. `recursOnResume` lists the failures
+caused by data still on chain: an `IndexerError` other than `IndexerQueryError`,
+and the `DeserializationError`, `TagParseError` and `Ledger8RuntimeMissingError`
+that escape the `IndexerError` hierarchy. A resumed stream fails on that data
+again. A retained-era state is the common case; read such a contract with
+`rawContractStateObservable`.
 
 Resuming includes the block you resume from, so values from that block can
-arrive again; nothing after it is skipped. The `all` and `txId` branches and the
+arrive again; nothing after it is skipped. Leave `inclusive` unset when you
+resume: `inclusive: false` skips the whole block, including any values in it
+that came after the record you resumed from.
+
+A resumed stream is a `blockHeight` stream. If you started with `all`, that
+moves it from the light per-contract subscription to the block subscription,
+which streams every block on chain (see [Subscription shapes](./docs/subscription-shapes.md)). The `all` and `txId` branches and the
 balance stream can also repeat values after a transport reconnect, because they
 do not suppress the indexer's replay.
 
@@ -358,6 +377,8 @@ If you need the parameters for a streamed state, read them at the block the
 record names:
 
 ```typescript
+import { concatMap, from } from 'rxjs';
+
 provider
   .rawContractStateObservable(contractAddress)
   .pipe(
