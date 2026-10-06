@@ -60,6 +60,22 @@ All data is encrypted using **AES-256-GCM** with **PBKDF2-SHA256** key derivatio
 
 Each `accountId` creates isolated storage namespaces. The ID is SHA-256 hashed before use in storage paths.
 
+### Concurrency
+
+Within one JavaScript process, operations on the same `midnightDbName` run one at a time, in call order.
+This is what keeps a password rotation from racing a write.
+
+An operation that needs the password holds its place in that order until `privateStoragePasswordProvider`
+resolves, so a slow provider (for example, one waiting for user input) delays every later operation on
+the database. The provider must not call this provider itself: the call waits behind the operation that
+asked for the password and never completes.
+
+Use one database from **one process or one browser tab only**:
+
+- **Node.js** — a second process opening the same database fails with a LevelDB lock error.
+- **Browser** — IndexedDB takes no lock, so a second tab is not refused. Two tabs writing to one
+  database while either rotates the password can store data that can no longer be decrypted.
+
 ## API
 
 ### Private States
