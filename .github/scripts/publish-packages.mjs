@@ -39,7 +39,8 @@
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const CANONICAL_SCOPE = '@midnightntwrk';
 const ALIAS_SCOPE = '@midnight-ntwrk';
@@ -101,14 +102,15 @@ const inDependencyOrder = (workspaces) => {
   return ordered;
 };
 
-const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// The capture is greedy, so `midnight-js-types` is never read as `midnight-js`.
+const CANONICAL_REF = /@midnightntwrk\/([a-z0-9._-]+)/g;
 
-// The lookahead stops `midnight-js` from matching the start of `midnight-js-types`.
-const aliasRewriter = (ownNames) => {
-  const bareNames = ownNames.map((n) => escapeRegExp(n.slice(CANONICAL_SCOPE.length + 1)));
-  const pattern = new RegExp(`${escapeRegExp(CANONICAL_SCOPE)}/(${bareNames.join('|')})(?=$|[/'"\`])`, 'g');
-  const alias = (text) => text.replace(pattern, `${ALIAS_SCOPE}/$1`);
-  alias.leftoverIn = (text) => text.match(pattern);
+export const aliasRewriter = (ownNames) => {
+  const own = new Set(ownNames.map((n) => n.slice(CANONICAL_SCOPE.length + 1)));
+  const alias = (text) =>
+    text.replace(CANONICAL_REF, (match, bare) => (own.has(bare) ? `${ALIAS_SCOPE}/${bare}` : match));
+  alias.leftoverIn = (text) =>
+    [...text.matchAll(CANONICAL_REF)].filter(([, bare]) => own.has(bare)).map(([match]) => match);
   return alias;
 };
 
@@ -143,7 +145,7 @@ const assertFullyAliased = (dir, alias) => {
   const manifest = readFileSync(join(dir, 'package.json'), 'utf8');
   const leftovers = [manifest];
   forEachBuiltFile(dir, (file) => leftovers.push(readFileSync(file, 'utf8')));
-  const found = leftovers.flatMap((text) => alias.leftoverIn(text) ?? []);
+  const found = leftovers.flatMap((text) => alias.leftoverIn(text));
   if (!JSON.parse(manifest).name.startsWith(`${ALIAS_SCOPE}/`) || found.length > 0) {
     throw new Error(`alias package in ${dir} still references canonical names: ${[...new Set(found)].join(', ')}`);
   }
@@ -247,4 +249,6 @@ const main = () => {
   }
 };
 
-main();
+const runDirectly = process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (runDirectly) main();
