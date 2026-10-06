@@ -164,6 +164,25 @@ tagged unions; `submitTx` still resolves a bare `TransactionId`.
 `PublicDataProvider.watchForTxData` / `watchForDeployTxData` now resolve
 `VersionedFinalizedTxData`.
 
+### Positioned stream records (#1399)
+
+```ts
+export type PositionedRecord<T> = {
+  readonly value: T;
+  readonly blockHeight: number;
+  readonly blockHash: BlockHash;
+};
+
+interface PublicDataProvider {
+  contractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<ContractState>>;
+  rawContractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<RawContractState>>;
+  unshieldedBalancesObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<UnshieldedBalances>>;
+}
+```
+
+`BlockHashConfig.blockHash` is now typed `BlockHash` (an alias of `string`; no
+change for callers).
+
 ---
 
 ## `@midnight-ntwrk/midnight-js-contracts`

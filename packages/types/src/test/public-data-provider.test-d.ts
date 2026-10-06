@@ -13,14 +13,17 @@
  * limitations under the License.
  */
 
+import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { Observable } from 'rxjs';
 import { describe, expectTypeOf, it } from 'vitest';
 
+import type { UnshieldedBalances } from '../midnight-types';
 import type {
   BlockHashConfig,
   BlockHeightConfig,
   ContractStateObservableConfig,
+  PositionedRecord,
   PublicDataProvider
 } from '../public-data-provider';
 import type { RawContractState } from '../raw-contract-state';
@@ -49,6 +52,12 @@ type RawContractStateFixture = {
   readonly ledgerParameters?: Uint8Array;
 };
 
+type PositionedRecordFixture<T> = {
+  readonly value: T;
+  readonly blockHeight: number;
+  readonly blockHash: string;
+};
+
 // Independent restatements of the three new member signatures — written out
 // here rather than read off the interface, so a widened parameter, a dropped
 // optional, or a changed result type breaks the equality checks below.
@@ -64,7 +73,7 @@ type RawStateQuery = (
 type RawStateStream = (
   address: ContractAddress,
   config: ContractStateObservableConfig
-) => Observable<RawContractState>;
+) => Observable<PositionedRecordFixture<RawContractState>>;
 
 // Today's interface minus ONE named member.
 //
@@ -112,7 +121,7 @@ describe('PublicDataProvider head-version and raw-state members', () => {
         queryRawContractState: RawStateQuery;
         rawContractStateObservable: RawStateStream;
       }
-    >().toMatchTypeOf<PublicDataProvider>();
+    >().toExtend<PublicDataProvider>();
   });
 
   it('pins queryLatestProtocolVersion to a no-argument query resolving to a version integer', () => {
@@ -146,7 +155,7 @@ describe('PublicDataProvider head-version and raw-state members', () => {
     // different record, which is the divergence this is for.
     type Streamed = PublicDataProvider['rawContractStateObservable'] extends (
       ...args: never[]
-    ) => Observable<infer Element>
+    ) => Observable<PositionedRecord<infer Element>>
       ? Element
       : never;
     type Queried = NonNullable<Awaited<ReturnType<PublicDataProvider['queryRawContractState']>>>;
@@ -168,5 +177,37 @@ describe('PublicDataProvider head-version and raw-state members', () => {
 
     expectTypeOf(record.raw).toEqualTypeOf<Uint8Array>();
     expectTypeOf(record.version).toEqualTypeOf<'v8' | 'v9'>();
+  });
+});
+
+describe('PositionedRecord', () => {
+  it('pins PositionedRecord to exactly value, blockHeight and blockHash', () => {
+    expectTypeOf<PositionedRecord<RawContractState>>().toEqualTypeOf<PositionedRecordFixture<RawContractState>>();
+  });
+
+  it('types its position like the block configs, so a record resumes a stream unchanged', () => {
+    expectTypeOf<PositionedRecord<RawContractState>['blockHeight']>().toEqualTypeOf<BlockHeightConfig['blockHeight']>();
+    expectTypeOf<PositionedRecord<RawContractState>['blockHash']>().toEqualTypeOf<BlockHashConfig['blockHash']>();
+  });
+
+  it('wraps into a stream config without a cast', () => {
+    const record = {} as PositionedRecord<RawContractState>;
+
+    expectTypeOf({ type: 'blockHeight', blockHeight: record.blockHeight } as const).toExtend<ContractStateObservableConfig>();
+    expectTypeOf({ type: 'blockHash', blockHash: record.blockHash } as const).toExtend<ContractStateObservableConfig>();
+  });
+});
+
+describe('positioned stream members', () => {
+  it('pins contractStateObservable to positioned decoded states', () => {
+    expectTypeOf<PublicDataProvider['contractStateObservable']>().toEqualTypeOf<
+      (address: ContractAddress, config: ContractStateObservableConfig) => Observable<PositionedRecordFixture<ContractState>>
+    >();
+  });
+
+  it('pins unshieldedBalancesObservable to positioned balances', () => {
+    expectTypeOf<PublicDataProvider['unshieldedBalancesObservable']>().toEqualTypeOf<
+      (address: ContractAddress, config: ContractStateObservableConfig) => Observable<PositionedRecordFixture<UnshieldedBalances>>
+    >();
   });
 });

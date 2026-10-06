@@ -15,11 +15,13 @@
 
 import type { ApolloClient } from '@apollo/client/core';
 import type { DocumentNode } from 'graphql';
+import * as Rx from 'rxjs';
+import { vi } from 'vitest';
 
 import type { ApolloHandle } from '../transport';
 
 /** The request shape the provider passes to both Apollo entry points. */
-export type ApolloRequest = { readonly query: DocumentNode };
+export type ApolloRequest = { readonly query: DocumentNode; readonly variables?: Readonly<Record<string, unknown>> };
 
 /** A stand-in for `ApolloClient.query`, resolving whatever the test supplies. */
 export type QueryStub = (request: ApolloRequest) => Promise<unknown>;
@@ -71,3 +73,50 @@ export const stubApolloHandle = (stubs: {
     dispose: () => Promise.resolve()
   };
 };
+
+/** One subscription frame, tagged with the height of the block it belongs to. */
+export type ChainFrame = { readonly height: number; readonly frame: unknown };
+
+const startHeightOf = (offset: unknown, frames: readonly ChainFrame[]): number => {
+  if (typeof offset === 'object' && offset !== null) {
+    if ('height' in offset && typeof offset.height === 'number') {
+      return offset.height;
+    }
+    if ('hash' in offset && typeof offset.hash === 'string') {
+      const match = frames.find(({ height }) => `0x${height}` === offset.hash);
+      if (match === undefined) {
+        throw new Error(`test setup: no block with hash ${offset.hash}`);
+      }
+      return match.height;
+    }
+  }
+  throw new Error('test setup: subscription requested without a block offset');
+};
+
+/**
+ * A `subscribe` stub that serves `frames` from the block the request's
+ * `offset` names onward, as the indexer does. The first subscription delivers
+ * only its first `firstRunLength` frames and then fails with `failure`; every
+ * later one completes.
+ */
+export const resumableSubscribe = (
+  frames: readonly ChainFrame[],
+  firstRunLength: number,
+  failure: Error
+): SubscribeMock => {
+  let subscriptions = 0;
+  return vi.fn<(request: ApolloRequest) => unknown>().mockImplementation(({ variables }: ApolloRequest) => {
+    const start = startHeightOf(variables?.offset, frames);
+    const served = frames.filter(({ height }) => height >= start).map(({ frame }) => frame);
+    subscriptions += 1;
+    return subscriptions === 1
+      ? Rx.concat(Rx.from(served.slice(0, firstRunLength)), Rx.throwError(() => failure))
+      : Rx.from(served);
+  });
+};
+
+export type SubscribeMock = ReturnType<typeof vi.fn<(request: ApolloRequest) => unknown>>;
+
+/** The `offset` variable of every subscription the stub received, in order. */
+export const subscribedOffsets = (subscribe: SubscribeMock): unknown[] =>
+  subscribe.mock.calls.map(([request]) => request.variables?.offset);
