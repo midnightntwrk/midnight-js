@@ -14,8 +14,8 @@
  */
 
 import { ApolloClient, type ObservableQuery } from '@apollo/client/core';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { ContractStateObservableConfig } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/ledger';
+import type { ContractStateObservableConfig } from '@midnightntwrk/midnight-js-types';
 import * as Rx from 'rxjs';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 

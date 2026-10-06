@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-import type { Ledger8SigningKey, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { Ledger8SigningKey, LedgerVersion } from '@midnightntwrk/midnight-js-protocol';
+import type { ContractAddress, ContractState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import type {
   AnyProvableCircuitId,
   FinalizedTxData,
   PrivateStateId,
   Seam,
   VersionedFinalizedTxData
-} from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 
 import { CURRENT_PIPELINE_ERA, RETAINED_PIPELINE_ERA } from './era';
 import { NEITHER_ERA_CONTRACT_MESSAGE } from './ledger8-contract';
@@ -31,7 +31,7 @@ import { NEITHER_ERA_CONTRACT_MESSAGE } from './ledger8-contract';
  * The seams this flow narrows an era at: the three transaction-flow provider
  * methods, plus the two read-surface methods that report a finalized record.
  *
- * An alias for {@link Seam} in `@midnight-ntwrk/midnight-js-types`, which owns
+ * An alias for {@link Seam} in `@midnightntwrk/midnight-js-types`, which owns
  * the vocabulary because it declares both the provider seams and the read
  * surface. Kept under this name so the error below reads in the era vocabulary
  * of this package.

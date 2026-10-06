@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-import type { FinalizedDeployTxData } from '@midnight-ntwrk/midnight-js-contracts';
-import { LEDGER_VERSIONS, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
-import { type FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import type { FinalizedDeployTxData } from '@midnightntwrk/midnight-js-contracts';
+import { LEDGER_VERSIONS, versionOfRecord } from '@midnightntwrk/midnight-js-protocol';
+import { type FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnightntwrk/midnight-js-types';
 import {
   createLogger,
   getTestEnvironment,
   initializeMidnightProviders,
   type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import fetch from 'cross-fetch';
 import path from 'path';
 

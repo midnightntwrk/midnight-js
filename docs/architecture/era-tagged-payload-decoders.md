@@ -61,7 +61,7 @@ that names a block era has to carry the payloads that era writes.
 
 Every era-fixed ledger decode in `packages/*/src` and `testkit-js/*/src`, with the verdict for each —
 whether it calls a runtime's `*.deserialize` directly or reaches it through the
-`@midnight-ntwrk/midnight-js-utils` typed wrappers.
+`@midnightntwrk/midnight-js-utils` typed wrappers.
 
 Re-run the sweep this was built from with:
 

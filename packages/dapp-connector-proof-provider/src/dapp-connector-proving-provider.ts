@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type ZKConfigProvider, ZKConfigRegistry, zkConfigToProvingKeyMaterial } from '@midnight-ntwrk/midnight-js-types';
 import type { WalletConnectedAPI } from '@midnightntwrk/dapp-connector-api';
+import type { ProvingProvider } from '@midnightntwrk/midnight-js-protocol/ledger';
+import { type ZKConfigProvider, ZKConfigRegistry, zkConfigToProvingKeyMaterial } from '@midnightntwrk/midnight-js-types';
 
 /**
  * Minimal interface required from the DApp Connector wallet.

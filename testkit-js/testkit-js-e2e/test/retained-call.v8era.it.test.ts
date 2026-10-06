@@ -16,11 +16,11 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { deployContract, Ledger8, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
-import { versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
-import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import type { ZkConfigIntegrityOptions } from '@midnight-ntwrk/midnight-js-utils';
+import { deployContract, Ledger8, submitCallTx } from '@midnightntwrk/midnight-js-contracts';
+import { versionOfRecord } from '@midnightntwrk/midnight-js-protocol';
+import { type ContractAddress } from '@midnightntwrk/midnight-js-protocol/ledger';
+import { SucceedEntirely } from '@midnightntwrk/midnight-js-types';
+import type { ZkConfigIntegrityOptions } from '@midnightntwrk/midnight-js-utils';
 import {
   type ContractConfiguration,
   createLogger,
@@ -29,7 +29,7 @@ import {
   initializeMidnightProviders,
   type MidnightWalletProvider,
   type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
 import { SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '../src/constants';

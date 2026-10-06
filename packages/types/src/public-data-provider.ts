@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ContractAddress, LedgerParameters, TransactionId, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractAddress, LedgerParameters, TransactionId, ZswapChainState } from '@midnightntwrk/midnight-js-protocol/ledger';
 import type { Observable } from 'rxjs';
 
 import type { UnshieldedBalances } from './midnight-types';
@@ -85,7 +85,7 @@ export type BlockInfo = {
    * The protocol-version integer this block was produced under, which dates it
    * to a ledger era.
    *
-   * Resolve it with `versionOfRecord` from `@midnight-ntwrk/midnight-js-protocol`:
+   * Resolve it with `versionOfRecord` from `@midnightntwrk/midnight-js-protocol`:
    * this type satisfies that function's `VersionedRecord` parameter, so
    * `versionOfRecord(block)` is the whole call. It throws
    * `UnknownProtocolVersionError` for a version this build cannot place on the
@@ -177,7 +177,7 @@ export interface ContractEventBase {
    * reported it. Distinct from {@link version}: this one says which ledger era
    * wrote {@link raw}, so a consumer decoding those bytes knows which runtime
    * to decode them with. Resolve it with `versionOfRecord` from
-   * `@midnight-ntwrk/midnight-js-protocol` rather than comparing integers by
+   * `@midnightntwrk/midnight-js-protocol` rather than comparing integers by
    * hand — this interface satisfies that function's `VersionedRecord`
    * parameter.
    */

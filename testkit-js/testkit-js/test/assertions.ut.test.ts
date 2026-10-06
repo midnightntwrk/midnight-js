@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { StateValue } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 
 import { stateValueEqual } from '../src/assertions';
 

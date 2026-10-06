@@ -294,12 +294,12 @@ export const PERSONAS = {
     // Only what a retained-era dApp actually reaches for. Keeping this narrow is
     // deliberate: a persona that installed every package would not show which
     // ones a real consumer's resolution has to satisfy.
-    framework: ['@midnight-ntwrk/midnight-js', '@midnight-ntwrk/midnight-js-protocol']
+    framework: ['@midnightntwrk/midnight-js', '@midnightntwrk/midnight-js-protocol']
   },
   current: {
     runtime: CURRENT_RUNTIME,
     contractSource: CURRENT_CONTRACT,
-    framework: ['@midnight-ntwrk/midnight-js', '@midnight-ntwrk/midnight-js-protocol']
+    framework: ['@midnightntwrk/midnight-js', '@midnightntwrk/midnight-js-protocol']
   },
   'fork-crossing': {
     // No runtime of its own: each wrapped contract brings the one its era needs.
@@ -307,16 +307,16 @@ export const PERSONAS = {
     entry: 'fork-crossing-entry',
     contracts: ['retained', 'current'],
     framework: [
-      '@midnight-ntwrk/midnight-js',
-      '@midnight-ntwrk/midnight-js-protocol',
-      '@midnight-ntwrk/midnight-js-contracts',
-      '@midnight-ntwrk/midnight-js-indexer-public-data-provider',
-      '@midnight-ntwrk/midnight-js-http-client-proof-provider',
-      '@midnight-ntwrk/midnight-js-node-zk-config-provider',
-      '@midnight-ntwrk/midnight-js-level-private-state-provider',
+      '@midnightntwrk/midnight-js',
+      '@midnightntwrk/midnight-js-protocol',
+      '@midnightntwrk/midnight-js-contracts',
+      '@midnightntwrk/midnight-js-indexer-public-data-provider',
+      '@midnightntwrk/midnight-js-http-client-proof-provider',
+      '@midnightntwrk/midnight-js-node-zk-config-provider',
+      '@midnightntwrk/midnight-js-level-private-state-provider',
       // The dApp persona uses the testkit's wallet and provider wiring rather than
       // reimplementing them; a real dApp would bring its own wallet integration.
-      '@midnight-ntwrk/testkit-js'
+      '@midnightntwrk/testkit-js'
     ]
   }
 };

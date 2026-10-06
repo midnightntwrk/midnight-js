@@ -22,21 +22,21 @@ import {
   type FinalizedDeployTxData,
   findDeployedContract,
   submitCallTx,
-  submitDeployTx} from '@midnight-ntwrk/midnight-js-contracts';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+  submitDeployTx} from '@midnightntwrk/midnight-js-contracts';
+import { getNetworkId } from '@midnightntwrk/midnight-js-network-id';
 import {
   ContractState,
   decodeZswapLocalState,
   emptyZswapLocalState,
   sampleSigningKey
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { type ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import { type ContractAddress, LedgerParameters, ZswapChainState } from '@midnightntwrk/midnight-js-protocol/ledger';
+import { SucceedEntirely } from '@midnightntwrk/midnight-js-types';
+import { parseCoinPublicKeyToHex } from '@midnightntwrk/midnight-js-utils';
 import type {
   EnvironmentConfiguration,
   MidnightWalletProvider,
-  TestEnvironment} from '@midnight-ntwrk/testkit-js';
+  TestEnvironment} from '@midnightntwrk/testkit-js';
 import {
   createLogger,
   expectFoundAndDeployedStatesEqual,
@@ -45,7 +45,7 @@ import {
   expectSuccessfulCallTx,
   expectSuccessfulDeployTx,
   getTestEnvironment,
-  initializeMidnightProviders} from '@midnight-ntwrk/testkit-js';
+  initializeMidnightProviders} from '@midnightntwrk/testkit-js';
 import path from 'path';
 
 import {

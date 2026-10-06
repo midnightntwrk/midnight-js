@@ -73,7 +73,7 @@ check('persona compact-runtime', versionOf('@midnight-ntwrk/compact-runtime'), e
 //    major living in the same install. A hoisted linker cannot satisfy both.
 check(
   'framework compact-runtime',
-  versionOf('@midnight-ntwrk/compact-runtime', '@midnight-ntwrk/midnight-js-protocol'),
+  versionOf('@midnight-ntwrk/compact-runtime', '@midnightntwrk/midnight-js-protocol'),
   frameworkRuntime
 );
 
@@ -99,7 +99,7 @@ try {
 //    minted by one unusable by the other (Ledger8InstanceMismatchError).
 if (personaName === 'retained') {
   try {
-    const protocol = await import('@midnight-ntwrk/midnight-js-protocol');
+    const protocol = await import('@midnightntwrk/midnight-js-protocol');
     const ledger8 = await protocol.loadLedger8();
     observed['loadLedger8'] = typeof ledger8 === 'object' && ledger8 !== null ? 'ok' : String(ledger8);
     if (observed['loadLedger8'] !== 'ok') {
@@ -112,7 +112,7 @@ if (personaName === 'retained') {
     // worse than no assertion.
     let retainedRuntimePath;
     try {
-      retainedRuntimePath = realPathOf('@midnight-ntwrk/onchain-runtime-v3', '@midnight-ntwrk/midnight-js-protocol');
+      retainedRuntimePath = realPathOf('@midnight-ntwrk/onchain-runtime-v3', '@midnightntwrk/midnight-js-protocol');
       observed['onchain-runtime-v3 via protocol'] = retainedRuntimePath;
     } catch (error) {
       failures.push(

@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { createCircuitCallTxInterface, deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { PrivateStateExport, SigningKeyExport } from '@midnight-ntwrk/midnight-js-types';
-import type { EnvironmentConfiguration, MidnightWalletProvider, TestEnvironment } from '@midnight-ntwrk/testkit-js';
-import { createLogger, getTestEnvironment, initializeMidnightProviders } from '@midnight-ntwrk/testkit-js';
+import { createCircuitCallTxInterface, deployContract } from '@midnightntwrk/midnight-js-contracts';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/ledger';
+import type { PrivateStateExport, SigningKeyExport } from '@midnightntwrk/midnight-js-types';
+import type { EnvironmentConfiguration, MidnightWalletProvider, TestEnvironment } from '@midnightntwrk/testkit-js';
+import { createLogger, getTestEnvironment, initializeMidnightProviders } from '@midnightntwrk/testkit-js';
 import * as fs from 'fs/promises';
 import path from 'path';
 

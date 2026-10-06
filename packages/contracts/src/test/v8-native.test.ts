@@ -32,8 +32,8 @@
 import { readFileSync } from 'node:fs';
 import { inspect } from 'node:util';
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
+import { setNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import type * as Protocol from '@midnightntwrk/midnight-js-protocol';
 import {
   type ComposeCallOptions,
   ComposeFailedError,
@@ -41,14 +41,14 @@ import {
   type LedgerEra,
   loadLedger8,
   loadLedgerEra
-} from '@midnight-ntwrk/midnight-js-protocol';
-import { type Recipient } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol';
+import { type Recipient } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import {
   LedgerParameters,
   type ProvingProvider,
   sampleCoinPublicKey,
   sampleEncryptionPublicKey
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   createMidnightProvider,
   createProofProvider,
@@ -64,8 +64,8 @@ import {
   type VersionedFinalizedTxData,
   type VersionedTx,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { assertDefined, CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { Option } from 'effect';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -151,7 +151,7 @@ vi.mock('@midnight-ntwrk/compact-runtime', () => import('./ledger8-runtime-stub'
 // engine's construction guard exists to catch a second acquisition path for it.
 const engineSlot = vi.hoisted((): { engine?: unknown } => ({}));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return {
     ...actual,

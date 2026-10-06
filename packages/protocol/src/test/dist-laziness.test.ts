@@ -165,7 +165,7 @@ describe('dist laziness gate', () => {
   // and made to do real work, so a v9-only consumer's path is exercised rather
   // than only inspected.
   it('serves a working v9 era out of the built package', async () => {
-    const { loadLedgerEra } = await import('@midnight-ntwrk/midnight-js-protocol');
+    const { loadLedgerEra } = await import('@midnightntwrk/midnight-js-protocol');
 
     const era = await loadLedgerEra('v9');
 

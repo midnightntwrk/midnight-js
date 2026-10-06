@@ -50,7 +50,7 @@ vi.mock('@midnightntwrk/wallet-sdk-prover-client/effect', () => ({
   },
 }));
 
-vi.mock('@midnight-ntwrk/midnight-js-utils', () => ({
+vi.mock('@midnightntwrk/midnight-js-utils', () => ({
   fromHex: vi.fn().mockReturnValue(new Uint8Array()),
   toHex: vi.fn().mockReturnValue('aabb'),
   ttlOneHour: vi.fn().mockReturnValue(new Date('2026-01-01T00:00:00Z')),

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { CompiledContract, type ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { CompiledContract, type ContractExecutable } from '@midnightntwrk/midnight-js-protocol/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
   assert as compactAssert,
   ChargedState,
@@ -26,7 +26,7 @@ import {
   sampleSigningKey,
   type SigningKey,
   StateValue,
-  type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+  type ZswapLocalState} from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import {
   type AlignedValue,
   type Binding,
@@ -51,9 +51,9 @@ import {
   type UnprovenTransaction,
   type ZswapChainState,
   type ZswapSecretKeys,
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
+import * as PlatformContractAddress from '@midnightntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+import type { LedgerVersion } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
@@ -67,7 +67,7 @@ import {
   type VerifierKey,
   ZKConfigProvider,
   type ZKIR
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import { Option } from 'effect';
 
 import { type CallOptions, type CallOptionsWithPrivateState } from '../call';

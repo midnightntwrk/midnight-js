@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { getNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import type { CoinPublicKey,SigningKey } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import type { EncPublicKey } from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   exitResultOrError,
   makeContractExecutableRuntime,
   type PrivateStateId,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { parseCoinPublicKeyToHex } from '@midnightntwrk/midnight-js-utils';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';

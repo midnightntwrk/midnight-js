@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { computeSha256Hex, ZkArtifactContractInfoError, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
+import { computeSha256Hex, ZkArtifactContractInfoError, ZkArtifactIntegrityError } from '@midnightntwrk/midnight-js-utils';
 import { fetch } from 'cross-fetch';
 import type { BinaryLike } from 'crypto';
 import * as crypto from 'crypto';

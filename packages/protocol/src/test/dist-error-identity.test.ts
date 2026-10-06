@@ -30,7 +30,7 @@ import { describe, expect, it } from 'vitest';
 // the build is reorganised.
 const PKG_ROOT = resolve(__dirname, '..', '..');
 const ERRORS_SUBPATH = './errors';
-const SELF_SPECIFIER = '@midnight-ntwrk/midnight-js-protocol';
+const SELF_SPECIFIER = '@midnightntwrk/midnight-js-protocol';
 const ERROR_CLASS_DECLARATION = /class\s+\w+\s+extends\s+Error\b/;
 
 // The exports map is the source of truth: it is the contract consumers resolve
@@ -97,8 +97,8 @@ describe('dist error-class identity gate', () => {
   });
 
   it('exports the very same error classes from the package root and the ./errors subpath', async () => {
-    const root: object = await import('@midnight-ntwrk/midnight-js-protocol');
-    const errors: object = await import('@midnight-ntwrk/midnight-js-protocol/errors');
+    const root: object = await import('@midnightntwrk/midnight-js-protocol');
+    const errors: object = await import('@midnightntwrk/midnight-js-protocol/errors');
 
     const rootClasses = errorClassesOf(root);
     const errorsClasses = errorClassesOf(errors);

@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import type {
   ContractAddress,
   LedgerParameters,
   TransactionId,
   ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
 import type {
   BlockHashConfig,
   BlockHeightConfig,
@@ -34,8 +34,8 @@ import type {
   RawContractState,
   UnshieldedBalances,
   VersionedFinalizedTxData
-} from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { assertIsContractAddress } from '@midnightntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 
 import {

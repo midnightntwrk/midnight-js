@@ -46,8 +46,8 @@ import {
   SubmitRejectionUndiagnosedError,
   submitCallTx,
   submitCallTxAsync
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { networkHeadVersion, protocol } from '@midnight-ntwrk/midnight-js';
+} from '@midnightntwrk/midnight-js-contracts';
+import { networkHeadVersion, protocol } from '@midnightntwrk/midnight-js';
 
 const { CompiledContract } = protocol;
 
@@ -1442,13 +1442,13 @@ const driveCallsAcrossTheBoundary = async (forkOutcome) => {
   };
 };
 
-const testkit = await import('@midnight-ntwrk/testkit-js');
+const testkit = await import('@midnightntwrk/testkit-js');
 const logger = testkit.createLogger(config.logPath);
 
 // The dApp is its own process, so it configures its own network id -- the driver
 // setting one says nothing here. Taken off the barrel rather than by adding a
 // dependency on `network-id`, which is what a consumer would reach for too.
-const { networkId } = await import('@midnight-ntwrk/midnight-js');
+const { networkId } = await import('@midnightntwrk/midnight-js');
 networkId.setNetworkId(config.environment.networkId);
 
 let session = await buildProviders('v8', testkit, logger);

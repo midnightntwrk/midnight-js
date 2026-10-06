@@ -16,10 +16,10 @@
 import {
   type IndexerPublicDataProvider,
   indexerPublicDataProvider
-} from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { protocolVersionToLedger, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
-import type { BlockHeightConfig, BlockInfo } from '@midnight-ntwrk/midnight-js-types';
-import { createLogger, delay, type EnvironmentConfiguration, ForkTestEnvironment } from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/midnight-js-indexer-public-data-provider';
+import { protocolVersionToLedger, versionOfRecord } from '@midnightntwrk/midnight-js-protocol';
+import type { BlockHeightConfig, BlockInfo } from '@midnightntwrk/midnight-js-types';
+import { createLogger, delay, type EnvironmentConfiguration, ForkTestEnvironment } from '@midnightntwrk/testkit-js';
 import path from 'path';
 
 import { MINUTE } from '../src/constants';

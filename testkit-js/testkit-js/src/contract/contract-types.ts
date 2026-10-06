@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ZkConfigIntegrityOptions } from '@midnight-ntwrk/midnight-js-utils';
+import type { ZkConfigIntegrityOptions } from '@midnightntwrk/midnight-js-utils';
 
 /**
  * Configuration interface for Midnight contracts.

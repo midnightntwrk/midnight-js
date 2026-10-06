@@ -10,7 +10,7 @@ Across the ledger fork this framework has to answer two different questions
 about eras, and they have different shapes.
 
 **Which era does this record belong to?** Every era-sensitive read in
-`@midnight-ntwrk/midnight-js-indexer-public-data-provider` now selects the
+`@midnightntwrk/midnight-js-indexer-public-data-provider` now selects the
 `protocolVersion` that dates the bytes it returns as a sibling field of those
 bytes in the same GraphQL document — `CONTRACT_STATE_QUERY`,
 `RAW_CONTRACT_STATE_QUERY`, `CONTRACT_AND_ZSWAP_STATE_QUERY`, `TX_ID_QUERY`,

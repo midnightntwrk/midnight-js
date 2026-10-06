@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import type { CoinPublicKey, EncPublicKey } from '@midnightntwrk/midnight-js-protocol/ledger';
+import { type PrivateStateId } from '@midnightntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
 import { type ContractStates,type PublicContractStates } from './get-states';

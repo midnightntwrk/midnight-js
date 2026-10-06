@@ -14,8 +14,8 @@
  */
 
 import { fc } from '@fast-check/vitest';
-import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { type Recipient } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { getNetworkId, setNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import { type Recipient } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import {
   type AlignedValue,
   type CoinCommitment,
@@ -38,8 +38,8 @@ import {
   ZswapInput,
   ZswapOffer,
   ZswapOutput
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { parseEncPublicKeyToHex, toHex } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
+import { parseEncPublicKeyToHex, toHex } from '@midnightntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 import { beforeAll, expect, vi } from 'vitest';
 

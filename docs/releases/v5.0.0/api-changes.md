@@ -1,6 +1,6 @@
 # API Changes v5.0.0
 
-## `@midnight-ntwrk/midnight-js-types`
+## `@midnightntwrk/midnight-js-types`
 
 ### `PublicDataProvider` — new methods (required)
 
@@ -31,7 +31,7 @@ export type BlockInfo = {
 };
 ```
 
-Resolve `protocolVersion` with `versionOfRecord(block)` from `@midnight-ntwrk/midnight-js-protocol` — `BlockInfo` satisfies that function's `VersionedRecord` parameter. Prefer it over `protocolVersionToLedger`, which tags a failure as a transaction-construct error rather than a read.
+Resolve `protocolVersion` with `versionOfRecord(block)` from `@midnightntwrk/midnight-js-protocol` — `BlockInfo` satisfies that function's `VersionedRecord` parameter. Prefer it over `protocolVersionToLedger`, which tags a failure as a transaction-construct error rather than a read.
 
 `queryContractEvents`, `contractEventsObservable`, and `queryBlock` are **required** interface members — custom `PublicDataProvider` implementations must add them. Note the start cursor is passed via `opts.startAt`, **not** positionally. There is **no** `dispose` member on the `PublicDataProvider` interface; `dispose()` lives only on the concrete `IndexerPublicDataProvider` (see below).
 
@@ -119,7 +119,7 @@ export class ZKConfigRegistry {
 }
 export class ZKArtifactNotFoundError extends Error { readonly keyLocation: ContractKeyLocation; }
 
-// Canonical key-location grammar, re-exported from @midnight-ntwrk/midnight-js-protocol/compact-js
+// Canonical key-location grammar, re-exported from @midnightntwrk/midnight-js-protocol/compact-js
 export type ContractKeyLocation = /* { contractAddress, circuitId, ... } */;
 export const encodeContractKeyLocation: (loc: ContractKeyLocation) => string;
 export const parseContractKeyLocation: (s: string) => ContractKeyLocation | undefined;
@@ -166,7 +166,7 @@ tagged unions; `submitTx` still resolves a bare `TransactionId`.
 
 ---
 
-## `@midnight-ntwrk/midnight-js-contracts`
+## `@midnightntwrk/midnight-js-contracts`
 
 ### `CallResultPublic.events` + `ContractLog` re-export (#1083)
 
@@ -226,7 +226,7 @@ reports its deploy record tagged `v8`. Narrow on `version` before reading `tx` o
 
 ---
 
-## `@midnight-ntwrk/midnight-js-indexer-public-data-provider`
+## `@midnightntwrk/midnight-js-indexer-public-data-provider`
 
 ### New / changed exports
 
@@ -288,7 +288,7 @@ Internally the provider was split into 7 layered files (#960): `config.ts`, `tra
 
 ---
 
-## `@midnight-ntwrk/midnight-js-utils`
+## `@midnightntwrk/midnight-js-utils`
 
 ### New exports
 
@@ -296,7 +296,7 @@ Internally the provider was split into 7 layered files (#960): `config.ts`, `tra
 // Coded-error registry and guard (#1204). Prefer hasErrorCode over instanceof
 // across a package boundary.
 export const CONTRACTS_ERROR_CODES: Readonly<{ ERA_INVARIANT_VIOLATION: string }>;
-// Declared in `@midnight-ntwrk/midnight-js-types` and also readable from its
+// Declared in `@midnightntwrk/midnight-js-types` and also readable from its
 // `./errors` leaf subpath; re-exported here, so either import works.
 export const PROVIDER_ERROR_CODES: Readonly<{
   V8_PAYLOAD_UNSUPPORTED: string; UNTAGGED_PAYLOAD: string;
@@ -372,7 +372,7 @@ export function withDeserializationContext<T>(/* ... */): T;
 
 ---
 
-## `@midnight-ntwrk/midnight-js-protocol`
+## `@midnightntwrk/midnight-js-protocol`
 
 Subpath re-exports retargeted (see [breaking-changes.md](./breaking-changes.md)):
 
@@ -384,7 +384,7 @@ Subpath re-exports retargeted (see [breaking-changes.md](./breaking-changes.md))
 | `/compact-js` | `@midnight-ntwrk/compact-js@2.5.5-rc.7` (provides the `ContractKeyLocation` grammar) |
 | `/platform-js` | `@midnight-ntwrk/platform-js@3.0.0` |
 
-## `@midnight-ntwrk/midnight-js-http-client-proof-provider`
+## `@midnightntwrk/midnight-js-http-client-proof-provider`
 
 ### `httpClientProofProvider` — object-options form (#1078)
 
@@ -403,7 +403,7 @@ export function httpClientProofProvider(url: string, zkConfigProvider: ZKConfigP
 
 Additive and backward-compatible — the positional overload keeps working. Low-level `httpClientProvingProvider` remains positional (tracked as a follow-up).
 
-## `@midnight-ntwrk/midnight-js-fetch-zk-config-provider` / `-node-zk-config-provider`
+## `@midnightntwrk/midnight-js-fetch-zk-config-provider` / `-node-zk-config-provider`
 
 Both provider constructors now accept an optional `ZkConfigIntegrityOptions` bag (see `midnight-js-utils` above) and verify artifacts against `compiler/contract-manifest.json`, defaulting to `verify: 'require'` (fail-closed). See [breaking-changes.md](./breaking-changes.md).
 

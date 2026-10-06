@@ -47,9 +47,9 @@
  * what this module is built on, not that sentence.
  */
 
-import type { Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
+import type { Ledger8SigningKey } from '@midnightntwrk/midnight-js-protocol';
+import type { SigningKey } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import { isValidSigningKey } from '@midnightntwrk/midnight-js-utils';
 
 import { type BreadcrumbSink, emitRetainedSigningKeyEntry } from './breadcrumbs';
 

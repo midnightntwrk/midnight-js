@@ -9,7 +9,7 @@
 The Midnight node hard fork introduces a v9 ledger era while transactions and
 state from the v8 era must remain readable. Both ledger WASM packages
 (`@midnightntwrk/ledger-v8` and `@midnightntwrk/ledger-v9`) therefore need to
-be co-installed in `@midnight-ntwrk/midnight-js-protocol`.
+be co-installed in `@midnightntwrk/midnight-js-protocol`.
 
 Each ledger package carries a multi-megabyte WASM artifact that is compiled
 and instantiated at module load. Most sessions after the fork are v9-only:
@@ -111,7 +111,7 @@ Specifically:
 - **Static re-export of both eras from the barrel** — rejected: every consumer
   pays both WASM loads eagerly; this is the exact cost the fork migration must
   avoid.
-- **Package self-reference (`import('@midnight-ntwrk/midnight-js-protocol/v8')`)**
+- **Package self-reference (`import('@midnightntwrk/midnight-js-protocol/v8')`)**
   — rejected: it buys nothing the relative import does not already give, and
   costs two things. The specifier would have to be rewritten inside built JS
   and declarations whenever the package is published under a different scope,

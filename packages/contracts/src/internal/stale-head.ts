@@ -29,8 +29,8 @@
  *      and why the re-read is a real second reading of the network.
  */
 
-import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import { LEDGER_VERSIONS, type LedgerVersion } from '@midnightntwrk/midnight-js-protocol';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 
 import { StaleHeadError, SubmitRejectionUndiagnosedError,type SubmittedOperation } from '../errors';
 import { type BreadcrumbSink, emitHeadResolution } from './breadcrumbs';

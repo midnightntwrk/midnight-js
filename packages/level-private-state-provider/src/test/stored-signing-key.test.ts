@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 
 import { readStoredSigningKey, StoredSigningKeyFormatError } from '../stored-signing-key';
 

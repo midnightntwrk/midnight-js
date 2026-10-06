@@ -16,15 +16,15 @@
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { createUnprovenCallTxFromInitialStates, createUnprovenDeployTxFromVerifierKeys } from '@midnight-ntwrk/midnight-js-contracts';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { createUnprovenCallTxFromInitialStates, createUnprovenDeployTxFromVerifierKeys } from '@midnightntwrk/midnight-js-contracts';
+import { getNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import { CompiledContract } from '@midnightntwrk/midnight-js-protocol/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
   type CoinPublicKey,
   createConstructorContext,
   emptyZswapLocalState,
-  sampleSigningKey} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+  sampleSigningKey} from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import {
   LedgerParameters,
   sampleCoinPublicKey,
@@ -32,15 +32,15 @@ import {
   sampleEncryptionPublicKey,
   type UnprovenTransaction,
   ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
 import { createProverKey,
   createVerifierKey,
   createZKIR,
   type ProverKey,
   type VerifierKey,
   ZKConfigProvider,
-  type ZKIR } from '@midnight-ntwrk/midnight-js-types';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+  type ZKIR } from '@midnightntwrk/midnight-js-types';
+import { parseCoinPublicKeyToHex } from '@midnightntwrk/midnight-js-utils';
 import fs from 'fs/promises';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));

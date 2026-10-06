@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
+import { type VerifierKey } from '@midnightntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { submitInsertVerifierKeyTx } from '../../governance/submit-insert-vk-tx';
@@ -98,7 +98,7 @@ describe('submitInsertVerifierKeyTx', () => {
   describe('error scenarios', () => {
     it('should throw InsertVerifierKeyTxFailedError when transaction fails', async () => {
       const { InsertVerifierKeyTxFailedError } = await import('../../governance/errors');
-      const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
+      const { FailEntirely } = await import('@midnightntwrk/midnight-js-types');
 
       const circuitId = 'testCircuit';
       const failedTxData = createMockFinalizedTxData(FailEntirely);

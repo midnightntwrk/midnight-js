@@ -54,8 +54,8 @@
  * does NOT show up in this file.
  */
 
-import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
-import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
+import { loadLedger8 } from '@midnightntwrk/midnight-js-protocol';
+import { isValidSigningKey } from '@midnightntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import {

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { getNetworkId,setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { getNetworkId,setNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import type { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/compact-js';
 import {
   type AlignedValue,
   type CommunicationCommitmentData,
@@ -24,7 +24,7 @@ import {
   decodeZswapLocalState,
   QueryContext,
   type Recipient
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import {
   type CoinCommitment,
   coinCommitment,
@@ -55,9 +55,9 @@ import {
   ZswapInput,
   ZswapOffer,
   ZswapOutput
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
-import { isDeserializationError, toHex } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
+import * as PlatformContractAddress from '@midnightntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+import { isDeserializationError, toHex } from '@midnightntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 import { Option } from 'effect';
 import { readFileSync } from 'fs';
@@ -1074,7 +1074,7 @@ describe('ledger-utils', () => {
   // with the fully-qualified caller string. Locks the wiring against future
   // accidental reverts to raw .deserialize/.decode calls.
   describe('deserialization wrapper wiring (issue-816)', () => {
-    const PKG = '@midnight-ntwrk/midnight-js-contracts';
+    const PKG = '@midnightntwrk/midnight-js-contracts';
 
     // Object with a .serialize() that returns invalid bytes. Casting to the
     // expected nominal type because runtime only invokes .serialize().

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { SigningKey } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 
 const SIGNING_KEY_HEX = /^[0-9a-fA-F]{64}$/;
 const SIGNING_KEY_KINDS: readonly string[] = ['schnorr', 'ecdsa'];

@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import { DustSecretKey, type TransactionId, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { DustSecretKey, type TransactionId, ZswapSecretKeys } from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   UntaggedPayloadError,
   V8PayloadUnsupportedError,
   type VersionedFinalizedTransaction,
   type VersionedUnboundTransaction
-} from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import {
   type BalancingRecipe,
   ProtocolVersion,

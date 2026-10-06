@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractAddress, SigningKey } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import {
   ExportDecryptionError,
   type ExportPrivateStatesOptions,
@@ -32,8 +32,8 @@ import {
   type PrivateStateProvider,
   type SigningKeyExport,
   SigningKeyExportError
-} from '@midnight-ntwrk/midnight-js-types';
-import { isValidSigningKey, validatePassword } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { isValidSigningKey, validatePassword } from '@midnightntwrk/midnight-js-utils';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, randomBytes } from '@noble/hashes/utils.js';
 import { type AbstractLevel, type AbstractSublevel } from 'abstract-level';
@@ -86,7 +86,7 @@ export interface LevelPrivateStateProviderConfig {
    * Provider function that returns the password used for encrypting private state.
    *
    * The password must satisfy the strength policy enforced by `validatePassword`
-   * from `@midnight-ntwrk/midnight-js-utils`:
+   * from `@midnightntwrk/midnight-js-utils`:
    * - minimum 16 characters
    * - at least 3 of: uppercase, lowercase, digits, special characters
    * - no more than 3 consecutive identical characters

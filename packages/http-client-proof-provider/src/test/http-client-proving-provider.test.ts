@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import * as ledger from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import * as ledger from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   encodeContractKeyLocation,
   hashVerifierKey,
@@ -25,7 +25,7 @@ import {
   type ZKConfigProvider,
   ZKConfigRegistry,
   type ZKIR
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { httpClientProvingProvider } from '../http-client-proving-provider';
@@ -42,8 +42,8 @@ vi.mock('fetch-retry', () => ({
   default: () => mockFetchRetry
 }));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol/ledger', async () => {
-  const actual = await vi.importActual('@midnight-ntwrk/midnight-js-protocol/ledger');
+vi.mock('@midnightntwrk/midnight-js-protocol/ledger', async () => {
+  const actual = await vi.importActual('@midnightntwrk/midnight-js-protocol/ledger');
   return {
     ...actual,
     createCheckPayload: vi.fn(),

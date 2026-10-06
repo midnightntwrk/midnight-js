@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
   type Transaction,
   type UnprovenTransaction,
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
+import { CURRENT_LEDGER_VERSION } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   assertSeamsSupportEra,
   type FinalizedTxData,
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
 import { requireV9, requireV9Record } from './internal/era';

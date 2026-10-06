@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
+import { ZkArtifactIntegrityError } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, test } from 'vitest';
 
 import { NodeZkConfigProvider, nodeZkConfigProvider } from '../index';

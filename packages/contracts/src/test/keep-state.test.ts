@@ -35,8 +35,8 @@
 
 import { readFileSync } from 'node:fs';
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
+import { setNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import type * as Protocol from '@midnightntwrk/midnight-js-protocol';
 import {
   type ComposeCallOptions,
   type ContractBalance,
@@ -44,15 +44,15 @@ import {
   loadLedgerEra,
   type RetainedContract,
   type RunRetainedCircuitOptions
-} from '@midnight-ntwrk/midnight-js-protocol';
-import { ContractState, LedgerParameters, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnightntwrk/midnight-js-protocol';
+import { ContractState, LedgerParameters, Transaction } from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   type RawContractState,
   type VersionedFinalizedTransaction,
   type VersionedTx,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -98,7 +98,7 @@ vi.mock('@midnight-ntwrk/compact-runtime', () => import('./ledger8-runtime-stub'
 
 const engineSlot = vi.hoisted((): { engine?: unknown } => ({}));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return {
     ...actual,

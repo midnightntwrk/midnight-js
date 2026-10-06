@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
-import { PayloadNotATransactionError, PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { CostModel, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ProvingProvider } from '@midnightntwrk/dapp-connector-api';
+import { loadLedger8 } from '@midnightntwrk/midnight-js-protocol';
+import { PayloadNotATransactionError, PROTOCOL_ERROR_CODES } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { CostModel, UnprovenTransaction } from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   type KeyMaterialProvider,
   type UnboundTransaction,
   type VersionedUnprovenTransaction,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
-import type { ProvingProvider } from '@midnightntwrk/dapp-connector-api';
+} from '@midnightntwrk/midnight-js-types';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { dappConnectorProofProvider } from '../dapp-connector-proof-provider';

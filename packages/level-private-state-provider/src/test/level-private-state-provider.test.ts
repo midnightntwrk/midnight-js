@@ -16,7 +16,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
-import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { type ContractAddress, sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import {
   ExportDecryptionError,
   ImportConflictError,
@@ -27,8 +27,8 @@ import {
   type PrivateStateSerializationFailure,
   type SigningKeyExport,
   SigningKeyExportError
-} from '@midnight-ntwrk/midnight-js-types';
-import { PasswordValidationError,type PasswordValidationFailure } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { PasswordValidationError,type PasswordValidationFailure } from '@midnightntwrk/midnight-js-utils';
 import * as crypto from 'crypto';
 import { Level } from 'level';
 import * as superjson from 'superjson';

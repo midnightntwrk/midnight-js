@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import type { LedgerParameters, ZswapChainState } from '@midnightntwrk/midnight-js-protocol/ledger';
+import type { PrivateStateId } from '@midnightntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getPublicStates, getStates } from '../get-states';

@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { getNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import type { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/compact-js';
 import {
   type AlignedValue,
   type ContractAddress,
   type ContractState,
   type QueryContext,
-  type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+  type ZswapLocalState} from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 import {
   ChargedState,
   communicationCommitmentRandomness,
@@ -36,24 +36,24 @@ import {
   UnshieldedOffer,
   type UtxoOutput,
   type ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   encodeContractKeyLocation,
   hashVerifierKey,
   Transaction
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import {
   assertDefined,
   decodeLedgerStateValue,
   deserializeCompactContractState,
   deserializeContractState,
   ttlOneHour
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
 import { type EncryptionPublicKeyResolver, zswapCallsToSegmentedOffer, zswapStateToOffer } from './zswap-utils';
 
-const PKG = '@midnight-ntwrk/midnight-js-contracts';
+const PKG = '@midnightntwrk/midnight-js-contracts';
 
 export const toLedgerContractState = (contractState: ContractState): LedgerContractState =>
   deserializeContractState(contractState.serialize(), { caller: `${PKG}:toLedgerContractState` });

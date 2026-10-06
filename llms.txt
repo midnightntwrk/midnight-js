@@ -33,26 +33,26 @@ MidnightProviders
 
 | Package | Purpose |
 |---------|---------|
-| `@midnight-ntwrk/midnight-js` | Barrel package for Midnight.js core framework |
-| `@midnight-ntwrk/midnight-js-types` | Shared types, interfaces, provider contracts |
-| `@midnight-ntwrk/midnight-js-contracts` | Contract deployment, interaction, transaction submission |
-| `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider` | Proof provider delegating to DApp Connector wallet |
-| `@midnight-ntwrk/midnight-js-indexer-public-data-provider` | GraphQL-based blockchain data provider |
-| `@midnight-ntwrk/midnight-js-level-private-state-provider` | Encrypted LevelDB storage for private state |
-| `@midnight-ntwrk/midnight-js-http-client-proof-provider` | HTTP client for proof server |
-| `@midnight-ntwrk/midnight-js-fetch-zk-config-provider` | Browser-based ZK artifact provider |
-| `@midnight-ntwrk/midnight-js-node-zk-config-provider` | Node.js filesystem ZK artifact provider |
-| `@midnight-ntwrk/midnight-js-network-id` | Network identifier management |
-| `@midnight-ntwrk/midnight-js-logger-provider` | Pino logger wrapper |
-| `@midnight-ntwrk/midnight-js-utils` | Shared utilities (hex, bech32m, assertions, error-code registry) |
-| `@midnight-ntwrk/midnight-js-compact` | Compact compiler manager |
+| `@midnightntwrk/midnight-js` | Barrel package for Midnight.js core framework |
+| `@midnightntwrk/midnight-js-types` | Shared types, interfaces, provider contracts |
+| `@midnightntwrk/midnight-js-contracts` | Contract deployment, interaction, transaction submission |
+| `@midnightntwrk/midnight-js-dapp-connector-proof-provider` | Proof provider delegating to DApp Connector wallet |
+| `@midnightntwrk/midnight-js-indexer-public-data-provider` | GraphQL-based blockchain data provider |
+| `@midnightntwrk/midnight-js-level-private-state-provider` | Encrypted LevelDB storage for private state |
+| `@midnightntwrk/midnight-js-http-client-proof-provider` | HTTP client for proof server |
+| `@midnightntwrk/midnight-js-fetch-zk-config-provider` | Browser-based ZK artifact provider |
+| `@midnightntwrk/midnight-js-node-zk-config-provider` | Node.js filesystem ZK artifact provider |
+| `@midnightntwrk/midnight-js-network-id` | Network identifier management |
+| `@midnightntwrk/midnight-js-logger-provider` | Pino logger wrapper |
+| `@midnightntwrk/midnight-js-utils` | Shared utilities (hex, bech32m, assertions, error-code registry) |
+| `@midnightntwrk/midnight-js-compact` | Compact compiler manager |
 
 ### Testing (testkit-js/*)
 
 | Package | Purpose |
 |---------|---------|
-| `@midnight-ntwrk/testkit-js` | Testing infrastructure, Docker environments, wallet management |
-| `@midnight-ntwrk/testkit-js-e2e` | E2E test suite and guidelines |
+| `@midnightntwrk/testkit-js` | Testing infrastructure, Docker environments, wallet management |
+| `@midnightntwrk/testkit-js-e2e` | E2E test suite and guidelines |
 
 ## Key Concepts
 
@@ -110,7 +110,7 @@ not accept it — narrow with `switch (record.version)`.
 ### Contract Deployment
 
 ```typescript
-import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract, findDeployedContract } from '@midnightntwrk/midnight-js-contracts';
 
 // Deploy new contract
 const deployed = await deployContract(providers, {
@@ -138,7 +138,7 @@ import {
   getPublicStates,
   getStates,
   getUnshieldedBalances
-} from '@midnight-ntwrk/midnight-js-contracts';
+} from '@midnightntwrk/midnight-js-contracts';
 
 // Query states
 const states = await getStates(
@@ -171,7 +171,7 @@ is a discriminated union keyed on `eventType` (11 variants:
 `ShieldedSpend|ShieldedReceive|ShieldedMint|ShieldedBurn|UnshieldedSpend|UnshieldedReceive|UnshieldedMint|UnshieldedBurn|Paused|Unpaused|Misc`).
 
 ```typescript
-import { getAllContractEvents } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { getAllContractEvents } from '@midnightntwrk/midnight-js-indexer-public-data-provider';
 
 // Finite, paginated read (ascending id order).
 const events = await providers.publicDataProvider.queryContractEvents(
@@ -201,7 +201,7 @@ subscription already unifies replay and live.
 ### Private State Management
 
 ```typescript
-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
+import { levelPrivateStateProvider } from '@midnightntwrk/midnight-js-level-private-state-provider';
 
 const provider = levelPrivateStateProvider({
   privateStoragePasswordProvider: () => 'secure-password',
@@ -221,8 +221,8 @@ await provider.importPrivateStates(exported, { conflictStrategy: 'skip' });
 ### Proof Generation
 
 ```typescript
-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
+import { unwrapV9 } from '@midnightntwrk/midnight-js-types';
 
 const proofProvider = httpClientProofProvider(
   'http://localhost:6300',
@@ -257,7 +257,7 @@ if (proven.version === 'v8') {
 Three things to know before wiring a retained-era flow:
 
 - `createProofProvider`, `createWalletProvider` and `createMidnightProvider` in
-  `@midnight-ntwrk/midnight-js-types` all refuse the retained arm with `V8PayloadUnsupportedError`.
+  `@midnightntwrk/midnight-js-types` all refuse the retained arm with `V8PayloadUnsupportedError`.
   That is permanent and by design: each lifts a v9-only implementation into the version-tagged
   interface, so refusing is the adapter reporting what it wraps. Each declares `supportedEras:
   ['v9']` to say so up front.
@@ -295,19 +295,19 @@ Three things to know before wiring a retained-era flow:
   Implementing a version-tagged interface directly still works — write `supportedEras` yourself.
 
 A payload sent on the `v8` arm that is not a serialized transaction is refused with
-`PayloadNotATransactionError` (from `@midnight-ntwrk/midnight-js-protocol/errors`, code
+`PayloadNotATransactionError` (from `@midnightntwrk/midnight-js-protocol/errors`, code
 `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`) before any proving is attempted.
 
 The seam itself is `proveV8Transaction`, published from the leaf subpath
-`@midnight-ntwrk/midnight-js-protocol/prove` for anyone implementing a `ProofProvider` that serves
+`@midnightntwrk/midnight-js-protocol/prove` for anyone implementing a `ProofProvider` that serves
 the retained arm. Importing it does not load the v8 WASM: the runtime stays behind the dynamic
 import inside `loadLedger8`.
 
 ### DApp Connector Proof Generation
 
 ```typescript
-import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { dappConnectorProofProvider } from '@midnightntwrk/midnight-js-dapp-connector-proof-provider';
+import { unwrapV9 } from '@midnightntwrk/midnight-js-types';
 
 // High-level: transaction proving via DApp Connector wallet
 const proofProvider = await dappConnectorProofProvider(
@@ -323,7 +323,7 @@ const provenTx = unwrapV9(
 ```
 
 ```typescript
-import { dappConnectorProvingProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+import { dappConnectorProvingProvider } from '@midnightntwrk/midnight-js-dapp-connector-proof-provider';
 
 // Low-level: circuit proving via DApp Connector wallet
 const provingProvider = await dappConnectorProvingProvider(
@@ -336,26 +336,26 @@ const provingProvider = await dappConnectorProvingProvider(
 
 ```typescript
 // Single import for all core modules
-import { contracts, networkId, protocol, types, utils } from '@midnight-ntwrk/midnight-js';
+import { contracts, networkId, protocol, types, utils } from '@midnightntwrk/midnight-js';
 
 networkId.setNetworkId('testnet');
 const deployed = await contracts.deployContract(providers, options);
 
 // Or use sub-path imports for tree-shaking
-import { deployContract } from '@midnight-ntwrk/midnight-js/contracts';
-import { setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
+import { deployContract } from '@midnightntwrk/midnight-js/contracts';
+import { setNetworkId } from '@midnightntwrk/midnight-js/network-id';
 ```
 
 ### Annotating the Contract APIs
 
 The contract APIs are generic over a compiled contract, and several of their
 options carry a `compiledContract` field. The types needed to write those
-annotations ship from `@midnight-ntwrk/midnight-js/protocol`, so naming them
+annotations ship from `@midnightntwrk/midnight-js/protocol`, so naming them
 does not require installing a second package:
 
 ```typescript
-import type { CompiledContract, Contract } from '@midnight-ntwrk/midnight-js/protocol';
-import type { CallOptions, FoundContract } from '@midnight-ntwrk/midnight-js/contracts';
+import type { CompiledContract, Contract } from '@midnightntwrk/midnight-js/protocol';
+import type { CallOptions, FoundContract } from '@midnightntwrk/midnight-js/contracts';
 
 type MyCompiled = CompiledContract.CompiledContract<Contract.Any, unknown>;
 type MyHandle = FoundContract<Contract.Any>;
@@ -376,7 +376,7 @@ in type position -- there is no `protocol.Contract` value to read at runtime.
 
 The barrel also publishes the ledger era vocabulary as named exports, so a
 consumer can say which era produced a payload or a record without depending on
-`@midnight-ntwrk/midnight-js-protocol` directly. `versionOfRecord` resolves the
+`@midnightntwrk/midnight-js-protocol` directly. `versionOfRecord` resolves the
 era of an existing record; `networkHeadVersion` resolves the era a transaction
 built now would land in.
 
@@ -386,7 +386,7 @@ import {
   type LedgerVersion, // 'v8' | 'v9'
   networkHeadVersion,
   versionOfRecord
-} from '@midnight-ntwrk/midnight-js';
+} from '@midnightntwrk/midnight-js';
 
 // Any record carrying a raw protocolVersion, e.g. a transaction or block
 // already read from the indexer.
@@ -408,7 +408,7 @@ import {
   UnknownProtocolVersionError,
   versionOfRecord,
   type VersionResolutionPath
-} from '@midnight-ntwrk/midnight-js';
+} from '@midnightntwrk/midnight-js';
 
 // Node major 9 is one this build has no era for, so this takes the failure path.
 try {
@@ -449,8 +449,8 @@ ledger and onchain-runtime, because `contracts` needs them.
 ### Network Setup
 
 ```typescript
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { setNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import { indexerPublicDataProvider } from '@midnightntwrk/midnight-js-indexer-public-data-provider';
 
 setNetworkId('testnet');
 
@@ -463,11 +463,11 @@ const publicDataProvider = indexerPublicDataProvider(
 ## Provider Setup Example
 
 ```typescript
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
+import { setNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import { levelPrivateStateProvider } from '@midnightntwrk/midnight-js-level-private-state-provider';
+import { indexerPublicDataProvider } from '@midnightntwrk/midnight-js-indexer-public-data-provider';
+import { httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
+import { FetchZkConfigProvider } from '@midnightntwrk/midnight-js-fetch-zk-config-provider';
 
 setNetworkId('testnet');
 
@@ -497,7 +497,7 @@ If you implement these interfaces yourself, narrow the incoming payload with
 ## Testing
 
 ```typescript
-import { getTestEnvironment, initializeMidnightProviders } from '@midnight-ntwrk/testkit-js';
+import { getTestEnvironment, initializeMidnightProviders } from '@midnightntwrk/testkit-js';
 
 const testEnv = getTestEnvironment(logger);
 const config = await testEnv.start();

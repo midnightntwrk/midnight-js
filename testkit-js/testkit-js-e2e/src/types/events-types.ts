@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { DeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+import type { DeployedContract } from '@midnightntwrk/midnight-js-contracts';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/compact-js';
+import type { MidnightProviders } from '@midnightntwrk/midnight-js-types';
 
 import type { CompiledEvents } from '../contract';
 

@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { PublicDataProvider, UnshieldedBalances } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/ledger';
+import type { PublicDataProvider, UnshieldedBalances } from '@midnightntwrk/midnight-js-types';
+import { assertDefined, assertIsContractAddress } from '@midnightntwrk/midnight-js-utils';
 
 /**
  * Fetches the unshielded balances associated with a specific contract address.

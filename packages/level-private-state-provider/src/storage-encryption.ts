@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { validatePassword } from '@midnight-ntwrk/midnight-js-utils';
+import { validatePassword } from '@midnightntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
 import { type CryptoBackend, type CryptoBackendType, resolveCryptoBackend } from './crypto-backend';

@@ -50,7 +50,7 @@ bytes is reporting a real disagreement, not a bug in the reader.
 ## Where `version` comes from, and who is obliged to get it right
 
 `version` is derived from `protocolVersion`, resolved the same way the `read`-path
-resolver in `@midnight-ntwrk/midnight-js-protocol` resolves it. On every value of
+resolver in `@midnightntwrk/midnight-js-protocol` resolves it. On every value of
 these types the two fields therefore agree.
 
 The derivation is never asserted in this package, because `types` stays
@@ -72,7 +72,7 @@ path, and it is not rare.
 
 So a `VersionedFinalizedTxData` must be narrowed on `version` before `tx` is
 touched. Close the `switch` with `assertNever` from
-`@midnight-ntwrk/midnight-js-utils`, so a further era becomes a compile error
+`@midnightntwrk/midnight-js-utils`, so a further era becomes a compile error
 rather than a fall-through.
 
 ## Ledger parameters travel with the state

@@ -133,14 +133,13 @@ all of them.
 `PUBLISHED_SCOPES` in `packages/protocol/src/errors.ts` holds the npm scopes
 this package and its retained pre-fork runtimes are published under, while the
 scope migration runs. The scope is held apart from the `/` on purpose, and
-joined only at `axisPackageNames`. The dual-publish
-(`.github/scripts/publish-public-npm.mjs`) rewrites the old scope to the new one
-inside built `.js`/`.d.ts` files as well as in `package.json`, matching on the
-scope *with* its trailing slash. A scoped package name written as one literal
-would therefore ship rewritten, collapsing the two names into one and turning a
-hint that names both scopes into one that names a single scope twice. Splitting
-the scope from the slash leaves the rewrite nothing to match; `errors.test.ts`
-holds that line.
+joined only at `axisPackageNames`. The alias publish
+(`.github/scripts/publish-packages.mjs`) rewrites this repo's own package names
+from `@midnightntwrk/` to `@midnight-ntwrk/` in `package.json` and built files.
+The axis packages are not ours, so that rewrite does not reach them today; the
+split still guards against any pack-time scope rewrite collapsing the two names
+into one, which would turn a hint that names both scopes into one that names a
+single scope twice. `errors.test.ts` holds that line for both scopes.
 
 `AXIS_BARE_PACKAGE_NAMES` carries the unscoped npm name of each axis. Both
 published copies of an axis carry this same name under a different scope, so

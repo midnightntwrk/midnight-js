@@ -17,12 +17,12 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
-import type { ProtocolV8 } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type LedgerVersion, protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { type ReadSeam, SucceedEntirely, type VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
-import { DeserializationError, hasErrorCode, PROVIDER_ERROR_CODES, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import type * as protocol from '@midnightntwrk/midnight-js-protocol';
+import type { ProtocolV8 } from '@midnightntwrk/midnight-js-protocol';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/ledger';
+import { type LedgerVersion, protocolVersionToLedger } from '@midnightntwrk/midnight-js-protocol/version';
+import { type ReadSeam, SucceedEntirely, type VersionedFinalizedTxData } from '@midnightntwrk/midnight-js-types';
+import { DeserializationError, hasErrorCode, PROVIDER_ERROR_CODES, toHex } from '@midnightntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -50,7 +50,7 @@ import {
 // records is what "loaded once" means here.
 const { loadLedger8Spy } = vi.hoisted(() => ({ loadLedger8Spy: vi.fn<() => Promise<ProtocolV8>>() }));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const original = await importOriginal<typeof protocol>();
   loadLedger8Spy.mockImplementation(original.loadLedger8);
   return { ...original, loadLedger8: loadLedger8Spy };
@@ -361,8 +361,8 @@ describe('the module graph keeps both retained-era chunks off the eager path', (
   it('never links a retained-era package or subpath at runtime, by import or by re-export', () => {
     const FORBIDDEN = [
       '@midnightntwrk/ledger-v8',
-      '@midnight-ntwrk/midnight-js-protocol/v8',
-      '@midnight-ntwrk/midnight-js-protocol/engine'
+      '@midnightntwrk/midnight-js-protocol/v8',
+      '@midnightntwrk/midnight-js-protocol/engine'
     ];
 
     const linked = runtimeSpecifiers();
@@ -374,7 +374,7 @@ describe('the module graph keeps both retained-era chunks off the eager path', (
 
     // The scan is worth nothing unless it really sees this package's imports:
     // the multi-line barrel import in `codec.ts` is the one it must find.
-    expect(linked.map(({ specifier }) => specifier)).toContain('@midnight-ntwrk/midnight-js-protocol');
+    expect(linked.map(({ specifier }) => specifier)).toContain('@midnightntwrk/midnight-js-protocol');
     expect(offenders).toEqual([]);
   });
 });

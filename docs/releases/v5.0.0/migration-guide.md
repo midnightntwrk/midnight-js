@@ -40,7 +40,7 @@ CommonJS setting that compiles. See
 ## Step 1 — Bump the framework
 
 ```bash
-yarn upgrade @midnight-ntwrk/midnight-js@5.0.0
+yarn upgrade @midnightntwrk/midnight-js@5.0.0
 yarn install
 ```
 
@@ -48,12 +48,12 @@ If you depend on individual sub-packages directly:
 
 ```bash
 yarn upgrade \
-  @midnight-ntwrk/midnight-js-contracts@5.0.0 \
-  @midnight-ntwrk/midnight-js-level-private-state-provider@5.0.0 \
-  @midnight-ntwrk/midnight-js-indexer-public-data-provider@5.0.0 \
-  @midnight-ntwrk/midnight-js-http-client-proof-provider@5.0.0 \
-  @midnight-ntwrk/midnight-js-utils@5.0.0 \
-  @midnight-ntwrk/midnight-js-protocol@5.0.0
+  @midnightntwrk/midnight-js-contracts@5.0.0 \
+  @midnightntwrk/midnight-js-level-private-state-provider@5.0.0 \
+  @midnightntwrk/midnight-js-indexer-public-data-provider@5.0.0 \
+  @midnightntwrk/midnight-js-http-client-proof-provider@5.0.0 \
+  @midnightntwrk/midnight-js-utils@5.0.0 \
+  @midnightntwrk/midnight-js-protocol@5.0.0
 ```
 
 ---
@@ -82,7 +82,7 @@ Register the new scope if you import the protocol packages anywhere (the framewo
 # .yarnrc.yml — @midnightntwrk resolves from the default public npm registry
 ```
 
-> Import ledger / onchain-runtime types **only** through `@midnight-ntwrk/midnight-js-protocol/ledger` and `/onchain-runtime`. Direct imports of the old-scope packages resolve to incompatible shapes.
+> Import ledger / onchain-runtime types **only** through `@midnightntwrk/midnight-js-protocol/ledger` and `/onchain-runtime`. Direct imports of the old-scope packages resolve to incompatible shapes.
 
 ---
 
@@ -112,7 +112,7 @@ The key round-trips through the config layer, so the returned value is structura
 ### Validating a signing key programmatically
 
 ```ts
-import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
+import { isValidSigningKey } from '@midnightntwrk/midnight-js-utils';
 
 const keyHex = 'ab'.repeat(32); // 64 hex characters (32 bytes)
 
@@ -147,7 +147,7 @@ The steps below apply only to export *files* made by a 4.x client.
 `ContractState`'s structural tag moved `[v6]` → `[v8]`. State serialized under ledger-v8 is rejected by the version canary at deserialize time — there is no in-place migration. Re-derive contract state under the new protocol. The new classified errors make this explicit:
 
 ```ts
-import { isDeserializationError } from '@midnight-ntwrk/midnight-js-utils';
+import { isDeserializationError } from '@midnightntwrk/midnight-js-utils';
 
 try {
   // deserialize old state
@@ -218,7 +218,7 @@ If you make calls that span multiple deployed contracts, resolve proving artifac
 Local call results now surface their MIP-0002 log events on `CallResultPublic.events` (previously dropped). No change is required — the field is additive. To consume them, decode with the `ContractLog` helper re-exported through the barrel (no direct `compact-js` dependency needed):
 
 ```ts
-import { contracts } from '@midnight-ntwrk/midnight-js';
+import { contracts } from '@midnightntwrk/midnight-js';
 
 const logs = contracts.ContractLog.decodeAll(result.public.events); // lenient — never throws
 ```
@@ -259,7 +259,7 @@ coded error rather than letting a bare `TypeError` surface from inside a WASM
 call:
 
 ```typescript
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { unwrapV9 } from '@midnightntwrk/midnight-js-types';
 
 const provenTx = unwrapV9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
 ```
@@ -269,7 +269,7 @@ The read surface is a *different* union — its v8 arm carries `tx`, not
 receive, so handle both:
 
 ```ts
-import { types, utils } from '@midnight-ntwrk/midnight-js';
+import { types, utils } from '@midnightntwrk/midnight-js';
 
 declare const describeNative: (tx: types.FinalizedTxData['tx']) => string;
 declare const describeRetained: (tx: types.FinalizedTxDataV8['tx']) => string;

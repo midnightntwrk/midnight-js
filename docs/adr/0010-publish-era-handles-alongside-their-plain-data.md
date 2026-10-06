@@ -6,7 +6,7 @@
 
 ## Context
 
-`@midnight-ntwrk/midnight-js-protocol` co-installs two ledger WASM toolchains —
+`@midnightntwrk/midnight-js-protocol` co-installs two ledger WASM toolchains —
 `@midnightntwrk/ledger-v9` for the current era and `@midnightntwrk/ledger-v8`
 for the retained pre-fork one — alongside the retained pre-fork execution
 toolchain (`compact-runtime@0.16` and `@midnight-ntwrk/onchain-runtime-v3`).

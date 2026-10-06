@@ -5,14 +5,14 @@ HTTP client for interacting with Midnight proof servers to generate zero-knowled
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-http-client-proof-provider
+yarn add @midnightntwrk/midnight-js-http-client-proof-provider
 ```
 
 ## Quick Start
 
 ```typescript
-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
+import { unwrapV9 } from '@midnightntwrk/midnight-js-types';
 
 const proofProvider = httpClientProofProvider(
   'http://localhost:6300',
@@ -55,8 +55,8 @@ Proof Server (/check, /prove endpoints)
 Use `httpClientProofProvider` for most use cases. It handles complete transactions by orchestrating individual circuit proofs internally.
 
 ```typescript
-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
+import { unwrapV9 } from '@midnightntwrk/midnight-js-types';
 
 const proofProvider = httpClientProofProvider(
   'http://localhost:6300',
@@ -74,7 +74,7 @@ const provenTx = unwrapV9(
 Use `httpClientProvingProvider` for advanced scenarios requiring fine-grained control over individual circuit proving operations.
 
 ```typescript
-import { httpClientProvingProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { httpClientProvingProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
 
 const provingProvider = httpClientProvingProvider(
   'http://localhost:6300',
@@ -212,7 +212,7 @@ import {
   httpClientProvingProvider,
   DEFAULT_TIMEOUT,
   type ProvingProviderConfig
-} from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+} from '@midnightntwrk/midnight-js-http-client-proof-provider';
 ```
 
 ## Detailed

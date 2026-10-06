@@ -45,9 +45,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
-import type { RawContractState } from '@midnight-ntwrk/midnight-js-types';
+import type * as Protocol from '@midnightntwrk/midnight-js-protocol';
+import type { LedgerVersion } from '@midnightntwrk/midnight-js-protocol';
+import type { RawContractState } from '@midnightntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import {
@@ -80,7 +80,7 @@ import { createMockContractAddress, createMockProviders } from './test-mocks';
 // hands the engine straight back without touching it.
 const ENGINE_STAND_IN = vi.hoisted((): Record<string, never> => ({}));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return { ...actual, loadLedger8Engine: (): Promise<unknown> => Promise.resolve(ENGINE_STAND_IN) };
 });

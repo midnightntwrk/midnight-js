@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-import { CostModel, type ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
+import { CostModel, type ProvingProvider } from '@midnightntwrk/midnight-js-protocol/ledger';
+import { proveV8Transaction } from '@midnightntwrk/midnight-js-protocol/prove';
 import {
   createProofProviderFromHandlers,
   type ProofProvider,
   type ProveTxConfig,
   type ZKConfigProvider,
   type ZKConfigRegistry
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 
 import { DEFAULT_TIMEOUT, httpClientProvingProvider, type ProvingProviderConfig } from './http-client-proving-provider';
 

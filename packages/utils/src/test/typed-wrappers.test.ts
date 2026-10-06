@@ -26,7 +26,7 @@ import {
 } from '../deserialization/typed-wrappers';
 
 const garbage = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
-const caller = '@midnight-ntwrk/midnight-js-test:typed-wrapper-fixture';
+const caller = '@midnightntwrk/midnight-js-test:typed-wrapper-fixture';
 
 const expectThrowsDeserializationError = (
   fn: () => unknown,

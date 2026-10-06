@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { PRIVATE_STATE_ROOT_PATH, PrivateStateSerializationError } from '@midnight-ntwrk/midnight-js-types';
+import { PRIVATE_STATE_ROOT_PATH, PrivateStateSerializationError } from '@midnightntwrk/midnight-js-types';
 import { Buffer } from 'buffer';
 
 /**

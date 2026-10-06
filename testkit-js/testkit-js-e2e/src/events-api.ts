@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
-import { type ContractConfiguration } from '@midnight-ntwrk/testkit-js';
+import { deployContract } from '@midnightntwrk/midnight-js-contracts';
+import type { FinalizedTxData } from '@midnightntwrk/midnight-js-types';
+import { type ContractConfiguration } from '@midnightntwrk/testkit-js';
 import path from 'path';
 import type { Logger } from 'pino';
 import { WebSocket } from 'ws';

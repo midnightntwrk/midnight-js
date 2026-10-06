@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
+import type { ContractAddress, SigningKey } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import { isValidSigningKey } from '@midnightntwrk/midnight-js-utils';
 
 const LEGACY_SIGNING_KEY = /^[0-9a-fA-F]{64}$/;
 

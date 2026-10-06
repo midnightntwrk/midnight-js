@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { unshieldedToken } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { unshieldedToken } from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   type ShieldedWalletAPI,
   type ShieldedWalletState,

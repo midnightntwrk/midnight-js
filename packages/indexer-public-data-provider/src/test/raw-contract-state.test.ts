@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { ledger, loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { ledger, loadLedger8 } from '@midnightntwrk/midnight-js-protocol';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   contractStateEnvelopeVersion,
   DeserializationError,
@@ -23,7 +23,7 @@ import {
   parseSerializedTag,
   toHex,
   UTILS_ERROR_CODES
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, test, vi } from 'vitest';
 
 import { IndexerDataError } from '../errors';
@@ -98,7 +98,7 @@ describe('contract-state envelope tags', () => {
   // runtime bump that changes the state format version fails here, loudly,
   // instead of turning every state read into a rejected envelope.
   //
-  // The table itself lives in `@midnight-ntwrk/midnight-js-utils`
+  // The table itself lives in `@midnightntwrk/midnight-js-utils`
   // (`contractStateEnvelopeVersion`), beside the tag parser it is built on, because the contracts
   // package's era dispatch reads it too and a second copy of a table that decides which era
   // decodes attacker-supplied bytes is a security-relevant divergence

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
-import type { ProtocolV8 } from '@midnight-ntwrk/midnight-js-protocol';
+import type * as protocol from '@midnightntwrk/midnight-js-protocol';
+import type { ProtocolV8 } from '@midnightntwrk/midnight-js-protocol';
 import { describe, expect, it, vi } from 'vitest';
 
 import { toFinalizedTxData } from '../mapping';
@@ -34,7 +34,7 @@ import {
 // statement about the module graph rather than about an arrange step.
 const { loadLedger8Spy } = vi.hoisted(() => ({ loadLedger8Spy: vi.fn<() => Promise<ProtocolV8>>() }));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const original = await importOriginal<typeof protocol>();
   loadLedger8Spy.mockImplementation(original.loadLedger8);
   return { ...original, loadLedger8: loadLedger8Spy };

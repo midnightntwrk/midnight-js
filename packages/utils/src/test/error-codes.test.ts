@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { PROTOCOL_ERROR_CODES, UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { PROTOCOL_ERROR_CODES, UnknownProtocolVersionError } from '@midnightntwrk/midnight-js-protocol/errors';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -58,7 +58,7 @@ describe('every error-code group', () => {
     const combined = new Set(MIDNIGHT_JS_ERROR_CODES);
     // The protocol group is walked too, though it is imported rather than
     // declared here. It is the one group that crosses a package boundary, via
-    // the `@midnight-ntwrk/midnight-js-protocol/errors` subpath, so it is the
+    // the `@midnightntwrk/midnight-js-protocol/errors` subpath, so it is the
     // likeliest of the four to fall out of the registry unnoticed.
     for (const code of Object.values(PROTOCOL_ERROR_CODES)) {
       expect(combined.has(code)).toBe(true);

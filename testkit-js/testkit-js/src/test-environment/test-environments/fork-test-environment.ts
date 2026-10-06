@@ -19,7 +19,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { setNetworkId } from '@midnightntwrk/midnight-js-network-id';
 import { NetworkId } from '@midnightntwrk/wallet-sdk';
 import type { Logger } from 'pino';
 import { DockerComposeEnvironment, type StartedDockerComposeEnvironment, Wait } from 'testcontainers';

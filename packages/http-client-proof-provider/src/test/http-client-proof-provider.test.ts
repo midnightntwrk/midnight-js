@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
-import { PayloadNotATransactionError, PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { loadLedger8 } from '@midnightntwrk/midnight-js-protocol';
+import { PayloadNotATransactionError, PROTOCOL_ERROR_CODES } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { ProvingProvider, UnprovenTransaction } from '@midnightntwrk/midnight-js-protocol/ledger';
 import {
   type ProverKey,
   type ProveTxConfig,
@@ -24,8 +24,8 @@ import {
   type VersionedUnprovenTransaction,
   ZKConfigProvider,
   type ZKIR
-} from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { ProvingProviderConfig } from '../http-client-proving-provider';

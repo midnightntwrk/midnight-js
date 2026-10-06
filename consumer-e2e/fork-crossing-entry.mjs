@@ -84,8 +84,8 @@ for (const [label, specifier] of [
 // 3. The framework loads alongside both of them, and reaches the retained era on
 //    demand -- the dApp holds two eras' contracts and one framework.
 try {
-  const protocol = await import('@midnight-ntwrk/midnight-js-protocol');
-  observed['framework sees runtime'] = runtimeSeenBy('@midnight-ntwrk/midnight-js-protocol');
+  const protocol = await import('@midnightntwrk/midnight-js-protocol');
+  observed['framework sees runtime'] = runtimeSeenBy('@midnightntwrk/midnight-js-protocol');
   const ledger8 = await protocol.loadLedger8();
   observed['loadLedger8'] = typeof ledger8 === 'object' && ledger8 !== null ? 'ok' : String(ledger8);
   if (observed['loadLedger8'] !== 'ok') {

@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { sampleCoinPublicKey, sampleEncryptionPublicKey, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { parseCoinPublicKeyToHex,parseEncPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import { getNetworkId, setNetworkId } from '@midnightntwrk/midnight-js-network-id';
+import { type ZswapLocalState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import { sampleCoinPublicKey, sampleEncryptionPublicKey, type UnprovenTransaction } from '@midnightntwrk/midnight-js-protocol/ledger';
+import { parseCoinPublicKeyToHex,parseEncPublicKeyToHex } from '@midnightntwrk/midnight-js-utils';
 
 import { deployContract } from '../deploy-contract';
 import { createEncryptionPublicKeyResolver, encryptionPublicKeyResolverForZswapState } from '../internal/utils';

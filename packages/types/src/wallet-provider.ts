@@ -17,8 +17,8 @@ import {
   type CoinPublicKey,
   type EncPublicKey,
   type FinalizedTransaction,
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
+import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnightntwrk/midnight-js-protocol/version';
 
 import { erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
 import { type UnboundTransaction,type VersionedUnboundTransaction } from './proof-provider';

@@ -18,11 +18,11 @@ import {
   type FinalizedDeployTxData,
   submitCallTx,
   withContractScopedTransaction
-} from '@midnight-ntwrk/midnight-js-contracts';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { EnvironmentConfiguration, MidnightWalletProvider, TestEnvironment } from '@midnight-ntwrk/testkit-js';
-import { createLogger, getTestEnvironment, initializeMidnightProviders } from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/midnight-js-contracts';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { type ContractAddress } from '@midnightntwrk/midnight-js-protocol/ledger';
+import type { EnvironmentConfiguration, MidnightWalletProvider, TestEnvironment } from '@midnightntwrk/testkit-js';
+import { createLogger, getTestEnvironment, initializeMidnightProviders } from '@midnightntwrk/testkit-js';
 import path from 'path';
 
 import { CompiledDoubleCounterContract } from '../src/contract';

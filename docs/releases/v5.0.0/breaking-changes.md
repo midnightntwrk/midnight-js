@@ -6,12 +6,12 @@ v5.0.0 is a protocol-level major release. The breaking surface concentrates in f
 
 ## 1. Protocol bindings moved to ledger-v9 / onchain-runtime-v4 (`@midnightntwrk` scope) (#970)
 
-`@midnight-ntwrk/midnight-js-protocol` re-exports new packages under a **new npm scope**:
+`@midnightntwrk/midnight-js-protocol` re-exports new packages under a **new npm scope**:
 
 | Subpath | Before | After |
 |---------|--------|-------|
-| `@midnight-ntwrk/midnight-js-protocol/ledger` | `@midnight-ntwrk/ledger-v8@8.1.0` | `@midnightntwrk/ledger-v9@1.0.0-rc.3` |
-| `@midnight-ntwrk/midnight-js-protocol/onchain-runtime` | `@midnight-ntwrk/onchain-runtime-v3@3.0.0` | `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3` |
+| `@midnightntwrk/midnight-js-protocol/ledger` | `@midnight-ntwrk/ledger-v8@8.1.0` | `@midnightntwrk/ledger-v9@1.0.0-rc.3` |
+| `@midnightntwrk/midnight-js-protocol/onchain-runtime` | `@midnight-ntwrk/onchain-runtime-v3@3.0.0` | `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3` |
 
 Coordinated companions: `@midnight-ntwrk/platform-js@3.0.0`, `@midnight-ntwrk/compact-runtime@0.18.0-rc.1`, `@midnight-ntwrk/compact-js@2.5.5-rc.7`, `compactc 0.33.0-rc.1`.
 
@@ -57,11 +57,11 @@ The Configuration layer maps the object to the `KEYS_SIGNING` / `KEYS_SIGNING_KI
 
 A v4.x export that stored a bare hex string will fail import with `InvalidExportFormatError`. Re-export signing keys from a v5.0.0 client, or transform stored exports to the structured shape before import.
 
-Signing keys already in a level private-state store (bare 64-character hex strings written by v4.x) are read in the new shape automatically; only export files made by v4.x need this step. A stored entry that is neither shape throws `StoredSigningKeyFormatError`, exported from `@midnight-ntwrk/midnight-js-level-private-state-provider`.
+Signing keys already in a level private-state store (bare 64-character hex strings written by v4.x) are read in the new shape automatically; only export files made by v4.x need this step. A stored entry that is neither shape throws `StoredSigningKeyFormatError`, exported from `@midnightntwrk/midnight-js-level-private-state-provider`.
 
 `isValidSigningKey` is now a type guard (`value is SigningKey`).
 
-The shared predicate is exported as `isValidSigningKey` from `@midnight-ntwrk/midnight-js-utils`.
+The shared predicate is exported as `isValidSigningKey` from `@midnightntwrk/midnight-js-utils`.
 
 ### 2c. DApp-connector wallet adapter (testkit)
 
@@ -152,7 +152,7 @@ JavaScript build per entry. The `main` / `module` fields are gone and each
 ```
 
 Subpath **keys** are unchanged, so no import specifier in your code has to move.
-`@midnight-ntwrk/midnight-js-protocol/ledger` and friends still resolve.
+`@midnightntwrk/midnight-js-protocol/ledger` and friends still resolve.
 
 **Impact — you need both of these:**
 
@@ -163,8 +163,8 @@ Subpath **keys** are unchanged, so no import specifier in your code has to move.
 
 A CommonJS TypeScript consumer keeps working at runtime, but only some `module`
 settings **compile**. Verified against tsc 6.0.3 with a CommonJS consumer file
-importing `@midnight-ntwrk/midnight-js/utils` and
-`@midnight-ntwrk/midnight-js-protocol/ledger`:
+importing `@midnightntwrk/midnight-js/utils` and
+`@midnightntwrk/midnight-js-protocol/ledger`:
 
 | `module` | `moduleResolution` | Result |
 |----------|--------------------|--------|
@@ -214,7 +214,7 @@ const provenTx = unwrapV9(
 );
 ```
 
-`unwrapV9` is exported from `@midnight-ntwrk/midnight-js-types`. Narrowing by
+`unwrapV9` is exported from `@midnightntwrk/midnight-js-types`. Narrowing by
 hand works too, but do not write `if (p.version !== 'v9') throw new Error(...)`:
 that produces an error with no `code`, and misreports a future era as
 "expected v9". `unwrapV9` throws `V8PayloadUnsupportedError` for a v8 payload
@@ -280,7 +280,7 @@ different runtimes, and neither runtime's object can be handed to the other.
 ### 8d. `version` is derived, not asserted
 
 `indexerPublicDataProvider` resolves `version` from each record's own
-`protocolVersion` via the resolver in `@midnight-ntwrk/midnight-js-protocol`,
+`protocolVersion` via the resolver in `@midnightntwrk/midnight-js-protocol`,
 and that same answer decides which ledger runtime decodes the record — so the
 discriminant, the decoder that ran and the `protocolVersion` beside it are one
 fact and cannot disagree.
@@ -324,7 +324,7 @@ the *parameter* mismatch first, so the error you see names the ledger methods
 Rather than tagging by hand, wrap a v9-only implementation:
 
 ```typescript
-import { createMidnightProvider, createWalletProvider } from '@midnight-ntwrk/midnight-js-types';
+import { createMidnightProvider, createWalletProvider } from '@midnightntwrk/midnight-js-types';
 
 const walletProvider = createWalletProvider({
   balanceTx: (tx, ttl) => wallet.balanceAndProveTransaction(tx, ttl),
@@ -371,7 +371,7 @@ const midnightProvider: MidnightProvider = {
 the factory compute the declaration:
 
 ```typescript
-import { createProofProviderFromHandlers } from '@midnight-ntwrk/midnight-js-types';
+import { createProofProviderFromHandlers } from '@midnightntwrk/midnight-js-types';
 
 const proofProvider = createProofProviderFromHandlers({
   currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
@@ -393,7 +393,7 @@ See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-arms.md).
 
 ### 8g. New and changed exports
 
-**`@midnight-ntwrk/midnight-js-types`** — added: `FinalizedTxRecord`,
+**`@midnightntwrk/midnight-js-types`** — added: `FinalizedTxRecord`,
 `FinalizedTxDataV8`, `VersionedFinalizedTxData`, `V8TxBytes`, `V9Tx`,
 `VersionedTx`, `VersionedUnprovenTransaction`, `VersionedUnboundTransaction`,
 `VersionedFinalizedTransaction`, `ProviderSeam`, `ReadSeam`, `Seam`,
@@ -409,16 +409,16 @@ See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-arms.md).
 `ProofProvider`, `WalletProvider` and `MidnightProvider` each gained a required
 `supportedEras`.
 
-**`@midnight-ntwrk/midnight-js-protocol`** — added: `CURRENT_LEDGER_VERSION`,
+**`@midnightntwrk/midnight-js-protocol`** — added: `CURRENT_LEDGER_VERSION`,
 `CurrentLedgerVersion`, `RETAINED_LEDGER_VERSIONS`, `RetainedLedgerVersion`, on
 the barrel and on the `./version` subpath.
 
-**`@midnight-ntwrk/midnight-js-types`** — added: `PROVIDER_ERROR_CODES` and
+**`@midnightntwrk/midnight-js-types`** — added: `PROVIDER_ERROR_CODES` and
 `ProviderErrorCode`, on the barrel and on a new `./errors` leaf subpath. That
 subpath imports nothing, so reading a code string does not pull `effect` or the
 protocol ledger namespace the way the root barrel does.
 
-**`@midnight-ntwrk/midnight-js-utils`** — added: `hasErrorCode`,
+**`@midnightntwrk/midnight-js-utils`** — added: `hasErrorCode`,
 `hasForeignErrorCode`, `MIDNIGHT_JS_ERROR_CODES`, `MidnightJsErrorCode`,
 `CONTRACTS_ERROR_CODES`, `ContractsErrorCode`, `PROVIDER_ERROR_CODES`,
 `ProviderErrorCode`. `PROVIDER_ERROR_CODES` and `ProviderErrorCode` are declared
@@ -432,11 +432,11 @@ own codes at compile time and throws on anything carrying the `MIDNIGHT_JS_`
 prefix — a misspelling of one of ours lands there, and answering `false` would
 put the silent guard back.
 
-**`@midnight-ntwrk/midnight-js-contracts`** — added:
+**`@midnightntwrk/midnight-js-contracts`** — added:
 `EraInvariantViolationError` (code `MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION`,
 carries `seam` and optional `circuitId`), `EraSeam`.
 
-**`@midnight-ntwrk/midnight-js-indexer-public-data-provider`** — added:
+**`@midnightntwrk/midnight-js-indexer-public-data-provider`** — added:
 `EraUnresolvableError` (`MIDNIGHT_JS_PR_ERA_UNRESOLVABLE`) and
 `EraUnsupportedError` (`MIDNIGHT_JS_PR_ERA_UNSUPPORTED`), both `IndexerError`
 subclasses. `EraUnsupportedError` is a guard rather than an era policy: the
@@ -459,7 +459,7 @@ produced under, which dates it to a ledger era. Any code that *constructs* a
 must set it. Code that only reads a `BlockInfo` is unaffected.
 
 Resolve it with `versionOfRecord(block)` from
-`@midnight-ntwrk/midnight-js-protocol`. Implementations must report the era of
+`@midnightntwrk/midnight-js-protocol`. Implementations must report the era of
 *that* block, never the network head's, so a block read from before a hard fork
 keeps reporting the era it was produced in.
 

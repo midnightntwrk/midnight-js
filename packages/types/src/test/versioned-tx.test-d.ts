@@ -25,7 +25,7 @@ import type {
   Transaction,
   TransactionId,
   UnprovenTransaction
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { MidnightProvider } from '../midnight-provider';

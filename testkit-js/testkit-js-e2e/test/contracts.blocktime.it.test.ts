@@ -17,19 +17,19 @@ import {
   createUnprovenCallTx,
   type FinalizedDeployTxData,
   submitTx
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { FailEntirely, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-contracts';
+import { type ContractAddress } from '@midnightntwrk/midnight-js-protocol/ledger';
+import { FailEntirely, SucceedEntirely } from '@midnightntwrk/midnight-js-types';
 import type {
   EnvironmentConfiguration,
   MidnightWalletProvider,
   TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import {
   createLogger,
   getTestEnvironment,
   initializeMidnightProviders
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import path from 'path';
 
 import * as api from '../src/block-time-api';

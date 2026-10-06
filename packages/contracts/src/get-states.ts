@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { type ContractStatePojo, type LedgerVersion, loadLedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { PrivateStateId,PrivateStateProvider, PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
+import { type ContractStatePojo, type LedgerVersion, loadLedgerEra } from '@midnightntwrk/midnight-js-protocol';
+import type { ContractState } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractAddress, LedgerParameters, ZswapChainState } from '@midnightntwrk/midnight-js-protocol/ledger';
+import type { PrivateStateId,PrivateStateProvider, PublicDataProvider } from '@midnightntwrk/midnight-js-types';
+import { assertDefined, assertIsContractAddress, contractStateEnvelopeVersion } from '@midnightntwrk/midnight-js-utils';
 
 /**
  * Object containing the publicly visible states of a contract.
@@ -120,7 +120,7 @@ export interface AnyEraContractState extends ContractStatePojo {
    * a contract not written to since the fork keeps an OLDER envelope under a newer block, and an
    * unpinned read resolves the state and the block as independent Query-root siblings that can
    * land either side of the boundary. See `EnvelopeUpperBound` in
-   * `@midnight-ntwrk/midnight-js-indexer-public-data-provider`.
+   * `@midnightntwrk/midnight-js-indexer-public-data-provider`.
    */
   readonly envelopeVersion: LedgerVersion;
   /**

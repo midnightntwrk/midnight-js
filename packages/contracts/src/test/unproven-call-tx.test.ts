@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { setNetworkId } from '@midnightntwrk/midnight-js-network-id';
 import {
   type CircuitContext,
   type ContractModuleProvider,
   type ContractState,
   type ContractStateProvider,
   StateValue
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnightntwrk/midnight-js-protocol/compact-runtime';
+import { LedgerParameters, type ZswapChainState } from '@midnightntwrk/midnight-js-protocol/ledger';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { makeCalleeStateResolver } from '../internal/utils';

@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/testkit-js",
+  "name": "@midnightntwrk/testkit-js",
   "version": "5.0.0-rc.3",
   "type": "module",
   "description": "Testing kit for Midnight JS packages",
@@ -16,7 +16,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git",
+    "directory": "testkit-js/testkit-js"
   },
   "packageManager": "yarn@4.14.1",
   "author": "IOHK",
@@ -27,22 +28,21 @@
     "build:markdown-docs": "typedoc --validation --plugin typedoc-plugin-markdown --options typedoc.json",
     "test": "yarn ut",
     "ut": "DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.package.ut.config.ts run",
-    "it": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.package.it.config.ts run",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "it": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.package.it.config.ts run"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-compact": "workspace:*",
-    "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
-    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-level-private-state-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
-    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "@midnight-ntwrk/zkir-v2": "2.1.0",
     "@midnightntwrk/dapp-connector-api": "4.1.0-beta.1",
+    "@midnightntwrk/midnight-js-compact": "workspace:*",
+    "@midnightntwrk/midnight-js-contracts": "workspace:*",
+    "@midnightntwrk/midnight-js-http-client-proof-provider": "workspace:*",
+    "@midnightntwrk/midnight-js-indexer-public-data-provider": "workspace:*",
+    "@midnightntwrk/midnight-js-level-private-state-provider": "workspace:*",
+    "@midnightntwrk/midnight-js-network-id": "workspace:*",
+    "@midnightntwrk/midnight-js-node-zk-config-provider": "workspace:*",
+    "@midnightntwrk/midnight-js-protocol": "workspace:*",
+    "@midnightntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/midnight-js-utils": "workspace:*",
     "@midnightntwrk/wallet-sdk": "2.0.0-rc.0",
     "@midnightntwrk/wallet-sdk-prover-client": "2.0.0-rc.0",
     "@scure/bip39": "^2.3.0",

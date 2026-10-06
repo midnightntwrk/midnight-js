@@ -22,7 +22,7 @@ import { withDeserializationContext } from '../deserialization/with-deserializat
 const callSite: DeserializationCallSite = {
   dataType: 'ContractState',
   source: 'ledger',
-  caller: '@midnight-ntwrk/midnight-js-test:fixture'
+  caller: '@midnightntwrk/midnight-js-test:fixture'
 };
 
 describe('withDeserializationContext', () => {
@@ -70,7 +70,7 @@ describe('withDeserializationContext', () => {
         if (isDeserializationError(e)) {
           expect(e.context.source).toBe('ledger');
           expect(e.context.classification).toBe('version-mismatch');
-          expect(e.context.caller).toBe('@midnight-ntwrk/midnight-js-test:fixture');
+          expect(e.context.caller).toBe('@midnightntwrk/midnight-js-test:fixture');
         }
       }
     });

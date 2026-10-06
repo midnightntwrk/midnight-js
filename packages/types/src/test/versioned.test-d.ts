@@ -20,8 +20,8 @@ import type {
   Transaction,
   TransactionHash,
   TransactionId
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { FinalizedTransaction as V8Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
+} from '@midnightntwrk/midnight-js-protocol/ledger';
+import type { FinalizedTransaction as V8Transaction } from '@midnightntwrk/midnight-js-protocol/v8';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { BlockHash, Fees, FinalizedTxData, SegmentStatus, TxStatus, UnshieldedUtxos } from '../midnight-types';

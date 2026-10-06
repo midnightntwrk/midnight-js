@@ -78,7 +78,7 @@ const sourceEntryNames = (): string[] =>
 
 describe('protocol export surface', () => {
   /**
-   * @given the `exports` map of `@midnight-ntwrk/midnight-js-protocol`
+   * @given the `exports` map of `@midnightntwrk/midnight-js-protocol`
    * @when every condition of a subpath is reduced to its entry name
    * @then all conditions of that subpath name the same entry
    */
