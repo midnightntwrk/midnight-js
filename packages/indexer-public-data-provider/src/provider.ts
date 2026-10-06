@@ -55,7 +55,6 @@ import type { InputMaybe, RegularTransaction } from './gen/schema-types';
 import {
   type ExcludeEmptyAndNull,
   extractRegularDeployTransaction,
-  extractUnshieldedBalances,
   isRegularTransaction,
   toFinalizedDeployTxData,
   toFinalizedTxData
@@ -353,7 +352,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       .then((queryResult) => {
         const contractAction = queryResult.data?.contractAction;
         if (!contractAction) return null;
-        return extractUnshieldedBalances(contractAction, 'queryUnshieldedBalances');
+        return contractAction.unshieldedBalances;
       })
       .then((maybeUnshieldedBalances) =>
         maybeUnshieldedBalances ? toUnshieldedBalances(maybeUnshieldedBalances) : null

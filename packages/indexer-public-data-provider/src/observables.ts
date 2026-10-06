@@ -31,7 +31,7 @@ import {
 import { toContractEvent } from './events-mapping';
 import type { BlockOffset, ContractEventsSubSubscriptionVariables } from './gen/graphql';
 import type { InputMaybe, RegularTransaction } from './gen/schema-types';
-import { extractUnshieldedBalances, hasContract, hasContractAction } from './mapping';
+import { hasContract, hasContractAction } from './mapping';
 import {
   BLOCK_QUERY,
   CONTRACT_EVENTS_SUB,
@@ -425,7 +425,7 @@ export const waitForUnshieldedBalancesToAppear =
       UNSHIELDED_BALANCE_QUERY,
       { address: contractAddress },
       hasContractAction,
-      (data) => extractUnshieldedBalances(data.contractAction, 'waitForUnshieldedBalancesToAppear'),
+      (data) => data.contractAction.unshieldedBalances,
       pollInterval
     );
 
@@ -458,7 +458,7 @@ export const blockOffsetToUnshieldedBalances$ =
             throw new IndexerSubscriptionDataError('contractActions');
           }
           return {
-            value: toUnshieldedBalances(extractUnshieldedBalances(contractAction, 'blockOffsetToUnshieldedBalances$')),
+            value: toUnshieldedBalances(contractAction.unshieldedBalances),
             blockHeight: contractAction.transaction.block.height,
             blockHash: contractAction.transaction.block.hash
           };

@@ -350,25 +350,9 @@ export const UNSHIELDED_BALANCE_QUERY = gql(
   `
   query UNSHIELDED_BALANCE_QUERY($address: HexEncoded!) {
     contractAction(address: $address) {
-      ... on ContractDeploy {
-        unshieldedBalances {
-          tokenType
-          amount
-        }
-      }
-      ... on ContractUpdate {
-        unshieldedBalances {
-          tokenType
-          amount
-        }
-      }
-      ... on ContractCall {
-        deploy {
-          unshieldedBalances {
-            tokenType
-            amount
-          }
-        }
+      unshieldedBalances {
+        tokenType
+        amount
       }
     }
   }`
@@ -378,25 +362,9 @@ export const QUERY_UNSHIELDED_BALANCES_WITH_OFFSET = gql(
   `
   query QUERY_UNSHIELDED_BALANCES_WITH_OFFSET($address: HexEncoded!, $offset: ContractActionOffset) {
     contractAction(address: $address, offset: $offset) {
-      ... on ContractDeploy {
-        unshieldedBalances {
-          tokenType
-          amount
-        }
-      }
-      ... on ContractUpdate {
-        unshieldedBalances {
-          tokenType
-          amount
-        }
-      }
-      ... on ContractCall {
-        deploy {
-          unshieldedBalances {
-            tokenType
-            amount
-          }
-        }
+      unshieldedBalances {
+        tokenType
+        amount
       }
     }
   }`
@@ -412,25 +380,9 @@ export const UNSHIELDED_BALANCE_SUB = gql(
           hash
         }
       }
-      ... on ContractDeploy {
-        unshieldedBalances {
-          tokenType
-          amount
-        }
-      }
-      ... on ContractUpdate {
-        unshieldedBalances {
-          tokenType
-          amount
-        }
-      }
-      ... on ContractCall {
-        deploy {
-          unshieldedBalances {
-            tokenType
-            amount
-          }
-        }
+      unshieldedBalances {
+        tokenType
+        amount
       }
     }
   }`
