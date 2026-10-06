@@ -30,7 +30,7 @@ import {
   TX_ID_QUERY,
   TXS_FROM_BLOCK_SUB
 } from '../query-definitions';
-import { type ApolloRequest, stubApolloHandle } from './apollo-stub';
+import { type ApolloRequest, resumableSubscribe, stubApolloHandle, subscribedOffsets } from './apollo-stub';
 import {
   mintV8ContractStateHex,
   mintV9ContractStateHex,
@@ -556,6 +556,72 @@ describe('rawContractStateObservable — every record carries the block that ser
     const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID }));
 
     expect(positionsOf(seen)).toEqual([{ blockHeight: 10, blockHash: '0x10' }]);
+  });
+});
+
+describe('rawContractStateObservable — resume from an emitted position', () => {
+  const STUBBED_FAILURE = new Error('stubbed transport failure');
+
+  const collectUntilError = async (
+    source: Rx.Observable<PositionedRecord<RawContractState>>
+  ): Promise<PositionedRecord<RawContractState>[]> => {
+    const seen: PositionedRecord<RawContractState>[] = [];
+    const failure = await rejectionOf(Rx.lastValueFrom(source.pipe(Rx.tap((record) => seen.push(record)))));
+    expect(failure).toBe(STUBBED_FAILURE);
+    return seen;
+  };
+
+  const trace = (records: readonly PositionedRecord<RawContractState>[]) =>
+    records.map((record) => `${record.blockHeight}:${contractStateEnvelopeVersion(record.value.raw)}`);
+
+  const arrange = async () => {
+    const v8 = await mintV8ContractStateHex();
+    const v9 = mintV9ContractStateHex();
+    const subscribe = resumableSubscribe(
+      [
+        { height: 10, frame: blockFrame(10, V9_ERA_PROTOCOL_VERSION, [[action(ADDRESS, v8)], [action(ADDRESS, v9)]]) },
+        { height: 11, frame: blockFrame(11, V9_ERA_PROTOCOL_VERSION, [[action(ADDRESS, v8)]]) }
+      ],
+      1,
+      STUBBED_FAILURE
+    );
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(
+        new Map<DocumentNode, unknown>([
+          [LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY, { contractAction: { transaction: { block: { height: 10 } } } }],
+          [BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }]
+        ])
+      ),
+      subscribe
+    });
+    const first = await collectUntilError(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
+    const last = first.at(-1);
+    if (last === undefined) {
+      throw new Error('test setup: the first run emitted nothing');
+    }
+    return { provider, subscribe, first, last };
+  };
+
+  test('resuming from the last emitted height leaves no gap and repeats only that block', async () => {
+    const { provider, subscribe, first, last } = await arrange();
+
+    const resumed = await collect(
+      provider.rawContractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: last.blockHeight })
+    );
+
+    expect(trace([...first, ...resumed])).toEqual(['10:v8', '10:v9', '10:v8', '10:v9', '11:v8']);
+    expect(subscribedOffsets(subscribe)).toEqual([{ height: 10 }, { height: 10 }]);
+  });
+
+  test('a record’s blockHash resumes the stream as a blockHash config', async () => {
+    const { provider, subscribe, last } = await arrange();
+
+    const resumed = await collect(
+      provider.rawContractStateObservable(ADDRESS, { type: 'blockHash', blockHash: last.blockHash })
+    );
+
+    expect(subscribedOffsets(subscribe)).toEqual([{ height: 10 }, { hash: '0x10' }]);
+    expect(trace(resumed)).toEqual(['10:v8', '10:v9', '11:v8']);
   });
 });
 
