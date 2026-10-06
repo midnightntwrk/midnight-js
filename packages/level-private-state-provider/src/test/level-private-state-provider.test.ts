@@ -3458,41 +3458,12 @@ describe('Level Private State Provider', (): void => {
     });
   });
 
-  describe('Stuck and failing database handles', () => {
-    const STUCK_DB_NAME = 'test-stuck-db';
+  describe('Failing database handles', () => {
     const CLOSE_FAILURE_DB_NAME = 'test-close-failure-db';
-    const STUCK_CONTRACT_ADDRESS = 'stuck-contract' as ContractAddress;
+    const CLOSE_FAILURE_CONTRACT_ADDRESS = 'close-failure-contract' as ContractAddress;
 
     afterAll(async () => {
-      await fs.rm(path.join('.', STUCK_DB_NAME), { recursive: true, force: true });
       await fs.rm(path.join('.', CLOSE_FAILURE_DB_NAME), { recursive: true, force: true });
-    });
-
-    test('an operation that never settles times out instead of hanging forever', async () => {
-      vi.useFakeTimers();
-      try {
-        const provider = levelPrivateStateProvider<string, unknown>({
-          ...testConfig,
-          midnightDbName: STUCK_DB_NAME,
-          levelFactory: (dbName: string): DatabaseLevel => {
-            const level = new Level(dbName, { createIfMissing: true }) as DatabaseLevel;
-            level.open = () => new Promise<void>(() => undefined);
-            return level;
-          }
-        });
-        provider.setContractAddress(STUCK_CONTRACT_ADDRESS);
-
-        const pending = captureError(() => provider.get('never-arrives'));
-        // Well past any sane per-operation budget, so the test does not encode the exact value.
-        await vi.advanceTimersByTimeAsync(30 * 60 * 1000);
-        const error = await pending;
-
-        expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toContain('Timed out');
-        expect((error as Error).message).toContain(STUCK_DB_NAME);
-      } finally {
-        vi.useRealTimers();
-      }
     });
 
     test('a failing close is reported alongside the failure that triggered it', async () => {
@@ -3510,7 +3481,7 @@ describe('Level Private State Provider', (): void => {
           return level;
         }
       });
-      provider.setContractAddress(STUCK_CONTRACT_ADDRESS);
+      provider.setContractAddress(CLOSE_FAILURE_CONTRACT_ADDRESS);
 
       const error = await captureError(() => provider.set('unreachable', { n: 1 }));
 

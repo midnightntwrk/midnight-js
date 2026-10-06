@@ -142,10 +142,6 @@ export type DatabaseLevel = AbstractLevel<string | Buffer | Uint8Array, string, 
 
 export type LevelFactory = (dbName: string) => DatabaseLevel;
 
-/**
- * A store as this provider uses it: string keys, string values. Keys that are
- * branded strings, such as `ContractAddress`, widen to `string` on the way in.
- */
 type StringSubLevel = AbstractSublevel<DatabaseLevel, string | Uint8Array | Buffer, string, string>;
 
 interface StorageContext {
@@ -203,76 +199,14 @@ const defaultLevelFactory: LevelFactory = (dbName: string) =>
 const dbAccessQueues = new Map<string, Promise<void>>();
 
 /**
- * How long one queued operation may run before it is abandoned.
- *
- * Without a bound, a single operation that never settles - a `levelFactory`
- * whose `open()` hangs, a stalled iterator - would wedge every later operation
- * on that database for the lifetime of the process, with no error to diagnose.
- */
-const DB_OPERATION_TIMEOUT_MS = 300000; // 5 minutes
-
-const withOperationTimeout = async <A>(dbName: string, operation: () => Promise<A>): Promise<A> => {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      operation(),
-      new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => {
-          reject(
-            new Error(
-              `Timed out after ${DB_OPERATION_TIMEOUT_MS}ms operating on private state database "${dbName}". ` +
-              `The database handle appears stuck. Operations queued behind it have been released, so the ` +
-              `next one may fail to open until that handle is released.`
-            )
-          );
-        }, DB_OPERATION_TIMEOUT_MS);
-      })
-    ]);
-  } finally {
-    clearTimeout(timer);
-  }
-};
-
-/**
- * Serializes access to one database, so that overlapping callers queue instead
- * of colliding.
- *
- * Every operation opens its own database handle and closes it again. On the
- * Node.js path (`classic-level`) LevelDB grants the database directory to a
- * single holder, so a second `open()` - or an `open()` racing another
- * operation's `close()` - fails with `LEVEL_DATABASE_NOT_OPEN`. The browser
- * path (`browser-level`, IndexedDB) takes no such lock, but serializing there
- * is still what makes a read-modify-write sequence deterministic. The cost is
- * that throughput is one operation per database at a time.
- *
- * The queue slot is claimed synchronously, before this function's first `await`.
- * That is what makes queue order equal call order, so `set(k, v)` followed by
- * `remove(k)` applies in that order even when neither is awaited. Callers must
- * therefore reach this function without awaiting anything first - work that
- * needs the database, such as resolving an encryption key from the stored salt,
- * belongs inside `operation`, which runs on the already-open handle.
- *
- * The map is module-level because the resource it guards is process-wide: a
- * per-provider map could not see a second provider opening the same database.
- * Each caller deletes only its own tail, so an earlier operation's cleanup
- * cannot drop a later one's entry.
- *
- * Two limitations. Keying is by the configured name verbatim, so two configs
- * naming one directory differently (`'db'` and `'./db'`) are not serialized
- * against each other. And access from separate processes cannot be serialized
- * at all - it still contends on the operating system lock.
- *
- * Not reentrant: entering the lock for a database that already holds it
- * deadlocks. Each operation is bounded by {@link DB_OPERATION_TIMEOUT_MS}, so a
- * stuck operation surfaces as an error instead of hanging the queue forever.
+ * Serializes access to one database, so overlapping callers queue instead of
+ * colliding on the LevelDB lock. The slot is claimed before the first `await`,
+ * so queue order equals call order: callers must not await anything before
+ * entering. Not reentrant.
  */
 const withDbLock = async <A>(dbName: string, operation: () => Promise<A>): Promise<A> => {
-  const bounded = (): Promise<A> => withOperationTimeout(dbName, operation);
   const pending = dbAccessQueues.get(dbName);
-  const current = pending === undefined ? bounded() : pending.then(bounded);
-  // The stored tail must never reject, because a rejected tail would reject
-  // every operation chained behind it. The caller still receives the real
-  // outcome through `current`.
+  const current = pending === undefined ? operation() : pending.then(operation);
   const settled = current.then(
     () => undefined,
     () => undefined
@@ -292,8 +226,6 @@ const describeOpenFailure = (error: unknown): string => {
   if (!(error instanceof Error)) {
     return 'Unknown error';
   }
-  // abstract-level reports every open failure as the same
-  // `LEVEL_DATABASE_NOT_OPEN` error, so the reason is one level down.
   return error.cause instanceof Error ? error.cause.message : error.message;
 };
 
@@ -316,8 +248,6 @@ const closeDatabase = async (
   subLevel: { close(): Promise<void> },
   level: DatabaseLevel
 ): Promise<void> => {
-  // `level.close()` has to run even when closing the sublevel fails: an
-  // unclosed handle keeps the database locked for the rest of the process.
   try {
     await subLevel.close();
   } finally {
@@ -346,8 +276,6 @@ const withSubLevel = <A>(
         (failure: unknown) => failure
       );
       if (closeError !== undefined) {
-        // Both failures matter: the operation error explains what the caller asked for,
-        // and the close error means the handle still holds the database.
         throw new AggregateError(
           [error, closeError],
           `Operation on private state database "${ctx.dbName}" failed, and the database handle ` +
@@ -358,8 +286,6 @@ const withSubLevel = <A>(
       throw error;
     }
 
-    // On the success path a close failure is reported rather than ignored:
-    // it can mean the write never reached disk.
     await closeDatabase(subLevel, level);
     return result;
   });
@@ -367,8 +293,6 @@ const withSubLevel = <A>(
 const METADATA_KEY = '__midnight_encryption_metadata__';
 
 const DEFAULT_MAX_ROTATION_ENTRIES = 10000;
-
-const passwordRotationLocks = new Map<string, Promise<void>>();
 
 export interface PasswordRotationResult {
   readonly entriesMigrated: number;
@@ -393,14 +317,6 @@ interface EncryptionCacheEntry {
  */
 const encryptionCache = new Map<string, EncryptionCacheEntry>();
 
-/**
- * Reads the stored salt, creating and persisting one when the store has none.
- *
- * Takes an already-open sublevel rather than a {@link StorageContext}, so that
- * it runs on the handle its caller has open instead of queueing a second
- * open/close cycle of its own. That is what lets a caller claim its queue slot
- * before doing any database work - see {@link withDbLock}.
- */
 const readOrCreateSalt = async (subLevel: StringSubLevel): Promise<Buffer> => {
   try {
     const metadataJson = await subLevel.get(METADATA_KEY);
@@ -423,13 +339,6 @@ const readOrCreateSalt = async (subLevel: StringSubLevel): Promise<Buffer> => {
   return salt;
 };
 
-/**
- * Resolves the encryption for a store from the salt it currently holds.
- *
- * Runs inside the caller's database lock, so the salt it reads cannot change
- * between here and the write that uses the resulting key. That is what keeps a
- * password rotation from landing between the two.
- */
 const resolveEncryption = async (
   subLevel: StringSubLevel,
   cacheKey: string,
@@ -461,39 +370,6 @@ const invalidateEncryptionCacheForDb = (dbName: string, privateStateStoreName: s
   const signingKeyKey = `${dbName}:${signingKeyStoreName}`;
   encryptionCache.delete(privateStateKey);
   encryptionCache.delete(signingKeyKey);
-};
-
-const DEFAULT_LOCK_TIMEOUT_MS = 300000; // 5 minutes
-
-const withPasswordRotationLock = async <T>(
-  lockKey: string,
-  operation: () => Promise<T>,
-  timeoutMs: number = DEFAULT_LOCK_TIMEOUT_MS
-): Promise<T> => {
-  const startWait = Date.now();
-
-  while (passwordRotationLocks.has(lockKey)) {
-    if (Date.now() - startWait > timeoutMs) {
-      throw new Error(
-        `Timed out waiting for password rotation lock on "${lockKey}". ` +
-          `Another rotation may be stuck or taking longer than ${timeoutMs}ms.`
-      );
-    }
-    await passwordRotationLocks.get(lockKey);
-  }
-
-  let resolve!: () => void;
-  const lockPromise = new Promise<void>((r) => {
-    resolve = r;
-  });
-  passwordRotationLocks.set(lockKey, lockPromise);
-
-  try {
-    return await operation();
-  } finally {
-    passwordRotationLocks.delete(lockKey);
-    resolve();
-  }
 };
 
 interface RotateStorePasswordParams {
@@ -532,8 +408,6 @@ const rotateStorePassword = async (
     ctx,
     storeName,
     async (subLevel) => {
-      // Resolved inside the lock, on the salt this store holds right now, so a
-      // concurrent write cannot slip in between reading the salt and rewriting it.
       const oldPassword = await getPasswordFromProvider(oldPasswordProvider);
       const newPassword = await getPasswordFromProvider(newPasswordProvider);
 
@@ -916,12 +790,10 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     return `${contractAddress}:${privateStateId}`;
   };
 
-  const hasStoredSigningKey = async (address: ContractAddress): Promise<boolean> => {
-    await waitForRotationLock(ctx.dbName, scopedNames.signingKey);
-    return withSubLevel<ContractAddress, string, boolean>(ctx, scopedNames.signingKey, async (subLevel) =>
+  const hasStoredSigningKey = (address: ContractAddress): Promise<boolean> =>
+    withSubLevel<boolean>(ctx, scopedNames.signingKey, async (subLevel) =>
       (await subLevel.get(address)) !== undefined
     );
-  };
 
   return {
     /** {@inheritDoc PrivateStateProvider.setContractAddress} */
@@ -1340,23 +1212,20 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       }
 
       const { privateState, signingKey } = scopedNames;
-      const lockKey = `${ctx.dbName}:${privateState}`;
       const prefix = `${contractAddress}:`;
 
-      return withPasswordRotationLock(lockKey, async () => {
-        const result = await rotateStorePassword({
-          ctx,
-          storeName: privateState,
-          oldPasswordProvider,
-          newPasswordProvider,
-          maxEntries: options?.maxEntries ?? DEFAULT_MAX_ROTATION_ENTRIES,
-          shouldProceed: (key) => key.startsWith(prefix),
-        });
-
-        invalidateEncryptionCacheForDb(ctx.dbName, privateState, signingKey);
-
-        return result;
+      const result = await rotateStorePassword({
+        ctx,
+        storeName: privateState,
+        oldPasswordProvider,
+        newPasswordProvider,
+        maxEntries: options?.maxEntries ?? DEFAULT_MAX_ROTATION_ENTRIES,
+        shouldProceed: (key) => key.startsWith(prefix),
       });
+
+      invalidateEncryptionCacheForDb(ctx.dbName, privateState, signingKey);
+
+      return result;
     },
 
     async changeSigningKeysPassword(
@@ -1365,21 +1234,18 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       options?: PasswordRotationOptions
     ): Promise<PasswordRotationResult> {
       const { privateState, signingKey } = scopedNames;
-      const lockKey = `${ctx.dbName}:${signingKey}`;
 
-      return withPasswordRotationLock(lockKey, async () => {
-        const result = await rotateStorePassword({
-          ctx,
-          storeName: signingKey,
-          oldPasswordProvider,
-          newPasswordProvider,
-          maxEntries: options?.maxEntries ?? DEFAULT_MAX_ROTATION_ENTRIES,
-        });
-
-        invalidateEncryptionCacheForDb(ctx.dbName, privateState, signingKey);
-
-        return result;
+      const result = await rotateStorePassword({
+        ctx,
+        storeName: signingKey,
+        oldPasswordProvider,
+        newPasswordProvider,
+        maxEntries: options?.maxEntries ?? DEFAULT_MAX_ROTATION_ENTRIES,
       });
+
+      invalidateEncryptionCacheForDb(ctx.dbName, privateState, signingKey);
+
+      return result;
     },
 
     /**
