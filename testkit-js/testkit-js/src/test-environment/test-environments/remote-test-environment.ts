@@ -20,6 +20,7 @@ import { getEnvVarWalletSeeds } from '../../env-vars';
 import { logger } from '../../logger';
 import type { ProofServerContainer } from '../../proof-server-container';
 import { DynamicProofServerContainer } from '../../proof-server-container';
+import { redactedJson } from '../../utils';
 import { MidnightWalletProvider, WalletSaveStateProvider } from '../../wallet';
 import type { EnvironmentConfiguration } from '..';
 import { TestEnvironment } from './test-environment';
@@ -106,7 +107,7 @@ export abstract class RemoteTestEnvironment extends TestEnvironment {
     this.proofServerContainer =
       maybeProofServerContainer ?? (await DynamicProofServerContainer.start(this.logger, this.uid));
     this.environmentConfiguration = this.getEnvironmentConfiguration();
-    this.logger.info(`Test environment configuration: ${JSON.stringify(this.environmentConfiguration)}`);
+    this.logger.info(`Test environment configuration: ${redactedJson(this.environmentConfiguration)}`);
     await this.healthCheck();
     return this.environmentConfiguration;
   };
