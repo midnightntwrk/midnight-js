@@ -49,6 +49,7 @@ import {
   type PrivateStoragePasswordProvider,
   StorageEncryption
 } from './storage-encryption';
+import { readStoredSigningKey } from './stored-signing-key';
 
 /**
  * The default name of the indexedDB database for Midnight.
@@ -779,6 +780,13 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     return `${contractAddress}:${privateStateId}`;
   };
 
+  const hasStoredSigningKey = async (address: ContractAddress): Promise<boolean> => {
+    await waitForRotationLock(ctx.dbName, scopedNames.signingKey);
+    return withSubLevel<ContractAddress, string, boolean>(ctx, scopedNames.signingKey, async (subLevel) =>
+      (await subLevel.get(address)) !== undefined
+    );
+  };
+
   return {
     /** {@inheritDoc PrivateStateProvider.setContractAddress} */
     setContractAddress(address: ContractAddress): void {
@@ -824,7 +832,8 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     /** {@inheritDoc PrivateStateProvider.getSigningKey} */
     async getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
       const { signingKey } = scopedNames;
-      return subLevelMaybeGet<ContractAddress, SigningKey>(ctx, signingKey, address, passwordProvider);
+      const stored = await subLevelMaybeGet<ContractAddress, unknown>(ctx, signingKey, address, passwordProvider);
+      return stored === null ? null : readStoredSigningKey(stored, address);
     },
     /** {@inheritDoc PrivateStateProvider.removeSigningKey} */
     async removeSigningKey(address: ContractAddress): Promise<void> {
@@ -1046,7 +1055,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       const exportPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
 
       const { signingKey: scopedSigningKey } = scopedNames;
-      const allKeys = await getAllEntries<ContractAddress, SigningKey>(ctx, scopedSigningKey, passwordProvider);
+      const allKeys = await getAllEntries<ContractAddress, unknown>(ctx, scopedSigningKey, passwordProvider);
 
       if (allKeys.size === 0) {
         throw new SigningKeyExportError('No signing keys to export');
@@ -1062,7 +1071,9 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         version: CURRENT_EXPORT_VERSION,
         exportedAt: new Date().toISOString(),
         keyCount: allKeys.size,
-        keys: Object.fromEntries(allKeys.entries()) as Record<ContractAddress, SigningKey>
+        keys: Object.fromEntries(
+          Array.from(allKeys, ([address, stored]) => [address, readStoredSigningKey(stored, address)])
+        ) as Record<ContractAddress, SigningKey>
       };
 
       const exportEncryption = await StorageEncryption.create(exportPassword, { cryptoBackend: ctx.cryptoBackend });
@@ -1143,8 +1154,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       if (conflictStrategy === 'error') {
         let conflictCount = 0;
         for (const address of addresses) {
-          const existing = await this.getSigningKey(address);
-          if (existing !== null) {
+          if (await hasStoredSigningKey(address)) {
             conflictCount++;
           }
         }
@@ -1159,9 +1169,9 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
       for (const address of addresses) {
         const signingKey = payload.keys[address];
-        const existingKey = await this.getSigningKey(address);
+        const exists = await hasStoredSigningKey(address);
 
-        if (existingKey !== null) {
+        if (exists) {
           if (conflictStrategy === 'skip') {
             skipped++;
             continue;
@@ -1172,7 +1182,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
         await this.setSigningKey(address, signingKey);
 
-        if (existingKey === null) {
+        if (!exists) {
           imported++;
         }
       }

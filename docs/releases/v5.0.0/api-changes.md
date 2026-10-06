@@ -25,10 +25,13 @@ interface PublicDataProvider {
 }
 
 export type BlockInfo = {
-  readonly hash: string;   // hex-encoded block hash
+  readonly hash: string;            // hex-encoded block hash
   readonly height: number;
+  readonly protocolVersion: number; // dates the block to a ledger era
 };
 ```
+
+Resolve `protocolVersion` with `versionOfRecord(block)` from `@midnightntwrk/midnight-js-protocol` — `BlockInfo` satisfies that function's `VersionedRecord` parameter. Prefer it over `protocolVersionToLedger`, which tags a failure as a transaction-construct error rather than a read.
 
 `queryContractEvents`, `contractEventsObservable`, and `queryBlock` are **required** interface members — custom `PublicDataProvider` implementations must add them. Note the start cursor is passed via `opts.startAt`, **not** positionally. There is **no** `dispose` member on the `PublicDataProvider` interface; `dispose()` lives only on the concrete `IndexerPublicDataProvider` (see below).
 
@@ -200,8 +203,26 @@ export class EraInvariantViolationError extends Error {
 }
 ```
 
-`submitTx` and `findDeployedContract` narrow internally, so their return types
-are unchanged.
+`submitTx` narrows internally, so its return type is unchanged.
+
+### Found deploy record tagged by ledger era (#1408)
+
+```ts
+export interface FoundDeployTxPublicDataV8 extends FinalizedTxDataV8 {
+  readonly contractAddress: ContractAddress; // no initialContractState
+}
+export type FoundDeployTxPublicData = FoundDeployTxPublicDataV8 | FinalizedDeployTxPublicData;
+export interface FoundDeployTxData<C extends Contract.Any> {
+  readonly era: CurrentPipelineEra;
+  readonly public: FoundDeployTxPublicData;
+  readonly private: UnsubmittedDeployTxPrivateData<C>;
+}
+// FoundContract<C>['deployTxData'] is now FoundDeployTxData<C>
+```
+
+`findDeployedContract` accepts a contract deployed before the ledger fork and
+reports its deploy record tagged `v8`. Narrow on `version` before reading `tx` or
+`initialContractState`.
 
 ---
 

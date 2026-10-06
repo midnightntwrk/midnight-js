@@ -21,6 +21,7 @@ export const BLOCK_QUERY = gql(
     block(offset: $offset) {
       height
       hash
+      protocolVersion
     }
   }`
 );

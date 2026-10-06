@@ -19,7 +19,8 @@ import type {
   DeployTxOptions,
   FinalizedCallTxData,
   FinalizedDeployTxData,
-  FinalizedDeployTxDataBase
+  FinalizedDeployTxPublicData,
+  FoundDeployTxData
 } from '@midnightntwrk/midnight-js-contracts';
 import type { Contract } from '@midnightntwrk/midnight-js-protocol/compact-js';
 import type { StateValue } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
@@ -40,25 +41,36 @@ export const txsEqual = <S extends Signaturish, P extends Proofish, B extends Bi
   return a.toString(false) === b.toString(false);
 };
 
+const currentEraDeployPublicData = <C extends Contract.Any>(
+  foundDeployTxData: FoundDeployTxData<C>
+): FinalizedDeployTxPublicData => {
+  const found = foundDeployTxData.public;
+  if (found.version !== 'v9') {
+    throw new Error(`expected a contract deployed in the current ledger era, found one recorded in '${found.version}'`);
+  }
+  return found;
+};
+
 export const expectFoundAndDeployedTxPublicDataEqual = <C extends Contract.Any>(
   deployTxData: FinalizedDeployTxData<C>,
-  foundDeployTxData: FinalizedDeployTxDataBase<C>
+  foundDeployTxData: FoundDeployTxData<C>
 ): void => {
+  const found = currentEraDeployPublicData(foundDeployTxData);
   expect(
-    stateValueEqual(deployTxData.public.initialContractState.data.state, foundDeployTxData.public.initialContractState.data.state)
+    stateValueEqual(deployTxData.public.initialContractState.data.state, found.initialContractState.data.state)
   ).toBeTruthy();
-  expect(deployTxData.public.contractAddress).toEqual(foundDeployTxData.public.contractAddress);
-  expect(deployTxData.public.blockHash).toEqual(foundDeployTxData.public.blockHash);
-  expect(deployTxData.public.blockHeight).toEqual(foundDeployTxData.public.blockHeight);
-  expect(deployTxData.public.txHash).toEqual(foundDeployTxData.public.txHash);
-  expect(deployTxData.public.identifiers).toEqual(foundDeployTxData.public.identifiers);
-  expect(deployTxData.public.status).toEqual(foundDeployTxData.public.status);
-  expect(txsEqual(deployTxData.public.tx, foundDeployTxData.public.tx)).toBeTruthy();
+  expect(deployTxData.public.contractAddress).toEqual(found.contractAddress);
+  expect(deployTxData.public.blockHash).toEqual(found.blockHash);
+  expect(deployTxData.public.blockHeight).toEqual(found.blockHeight);
+  expect(deployTxData.public.txHash).toEqual(found.txHash);
+  expect(deployTxData.public.identifiers).toEqual(found.identifiers);
+  expect(deployTxData.public.status).toEqual(found.status);
+  expect(txsEqual(deployTxData.public.tx, found.tx)).toBeTruthy();
 };
 
 export const expectFoundAndDeployedTxPrivateDataEqual = <C extends Contract.Any>(
   deployTxData: FinalizedDeployTxData<C>,
-  foundDeployTxData: FinalizedDeployTxDataBase<C>
+  foundDeployTxData: FoundDeployTxData<C>
 ): void => {
   // For our purposes, we always find with the same private state that the contract is deployed with
   // so this comparison is justified.
@@ -67,7 +79,7 @@ export const expectFoundAndDeployedTxPrivateDataEqual = <C extends Contract.Any>
 
 export const expectFoundAndDeployedTxDataEqual = <C extends Contract.Any>(
   deployTxData: FinalizedDeployTxData<C>,
-  foundDeployTxData: FinalizedDeployTxDataBase<C>
+  foundDeployTxData: FoundDeployTxData<C>
 ): void => {
   expectFoundAndDeployedTxPublicDataEqual(deployTxData, foundDeployTxData);
   expectFoundAndDeployedTxPrivateDataEqual(deployTxData, foundDeployTxData);
@@ -76,15 +88,16 @@ export const expectFoundAndDeployedTxDataEqual = <C extends Contract.Any>(
 export const expectFoundAndDeployedStatesEqual = async <C extends Contract.Any>(
   providers: MidnightProviders<Contract.ProvableCircuitId<C>, PrivateStateId, Contract.PrivateState<C> | unknown>,
   deployTxData: FinalizedDeployTxData<C>,
-  foundDeployTxData: FinalizedDeployTxDataBase<C>,
+  foundDeployTxData: FoundDeployTxData<C>,
   privateStateId?: PrivateStateId,
   initialPrivateState?: Contract.PrivateState<C>
 ): Promise<void> => {
+  const found = currentEraDeployPublicData(foundDeployTxData);
   const deployedLedgerState = await providers.publicDataProvider.queryContractState(
     deployTxData.public.contractAddress
   );
   expect(deployedLedgerState).toBeDefined();
-  expect(stateValueEqual(deployedLedgerState!.data.state, foundDeployTxData.public.initialContractState.data.state)).toBeTruthy();
+  expect(stateValueEqual(deployedLedgerState!.data.state, found.initialContractState.data.state)).toBeTruthy();
   if (privateStateId) {
     const privateState = await providers.privateStateProvider.get(privateStateId);
     expect(privateState).toEqual(foundDeployTxData.private.initialPrivateState);

@@ -2633,6 +2633,63 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
   });
 }
 
+// ── (c4) a pre-fork contract, found again with RECOMPILED artifacts ───────────
+//
+// The path the migration guide recommends: recompile, then re-attach to the
+// contract that already exists. Its deploy record stays ledger-8 forever.
+//
+// Runs after (c) and (c2): the find is refused until a state-changing call after
+// the fork has re-written the state in the ledger-9 format.
+//
+// The compiled contract is built inline, as the pre-fork probe does, because
+// `MATRIX` and `compiledContractFor` are declared further down this module.
+if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
+  const name = 'a pre-fork simple, found after the fork with recompiled artifacts';
+  await leg(name, async () => {
+    const deployed = retainedDeployments.get('simple');
+    if (deployed === undefined) {
+      return 'skipped: its pre-fork deploy did not complete';
+    }
+    const zkConfigPath = config.matrixZkConfigPaths?.simple;
+    if (zkConfigPath === undefined) {
+      throw new Error("the driver passed no current-era ZK artifact path for 'simple'");
+    }
+    const { Contract } = await import('@midnight-ntwrk/fork-current-simple');
+    const compiledContract = CompiledContract.withCompiledFileAssets(
+      CompiledContract.withVacantWitnesses(CompiledContract.make('Simple', Contract)),
+      zkConfigPath
+    );
+    const providers = providersFor(testkit, 'v9', session.wallet, {
+      zkConfigPath,
+      privateStateStoreName: 'fork-recompiled-simple'
+    });
+
+    const found = await findDeployedContract(providers, {
+      compiledContract,
+      contractAddress: deployed.contractAddress
+    });
+
+    if (found.deployTxData.public.version !== 'v8') {
+      failures.push(`${name}: expected the deploy record tagged 'v8', got '${found.deployTxData.public.version}'`);
+    }
+    if (found.deployTxData.public.contractAddress !== deployed.contractAddress) {
+      failures.push(`${name}: the deploy record names a different contract address`);
+    }
+    const { state } = retainedEntry('simple');
+    const before = await readRetainedLedger('simple', providers, deployed.contractAddress, state.read);
+    const called = await found.callTx.noop();
+    const after = await readRetainedLedger('simple', providers, deployed.contractAddress, state.read);
+    if (after !== before + 1n) {
+      failures.push(`${name}: ledger ${state.label} went from ${before} to ${after}, expected ${before + 1n}`);
+    }
+    return {
+      deployRecordVersion: found.deployTxData.public.version,
+      afterFindCall: { circuitId: called.circuitId, txId: called.public.txId },
+      [state.label]: { before: before.toString(), after: after.toString() }
+    };
+  });
+}
+
 // ── (d) reads its own pre-fork history ────────────────────────────────────────
 
 await leg('reads its own pre-fork history', async () => {

@@ -16,7 +16,7 @@
 import axios from 'axios';
 import type { Logger } from 'pino';
 
-import { buildUrlWithPath } from '../utils';
+import { buildUrlWithPath, redactUrl } from '../utils';
 
 export class IndexerClient {
   readonly indexerUrl: string;
@@ -40,7 +40,7 @@ export class IndexerClient {
   async health() {
     const url = buildUrlWithPath(this.indexerUrl, '/ready');
     const response = await axios.get(url, { timeout: 1000 });
-    this.logger.info(`Connected to indexer ${url}: ${JSON.stringify(response.data)}`);
+    this.logger.info(`Connected to indexer ${redactUrl(url)}: ${JSON.stringify(response.data)}`);
     return response;
   }
 }

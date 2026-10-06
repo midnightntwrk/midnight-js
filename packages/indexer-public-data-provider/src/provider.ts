@@ -143,7 +143,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       })
       .then(maybeThrowQueryError)
       .then((queryResult) => queryResult.data?.block ?? null);
-    return block ? { hash: block.hash, height: block.height } : null;
+    return block ? { hash: block.hash, height: block.height, protocolVersion: block.protocolVersion } : null;
   }
 
   /**

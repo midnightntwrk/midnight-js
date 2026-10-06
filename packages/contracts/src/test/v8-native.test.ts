@@ -1246,6 +1246,39 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(deployed.deploy.signingKey).toBe(SAMPLED_SIGNING_KEY);
   });
 
+  it('refuses a CONSTRUCTOR that pays a third party, telling the caller a retained deploy takes no mappings', async () => {
+    const providers = preForkProviders(v6Envelope);
+    const thirdPartyCoinPublicKey = sampleCoinPublicKey();
+    engineSlot.engine = createReplayEngine(recording, [], v6Envelope, {
+      constructorZswapLocalState: {
+        ...recording.transcript.zswapLocalState,
+        outputs: [
+          {
+            coinInfo: recording.transcript.zswapLocalState.outputs[0]!.coinInfo,
+            recipient: { is_left: true, left: thirdPartyCoinPublicKey, right: recording.contractAddress }
+          }
+        ]
+      }
+    });
+
+    const deploying = runLedger8Deploy(providers, {
+      contract,
+      args: [],
+      privateState: {},
+      resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
+    });
+
+    await expect(deploying).rejects.toBeInstanceOf(Ledger8RecipientUnmappableError);
+    await expect(deploying).rejects.toMatchObject({
+      circuitId: 'initialState',
+      recipientCoinPublicKey: thirdPartyCoinPublicKey
+    });
+    await expect(deploying).rejects.toThrow(/retained-era deploy takes no `additionalCoinEncPublicKeyMappings`/);
+    await expect(deploying).rejects.not.toThrow(/on the call options/);
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+    expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+  });
+
   it('routes a coin the CONSTRUCTOR minted into the deploy own guaranteed offer', async () => {
     const providers = preForkProviders(v6Envelope);
     // A constructor that mints a coin to the deployer. Dropping this state is
@@ -1796,8 +1829,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       const providers = preForkProviders(v6Envelope);
       // Some other wallet's coin public key: not this caller's, and not the
       // burn address, so nothing this arm knows can map it to an encryption
-      // key. The retained call options carry no additional mappings for the
-      // caller to supply one through either.
+      // key. The caller supplied no additional mappings.
       const thirdPartyCoinPublicKey = sampleCoinPublicKey();
       engineSlot.engine = createReplayEngine(
         recordingPayingUser(loadCoinReceiverRecording(), thirdPartyCoinPublicKey),
@@ -1818,19 +1850,97 @@ describe('the retained-native pipeline through the unchanged entry points', () =
         caught = error;
       }
 
-      // A TYPED refusal naming the era, the circuit and the recipient. The bare
-      // `Error` the offer builder raises names none of them, and its advice --
-      // supply a resolver mapping -- points at a field the retained call
-      // options do not have, so a caller could not act on it.
+      // A TYPED refusal naming the era, the circuit and the recipient, and
+      // pointing at the option that fixes it. The bare `Error` the offer
+      // builder raises names none of them, and its advice -- supply a resolver
+      // mapping -- names a knob the caller never sees.
       expect(caught).toBeInstanceOf(Ledger8RecipientUnmappableError);
       expect((caught as Ledger8RecipientUnmappableError).circuitId).toBe(CIRCUIT_ID);
       expect((caught as Ledger8RecipientUnmappableError).recipientCoinPublicKey).toBe(thirdPartyCoinPublicKey);
-      // The message must not send the caller after a knob this arm lacks.
+      // The message names the caller-facing option, not the internal resolver.
       expect((caught as Error).message).not.toMatch(/Provide a mapping via the encryptionPublicKeyResolver/);
+      expect((caught as Error).message).toContain('additionalCoinEncPublicKeyMappings');
+      expect((caught as Error).message).not.toMatch(/carry no field/);
+      expect((caught as Error).message).not.toMatch(/current toolchain/);
 
       // Refused BEFORE the offer is built, so nothing was proven, balanced or submitted.
       expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
       expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+    });
+
+    it('composes an output paying a THIRD PARTY the caller mapped to an encryption key', async () => {
+      const providers = preForkProviders(v6Envelope);
+      const thirdPartyCoinPublicKey = sampleCoinPublicKey();
+      engineSlot.engine = createReplayEngine(
+        recordingPayingUser(loadCoinReceiverRecording(), thirdPartyCoinPublicKey),
+        [],
+        v6Envelope
+      );
+
+      const finalized = await submitCallTx(providers, {
+        ...callOptions(),
+        additionalCoinEncPublicKeyMappings: new Map([[thirdPartyCoinPublicKey, sampleEncryptionPublicKey()]])
+      });
+
+      expect(finalized.circuitId).toBe(CIRCUIT_ID);
+      expect(providers.proofProvider.proveTx).toHaveBeenCalledTimes(1);
+      expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
+    });
+
+    it('still refuses a third party when the mappings name a DIFFERENT recipient', async () => {
+      const providers = preForkProviders(v6Envelope);
+      const thirdPartyCoinPublicKey = sampleCoinPublicKey();
+      engineSlot.engine = createReplayEngine(
+        recordingPayingUser(loadCoinReceiverRecording(), thirdPartyCoinPublicKey),
+        [],
+        v6Envelope
+      );
+
+      await expect(
+        submitCallTx(providers, {
+          ...callOptions(),
+          additionalCoinEncPublicKeyMappings: new Map([[sampleCoinPublicKey(), sampleEncryptionPublicKey()]])
+        })
+      ).rejects.toBeInstanceOf(Ledger8RecipientUnmappableError);
+      expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+      expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+    });
+
+    it('matches a mapping keyed by the Bech32m form a wallet hands out against the hex recipient the circuit emits', async () => {
+      const BECH32M_COIN_PUBLIC_KEY = 'mn_shield-cpk_undeployed1mjngjmnlutcq50trhcsk3hugvt9wyjnhq3c7prryd5nqmvtzva0sn7kq7h';
+      const BECH32M_DECODED_HEX = 'dca6896e7fe2f00a3d63be2168df8862cae24a770471e08c646d260db162675f';
+      const providers = preForkProviders(v6Envelope);
+      engineSlot.engine = createReplayEngine(
+        recordingPayingUser(loadCoinReceiverRecording(), BECH32M_DECODED_HEX),
+        [],
+        v6Envelope
+      );
+
+      const finalized = await submitCallTx(providers, {
+        ...callOptions(),
+        additionalCoinEncPublicKeyMappings: new Map([[BECH32M_COIN_PUBLIC_KEY, sampleEncryptionPublicKey()]])
+      });
+
+      expect(finalized.circuitId).toBe(CIRCUIT_ID);
+      expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
+    });
+
+    it('composes a mapped THIRD PARTY through submitCallTxAsync too', async () => {
+      const providers = preForkProviders(v6Envelope);
+      const thirdPartyCoinPublicKey = sampleCoinPublicKey();
+      engineSlot.engine = createReplayEngine(
+        recordingPayingUser(loadCoinReceiverRecording(), thirdPartyCoinPublicKey),
+        [],
+        v6Envelope
+      );
+
+      const submitted = await submitCallTxAsync(providers, {
+        ...callOptions(),
+        additionalCoinEncPublicKeyMappings: new Map([[thirdPartyCoinPublicKey, sampleEncryptionPublicKey()]])
+      });
+
+      expect(submitted.circuitId).toBe(CIRCUIT_ID);
+      expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
     });
 
     it("composes an output paying the caller's OWN key", async () => {

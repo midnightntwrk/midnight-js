@@ -447,8 +447,9 @@ beside it. A mislabelled record therefore does not fail loudly: a caller that
 narrows on it reaches into the other ledger module and is handed a plausible
 wrong value.
 
-The current era refuses the mirror of this at the same seam, through
-`requireV9Record`. `assertLedger8RecordEra` is the retained arm's half, and it
+The current era refuses the mirror of this on its call paths, through
+`requireV9Record`. Its attach accepts either tag, because a contract it finds may
+have been deployed before the fork. `assertLedger8RecordEra` is the retained arm's half, and it
 compares the record against the HEAD rather than against a fixed era, because a
 retained-era call is legitimately recorded by EITHER era — which is why the
 result type keeps `version` a union in the first place.

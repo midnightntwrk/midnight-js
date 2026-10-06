@@ -15,7 +15,7 @@
 
 import { rm } from 'node:fs/promises';
 
-import { buildUrlWithPath, tryDeleteDirectory } from '../src/utils';
+import { buildUrlWithPath, redactedJson, redactUrl, tryDeleteDirectory } from '../src/utils';
 
 vi.mock('node:fs/promises', () => ({
   rm: vi.fn()
@@ -37,6 +37,49 @@ describe('[Unit tests] Utils', () => {
 
     it('should handle URL without port', () => {
       expect(buildUrlWithPath('https://example.com/path', '/status')).toBe('https://example.com/status');
+    });
+
+    it('should keep the query string so credentials reach the endpoint', () => {
+      expect(buildUrlWithPath('https://midnight-preview.blockfrost.io/api/v0?project_id=secret', '/ready')).toBe(
+        'https://midnight-preview.blockfrost.io/ready?project_id=secret'
+      );
+    });
+  });
+
+  describe('redactUrl', () => {
+    it('should hide the query string', () => {
+      expect(redactUrl('wss://midnight-preview.blockfrost.io/api/v0/ws?project_id=secret')).toBe(
+        'wss://midnight-preview.blockfrost.io/api/v0/ws?<redacted>'
+      );
+    });
+
+    it('should hide user info', () => {
+      expect(redactUrl('https://user:secret@example.com/path')).toBe('https://<redacted>@example.com/path');
+    });
+
+    it('should leave a URL without credentials unchanged', () => {
+      expect(redactUrl('http://localhost:8088/api/v4/graphql')).toBe('http://localhost:8088/api/v4/graphql');
+    });
+
+    it('should leave a value that is not a URL unchanged', () => {
+      expect(redactUrl('preview')).toBe('preview');
+    });
+  });
+
+  describe('redactedJson', () => {
+    it('should redact every URL in the serialized object', () => {
+      const json = redactedJson({
+        networkId: 'preview',
+        indexer: 'https://midnight-preview.blockfrost.io/api/v0?project_id=secret',
+        nested: { node: 'https://rpc.midnight-preview.blockfrost.io?project_id=secret' }
+      });
+
+      expect(json).not.toContain('secret');
+      expect(JSON.parse(json)).toEqual({
+        networkId: 'preview',
+        indexer: 'https://midnight-preview.blockfrost.io/api/v0?<redacted>',
+        nested: { node: 'https://rpc.midnight-preview.blockfrost.io/?<redacted>' }
+      });
     });
   });
 

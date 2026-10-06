@@ -26,7 +26,7 @@ import { DockerComposeEnvironment, type StartedDockerComposeEnvironment, Wait } 
 
 import { getContainersConfiguration } from '../../configuration';
 import type { ProofServerContainer } from '../../proof-server-container';
-import { delay, MINUTE } from '../../utils';
+import { delay, MINUTE, redactedJson } from '../../utils';
 import type { MidnightWalletProvider } from '../../wallet';
 import type { EnvironmentConfiguration } from '..';
 import { TestEnvironment } from './test-environment';
@@ -491,7 +491,7 @@ export class ForkTestEnvironment extends TestEnvironment {
 
     setNetworkId('undeployed');
     this.environmentConfiguration = this.configurationFor(this.getPreForkProofServer());
-    this.logger.info(`Fork test environment configuration: ${JSON.stringify(this.environmentConfiguration)}`);
+    this.logger.info(`Fork test environment configuration: ${redactedJson(this.environmentConfiguration)}`);
     return this.environmentConfiguration;
   };
 

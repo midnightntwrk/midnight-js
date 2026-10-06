@@ -148,7 +148,8 @@ export interface RetainedSigningKeyEntryBreadcrumb {
     | 'malformed-value'
     /**
      * The entry could not be READ at all -- `getSigningKey` rejected. A wrong
-     * store password, a rotation-lock timeout and store I/O all land here, and
+     * store password, a rotation-lock timeout, store I/O and an entry the
+     * provider refuses as not a signing key all land here, and
      * the underlying message is deliberately NOT carried: it may name store
      * paths and OS-level metadata, which its own interface says to redact.
      */

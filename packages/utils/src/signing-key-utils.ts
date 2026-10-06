@@ -13,26 +13,22 @@
  * limitations under the License.
  */
 
-const SIGNING_KEY_MIN_HEX_LENGTH = 6;
-const SIGNING_KEY_KINDS: readonly string[] = ['schnorr', 'ecdsa'];
+import type { SigningKey } from '@midnightntwrk/midnight-js-protocol/compact-runtime';
 
-const isValidSigningKeyHex = (value: string): boolean =>
-  value.length >= SIGNING_KEY_MIN_HEX_LENGTH
-  && value.length % 2 === 0
-  && /^[0-9a-fA-F]+$/.test(value);
+const SIGNING_KEY_HEX = /^[0-9a-fA-F]{64}$/;
+const SIGNING_KEY_KINDS: readonly string[] = ['schnorr', 'ecdsa'];
 
 /**
  * Determines whether `value` is a structurally valid signing key of the shape
- * `{ tag: 'schnorr' | 'ecdsa', value: <hex> }`, where `value` is a non-empty,
- * even-length, lowercase-or-uppercase hex string of at least
- * {@link SIGNING_KEY_MIN_HEX_LENGTH} characters.
+ * `{ tag: 'schnorr' | 'ecdsa', value: <hex> }`, where `value` is a 32-byte key
+ * written as exactly 64 lowercase-or-uppercase hex characters.
  *
  * Pure predicate (never throws) so callers can attach their own domain error.
  *
  * @param value The value to validate (typically a parsed import payload entry).
  * @returns `true` if `value` matches the structured signing-key shape.
  */
-export const isValidSigningKey = (value: unknown): boolean => {
+export const isValidSigningKey = (value: unknown): value is SigningKey => {
   if (typeof value !== 'object' || value === null) {
     return false;
   }
@@ -40,5 +36,5 @@ export const isValidSigningKey = (value: unknown): boolean => {
   return typeof candidate.tag === 'string'
     && SIGNING_KEY_KINDS.includes(candidate.tag)
     && typeof candidate.value === 'string'
-    && isValidSigningKeyHex(candidate.value);
+    && SIGNING_KEY_HEX.test(candidate.value);
 };
