@@ -16,9 +16,8 @@
 import path from 'path';
 import { Wait } from 'testcontainers';
 
-import { WaitStrategies } from '@/testcontainers-wait-strategy';
-
 import type { ContainersConfiguration } from './configuration-types';
+import { WaitStrategies } from './testcontainers-wait-strategy';
 
 const currentWorkingDir = path.resolve(`${process.cwd()}`);
 

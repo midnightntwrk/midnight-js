@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import '@/wallet/bigint-serialization';
+import '../src/wallet/bigint-serialization';
 
 describe('[Unit tests] BigInt serialization', () => {
   it('should serialize BigInt values that exceed Number.MAX_SAFE_INTEGER without precision loss', () => {

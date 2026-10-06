@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
 
 ***
 
@@ -72,7 +72,7 @@ from `@midnight-ntwrk/midnight-js-utils`:
 - no sequential patterns of length 4+ (e.g. `1234`, `abcd`)
 
 The same policy is applied to custom passwords passed to
-PrivateStateProvider.exportPrivateStates / `exportSigningKeys` and
+[PrivateStateProvider.exportPrivateStates](../../midnight-js/types/interfaces/PrivateStateProvider.md#exportprivatestates) / `exportSigningKeys` and
 their `importPrivateStates` / `importSigningKeys` counterparts. Violations
 surface as `PasswordValidationError` on storage paths, or wrapped as
 `PrivateStateExportError` / `SigningKeyExportError` (with `cause`) on
@@ -80,6 +80,15 @@ export/import paths.
 
 SECURITY: Use a strong, secret password. Never use public key material
 or other non-secret values as the password source.
+
+Private state is stored with `superjson`. Plain objects, arrays, `string`,
+`number`, `boolean`, `null`, `undefined`, `bigint`, `NaN`, `Infinity`, `Date`,
+`RegExp`, `URL`, `Map`, `Set`, `Buffer` and the nine built-in typed arrays are
+read back unchanged, and shared references and cycles are preserved. Anything
+else — including `Error`, `ArrayBuffer`, `DataView`, `BigInt64Array`, and any
+subclass of the types above — is refused by
+[PrivateStateProvider.set](../../midnight-js/types/interfaces/PrivateStateProvider.md#set) with a `PrivateStateSerializationError`,
+because storage would drop it, empty it or read it back as a different value.
 
 #### Example
 

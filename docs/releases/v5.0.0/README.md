@@ -10,7 +10,7 @@
 - [Release Notes](./release-notes.md) — High-level changelog
 - [Breaking Changes](./breaking-changes.md) — Protocol swap, `SigningKey` shape, scope change, ZK artifact integrity verification
 - [New Features](./new-features.md) — Cross-contract calls, MIP-0002 contract events, ZK integrity manifest, deflate subscriptions, disposable indexer provider, classified deserialization errors
-- [Migration Guide](./migration-guide.md) — Step-by-step upgrade instructions
+- [Migration Guide](./migration-guide.md) — Step-by-step upgrade instructions, including [Step 14](./migration-guide.md#step-14--operating-across-the-ledger-fork) on operating across the ledger fork
 - [API Changes](./api-changes.md) — New types, methods, and signature changes
 
 ## Why this is a major release
@@ -18,6 +18,10 @@
 v5.0.0 retargets the framework's on-chain protocol bindings from **ledger-v8 / onchain-runtime-v3** to **ledger-v9 / onchain-runtime-v4**, published under the new **`@midnightntwrk`** npm scope. This is a protocol-level break: state serialized under the old protocol is not interchangeable, and the `SigningKey` representation changes from a plain hex string to a structured `{ tag, value }` object throughout the public API.
 
 On top of the protocol work, v5.0.0 adds **cross-contract call support** (multi-contract call trees, artifacts resolved by verifier-key hash), ships the first installment of **MIP-0002 contract events** — the `PublicDataProvider` can now query and stream decoded on-chain contract events — and makes ZK artifact loading **verify against the `compactc` integrity manifest**, fail-closed by default.
+
+## This is the release that crosses the ledger fork
+
+v5.0.0 is the major a dApp must be on **before** the ledger v8 to v9 hard fork. Crossing it costs no code change beyond this migration: the same call sites keep working, a contract deployed before the fork keeps being callable after it, and there is no new API to call at the boundary. What the fork does change is timing and operations — when to release, what counts as a completed transaction, and what to do about contracts your dApp deploys at runtime. [Step 14 of the migration guide](./migration-guide.md#step-14--operating-across-the-ledger-fork) covers all of it.
 
 ## Breaking Changes (high level)
 
@@ -27,6 +31,8 @@ On top of the protocol work, v5.0.0 adds **cross-contract call support** (multi-
 4. **`@midnightntwrk/wallet-sdk` 2.0.0-beta** (testkit-js) — keystore and signature/verifying-key APIs adopt the structured key/signature types (#970, #967).
 5. **`platform-js` 3.0.0** — models the signing key as `{ tag, value }`; threaded through the Configuration layer (#970).
 6. **ZK artifact integrity verification is fail-closed** — `FetchZkConfigProvider` / `NodeZkConfigProvider` verify artifacts against `compiler/contract-manifest.json` and throw `ZkArtifactIntegrityError` on a missing/stale manifest or digest mismatch by default (#1015).
+7. **The packages are ESM-only** — CommonJS `require()` of any `midnight-js-*` package no longer resolves; consumers need Node >= 22.12 and TypeScript >= 5.8 with `nodenext` or `bundler` resolution (#1180).
+8. **Provider-seam payloads and finalized records are version-tagged** — `proveTx`, `balanceTx` and `submitTx` carry `{ version: 'v9', tx }` / `{ version: 'v8', txBytes }` in both directions, and `watchForTxData` / `watchForDeployTxData` report a `version`-discriminated record. Narrow before reading the payload. External `WalletProvider` / `MidnightProvider` implementations must be updated (#1204).
 
 See [breaking-changes.md](./breaking-changes.md) for full rationale and before/after snippets.
 

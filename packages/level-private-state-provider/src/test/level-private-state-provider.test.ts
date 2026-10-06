@@ -23,6 +23,8 @@ import {
   InvalidExportFormatError,
   type PrivateStateExport,
   PrivateStateExportError,
+  PrivateStateSerializationError,
+  type PrivateStateSerializationFailure,
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
@@ -32,7 +34,7 @@ import { Level } from 'level';
 import * as superjson from 'superjson';
 import { vi } from 'vitest';
 
-import { type DatabaseLevel, levelPrivateStateProvider, migrateToAccountScoped } from '../index';
+import { type DatabaseLevel, levelPrivateStateProvider, migrateToAccountScoped, StoredSigningKeyFormatError } from '../index';
 import { StorageEncryption } from '../storage-encryption';
 
 const captureError = async (action: () => Promise<unknown>): Promise<unknown> => {
@@ -111,7 +113,11 @@ describe('Level Private State Provider', (): void => {
     booleanArrayValue: [true, false, true],
     objectValues: [objectValue, objectValue, objectValue],
     uint8ArrayArrayValue: [uint8Array0, uint8Array1],
-    bufferArrayValue: [buffer0, buffer1]
+    bufferArrayValue: [buffer0, buffer1],
+    dateValue: new Date('2026-09-25T00:00:00.000Z'),
+    mapValue: new Map<string, bigint>([['leaf', 7n]]),
+    setValue: new Set([1, 2, 3]),
+    bigintValue: 7n
   };
 
   type PID = keyof typeof testStates;
@@ -190,6 +196,18 @@ describe('Level Private State Provider', (): void => {
     });
     test('for buffer arrays', async () => {
       return testSetGet('bufferArrayValue');
+    });
+    test('for dates', async () => {
+      return testSetGet('dateValue');
+    });
+    test('for maps', async () => {
+      return testSetGet('mapValue');
+    });
+    test('for sets', async () => {
+      return testSetGet('setValue');
+    });
+    test('for bigints', async () => {
+      return testSetGet('bigintValue');
     });
     test('for signing keys', async () => {
       return testSetGetSigningKey('bufferArrayValue');
@@ -1525,7 +1543,7 @@ describe('Level Private State Provider', (): void => {
 
       test('importSigningKeys accepts a well-formed structured signing key', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
-        const wellFormed = { tag: 'schnorr', value: '0102030a1b2c3d4e5f' };
+        const wellFormed = { tag: 'schnorr', value: 'ab'.repeat(32) };
         const goodExport = await buildBadExport({ [CONTRACT_ADDRESS_1]: wellFormed });
 
         const result = await db.importSigningKeys(goodExport, { password: VALID_PASSWORD });
@@ -1533,6 +1551,193 @@ describe('Level Private State Provider', (): void => {
         expect(result.imported).toBe(1);
         expect(await db.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(wellFormed);
       });
+    });
+  });
+
+  describe('Signing keys written by a 4.x client', () => {
+    const LEGACY_TEST_DB = 'midnight-legacy-signing-key-db';
+    const LEGACY_IMPORT_DB = 'midnight-legacy-signing-key-import-db';
+    const LEGACY_ADDRESS = 'legacy-contract' as ContractAddress;
+    const OTHER_ADDRESS = 'other-contract' as ContractAddress;
+    const LEGACY_KEY = 'ab'.repeat(32);
+    const EXPORT_PASSWORD = 'Export-Legacy-Pass9!';
+    const METADATA_KEY = '__midnight_encryption_metadata__';
+    const SIGNING_KEY_SUBLEVEL =
+      `signing-keys:${crypto.createHash('sha256').update(TEST_ACCOUNT_ID).digest('hex').substring(0, 32)}`;
+
+    const legacyConfig = {
+      midnightDbName: LEGACY_TEST_DB,
+      privateStoragePasswordProvider: () => TEST_PASSWORD,
+      accountId: TEST_ACCOUNT_ID
+    };
+
+    const putRawSigningKeyEntry = async (address: string, stored: unknown): Promise<void> => {
+      const level = new Level(LEGACY_TEST_DB, { createIfMissing: true });
+      const subLevel = level.sublevel<string, string>(SIGNING_KEY_SUBLEVEL, { valueEncoding: 'utf-8' });
+      try {
+        await level.open();
+        await subLevel.open();
+        const metadata: { salt: string } = JSON.parse(await subLevel.get(METADATA_KEY) ?? '');
+        const encryption = await StorageEncryption.create(TEST_PASSWORD, {
+          existingSalt: Buffer.from(metadata.salt, 'hex')
+        });
+        await subLevel.put(address, await encryption.encrypt(superjson.stringify(stored)));
+      } finally {
+        await subLevel.close();
+        await level.close();
+      }
+    };
+
+    const openStoreWithEntry = async (stored: unknown) => {
+      const db = levelPrivateStateProvider<string, string>(legacyConfig);
+      await db.setSigningKey(OTHER_ADDRESS, sampleSigningKey());
+      await putRawSigningKeyEntry(LEGACY_ADDRESS, stored);
+      return db;
+    };
+
+    afterEach(async () => {
+      await fs.rm(path.join('.', LEGACY_TEST_DB), { recursive: true, force: true });
+      await fs.rm(path.join('.', LEGACY_IMPORT_DB), { recursive: true, force: true });
+    });
+
+    test('getSigningKey reads a bare hex key as a schnorr key', async () => {
+      const db = await openStoreWithEntry(LEGACY_KEY);
+
+      const key = await db.getSigningKey(LEGACY_ADDRESS);
+
+      expect(key).toEqual({ tag: 'schnorr', value: LEGACY_KEY });
+    });
+
+    test('getSigningKey returns a stored ecdsa key unchanged', async () => {
+      const db = levelPrivateStateProvider<string, string>(legacyConfig);
+      const ecdsaKey = { tag: 'ecdsa', value: 'cd'.repeat(32) } as const;
+      await db.setSigningKey(LEGACY_ADDRESS, ecdsaKey);
+
+      const key = await db.getSigningKey(LEGACY_ADDRESS);
+
+      expect(key).toEqual(ecdsaKey);
+    });
+
+    test('getSigningKey refuses a malformed entry with StoredSigningKeyFormatError', async () => {
+      const db = await openStoreWithEntry('ab'.repeat(31));
+
+      await expect(db.getSigningKey(LEGACY_ADDRESS)).rejects.toThrow(StoredSigningKeyFormatError);
+    });
+
+    test('getSigningKey refuses a structured key whose value is not 32 bytes', async () => {
+      const db = await openStoreWithEntry({ tag: 'schnorr', value: 'ab'.repeat(31) });
+
+      await expect(db.getSigningKey(LEGACY_ADDRESS)).rejects.toThrow(
+        expect.objectContaining({ name: 'StoredSigningKeyFormatError', contractAddress: LEGACY_ADDRESS })
+      );
+    });
+
+    test('a malformed entry does not block other addresses', async () => {
+      const db = await openStoreWithEntry('ab'.repeat(31));
+
+      const otherKey = await db.getSigningKey(OTHER_ADDRESS);
+
+      expect(otherKey).not.toBeNull();
+    });
+
+    test('an export of a store with a legacy entry imports back as a schnorr key', async () => {
+      const db = await openStoreWithEntry(LEGACY_KEY);
+      const exported = await db.exportSigningKeys({ password: EXPORT_PASSWORD });
+      const target = levelPrivateStateProvider<string, string>({ ...legacyConfig, midnightDbName: LEGACY_IMPORT_DB });
+
+      await target.importSigningKeys(exported, { password: EXPORT_PASSWORD });
+
+      expect(await target.getSigningKey(LEGACY_ADDRESS)).toEqual({ tag: 'schnorr', value: LEGACY_KEY });
+    });
+
+    test('exportSigningKeys refuses the whole export when one entry is malformed', async () => {
+      const db = await openStoreWithEntry('ab'.repeat(31));
+
+      await expect(db.exportSigningKeys({ password: EXPORT_PASSWORD })).rejects.toThrow(
+        expect.objectContaining({ name: 'StoredSigningKeyFormatError', contractAddress: LEGACY_ADDRESS })
+      );
+    });
+
+    test('import conflict check over a legacy entry reports ImportConflictError', async () => {
+      const source = await openStoreWithEntry(LEGACY_KEY);
+      const exported = await source.exportSigningKeys({ password: EXPORT_PASSWORD });
+
+      await expect(
+        source.importSigningKeys(exported, { password: EXPORT_PASSWORD, conflictStrategy: 'error' })
+      ).rejects.toThrow(ImportConflictError);
+    });
+
+    const exportReplacementFor = async (address: ContractAddress) => {
+      const source = levelPrivateStateProvider<string, string>({ ...legacyConfig, midnightDbName: LEGACY_IMPORT_DB });
+      const replacement = sampleSigningKey();
+      await source.setSigningKey(address, replacement);
+      return { replacement, exported: await source.exportSigningKeys({ password: EXPORT_PASSWORD }) };
+    };
+
+    const putUndecodableSigningKeyEntry = async (address: string): Promise<void> => {
+      const level = new Level(LEGACY_TEST_DB, { createIfMissing: true });
+      const subLevel = level.sublevel<string, string>(SIGNING_KEY_SUBLEVEL, { valueEncoding: 'utf-8' });
+      try {
+        await level.open();
+        await subLevel.open();
+        await subLevel.put(address, 'not-json-and-not-encrypted');
+      } finally {
+        await subLevel.close();
+        await level.close();
+      }
+    };
+
+    test("importSigningKeys with the default 'error' strategy reports a malformed entry as a conflict", async () => {
+      const db = await openStoreWithEntry('ab'.repeat(31));
+      const { exported } = await exportReplacementFor(LEGACY_ADDRESS);
+
+      await expect(db.importSigningKeys(exported, { password: EXPORT_PASSWORD })).rejects.toThrow(ImportConflictError);
+      await expect(db.getSigningKey(LEGACY_ADDRESS)).rejects.toThrow(StoredSigningKeyFormatError);
+    });
+
+    test("importSigningKeys with 'overwrite' repairs an entry that cannot be decoded", async () => {
+      const db = levelPrivateStateProvider<string, string>(legacyConfig);
+      await db.setSigningKey(OTHER_ADDRESS, sampleSigningKey());
+      await putUndecodableSigningKeyEntry(LEGACY_ADDRESS);
+      const { replacement, exported } = await exportReplacementFor(LEGACY_ADDRESS);
+
+      const result = await db.importSigningKeys(exported, { password: EXPORT_PASSWORD, conflictStrategy: 'overwrite' });
+
+      expect(result).toEqual({ imported: 0, skipped: 0, overwritten: 1 });
+      expect(await db.getSigningKey(LEGACY_ADDRESS)).toEqual(replacement);
+    });
+
+    test("importSigningKeys with 'overwrite' repairs a malformed entry", async () => {
+      const db = await openStoreWithEntry('ab'.repeat(31));
+      const { replacement, exported } = await exportReplacementFor(LEGACY_ADDRESS);
+
+      const result = await db.importSigningKeys(exported, { password: EXPORT_PASSWORD, conflictStrategy: 'overwrite' });
+
+      expect(result).toEqual({ imported: 0, skipped: 0, overwritten: 1 });
+      expect(await db.getSigningKey(LEGACY_ADDRESS)).toEqual(replacement);
+    });
+
+    test("importSigningKeys with 'skip' counts a malformed entry as skipped", async () => {
+      const db = await openStoreWithEntry('ab'.repeat(31));
+      const { exported } = await exportReplacementFor(LEGACY_ADDRESS);
+
+      const result = await db.importSigningKeys(exported, { password: EXPORT_PASSWORD, conflictStrategy: 'skip' });
+
+      expect(result).toEqual({ imported: 0, skipped: 1, overwritten: 0 });
+    });
+
+    test('a legacy entry still reads as a schnorr key after signing-key password rotation', async () => {
+      const NEW_PASSWORD = 'Rotated-Legacy-Pass9!';
+      const db = await openStoreWithEntry(LEGACY_KEY);
+      await db.changeSigningKeysPassword(() => TEST_PASSWORD, () => NEW_PASSWORD);
+      const rotated = levelPrivateStateProvider<string, string>({
+        ...legacyConfig,
+        privateStoragePasswordProvider: () => NEW_PASSWORD
+      });
+
+      const key = await rotated.getSigningKey(LEGACY_ADDRESS);
+
+      expect(key).toEqual({ tag: 'schnorr', value: LEGACY_KEY });
     });
   });
 
@@ -3378,5 +3583,88 @@ describe('Level Private State Provider', (): void => {
       }
     });
   });
-});
 
+  describe('Non-serialisable private state', () => {
+    const REJECTION_CONTRACT_ADDRESS = 'non-serialisable-contract-address' as ContractAddress;
+
+    type RichStateId = 'functionState' | 'emptyState' | 'priorState' | 'classState' | 'symbolState' | 'recoveryState';
+    type RichState = { readonly registry: Record<string, unknown> };
+
+    const withFunction = (): RichState => ({ registry: { depth: 8, findPathForLeaf: () => 42 } });
+
+    const richStateProvider = () => {
+      const db = levelPrivateStateProvider<RichStateId, RichState>(testConfig);
+      db.setContractAddress(REJECTION_CONTRACT_ADDRESS);
+      return db;
+    };
+
+    const expectRejectedSet = async (
+      id: RichStateId,
+      state: RichState,
+      expectedPath: string,
+      reason: PrivateStateSerializationFailure
+    ): Promise<void> => {
+      const db = richStateProvider();
+
+      const error = await captureError(() => db.set(id, state));
+
+      expect(error).toBeInstanceOf(PrivateStateSerializationError);
+      if (!(error instanceof PrivateStateSerializationError)) {
+        throw new Error(`expected a PrivateStateSerializationError, got ${String(error)}`);
+      }
+      expect(error.path).toBe(expectedPath);
+      expect(error.reason).toBe(reason);
+      expect(error.privateStateId).toBe(id);
+    };
+
+    test("'set' rejects a function-valued field, naming its path", async () => {
+      await expectRejectedSet('functionState', withFunction(), 'registry.findPathForLeaf', 'function');
+    });
+
+    test("'set' rejects a class instance", async () => {
+      class Registry {
+        constructor(public readonly depth: number) {}
+
+        findPathForLeaf(): number {
+          return this.depth;
+        }
+      }
+
+      await expectRejectedSet('classState', { registry: { tree: new Registry(8) } }, 'registry.tree', 'class_instance');
+    });
+
+    test("'set' rejects a symbol value", async () => {
+      await expectRejectedSet('symbolState', { registry: { tag: Symbol('leaf') } }, 'registry.tag', 'symbol');
+    });
+
+    test("a rejected 'set' stores nothing when the key was empty", async () => {
+      const db = richStateProvider();
+
+      const error = await captureError(() => db.set('emptyState', withFunction()));
+
+      expect(error).toBeInstanceOf(PrivateStateSerializationError);
+      expect(await db.get('emptyState')).toBeNull();
+    });
+
+    test("a rejected 'set' leaves a previously stored value intact", async () => {
+      const db = richStateProvider();
+      const stored = { registry: { depth: 8 } };
+      await db.set('priorState', stored);
+
+      const error = await captureError(() => db.set('priorState', withFunction()));
+
+      expect(error).toBeInstanceOf(PrivateStateSerializationError);
+      expect(await db.get('priorState')).toStrictEqual(stored);
+    });
+
+    test('the provider still writes after a rejection', async () => {
+      const db = richStateProvider();
+      await captureError(() => db.set('recoveryState', withFunction()));
+
+      const stored = { registry: { depth: 8 } };
+      await db.set('recoveryState', stored);
+
+      expect(await db.get('recoveryState')).toStrictEqual(stored);
+    });
+  });
+});

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { WalletSeeds } from '@/wallet/wallet-seed';
+import { WalletSeeds } from '../src/wallet/wallet-seed';
 
 describe('[Unit tests] FluentWalletBuilder seed immutability', () => {
   it('WalletSeeds.generateRandom produces unique seeds each time', () => {

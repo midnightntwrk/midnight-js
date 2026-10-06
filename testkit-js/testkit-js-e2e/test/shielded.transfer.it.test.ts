@@ -30,11 +30,11 @@ import {
 import path from 'path';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
-import { CompiledShieldedContract } from '@/contract';
+import { CompiledShieldedContract } from '../src/contract';
 import {
   type ShieldedContractCircuit,
   type ShieldedContractProviders
-} from '@/types/shielded-types';
+} from '../src/types/shielded-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `shielded_${new Date().toISOString()}.log`)

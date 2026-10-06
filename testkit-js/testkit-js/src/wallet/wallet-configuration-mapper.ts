@@ -16,12 +16,15 @@
 import { type LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type DefaultConfiguration,
+  DefaultForkSchedule,
   InMemoryTransactionHistoryStorage,
   mergeWalletEntries,
+  type ProtocolVersion,
+  type ResolvedConfiguration,
   WalletEntrySchema
 } from '@midnightntwrk/wallet-sdk';
 
-import { type EnvironmentConfiguration } from '@/test-environment';
+import { type EnvironmentConfiguration } from '../test-environment';
 
 export interface MapperOptions {
   readonly networkId?: string;
@@ -29,8 +32,13 @@ export interface MapperOptions {
   readonly ledgerParams?: LedgerParameters;
 }
 
-export function mapEnvironmentToConfiguration(env: EnvironmentConfiguration): DefaultConfiguration {
+export const FORK_SCHEDULE: ProtocolVersion.ForkSchedule = DefaultForkSchedule;
+
+export function mapEnvironmentToConfiguration(
+  env: EnvironmentConfiguration
+): ResolvedConfiguration<DefaultConfiguration> {
   return {
+    forks: FORK_SCHEDULE,
     indexerClientConnection: {
       indexerHttpUrl: env.indexer,
       indexerWsUrl: env.indexerWS

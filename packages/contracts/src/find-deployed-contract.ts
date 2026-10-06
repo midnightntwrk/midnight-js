@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
 import { type CompiledContract, type Contract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import {
   type ContractAddress,
@@ -24,22 +25,43 @@ import {
   type AnyProvableCircuitId,
   type PrivateStateId,
   type PrivateStateProvider,
-  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, toHex } from '@midnight-ntwrk/midnight-js-utils';
+  type VerifierKey,
+  type VersionedFinalizedTxData} from '@midnight-ntwrk/midnight-js-types';
+import { assertDefined, assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
-import { ContractTypeError, IncompleteFindContractPrivateStateConfig } from './errors';
+import { CURRENT_PIPELINE_ERA, type CurrentPipelineEra, RETAINED_PIPELINE_ERA } from './era';
+import {
+  ContractTypeError,
+  IncompleteFindContractPrivateStateConfig,
+  Ledger8SigningKeyUnusableError
+} from './errors';
 import {
   type CircuitMaintenanceTxInterfaces,
   type ContractMaintenanceTxInterface,
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
+import { type BreadcrumbSink, emitRetainedSigningKeyEntry } from './internal/breadcrumbs';
+import { isLedger8Request, requireTaggedRecord, resolveArtifactEra } from './internal/era';
+import { findLedger8Contract } from './internal/ledger8-entry';
+import { fromStoredLedger8SigningKey, toStoredLedger8SigningKey } from './internal/ledger8-signing-key';
+import {
+  type AnyLedger8FindDeployedContractOptions,
+  type AnyLedger8FoundContract,
+  type Ledger8CircuitId,
+  type Ledger8Contract,
+  type Ledger8ContractProviders,
+  type Ledger8FindDeployedContractOptions,
+  type Ledger8FoundContract,
+  type Ledger8PrivateState
+} from './ledger8-contract';
 import {
   type CircuitCallTxInterface,
-  createCircuitCallTxInterface
+  createCircuitCallTxInterface,
+  createLedger8CircuitCallTxInterface
 } from './tx-interfaces';
-import type { FinalizedDeployTxDataBase } from './tx-model';
+import type { FoundDeployTxData, FoundDeployTxPublicData } from './tx-model';
 
 const setOrGetInitialSigningKey = async <C extends Contract.Any>(
   privateStateProvider: PrivateStateProvider,
@@ -58,46 +80,178 @@ const setOrGetInitialSigningKey = async <C extends Contract.Any>(
   return freshSigningKey;
 };
 
-const setOrGetInitialPrivateState = async <C extends Contract.Any>(
-  privateStateProvider: PrivateStateProvider<PrivateStateId, Contract.PrivateState<C>>,
-  options: FindDeployedContractOptions<C>
-): Promise<Contract.PrivateState<C>> => {
+const queryFoundDeployTxPublicData = async (
+  publicDataProvider: ContractProviders['publicDataProvider'],
+  deployRecord: VersionedFinalizedTxData,
+  contractAddress: ContractAddress
+): Promise<FoundDeployTxPublicData> => {
+  switch (deployRecord.version) {
+    case 'v8':
+      return { ...deployRecord, contractAddress };
+    case 'v9': {
+      const initialContractState = await publicDataProvider.queryDeployContractState(contractAddress);
+      assertDefined(initialContractState, `No contract deployed at contract address '${contractAddress}'`);
+      return { ...deployRecord, contractAddress, initialContractState };
+    }
+    default:
+      return assertNever(deployRecord, 'findDeployedContract');
+  }
+};
+
+/**
+ * The RETAINED era's half of the same rule. It differs in THREE ways, not one.
+ *
+ * Supplied key: VALIDATED through the read's own rule and then stored. Nothing supplied and a
+ * retained-era entry stored: that key is reported, unwrapped back to the bare string the retained
+ * runtime takes. Nothing supplied and nothing stored: NOTHING is sampled. Nothing supplied and an
+ * entry that is not usable, or one that cannot be read at all: reported as nothing stored, with a
+ * breadcrumb.
+ *
+ * The supplied-key guard is `!== undefined`, NOT truthiness. That difference is load-bearing: a
+ * falsy supplied key must reach the refusal, not fall through to the read as though nothing had
+ * been supplied.
+ *
+ * @param privateStateProvider The signing-key half of the private-state provider.
+ * @param contractAddress The address the key is stored against.
+ * @param signingKey The key the caller supplied on the attach options, if any.
+ * @param sink The configured logger, or `undefined`.
+ * @returns The key now held for that address, or `undefined` when none usable is.
+ * @throws Ledger8SigningKeyUnusableError If a supplied key is not one this framework can store and
+ * read back. Raised BEFORE the write, so a refused key replaces nothing.
+ * @see {@link KeepStatePipeline} for the three ways this diverges from the current era's rule, and
+ * why each divergence is one.
+ */
+const setOrGetLedger8SigningKey = async (
+  privateStateProvider: Pick<PrivateStateProvider, 'getSigningKey' | 'setSigningKey'>,
+  contractAddress: ContractAddress,
+  signingKey: Ledger8SigningKey | undefined,
+  sink: BreadcrumbSink | undefined
+): Promise<Ledger8SigningKey | undefined> => {
+  if (signingKey !== undefined) {
+    const entry = toStoredLedger8SigningKey(signingKey);
+    // Through the READ's own rule, so a key this attach accepts is one a later attach reports.
+    // The sink is deliberately not passed: the refusal below is how this case is reported, and a
+    // breadcrumb beside it would record the same fact twice under a decision name that says an
+    // entry was read out of the store.
+    const roundTripped = fromStoredLedger8SigningKey(entry, contractAddress, undefined);
+    if (roundTripped === undefined) {
+      throw new Ledger8SigningKeyUnusableError(contractAddress);
+    }
+    await privateStateProvider.setSigningKey(contractAddress, entry);
+    // The round-tripped value rather than the input, so the handle cannot claim more than the
+    // store will give back.
+    return roundTripped;
+  }
+  let stored: SigningKey | null;
+  try {
+    stored = await privateStateProvider.getSigningKey(contractAddress);
+  } catch {
+    // SWALLOWS: the READ of a value nothing on this arm consumes, and nothing else.
+    // `getSigningKey` is documented as THROWING -- a wrong store password, a password-policy
+    // failure, a rotation-lock timeout, store I/O, an entry the provider refuses as not a signing
+    // key -- so propagated, a store whose signing-key
+    // sublevel was written under a different password fails EVERY retained attach to this address
+    // and makes its circuit calls unreachable over a value none of them reads. That is the same
+    // blast radius an unusable ENTRY is already refused for; this extends the guarantee from the
+    // entry's content to the read itself.
+    //
+    // The cause is deliberately NOT carried onto the breadcrumb: the provider's own interface says
+    // store I/O messages name paths and OS-level metadata that must be redacted before they reach
+    // a user-facing surface, and a log line is read by more people than a return value is. The
+    // breadcrumb is the signal, and it is emitted on every pass through here.
+    emitRetainedSigningKeyEntry(sink, contractAddress, 'unreadable-entry');
+    return undefined;
+  }
+  // Truthiness rather than `=== null`: the interface answers `null` for "nothing stored", and a
+  // provider that simply returns nothing answers `undefined`. Both are the same fact here.
+  if (!stored) {
+    return undefined;
+  }
+  return fromStoredLedger8SigningKey(stored, contractAddress, sink);
+};
+
+/**
+ * The private-state half of a find's configuration, as the rule below reads it.
+ *
+ * Structural rather than either era's own options type, because the rule is ONE rule and the
+ * retained arm reaches it holding a `Ledger8FindDeployedContractOptions`.
+ *
+ * DO NOT DROP THE `& object` on any use of this type. Both members are optional, which makes this
+ * a weak type, and without the intersection the ordinary current-era find stops compiling.
+ *
+ * @see {@link OverloadTyping} for what the intersection does and does not disable.
+ */
+interface FindContractPrivateStateConfig<PS> {
+  readonly privateStateId?: PrivateStateId;
+  readonly initialPrivateState?: PS;
+}
+
+/**
+ * Narrows to a configuration that CARRIES an initial private state, on the key's presence rather
+ * than on its value.
+ *
+ * `undefined` is a legitimate private state — a contract that declares none stores exactly that —
+ * so `initialPrivateState: undefined` means "store that", not "supplied nothing". `privateStateId`
+ * is read off its key the same way, but an undefined VALUE there is refused rather than stored
+ * under, because no id is a usable id.
+ */
+const hasInitialPrivateState = <PS>(
+  options: FindContractPrivateStateConfig<PS> & object
+): options is FindContractPrivateStateConfig<PS> & { readonly initialPrivateState: PS } =>
+  'initialPrivateState' in options;
+
+const setOrGetInitialPrivateState = async <PS>(
+  privateStateProvider: PrivateStateProvider<PrivateStateId, PS>,
+  options: FindContractPrivateStateConfig<PS> & object
+): Promise<PS> => {
   /**
-   * If both 'privateStateId' and 'initialPrivateState' are defined,
+   * "Given" below means the PROPERTY IS PRESENT, not that its value is defined. The two differ,
+   * and each difference is handled explicitly at the branch it belongs to.
+   *
+   * If both 'privateStateId' and 'initialPrivateState' are given,
    * then 'initialPrivateState' is stored in private state provider at 'privateStateId'.
    *
-   * If 'privateStateId' is defined and 'initialPrivateState' is undefined,
+   * If 'privateStateId' is given and 'initialPrivateState' is not,
    * and the private state provider has an entry at 'privateStateId',
    * then the find reports the stored private state as the initialPrivateState.
    *
-   * If 'privateStateId' is defined and 'initialPrivateState' is undefined,
+   * If 'privateStateId' is given and 'initialPrivateState' is not,
    * and the private state provider does not have an entry at 'privateStateId',
    * then an error is returned.
    *
-   * If 'privateStateId' is undefined and 'initialPrivateState' is defined,
+   * If 'privateStateId' is given as undefined, then an error is returned, whether or not
+   * an 'initialPrivateState' accompanies it.
+   *
+   * If 'privateStateId' is not given and 'initialPrivateState' is,
    * then an error is returned.
    *
-   * If 'privateStateId' is undefined and 'initialPrivateState' is undefined,
-   * then no private state is stored.
+   * If neither is given, then no private state is stored.
    */
-  const hasPrivateStateId = 'privateStateId' in options;
-  const hasInitialPrivateState = 'initialPrivateState' in options;
-
-  if (hasPrivateStateId) {
-    if (hasInitialPrivateState) {
-      await privateStateProvider.set(options.privateStateId, options.initialPrivateState);
+  if ('privateStateId' in options) {
+    const { privateStateId } = options;
+    // Read off the KEY above and the VALUE here, rather than off the value alone. A caller that
+    // wrote `privateStateId: cfg.someId` with an undefined `someId` BELIEVES it named one, and
+    // reading that as "no id given" would attach against no state at all and leave every later
+    // call running on a state the contract never had. Refused instead, at the configuration.
+    assertDefined(
+      privateStateId,
+      "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
+        'for a contract that carries no private state.'
+    );
+    if (hasInitialPrivateState(options)) {
+      await privateStateProvider.set(privateStateId, options.initialPrivateState);
       return options.initialPrivateState;
     }
-    const currentPrivateState = await privateStateProvider.get(options.privateStateId);
-    assertDefined(currentPrivateState, `No private state found at private state ID '${options.privateStateId}'`);
+    const currentPrivateState = await privateStateProvider.get(privateStateId);
+    assertDefined(currentPrivateState, `No private state found at private state ID '${privateStateId}'`);
     return currentPrivateState;
   }
-  if (hasInitialPrivateState) {
+  if (hasInitialPrivateState(options)) {
     throw new IncompleteFindContractPrivateStateConfig();
   }
-  // Cast to 'PrivateState<C>' because if we've reached this point, the private state of
+  // Cast to 'PS' because if we've reached this point, the private state of
   // the contract should be 'undefined'.
-  return undefined as Contract.PrivateState<C>;
+  return undefined as PS;
 };
 
 /**
@@ -112,25 +266,45 @@ export const verifierKeysEqual = (a: Uint8Array, b: Uint8Array): boolean =>
 /**
  * Checks that the given `contractState` contains the given `verifierKeys`.
  *
+ * A circuit fails the check when the state registers no operation for it, when the registered
+ * operation carries no verifier key at all, or when the deployed key differs from the local one.
+ * The three are reported separately on the thrown error, because only the last one means the local
+ * artifacts are at fault.
+ *
  * @param verifierKeys The verifier keys the client has for the deployed contract we're checking.
  * @param contractState The (typically already deployed) contract state containing verifier keys.
+ * @param contractAddress The address `contractState` was read from, used to identify the contract
+ *                        in the thrown error.
  *
- * @throws ContractTypeError When one or more of the local and deployed verifier keys do not match.
+ * @throws ContractTypeError When any circuit is missing from `contractState`, has no deployed
+ *                           verifier key, or has a key differing from the local one.
  */
 export const verifyContractState = (
   verifierKeys: [AnyProvableCircuitId, VerifierKey][],
-  contractState: ContractState
+  contractState: ContractState,
+  contractAddress?: ContractAddress
 ): void => {
-  const mismatchedCircuitIds = verifierKeys.reduce(
-    (acc, [circuitId, localVk]) =>
-      !contractState.operation(circuitId) ||
-      !verifierKeysEqual(localVk, contractState.operation(circuitId)!.verifierKey)
-        ? [...acc, circuitId]
-        : acc,
-    [] as string[]
-  );
-  if (mismatchedCircuitIds.length > 0) {
-    throw new ContractTypeError(contractState, mismatchedCircuitIds);
+  const missing: AnyProvableCircuitId[] = [];
+  const keyless: AnyProvableCircuitId[] = [];
+  const mismatched: AnyProvableCircuitId[] = [];
+  for (const [circuitId, localVk] of verifierKeys) {
+    const operation = contractState.operation(circuitId);
+    if (operation === undefined) {
+      missing.push(circuitId);
+      continue;
+    }
+    // Widened on purpose. The runtime declares 'verifierKey' as a non-optional 'Uint8Array', but a
+    // registered operation can carry none, so the guard below is unreachable to the type checker
+    // and load-bearing at runtime.
+    const deployedVk: Uint8Array | undefined = operation.verifierKey;
+    if (deployedVk === undefined) {
+      keyless.push(circuitId);
+    } else if (!verifierKeysEqual(localVk, deployedVk)) {
+      mismatched.push(circuitId);
+    }
+  }
+  if (missing.length > 0 || keyless.length > 0 || mismatched.length > 0) {
+    throw new ContractTypeError(contractState, { missing, keyless, mismatched }, contractAddress);
   }
 };
 
@@ -202,9 +376,29 @@ export type FindDeployedContractOptions<C extends Contract.Any> =
  */
 export interface FoundContract<C extends Contract.Any> {
   /**
-   * Data for the finalized deploy transaction corresponding to this contract.
+   * The pipeline that produced this result: always the current era here.
+   *
+   * Read off the compiled artifact, NEVER off a transaction record — the two
+   * facts disagree after the fork, and only this one says which module the
+   * objects in this result came from.
    */
-  readonly deployTxData: FinalizedDeployTxDataBase<C>;
+  readonly era: CurrentPipelineEra;
+  /**
+   * The compiled contract this handle executes circuits from, exactly as the
+   * caller supplied it.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readonly compiledContract: CompiledContract.CompiledContract<C, any>;
+  /**
+   * The ledger address this handle is attached to.
+   */
+  readonly contractAddress: ContractAddress;
+  /**
+   * Data for the finalized deploy transaction corresponding to this contract. The deploy record is
+   * tagged with the ledger era that recorded it: narrow on `public.version` before reading `tx` or
+   * `initialContractState`.
+   */
+  readonly deployTxData: FoundDeployTxData<C>;
   /**
    * Interface for creating call transactions for a contract.
    */
@@ -221,16 +415,61 @@ export interface FoundContract<C extends Contract.Any> {
   readonly contractMaintenanceTx: ContractMaintenanceTxInterface;
 }
 
+/*
+ * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
+ * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
+ * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
+ * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ */
+/**
+ * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * the raw contract instance rather than inside a `CompiledContract` container.
+ *
+ * Nothing is COMPOSED and nothing is submitted: no transaction leaves this call. It resolves the
+ * head era, dates the fetched state's envelope against it, and byte-matches every local verifier
+ * key against the slot the chain holds — the checks that make a later call against this contract
+ * safe, done once here so a mis-dispatch is caught at attach time rather than at the first call.
+ *
+ * It does write LOCALLY. Supplying `initialPrivateState` alongside `privateStateId` names the
+ * contract address on the private-state provider and stores that state under the id, so the calls
+ * made through `callTx` read it back. Supplying it with no id is a caller error —
+ * `IncompleteFindContractPrivateStateConfig` — because there is nowhere to put the state, and so
+ * is writing `privateStateId` with an undefined value. Naming an id the provider holds nothing
+ * under is refused too, rather than attaching against a state the contract never had.
+ *
+ * The deploy record is returned VERSION-TAGGED rather than narrowed to the current era, so it needs
+ * narrowing on `version` before `tx` is touched.
+ *
+ * @throws IncompleteFindContractPrivateStateConfig if an `initialPrivateState` is supplied with no
+ *         `privateStateId` to store it under.
+ *
+ * @see {@link OverloadTyping} for how the two eras are discriminated, and why the record is
+ * version-tagged.
+ */
+export async function findDeployedContract<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  options: Ledger8FindDeployedContractOptions<C>
+): Promise<Ledger8FoundContract<C>>;
+
+/**
+ * Attaches to a deployed contract that declares no private state.
+ */
 export async function findDeployedContract<C extends Contract<undefined>>(
   providers: ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
   options: FindDeployedContractOptionsBase<C>
 ): Promise<FoundContract<C>>;
 
+/**
+ * Attaches to a deployed contract, reusing the private state already stored at `privateStateId`.
+ */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: FindDeployedContractOptionsExistingPrivateState<C>
 ): Promise<FoundContract<C>>;
 
+/**
+ * Attaches to a deployed contract, storing the given `initialPrivateState` at `privateStateId`.
+ */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: FindDeployedContractOptionsStorePrivateState<C>
@@ -247,24 +486,106 @@ export async function findDeployedContract<C extends Contract.Any>(
  *
  * @throws Error Improper `privateStateId` and `initialPrivateState` configuration.
  * @throws Error No contract state could be found at `contractAddress`.
+ * @throws Error The public data provider cannot decode the current contract state. The indexer
+ *               provider throws `IndexerDataError` for a contract deployed before the ledger fork
+ *               that has had no state-changing call since; that call can only be made with the
+ *               pre-fork artifacts.
  * @throws TypeError Thrown if `contractAddress` is not correctly formatted as a contract address.
  * @throws ContractTypeError One or more circuits defined on `contract` are undefined on the contract
- *                           state found at `contractAddress`, or have mis-matched verifier keys.
+ *                           state found at `contractAddress`, carry no deployed verifier key, or
+ *                           have mis-matched verifier keys.
  * @throws IncompleteFindContractPrivateStateConfig If an `initialPrivateState` is given but no
  *                                                  `privateStateId` is given to store it under.
+ * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, or
+ *                                  is a raw current-era contract instance passed instead of its
+ *                                  `CompiledContract` container, or its artifacts declare no
+ *                                  toolchain this framework can place. Raised before anything is
+ *                                  read from the chain; the ZK config provider is asked for the
+ *                                  artifacts' declared runtime version, and no other provider is
+ *                                  consulted.
  */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
-  options: FindDeployedContractOptions<C>
-): Promise<FoundContract<C>> {
+  options: FindDeployedContractOptions<C> | AnyLedger8FindDeployedContractOptions
+): Promise<FoundContract<C> | AnyLedger8FoundContract> {
+  const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
+  if (isLedger8Request<AnyLedger8FindDeployedContractOptions>(options, artifactEra)) {
+    const found = await findLedger8Contract(providers, {
+      contract: options.compiledContract,
+      contractAddress: options.contractAddress,
+      // EVERY circuit the artifact declares, off the ARTIFACT rather than off
+      // the state -- see the attach section of `docs/keep-state-pipeline.md` for
+      // what this costs and why both eras pay it.
+      circuitIds: Object.keys(options.compiledContract.provableCircuits)
+    });
+    // Seeded HERE rather than inside `findLedger8Contract`, which takes a three-member `Pick` of the
+    // providers and is a pure READ path -- widening it to write would put the one storage decision
+    // this arm makes behind the era-specific chain reads. Client-side storage is era-independent,
+    // so both eras reach the same rule from this file.
+    //
+    // AFTER the attach, for the order the current-era arm below uses: a state seeded for a contract
+    // whose verifier keys turn out not to match would outlive a find that failed.
+    //
+    // FIRST the address, for the PRIVATE-STATE write below and for that one only. A provider
+    // namespaces every private-state entry by the address last named and refuses a `get` or a
+    // `set` before any has been named, so the write below would otherwise either throw or land
+    // under whichever contract the process touched last -- and a later call, which names this
+    // address itself, would read its own key, find nothing, and report nothing.
+    //
+    // The signing-key calls further down need NONE of that: both take the address as an argument.
+    // `getSigningKey`'s own `@remarks` in `packages/types/src/private-state-provider.ts` says in so
+    // many words that it does not require `setContractAddress` first, and the level-backed provider
+    // keys those entries by the argument.
+    providers.privateStateProvider.setContractAddress(options.contractAddress);
+    // The result is DISCARDED on purpose. This call is here to apply the six-case rule -- seed the
+    // named id, or refuse a configuration that cannot be honoured -- not to report a state:
+    // `Ledger8FoundContract` publishes no private-state member, and a caller that wants the state
+    // reads it back from the provider under the id it just named. What the read buys is the refusal
+    // arriving at ATTACH time rather than at the first call.
+    //
+    // At the era top type, which is what `Ledger8PrivateState<Ledger8Contract>` resolves to: the
+    // implementation signature has already widened the retained options to
+    // `AnyLedger8FindDeployedContractOptions`, so no narrower private state is in scope here. The
+    // overloads above are what type the caller.
+    await setOrGetInitialPrivateState<Ledger8PrivateState<Ledger8Contract>>(
+      providers.privateStateProvider,
+      options
+    );
+    const signingKey = await setOrGetLedger8SigningKey(
+      providers.privateStateProvider,
+      options.contractAddress,
+      options.signingKey,
+      providers.loggerProvider
+    );
+    return {
+      era: RETAINED_PIPELINE_ERA,
+      compiledContract: options.compiledContract,
+      contractAddress: options.contractAddress,
+      deployTxData: found.deployTxData,
+      signingKey,
+      // Built AFTER the attach has checked every declared circuit's key, so a
+      // handle a caller receives is one whose circuits the chain can serve.
+      callTx: createLedger8CircuitCallTxInterface(
+        providers,
+        options.compiledContract,
+        options.contractAddress,
+        options.privateStateId
+      )
+    };
+  }
   const { compiledContract, contractAddress } = options;
   assertIsContractAddress(contractAddress);
   providers.privateStateProvider.setContractAddress(contractAddress);
 
-  const finalizedTxData = await providers.publicDataProvider.watchForDeployTxData(contractAddress);
-
-  const initialContractState = await providers.publicDataProvider.queryDeployContractState(contractAddress);
-  assertDefined(initialContractState, `No contract deployed at contract address '${contractAddress}'`);
+  const deployRecord = requireTaggedRecord(
+    await providers.publicDataProvider.watchForDeployTxData(contractAddress),
+    'watchForDeployTxData'
+  );
+  const deployPublicData = await queryFoundDeployTxPublicData(
+    providers.publicDataProvider,
+    deployRecord,
+    contractAddress
+  );
 
   const currentContractState = await providers.publicDataProvider.queryContractState(contractAddress);
   assertDefined(currentContractState, `No contract deployed at contract address '${contractAddress}'`);
@@ -272,22 +593,22 @@ export async function findDeployedContract<C extends Contract.Any>(
   const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
     ContractExecutable.make(compiledContract).getProvableCircuitIds()
   );
-  verifyContractState(verifierKeys, currentContractState);
+  verifyContractState(verifierKeys, currentContractState, contractAddress);
 
   const signingKey = await setOrGetInitialSigningKey(providers.privateStateProvider, options);
   const initialPrivateState = await setOrGetInitialPrivateState(providers.privateStateProvider, options);
 
   return {
+    era: CURRENT_PIPELINE_ERA,
+    compiledContract,
+    contractAddress,
     deployTxData: {
+      era: CURRENT_PIPELINE_ERA,
       private: {
         signingKey,
         initialPrivateState
       },
-      public: {
-        ...finalizedTxData,
-        contractAddress,
-        initialContractState
-      }
+      public: deployPublicData
     },
     callTx: createCircuitCallTxInterface(
       providers,

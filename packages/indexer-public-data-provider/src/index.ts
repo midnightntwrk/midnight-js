@@ -22,6 +22,7 @@ import { createApolloClient } from './transport';
 
 export {
   correlateDeployTxId,
+  type EnvelopeUpperBound,
   type IndexerUtxo,
   parseHexContractState,
   parseHexLedgerParameters,

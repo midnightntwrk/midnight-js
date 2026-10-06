@@ -25,8 +25,16 @@ The full contributor/agent rules live in [AGENTS.md](../../AGENTS.md#architectur
    highest existing one.
 2. Fill it in as `Accepted`: approving the PR *is* the acceptance, so there is
    no separate status flip after merge.
-3. To reverse a past decision, write a new ADR and mark the old one
-   `Superseded by ADR-NNNN`.
+3. To reverse a decision that is already on `main`, write a new ADR and mark
+   the old one `Superseded by ADR-NNNN`. Both files stay, so the reasoning
+   behind the old choice remains readable.
+4. An ADR that has **not** yet reached `main` has no published number. Edit or
+   delete it in place instead, and close the numbering up behind it. Shipping
+   a file that was superseded before anyone could read it records a decision no
+   consumer ever saw.
+5. To amend an ADR whose decision still stands — a fact it rested on changed,
+   or a follow-up landed — append an `## Amendment — <what changed> (date)`
+   section. Leave the original sections untouched.
 
 There is no index to maintain — the ADR files in this directory are the list.
 This keeps each ADR PR limited to its own new file, so concurrent PRs never
@@ -34,4 +42,11 @@ conflict on a shared table.
 
 ## Statuses
 
-`Proposed` · `Accepted` · `Deprecated` · `Superseded by ADR-NNNN`
+- `Accepted` — in force. Every ADR lands in this state; approving the PR is the
+  acceptance.
+- `Superseded by ADR-NNNN` — reversed by a later decision, which the status
+  names.
+
+There is no `Proposed` state: a decision still being argued belongs in the PR
+thread, not in this directory. There is no `Deprecated` state either — an ADR
+is either in force or superseded by a named replacement.

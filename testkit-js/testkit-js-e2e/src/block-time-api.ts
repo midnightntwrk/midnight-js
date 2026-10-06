@@ -20,12 +20,11 @@ import path from 'path';
 import type { Logger } from 'pino';
 import { WebSocket } from 'ws';
 
+import { CompiledBlockTimeContract } from './contract';
 import type {
   BlockTimeProviders,
   DeployedBlockTimeContract
-} from '@/types/block-time-types';
-
-import { CompiledBlockTimeContract } from './contract';
+} from './types/block-time-types';
 
 export const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
 

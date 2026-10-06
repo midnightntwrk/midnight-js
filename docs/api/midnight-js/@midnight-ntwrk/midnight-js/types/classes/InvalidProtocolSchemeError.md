@@ -1,0 +1,53 @@
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [types](../README.md) / InvalidProtocolSchemeError
+
+# Class: InvalidProtocolSchemeError
+
+An error describing an invalid protocol scheme.
+
+## Extends
+
+- `Error`
+
+## Constructors
+
+### Constructor
+
+> **new InvalidProtocolSchemeError**(`invalidScheme`, `allowableSchemes`): `InvalidProtocolSchemeError`
+
+#### Parameters
+
+##### invalidScheme
+
+`string`
+
+The invalid scheme.
+
+##### allowableSchemes
+
+`string`[]
+
+The valid schemes that are allowed.
+
+#### Returns
+
+`InvalidProtocolSchemeError`
+
+#### Overrides
+
+`Error.constructor`
+
+## Properties
+
+### allowableSchemes
+
+> `readonly` **allowableSchemes**: `string`[]
+
+***
+
+### invalidScheme
+
+> `readonly` **invalidScheme**: `string`

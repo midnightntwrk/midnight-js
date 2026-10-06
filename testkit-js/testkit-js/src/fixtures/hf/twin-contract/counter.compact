@@ -1,0 +1,15 @@
+// Minimal SECOND contract for the Stage-3 engine/plug-in seam acceptance test.
+// A single public counter with one impure circuit `increment()`. Authored ONLY
+// against the engine interfaces (this contract has NO shared code with bboard):
+// it exercises a DIFFERENT ledger shape (a Counter), a DIFFERENT op set (a single
+// nullary op), and a DIFFERENT observable ({ round }) — proving the engine drives
+// an arbitrary contract with ZERO engine edits.
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+export ledger round: Counter;
+
+export circuit increment(): [] {
+  round.increment(1);
+}

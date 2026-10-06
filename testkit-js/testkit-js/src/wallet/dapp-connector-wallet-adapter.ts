@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import { type Binding, type PreBinding, type Proof, type SignatureEnabled, Transaction as LedgerTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { fromHex, toHex, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import {
   type KeyMaterialProvider as ZkirKeyMaterialProvider,
   provingProvider as createLocalProvingProvider,
 } from '@midnight-ntwrk/zkir-v2';
 import type {
+  APIError,
   Configuration,
   ConnectedAPI,
   ConnectionStatus,
@@ -33,22 +33,30 @@ import type {
   TokenType,
   WalletConnectedAPI,
 } from '@midnightntwrk/dapp-connector-api';
+import { ErrorCodes } from '@midnightntwrk/dapp-connector-api';
+import type { WalletTransaction } from '@midnightntwrk/wallet-sdk';
 import { DustAddress, MidnightBech32m } from '@midnightntwrk/wallet-sdk/address-format';
 import { type BalancingRecipe } from '@midnightntwrk/wallet-sdk/facade';
 import { WasmProver } from '@midnightntwrk/wallet-sdk-prover-client/effect';
 import { firstValueFrom } from 'rxjs';
 
-import type { EnvironmentConfiguration } from '@/test-environment/environment-configuration';
-
+import type { EnvironmentConfiguration } from '../test-environment/environment-configuration';
 import type { MidnightWalletProvider } from './midnight-wallet-provider';
 
+const invalidRequest = (reason: string, cause: unknown): APIError =>
+  Object.assign(new Error(reason, { cause }), {
+    type: 'DAppConnectorAPIError' as const,
+    code: ErrorCodes.InvalidRequest,
+    reason,
+  });
+
 export class DAppConnectorWalletAdapter implements ConnectedAPI {
-  private readonly walletProvider: Pick<MidnightWalletProvider, 'wallet' | 'unshieldedKeystore' | 'zswapSecretKeys' | 'dustSecretKey'>;
+  private readonly walletProvider: Pick<MidnightWalletProvider, 'wallet' | 'unshieldedKeystore' | 'dustSecretKey'>;
   private readonly environmentConfiguration: EnvironmentConfiguration;
   private cachedDefaultKeyMaterialProvider?: ZkirKeyMaterialProvider;
 
   constructor(
-    walletProvider: Pick<MidnightWalletProvider, 'wallet' | 'unshieldedKeystore' | 'zswapSecretKeys' | 'dustSecretKey'>,
+    walletProvider: Pick<MidnightWalletProvider, 'wallet' | 'unshieldedKeystore' | 'dustSecretKey'>,
     environmentConfiguration: EnvironmentConfiguration,
   ) {
     this.walletProvider = walletProvider;
@@ -102,30 +110,28 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
   }
 
   async balanceUnsealedTransaction(tx: string, options?: { payFees?: boolean }): Promise<{ tx: string }> {
-    const unboundTx = LedgerTransaction.deserialize<SignatureEnabled, Proof, PreBinding>('signature', 'proof', 'pre-binding', fromHex(tx));
     const tokenKindsToBalance = options?.payFees === false ? (['shielded', 'unshielded'] as ('shielded' | 'unshielded')[]) : ('all' as const);
-    const recipe = await this.walletProvider.wallet.balanceUnboundTransaction(
-      unboundTx,
-      this.secretKeys(),
-      { ttl: ttlOneHour(), tokenKindsToBalance },
-    );
+    const unbound = this.adopt(tx, 'Unbound');
+    const recipe = await this.walletProvider.wallet.balanceUnboundTransaction(unbound, {
+      ttl: ttlOneHour(),
+      tokenKindsToBalance,
+    });
     return this.signAndFinalize(recipe);
   }
 
   async balanceSealedTransaction(tx: string, options?: { payFees?: boolean }): Promise<{ tx: string }> {
-    const finalizedTx = LedgerTransaction.deserialize<SignatureEnabled, Proof, Binding>('signature', 'proof', 'binding', fromHex(tx));
     const tokenKindsToBalance = options?.payFees === false ? (['shielded', 'unshielded'] as ('shielded' | 'unshielded')[]) : ('all' as const);
-    const recipe = await this.walletProvider.wallet.balanceFinalizedTransaction(
-      finalizedTx,
-      this.secretKeys(),
-      { ttl: ttlOneHour(), tokenKindsToBalance },
-    );
+    const finalized = this.adopt(tx, 'Finalized');
+    const recipe = await this.walletProvider.wallet.balanceFinalizedTransaction(finalized, {
+      ttl: ttlOneHour(),
+      tokenKindsToBalance,
+    });
     return this.signAndFinalize(recipe);
   }
 
   async submitTransaction(tx: string): Promise<void> {
-    const finalizedTx = LedgerTransaction.deserialize<SignatureEnabled, Proof, Binding>('signature', 'proof', 'binding', fromHex(tx));
-    await this.walletProvider.wallet.submitTransaction(finalizedTx);
+    const finalized = this.adopt(tx, 'Finalized');
+    await this.walletProvider.wallet.submitTransaction(finalized);
   }
 
   async signData(data: string, options: SignDataOptions): Promise<Signature> {
@@ -209,11 +215,19 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
     throw new Error('Not implemented in DAppConnectorWalletAdapter');
   }
 
-  private secretKeys() {
-    return {
-      shieldedSecretKeys: this.walletProvider.zswapSecretKeys,
-      dustSecretKey: this.walletProvider.dustSecretKey,
-    };
+  /**
+   * Reads a transaction a dApp handed over, at the protocol version the wallet is acting at.
+   *
+   * A refusal here says the dApp's bytes are unreadable -- authored against the other side of a protocol boundary,
+   * or at another stage -- not that the wallet failed. That is the connector's `InvalidRequest`, so it reaches the
+   * caller in the connector's own vocabulary rather than the wallet SDK's, with the refusal kept as the cause.
+   */
+  private adopt<TStage extends WalletTransaction.Stage>(tx: string, stage: TStage): WalletTransaction<TStage> {
+    try {
+      return this.walletProvider.wallet.adoptTransaction(fromHex(tx), stage);
+    } catch (cause) {
+      throw invalidRequest(`The transaction could not be read at stage ${stage} as this wallet's protocol version.`, cause);
+    }
   }
 
   private async signAndFinalize(recipe: BalancingRecipe): Promise<{ tx: string }> {

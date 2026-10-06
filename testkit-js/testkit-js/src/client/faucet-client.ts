@@ -16,7 +16,7 @@
 import axios from 'axios';
 import type { Logger } from 'pino';
 
-import { buildUrlWithPath } from '@/utils';
+import { buildUrlWithPath, redactUrl } from '../utils';
 
 /**
  * Client for interacting with the Midnight faucet service.
@@ -44,7 +44,7 @@ export class FaucetClient {
   async health() {
     const url = buildUrlWithPath(this.faucetUrl, '/api/health');
     const response = await axios.get(url, { timeout: 1000 });
-    this.logger.info(`Connected to faucet ${url}: ${JSON.stringify(response.data)}`);
+    this.logger.info(`Connected to faucet ${redactUrl(url)}: ${JSON.stringify(response.data)}`);
     return response;
   }
 
@@ -56,7 +56,7 @@ export class FaucetClient {
    * @throws Will log but not throw if the request fails
    */
   async requestTokens(walletAddress: string): Promise<void> {
-    this.logger.info(`Requesting tokens from '${this.faucetUrl}' for address: '${walletAddress}'`);
+    this.logger.info(`Requesting tokens from '${redactUrl(this.faucetUrl)}' for address: '${walletAddress}'`);
     const response = await axios.post(
       this.faucetUrl,
       {

@@ -118,7 +118,10 @@ jobs:
         # and attributed to the GH_TOKEN owner (MidnightCI).
         uses: planetscale/ghcommit-action@a6b150b81dca5dd027baa898604418eec9e11465 # ratchet:planetscale/ghcommit-action@v0.2.22
         with:
-          commit_message: "chore(release): bump version to ${{ inputs.version }}"
+          commit_message: |
+            chore(release): bump version to ${{ inputs.version }}
+
+            Signed-off-by: MidnightCI <133698592+MidnightCI@users.noreply.github.com>
           repo: ${{ github.repository }}
           branch: staging/release-v${{ inputs.version }}
           file_pattern: "package.json CHANGELOG.md packages testkit-js"

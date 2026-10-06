@@ -18,8 +18,7 @@ import fs from 'node:fs';
 import { type ShieldedWalletAPI, type UnshieldedWalletAPI } from '@midnightntwrk/wallet-sdk';
 import { type Logger } from 'pino';
 
-import { getEnvVarEnvironment } from '@/env-vars';
-
+import { getEnvVarEnvironment } from '../env-vars';
 import { GzipFile } from './gzip-file';
 
 /** Default directory path for storing wallet state files */

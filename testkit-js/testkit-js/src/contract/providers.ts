@@ -19,9 +19,8 @@ import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-pri
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import { type MidnightProviders, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
-import { type EnvironmentConfiguration } from '@/test-environment';
-import { type MidnightWalletProvider } from '@/wallet';
-
+import { type EnvironmentConfiguration } from '../test-environment';
+import { type MidnightWalletProvider } from '../wallet';
 import { type ContractConfiguration } from './contract-types';
 
 /**
@@ -47,7 +46,10 @@ export const initializeMidnightProviders = <PCK extends string, PS>(
   environmentConfiguration: EnvironmentConfiguration,
   contractConfiguration: ContractConfiguration
 ): MidnightProviders<PCK, PrivateStateId, PS> => {
-  const zkConfigProvider = new NodeZkConfigProvider<PCK>(contractConfiguration.zkConfigPath);
+  const zkConfigProvider = new NodeZkConfigProvider<PCK>(
+    contractConfiguration.zkConfigPath,
+    contractConfiguration.zkConfigIntegrity
+  );
 
   const coinPublicKey = midnightWalletProvider.getCoinPublicKey();
   const accountId = Buffer.from(coinPublicKey).toString('hex');

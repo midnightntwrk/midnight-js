@@ -17,7 +17,9 @@ import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact
 import type { ContractAddress, LedgerParameters, TransactionId, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { Observable } from 'rxjs';
 
-import type { FinalizedTxData, UnshieldedBalances } from './midnight-types';
+import type { UnshieldedBalances } from './midnight-types';
+import type { RawContractState } from './raw-contract-state';
+import type { VersionedFinalizedTxData } from './versioned';
 
 /**
  * Streams all previous states of a contract.
@@ -68,7 +70,7 @@ export type BlockHashConfig = {
 }
 
 /**
- * Minimal identifying information for a block.
+ * Identifying information for a block, and the ledger era it was produced under.
  */
 export type BlockInfo = {
   /**
@@ -79,6 +81,25 @@ export type BlockInfo = {
    * The block height.
    */
   readonly height: number;
+  /**
+   * The protocol-version integer this block was produced under, which dates it
+   * to a ledger era.
+   *
+   * Resolve it with `versionOfRecord` from `@midnight-ntwrk/midnight-js-protocol`:
+   * this type satisfies that function's `VersionedRecord` parameter, so
+   * `versionOfRecord(block)` is the whole call. It throws
+   * `UnknownProtocolVersionError` for a version this build cannot place on the
+   * era timeline.
+   *
+   * Implementations MUST report the era of *this* block, never the network
+   * head's, so a block read from before a hard fork keeps reporting the era it
+   * was produced in.
+   *
+   * Implementations carry the integer through as the network reported it, and
+   * do NOT reject a version this build cannot place. That failure surfaces
+   * when the caller resolves the era, not on the read.
+   */
+  readonly protocolVersion: number;
 }
 
 /**
@@ -151,6 +172,16 @@ export interface ContractEventBase {
    * Iteration-1 events are `version: 1`.
    */
   readonly version: number;
+  /**
+   * Protocol version of the block this event was emitted in, as the network
+   * reported it. Distinct from {@link version}: this one says which ledger era
+   * wrote {@link raw}, so a consumer decoding those bytes knows which runtime
+   * to decode them with. Resolve it with `versionOfRecord` from
+   * `@midnight-ntwrk/midnight-js-protocol` rather than comparing integers by
+   * hand — this interface satisfies that function's `VersionedRecord`
+   * parameter.
+   */
+  readonly protocolVersion: number;
   /** Address of the contract that emitted the event. */
   readonly contractAddress: ContractAddress;
   /**
@@ -373,7 +404,7 @@ export interface PublicDataProvider {
    * @returns A promise that resolves with finalized transaction data when the deployment appears on-chain.
    *          The promise never rejects due to timeout.
    */
-  watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData>;
+  watchForDeployTxData(contractAddress: ContractAddress): Promise<VersionedFinalizedTxData>;
 
   /**
    * Retrieves data of the transaction containing the call or deployment with the given identifier.
@@ -394,7 +425,7 @@ export interface PublicDataProvider {
    * @returns A promise that resolves with finalized transaction data when the transaction appears on-chain.
    *          The promise never rejects due to timeout.
    */
-  watchForTxData(txId: TransactionId): Promise<FinalizedTxData>;
+  watchForTxData(txId: TransactionId): Promise<VersionedFinalizedTxData>;
 
   /**
    * Creates a stream of contract states. The observable emits a value every time a state is either
@@ -404,6 +435,44 @@ export interface PublicDataProvider {
    * @param config The configuration for the observable.
    */
   contractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<ContractState>;
+
+  /**
+   * Creates a stream of contract states as the raw serialized bytes the network
+   * returned, without deserializing them, each together with the era its record
+   * is dated to. The observable emits a value every time a state is either
+   * created or updated at the given address.
+   * Waits indefinitely for matching data to appear.
+   *
+   * THE STREAMING COUNTERPART OF {@link queryRawContractState}, and the reason
+   * to prefer it over {@link contractStateObservable} is the same: it is the
+   * contract-state stream that works across the ledger fork. An implementation
+   * that deserializes inside the stream can only do so with the eras its own
+   * runtime has, and a state from any other era then ENDS the subscription
+   * rather than skipping one emission — a contract deployed before a fork and
+   * not written to since serves exactly such a state for as long as it stays
+   * dormant. Here the era travels on the record instead.
+   *
+   * {@link RawContractState.version} DATES THE RECORD, it does not read the
+   * bytes — see that field's own documentation. A caller that must know which
+   * runtime WROTE the bytes reads the envelope off
+   * {@link RawContractState.raw}; the two can disagree, and where they can is
+   * stated on the field.
+   *
+   * {@link RawContractState.ledgerParameters} MAY BE ABSENT ON A STREAM even
+   * where the same implementation serves it on
+   * {@link queryRawContractState}. The parameters are a per-block blob, and a
+   * stream may have no cheap way to obtain one per emission; an implementation
+   * is free to refuse that cost. The record carries no block identifier either,
+   * so a caller that needs the parameters for a streamed state must read
+   * {@link queryRawContractState} at a block it obtained some other way.
+   *
+   * @param address The address of the contract of interest.
+   * @param config The configuration for the observable.
+   */
+  rawContractStateObservable(
+    address: ContractAddress,
+    config: ContractStateObservableConfig
+  ): Observable<RawContractState>;
 
   /**
    * Retrieves an observable that tracks the unshielded balances for a specific contract address.
@@ -466,4 +535,50 @@ export interface PublicDataProvider {
     filter: ContractEventSubscriptionFilter,
     opts?: { startAt?: ContractEventCursor }
   ): Observable<ContractEvent>;
+
+  /**
+   * Retrieves the protocol-version integer reported by the network's current
+   * head block.
+   *
+   * Implementations MAY serve this from a cache, on ONE condition: the cached
+   * answer must expire by itself, on a bound short relative to block time. A
+   * reading held indefinitely is forbidden.
+   *
+   * PREFER THE `protocolVersion` ON A READ wherever the era of *existing* data
+   * is the question — it is dated to the same block as the bytes it describes
+   * and costs no extra request. Reach for this method only where there is no
+   * record to date: the deploy path.
+   *
+   * The answer is a LOWER BOUND on the era of the block that will include a
+   * transaction built from it, never a guarantee. A caller that must be certain
+   * confirms afterwards, from the `protocolVersion` on the finalized record.
+   *
+   * @throws Implementation-specific error when the network reports no head
+   *   block at all.
+   * @see {@link ReadingTheHeadEra} for why the cache must expire by itself, and
+   *   why this member takes no "give me a fresh one" option.
+   */
+  queryLatestProtocolVersion(): Promise<number>;
+
+  /**
+   * Retrieves the on-chain state of a contract as the raw serialized bytes the
+   * network returned, without deserializing them, together with the era the
+   * record is dated to.
+   *
+   * This is the state input for callers that must work across the ledger fork:
+   * they narrow on {@link RawContractState.version} and then hand the bytes to
+   * that era's deserializer. Both eras' envelopes are returned unchanged. The
+   * era comes from the record's protocol version and is not checked against
+   * the envelope the bytes carry.
+   *
+   * Immediately returns null if no matching data is found.
+   *
+   * @param contractAddress The address of the contract of interest.
+   * @param config The configuration of the query.
+   *               If `undefined` returns the latest state.
+   */
+  queryRawContractState(
+    contractAddress: ContractAddress,
+    config?: BlockHeightConfig | BlockHashConfig
+  ): Promise<RawContractState | null>;
 }

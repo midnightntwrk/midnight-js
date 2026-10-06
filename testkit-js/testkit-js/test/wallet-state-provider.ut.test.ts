@@ -18,10 +18,10 @@ import fs from 'node:fs';
 import type { ShieldedWalletAPI } from '@midnightntwrk/wallet-sdk';
 import pino from 'pino';
 
-import { getWalletStateFilename, WalletSaveStateProvider } from '@/wallet/wallet-state-provider';
+import { getWalletStateFilename, WalletSaveStateProvider } from '../src/wallet/wallet-state-provider';
 
 vi.mock('node:fs');
-vi.mock('@/wallet/gzip-file');
+vi.mock('../src/wallet/gzip-file');
 
 const logger = pino({ level: 'silent' });
 

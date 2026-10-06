@@ -21,6 +21,18 @@ export const BLOCK_QUERY = gql(
     block(offset: $offset) {
       height
       hash
+      protocolVersion
+    }
+  }`
+);
+
+// The indexer's `block` root field with no offset resolves to the latest
+// indexed block, so this is the network's head protocol version.
+export const HEAD_PROTOCOL_VERSION_QUERY = gql(
+  `
+  query HEAD_PROTOCOL_VERSION_QUERY {
+    block {
+      protocolVersion
     }
   }`
 );
@@ -214,13 +226,20 @@ export const DEPLOY_CONTRACT_STATE_TX_QUERY = gql(
     contractAction(address: $address) {
       ... on ContractDeploy {
         state
+        transaction {
+          protocolVersion
+        }
       }
       ... on ContractUpdate {
         state
+        transaction {
+          protocolVersion
+        }
       }
       ... on ContractCall {
         deploy {
           transaction {
+            protocolVersion
             contractActions {
               address
               state
@@ -252,6 +271,7 @@ export const TXS_FROM_BLOCK_SUB = gql(
     blocks(offset: $offset) {
       hash,
       height,
+      protocolVersion,
       transactions {
         hash
         contractActions {
@@ -269,6 +289,27 @@ export const TXS_FROM_BLOCK_SUB = gql(
 export const CONTRACT_STATE_QUERY = gql(
   `
   query CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: BlockOffset) {
+    block(offset: $offset) {
+      protocolVersion
+    }
+    contract(address: $address, offset: $offset) {
+      state
+    }
+  }`
+);
+
+// The call path's single request: the block whose protocol version dates the
+// state, and the state itself, in one document. Composition buys ONE ROUND
+// TRIP, not one consistent snapshot — the indexer resolves Query-root siblings
+// concurrently, from independent reads, so the two fields can still disagree.
+// With no offset the block field resolves to the head block.
+export const RAW_CONTRACT_STATE_QUERY = gql(
+  `
+  query RAW_CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: BlockOffset) {
+    block(offset: $offset) {
+      protocolVersion
+      ledgerParameters
+    }
     contract(address: $address, offset: $offset) {
       state
     }
@@ -280,6 +321,9 @@ export const CONTRACT_STATE_SUB = gql(
   subscription CONTRACT_STATE_SUB($address: HexEncoded!, $offset: BlockOffset) {
     contractActions(address: $address, offset: $offset) {
       state
+      transaction {
+        protocolVersion
+      }
     }
   }`
 );
@@ -288,6 +332,7 @@ export const CONTRACT_AND_ZSWAP_STATE_QUERY = gql(
   `
   query CONTRACT_AND_ZSWAP_STATE_QUERY($address: HexEncoded!, $offset: BlockOffset) {
     block(offset: $offset) {
+      protocolVersion
       ledgerParameters
       contractZswapState(address: $address)
     }
@@ -389,6 +434,7 @@ export const CONTRACT_EVENTS_QUERY = gql(
       id
       maxId
       version
+      protocolVersion
       contractAddress
       transactionId
       raw
@@ -413,6 +459,7 @@ export const CONTRACT_EVENTS_SUB = gql(
       id
       maxId
       version
+      protocolVersion
       contractAddress
       transactionId
       raw

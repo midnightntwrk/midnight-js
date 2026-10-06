@@ -16,16 +16,16 @@
 import path from 'path';
 import { WebSocket } from 'ws';
 
-import { createLogger } from '@/logger';
+import { createLogger } from '../src/logger';
 import {
   getTestEnvironment
-} from '@/test-environment';
+} from '../src/test-environment';
 import {
   EnvVarRemoteTestEnvironment,
   LocalTestEnvironment,
   PreprodTestEnvironment,
   PreviewTestEnvironment,
-  QanetTestEnvironment} from '@/test-environment/test-environments';
+  QanetTestEnvironment} from '../src/test-environment/test-environments';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `ut_${new Date().toISOString().replace(/:/g, '-')}.log`)

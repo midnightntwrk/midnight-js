@@ -19,9 +19,9 @@ import { getTestEnvironment, initializeMidnightProviders, type TestEnvironment }
 import type { Logger } from 'pino';
 import { expect } from 'vitest';
 
-import * as api from '@/events-api';
-import { EventsConfiguration } from '@/events-api';
-import type { DeployedEventsContract } from '@/types/events-types';
+import * as api from '../../src/events-api';
+import { EventsConfiguration } from '../../src/events-api';
+import type { DeployedEventsContract, EventsProviders } from '../../src/types/events-types';
 
 export const toHex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
 
@@ -89,7 +89,7 @@ export const deployEventsEnvironment = async (logger: Logger): Promise<EventsEnv
   try {
     api.setLogger(logger);
     const wallet = await testEnvironment.getMidnightWalletProvider();
-    const providers = initializeMidnightProviders(wallet, environmentConfiguration, new EventsConfiguration());
+    const providers: EventsProviders = initializeMidnightProviders(wallet, environmentConfiguration, new EventsConfiguration());
     const deployedContract = await api.deploy(providers);
     return {
       testEnvironment,

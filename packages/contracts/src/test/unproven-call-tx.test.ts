@@ -14,13 +14,21 @@
  */
 
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { type ContractState, StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import {
+  type CircuitContext,
+  type ContractModuleProvider,
+  type ContractState,
+  type ContractStateProvider,
+  StateValue
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { makeCalleeStateResolver } from '../internal/utils';
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import { createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
+  createDefaultCircuit,
   createFailingCircuit,
   createMockCallOptions,
   createMockCallOptionsWithPrivateState,
@@ -40,7 +48,7 @@ vi.mock('../get-states', () => ({
   getPublicStates: vi.fn()
 }));
 
-vi.mock('../utils', () => ({
+vi.mock('../internal/utils', () => ({
     createUnprovenLedgerDeployTx: vi.fn().mockReturnValue([
       'mock-contract-address',
       StateValue.newNull(),
@@ -49,6 +57,9 @@ vi.mock('../utils', () => ({
     createUnprovenLedgerCallTx: vi.fn().mockReturnValue({ test: 'unproven-tx' }),
     createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
     encryptionPublicKeyResolverForZswapState: vi.fn().mockReturnValue(() => 'encrypted-key'),
+    // Both: the call path uses zswapCallsToNewCoins, and the deploy this file sets up with reaches
+    // zswapStateToNewCoins through unproven-deploy-tx.
+    zswapCallsToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }]),
     zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }]),
     makeCalleeStateResolver: vi.fn()
 }));
@@ -129,6 +140,86 @@ describe('unproven-call-tx', () => {
       expect(result.public.logEvents).toEqual([]);
     });
 
+    it('publishes the post-call state as an ENCODED value beside the handle, as the retained era does', async () => {
+      const options = createMockCallOptions({
+        initialContractState: await getInitialContractState()
+      });
+
+      const result = await createUnprovenCallTxFromInitialStates(
+        createMockZKConfigProvider(),
+        options,
+        createMockEncryptionPublicKey()
+      );
+
+      // The handle is valid only inside this process; the encoded form is the
+      // one that survives a `structuredClone`, a worker transfer and storage,
+      // and it is pinned identical across the ledger runtimes -- so it is the
+      // member era-agnostic code can read in either era. Asserting it EQUALS
+      // the handle's own encoding is the point: a second, independently
+      // derived value could disagree with the state actually published.
+      expect(result.public.nextContractStateEncoded).toEqual(result.public.nextContractState.encode());
+    });
+
+    const BLOCK_HASH = 'ab'.repeat(32);
+
+    const createContextRecordingCircuit = (seen: CircuitContext[]) => {
+      const circuit = createDefaultCircuit();
+      return vi.fn().mockImplementation((ctx: CircuitContext) => {
+        seen.push(ctx);
+        return circuit(ctx);
+      });
+    };
+
+    it('pins the call to the block without enabling callees when no module provider is given', async () => {
+      // Arrange
+      const seen: CircuitContext[] = [];
+      const options = createMockCallOptions({
+        compiledContract: createMockCompiledContract({ testCircuit: createContextRecordingCircuit(seen) }),
+        initialContractState: await getInitialContractState()
+      });
+
+      // Act
+      await createUnprovenCallTxFromInitialStates(createMockZKConfigProvider(), options, createMockEncryptionPublicKey(), {
+        publicDataProvider: createMockProviders().publicDataProvider,
+        blockHash: BLOCK_HASH
+      });
+
+      // Assert
+      expect(seen).toHaveLength(1);
+      expect(seen[0]!.callContext.parentBlockHash).toBe(BLOCK_HASH);
+      expect(seen[0]!.stateProvider).toBeUndefined();
+      expect(seen[0]!.moduleProvider).toBeUndefined();
+    });
+
+    it('hands the callee state and module providers to the runtime together when a module provider is given', async () => {
+      // Arrange
+      const seen: CircuitContext[] = [];
+      const stateProvider: ContractStateProvider = { getContractState: vi.fn() };
+      const moduleProvider: ContractModuleProvider = { resolve: vi.fn() };
+      vi.mocked(makeCalleeStateResolver).mockReturnValueOnce({
+        stateProvider,
+        resolvedStates: new Map(),
+        blockHash: BLOCK_HASH
+      });
+      const options = createMockCallOptions({
+        compiledContract: createMockCompiledContract({ testCircuit: createContextRecordingCircuit(seen) }),
+        initialContractState: await getInitialContractState()
+      });
+
+      // Act
+      await createUnprovenCallTxFromInitialStates(createMockZKConfigProvider(), options, createMockEncryptionPublicKey(), {
+        publicDataProvider: createMockProviders().publicDataProvider,
+        blockHash: BLOCK_HASH,
+        moduleProvider
+      });
+
+      // Assert
+      expect(seen).toHaveLength(1);
+      expect(seen[0]!.callContext.parentBlockHash).toBe(BLOCK_HASH);
+      expect(seen[0]!.stateProvider).toBe(stateProvider);
+      expect(seen[0]!.moduleProvider).toBe(moduleProvider);
+    });
+
     it('should fail when circuit fails at runtime', async () => {
       const options = createMockCallOptions({
         compiledContract: createMockCompiledContract({
@@ -171,11 +262,10 @@ describe('unproven-call-tx', () => {
 
     it('should create unproven call tx without private state provider', async () => {
       const { getPublicStates } = await import('../get-states');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mockGetPublicStates = getPublicStates as any;
+      const mockGetPublicStates = vi.mocked(getPublicStates, { partial: true });
 
       mockGetPublicStates.mockResolvedValue({
-        zswapChainState: { test: 'zswap-chain-state' },
+        zswapChainState: { test: 'zswap-chain-state' } as unknown as ZswapChainState,
         contractState: await getInitialContractState(),
         ledgerParameters: LedgerParameters.initialParameters()
       });
@@ -206,11 +296,10 @@ describe('unproven-call-tx', () => {
 
     it('should create unproven call tx with private state provider', async () => {
       const { getStates } = await import('../get-states');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mockGetStates = getStates as any;
+      const mockGetStates = vi.mocked(getStates, { partial: true });
 
       mockGetStates.mockResolvedValue({
-        zswapChainState: { test: 'zswap-chain-state' },
+        zswapChainState: { test: 'zswap-chain-state' } as unknown as ZswapChainState,
         contractState: await getInitialContractState(),
         privateState: { test: 'private-state' },
         ledgerParameters: LedgerParameters.initialParameters()

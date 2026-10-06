@@ -226,13 +226,14 @@ export type Fees = {
 export type BlockHash = string;
 
 /**
- * Data for any finalized transaction.
+ * The era-independent metadata every finalized-transaction record carries,
+ * whichever ledger runtime produced it.
+ *
+ * Both arms of {@link VersionedFinalizedTxData} extend this, so the two arms
+ * differ in exactly two places — the `version` discriminant and the type of
+ * `tx` — and cannot drift apart as fields are added here.
  */
-export interface FinalizedTxData {
-  /**
-   * The transaction that was finalized.
-   */
-  readonly tx: Transaction<SignatureEnabled, Proof, Binding>;
+export interface FinalizedTxRecord {
   /**
    * The status of a submitted transaction.
    */
@@ -287,6 +288,30 @@ export interface FinalizedTxData {
    * involving data or values that are not encrypted or concealed.
    */
   readonly unshielded: UnshieldedUtxos;
+}
+
+/**
+ * Data for any finalized transaction produced by the v9 ledger runtime.
+ *
+ * This is the v9 arm of {@link VersionedFinalizedTxData} — see
+ * {@link FinalizedTxDataV8} for the v8 arm.
+ *
+ * NARROWING IS REQUIRED. A provider that decodes per era returns the v8 arm as
+ * an ordinary value for any record whose `protocolVersion` places it in that
+ * era.
+ *
+ * @see {@link VersionTaggedPayloads} for what the tag promises from this
+ * framework's providers, and what it does not promise from a third party's.
+ */
+export interface FinalizedTxData extends FinalizedTxRecord {
+  /**
+   * Discriminant identifying this as a v9 ledger record.
+   */
+  readonly version: 'v9';
+  /**
+   * The transaction that was finalized.
+   */
+  readonly tx: Transaction<SignatureEnabled, Proof, Binding>;
 }
 
 /**

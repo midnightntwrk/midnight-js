@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
 
 ***
 
@@ -6,9 +6,9 @@
 
 # Function: dappConnectorProofProvider()
 
-> **dappConnectorProofProvider**\<`K`\>(`api`, `zkConfigProvider`, `costModel`): `Promise`\<[`ProofProvider`](#)\>
+> **dappConnectorProofProvider**\<`K`\>(`api`, `zkConfigProvider`, `costModel`): `Promise`\<[`ProofProvider`](../../midnight-js/types/interfaces/ProofProvider.md)\>
 
-Creates a [ProofProvider](#) that delegates proving to a DApp Connector wallet.
+Creates a [ProofProvider](../../midnight-js/types/interfaces/ProofProvider.md) that delegates proving to a DApp Connector wallet.
 
 ## Type Parameters
 
@@ -28,24 +28,31 @@ DApp Connector wallet API exposing `getProvingProvider`.
 
 ### zkConfigProvider
 
-`ZKConfigRegistry` \| [`ZKConfigProvider`](#)\<`K`\>
+[`ZKConfigRegistry`](../../midnight-js/types/classes/ZKConfigRegistry.md) \| [`ZKConfigProvider`](../../midnight-js/types/classes/ZKConfigProvider.md)\<`K`\>
 
-A single [ZKConfigProvider](#) or a multi-source
-ZKConfigRegistry that supplies ZK configuration artifacts and key material. A registry is
+A single [ZKConfigProvider](../../midnight-js/types/classes/ZKConfigProvider.md) or a multi-source
+[ZKConfigRegistry](../../midnight-js/types/classes/ZKConfigRegistry.md) that supplies ZK configuration artifacts and key material. A registry is
 required to prove transactions that make cross-contract calls, which carry one proof per contract
 in the call tree.
 
 ### costModel
 
-`CostModel`
+[`CostModel`](https://github.com/midnightntwrk/midnight-ledger)
 
-Cost model applied during transaction proving.
+Cost model applied during transaction proving on the CURRENT ledger era.
+
+**Not consulted on the retained (`v8`) era**, which uses that era's own cost model instead. This
+is not an oversight and not a silent fallback: the retained ledger ships its own `CostModel`
+class and type-checks `prove()`'s argument against it across the WASM boundary, so the value
+passed here would be rejected outright. Pairing the transaction with its own era's model is the
+only correct pairing, so an override is not offered at all rather than offered and quietly
+ignored.
 
 ## Returns
 
-`Promise`\<[`ProofProvider`](#)\>
+`Promise`\<[`ProofProvider`](../../midnight-js/types/interfaces/ProofProvider.md)\>
 
-A [ProofProvider](#) whose `proveTx` method delegates to the wallet.
+A [ProofProvider](../../midnight-js/types/interfaces/ProofProvider.md) whose `proveTx` method delegates to the wallet.
 
 ## Remarks
 

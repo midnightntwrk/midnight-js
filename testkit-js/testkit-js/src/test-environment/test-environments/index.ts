@@ -14,6 +14,7 @@
  */
 
 export * from './env-var-remote-test-environment';
+export * from './fork-test-environment';
 export * from './local-test-environment';
 export * from './preprod-test-environment';
 export * from './preview-test-environment';

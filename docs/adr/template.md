@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: YYYY-MM-DD
 - Deciders: <names>
+- Related: <optional — the MIPs, PRs or issues this decision came out of>
 
 ## Context
 
@@ -26,3 +27,12 @@ a reader can tell whether a future change contradicts it.
 
 Each option we rejected and the reason. Absence of alternatives usually means
 the decision was not actually contested — say so if that is the case.
+
+## Amendment — <what changed> (YYYY-MM-DD)
+
+Optional, and repeatable. Add one when a fact the decision rested on has
+changed, or a follow-up has landed, and the decision itself still stands. Do
+not edit the sections above: they are the record of what was decided and why,
+at the time it was decided. An amendment that would reverse the decision is a
+new ADR instead. This trailing section is the only amendment form — do not add
+an `Amended:` header field.

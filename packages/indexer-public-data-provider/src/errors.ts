@@ -13,11 +13,25 @@
  * limitations under the License.
  */
 
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { ReadSeam } from '@midnight-ntwrk/midnight-js-types';
+import { PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types/errors';
 import type { GraphQLFormattedError } from 'graphql';
 
 /**
- * Base class for all errors raised by the indexer public data provider.
- * Consumers can catch any indexer error with a single `instanceof IndexerError` check.
+ * Base class for the errors this provider raises itself. Consumers can catch
+ * them with a single `instanceof IndexerError` check.
+ *
+ * NOT EXHAUSTIVE OVER A READ. Two failure classes deliberately escape this
+ * check: `DeserializationError` (`@midnight-ntwrk/midnight-js-utils`) and
+ * `Ledger8RuntimeMissingError` (`@midnight-ntwrk/midnight-js-protocol`).
+ *
+ * A consumer that needs to catch everything a read can raise should catch
+ * broadly and branch, or match on `code` via `hasErrorCode` from
+ * `@midnight-ntwrk/midnight-js-utils`.
+ *
+ * @see {@link ErrorBoundaries} for what each escaping class reports, and why
+ * wrapping it here would mislead.
  */
 export abstract class IndexerError extends Error {}
 
@@ -68,6 +82,10 @@ export class IndexerQueryError extends IndexerError {
  */
 export type IndexerDataErrorContext =
   | { kind: 'unknown-status'; value: string }
+  | { kind: 'missing-head-block' }
+  | { kind: 'undated-state' }
+  | { kind: 'malformed-state-encoding' }
+  | { kind: 'malformed-transaction-encoding' }
   | { kind: 'missing-contract-action'; contractAddress: string }
   | {
       kind: 'missing-identifier';
@@ -77,7 +95,17 @@ export type IndexerDataErrorContext =
     }
   | { kind: 'unknown-event-type'; typename: string }
   | { kind: 'missing-event-field'; typename: string; field: string }
-  | { kind: 'unknown-address-kind'; typename: string; field: string; value: string };
+  | { kind: 'unknown-address-kind'; typename: string; field: string; value: string }
+  | {
+      kind: 'era-disagreement';
+      protocolVersion: number;
+      reportedVersion: LedgerVersion;
+      envelopeVersion: LedgerVersion;
+    }
+  | { kind: 'unsupported-decode-era'; version: LedgerVersion }
+  | { kind: 'malformed-parameters-encoding' }
+  | { kind: 'unsupported-parameters-era'; version: LedgerVersion }
+  | { kind: 'unresolvable-era'; protocolVersion: number };
 
 /**
  * An error raised when indexer-returned data is structurally inconsistent
@@ -97,13 +125,29 @@ export type IndexerDataErrorContext =
  * {@link context} stay in sync.
  */
 export class IndexerDataError extends IndexerError {
-  constructor(public readonly context: IndexerDataErrorContext) {
-    super(IndexerDataError.formatMessage(context));
+  constructor(public readonly context: IndexerDataErrorContext, options?: ErrorOptions) {
+    super(IndexerDataError.formatMessage(context), options);
     this.name = 'IndexerDataError';
   }
 
   static unknownStatus(value: string): IndexerDataError {
     return new IndexerDataError({ kind: 'unknown-status', value });
+  }
+
+  static missingHeadBlock(): IndexerDataError {
+    return new IndexerDataError({ kind: 'missing-head-block' });
+  }
+
+  static undatedState(): IndexerDataError {
+    return new IndexerDataError({ kind: 'undated-state' });
+  }
+
+  static malformedStateEncoding(): IndexerDataError {
+    return new IndexerDataError({ kind: 'malformed-state-encoding' });
+  }
+
+  static malformedTransactionEncoding(): IndexerDataError {
+    return new IndexerDataError({ kind: 'malformed-transaction-encoding' });
   }
 
   static missingContractAction(contractAddress: string): IndexerDataError {
@@ -135,10 +179,59 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'unknown-address-kind', typename, field, value });
   }
 
+  static eraDisagreement(
+    protocolVersion: number,
+    reportedVersion: LedgerVersion,
+    envelopeVersion: LedgerVersion
+  ): IndexerDataError {
+    return new IndexerDataError({ kind: 'era-disagreement', protocolVersion, reportedVersion, envelopeVersion });
+  }
+
+  static unsupportedDecodeEra(version: LedgerVersion): IndexerDataError {
+    return new IndexerDataError({ kind: 'unsupported-decode-era', version });
+  }
+
+  static malformedParametersEncoding(): IndexerDataError {
+    return new IndexerDataError({ kind: 'malformed-parameters-encoding' });
+  }
+
+  static unsupportedParametersEra(version: LedgerVersion): IndexerDataError {
+    return new IndexerDataError({ kind: 'unsupported-parameters-era', version });
+  }
+
+  /**
+   * @param cause The protocol-layer failure, preserved so the resolution path
+   *              that refused the integer is still readable.
+   */
+  static unresolvableEra(protocolVersion: number, cause: unknown): IndexerDataError {
+    return new IndexerDataError({ kind: 'unresolvable-era', protocolVersion }, { cause });
+  }
+
   private static formatMessage(context: IndexerDataErrorContext): string {
     switch (context.kind) {
       case 'unknown-status':
         return `Unexpected transaction status value: ${context.value}`;
+      case 'malformed-state-encoding':
+        return (
+          'The indexer returned a contract state that is not a hex-encoded byte string. ' +
+          'Check that the indexer and this client agree on the wire encoding, and retry against a healthy indexer.'
+        );
+      case 'malformed-transaction-encoding':
+        return (
+          'The indexer returned a transaction that is not a hex-encoded byte string. ' +
+          'Check that the indexer and this client agree on the wire encoding, and retry against a healthy indexer.'
+        );
+      case 'missing-head-block':
+        return (
+          'The indexer returned no head block, so the network protocol version could not be read. ' +
+          'Wait for the indexer to finish indexing at least one block, then retry.'
+        );
+      case 'undated-state':
+        return (
+          'The indexer served a contract state but no block to date it, so the ledger era of those bytes ' +
+          'cannot be established. The state exists, so this is an inconsistent indexer rather than an absent ' +
+          'contract. Retry against a healthy indexer.'
+        );
       case 'missing-contract-action':
         return `Deploy transaction does not contain a contract action for address ${context.contractAddress}`;
       case 'missing-identifier':
@@ -152,6 +245,41 @@ export class IndexerDataError extends IndexerError {
         return `Contract event ${context.typename} is missing required field '${context.field}'`;
       case 'unknown-address-kind':
         return `Contract event ${context.typename} field '${context.field}' has unknown address kind '${context.value}'`;
+      case 'unresolvable-era':
+        return (
+          `The indexer reported protocolVersion ${context.protocolVersion} for a contract state, and this build ` +
+          'cannot place that value on the ledger-era timeline. The raw contract-state reads tag every record with ' +
+          'an era, so a value they cannot resolve is refused rather than guessed. Upgrade to a release that knows ' +
+          'this network, or read the state through a method that decodes on the envelope alone.'
+        );
+      case 'era-disagreement':
+        return (
+          `The indexer served a contract state whose envelope was written by ledger ${context.envelopeVersion}, ` +
+          `but dated it to protocol version ${context.protocolVersion} (ledger ${context.reportedVersion}) — a ` +
+          'block from before that runtime existed. A state cannot predate the runtime that wrote it, so the two ' +
+          'answers cannot both be right. Retry against a healthy indexer; if it persists, the indexer is serving ' +
+          'state and block data from different eras.'
+        );
+      case 'unsupported-decode-era':
+        return (
+          `The indexer served a contract state from ledger ${context.version}, which this read path cannot ` +
+          'decode. Use `queryRawContractState` to obtain the bytes together with their era and decode them ' +
+          'with the matching runtime.'
+        );
+      case 'malformed-parameters-encoding':
+        return (
+          'The indexer returned ledger parameters that are not a hex-encoded byte string. ' +
+          'Check that the indexer and this client agree on the wire encoding, and retry against a healthy indexer.'
+        );
+      case 'unsupported-parameters-era':
+        return (
+          `The indexer served the ledger parameters of a block from ledger ${context.version}, which this read ` +
+          'path cannot decode. Ledger parameters are era-tagged and served per block, so a block from before ' +
+          'the fork carries parameters only the retained runtime can read — this is an ordinary pre-fork block, ' +
+          'not a faulty indexer. Use `queryRawContractState`, which serves the parameter bytes together with ' +
+          'their block, and decode them with the matching runtime. It serves the contract state undecoded too, ' +
+          'but not the zswap chain state — fetch that separately if you need all three.'
+        );
     }
   }
 }
@@ -201,5 +329,89 @@ export class IndexerInvariantError extends IndexerError {
   constructor(message: string) {
     super(message);
     this.name = 'IndexerInvariantError';
+  }
+}
+
+/**
+ * Raised when the era-keyed transaction decoder is asked for an era this build
+ * ships no decoder for.
+ *
+ * Within one build this cannot happen: the era is a `LedgerVersion` and the
+ * decoder table is total over that union, so a missing entry is a compile
+ * error. It is reachable across builds — a consumer whose installed
+ * `@midnight-ntwrk/midnight-js-protocol` is newer than this package, whose era
+ * resolver therefore answers an era this decoder table predates.
+ *
+ * `protocolVersion` is the raw integer the indexer reported, kept so a report
+ * of this error identifies the network rather than only the era.
+ */
+export class EraUnsupportedError extends IndexerError {
+  readonly code = PROVIDER_ERROR_CODES.ERA_UNSUPPORTED;
+
+  /**
+   * @param seam The read-surface method that performed the decode.
+   * @param era The era the decoder table was asked for.
+   * @param protocolVersion The raw integer the indexer reported.
+   * @param recordRef The record this happened on — a transaction id or a
+   *                  contract address. A dApp holding several watches open
+   *                  concurrently cannot otherwise tell which one rejected.
+   */
+  constructor(
+    readonly seam: ReadSeam,
+    readonly era: LedgerVersion,
+    readonly protocolVersion: number,
+    readonly recordRef?: string
+  ) {
+    // The era and the `protocolVersion` do not describe each other here: the
+    // era came from a resolver this build does not know the vocabulary of, so
+    // the message reports them as two separate facts.
+    super(
+      `${seam} was asked to decode with ledger era '${era}', which this build has no decoder for` +
+        `${recordRef === undefined ? '' : ` (record ${recordRef}, indexer-reported protocolVersion ${protocolVersion})`}` +
+        `. This client decodes only the ledger eras it ships runtimes for. Pass an era this build supports, or ` +
+        `upgrade to a release that knows this one.`
+    );
+    this.name = 'EraUnsupportedError';
+  }
+}
+
+/**
+ * Raised when a record's `protocolVersion` maps to no ledger era at all —
+ * a network outside the node major range this framework knows about, or a
+ * value that is not a non-negative integer.
+ *
+ * Distinct from {@link EraUnsupportedError}, which reports an era this build
+ * has no decoder for — an era that was named, just not one of ours. Here
+ * nothing was named: the integer maps to no era, so there is no era to report.
+ * A record whose era resolved but whose bytes then would not decode is neither
+ * of these: it leaves as the `DeserializationError` the runtime produced.
+ *
+ * Exists so that both era-resolution failures reach a consumer through
+ * `IndexerError`.
+ * The underlying `UnknownProtocolVersionError` from
+ * `@midnight-ntwrk/midnight-js-protocol` is preserved on `cause`.
+ */
+export class EraUnresolvableError extends IndexerError {
+  readonly code = PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE;
+
+  /**
+   * @param seam The read-surface method that attempted to resolve the era.
+   * @param protocolVersion The raw value the indexer reported.
+   * @param options Carries the originating error on `cause`.
+   * @param recordRef The record this happened on, when known.
+   */
+  constructor(
+    readonly seam: ReadSeam,
+    readonly protocolVersion: number,
+    options: { cause: unknown },
+    readonly recordRef?: string
+  ) {
+    super(
+      `${seam} read a record whose protocolVersion (${protocolVersion}) maps to no known ledger era` +
+        `${recordRef === undefined ? '' : ` (${recordRef})`}. ` +
+        `This framework maps node major versions 1 and 2; point this provider at a network in that range.`,
+      options
+    );
+    this.name = 'EraUnresolvableError';
   }
 }

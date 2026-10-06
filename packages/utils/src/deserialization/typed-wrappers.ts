@@ -34,6 +34,12 @@ import { withDeserializationContext } from './with-deserialization-context';
  */
 export interface CallSiteContext {
   readonly caller: string;
+  /**
+   * Facts identifying the particular read that failed, rendered on the error
+   * and kept on its `context`. Diagnosis only: nothing here changes the
+   * classification or the mitigation.
+   */
+  readonly details?: Readonly<Record<string, string | number>>;
 }
 
 /**
@@ -62,7 +68,8 @@ export const deserializeContractState = (
     {
       dataType: 'ContractState',
       source: 'ledger',
-      caller: ctx.caller
+      caller: ctx.caller,
+      details: ctx.details
     },
     () => LedgerContractState.deserialize(bytes)
   );
@@ -81,7 +88,8 @@ export const deserializeCompactContractState = (
     {
       dataType: 'ContractState',
       source: 'compact-runtime',
-      caller: ctx.caller
+      caller: ctx.caller,
+      details: ctx.details
     },
     () => CompactContractState.deserialize(bytes)
   );
@@ -100,7 +108,8 @@ export const deserializeZswapChainState = (
     {
       dataType: 'ZswapChainState',
       source: 'ledger',
-      caller: ctx.caller
+      caller: ctx.caller,
+      details: ctx.details
     },
     () => ZswapChainState.deserialize(bytes)
   );
@@ -122,7 +131,8 @@ export const deserializeLedgerTransaction = (
     {
       dataType: 'LedgerTransaction',
       source: 'ledger',
-      caller: ctx.caller
+      caller: ctx.caller,
+      details: ctx.details
     },
     () => LedgerTransaction.deserialize('signature', 'proof', 'binding', bytes)
   );
@@ -141,7 +151,8 @@ export const deserializeLedgerParameters = (
     {
       dataType: 'LedgerParameters',
       source: 'ledger',
-      caller: ctx.caller
+      caller: ctx.caller,
+      details: ctx.details
     },
     () => LedgerParameters.deserialize(bytes)
   );
@@ -167,7 +178,8 @@ export const decodeLedgerStateValue = (
     {
       dataType: 'StateValue',
       source: 'onchain-runtime',
-      caller: ctx.caller
+      caller: ctx.caller,
+      details: ctx.details
     },
     () => LedgerStateValue.decode(encoded)
   );

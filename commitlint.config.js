@@ -56,5 +56,6 @@ module.exports = {
     'header-max-length': [1, 'never', 256],
     'footer-max-length': [1, 'never', 256],
     'body-max-line-length': [1, 'never', 100],
+    'footer-max-line-length': [1, 'never', 100],
   }
 };

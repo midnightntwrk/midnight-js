@@ -14,14 +14,21 @@
  */
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
+import { UntaggedPayloadError } from '@midnight-ntwrk/midnight-js-types';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ContractTypeError } from '../errors';
 import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
+import { toStoredLedger8SigningKey } from '../internal/ledger8-signing-key';
 import {
   createMockCompiledContract,
   createMockContractAddress,
   createMockContractState,
   createMockFinalizedTxData,
+  createMockFinalizedTxDataV8,
   createMockPrivateStateId,
   createMockProviders,
   createMockSigningKey,
@@ -38,8 +45,7 @@ vi.mock('../governance/tx-interfaces', () => ({
 }));
 
 vi.mock('@midnight-ntwrk/midnight-js-types', async (importOriginal) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const actual = await importOriginal() as any;
+  const actual = await importOriginal<typeof midnightJsTypes>();
   return {
     ...actual,
     getProvableCircuitIds: vi.fn().mockReturnValue(['testCircuit'])
@@ -63,8 +69,15 @@ describe('findDeployedContract', () => {
 
   const expectBasicResult = (result: FoundContract<Contract.Any>) => {
     expect(result).toBeDefined();
+    // IDENTITY, not shape: the handle promises the artifact the caller passed
+    // and the address it asked for. A key-set parity gate proves both members
+    // exist and cannot tell either from a copy, or from the address the
+    // indexer happened to echo back on the deploy record.
+    expect(result.compiledContract).toBe(compiledContract);
+    expect(result.contractAddress).toBe(contractAddress);
     expect(result.deployTxData).toBeDefined();
     expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
+    assert(result.deployTxData.public.version === 'v9');
     expect(result.deployTxData.public.initialContractState).toBe(contractState);
     expect(result.callTx).toBeDefined();
     expect(result.circuitMaintenanceTx).toBeDefined();
@@ -87,6 +100,127 @@ describe('findDeployedContract', () => {
     verifierKeys = createMockVerifierKeys();
 
     setupCommonMocks();
+  });
+
+  describe('a deploy record with no readable era tag', () => {
+    const rejectionOf = async (): Promise<unknown> =>
+      findDeployedContract(providers, { compiledContract, contractAddress }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+    it('rejects an untagged deploy record, the pre-5.0.0 shape', async () => {
+      const { version: _dropped, ...untaggedRecord } = finalizedTxData;
+      vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(
+        untaggedRecord as unknown as midnightJsTypes.FinalizedTxData
+      );
+
+      const rejection = await rejectionOf();
+
+      expect(rejection).toBeInstanceOf(UntaggedPayloadError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
+      expect((rejection as UntaggedPayloadError).seam).toBe('watchForDeployTxData');
+    });
+  });
+
+  describe('a contract deployed before the ledger fork, found with recompiled artifacts', () => {
+    const v8DeployRecord = createMockFinalizedTxDataV8();
+
+    beforeEach(() => {
+      vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(v8DeployRecord);
+      vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
+      vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
+    });
+
+    it('attaches and reports the deploy record tagged v8 with the contract address', async () => {
+      const result = await findDeployedContract(providers, { compiledContract, contractAddress });
+
+      expect(result.contractAddress).toBe(contractAddress);
+      expect(result.deployTxData.public.version).toBe('v8');
+      expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
+      expect(result.deployTxData.public.txId).toBe(v8DeployRecord.txId);
+      expect(result.deployTxData.public).not.toHaveProperty('initialContractState');
+      expect(result.callTx).toBeDefined();
+      expect(result.circuitMaintenanceTx).toBeDefined();
+      expect(result.contractMaintenanceTx).toBeDefined();
+    });
+
+    it('never reads the deploy-time state, which this era cannot decode', async () => {
+      await findDeployedContract(providers, { compiledContract, contractAddress });
+
+      expect(providers.publicDataProvider.queryDeployContractState).not.toHaveBeenCalled();
+      expect(providers.publicDataProvider.queryContractState).toHaveBeenCalledWith(contractAddress);
+      expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(['testCircuit']);
+    });
+
+    it('samples and stores a signing key when none is stored, exactly as for a current-era deploy', async () => {
+      const result = await findDeployedContract(providers, { compiledContract, contractAddress });
+
+      expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledTimes(1);
+      expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(
+        contractAddress,
+        result.deployTxData.private.signingKey
+      );
+    });
+
+    it('keeps the signing key the pre-fork deploy stored and writes none', async () => {
+      const storedByPreForkDeploy = toStoredLedger8SigningKey('ab'.repeat(32));
+      vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(storedByPreForkDeploy);
+
+      const result = await findDeployedContract(providers, { compiledContract, contractAddress });
+
+      expect(result.deployTxData.private.signingKey).toEqual(storedByPreForkDeploy);
+      expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+    });
+
+    it('stores a supplied signing key once and reports it', async () => {
+      const signingKey = createMockSigningKey();
+
+      const result = await findDeployedContract(providers, { compiledContract, contractAddress, signingKey });
+
+      expect(result.deployTxData.private.signingKey).toBe(signingKey);
+      expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledTimes(1);
+      expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(contractAddress, signingKey);
+    });
+
+    it('stores and returns the initial private state exactly as for a current-era deploy', async () => {
+      const privateStateId = createMockPrivateStateId();
+      const initialPrivateState = { test: 'initial-private-state' };
+      vi.mocked(providers.privateStateProvider.set).mockResolvedValue(undefined);
+
+      const result = await findDeployedContract(providers, {
+        compiledContract,
+        contractAddress,
+        privateStateId,
+        initialPrivateState
+      });
+
+      expect(result.deployTxData.private.initialPrivateState).toBe(initialPrivateState);
+      expect(providers.privateStateProvider.set).toHaveBeenCalledWith(privateStateId, initialPrivateState);
+    });
+
+    it('still refuses artifacts whose verifier key the current state does not carry', async () => {
+      vi.mocked(contractState.operation).mockReturnValue(new ContractOperation());
+
+      const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      assert(rejection instanceof ContractTypeError);
+      expect(rejection.keylessCircuitIds).toEqual(['testCircuit']);
+      expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+      expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    });
+
+    it('still refuses an address with no current contract state', async () => {
+      vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(null);
+
+      await expect(findDeployedContract(providers, { compiledContract, contractAddress })).rejects.toThrow(
+        `No contract deployed at contract address '${contractAddress}'`
+      );
+      expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
+    });
   });
 
   it('should find deployed contract without private state', async () => {
@@ -198,5 +332,35 @@ describe('findDeployedContract', () => {
     expect(providers.publicDataProvider.queryDeployContractState).toHaveBeenCalledWith(contractAddress);
     expect(providers.publicDataProvider.queryContractState).not.toHaveBeenCalled();
     expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
+  });
+
+  it('should throw when the deployed state registers no operation for a circuit', async () => {
+    vi.mocked(contractState.operation).mockReturnValue(undefined);
+
+    await expect(findDeployedContract(providers, { compiledContract, contractAddress })).rejects.toThrow(
+      ContractTypeError
+    );
+
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
+  // A default-constructed operation is exactly the keyless shape: registered on the state, but
+  // carrying no verifier key.
+  it('should throw when the deployed operation carries no verifier key', async () => {
+    vi.mocked(contractState.operation).mockReturnValue(new ContractOperation());
+
+    let thrown: unknown;
+    try {
+      await findDeployedContract(providers, { compiledContract, contractAddress });
+    } catch (error) {
+      thrown = error;
+    }
+
+    assert(thrown instanceof ContractTypeError);
+    expect(thrown.keylessCircuitIds).toEqual(['testCircuit']);
+    expect(thrown.contractAddress).toBe(contractAddress);
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
 });

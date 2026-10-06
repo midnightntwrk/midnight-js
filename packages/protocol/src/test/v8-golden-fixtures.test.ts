@@ -1,0 +1,195 @@
+/*
+ * This file is part of midnight-js.
+ * Copyright (C) Midnight Foundation
+ * SPDX-License-Identifier: Apache-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import { describe, expect, it } from 'vitest';
+
+import {
+  DownConvertFailedError,
+  Ledger8RuntimeInvalidError,
+  PROTOCOL_ERROR_CODES,
+  UnknownLedgerVersionError
+} from '../errors';
+import { extractEncodedStateValue, extractV9EncodedStateValue } from '../lib/era/envelope';
+import { structurallyEqual } from '../lib/v8/executable';
+import { readHexFixture } from './fixtures';
+
+// The engine's own retired suite (v8-down-convert.test.ts) built its envelopes
+// in-process, so it never touches these files. What it cannot prove is what
+// this suite exists for: that a *real* migrated on-chain state down-converts
+// to data byte-identical with its pre-migration form, and that the deliberately
+// tampered envelopes fail closed. Only committed goldens minted from the real
+// ledgers can establish that.
+//
+// The fixtures are read by path rather than through testkit-js's typed
+// accessor because testkit-js depends on midnight-js-protocol — a devDependency
+// back would close a workspace cycle. packages/protocol/turbo.json therefore
+// declares the fixture directory as a test input, so editing a golden
+// invalidates this package's test cache.
+
+/**
+ * Reads a hex fixture, failing if the file did not decode in full.
+ * `Buffer.from(_, 'hex')` stops silently at the first non-hex character, so
+ * without this length check a truncated or corrupted golden would still make
+ * every negative test below pass — for the wrong reason.
+ */
+
+describe('reading a real migrated state', () => {
+  // These used to run through `downConvertForExecution`, which decoded the
+  // extracted state and re-encoded it. That function is gone with the
+  // hand-maintained execution layer, but the round trip it ran did not go with
+  // it: `decodeExecutableStateValue` (`lib/v8/executable.ts`) still refuses a
+  // state that decodes without re-encoding to its source. What the fixtures
+  // pin is the property that comparison exists to protect -- that both
+  // envelopes carry the SAME primary state.
+  it('reads a migrated post-fork envelope to the pre-migration v8 state', () => {
+    const v9Encoded = extractEncodedStateValue(readHexFixture('state-migrated-v9.hex'), 'v9', ocrt3.ContractState);
+    const v8Encoded = extractEncodedStateValue(readHexFixture('state-v8.hex'), 'v8', ocrt3.ContractState);
+
+    expect(v9Encoded).toEqual(v8Encoded);
+  });
+
+  // The CROSS-CODEC round trip, on real committed migrated states. This is the
+  // comparison `decodeExecutableStateValue` (`lib/v8/executable.ts`) runs on
+  // EVERY retained-era call, and in production it is cross-codec by
+  // construction: a migrated contract's state is encoded by ledger-v9 and
+  // decoded by compact-runtime 0.16. The rows above compare two extractions
+  // without decoding either, and the executable suite drives freshly built
+  // counter states, so neither reaches this property. If the two codecs
+  // disagreed on any real migrated shape, every call on every migrated contract
+  // would fail closed with `DownConvertFailedError` and both suites stay green.
+  it.each(['state-migrated-v9.hex', 'state-migrated-v9-merkle.hex'])(
+    'decodes %s with the retained runtime and re-encodes it to the same bytes',
+    (fixture) => {
+      // Arrange. Extracted by the era that WROTE it, as the pipeline does.
+      const v9Encoded = extractEncodedStateValue(readHexFixture(fixture), 'v9', ocrt3.ContractState);
+
+      // Act. Decoded by the retained runtime, which is the other codec.
+      const decoded = ocrt3.StateValue.decode(v9Encoded);
+
+      // Assert.
+      expect(structurallyEqual(decoded.encode(), v9Encoded)).toBe(true);
+    }
+  );
+
+  it('reads the pre-fork tag-v6 envelope to the same state the post-fork envelope carries', () => {
+    const fromLedger8 = extractEncodedStateValue(readHexFixture('state-v8-v6-envelope.hex'), 'v8', ocrt3.ContractState);
+    const fromLedger9 = extractEncodedStateValue(readHexFixture('state-migrated-v9.hex'), 'v9', ocrt3.ContractState);
+
+    expect(fromLedger8).toEqual(fromLedger9);
+  });
+});
+
+// The two guards `extractEncodedStateValue` runs BEFORE it decodes anything.
+// They were covered by the retired down-convert suite; a decoder reached with
+// either precondition unmet reads the wrong bytes with the wrong era's reader,
+// which is the failure the envelope layer exists to make impossible.
+describe('the envelope reader refuses before it decodes', () => {
+  it('refuses a ledger version it has no decoder for, naming the value it was given', () => {
+    expect(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the caller this guards is an untyped JavaScript one
+      extractEncodedStateValue(readHexFixture('state-v8.hex'), 'v7' as any, ocrt3.ContractState)
+    ).toThrow(UnknownLedgerVersionError);
+  });
+
+  it('refuses a retained runtime that cannot deserialize, naming the missing binding', () => {
+    // A runtime object assembled by hand rather than taken from the one copy
+    // the caller already loaded -- the substitution this guard exists to catch.
+    const withoutDeserialize = {} as typeof ocrt3.ContractState;
+
+    let caught: unknown;
+    try {
+      extractEncodedStateValue(readHexFixture('state-v8.hex'), 'v8', withoutDeserialize);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8RuntimeInvalidError);
+    expect((caught as Ledger8RuntimeInvalidError).missingMember).toBe('ContractState.deserialize');
+  });
+});
+
+describe('tampered goldens', () => {
+  it('rejects an envelope whose bytes were corrupted', () => {
+    expect(() =>
+      extractEncodedStateValue(readHexFixture('state-tampered-bytes.hex'), 'v9', ocrt3.ContractState)
+    ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED }));
+  });
+
+  it('never leaks a raw hex/byte dump when it rejects one', () => {
+    try {
+      extractEncodedStateValue(readHexFixture('state-tampered-bytes.hex'), 'v9', ocrt3.ContractState);
+      expect.unreachable('extraction of tampered bytes must throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(DownConvertFailedError);
+      expect((error as DownConvertFailedError).message).not.toMatch(/[0-9a-f]{16,}/i);
+    }
+  });
+
+  // These two carry an envelope tag deliberately flipped to the *other* ledger
+  // version's tag (fixtures/hf/README.md, "Tampered fixtures"). Each must fail
+  // when read with the version its tag now falsely claims.
+  it.each([
+    { fixture: 'state-tampered-keyset-v8to9.hex', version: 'v9' as const },
+    { fixture: 'state-tampered-keyset-v9to8.hex', version: 'v8' as const }
+  ])('rejects $fixture read as $version', ({ fixture, version }) => {
+    expect(() => extractEncodedStateValue(readHexFixture(fixture), version, ocrt3.ContractState)).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
+    );
+  });
+});
+
+// The dispatching `extractEncodedStateValue` requires the pre-fork
+// `ContractState` for EVERY version, deliberately — a v9 caller that drifted
+// into a v8 read would otherwise have no runtime to reach for. That makes the
+// v9 read unavailable to anything that has not already paid for the pre-fork
+// WASM. The standalone decoder is the same read without that requirement.
+describe('extractV9EncodedStateValue', () => {
+  it('reads a real migrated envelope to exactly what the dispatching entry produces', () => {
+    const raw = readHexFixture('state-migrated-v9.hex');
+
+    expect(extractV9EncodedStateValue(raw)).toEqual(extractEncodedStateValue(raw, 'v9', ocrt3.ContractState));
+  });
+
+  it('rejects a corrupted envelope with the same code and stage the dispatching entry reports', () => {
+    let caught: unknown;
+    try {
+      extractV9EncodedStateValue(readHexFixture('state-tampered-bytes.hex'));
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(DownConvertFailedError);
+    const failure = caught as DownConvertFailedError;
+    expect(failure.code).toBe(PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
+    expect(failure.stage).toBe('v9 envelope extraction');
+  });
+
+  // The dispatching entry delegates to this function rather than duplicating
+  // the decode, so its own try/catch would wrap an already-wrapped failure —
+  // burying the runtime's diagnosis one level deeper on every read.
+  it('is not double-wrapped when reached through the dispatching entry', () => {
+    let caught: unknown;
+    try {
+      extractEncodedStateValue(readHexFixture('state-tampered-bytes.hex'), 'v9', ocrt3.ContractState);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(DownConvertFailedError);
+    expect((caught as DownConvertFailedError).cause).not.toBeInstanceOf(DownConvertFailedError);
+  });
+});

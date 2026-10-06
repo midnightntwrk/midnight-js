@@ -17,11 +17,13 @@ import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { AnyPrivateState } from '@midnight-ntwrk/midnight-js-types';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 
 import { type ContractProviders } from '../contract-providers';
 import { deployContract, type DeployContractOptionsBase, type DeployedContract } from '../deploy-contract';
-import { type UnsubmittedDeployTxData } from '../tx-model';
+import { CURRENT_PIPELINE_ERA } from '../era';
+import type { submitDeployTx } from '../submit-deploy-tx';
+import { type FinalizedDeployTxData, type UnsubmittedDeployTxData } from '../tx-model';
 import {
   createMockCompiledContract,
   createMockContractState,
@@ -45,12 +47,19 @@ vi.mock('../governance/tx-interfaces', () => ({
 }));
 
 describe('deployContract', () => {
-  let mockSubmitDeployTx: ReturnType<typeof vi.fn>;
+  let mockSubmitDeployTx: MockedFunction<typeof submitDeployTx>;
+
+  // The tests resolve unsubmitted-level tx data where the real function
+  // returns finalized-level data; the code under test forwards the value
+  // opaquely, so the missing finalized fields are never read.
+  const asFinalized = (data: UnsubmittedDeployTxData<Contract.Any>): FinalizedDeployTxData<Contract.Any> =>
+    data as FinalizedDeployTxData<Contract.Any>;
   let mockDeployTxData: UnsubmittedDeployTxData<Contract.Any>;
   let providers: ContractProviders;
   let baseOptions: DeployContractOptionsBase<Contract.Any>;
 
   const createMockDeployTxData = (initialPrivateState?: AnyPrivateState): UnsubmittedDeployTxData<Contract.Any> => ({
+    era: CURRENT_PIPELINE_ERA,
     public: {
       ...createMockFinalizedTxData(),
       contractAddress: 'mock-contract-address',
@@ -65,8 +74,17 @@ describe('deployContract', () => {
     }
   });
 
-  const assertDeployResult = (result: DeployedContract<Contract.Any>, deployTxData: UnsubmittedDeployTxData<Contract.Any>) => {
+  const assertDeployResult = (
+    result: DeployedContract<Contract.Any>,
+    deployTxData: UnsubmittedDeployTxData<Contract.Any>,
+    options: DeployContractOptionsBase<Contract.Any> = baseOptions
+  ) => {
     expect(result).toBeDefined();
+    // IDENTITY, not shape: see the same pair in find-deployed-contract.test.ts.
+    // `contractAddress` in particular is read off the deploy record, so a
+    // shape assertion cannot tell it from any other address on that record.
+    expect(result.compiledContract).toBe(options.compiledContract);
+    expect(result.contractAddress).toBe(deployTxData.public.contractAddress);
     expect(result.deployTxData).toBe(deployTxData);
     expect(result.callTx).toBeDefined();
     expect(result.circuitMaintenanceTx).toBeDefined();
@@ -75,8 +93,7 @@ describe('deployContract', () => {
 
   beforeEach(async () => {
     const { submitDeployTx } = await import('../submit-deploy-tx');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockSubmitDeployTx = submitDeployTx as any;
+    mockSubmitDeployTx = vi.mocked(submitDeployTx);
     vi.clearAllMocks();
 
     providers = createMockProviders();
@@ -88,7 +105,7 @@ describe('deployContract', () => {
 
   it('should deploy contract without private state', async () => {
     mockDeployTxData = createMockDeployTxData();
-    mockSubmitDeployTx.mockResolvedValue(mockDeployTxData);
+    mockSubmitDeployTx.mockResolvedValue(asFinalized(mockDeployTxData));
 
     const result = await deployContract(providers, baseOptions);
 
@@ -105,7 +122,7 @@ describe('deployContract', () => {
 
   it('should deploy contract with provided signing key', async () => {
     mockDeployTxData = createMockDeployTxData();
-    mockSubmitDeployTx.mockResolvedValue(mockDeployTxData);
+    mockSubmitDeployTx.mockResolvedValue(asFinalized(mockDeployTxData));
 
     const signingKey = createMockSigningKey();
     const options = { ...baseOptions, signingKey };
@@ -123,10 +140,25 @@ describe('deployContract', () => {
     );
   });
 
+  // #1321: `{ compiledContract, privateStateId }` used to compile, because union
+  // excess-property checking admits a member declared on the sibling arm. The type refuses that
+  // shape now, so the only way left to reach the entry point with an unusable id is to write the
+  // property with an undefined VALUE -- which the no-private-state arm still admits, and which is
+  // a caller that believes it named an id.
+  it('refuses a private state id written as undefined, before any transaction is built', async () => {
+    const options = { ...baseOptions, privateStateId: undefined };
+
+    await expect(deployContract(providers, options)).rejects.toThrow(
+      "'privateStateId' was given as undefined"
+    );
+
+    expect(mockSubmitDeployTx).not.toHaveBeenCalled();
+  });
+
   it('should deploy contract with private state', async () => {
     const initialPrivateState = { test: 'initial-private-state' };
     mockDeployTxData = createMockDeployTxData(initialPrivateState);
-    mockSubmitDeployTx.mockResolvedValue(mockDeployTxData);
+    mockSubmitDeployTx.mockResolvedValue(asFinalized(mockDeployTxData));
 
     const options = {
       ...baseOptions,
@@ -152,7 +184,7 @@ describe('deployContract', () => {
   it('should deploy contract with both custom signing key and private state', async () => {
     const initialPrivateState = { test: 'initial-private-state' };
     mockDeployTxData = createMockDeployTxData(initialPrivateState);
-    mockSubmitDeployTx.mockResolvedValue(mockDeployTxData);
+    mockSubmitDeployTx.mockResolvedValue(asFinalized(mockDeployTxData));
 
     const signingKey = createMockSigningKey();
     const options = {

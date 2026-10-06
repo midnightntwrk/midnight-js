@@ -1,0 +1,8 @@
+# This store's whole value is byte stability: the consuming test derives its
+# decryption key from a salt these bytes carry, and compares a digest over them
+# with the generation recorded in ENVELOPE.md. A checkout that rewrote line
+# endings -- `core.autocrlf=true` is enough -- would produce an unopenable
+# LevelDB and a digest mismatch, reported as an envelope break that never
+# happened. Treat every file here as opaque bytes, LevelDB's text-looking
+# `CURRENT` and `MANIFEST-*` included.
+store/** binary

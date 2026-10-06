@@ -21,6 +21,7 @@ import {
   SegmentSuccess,
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
+import { parseSerializedTag, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -44,6 +45,7 @@ import {
 } from '../errors';
 import type { TransactionResult } from '../gen/schema-types';
 import { extractRegularDeployTransaction, extractUnshieldedBalances } from '../mapping';
+import { mintV9ContractStateHex, mintV9LedgerParametersBytes, V9_ERA_PROTOCOL_VERSION } from './state-fixtures';
 
 describe('isRegularTransaction', () => {
   test('returns true for object with hash and identifiers array', () => {
@@ -519,13 +521,29 @@ describe('deserialization adapter wiring (issue-816)', () => {
   const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
   const garbageHex = 'ffffff';
 
+  /**
+   * A state that gets past the envelope and era checks and then fails to
+   * decode: a real v9 envelope with its body overwritten. Plain garbage no
+   * longer reaches the deserializer at all, so it can no longer prove this
+   * wiring.
+   */
+  const TAG_BYTES = 32;
+  const envelopedGarbageHex = (): string => {
+    const hex = mintV9ContractStateHex();
+    const bodyBytes = hex.length / 2 - TAG_BYTES;
+    if (bodyBytes <= 0) {
+      throw new Error('test setup: the minted state is too short to keep an envelope and corrupt a body');
+    }
+    return hex.slice(0, TAG_BYTES * 2) + 'ff'.repeat(bodyBytes);
+  };
+
   test('parseHexContractState throws DeserializationError tagged with the helper caller', async () => {
     const { parseHexContractState } = await import('..');
     const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
 
     let caught: unknown;
     try {
-      parseHexContractState(garbageHex);
+      parseHexContractState(envelopedGarbageHex(), V9_ERA_PROTOCOL_VERSION);
     } catch (e) {
       caught = e;
     }
@@ -573,13 +591,27 @@ describe('deserialization adapter wiring (issue-816)', () => {
     }
   });
 
+  /**
+   * The parameters twin of {@link envelopedGarbageHex}, and it exists for the same reason: since
+   * the parameters path dates the envelope before decoding, plain garbage is refused by the TAG
+   * PARSER for carrying no envelope at all -- before any era decision -- and so no longer reaches
+   * the deserializer to prove this wiring. The tag is measured off the minted bytes rather than
+   * assumed to be a fixed width; the two families' tags differ in length.
+   */
+  const envelopedGarbageParametersHex = (): string => {
+    const bytes = mintV9LedgerParametersBytes();
+    // `+ 1` for the colon the tag is terminated by, which belongs to the envelope, not the body.
+    const tagBytes = parseSerializedTag(bytes).tag.length + 1;
+    return toHex(bytes).slice(0, tagBytes * 2) + 'ff'.repeat(bytes.length - tagBytes);
+  };
+
   test('parseHexLedgerParameters throws DeserializationError tagged with the helper caller', async () => {
     const { parseHexLedgerParameters } = await import('..');
     const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
 
     let caught: unknown;
     try {
-      parseHexLedgerParameters(garbageHex);
+      parseHexLedgerParameters(envelopedGarbageParametersHex());
     } catch (e) {
       caught = e;
     }

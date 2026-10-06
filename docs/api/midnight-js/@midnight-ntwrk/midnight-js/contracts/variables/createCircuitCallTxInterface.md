@@ -1,0 +1,47 @@
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / createCircuitCallTxInterface
+
+# Variable: createCircuitCallTxInterface
+
+> `const` **createCircuitCallTxInterface**: \<`C`\>(`providers`, `compiledContract`, `contractAddress`, `privateStateId`) => [`CircuitCallTxInterface`](../type-aliases/CircuitCallTxInterface.md)\<`C`\>
+
+Creates a circuit call transaction interface for a contract.
+
+## Type Parameters
+
+### C
+
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+
+## Parameters
+
+### providers
+
+[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`\>
+
+The providers to use to build transactions.
+
+### compiledContract
+
+[`CompiledContract.CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
+
+The contract to use to execute circuits.
+
+### contractAddress
+
+[`ContractAddress$1`](https://github.com/midnightntwrk/midnight-ledger)
+
+The ledger address of the contract.
+
+### privateStateId
+
+[`PrivateStateId`](../../types/type-aliases/PrivateStateId.md) \| `undefined`
+
+The identifier of the state of the witnesses of the contract.
+
+## Returns
+
+[`CircuitCallTxInterface`](../type-aliases/CircuitCallTxInterface.md)\<`C`\>

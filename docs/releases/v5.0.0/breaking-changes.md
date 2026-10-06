@@ -1,6 +1,6 @@
 # Breaking Changes v4.1.1 → v5.0.0
 
-v5.0.0 is a protocol-level major release. The breaking surface concentrates in four areas: the **protocol bindings** (new packages, new scope), the **`SigningKey` representation**, **on-chain state compatibility**, and **ZK artifact integrity verification** (now fail-closed by default).
+v5.0.0 is a protocol-level major release. The breaking surface concentrates in five areas: the **protocol bindings** (new packages, new scope), the **`SigningKey` representation**, **on-chain state compatibility**, **ZK artifact integrity verification** (now fail-closed by default), and **ESM-only packaging**.
 
 ---
 
@@ -38,8 +38,8 @@ type SigningKey = { tag: 'schnorr' | 'ecdsa'; value: string /* hex */ };
 ```diff
   const options: ContractExecutableRuntimeOptions = {
     // ...
--   signingKey: '0102030a1b2c3d4e5f',
-+   signingKey: { tag: 'schnorr', value: '0102030a1b2c3d4e5f' },
+-   signingKey: keyHex, // 64 hex characters (32 bytes)
++   signingKey: { tag: 'schnorr', value: keyHex },
   };
 ```
 
@@ -49,13 +49,17 @@ The Configuration layer maps the object to the `KEYS_SIGNING` / `KEYS_SIGNING_KI
 
 ### 2b. Signing-key import / export validation
 
-`importSigningKey` (LevelDB and the testkit in-memory provider) now validates the **structured shape** before any write:
+`importSigningKeys` (LevelDB and the testkit in-memory provider) now validates the **structured shape** before any write:
 
 - non-null object,
 - `tag` ∈ `{ 'schnorr', 'ecdsa' }`,
-- `value` an even-length hex string of length ≥ 6.
+- `value` exactly 64 hex characters (32 bytes, the only size the runtime accepts for either kind).
 
 A v4.x export that stored a bare hex string will fail import with `InvalidExportFormatError`. Re-export signing keys from a v5.0.0 client, or transform stored exports to the structured shape before import.
+
+Signing keys already in a level private-state store (bare 64-character hex strings written by v4.x) are read in the new shape automatically; only export files made by v4.x need this step. A stored entry that is neither shape throws `StoredSigningKeyFormatError`, exported from `@midnight-ntwrk/midnight-js-level-private-state-provider`.
+
+`isValidSigningKey` is now a type guard (`value is SigningKey`).
 
 The shared predicate is exported as `isValidSigningKey` from `@midnight-ntwrk/midnight-js-utils`.
 
@@ -105,18 +109,369 @@ Opt down or pin explicitly through the constructor option bag (`ZkConfigIntegrit
 
 ```ts
 new NodeZkConfigProvider(baseDir, {
-  verify: 'warn',                 // 'require' (default) | 'warn' | 'off'
+  verify: 'require-if-present',    // 'require' (default) | 'require-if-present' | 'warn' | 'off'
   onWarn: (msg) => logger.warn(msg),
   expectedManifestHash: MANIFEST_SHA256, // pin to resist a coordinated artifact+manifest swap
 });
 ```
 
+`compactc` only began emitting the manifest in 0.33, so artifacts compiled by an earlier toolchain cannot satisfy `require` however intact they are. `require-if-present` is the mode for them: a wholly absent manifest warns, but a manifest that does exist must cover the artifact, so a missing entry throws. That makes it strictly stronger than `warn`, which tolerates a missing entry in a manifest that is present, and it starts verifying in full the moment the artifacts are recompiled on 0.33 or later.
+
 A digest mismatch always throws (except in `'off'` mode). Only `expectedManifestHash` (SHA-256 of the manifest bytes, pinned at build time) defends against an adversary who can rewrite both the artifacts and their co-located manifest.
+
+---
+
+## 7. Published packages are ESM-only (#1173)
+
+Every published package now declares `"type": "module"` and ships a single
+JavaScript build per entry. The `main` / `module` fields are gone and each
+`exports` subpath resolves to one file:
+
+```jsonc
+// Before (v4.1.1): dual format
+{
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": { "import": "./dist/index.d.mts", "require": "./dist/index.d.cts" },
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  }
+}
+
+// After (v5.0.0): ESM only
+{
+  "type": "module",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+  }
+}
+```
+
+Subpath **keys** are unchanged, so no import specifier in your code has to move.
+`@midnight-ntwrk/midnight-js-protocol/ledger` and friends still resolve.
+
+**Impact — you need both of these:**
+
+| Requirement | Why |
+|-------------|-----|
+| **Node >= 22.12** | Where `require(esm)` works unflagged, so a CommonJS consumer can still load these packages. `engines.node` is now `>=22.12`. |
+| **TypeScript >= 5.8** with a `module` setting that knows about `require(esm)` | Older module settings refuse the import at compile time even though the runtime call succeeds. |
+
+A CommonJS TypeScript consumer keeps working at runtime, but only some `module`
+settings **compile**. Verified against tsc 6.0.3 with a CommonJS consumer file
+importing `@midnight-ntwrk/midnight-js/utils` and
+`@midnight-ntwrk/midnight-js-protocol/ledger`:
+
+| `module` | `moduleResolution` | Result |
+|----------|--------------------|--------|
+| `node16` | `node16` | `TS1479` |
+| `node18` | (default) | `TS1479` |
+| `node20` | (default) | compiles |
+| `nodenext` | `nodenext` | compiles |
+| `preserve` | `bundler` | compiles |
+| `commonjs` | `node10` | `TS5107` (`node10` is no longer supported in TypeScript 6) |
+
+`module: node20` was introduced in TypeScript 5.8 precisely to model Node's
+`require(esm)`, which is why it is the lowest CommonJS setting that works. The
+failure on `node16` / `node18` reads:
+
+```
+error TS1479: The current file is a CommonJS module whose imports will produce
+'require' calls; however, the referenced file is an ECMAScript module and cannot
+be imported with 'require'.
+```
+
+Deep imports into build output were never part of the published surface and are
+now refused by Node with `ERR_PACKAGE_PATH_NOT_EXPORTED`; import through a
+declared subpath instead.
+
+## 8. Version-tagged payloads at the provider seams and on the read surface (#1204)
+
+For the ledger-fork window every version-divergent payload became a closed,
+`version`-discriminated union, so a caller cannot reach the wrong era's payload
+without defeating the type system. See
+[ADR 0006](../../adr/0006-version-tagged-payloads-at-provider-seams.md).
+
+### 8a. The three transaction-flow seams
+
+`ProofProvider.proveTx`, `WalletProvider.balanceTx` and
+`MidnightProvider.submitTx` now take a version-tagged payload, and `proveTx`
+and `balanceTx` return one. `submitTx` still returns a bare `TransactionId`,
+which is era-independent.
+
+```typescript
+// before
+const proven = await proofProvider.proveTx(unprovenTx);
+
+// after
+const provenTx = unwrapV9(
+  await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
+  'proveTx'
+);
+```
+
+`unwrapV9` is exported from `@midnight-ntwrk/midnight-js-types`. Narrowing by
+hand works too, but do not write `if (p.version !== 'v9') throw new Error(...)`:
+that produces an error with no `code`, and misreports a future era as
+"expected v9". `unwrapV9` throws `V8PayloadUnsupportedError` for a v8 payload
+and `UntaggedPayloadError` when `version` is missing, both carrying a stable
+`code` you can match with `hasErrorCode`.
+
+**If you implement these interfaces yourself**, this is the breaking half that
+type-checking will not let you defer: return types are covariant, so an
+implementation still returning `Promise<FinalizedTransaction>` does not satisfy
+the new `Promise<VersionedFinalizedTransaction>`. Narrow the incoming payload
+with `unwrapV9(tx, 'balanceTx')` and tag what you return as
+`{ version: 'v9', tx }`. Third-party providers must be on a matching version.
+
+### 8b. `FinalizedTxData` gained a required `version` field
+
+`FinalizedTxData` now carries `readonly version: 'v9'`, and its other 13 fields
+moved to a shared `FinalizedTxRecord` base. Any code that *constructs* a
+`FinalizedTxData` — including test fixtures and custom `PublicDataProvider`
+implementations — must set it.
+
+### 8c. The read surface reports both eras
+
+`PublicDataProvider.watchForTxData` and `watchForDeployTxData` now return
+`VersionedFinalizedTxData`, the closed union of `FinalizedTxData`
+(`version: 'v9'`) and the new `FinalizedTxDataV8`. Narrow on `version` before
+reading `tx`:
+
+```typescript
+const record = await publicDataProvider.watchForTxData(txId);
+switch (record.version) {
+  case 'v9':
+    return record.tx;              // live v9 ledger object
+  case 'v8':
+    return toMyShape(record.tx);   // v8 ledger object, already decoded
+}
+```
+
+`submitTx` in `midnight-js-contracts` is a v9-only flow: it narrows
+internally, so its return type is unchanged — it still resolves
+`FinalizedTxData`. A record from another era is reported as
+`EraInvariantViolationError`, which carries the `seam` and, where the flow knows
+it, the `circuitId`.
+
+`findDeployedContract` accepts a deploy record from either era, because a
+contract deployed before the fork keeps a ledger-8 deploy record.
+`FoundContract.deployTxData.public` is therefore `FoundDeployTxPublicData`, a
+union tagged by `version`. `contractAddress` is on both arms. Narrow on
+`version` before reading `tx` or `initialContractState`; the `v8` arm has no
+`initialContractState`. Code that does any of the following without narrowing no
+longer compiles: reads `found.deployTxData.public.initialContractState`, uses
+`found.deployTxData.public.tx` as a v9 `Transaction`, or passes
+`found.deployTxData` where a `FinalizedDeployTxDataBase<C>` is expected.
+`DeployedContract` is unchanged.
+
+`indexerPublicDataProvider` produces both arms. It decodes each record with the
+ledger runtime of the era that record's own `protocolVersion` reports, so a
+v8-era record arrives as a **value** on the `'v8'` arm, not as a thrown error.
+The pre-fork runtime is acquired lazily on first use, so a session that never
+meets a v8-era record never instantiates that WASM. Narrowing on `version` is
+therefore not a formality: the two arms carry transaction objects built by
+different runtimes, and neither runtime's object can be handed to the other.
+
+### 8d. `version` is derived, not asserted
+
+`indexerPublicDataProvider` resolves `version` from each record's own
+`protocolVersion` via the resolver in `@midnight-ntwrk/midnight-js-protocol`,
+and that same answer decides which ledger runtime decodes the record — so the
+discriminant, the decoder that ran and the `protocolVersion` beside it are one
+fact and cannot disagree.
+
+Consequence: a v8-era network is now **served**, on the `'v8'` arm. What throws
+at the read boundary is a network this client cannot place on the era timeline
+at all — `EraUnresolvableError`, for a node 0.x or otherwise unmapped
+`protocolVersion` — where before it returned a record that failed later inside
+the codec, with nothing in the message naming the era.
+
+Bytes that will not decode on the era selected for them are **not** re-reported
+as an era disagreement. They surface as the `DeserializationError` the runtime
+produced, now carrying the era, the raw `protocolVersion`, the seam and the
+record on `context.details`. The provider deliberately makes no claim about
+which side is at fault: a self-contradicting record and a
+`@midnightntwrk/ledger`-vN in your dApp of a different vintage than the
+network's produce the same diagnosis from here, and that error's own mitigation
+("align the version … with the protocol version of the network and indexer")
+addresses both. A `raw` field that is not a whole hex byte string is still
+refused as `IndexerDataError` before any decoder sees it.
+
+`EraUnresolvableError` and `EraUnsupportedError`
+are both `IndexerError` subclasses, and each carries the raw `protocolVersion`
+plus the transaction id or contract address being read. Two failures a read can
+raise are deliberately **not** `IndexerError`s, so "catch any indexer error with
+one `instanceof IndexerError` check" needs one qualification: `DeserializationError`
+(`midnight-js-utils`), which already escaped it before this release, and
+`Ledger8RuntimeMissingError` (`midnight-js-protocol`), raised when the pre-fork
+runtime cannot be acquired for a v8-era record. Both report something that is
+not an indexer fault — bad bytes and a broken local install respectively — and
+wrapping either would send you looking at the wrong thing. Catch broadly and
+branch, or match on `code` with `hasErrorCode`.
+
+### 8e. Implementing `WalletProvider` or `MidnightProvider`
+
+Return types are covariant, so an implementation still resolving a bare
+`FinalizedTransaction` no longer satisfies `WalletProvider`. TypeScript reports
+the *parameter* mismatch first, so the error you see names the ledger methods
+`V8TxBytes` lacks rather than the missing tag — it is still this change.
+
+Rather than tagging by hand, wrap a v9-only implementation:
+
+```typescript
+import { createMidnightProvider, createWalletProvider } from '@midnight-ntwrk/midnight-js-types';
+
+const walletProvider = createWalletProvider({
+  balanceTx: (tx, ttl) => wallet.balanceAndProveTransaction(tx, ttl),
+  getCoinPublicKey: () => wallet.coinPublicKey,
+  getEncryptionPublicKey: () => wallet.encryptionPublicKey
+});
+
+const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx));
+```
+
+Both narrow the inbound payload and tag the outbound one, so the `version`
+discriminant never appears in your code.
+
+### 8f. The three seams gained a required `supportedEras` field (#1004)
+
+`ProofProvider`, `WalletProvider` and `MidnightProvider` each declare which
+ledger eras that instance serves:
+
+```typescript
+readonly supportedEras: readonly LedgerVersion[];
+```
+
+It is REQUIRED, so an implementation that does not have it stops compiling. The
+framework reads all three before an operation starts and refuses a set that
+cannot carry the transaction end to end — with `SeamEraUnsupportedError`
+(`MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED`), before any proof is requested, rather
+than at `balanceTx` after one has been paid for.
+
+**If you use `createProofProvider`, `createWalletProvider` or
+`createMidnightProvider`, you need to change nothing.** Each lifts a v9-only
+implementation and now declares `['v9']` for you.
+
+**If you implement a seam directly**, add the field and list exactly what you
+serve:
+
+```typescript
+const midnightProvider: MidnightProvider = {
+  supportedEras: ['v9'],
+  submitTx: (tx) => wallet.submitTransaction(unwrapV9(tx, 'submitTx'))
+};
+```
+
+**If you serve more than one era**, write one handler per era instead and let
+the factory compute the declaration:
+
+```typescript
+import { createProofProviderFromHandlers } from '@midnight-ntwrk/midnight-js-types';
+
+const proofProvider = createProofProviderFromHandlers({
+  currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
+  retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
+});
+```
+
+The factory routes each request to its era's handler, tags the answer as the era
+the request carried, and raises `V8PayloadUnsupportedError` for an era you did
+not supply a handler for — the same error the un-widened provider raised before.
+`retainedEras` cannot name the current era: that era crosses the seam as a live
+ledger object, not as bytes, so registering a handler for it is a compile error.
+
+Nothing verifies the declaration. Listing an era you do not serve makes the
+failure later, not absent: the seam still narrows its own payload and still
+raises `V8PayloadUnsupportedError`.
+
+See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-arms.md).
+
+### 8g. New and changed exports
+
+**`@midnight-ntwrk/midnight-js-types`** — added: `FinalizedTxRecord`,
+`FinalizedTxDataV8`, `VersionedFinalizedTxData`, `V8TxBytes`, `V9Tx`,
+`VersionedTx`, `VersionedUnprovenTransaction`, `VersionedUnboundTransaction`,
+`VersionedFinalizedTransaction`, `ProviderSeam`, `ReadSeam`, `Seam`,
+`unwrapV9`, `V8PayloadUnsupportedError`, `UntaggedPayloadError`,
+`V9WalletProvider`, `createWalletProvider`, `createMidnightProvider`,
+`SeamEraUnsupportedError`, `assertSeamsSupportEra`, `TransactionSeams`,
+`EraDeclaringProvider`, `RetainedEraHandlers`, `EraArmRequest`, `erasServedBy`,
+`narrowToEraArm`, `createProofProviderFromHandlers`, `createWalletProviderFromHandlers`,
+`createMidnightProviderFromHandlers`, `ProofProviderHandlers`, `WalletProviderHandlers`,
+`MidnightProviderHandlers`, `CurrentEraProver`, `RetainedEraProver`,
+`CurrentEraBalancer`, `RetainedEraBalancer`, `CurrentEraSubmitter`,
+`RetainedEraSubmitter`. Changed: `FinalizedTxData` gained `version: 'v9'`;
+`ProofProvider`, `WalletProvider` and `MidnightProvider` each gained a required
+`supportedEras`.
+
+**`@midnight-ntwrk/midnight-js-protocol`** — added: `CURRENT_LEDGER_VERSION`,
+`CurrentLedgerVersion`, `RETAINED_LEDGER_VERSIONS`, `RetainedLedgerVersion`, on
+the barrel and on the `./version` subpath.
+
+**`@midnight-ntwrk/midnight-js-types`** — added: `PROVIDER_ERROR_CODES` and
+`ProviderErrorCode`, on the barrel and on a new `./errors` leaf subpath. That
+subpath imports nothing, so reading a code string does not pull `effect` or the
+protocol ledger namespace the way the root barrel does.
+
+**`@midnight-ntwrk/midnight-js-utils`** — added: `hasErrorCode`,
+`hasForeignErrorCode`, `MIDNIGHT_JS_ERROR_CODES`, `MidnightJsErrorCode`,
+`CONTRACTS_ERROR_CODES`, `ContractsErrorCode`, `PROVIDER_ERROR_CODES`,
+`ProviderErrorCode`. `PROVIDER_ERROR_CODES` and `ProviderErrorCode` are declared
+in `midnight-js-types` and re-exported here, so both import paths work.
+
+`hasErrorCode(error, code)` does **not** accept an arbitrary string as `code`:
+it takes `C extends MidnightJsErrorCode`, so a misspelled code is a compile
+error instead of a guard that silently never matches. Compare against a code
+this framework does not own with `hasForeignErrorCode`, which refuses one of our
+own codes at compile time and throws on anything carrying the `MIDNIGHT_JS_`
+prefix — a misspelling of one of ours lands there, and answering `false` would
+put the silent guard back.
+
+**`@midnight-ntwrk/midnight-js-contracts`** — added:
+`EraInvariantViolationError` (code `MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION`,
+carries `seam` and optional `circuitId`), `EraSeam`.
+
+**`@midnight-ntwrk/midnight-js-indexer-public-data-provider`** — added:
+`EraUnresolvableError` (`MIDNIGHT_JS_PR_ERA_UNRESOLVABLE`) and
+`EraUnsupportedError` (`MIDNIGHT_JS_PR_ERA_UNSUPPORTED`), both `IndexerError`
+subclasses. `EraUnsupportedError` is a guard rather than an era policy: the
+per-record decoder table is total over the eras this client ships runtimes for,
+so within one build it cannot be raised. It is reachable across builds — an
+installed `midnight-js-protocol` newer than this provider package resolves an
+era whose decoder this build predates.
+
+Catch any of these by code with `hasErrorCode(error, CODE)` from
+`midnight-js-utils` rather than by `instanceof` across a package boundary.
+
+---
+
+## 9. `BlockInfo` gained a required `protocolVersion` field (#1395)
+
+`BlockInfo`, returned by `PublicDataProvider.queryBlock()`, now carries
+`readonly protocolVersion: number` — the protocol-version integer the block was
+produced under, which dates it to a ledger era. Any code that *constructs* a
+`BlockInfo` — test fixtures and custom `PublicDataProvider` implementations —
+must set it. Code that only reads a `BlockInfo` is unaffected.
+
+Resolve it with `versionOfRecord(block)` from
+`@midnight-ntwrk/midnight-js-protocol`. Implementations must report the era of
+*that* block, never the network head's, so a block read from before a hard fork
+keeps reporting the era it was produced in.
+
+`queryBlock` itself is new in 5.0.0, so a consumer who never implemented the
+interface sees only an added field. The break lands on anyone who wrote an
+implementation or a test double against `5.0.0-rc.0` / `5.0.0-rc.1`, where the
+type had two fields.
 
 ---
 
 ## Non-breaking additions worth noting
 
-- **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)).
+- **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).
 - `dispose()` is exposed on the concrete `IndexerPublicDataProvider` returned by the factory (#961). It is **not** a member of the shared `PublicDataProvider` interface, so existing interface implementations are unaffected.
 - The new `queryContractEvents` / `contractEventsObservable` methods are **required** members of the `PublicDataProvider` interface; the framework's `IndexerPublicDataProvider` provides them. If you implement `PublicDataProvider` yourself, this is a required-method addition that will fail to type-check until you add both — see [api-changes.md](./api-changes.md).

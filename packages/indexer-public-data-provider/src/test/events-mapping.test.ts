@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractEvent } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, test } from 'vitest';
 
@@ -25,6 +26,7 @@ const base = {
   id: 7,
   maxId: 42,
   version: 1,
+  protocolVersion: 2_000_000,
   contractAddress: ADDRESS,
   transactionId: 99,
   raw: 'deadbeef'
@@ -34,6 +36,7 @@ const expectedBase = {
   id: 7,
   maxId: 42,
   version: 1,
+  protocolVersion: 2_000_000,
   contractAddress: ADDRESS,
   transactionId: 99,
   raw: 'deadbeef'
@@ -274,5 +277,17 @@ describe('toContractEvent - negative', () => {
   test('missing required field throws rather than producing a half-built event', () => {
     const node = { __typename: 'ShieldedSpendEvent', ...base, nullifier: null } as unknown as ContractEventNode;
     expect(() => toContractEvent(node)).toThrow(IndexerDataError);
+  });
+});
+
+describe('a mapped event dates its own raw bytes', () => {
+  test('resolves its ledger era through the shared resolver, with no local version table', () => {
+    // The point of carrying `protocolVersion`: a consumer decoding `raw` - which
+    // this provider never decodes - can ask which runtime wrote those bytes.
+    // Passing the event straight to `versionOfRecord` is also what proves the
+    // public event type satisfies `VersionedRecord`.
+    const event = toContractEvent({ __typename: 'ShieldedSpendEvent', ...base, nullifier: 'n0' });
+
+    expect(versionOfRecord(event)).toBe('v9');
   });
 });

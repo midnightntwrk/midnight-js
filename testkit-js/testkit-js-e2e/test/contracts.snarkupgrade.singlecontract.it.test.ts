@@ -33,16 +33,16 @@ import {
   type TestEnvironment} from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import { UNDEPLOYED_CONTRACT_ADDRESS } from '@/constants';
-import * as api from '@/counter-api';
+import { UNDEPLOYED_CONTRACT_ADDRESS } from '../src/constants';
+import * as api from '../src/counter-api';
 import {
   CIRCUIT_ID_DECREMENT,
   CIRCUIT_ID_RESET,
   CompiledCounterContract,
   CounterCloneConfiguration,
   SimpleConfiguration
-} from '@/counter-api';
-import { type CounterProviders, type DeployedCounterContract } from '@/types/counter-types';
+} from '../src/counter-api';
+import { type CounterProviders, type DeployedCounterContract } from '../src/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)

@@ -21,12 +21,12 @@ import { createLogger, getTestEnvironment, initializeMidnightProviders } from '@
 import * as fs from 'fs/promises';
 import path from 'path';
 
-import { SLOW_TEST_TIMEOUT } from '@/constants';
-import { CompiledCounterContract } from '@/contract';
-import { type CounterPrivateState } from '@/contract/witnesses';
-import * as api from '@/counter-api';
-import { CounterConfiguration } from '@/counter-api';
-import { type CounterCircuit, CounterPrivateStateId, privateStateZero } from '@/types/counter-types';
+import { SLOW_TEST_TIMEOUT } from '../src/constants';
+import { CompiledCounterContract } from '../src/contract';
+import { type CounterPrivateState } from '../src/contract/witnesses';
+import * as api from '../src/counter-api';
+import { CounterConfiguration } from '../src/counter-api';
+import { type CounterCircuit, CounterPrivateStateId, privateStateZero } from '../src/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `level-private-state-provider_${new Date().toISOString()}.log`)

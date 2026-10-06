@@ -21,7 +21,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { createCipheriv, pbkdf2Sync, randomBytes } from 'crypto';
 
-import { inMemoryPrivateStateProvider } from '@/contract/in-memory-private-state-provider';
+import { inMemoryPrivateStateProvider } from '../src/contract/in-memory-private-state-provider';
 
 const ALGORITHM = 'aes-256-gcm';
 const KEY_LENGTH = 32;
@@ -33,7 +33,7 @@ const VALID_PASSWORD = 'Valid-Pass9-Test!@';
 
 const CONTRACT_ADDRESS_1 = 'contract-address-1' as ContractAddress;
 const CONTRACT_ADDRESS_2 = 'contract-address-2' as ContractAddress;
-const VALID_SIGNING_KEY = { tag: 'schnorr', value: '0102030a1b2c3d4e5f' };
+const VALID_SIGNING_KEY = { tag: 'schnorr', value: 'ab'.repeat(32) };
 
 const encryptPayload = (data: string, password: string, salt: Buffer): string => {
   const key = pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha256');

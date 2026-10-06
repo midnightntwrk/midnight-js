@@ -79,6 +79,24 @@ const rewriteScope = (pkg) => {
   return pkg;
 };
 
+// Rewrite SOURCE_SCOPE -> TARGET_SCOPE inside built JS/DTS files. Compiled
+// bundles carry their cross-package import specifiers verbatim, so those
+// specifiers must match the rewritten package names or they fail to resolve in
+// the published copy.
+const rewriteScopeInFiles = (dir) => {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      rewriteScopeInFiles(fullPath);
+    } else if (/\.(m|c)?[jt]s$/.test(entry.name)) {
+      const content = readFileSync(fullPath, 'utf8');
+      if (content.includes(`${SOURCE_SCOPE}/`)) {
+        writeFileSync(fullPath, content.replaceAll(`${SOURCE_SCOPE}/`, `${TARGET_SCOPE}/`));
+      }
+    }
+  }
+};
+
 const discoverWorkspaces = () => {
   const root = join(process.cwd(), WORKSPACE_GLOB);
   if (!existsSync(root)) {
@@ -116,9 +134,11 @@ const publishWorkspace = (dir) => {
   const extractedPkgJson = join(work, 'package', 'package.json');
   const packed = JSON.parse(readFileSync(extractedPkgJson, 'utf8'));
 
-  // 3. Rewrite scope on name + internal deps, write back.
+  // 3. Rewrite scope on name + internal deps, write back; then rewrite the
+  //    specifiers baked into the built files so they match the new names.
   rewriteScope(packed);
   writeFileSync(extractedPkgJson, `${JSON.stringify(packed, null, 2)}\n`);
+  rewriteScopeInFiles(join(work, 'package'));
 
   // 4. Re-tar preserving the "package/" prefix.
   const rewrittenTgz = join(work, 'publish.tgz');

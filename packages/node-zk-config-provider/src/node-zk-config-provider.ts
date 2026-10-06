@@ -19,9 +19,12 @@ import {
   assertManifestHash,
   assertSafeName,
   parseZkArtifactManifest,
+  parseZkArtifactRuntimeVersion,
   verifyZkArtifactIntegrity,
+  ZK_CONTRACT_INFO_FILE_NAME,
   ZK_MANIFEST_DIR,
   ZK_MANIFEST_FILE_NAME,
+  ZkArtifactContractInfoError,
   ZkArtifactIntegrityError,
   type ZkArtifactManifest,
   type ZkConfigIntegrityOptions
@@ -45,6 +48,7 @@ const isErrnoException = (error: unknown): error is NodeJS.ErrnoException =>
  */
 export class NodeZkConfigProvider<K extends string> extends ZKConfigProvider<K> {
   private manifestPromise?: Promise<ZkArtifactManifest | undefined>;
+  private runtimeVersionPromise?: Promise<string>;
 
   /**
    * @param directory The base directory containing the key and ZKIR subdirectories.
@@ -103,6 +107,68 @@ export class NodeZkConfigProvider<K extends string> extends ZKConfigProvider<K> 
       assertManifestHash(bytes, expectedManifestHash);
     }
     return parseZkArtifactManifest(bytes.toString('utf-8'));
+  }
+
+  /**
+   * Reports the `compact-runtime` this bundle was built against, preferring the source an
+   * application can anchor to a hash it controls.
+   *
+   * The INTEGRITY MANIFEST is consulted first; `compiler/contract-info.json` is the fallback, for
+   * bundles that carry no manifest at all. The fallback goes through the same integrity gate as
+   * every key and ZKIR, so under the default `require` an unvouched-for description is refused.
+   *
+   * Cached per provider instance. A FAILED read is not cached.
+   *
+   * The reasoning behind that ordering is in
+   * `packages/utils/docs/artifact-runtime-version.md`.
+   *
+   * @returns The declared runtime version, verbatim.
+   * @throws ZkArtifactContractInfoError if the description is absent or declares no runtime version.
+   * @throws ZkArtifactIntegrityError if the description is not covered by the manifest under a mode
+   * that requires it.
+   */
+  override async getArtifactRuntimeVersion(): Promise<string> {
+    // The cached promise CLEARS ITSELF on failure, so a transient error is retried rather than
+    // remembered. Written as one self-clearing chain rather than as a stored promise compared
+    // against the slot: nothing can replace the slot between the rejection and this handler, so a
+    // comparison would only add a branch no test can reach.
+    this.runtimeVersionPromise ??= this.readRuntimeVersion().catch((error: unknown) => {
+      this.runtimeVersionPromise = undefined;
+      throw error;
+    });
+    return this.runtimeVersionPromise;
+  }
+
+  private async readRuntimeVersion(): Promise<string> {
+    const manifest = await this.loadManifest();
+    if (manifest?.runtimeVersion !== undefined) {
+      return manifest.runtimeVersion;
+    }
+
+    const infoPath = path.resolve(this.directory, ZK_MANIFEST_DIR, ZK_CONTRACT_INFO_FILE_NAME);
+    let bytes: Buffer;
+    try {
+      bytes = await fs.readFile(infoPath);
+    } catch (error) {
+      if (isErrnoException(error) && error.code === 'ENOENT') {
+        throw new ZkArtifactContractInfoError(
+          `No ${ZK_CONTRACT_INFO_FILE_NAME} was found at ${infoPath}, so the era of these artifacts ` +
+            `cannot be established. Serve the compiler output directory that compactc emits beside ` +
+            `the keys.`,
+          { cause: error }
+        );
+      }
+      throw error;
+    }
+    verifyZkArtifactIntegrity({
+      manifest,
+      relativePath: `${ZK_MANIFEST_DIR}/${ZK_CONTRACT_INFO_FILE_NAME}`,
+      bytes,
+      mode: this.integrityOptions.verify ?? 'require',
+      onWarn: this.integrityOptions.onWarn
+    });
+
+    return parseZkArtifactRuntimeVersion(bytes.toString('utf-8'));
   }
 
   private async verifyArtifact(subDir: typeof KEY_DIR | typeof ZKIR_DIR, fileName: string, bytes: Uint8Array): Promise<void> {

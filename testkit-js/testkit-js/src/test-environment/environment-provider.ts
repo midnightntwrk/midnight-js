@@ -16,9 +16,7 @@
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Logger } from 'pino';
 
-import { getEnvVarEnvironment } from '@/env-vars';
-import { type TestEnvironment } from '@/test-environment/test-environments/test-environment';
-
+import { getEnvVarEnvironment } from '../env-vars';
 import {
   EnvVarRemoteTestEnvironment,
   LocalTestEnvironment,
@@ -26,6 +24,7 @@ import {
   PreviewTestEnvironment,
   QanetTestEnvironment
 } from './test-environments';
+import { type TestEnvironment } from './test-environments/test-environment';
 
 /**
  * Returns the appropriate test environment based on the MN_TEST_ENVIRONMENT variable.

@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import type { ZkConfigIntegrityOptions } from '@midnight-ntwrk/midnight-js-utils';
+
 /**
  * Configuration interface for Midnight contracts.
  */
@@ -28,4 +30,16 @@ export interface ContractConfiguration {
    * This should point to the directory containing the circuit verification keys and other ZK artifacts.
    */
   readonly zkConfigPath: string;
+
+  /**
+   * Integrity-verification options for the ZK artifacts, passed straight to the
+   * config provider. Omitted means the provider's own default, `require`.
+   *
+   * Needed because retained-era artifacts cannot satisfy `require`: `compactc`
+   * 0.31.1 emits `compiler/contract-info.json` and no
+   * `compiler/contract-manifest.json`, and the manifest is what verification
+   * reads. A pre-fork contract therefore has nothing to verify against, however
+   * intact its artifacts are.
+   */
+  readonly zkConfigIntegrity?: ZkConfigIntegrityOptions;
 }

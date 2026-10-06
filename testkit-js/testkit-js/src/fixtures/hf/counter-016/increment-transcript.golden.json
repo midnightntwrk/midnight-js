@@ -1,0 +1,23 @@
+{
+  "circuitId": "increment",
+  "result": [],
+  "input": { "value": [], "alignment": [] },
+  "output": { "value": [], "alignment": [] },
+  "publicTranscript": [
+    {
+      "idx": {
+        "cached": false,
+        "pushPath": true,
+        "path": [
+          {
+            "tag": "value",
+            "value": { "value": [""], "alignment": [{ "tag": "atom", "value": { "tag": "bytes", "length": 1 } }] }
+          }
+        ]
+      }
+    },
+    { "addi": { "immediate": 1 } },
+    { "ins": { "cached": true, "n": 1 } }
+  ],
+  "privateTranscriptOutputs": []
+}

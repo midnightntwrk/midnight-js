@@ -103,16 +103,44 @@ await submitReplaceAuthorityTx(providers, options);
 ### State Queries
 
 ```typescript
-import { getStates, getPublicStates, getUnshieldedBalances } from '@midnight-ntwrk/midnight-js-contracts';
+import { getPublicStates, getStates, getUnshieldedBalances } from '@midnight-ntwrk/midnight-js-contracts';
 
 // Get contract states (public + private)
-const states = await getStates(providers, contractAddress, privateStateId);
+const states = await getStates(
+  providers.publicDataProvider,
+  providers.privateStateProvider,
+  contractAddress,
+  privateStateId
+);
 
 // Get public states only
-const publicStates = await getPublicStates(providers, contractAddress);
+const publicStates = await getPublicStates(providers.publicDataProvider, contractAddress);
 
 // Get unshielded token balances
-const balances = await getUnshieldedBalances(providers, contractAddress);
+const balances = await getUnshieldedBalances(providers.publicDataProvider, contractAddress);
+```
+
+`getStates` and `getPublicStates` decode with the current ledger era, so they
+refuse a contract deployed before the fork that has not been written to since.
+For those, and wherever a contract's era is not known in advance, use
+`getAnyEraContractState`:
+
+```typescript
+import { getAnyEraContractState } from '@midnight-ntwrk/midnight-js-contracts';
+// `StateValue` and the contract class both come from YOUR OWN generated contract
+// module and its Compact runtime — not from the framework. That is the point:
+// `read.state` is plain data precisely so your runtime can accept it.
+import { StateValue } from './managed/counter/contract/index.cjs';
+import { Counter } from './managed/counter/contract/index.cjs';
+
+const read = await getAnyEraContractState(providers.publicDataProvider, contractAddress);
+
+if (read !== null) {
+  // `read.envelopeVersion` is the era that WROTE the bytes, read off the
+  // envelope — not the era of the block that dated the read.
+  // `read.state` is encoded, so decode it with your own contract's runtime.
+  const ledgerState = Counter.ledger(StateValue.decode(read.state));
+}
 ```
 
 ### Transaction Interfaces
@@ -178,6 +206,7 @@ import {
   // State queries
   getStates,
   getPublicStates,
+  getAnyEraContractState,
   getUnshieldedBalances,
 
   // Transaction interfaces
@@ -204,9 +233,32 @@ import {
   CallTxFailedError,
   DeployTxFailedError,
   ContractTypeError,
+  EraInvariantViolationError,
+  type EraSeam,
   TxFailedError
 } from '@midnight-ntwrk/midnight-js-contracts';
 ```
+
+## Architecture Documents
+
+The reasoning behind this package's shape lives in `docs/`, not in the source
+docstrings. Each file is registered with TypeDoc through `projectDocuments`, so
+it is a page in the generated API reference and `@see {@link Title}` in a
+docstring resolves to it.
+
+| Document | What it explains |
+|---|---|
+| [Overload typing](./docs/overload-typing.md) | Why the retained-era contract types are hand-written, what discriminates the two toolchain eras, how openness is expressed without `any`, and why overload order is load-bearing |
+| [Era dispatch](./docs/era-dispatch.md) | How an operation's pipeline era and the network head era are each established, why the artifact check is structural rather than branded, and which pairings may run |
+| [Verification path](./docs/verification-path.md) | What the pre-proving verifier-key check buys, and why routing on key generation is unavailable rather than unimplemented |
+| [Keep-state pipeline](./docs/keep-state-pipeline.md) | The order one retained-era operation runs in, the two composition arms, per-recipient shielded encryption, seam sanitization, and why a retained-era deploy is refused |
+| [Stale-head remediation](./docs/stale-head-remediation.md) | How a submit rejection is told apart from a fork crossing, the two-step remediation it carries, and why a pre-fork contract-scoped transaction is refused outright |
+| [Breadcrumbs](./docs/breadcrumbs.md) | Which era decisions reach the log and which deliberately do not, the four head readings and their provenance, the privacy rule, and the one fault that is swallowed |
+| [Error taxonomy](./docs/error-taxonomy.md) | Which class to catch across both eras, which errors register a code and which deliberately do not, the three refusals that fire before a caller pays, and the after-submission region the signing key rides through |
+
+Docstrings in `src/` carry the API contract: what a symbol does, its
+parameters, what it returns and what it throws. Anything that answers "why is
+it built this way" belongs in a document above, stated once.
 
 ## Resources
 

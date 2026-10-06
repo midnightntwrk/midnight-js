@@ -1,0 +1,71 @@
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / createUnprovenCallTx
+
+# Function: createUnprovenCallTx()
+
+## Call Signature
+
+> **createUnprovenCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext?`): `Promise`\<[`UnsubmittedCallTxData`](../interfaces/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+
+### Type Parameters
+
+#### C
+
+`C` *extends* [`Contract`](https://github.com/midnightntwrk/midnight-sdk)\<`undefined`, [`Witnesses`](https://github.com/midnightntwrk/midnight-sdk)\<`undefined`\>\>
+
+#### PCK
+
+`PCK` *extends* `string`
+
+### Parameters
+
+#### providers
+
+[`UnprovenCallTxProvidersBase`](../type-aliases/UnprovenCallTxProvidersBase.md)
+
+#### options
+
+[`CallOptionsWithArguments`](../type-aliases/CallOptionsWithArguments.md)\<`C`, `PCK`\>
+
+#### transactionContext?
+
+[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
+
+### Returns
+
+`Promise`\<[`UnsubmittedCallTxData`](../interfaces/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+
+## Call Signature
+
+> **createUnprovenCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext?`): `Promise`\<[`UnsubmittedCallTxData`](../interfaces/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+
+### Type Parameters
+
+#### C
+
+`C` *extends* [`Any`](https://github.com/midnightntwrk/midnight-sdk)
+
+#### PCK
+
+`PCK` *extends* `string`
+
+### Parameters
+
+#### providers
+
+[`UnprovenCallTxProvidersWithPrivateState`](../type-aliases/UnprovenCallTxProvidersWithPrivateState.md)\<`C`\>
+
+#### options
+
+[`CallTxOptionsWithPrivateStateId`](../type-aliases/CallTxOptionsWithPrivateStateId.md)\<`C`, `PCK`\>
+
+#### transactionContext?
+
+[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
+
+### Returns
+
+`Promise`\<[`UnsubmittedCallTxData`](../interfaces/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>

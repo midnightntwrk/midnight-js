@@ -16,10 +16,9 @@
 import { InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';
 import { warnIfInsecureRemoteUrl } from '@midnight-ntwrk/midnight-js-utils';
 // Default import, not `import * as ws` + `ws.WebSocket`: isomorphic-ws is CJS
-// (`module.exports = require('ws')`) with no `exports` map. Node's CJS→ESM interop
-// exposes only the `default` export to the built `.mjs`, so the named `ws.WebSocket`
-// resolves to `undefined` at runtime under ESM (it works only in the CJS build).
-// The default export is the WebSocket class in both formats.
+// (`module.exports = require('ws')`) with no `exports` map. Node's CJS-to-ESM
+// interop exposes only the `default` export, so the named `ws.WebSocket` resolves
+// to `undefined` at runtime. The default export is the WebSocket class.
 import WebSocket from 'isomorphic-ws';
 
 import { IndexerProviderConfigError } from './errors';

@@ -1,0 +1,49 @@
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-types](../../README.md) / [index](../README.md) / LogLevel
+
+# Enumeration: LogLevel
+
+A valid named log level.
+
+## Enumeration Members
+
+### DEBUG
+
+> **DEBUG**: `"debug"`
+
+Log levels used by Midnight.JS to report internal state.
+
+***
+
+### ERROR
+
+> **ERROR**: `"error"`
+
+***
+
+### FATAL
+
+> **FATAL**: `"fatal"`
+
+***
+
+### INFO
+
+> **INFO**: `"info"`
+
+Log levels typically used by DAapp developers.
+
+***
+
+### TRACE
+
+> **TRACE**: `"trace"`
+
+***
+
+### WARN
+
+> **WARN**: `"warn"`

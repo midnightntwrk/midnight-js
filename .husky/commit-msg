@@ -1,1 +1,12 @@
 npx --no-install commitlint --edit $1
+
+if [ -f "$(git rev-parse --git-path MERGE_HEAD)" ]; then
+  exit 0
+fi
+
+committer=$(git var GIT_COMMITTER_IDENT | sed 's/ [0-9]* [-+][0-9]*$//')
+if ! git interpret-trailers --parse "$1" | grep -qixF "Signed-off-by: $committer"; then
+  echo "DCO: commit message has no 'Signed-off-by: $committer' trailer." >&2
+  echo "Commit with 'git commit -s' (see CONTRIBUTING.md)." >&2
+  exit 1
+fi

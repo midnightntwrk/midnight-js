@@ -32,14 +32,14 @@ import {
 } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import * as api from '@/block-time-api';
-import { BlockTimeConfiguration } from '@/block-time-api';
-import { CompiledBlockTimeContract } from '@/contract';
+import * as api from '../src/block-time-api';
+import { BlockTimeConfiguration } from '../src/block-time-api';
+import { CompiledBlockTimeContract } from '../src/contract';
 import {
   type BlockTimeContract,
   type BlockTimeProviders,
   type DeployedBlockTimeContract
-} from '@/types/block-time-types';
+} from '../src/types/block-time-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `block_time_${new Date().toISOString()}.log`)

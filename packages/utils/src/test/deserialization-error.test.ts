@@ -50,6 +50,32 @@ describe('DeserializationError', () => {
     });
   });
 
+  describe('caller-supplied details', () => {
+    it('renders each detail the call site supplied', () => {
+      const error = new DeserializationError(
+        { ...baseContext, details: { era: 'v9', protocolVersion: 2_000_000 } },
+        new Error('inner')
+      );
+
+      expect(error.message).toContain('Read: era=v9, protocolVersion=2000000');
+    });
+
+    it('renders no details line when the call site supplied none', () => {
+      const error = new DeserializationError(baseContext, new Error('inner'));
+
+      expect(error.message).not.toContain('Read:');
+    });
+
+    it('exposes the details on context, so a consumer need not parse the message', () => {
+      const error = new DeserializationError(
+        { ...baseContext, details: { seam: 'watchForTxData', txId: 'abc' } },
+        new Error('inner')
+      );
+
+      expect(error.context.details).toEqual({ seam: 'watchForTxData', txId: 'abc' });
+    });
+  });
+
   describe('message format (per spec §7.6)', () => {
     it('contains "Failed to deserialize <dataType> (<source>)." on first line', () => {
       const error = new DeserializationError(baseContext, new Error('inner'));

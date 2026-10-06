@@ -31,10 +31,10 @@ import {
 } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import { SLOW_TEST_TIMEOUT } from '@/constants';
-import { CompiledCounterContract } from '@/contract';
-import { CIRCUIT_ID_INCREMENT, CounterConfiguration } from '@/counter-api';
-import { CounterPrivateStateId, type CounterProviders, privateStateZero } from '@/types/counter-types';
+import { SLOW_TEST_TIMEOUT } from '../src/constants';
+import { CompiledCounterContract } from '../src/contract';
+import { CIRCUIT_ID_INCREMENT, CounterConfiguration } from '../src/counter-api';
+import { CounterPrivateStateId, type CounterProviders, privateStateZero } from '../src/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `signing-key_${new Date().toISOString()}.log`)

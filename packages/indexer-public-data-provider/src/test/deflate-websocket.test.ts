@@ -18,7 +18,22 @@ import { deflateSync } from 'node:zlib';
 import type * as ws from 'isomorphic-ws';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { DEFLATE_PROTOCOL, wrapWithDeflate } from '../deflate-websocket';
+import {
+  DEFLATE_DECODE_FAILURE_CLOSE_CODE,
+  DEFLATE_DECODE_GIVE_UP_CLOSE_CODE,
+  DEFLATE_PROTOCOL,
+  MAX_CONSECUTIVE_DECODE_FAILURES,
+  wrapWithDeflate
+} from '../deflate-websocket';
+
+/**
+ * The DOM-lib and `ws`-package WebSocket types don't structurally unify (the
+ * wrapper source performs the same adaptation); tests exercise the wrapper
+ * against minimal EventTarget-based fakes, adapted to the expected
+ * constructor type in this one place.
+ */
+const asWsCtor = (ctor: new (url: string, protocols?: string | string[]) => EventTarget): typeof ws.WebSocket =>
+  ctor as unknown as typeof ws.WebSocket;
 
 describe('wrapWithDeflate — subprotocol negotiation', () => {
   test('offers only the deflate protocol when no protocols argument is passed', () => {
@@ -29,7 +44,7 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
         baseCtor(url, protocols);
       }
     }
-    const Wrapped = wrapWithDeflate(BaseWS as unknown as typeof ws.WebSocket);
+    const Wrapped = wrapWithDeflate(asWsCtor(BaseWS));
 
     new Wrapped('ws://localhost/graphql/ws');
 
@@ -47,7 +62,7 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
         baseCtor(url, protocols);
       }
     }
-    const Wrapped = wrapWithDeflate(BaseWS as unknown as typeof ws.WebSocket);
+    const Wrapped = wrapWithDeflate(asWsCtor(BaseWS));
 
     new Wrapped('ws://localhost/graphql/ws', 'graphql-transport-ws');
 
@@ -65,7 +80,7 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
         baseCtor(url, protocols);
       }
     }
-    const Wrapped = wrapWithDeflate(BaseWS as unknown as typeof ws.WebSocket);
+    const Wrapped = wrapWithDeflate(asWsCtor(BaseWS));
 
     new Wrapped('ws://localhost/graphql/ws', ['graphql-transport-ws', 'graphql-ws']);
 
@@ -83,7 +98,7 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
         baseCtor(url, protocols);
       }
     }
-    const Wrapped = wrapWithDeflate(BaseWS as unknown as typeof ws.WebSocket);
+    const Wrapped = wrapWithDeflate(asWsCtor(BaseWS));
 
     new Wrapped('ws://localhost/graphql/ws', [DEFLATE_PROTOCOL, 'graphql-transport-ws']);
 
@@ -112,6 +127,9 @@ class FakeWS extends EventTarget {
   readyState = FakeWS.OPEN;
   onopen: ((ev: Event) => void) | null = null;
 
+  /** Every `close()` the wrapper made, in order, so tests can read the code it chose. */
+  closeCalls: { code?: number; reason?: string }[] = [];
+
   /** Per-instance storage for whatever the wrapper installs via our prototype-level accessor. */
   #installedOnmessage: ((ev: MessageEvent) => void) | null = null;
 
@@ -138,20 +156,26 @@ class FakeWS extends EventTarget {
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   send(_: unknown): void {}
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  close(): void {}
+
+  close(code?: number, reason?: string): void {
+    this.closeCalls.push({ code, reason });
+  }
 }
 
 describe('wrapWithDeflate — message delivery', () => {
   let Wrapped: typeof ws.WebSocket;
 
   beforeEach(() => {
-    Wrapped = wrapWithDeflate(FakeWS as unknown as typeof ws.WebSocket);
+    Wrapped = wrapWithDeflate(asWsCtor(FakeWS));
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
+
+  // Wrapped subclasses FakeWS at runtime; the wrapper's return type can't
+  // carry that, so instances are re-viewed as the fake in this one place.
+  const newFake = (url = 'ws://x'): FakeWS => new Wrapped(url, 'graphql-transport-ws') as unknown as FakeWS;
 
   // Awaits the wrapper's internal delivery queue to flush all pending async inflate work.
   // The cast is intentional: __deliveryQueue is a private implementation detail accessed
@@ -163,7 +187,7 @@ describe('wrapWithDeflate — message delivery', () => {
   };
 
   test('inflates binary frames when the +deflate protocol was negotiated (addEventListener path)', async () => {
-    const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    const sock = newFake();
     sock.protocol = DEFLATE_PROTOCOL;
     const seen: unknown[] = [];
     sock.addEventListener('message', (ev) => seen.push((ev as MessageEvent).data));
@@ -177,7 +201,7 @@ describe('wrapWithDeflate — message delivery', () => {
   });
 
   test('inflates binary frames via the onmessage setter path', async () => {
-    const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    const sock = newFake();
     sock.protocol = DEFLATE_PROTOCOL;
     const seen: unknown[] = [];
     sock.onmessage = (ev) => seen.push(ev.data);
@@ -191,7 +215,7 @@ describe('wrapWithDeflate — message delivery', () => {
   });
 
   test('passes text frames through unchanged (server skipped compression on <256 B)', async () => {
-    const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    const sock = newFake();
     sock.protocol = DEFLATE_PROTOCOL;
     const seen: unknown[] = [];
     sock.addEventListener('message', (ev) => seen.push((ev as MessageEvent).data));
@@ -203,7 +227,7 @@ describe('wrapWithDeflate — message delivery', () => {
   });
 
   test('preserves delivery order when text and binary frames interleave', async () => {
-    const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    const sock = newFake();
     sock.protocol = DEFLATE_PROTOCOL;
     const seen: string[] = [];
     sock.addEventListener('message', (ev) => seen.push(String((ev as MessageEvent).data)));
@@ -219,7 +243,7 @@ describe('wrapWithDeflate — message delivery', () => {
   });
 
   test('does NOT inflate when server fell back to plain graphql-transport-ws (fallback path)', async () => {
-    const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    const sock = newFake();
     sock.protocol = 'graphql-transport-ws';
     const seen: unknown[] = [];
     sock.addEventListener('message', (ev) => seen.push((ev as MessageEvent).data));
@@ -233,7 +257,7 @@ describe('wrapWithDeflate — message delivery', () => {
   });
 
   test('sets binaryType to arraybuffer (so we never receive a Blob in the browser)', () => {
-    const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    const sock = newFake();
 
     expect(sock.binaryType).toBe('arraybuffer');
   });
@@ -241,7 +265,7 @@ describe('wrapWithDeflate — message delivery', () => {
   test('normalizes Node Buffer / Uint8Array binary payloads to ArrayBuffer before inflating', async () => {
     // The Node `ws` package may deliver binary frames as Buffer (a Uint8Array subclass)
     // regardless of binaryType — the wrapper must handle that, not just ArrayBuffer.
-    const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    const sock = newFake();
     sock.protocol = DEFLATE_PROTOCOL;
     const seen: unknown[] = [];
     sock.addEventListener('message', (ev) => seen.push((ev as MessageEvent).data));
@@ -255,23 +279,113 @@ describe('wrapWithDeflate — message delivery', () => {
     expect(seen).toEqual([payload]);
   });
 
-  test('drops a frame whose inflate throws and continues delivering subsequent frames (queue not poisoned, no unhandled rejection)', async () => {
-    const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+  test('closes the socket when a frame cannot be inflated, so graphql-ws reconnects and the indexer replays', async () => {
+    const sock = newFake();
+    sock.protocol = DEFLATE_PROTOCOL;
+    sock.addEventListener('message', () => undefined);
+
+    sock.__push(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer);
+
+    await flushDelivery(sock);
+    expect(sock.closeCalls).toEqual([
+      { code: DEFLATE_DECODE_FAILURE_CLOSE_CODE, reason: expect.any(String) }
+    ]);
+  });
+
+  test('delivers no further frames from a socket whose frame could not be inflated', async () => {
+    const sock = newFake();
     sock.protocol = DEFLATE_PROTOCOL;
     const seen: unknown[] = [];
     sock.addEventListener('message', (ev) => seen.push((ev as MessageEvent).data));
     const unhandled = vi.fn();
     process.on('unhandledRejection', unhandled);
     try {
-      // First frame: garbage that inflate will reject.
-      const garbage = new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer;
-      sock.__push(garbage);
-      // Second frame: a valid compressed payload that must still be delivered.
-      const good = deflateSync(Buffer.from('{"id":"survives"}', 'utf8'));
+      sock.__push(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer);
+      const good = deflateSync(Buffer.from('{"id":"after-the-failure"}', 'utf8'));
       sock.__push(good.buffer.slice(good.byteOffset, good.byteOffset + good.byteLength));
 
       await flushDelivery(sock);
-      expect(seen).toEqual(['{"id":"survives"}']);
+      expect(seen).toEqual([]);
+      expect(sock.closeCalls).toHaveLength(1);
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+
+  test('reports an uninflatable frame through the configured logger', async () => {
+    const warn = vi.fn();
+    const WithLogger = wrapWithDeflate(asWsCtor(FakeWS), { warn });
+    const sock = new WithLogger('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    sock.protocol = DEFLATE_PROTOCOL;
+    sock.addEventListener('message', () => undefined);
+
+    sock.__push(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer);
+
+    await flushDelivery(sock);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('inflate failed'),
+      expect.objectContaining({ error: expect.any(String) })
+    );
+  });
+
+  test('gives up with a close code graphql-ws treats as fatal once the failures repeat', async () => {
+    const codes: (number | undefined)[] = [];
+
+    for (let attempt = 0; attempt < MAX_CONSECUTIVE_DECODE_FAILURES; attempt += 1) {
+      const sock = newFake();
+      sock.protocol = DEFLATE_PROTOCOL;
+      sock.addEventListener('message', () => undefined);
+      sock.__push(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer);
+      await flushDelivery(sock);
+      codes.push(sock.closeCalls[0]?.code);
+    }
+
+    const expected = Array.from({ length: MAX_CONSECUTIVE_DECODE_FAILURES - 1 }, () =>
+      DEFLATE_DECODE_FAILURE_CLOSE_CODE
+    );
+    expect(codes).toEqual([...expected, DEFLATE_DECODE_GIVE_UP_CLOSE_CODE]);
+  });
+
+  test('forgets earlier failures once a frame decodes', async () => {
+    for (let attempt = 0; attempt < MAX_CONSECUTIVE_DECODE_FAILURES - 1; attempt += 1) {
+      const failing = newFake();
+      failing.protocol = DEFLATE_PROTOCOL;
+      failing.addEventListener('message', () => undefined);
+      failing.__push(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer);
+      await flushDelivery(failing);
+    }
+
+    const recovered = newFake();
+    recovered.protocol = DEFLATE_PROTOCOL;
+    recovered.addEventListener('message', () => undefined);
+    const good = deflateSync(Buffer.from('{"id":"decodes"}', 'utf8'));
+    recovered.__push(good.buffer.slice(good.byteOffset, good.byteOffset + good.byteLength));
+    recovered.__push(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer);
+    await flushDelivery(recovered);
+
+    expect(recovered.closeCalls).toEqual([
+      { code: DEFLATE_DECODE_FAILURE_CLOSE_CODE, reason: expect.any(String) }
+    ]);
+  });
+
+  test('does not poison the delivery queue when close() itself throws', async () => {
+    class UnclosableWS extends FakeWS {
+      override close(): void {
+        throw new Error('close is not supported');
+      }
+    }
+    const Unclosable = wrapWithDeflate(asWsCtor(UnclosableWS));
+    const sock = new Unclosable('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    sock.protocol = DEFLATE_PROTOCOL;
+    sock.addEventListener('message', () => undefined);
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      sock.__push(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer);
+
+      await flushDelivery(sock);
+      await new Promise((resolve) => setImmediate(resolve));
       expect(unhandled).not.toHaveBeenCalled();
     } finally {
       process.off('unhandledRejection', unhandled);
@@ -279,7 +393,7 @@ describe('wrapWithDeflate — message delivery', () => {
   });
 
   test('drops queued frames delivered after the socket has closed (no unhandled rejection)', async () => {
-    const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    const sock = newFake();
     sock.protocol = DEFLATE_PROTOCOL;
     const seen: unknown[] = [];
     sock.addEventListener('message', (ev) => seen.push((ev as MessageEvent).data));
@@ -300,7 +414,7 @@ describe('wrapWithDeflate — message delivery', () => {
   });
 
   test('routes binary frames through EventListenerObject.handleEvent with correct `this` binding', async () => {
-    const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    const sock = newFake();
     sock.protocol = DEFLATE_PROTOCOL;
     const seen: unknown[] = [];
     // Use a spy so vitest records the call's `this` context via `.mock.instances`.
@@ -323,7 +437,7 @@ describe('wrapWithDeflate — message delivery', () => {
   });
 
   test('clears the installed onmessage when set to null', () => {
-    const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    const sock = newFake();
     sock.onmessage = () => { /* placeholder */ };
     expect(sock.onmessage).not.toBeNull();
 
@@ -333,8 +447,8 @@ describe('wrapWithDeflate — message delivery', () => {
   });
 
   test('isolates onmessage handlers across multiple wrapped instances (no prototype pollution)', async () => {
-    const sock1 = new Wrapped('ws://x/1', 'graphql-transport-ws') as unknown as FakeWS;
-    const sock2 = new Wrapped('ws://x/2', 'graphql-transport-ws') as unknown as FakeWS;
+    const sock1 = newFake('ws://x/1');
+    const sock2 = newFake('ws://x/2');
     sock1.protocol = DEFLATE_PROTOCOL;
     sock2.protocol = DEFLATE_PROTOCOL;
 

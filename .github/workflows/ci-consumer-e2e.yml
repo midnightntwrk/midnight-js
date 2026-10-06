@@ -1,0 +1,92 @@
+name: CI - Consumer E2E
+
+# The isolated-linker install smoke (spec AC6, split-topology milestone).
+#
+# Packs every publishable workspace and installs each dApp persona from those
+# tarballs with an isolated linker, outside the workspace. This is the only place
+# the framework is exercised the way a consumer installs it: inside the monorepo
+# every package resolves through one hoisted tree, so a retained-era dApp holding
+# `@midnight-ntwrk/compact-runtime@0.16` alongside the framework's own current line
+# cannot be represented at all.
+
+permissions:
+  contents: read
+  packages: write
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      should_run:
+        required: true
+        type: string
+    # Declared rather than inherited, so a caller hands over this one credential
+    # instead of the whole repository's secrets.
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE:
+        required: true
+
+concurrency:
+  group: consumer-e2e-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  linker-smoke:
+    name: Isolated-linker install smoke
+    if: inputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          cache-key-prefix: 'turbo-consumer-e2e'
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      # The personas consume `dist`, so the smoke is only meaningful against a
+      # real build rather than against sources.
+      - name: Build
+        run: yarn build --cache-dir ./turbo
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      # BEFORE the pack, so a type error costs seconds rather than a pack plus
+      # four persona installs.
+      #
+      # THIS LANE AND NOT THE MIDNIGHT.JS ONE, which is where it was first put
+      # and where it cannot work: that leg builds `--filter="./packages/*"`, and
+      # `fork-matrix-smoke.mjs` imports `@midnight-ntwrk/testkit-js` by name.
+      # With testkit unbuilt the check reports `TS2307` for it and nothing else
+      # -- a red lane carrying no information. Resolving testkit from source
+      # instead is not an option either: its sources are `moduleResolution:
+      # bundler` while these scripts are `nodenext`, so every relative import in
+      # them fails `TS2835`. This lane runs an unfiltered `yarn build`, which is
+      # the only arrangement in which the check resolves what it is checking.
+      - name: Typecheck the harness
+        run: yarn typecheck:consumer-e2e
+
+      - name: Pack the framework
+        run: node consumer-e2e/pack-framework.mjs
+
+      # The personas resolve `@midnight-ntwrk/compact-runtime` from GitHub
+      # Packages, and neither pnpm nor a PnP install inherits Yarn's own scope
+      # configuration, so each needs the credential written where it looks.
+      - name: Authorize the persona installs
+        run: |
+          {
+            echo "@midnight-ntwrk:registry=https://npm.pkg.github.com"
+            echo "//npm.pkg.github.com/:_authToken=${MIDNIGHTCI_PACKAGES_WRITE}"
+          } >> "$HOME/.npmrc"
+        env:
+          MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Run the linker smoke
+        run: node consumer-e2e/linker-smoke.mjs
+        env:
+          YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

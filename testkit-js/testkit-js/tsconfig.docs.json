@@ -4,10 +4,7 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "esModuleInterop": true,
-    "strictPropertyInitialization": false,
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "strictPropertyInitialization": false
   },
   "include": [
     "./src/**/*.ts"

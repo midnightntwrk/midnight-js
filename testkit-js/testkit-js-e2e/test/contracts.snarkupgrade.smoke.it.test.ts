@@ -31,17 +31,17 @@ import {
   type TestEnvironment} from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import { VERY_SLOW_TEST_TIMEOUT } from '@/constants';
-import { type CounterPrivateState } from '@/contract/witnesses';
-import * as api from '@/counter-api';
+import { VERY_SLOW_TEST_TIMEOUT } from '../src/constants';
+import { type CounterPrivateState } from '../src/contract/witnesses';
+import * as api from '../src/counter-api';
 import {
   CIRCUIT_ID_RESET,
   CompiledCounterCloneContract,
   CompiledCounterContract,
   CounterCloneConfiguration
-} from '@/counter-api';
-import { CounterClonePrivateStateId } from '@/types/counter-clone-types';
-import { type CounterProviders } from '@/types/counter-types';
+} from '../src/counter-api';
+import { CounterClonePrivateStateId } from '../src/types/counter-clone-types';
+import { type CounterProviders } from '../src/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)

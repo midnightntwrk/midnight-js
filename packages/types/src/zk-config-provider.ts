@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { ArtifactRuntimeVersionUnavailableError } from './errors';
 import type { ProverKey, VerifierKey, ZKConfig, ZKIR } from './midnight-types';
 
 /**
@@ -49,6 +50,27 @@ export abstract class ZKConfigProvider<K extends string> {
    * @param circuitId The circuit ID of the verifier key to retrieve.
    */
   abstract getVerifierKey(circuitId: K): Promise<VerifierKey>;
+
+  /**
+   * Reports the `compact-runtime` version the artifact set this provider serves was compiled
+   * against, as `compactc` recorded it in `compiler/contract-info.json` (for example `'0.16.0'`).
+   *
+   * A DECLARED fact, read from the compiler's own output, and the only era statement about an
+   * artifact that survives a consumer's build: a bundler's `target` rewrites generated code, and a
+   * minifier rewrites its names, but neither touches this file. It is what lets a caller's contract
+   * be placed on the ledger-era timeline without inspecting the shape of the generated JavaScript.
+   *
+   * Not abstract, and deliberately so: only the retained-era pipeline consults it, so a provider
+   * written for current-era artifacts alone stays valid without implementing it and fails loudly
+   * only if it is handed retained-era artifacts. Both providers this framework ships override it.
+   *
+   * @returns The declared runtime version, verbatim.
+   * @throws ArtifactRuntimeVersionUnavailableError from this base implementation, which has no
+   * artifact location to read and must not guess one.
+   */
+  async getArtifactRuntimeVersion(): Promise<string> {
+    throw new ArtifactRuntimeVersionUnavailableError(this.constructor.name);
+  }
 
   /**
    * Retrieves the verifier keys produced by `compactc` compiler for the given circuits.

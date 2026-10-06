@@ -29,9 +29,9 @@ import type {
 import { createLogger, getTestEnvironment } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import * as api from '@/counter-api';
-import { CIRCUIT_ID_RESET, CompiledCounterContract } from '@/counter-api';
-import { type CounterProviders } from '@/types/counter-types';
+import * as api from '../src/counter-api';
+import { CIRCUIT_ID_RESET, CompiledCounterContract } from '../src/counter-api';
+import { type CounterProviders } from '../src/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)

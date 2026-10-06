@@ -17,21 +17,22 @@ import { classify } from './classify';
 import { type DeserializationCallSite, DeserializationError } from './deserialization-error';
 
 /**
- * Wraps a synchronous deserialization call. If `fn()` throws an `Error`,
- * the wrapper classifies it and re-throws a `DeserializationError` with
- * structured context. Non-`Error` throws (`string`, `number`, `null`, etc.)
- * pass through unchanged.
+ * Wraps a synchronous deserialization call. Whatever `fn()` throws, the
+ * wrapper classifies it and re-throws a `DeserializationError` carrying
+ * structured context, with the original value on `cause`.
  *
- * Sync-only by contract. The typed wrappers in `./typed-wrappers.ts` are
- * the primary API; use this HOF directly only for ad-hoc deserialization
- * sites not covered there.
+ * A non-`Error` throw is classified on its string form rather than escaping
+ * unwrapped.
  *
- * If `fn()` returns a thenable the wrapper throws a `TypeError` rather
- * than silently bypassing classification — any rejection from the
- * thenable would otherwise escape the try/catch.
+ * SYNC-ONLY BY CONTRACT: if `fn()` returns a thenable the wrapper throws a
+ * `TypeError`. The typed wrappers in `./typed-wrappers.ts` are the primary API;
+ * use this HOF directly only for ad-hoc deserialization sites not covered there.
  *
- * @throws {DeserializationError} When `fn()` throws an `Error`.
+ * @throws {DeserializationError} When `fn()` throws anything at all.
  * @throws {TypeError} When `fn()` returns a thenable (sync-only violation).
+ *
+ * @see {@link ErrorVocabulary} for why a bare string throw is classified rather
+ * than re-thrown, and what the thenable check prevents.
  *
  * @example
  * ```ts
@@ -48,8 +49,8 @@ export const withDeserializationContext = <T>(
   try {
     result = fn();
   } catch (cause) {
-    if (!(cause instanceof Error)) throw cause;
-    throw new DeserializationError(classify(callSite, cause), cause);
+    const classifiable = cause instanceof Error ? cause : new Error(String(cause));
+    throw new DeserializationError(classify(callSite, classifiable), cause);
   }
   if (
     result !== null &&

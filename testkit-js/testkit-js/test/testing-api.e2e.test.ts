@@ -17,8 +17,8 @@ import path from 'path';
 import * as Rx from 'rxjs';
 import { WebSocket } from 'ws';
 
-import { createLogger } from '@/logger';
-import { getTestEnvironment } from '@/test-environment';
+import { createLogger } from '../src/logger';
+import { getTestEnvironment } from '../src/test-environment';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `e2e_${new Date().toISOString().replace(/:/g, '-')}.log`)

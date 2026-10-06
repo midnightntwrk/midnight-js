@@ -1,54 +1,137 @@
-import resolve from '@rollup/plugin-node-resolve';
-import typescript from '@rollup/plugin-typescript';
-import commonjs from '@rollup/plugin-commonjs';
+import { rmSync } from 'node:fs';
+import { isAbsolute } from 'node:path';
+
 import replace from '@rollup/plugin-replace';
+import typescript from '@rollup/plugin-typescript';
 import dts from 'rollup-plugin-dts';
 
-export function createRollupConfig(packageJson) {
-  const external = [
-    /node_modules/,
-    /^@midnight-ntwrk\/midnight-js-(.*)$/
-  ];
+const DIST_PREFIX = './dist/';
+const JS_EXTENSION = /\.js$/;
 
+// Addressed by `exports` but shipped verbatim, so it is not a build entry.
+const NON_ENTRY_SUBPATHS = ['./package.json'];
+
+/**
+ * Nothing is bundled into a published package: every dependency stays a runtime
+ * import so consumers dedupe and patch it themselves. Only relative and
+ * absolute specifiers belong to the package being built, which holds because no
+ * package resolves its own modules through a `tsconfig` path alias.
+ */
+const isExternal = (id) => !id.startsWith('.') && !isAbsolute(id);
+
+/**
+ * Reads the entry name out of one `exports` entry, e.g. `./dist/ledger.js`
+ * gives `ledger`. Throws rather than skipping, so a malformed entry fails the
+ * build instead of silently dropping a published subpath.
+ */
+function entryNameOf(subpath, target) {
+  const file = target?.default;
+  if (typeof file !== 'string' || !file.startsWith(DIST_PREFIX) || !JS_EXTENSION.test(file)) {
+    throw new Error(`"exports" subpath ${subpath} must map "default" to a ${DIST_PREFIX}<name>.js file`);
+  }
+  return file.slice(DIST_PREFIX.length).replace(JS_EXTENSION, '');
+}
+
+/**
+ * Derives the build entries from the `exports` map, so the published surface is
+ * the single source of truth. Every subpath maps to `src/<name>.ts`, where
+ * `<name>` is the file name it exposes under `dist` -- subpath keys are free to
+ * differ from it, as `./platform-js/effect/Configuration` does.
+ *
+ * Returns rollup's named-entry form, `{ <name>: <source file> }`, so all
+ * entries go through one pass.
+ */
+function entriesFrom(packageJson) {
+  const exportsMap = packageJson.exports;
+  if (!exportsMap) {
+    throw new Error(`${packageJson.name} declares no "exports" map`);
+  }
+  const names = Object.entries(exportsMap)
+    .filter(([subpath]) => !NON_ENTRY_SUBPATHS.includes(subpath))
+    .map(([subpath, target]) => entryNameOf(subpath, target));
+  return Object.fromEntries([...new Set(names)].map((name) => [name, `src/${name}.ts`]));
+}
+
+/**
+ * Empties `dist` once, before the JavaScript pass writes anything.
+ *
+ * `chunkFileNames` embeds a content hash, so editing a shared module makes the
+ * next build write a NEW chunk rather than overwrite the old one, and rollup
+ * never cleans its own output directory. Left alone, every superseded chunk --
+ * and every artifact of a subpath since dropped from `exports` -- accumulates
+ * in `dist` and ships, because packages publish `"files": ["dist/"]`.
+ *
+ * Only the JavaScript pass cleans. The `.d.ts` passes run after it and would
+ * delete the JavaScript it had just emitted.
+ */
+const cleanDist = () => ({
+  name: 'clean-dist',
+  buildStart() {
+    rmSync('dist', { recursive: true, force: true });
+  }
+});
+
+/**
+ * ESM-only config for a `"type": "module"` package. Produces
+ * `dist/<name>.js`, `dist/<name>.js.map` and `dist/<name>.d.ts` per entry,
+ * plus any shared chunks under `dist/shared/` -- no `.cjs`, no `.d.cts`, no
+ * `.d.mts`. CommonJS consumers load the package
+ * through Node's `require(esm)` support, hence `engines.node >= 22.12`.
+ *
+ * The JavaScript for every entry is emitted by a SINGLE rollup pass, so a
+ * module reached by more than one entry is emitted once and imported by
+ * relative path. Bundling each entry on its own would inline such a module
+ * into every bundle instead: for a class that is not a duplicate but a
+ * different class, so `instanceof` silently answers `false` across two
+ * subpaths of the same package -- exactly where a caller tells failure modes
+ * apart. A module shared by several entries without being an entry itself
+ * lands in `dist/shared/`.
+ *
+ * Declarations stay one pass per entry. Types are structural, so a declaration
+ * repeated in two entries costs nothing at the type level, while bundling them
+ * together makes `rollup-plugin-dts` add the other entries' external imports as
+ * side-effect imports to an unrelated entry's `.d.ts`.
+ *
+ * @param packageJson The package's own manifest; its `exports` map defines the
+ *   entries to build.
+ * @param options.define Compile-time constants substituted in the sources,
+ *   e.g. `{ __DEBUG__: 'false' }`. Values are inserted as written, so string
+ *   literals need their own quotes.
+ */
+export function createRollupConfig(packageJson, { define } = {}) {
+  const entries = entriesFrom(packageJson);
   return [
     {
-      input: 'src/index.ts',
+      input: entries,
       output: [
         {
-          file: packageJson.module,
+          dir: 'dist',
           format: 'esm',
           sourcemap: true,
-        },
-        {
-          file: packageJson.main,
-          format: 'cjs',
-          sourcemap: true,
-        },
+          entryFileNames: '[name].js',
+          chunkFileNames: 'shared/[name]-[hash].js'
+        }
       ],
       plugins: [
-        resolve(),
-        replace({
-          // eslint-disable-next-line no-undef
-          __DEBUG__: JSON.stringify(process.env.CI !== 'true'),
-          preventAssignment: true,
-        }),
+        cleanDist(),
+        ...(define ? [replace({ values: define, preventAssignment: true })] : []),
+        // Declarations come from `rollup-plugin-dts` below. Letting `tsc` emit
+        // them too leaves per-module `.d.ts` and `.d.ts.map` files in `dist`
+        // that the `exports` map does not expose.
         typescript({
           tsconfig: './tsconfig.build.json',
           composite: false,
-        }),
-        commonjs(),
+          declaration: false,
+          declarationMap: false
+        })
       ],
-      external,
+      external: isExternal
     },
-    {
-      input: 'src/index.ts',
-      output: [
-        { file: packageJson.types.replace('.d.ts', '.d.mts'), format: 'esm' },
-        { file: packageJson.types.replace('.d.ts', '.d.cts'), format: 'cjs' },
-        { file: packageJson.types, format: 'esm' },
-      ],
+    ...Object.entries(entries).map(([name, input]) => ({
+      input,
+      output: [{ file: `dist/${name}.d.ts`, format: 'esm' }],
       plugins: [dts()],
-      external,
-    },
+      external: isExternal
+    }))
   ];
 }

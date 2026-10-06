@@ -19,21 +19,22 @@ import {
   submitCallTx,
   withContractScopedTransaction
 } from '@midnight-ntwrk/midnight-js-contracts';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { EnvironmentConfiguration, MidnightWalletProvider, TestEnvironment } from '@midnight-ntwrk/testkit-js';
 import { createLogger, getTestEnvironment, initializeMidnightProviders } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import { CompiledDoubleCounterContract } from '@/contract';
-import * as api from '@/double-counter-api';
-import { CounterConfiguration } from '@/double-counter-api';
+import { CompiledDoubleCounterContract } from '../src/contract';
+import * as api from '../src/double-counter-api';
+import { CounterConfiguration } from '../src/double-counter-api';
 import {
   CounterPrivateStateId,
   type CounterProviders,
   type DeployedCounterContract,
   type DoubleCounterContract,
   privateStateZero
-} from '@/types/double-counter-types';
+} from '../src/types/double-counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `scoped_tx_contracts_${new Date().toISOString()}.log`)
@@ -159,11 +160,20 @@ describe('Scoped Transaction Contract Tests', () => {
       privateStateId: CounterPrivateStateId,
       args: [1n] as [bigint]
     };
-    const callTxOptions2: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'reset'> = {
+    // Annotated at the contract's whole circuit union, not at `'reset'` alone. The scope's
+    // `TransactionContext` is typed at that union, so `submitCallTx` resolves `args` at it too --
+    // `[] | [amount_0: bigint]`, a required member. At the narrow `'reset'` the options carry no
+    // `args` at all, and so are not assignable to it. `increment2` above needs no such widening:
+    // it takes an argument, so its narrow type already has the member.
+    const callTxOptions2: CallTxOptionsWithPrivateStateId<
+      DoubleCounterContract,
+      Contract.ProvableCircuitId<DoubleCounterContract>
+    > = {
       compiledContract: CompiledDoubleCounterContract,
       contractAddress,
       circuitId: 'reset',
-      privateStateId: CounterPrivateStateId
+      privateStateId: CounterPrivateStateId,
+      args: []
     };
     const callTxData = await withContractScopedTransaction<DoubleCounterContract>(providers, async (txCtx) => {
       await submitCallTx(providers, callTxOptions1, txCtx);

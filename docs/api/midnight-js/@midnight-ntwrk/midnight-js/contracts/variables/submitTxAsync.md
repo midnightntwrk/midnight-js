@@ -1,0 +1,45 @@
+[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / submitTxAsync
+
+# Variable: submitTxAsync
+
+> `const` **submitTxAsync**: \<`C`, `PCK`\>(`providers`, `options`) => `Promise`\<`string`\>
+
+Proves, balances, and submits an unproven deployment or call transaction using
+the given providers, according to the given options. Unlike [submitTx](submitTx.md),
+this function returns immediately after submission without waiting for finalization.
+
+## Type Parameters
+
+### C
+
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+
+### PCK
+
+`PCK` *extends* [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
+
+## Parameters
+
+### providers
+
+[`SubmitTxProviders`](../type-aliases/SubmitTxProviders.md)\<`C`, `PCK`\>
+
+The providers used to manage the transaction lifecycle.
+
+### options
+
+[`SubmitTxOptions`](../interfaces/SubmitTxOptions.md)\<`PCK`\>
+
+Configuration.
+
+## Returns
+
+`Promise`\<`string`\>
+
+A promise that resolves with the transaction ID immediately after submission,
+         or rejects if an error occurs during preparation or submission.
+         To watch for finalization, use providers.publicDataProvider.watchForTxData(txId).
