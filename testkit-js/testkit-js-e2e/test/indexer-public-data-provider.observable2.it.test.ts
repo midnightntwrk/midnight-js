@@ -74,7 +74,12 @@ describe('Indexer API', () => {
   ): Promise<{ observed$: Observable<PositionedRecord<ContractState>>; stop: () => void }> => {
     const observed = new ReplaySubject<PositionedRecord<ContractState>>();
     const subscription = observable$.subscribe(observed);
-    await firstValueFrom(observed.pipe(timeout({ first: STATE_WAIT_MS })));
+    try {
+      await firstValueFrom(observed.pipe(timeout({ first: STATE_WAIT_MS })));
+    } catch (error) {
+      subscription.unsubscribe();
+      throw error;
+    }
     return { observed$: observed.asObservable(), stop: () => subscription.unsubscribe() };
   };
 
