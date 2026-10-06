@@ -31,7 +31,7 @@ import {
 import { toContractEvent } from './events-mapping';
 import type { BlockOffset, ContractEventsSubSubscriptionVariables } from './gen/graphql';
 import type { InputMaybe, RegularTransaction } from './gen/schema-types';
-import { hasContract, hasContractAction } from './mapping';
+import { hasBlock, hasContract, hasContractAction } from './mapping';
 import {
   BLOCK_QUERY,
   CONTRACT_EVENTS_SUB,
@@ -413,8 +413,8 @@ export const waitForBlockToAppear =
       apolloClient,
       BLOCK_QUERY,
       { offset },
-      (data) => data.block !== null,
-      (data) => data,
+      hasBlock,
+      (data) => data.block,
       pollInterval
     );
 

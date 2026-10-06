@@ -36,6 +36,11 @@ export const hasContractAction = <T extends { contractAction?: unknown }>(
 ): data is T & { contractAction: NonNullable<T['contractAction']> } =>
   data.contractAction != null;
 
+export const hasBlock = <T extends { block?: unknown }>(
+  data: T
+): data is T & { block: NonNullable<T['block']> } =>
+  data.block != null;
+
 export const hasContract = <T extends { contract?: unknown }>(
   data: T
 ): data is T & { contract: NonNullable<T['contract']> } =>

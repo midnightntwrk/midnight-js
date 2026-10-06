@@ -641,12 +641,15 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       );
     }
     const offset = toBlockOffset(config);
-    const balances = waitForBlockToAppear(this.client, this.pollInterval)(offset).pipe(
-      Rx.concatMap(() => blockOffsetToUnshieldedBalances$(this.client)(contractAddress)(offset))
+    const inclusive = config.inclusive ?? true;
+    return waitForBlockToAppear(this.client, this.pollInterval)(offset).pipe(
+      Rx.concatMap((startBlock) => {
+        const balances = blockOffsetToUnshieldedBalances$(this.client)(contractAddress)(offset);
+        return inclusive
+          ? balances
+          : balances.pipe(Rx.skipWhile((record) => record.blockHeight === startBlock.height));
+      })
     );
-    return config.type === 'blockHeight' || config.type === 'blockHash'
-      ? Rx.iif(() => config.inclusive ?? true, balances, balances.pipe(Rx.skip(1)))
-      : balances;
   }
 
   /**

@@ -243,4 +243,40 @@ describe('unshieldedBalancesObservable — resume from an emitted position', () 
     expect(subscribedOffsets(subscribe)).toEqual([{ height: 10 }, { hash: '0x10' }]);
     expect(trace(resumed)).toEqual(['10:1', '10:2', '11:3']);
   });
+
+  test('an exclusive resume from an emitted block skips that whole block', async () => {
+    const { provider, last } = await arrange();
+
+    const resumed = await toArray(
+      provider.unshieldedBalancesObservable(ADDRESS, { type: 'blockHash', blockHash: last.blockHash, inclusive: false })
+    );
+
+    expect(trace(resumed)).toEqual(['11:3']);
+  });
+
+  test('an exclusive start at a block with no action for the contract drops nothing after it', async () => {
+    const provider = new IndexerPublicDataProvider(
+      stubApolloHandle({
+        watchQuery: vi.fn<(request: ApolloRequest) => unknown>().mockReturnValue(
+          Rx.of({
+            data: { block: { height: 9, hash: '0x9' } },
+            dataState: 'complete',
+            loading: false,
+            networkStatus: 7,
+            partial: false
+          })
+        ),
+        subscribe: vi
+          .fn<(request: ApolloRequest) => unknown>()
+          .mockReturnValue(Rx.of(actionFrame(10, '1'), actionFrame(10, '2'), actionFrame(11, '3')))
+      }),
+      1000
+    );
+
+    const records = await toArray(
+      provider.unshieldedBalancesObservable(ADDRESS, { type: 'blockHeight', blockHeight: 9, inclusive: false })
+    );
+
+    expect(trace(records)).toEqual(['10:1', '10:2', '11:3']);
+  });
 });
