@@ -91,7 +91,7 @@ export const composeV9CallTx = (options: ComposeCallOptions): ComposeCallResultP
       output: call.output,
       communicationCommitmentRandomness: call.communicationCommitmentRandomness,
       ledgerParameters: call.ledgerParameters,
-      operations: readContractState(call.contractState),
+      operations: readContractState(call.contractStateBytes),
       stage: 'call-operation',
       version: 'v9'
     });
@@ -124,11 +124,11 @@ export const composeV9CallTx = (options: ComposeCallOptions): ComposeCallResultP
   // see ComposeRefusalOrder. Built only once every call is split, which is the
   // whole point of taking a factory.
   const offers = zswapOffer?.(partitions);
-  const guaranteedOffer = readZswapOffer(offers?.guaranteed);
-  const fallibleOffer = readZswapOffer(offers?.fallible);
+  const guaranteedOffer = readZswapOffer(offers?.guaranteedBytes);
+  const fallibleOffer = readZswapOffer(offers?.fallibleBytes);
 
   return {
-    transaction: ledgerV9.Transaction.fromPartsRandomized(networkId, guaranteedOffer, fallibleOffer, intent).serialize(),
+    txBytes: ledgerV9.Transaction.fromPartsRandomized(networkId, guaranteedOffer, fallibleOffer, intent).serialize(),
     partitions
   };
 };
@@ -200,11 +200,11 @@ const assertStateCarriesKeys = (contractState: ledgerV9.ContractState): void => 
  * @see {@link ComposeRefusalOrder}
  */
 export const composeV9DeployTx = (options: ComposeDeployOptions): DeployResultPojo => {
-  const { contractState, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;
+  const { contractStateBytes, verifierKeys, networkId, ttl, guaranteedZswapOfferBytes } = options;
   assertComposeEnvelope(options, 'v9');
 
-  const guaranteedOffer = readZswapOffer(guaranteedZswapOffer);
-  const state = readContractState(contractState);
+  const guaranteedOffer = readZswapOffer(guaranteedZswapOfferBytes);
+  const state = readContractState(contractStateBytes);
   if (verifierKeys === undefined) {
     assertStateCarriesKeys(state);
   } else {
@@ -215,8 +215,8 @@ export const composeV9DeployTx = (options: ComposeDeployOptions): DeployResultPo
   const intent = ledgerV9.Intent.new(ttl).addDeploy(deploy);
 
   return {
-    transaction: ledgerV9.Transaction.fromParts(networkId, guaranteedOffer, undefined, intent).serialize(),
+    txBytes: ledgerV9.Transaction.fromParts(networkId, guaranteedOffer, undefined, intent).serialize(),
     contractAddress: deploy.address,
-    initialState: deploy.initialState.serialize()
+    initialContractStateBytes: deploy.initialState.serialize()
   };
 };

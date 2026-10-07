@@ -74,7 +74,7 @@ export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8):
     {
       circuitId: call.circuitId,
       contractAddress: call.contractAddress,
-      contractState: readContractState(call.contractState, v8),
+      contractState: readContractState(call.contractStateBytes, v8),
       transcript: call.transcript,
       privateTranscriptOutputs: call.privateTranscriptOutputs,
       input: call.input,
@@ -117,16 +117,16 @@ export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8):
  * @see {@link EraSeam}
  */
 export const composeEraV8DeployTx = (options: ComposeDeployOptions, v8: ProtocolV8): DeployResultPojo => {
-  const { contractState, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;
+  const { contractStateBytes, verifierKeys, networkId, ttl, guaranteedZswapOfferBytes } = options;
   // See `composeEraV8CallTx` — hoisted so both arms refuse the envelope first.
   assertComposeEnvelope(options, 'v8');
-  const guaranteedOffer = readZswapOffer(guaranteedZswapOffer, v8);
+  const guaranteedOffer = readZswapOffer(guaranteedZswapOfferBytes, v8);
   if (verifierKeys === undefined) {
     throw new ComposeOptionError('v8', 'verifierKeys');
   }
 
   return composeV8DeployTx(
-    { contractState, verifierKeys, networkId, ttl, guaranteedZswapOffer: guaranteedOffer },
+    { contractStateBytes, verifierKeys, networkId, ttl, guaranteedZswapOffer: guaranteedOffer },
     v8
   );
 };

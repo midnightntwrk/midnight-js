@@ -48,7 +48,7 @@ import type { ProtocolV8 } from './load';
  * @see {@link ComposeRefusalOrder}
  */
 export interface ComposeV8DeployOptions {
-  readonly contractState: Uint8Array;
+  readonly contractStateBytes: Uint8Array;
   readonly verifierKeys: ReadonlyMap<string, Uint8Array>;
   readonly networkId: string;
   readonly ttl: Date;
@@ -128,10 +128,10 @@ const registerVerifierKey = (
  * @see {@link ComposeRefusalOrder}
  */
 export const composeV8DeployTx = (options: ComposeV8DeployOptions, v8: ProtocolV8): DeployResultPojo => {
-  const { contractState, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;
+  const { contractStateBytes, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;
   assertComposeEnvelope(options, 'v8');
 
-  const ledgerContractState = bridgeContractState(contractState, v8);
+  const ledgerContractState = bridgeContractState(contractStateBytes, v8);
   for (const { entryPoint, circuitId, verifierKey } of resolveVerifierKeyRegistrations(
     ledgerContractState.operations(),
     verifierKeys,
@@ -144,8 +144,8 @@ export const composeV8DeployTx = (options: ComposeV8DeployOptions, v8: ProtocolV
   const intent = v8.Intent.new(ttl).addDeploy(deploy);
 
   return {
-    transaction: v8.Transaction.fromParts(networkId, guaranteedZswapOffer, undefined, intent).serialize(),
+    txBytes: v8.Transaction.fromParts(networkId, guaranteedZswapOffer, undefined, intent).serialize(),
     contractAddress: deploy.address,
-    initialState: deploy.initialState.serialize()
+    initialContractStateBytes: deploy.initialState.serialize()
   };
 };

@@ -155,11 +155,11 @@ export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): 
   // Built only once the call is split, which is the whole point of taking a
   // factory -- see ComposeRefusalOrder.
   const offers = zswapOffer?.([partition]);
-  const guaranteedOffer = readZswapOffer(offers?.guaranteed, v8);
-  const fallibleOffer = readZswapOffer(offers?.fallible, v8);
+  const guaranteedOffer = readZswapOffer(offers?.guaranteedBytes, v8);
+  const fallibleOffer = readZswapOffer(offers?.fallibleBytes, v8);
 
   return {
-    transaction: v8.Transaction.fromPartsRandomized(networkId, guaranteedOffer, fallibleOffer, intent).serialize(),
+    txBytes: v8.Transaction.fromPartsRandomized(networkId, guaranteedOffer, fallibleOffer, intent).serialize(),
     partitions: [partition]
   };
 };

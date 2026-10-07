@@ -608,12 +608,12 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
       | 'callTx'
       | 'signingKey'
       | 'initialContractState'
-      | 'initialContractStateEncoded'
+      | 'initialContractStateBytes'
       | 'initialPrivateState'
       | 'initialZswapState'
     >();
     // ADR-0010: the handle and the bytes, not one instead of the other.
-    expectTypeOf<Ledger8DeployedContract<Counter016Contract>['initialContractStateEncoded']>().toEqualTypeOf<Uint8Array>();
+    expectTypeOf<Ledger8DeployedContract<Counter016Contract>['initialContractStateBytes']>().toEqualTypeOf<Uint8Array>();
     expectTypeOf<
       Ledger8DeployedContract<Counter016Contract>['initialContractState']
       // The published handle stays the narrow `{ serialize }` it always was --
@@ -900,14 +900,14 @@ describe('both eras answer with the SAME contract-handle structure', () => {
    * Both eras hold the first four facts and disagree only about the PATH,
    * which no key-set assertion at one level can state: the current era nests
    * three under `deployTxData.private` and `initialContractState` under
-   * `deployTxData.public`. `initialContractStateEncoded` has no current-era
+   * `deployTxData.public`. `initialContractStateBytes` has no current-era
    * twin. The layout is kept until the retained era is removed; ADR-0010's
    * 2026-10-07 amendment records why.
    */
   type RetainedEraOnlyDeployedMembers =
     | 'signingKey'
     | 'initialContractState'
-    | 'initialContractStateEncoded'
+    | 'initialContractStateBytes'
     | 'initialPrivateState'
     | 'initialZswapState';
 
@@ -938,7 +938,7 @@ describe('both eras answer with the SAME contract-handle structure', () => {
     expectTypeOf<RetainedFound>().toHaveProperty('signingKey');
     expectTypeOf<RetainedDeployed>().toHaveProperty('signingKey');
     expectTypeOf<RetainedDeployed>().toHaveProperty('initialContractState');
-    expectTypeOf<RetainedDeployed>().toHaveProperty('initialContractStateEncoded');
+    expectTypeOf<RetainedDeployed>().toHaveProperty('initialContractStateBytes');
     expectTypeOf<RetainedDeployed>().toHaveProperty('initialPrivateState');
     expectTypeOf<RetainedDeployed>().toHaveProperty('initialZswapState');
   });

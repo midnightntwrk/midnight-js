@@ -133,7 +133,7 @@ describe('dist engine error gate', () => {
             circuitId: 'increment',
             // A blank state: it declares no operation for the circuit, which is
             // the shortest real path to a failure raised inside the era arm.
-            contractState: new ocrt3.ContractState().serialize(),
+            contractStateBytes: new ocrt3.ContractState().serialize(),
             // Named explicitly: the failure under test is raised before the partitioner runs.
             ledgerParameters: 'initial',
             transcript: {

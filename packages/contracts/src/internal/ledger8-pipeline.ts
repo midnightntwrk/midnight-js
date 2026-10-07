@@ -526,14 +526,14 @@ export interface Ledger8CallPipelineResult<TState> {
    */
   readonly newCoins: ShieldedCoinInfo[];
   /** Present exactly when the call moved shielded coins. */
-  readonly guaranteedZswapOffer: Uint8Array | undefined;
+  readonly guaranteedZswapOfferBytes: Uint8Array | undefined;
   /**
    * Present exactly when the call's own partition places a shielded movement in
    * the fallible half. The offer is built from the split the composer hands
    * back, so a movement the transcript places there is routed there rather than
    * falling into the guaranteed segment.
    */
-  readonly fallibleZswapOffer: Uint8Array | undefined;
+  readonly fallibleZswapOfferBytes: Uint8Array | undefined;
 }
 
 /**
@@ -632,14 +632,14 @@ export const runLedger8CallPipeline = async <TState>(
   // refusal below rests on: an offer that is absent because the call moved no
   // shielded coin is a `routed` whose halves are both undefined, and that is a
   // different value from never having been asked at all.
-  let routed: { readonly guaranteed?: Uint8Array; readonly fallible?: Uint8Array } | undefined;
+  let routed: { readonly guaranteedBytes?: Uint8Array; readonly fallibleBytes?: Uint8Array } | undefined;
 
   const composed = era.composeCallTx({
     calls: [
       {
         contractAddress,
         circuitId,
-        contractState: registeredOperations,
+        contractStateBytes: registeredOperations,
         // From the SAME read as the state above, which is the point: the parameters are dynamic
         // and must date from the block the call is built against. Composing against the ledger's
         // initial parameters partitions the transcript with a cost model the chain does not use,
@@ -685,7 +685,7 @@ export const runLedger8CallPipeline = async <TState>(
       );
       // Captured so the result can report WHICH segment each movement was
       // routed into; these are the report of the routing, not its input.
-      routed = { guaranteed: offers.guaranteed?.serialize(), fallible: offers.fallible?.serialize() };
+      routed = { guaranteedBytes: offers.guaranteed?.serialize(), fallibleBytes: offers.fallible?.serialize() };
       return routed;
     }
   });
@@ -709,7 +709,7 @@ export const runLedger8CallPipeline = async <TState>(
   );
 
   return {
-    txBytes: composed.transaction,
+    txBytes: composed.txBytes,
     circuitId,
     nextPrivateState: transcript.privateStateAfter,
     result: transcript.result,
@@ -751,8 +751,8 @@ export const runLedger8CallPipeline = async <TState>(
     ],
     nextZswapLocalState: transcript.zswapLocalState,
     newCoins: zswapStateToNewCoins(request.coinPublicKey, transcript.zswapLocalState),
-    guaranteedZswapOffer: routed.guaranteed,
-    fallibleZswapOffer: routed.fallible
+    guaranteedZswapOfferBytes: routed.guaranteedBytes,
+    fallibleZswapOfferBytes: routed.fallibleBytes
   };
 };
 
@@ -797,7 +797,7 @@ export interface Ledger8DeployPipelineResult {
    */
   readonly contractAddress: string;
   /** The state that address was derived from — what a caller later calls against. */
-  readonly initialContractStateEncoded: Uint8Array;
+  readonly initialContractStateBytes: Uint8Array;
   /**
    * The same state as a LIVE handle, as the constructor built it. Published
    * under ADR-0010 next to the bytes rather than instead of them: the handle is
@@ -812,7 +812,7 @@ export interface Ledger8DeployPipelineResult {
    * Present exactly when the constructor minted a coin. Absent — not an empty
    * offer — when it minted none.
    */
-  readonly guaranteedZswapOffer: Uint8Array | undefined;
+  readonly guaranteedZswapOfferBytes: Uint8Array | undefined;
   /**
    * The key the deployed contract's maintenance authority was built from. The
    * caller's own when one was named, otherwise the sampled one.
@@ -879,27 +879,27 @@ export const runLedger8DeployPipeline = async (request: Ledger8DeployPipelineReq
   // A deploy has no transcript to partition against, and `composeDeployTx`
   // takes a guaranteed offer only, so the whole of the constructor's output
   // list belongs to the guaranteed segment.
-  const guaranteedZswapOffer = zswapStateToOffer(
+  const guaranteedZswapOfferBytes = zswapStateToOffer(
     constructed.zswapLocalState,
     request.encryptionPublicKey
   )?.serialize();
 
   const deployed: DeployResultPojo = request.era.composeDeployTx({
-    contractState: constructed.contractState.serialize(),
+    contractStateBytes: constructed.contractState.serialize(),
     verifierKeys: request.verifierKeys,
     networkId: request.networkId,
     ttl: request.ttl,
-    guaranteedZswapOffer
+    guaranteedZswapOfferBytes
   });
 
   return {
-    txBytes: deployed.transaction,
+    txBytes: deployed.txBytes,
     contractAddress: deployed.contractAddress,
-    initialContractStateEncoded: deployed.initialState,
+    initialContractStateBytes: deployed.initialContractStateBytes,
     initialContractState: constructed.contractState,
     nextPrivateState: constructed.privateState,
     initialZswapState: constructed.zswapLocalState,
-    guaranteedZswapOffer,
+    guaranteedZswapOfferBytes,
     // Read off the CONSTRUCTOR's answer rather than echoed from the request:
     // the two differ exactly when the caller named none, which is the case
     // where losing the key loses the contract.

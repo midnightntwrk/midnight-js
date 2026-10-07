@@ -186,14 +186,14 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     // address from.
     const deployed = composeV8DeployTx(
       {
-        contractState: constructedBytes,
+        contractStateBytes: constructedBytes,
         verifierKeys: new Map([['increment', REGISTERED_VERIFIER_KEY]]),
         networkId: NETWORK_ID,
         ttl: TTL
       },
       LedgerV8
     );
-    const initial = LedgerV8.ContractState.deserialize(deployed.initialState).maintenanceAuthority;
+    const initial = LedgerV8.ContractState.deserialize(deployed.initialContractStateBytes).maintenanceAuthority;
     expect(initial.committee).toEqual([ocrt3.signatureVerifyingKey(signingKey)]);
     expect(initial.threshold).toBe(1);
     expect(initial.counter).toBe(0n);
@@ -212,7 +212,7 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
 
     const deployed = composeV8DeployTx(
       {
-        contractState: constructedBytes,
+        contractStateBytes: constructedBytes,
         verifierKeys: new Map([
           ['increment', new Uint8Array(readFileSync(resolve(FIXTURE_DIR, 'compiled', 'keys', 'increment.verifier')))]
         ]),
@@ -222,7 +222,7 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
       LedgerV8
     );
 
-    expect(deployed.initialState).toEqual(constructedBytes);
+    expect(deployed.initialContractStateBytes).toEqual(constructedBytes);
   });
 
   // The sampled key is random, so only the RELATIONSHIP between the reported
@@ -289,7 +289,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
     verifierKeys: ReadonlyMap<string, Uint8Array>,
     circuitIds: readonly string[] = ['increment']
   ): ComposeV8DeployOptions => ({
-    contractState: buildPreForkState(circuitIds).serialize(),
+    contractStateBytes: buildPreForkState(circuitIds).serialize(),
     verifierKeys,
     networkId: NETWORK_ID,
     ttl: TTL
@@ -314,7 +314,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
   };
 
   it('composes and serializes a v8-native deploy transaction, tag-prefixed exactly as ledger-v8 emits it', () => {
-    const { transaction: bytes } = composeV8DeployTx(
+    const { txBytes: bytes } = composeV8DeployTx(
       buildDeployOptions(new Map([['increment', REGISTERED_VERIFIER_KEY]])),
       LedgerV8
     );
@@ -325,7 +325,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
   });
 
   it('round-trips through the real v8 decoder: deserialize then re-serialize yields byte-identical output', () => {
-    const { transaction: bytes } = composeV8DeployTx(
+    const { txBytes: bytes } = composeV8DeployTx(
       buildDeployOptions(new Map([['increment', REGISTERED_VERIFIER_KEY]])),
       LedgerV8
     );
@@ -348,7 +348,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
       ['decrement', REGISTERED_VERIFIER_KEY]
     ]);
 
-    const { transaction: bytes, contractAddress, initialState } = composeV8DeployTx(
+    const { txBytes: bytes, contractAddress, initialContractStateBytes } = composeV8DeployTx(
       buildDeployOptions(verifierKeys, ['increment', 'decrement']),
       LedgerV8
     );
@@ -361,7 +361,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
     // transaction: a deploy mints a fresh nonce, so a caller cannot recompute
     // the address from the state it passed in.
     expect(contractAddress).toBe(deployedAddressOf(bytes));
-    expect(Buffer.from(initialState)).toEqual(Buffer.from(deployed.serialize()));
+    expect(Buffer.from(initialContractStateBytes)).toEqual(Buffer.from(deployed.serialize()));
   });
 
   it('throws ComposeFailedError (stage deploy-verifier-key) naming the declared circuit the key map does not cover', () => {
@@ -427,7 +427,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
 
     let caught: unknown;
     try {
-      composeV8DeployTx({ ...buildDeployOptions(new Map()), contractState: notAContractState }, LedgerV8);
+      composeV8DeployTx({ ...buildDeployOptions(new Map()), contractStateBytes: notAContractState }, LedgerV8);
     } catch (error) {
       caught = error;
     }
@@ -496,7 +496,7 @@ describe('composeV8DeployTx against byte-array entry points', () => {
   };
 
   const deployOptions = (verifierKeys: ReadonlyMap<string, Uint8Array>): ComposeV8DeployOptions => ({
-    contractState: new ocrt3.ContractState().serialize(),
+    contractStateBytes: new ocrt3.ContractState().serialize(),
     verifierKeys,
     networkId: NETWORK_ID,
     ttl: TTL

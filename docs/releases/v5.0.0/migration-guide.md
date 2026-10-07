@@ -540,10 +540,17 @@ them:
 | Private state from the constructor | `deployTxData.private.initialPrivateState` | `initialPrivateState` |
 | Zswap state from the constructor | `deployTxData.private.initialZswapState` | `initialZswapState` |
 | Initial contract state (live handle) | `deployTxData.public.initialContractState` | `initialContractState` |
-| Initial contract state (bytes) | — | `initialContractStateEncoded` |
+| Initial contract state (bytes) | — | `initialContractStateBytes` |
 
-`initialContractStateEncoded` was called `initialState` in the earlier 5.0.0
+`initialContractStateBytes` was called `initialState` in the earlier 5.0.0
 release candidates. It holds the same bytes under the new name.
+
+If you call `loadLedgerEra` from `midnight-js-protocol` directly, its compose
+members that hold bytes were renamed the same way: `contractState` →
+`contractStateBytes`, `guaranteedZswapOffer` → `guaranteedZswapOfferBytes`,
+the offer factory's `guaranteed` / `fallible` → `guaranteedBytes` /
+`fallibleBytes`, `transaction` → `txBytes`, and `initialState` →
+`initialContractStateBytes`.
 
 **Paying a shielded coin to someone else.** A retained-era circuit that pays a
 shielded coin to a recipient other than the calling wallet needs that

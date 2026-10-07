@@ -93,7 +93,7 @@ const payingTranscript = (owner: string, value: bigint): ledgerV9.Transcript<led
 const callEntry = (overrides: Partial<ComposeCallEntry> = {}): ComposeCallEntry => ({
   contractAddress: ADDRESS,
   circuitId: 'increment',
-  contractState: serializedStateWith(keyedOperation()),
+  contractStateBytes: serializedStateWith(keyedOperation()),
   // These tests are about assembly, not about the cost model, so the initial parameters are named
   // explicitly. The option is required precisely so that this choice is visible rather than assumed.
   ledgerParameters: 'initial',
@@ -137,7 +137,7 @@ const caught = (compose: () => unknown): unknown => {
 
 describe('composeV9CallTx', () => {
   it('composes a single call into one intent carrying one contract call', () => {
-    const transaction = readBack(composeV9CallTx(callOptions()).transaction);
+    const transaction = readBack(composeV9CallTx(callOptions()).txBytes);
 
     const intents = [...(transaction.intents?.values() ?? [])];
     expect(intents).toHaveLength(1);
@@ -159,7 +159,7 @@ describe('composeV9CallTx', () => {
   // provers resolve artifacts by. A bare circuit id is ambiguous across
   // contracts and cannot be resolved through the ZK config registry at all.
   it('keys the call by the contract-qualified location that hashes the deployed verifier key', () => {
-    const calls = callsIn(readBack(composeV9CallTx(callOptions()).transaction));
+    const calls = callsIn(readBack(composeV9CallTx(callOptions()).txBytes));
 
     expect(String(calls[0].proof)).toContain(
       encodeContractKeyLocation({
@@ -175,14 +175,14 @@ describe('composeV9CallTx', () => {
   // randomness. Reusing a caller's commitment for a root call, or sampling
   // fresh randomness for a callee, breaks the commitment the ledger checks.
   it('samples fresh randomness for a root call and reuses a supplied commitment for a callee', () => {
-    const rootA = callsIn(readBack(composeV9CallTx(callOptions()).transaction))[0];
-    const rootB = callsIn(readBack(composeV9CallTx(callOptions()).transaction))[0];
+    const rootA = callsIn(readBack(composeV9CallTx(callOptions()).txBytes))[0];
+    const rootB = callsIn(readBack(composeV9CallTx(callOptions()).txBytes))[0];
     expect(String(rootA.communicationCommitment)).not.toBe(String(rootB.communicationCommitment));
 
     const randomness = ledgerV9.communicationCommitmentRandomness();
     const boundOptions = callOptions({ calls: [callEntry({ communicationCommitmentRandomness: randomness })] });
-    const calleeA = callsIn(readBack(composeV9CallTx(boundOptions).transaction))[0];
-    const calleeB = callsIn(readBack(composeV9CallTx(boundOptions).transaction))[0];
+    const calleeA = callsIn(readBack(composeV9CallTx(boundOptions).txBytes))[0];
+    const calleeB = callsIn(readBack(composeV9CallTx(boundOptions).txBytes))[0];
     expect(String(calleeA.communicationCommitment)).toBe(String(calleeB.communicationCommitment));
   });
 
@@ -194,7 +194,7 @@ describe('composeV9CallTx', () => {
     };
 
     const transaction = readBack(
-      composeV9CallTx(callOptions({ zswapOffer: () => ({ guaranteed: buildOffer(), fallible: buildOffer() }) })).transaction
+      composeV9CallTx(callOptions({ zswapOffer: () => ({ guaranteedBytes: buildOffer(), fallibleBytes: buildOffer() }) })).txBytes
     );
 
     expect(transaction.guaranteedOffer?.outputs).toHaveLength(1);
@@ -207,7 +207,7 @@ describe('composeV9CallTx', () => {
   });
 
   it('refuses Zswap offer bytes this era cannot read, preserving the decoder failure', () => {
-    const error = caught(() => composeV9CallTx(callOptions({ zswapOffer: () => ({ guaranteed: new Uint8Array([1, 2, 3]) }) })));
+    const error = caught(() => composeV9CallTx(callOptions({ zswapOffer: () => ({ guaranteedBytes: new Uint8Array([1, 2, 3]) }) })));
 
     expect(error).toBeInstanceOf(ComposeOptionError);
     expect(error).toMatchObject({ option: 'zswapOffer', version: 'v9' });
@@ -226,7 +226,7 @@ describe('composeV9CallTx', () => {
 
   it('refuses a contract state this era cannot read, preserving the decoder failure', () => {
     const error = caught(() =>
-      composeV9CallTx(callOptions({ calls: [callEntry({ contractState: new Uint8Array([1, 2, 3]) })] }))
+      composeV9CallTx(callOptions({ calls: [callEntry({ contractStateBytes: new Uint8Array([1, 2, 3]) })] }))
     );
 
     expect(error).toBeInstanceOf(ComposeOptionError);
@@ -240,7 +240,7 @@ describe('composeV9CallTx', () => {
 
   it('refuses a contract state with no registered operation for the circuit', () => {
     const error = caught(() =>
-      composeV9CallTx(callOptions({ calls: [callEntry({ contractState: serializedStateWith(undefined) })] }))
+      composeV9CallTx(callOptions({ calls: [callEntry({ contractStateBytes: serializedStateWith(undefined) })] }))
     );
 
     expect(error).toBeInstanceOf(ComposeFailedError);
@@ -250,7 +250,7 @@ describe('composeV9CallTx', () => {
   it('refuses an operation registered with a blank verifier key', () => {
     const error = caught(() =>
       composeV9CallTx(
-        callOptions({ calls: [callEntry({ contractState: serializedStateWith(new ledgerV9.ContractOperation()) })] })
+        callOptions({ calls: [callEntry({ contractStateBytes: serializedStateWith(new ledgerV9.ContractOperation()) })] })
       )
     );
 
@@ -275,7 +275,7 @@ describe('composeV9CallTx', () => {
       ]
     });
 
-    const intents = [...(readBack(composeV9CallTx(options).transaction).intents?.values() ?? [])];
+    const intents = [...(readBack(composeV9CallTx(options).txBytes).intents?.values() ?? [])];
 
     expect(intents[0].guaranteedUnshieldedOffer?.outputs).toEqual([{ value: 42n, owner: USER, type: TOKEN }]);
     expect(intents[0].fallibleUnshieldedOffer?.outputs).toEqual([{ value: 7n, owner: USER, type: TOKEN }]);
@@ -304,7 +304,7 @@ describe('composeV9CallTx', () => {
       ]
     });
 
-    const transaction = readBack(composeV9CallTx(options).transaction);
+    const transaction = readBack(composeV9CallTx(options).txBytes);
 
     const calls = callsIn(transaction);
     expect(calls.map((call) => call.address)).toEqual([calleeAddress, ADDRESS]);
@@ -378,7 +378,7 @@ describe('composeV9CallTx', () => {
 });
 
 const deployOptions = (overrides: Partial<ComposeDeployOptions> = {}): ComposeDeployOptions => ({
-  contractState: serializedStateWith(new ledgerV9.ContractOperation()),
+  contractStateBytes: serializedStateWith(new ledgerV9.ContractOperation()),
   verifierKeys: new Map([['increment', REGISTERED_VERIFIER_KEY]]),
   networkId: NETWORK_ID,
   ttl: TTL,
@@ -417,11 +417,11 @@ describe('composeV9DeployTx', () => {
   it('returns the address the returned transaction deploys, and the initial state it was derived from', () => {
     const result = composeV9DeployTx(deployOptions());
 
-    const deployed = deployIn(readBack(result.transaction));
+    const deployed = deployIn(readBack(result.txBytes));
     expect(result.contractAddress).toBe(deployed.address);
-    expect(Buffer.from(result.initialState)).toEqual(Buffer.from(deployed.initialState.serialize()));
+    expect(Buffer.from(result.initialContractStateBytes)).toEqual(Buffer.from(deployed.initialState.serialize()));
 
-    const initialState = ledgerV9.ContractState.deserialize(result.initialState);
+    const initialState = ledgerV9.ContractState.deserialize(result.initialContractStateBytes);
     expect(initialState.operations()).toEqual(['increment']);
     expect(Buffer.from(initialState.operation('increment')?.verifierKey ?? new Uint8Array())).toEqual(
       Buffer.from(REGISTERED_VERIFIER_KEY)
@@ -442,14 +442,14 @@ describe('composeV9DeployTx', () => {
   it('lands the deploy at a fixed segment where a call randomizes its own', () => {
     const segmentsOf = (bytes: Uint8Array): number[] => [...(readBack(bytes).intents?.keys() ?? [])];
 
-    const first = segmentsOf(composeV9DeployTx(deployOptions()).transaction);
-    const second = segmentsOf(composeV9DeployTx(deployOptions()).transaction);
+    const first = segmentsOf(composeV9DeployTx(deployOptions()).txBytes);
+    const second = segmentsOf(composeV9DeployTx(deployOptions()).txBytes);
     expect(first).toEqual(second);
 
     // Sampled repeatedly: a randomized segment can coincide with a fixed one
     // once, so a single comparison could pass by luck.
     const callSegments = new Set(
-      Array.from({ length: 8 }, () => segmentsOf(composeV9CallTx(callOptions()).transaction).join(','))
+      Array.from({ length: 8 }, () => segmentsOf(composeV9CallTx(callOptions()).txBytes).join(','))
     );
     expect(callSegments.size).toBeGreaterThan(1);
   });
@@ -473,15 +473,15 @@ describe('composeV9DeployTx', () => {
 
   it('deploys a state that already carries its keys without a verifier-key map', () => {
     const result = composeV9DeployTx(
-      deployOptions({ contractState: serializedStateWith(keyedOperation()), verifierKeys: undefined })
+      deployOptions({ contractStateBytes: serializedStateWith(keyedOperation()), verifierKeys: undefined })
     );
 
-    const initialState = ledgerV9.ContractState.deserialize(result.initialState);
+    const initialState = ledgerV9.ContractState.deserialize(result.initialContractStateBytes);
     expect(initialState.operations()).toEqual(['increment']);
     expect(Buffer.from(initialState.operation('increment')?.verifierKey ?? new Uint8Array())).toEqual(
       Buffer.from(REGISTERED_VERIFIER_KEY)
     );
-    expect(result.contractAddress).toBe(deployIn(readBack(result.transaction)).address);
+    expect(result.contractAddress).toBe(deployIn(readBack(result.txBytes)).address);
   });
 
   it('carries a supplied guaranteed Zswap offer into the deploy transaction', () => {
@@ -489,10 +489,10 @@ describe('composeV9DeployTx', () => {
     const output = ledgerV9.ZswapOutput.new(coin, 0, ledgerV9.sampleCoinPublicKey(), ledgerV9.sampleEncryptionPublicKey());
 
     const result = composeV9DeployTx(
-      deployOptions({ guaranteedZswapOffer: ledgerV9.ZswapOffer.fromOutput(output).serialize() })
+      deployOptions({ guaranteedZswapOfferBytes: ledgerV9.ZswapOffer.fromOutput(output).serialize() })
     );
 
-    expect(readBack(result.transaction).guaranteedOffer?.outputs).toHaveLength(1);
+    expect(readBack(result.txBytes).guaranteedOffer?.outputs).toHaveLength(1);
   });
 
   // `setOperation` CREATES a slot rather than requiring one, so an unchecked
@@ -534,7 +534,7 @@ describe('composeV9DeployTx', () => {
     const error = caughtDeploy(() =>
       composeV9DeployTx(
         deployOptions({
-          contractState: ambiguous.serialize(),
+          contractStateBytes: ambiguous.serialize(),
           verifierKeys: new Map([[name, REGISTERED_VERIFIER_KEY]])
         })
       )
@@ -555,7 +555,7 @@ describe('composeV9DeployTx', () => {
   });
 
   it('refuses a contract state this era cannot read, preserving the decoder failure', () => {
-    const error = caughtDeploy(() => composeV9DeployTx(deployOptions({ contractState: new Uint8Array([1, 2, 3]) })));
+    const error = caughtDeploy(() => composeV9DeployTx(deployOptions({ contractStateBytes: new Uint8Array([1, 2, 3]) })));
 
     expect(error).toBeInstanceOf(ComposeOptionError);
     expect(error).toMatchObject({ option: 'contractState', version: 'v9' });

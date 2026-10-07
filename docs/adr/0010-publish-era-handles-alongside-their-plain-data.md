@@ -250,10 +250,11 @@ decoded state. The addition here is not a general licence to carry ledger fields
 "in case"; it is the one field an execution path demonstrably could not run
 without.
 
-## Amendment — the retained deployed handle keeps its flat layout (2026-10-07)
+## Amendment — the retained deployed handle keeps its flat layout, and bytes are named as bytes (2026-10-07)
 
 The decision above stands. This note settles where the retained deployed
-handle keeps the deployer's data, and renames its bytes member.
+handle keeps the deployer's data, and how a member holding serialized bytes
+is named.
 
 **The layout stays as it is.** The current era nests the deployer's data under
 `deployTxData.private` (`signingKey`, `initialPrivateState`,
@@ -273,10 +274,24 @@ mix two record shapes in one object and still leave the caller branching on
 because it breaks every current-era caller. The divergence ends with the
 retained era itself.
 
-**`initialState` is renamed `initialContractStateEncoded`.** The pair on a
-retained deploy now reads like the pair on a call result,
-`nextContractState` / `nextContractStateEncoded`: a live handle, and the same
-state encoded. `packages/protocol/src/test/v8-deploy.test.ts` pins that the
-two are the same state: given the verifier keys the deploy registers, the
-bytes the deploy derives the address from are byte-identical to the
-constructor's handle serialized.
+**A serialized member is named with a `Bytes` suffix.** A name that also
+belongs to a live handle somewhere in the framework does not say which of the
+two a member holds, and `contractState` was a live handle, a POJO and bytes in
+different places. A member that holds serialized bytes therefore ends in
+`Bytes`, as `txBytes` already did. `Encoded` is NOT used for bytes: it already
+names `EncodedStateValue`, the structured value `StateValue.encode()` returns,
+on `nextContractStateEncoded`. Renamed under this rule:
+
+| Type | Was | Now |
+|---|---|---|
+| `Ledger8DeployedContract` (contracts) | `initialState` | `initialContractStateBytes` |
+| `ComposeCallEntry`, `ComposeDeployOptions` (protocol) | `contractState` | `contractStateBytes` |
+| `ComposeDeployOptions` (protocol) | `guaranteedZswapOffer` | `guaranteedZswapOfferBytes` |
+| `ZswapOfferFactory` result (protocol) | `guaranteed`, `fallible` | `guaranteedBytes`, `fallibleBytes` |
+| `ComposeCallResultPojo`, `DeployResultPojo` (protocol) | `transaction` | `txBytes` |
+| `DeployResultPojo` (protocol) | `initialState` | `initialContractStateBytes` |
+
+`packages/protocol/src/test/v8-deploy.test.ts` pins that
+`initialContractStateBytes` and the constructor's handle are the same state:
+given the verifier keys the deploy registers, the bytes the deploy derives the
+address from are byte-identical to the handle serialized.

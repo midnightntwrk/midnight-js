@@ -850,7 +850,7 @@ export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledg
   /**
    * The state the contract was deployed with, as the LIVE handle the retained
    * constructor built. See ADR-0010 for its lifetime, and prefer
-   * {@link Ledger8DeployedContract.initialContractStateEncoded} for anything that has to
+   * {@link Ledger8DeployedContract.initialContractStateBytes} for anything that has to
    * outlive the runtime instance.
    */
   readonly initialContractState: RetainedConstructedState;
@@ -859,7 +859,7 @@ export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledg
    * from. A deploy mints a fresh nonce, so these bytes and that address belong
    * to each other and to no other deployment.
    */
-  readonly initialContractStateEncoded: Uint8Array;
+  readonly initialContractStateBytes: Uint8Array;
   /**
    * The private state the constructor produced.
    *
