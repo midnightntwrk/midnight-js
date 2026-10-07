@@ -329,9 +329,9 @@ export const isTransactionContext = <
  * implementation signature widens both arms, and a JavaScript caller can pass
  * anything at all here.
  * @throws MixedEraScopeError if a real transaction context was passed.
- * @throws TypeError if a third argument was passed that is not one.
+ * @throws InvalidArgumentError if a third argument was passed that is not one.
  * @see {@link StaleHeadRemediation} for why a retained-era call cannot join a
- *      scope, and why the malformed-argument arm is a bare `TypeError`.
+ *      scope, and why the malformed-argument arm is an `InvalidArgumentError`.
  */
 export const assertScopeAdmitsRetainedEraCall = (circuitId: string, transactionContext: unknown): void => {
   if (transactionContext === undefined) {

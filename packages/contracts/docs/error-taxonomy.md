@@ -194,9 +194,9 @@ maintain.
 `SubmitRejectionUndiagnosedError` reports that a submission was rejected and that
 whether the network crossed the ledger fork under it could not be established.
 
-It is an `AggregateError` because nothing may be dropped: the submission
-rejection is what happened to the transaction, and `reason` is why no diagnosis
-could be made. `cause` names the proximate failure, so a consumer walking only
+It is a `MidnightJsError` that carries an `errors` list because nothing may be
+dropped: the submission rejection is what happened to the transaction, and
+`reason` is why no diagnosis could be made. `cause` names the proximate failure, so a consumer walking only
 cause chains still lands somewhere useful. The rejection is always the FIRST
 entry of `errors`.
 

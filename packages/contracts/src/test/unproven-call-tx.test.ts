@@ -229,23 +229,8 @@ describe('unproven-call-tx', () => {
       });
       const walletEncryptionPublicKey = createMockEncryptionPublicKey();
 
-      await expect(createUnprovenCallTxFromInitialStates(
-        createMockZKConfigProvider(),
-        options,
-        walletEncryptionPublicKey
-      )).rejects.toThrow('failed assert: FAIL');
-    });
-
-    it('reports a circuit failure as a ContractExecutionError with the effect error as cause', async () => {
-      const options = createMockCallOptions({
-        compiledContract: createMockCompiledContract({
-          testCircuit: createFailingCircuit('FAIL')
-        }),
-        initialContractState: await getInitialContractState()
-      });
-
       const act = () =>
-        createUnprovenCallTxFromInitialStates(createMockZKConfigProvider(), options, createMockEncryptionPublicKey());
+        createUnprovenCallTxFromInitialStates(createMockZKConfigProvider(), options, walletEncryptionPublicKey);
 
       await expect(act()).rejects.toThrow(ContractExecutionError);
       await expect(act()).rejects.toThrow('failed assert: FAIL');

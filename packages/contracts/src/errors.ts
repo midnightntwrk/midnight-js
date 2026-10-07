@@ -1066,6 +1066,7 @@ export class IncompleteCallTxPrivateStateConfig extends MidnightJsError {
   constructor() {
     super('Incorrect call transaction configuration');
     this.message = "'privateStateId' was defined for call transaction while 'privateStateProvider' was undefined";
+    this.name = 'IncompleteCallTxPrivateStateConfig';
   }
 }
 
@@ -1244,7 +1245,7 @@ export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
  * Carries no registered error code of its own; it inherits {@link AnyEraTxFailedError.code}.
  *
  * @see {@link ErrorTaxonomy} for why a failed deploy is a separate class from a
- * failed call, why no code is registered, and why the key is never rendered.
+ * failed call, why no code of its own is registered, and why the key is never rendered.
  */
 export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
   /**

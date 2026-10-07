@@ -15,7 +15,7 @@
 
 import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { FailFallible, type FinalizedTxDataV8 } from '@midnight-ntwrk/midnight-js-types';
+import { FailFallible } from '@midnight-ntwrk/midnight-js-types';
 import {
   CONTRACTS_ERROR_CATEGORIES,
   CONTRACTS_ERROR_CODES,
@@ -26,7 +26,7 @@ import { describe, expect, it } from 'vitest';
 
 import * as errors from '../errors';
 import * as governance from '../governance/errors';
-import { createMockFinalizedTxData } from './test-mocks';
+import { createMockFinalizedTxData, createMockFinalizedTxDataV8 } from './test-mocks';
 
 const exported: unknown[] = [...Object.values(errors), ...Object.values(governance)];
 const errorClasses = exported.filter(
@@ -38,11 +38,7 @@ const ADDRESS = '0200'.repeat(8);
 const SIGNING_KEY = 'a1'.repeat(32);
 const CAUSE = new Error('root cause');
 const finalizedTxData = createMockFinalizedTxData(FailFallible);
-const v8Record: FinalizedTxDataV8 = {
-  ...finalizedTxData,
-  version: 'v8',
-  tx: undefined as unknown as FinalizedTxDataV8['tx']
-};
+const v8Record = createMockFinalizedTxDataV8(FailFallible);
 const noMismatch = { missing: [], keyless: [], mismatched: [] };
 
 type Case = readonly [string, Error, ContractsErrorCode, MidnightJsErrorCategory];
@@ -111,6 +107,10 @@ describe('contracts error classes', () => {
 
   it('ContractTypeError is no longer a TypeError (accepted break)', () => {
     expect(errors.ContractTypeError.prototype instanceof TypeError).toBe(false);
+  });
+
+  it('IncompleteCallTxPrivateStateConfig keeps a name of its own', () => {
+    expect(new errors.IncompleteCallTxPrivateStateConfig().name).toBe('IncompleteCallTxPrivateStateConfig');
   });
 
   it('ContractTypeError keeps a name of its own', () => {
