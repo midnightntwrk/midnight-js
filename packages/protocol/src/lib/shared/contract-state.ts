@@ -16,7 +16,7 @@
 import { hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import type { EncodedStateValue, TokenType } from '@midnightntwrk/ledger-v9';
 
-import { StateDecodeFailedError } from '../../errors';
+import { ContractStateInvalidError, StateDecodeFailedError } from '../../errors';
 import type { LedgerVersion } from './ledger-version';
 import { entryPointName } from './verifier-keys';
 
@@ -255,7 +255,7 @@ export const decodeContractStateWith = (
       // inconsistent state, not a blank slot -- see FailClosedDecoding.
       const operation = decoded.operation(entryPoint);
       if (operation === undefined) {
-        throw new Error(
+        throw new ContractStateInvalidError(
           `contract state declares entry point '${entryPointName(entryPoint)}' but resolves no operation for it.`
         );
       }
@@ -274,7 +274,7 @@ export const decodeContractStateWith = (
     // Not defaulted: `new Map(undefined)` is an empty map, indistinguishable
     // from a contract that holds nothing. @see FailClosedDecoding
     if (!isContractBalance(balance)) {
-      throw new Error(
+      throw new ContractStateInvalidError(
         `contract state resolves no usable balance (received ${describeValue(balance)}); a contract that holds ` +
           'nothing still declares an empty map.'
       );

@@ -50,7 +50,14 @@ import * as glue from 'compact-runtime-ledger8';
 import { Effect } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ComposeFailedError, ComposeOptionError, DownConvertFailedError } from '../errors';
+import {
+  ComposeFailedError,
+  ComposeOptionError,
+  ContractExecutionError,
+  DownConvertFailedError,
+  InvalidArgumentError,
+  InvariantViolationError
+} from '../errors';
 import type { EncodedStateValue } from '../lib/era/envelope';
 import { loadLedgerEra } from '../lib/era/load-era';
 import type { ContractBalance, ContractStatePojo } from '../lib/shared/contract-state';
@@ -604,6 +611,7 @@ describe('pinnedClock refuses a second it cannot pin to', () => {
     const refusal = (): unknown => pinnedClock(nowSeconds);
 
     // Assert.
+    expect(refusal).toThrow(InvalidArgumentError);
     expect(refusal).toThrow(/nowSeconds/);
   });
 
@@ -623,6 +631,7 @@ describe('soleCall', () => {
     // synthesises exactly one entry. An empty list is a contract this era
     // cannot honour, and is refused rather than read as `undefined` and carried
     // into a composition.
+    expect(() => soleCall([], 'increment')).toThrow(InvariantViolationError);
     expect(() => soleCall([], 'increment')).toThrow("circuit 'increment' produced no contract call");
   });
 });
@@ -699,6 +708,7 @@ describe('runOrRethrow', () => {
     // neither the class nor the cause -- so the reason the circuit actually
     // failed never reaches the caller. This is the assertion an e2e test caught
     // the hard way.
+    expect(rejection).toBeInstanceOf(ContractExecutionError);
     expect((rejection as Error).message).toBe("Error executing circuit 'testBlockTimeGt': Block time is <= time");
     expect((rejection as Error).cause).toBe(wrapped);
   });
@@ -956,7 +966,7 @@ describe('runRetainedCircuit refuses a circuit the contract does not declare', (
       }).catch((error: unknown) => error);
 
       // Assert.
-      expect(rejection).toBeInstanceOf(Error);
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
       expect(String(rejection)).toContain(circuitId);
       expect(String(rejection)).toContain('increment');
     }

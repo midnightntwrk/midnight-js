@@ -35,7 +35,9 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
   LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
   UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS',
-  PAYLOAD_NOT_A_TRANSACTION: 'MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION'
+  PAYLOAD_NOT_A_TRANSACTION: 'MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION',
+  CONTRACT_EXECUTION_FAILED: 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED',
+  CONTRACT_STATE_INVALID: 'MIDNIGHT_JS_P_CONTRACT_STATE_INVALID'
 } as const);
 /** The union of every value in {@link PROTOCOL_ERROR_CODES}; the type of every error class's `code` field. */
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[keyof typeof PROTOCOL_ERROR_CODES];
@@ -67,7 +69,7 @@ export abstract class MidnightJsError extends Error {
   abstract readonly category: MidnightJsErrorCategory;
 }
 
-const { USAGE, ENVIRONMENT, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
+const { USAGE, ENVIRONMENT, REJECTED, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
 
 export const PROTOCOL_ERROR_CATEGORIES: Readonly<Record<ProtocolErrorCode, MidnightJsErrorCategory>> = Object.freeze({
   [PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ]: ENVIRONMENT,
@@ -82,7 +84,9 @@ export const PROTOCOL_ERROR_CATEGORIES: Readonly<Record<ProtocolErrorCode, Midni
   [PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION]: ENVIRONMENT,
   [PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID]: ENVIRONMENT,
   [PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS]: INTERNAL,
-  [PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION]: USAGE
+  [PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION]: USAGE,
+  [PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED]: REJECTED,
+  [PROTOCOL_ERROR_CODES.CONTRACT_STATE_INVALID]: INTEGRITY
 });
 
 export const COMMON_ERROR_CODES = Object.freeze({
@@ -180,10 +184,11 @@ export type ProtocolVersionUnknownReason = 'unknown' | 'malformed';
  *   version (a real protocol version this framework build does not support
  *   yet) — see {@link ProtocolVersionUnknownReason}.
  */
-export class UnknownProtocolVersionError extends Error {
+export class UnknownProtocolVersionError extends MidnightJsError {
   readonly code:
     | typeof PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ
     | typeof PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT;
+  readonly category: MidnightJsErrorCategory;
 
   constructor(
     readonly protocolVersion: number,
@@ -206,6 +211,7 @@ export class UnknownProtocolVersionError extends Error {
       path === 'read'
         ? PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ
         : PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT;
+    this.category = PROTOCOL_ERROR_CATEGORIES[this.code];
   }
 }
 
@@ -234,8 +240,9 @@ export type RetainedEraSubpath = '/v8' | '/engine';
  * @see {@link ModuleGraphAndLazyLoading}
  * @see {@link EraSeam}
  */
-export class Ledger8RuntimeMissingError extends Error {
+export class Ledger8RuntimeMissingError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING];
 
   constructor(
     readonly subpath: RetainedEraSubpath,
@@ -309,8 +316,9 @@ const axisPackageNames = (axis: Ledger8InstanceAxis): readonly string[] =>
  *   message tells the reader to trace.
  * @see {@link DualInstantiationGuard}
  */
-export class Ledger8InstanceMismatchError extends Error {
+export class Ledger8InstanceMismatchError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH];
 
   constructor(readonly axis: Ledger8InstanceAxis) {
     const packageNames = axisPackageNames(axis).join(' and ');
@@ -354,8 +362,9 @@ export type DownConvertStage = 'v8 envelope extraction' | 'v9 envelope extractio
  *   distinguishes a tag mismatch from truncated, trailing, or empty input.
  * @see {@link FailClosedDecoding}
  */
-export class DownConvertFailedError extends Error {
+export class DownConvertFailedError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED];
 
   constructor(
     readonly stage: DownConvertStage,
@@ -396,8 +405,9 @@ export class DownConvertFailedError extends Error {
  * @see {@link FailClosedDecoding}
  * @see {@link RetainedEraExecution}
  */
-export class MerkleNotRehashedError extends Error {
+export class MerkleNotRehashedError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED];
 
   constructor(cause?: unknown) {
     super(
@@ -524,8 +534,9 @@ export type ComposeStage =
  * @see {@link ComposeRefusalOrder}
  * @see {@link VerifierKeys}
  */
-export class ComposeFailedError extends Error {
+export class ComposeFailedError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.COMPOSE_FAILED;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.COMPOSE_FAILED];
 
   constructor(
     readonly version: LedgerVersion,
@@ -694,8 +705,9 @@ export type ComposeOption =
  * @see {@link ComposeRefusalOrder}
  * @see {@link VerifierKeys}
  */
-export class ComposeOptionError extends Error {
+export class ComposeOptionError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID];
 
   constructor(
     readonly version: LedgerVersion,
@@ -770,8 +782,9 @@ export class ComposeOptionError extends Error {
  *   distinguishes a tag mismatch from truncated, trailing or empty input.
  * @see {@link FailClosedDecoding}
  */
-export class StateDecodeFailedError extends Error {
+export class StateDecodeFailedError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED];
 
   constructor(
     readonly version: LedgerVersion,
@@ -808,8 +821,9 @@ export class StateDecodeFailedError extends Error {
  * @see {@link FailClosedDecoding}
  * @see {@link DualInstantiationGuard}
  */
-export class Ledger8RuntimeInvalidError extends Error {
+export class Ledger8RuntimeInvalidError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID];
 
   constructor(readonly missingMember: string) {
     super(
@@ -837,8 +851,9 @@ export class Ledger8RuntimeInvalidError extends Error {
  *   programmatic use only; it is deliberately kept out of the message.
  * @see {@link DualInstantiationGuard}
  */
-export class UnknownLedger8AxisError extends Error {
+export class UnknownLedger8AxisError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS];
 
   constructor(readonly requestedAxis: string) {
     super(
@@ -866,8 +881,9 @@ export class UnknownLedger8AxisError extends Error {
  * @see {@link SharedTableDiscipline}
  * @see {@link FailClosedDecoding}
  */
-export class UnknownLedgerVersionError extends Error {
+export class UnknownLedgerVersionError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION];
 
   constructor(readonly requestedVersion: string) {
     super(
@@ -953,8 +969,9 @@ const describeType = (value: unknown): string => {
  * `proveTx` rejection. Match it with `hasErrorCode` against
  * `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION` rather than constructing it.
  */
-export class PayloadNotATransactionError extends Error {
+export class PayloadNotATransactionError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION];
 
   private constructor(detail: string) {
     super(
@@ -982,5 +999,27 @@ export class PayloadNotATransactionError extends Error {
       `Refusing to prove a ${byteLength}-byte payload that does not begin with the ` +
         `'${TRANSACTION_TAG_PREFIX}' tag of a serialized ledger transaction.`
     );
+  }
+}
+
+/** A contract circuit refused to run, e.g. a Compact `assert` failed. The original failure is on `cause`. */
+export class ContractExecutionError extends MidnightJsError {
+  readonly code = PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'ContractExecutionError';
+  }
+}
+
+/** A contract state read from the chain is not internally consistent. */
+export class ContractStateInvalidError extends MidnightJsError {
+  readonly code = PROTOCOL_ERROR_CODES.CONTRACT_STATE_INVALID;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.CONTRACT_STATE_INVALID];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'ContractStateInvalidError';
   }
 }

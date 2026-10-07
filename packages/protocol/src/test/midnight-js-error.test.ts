@@ -18,14 +18,28 @@ import { describe, expect, it } from 'vitest';
 import {
   COMMON_ERROR_CATEGORIES,
   COMMON_ERROR_CODES,
+  ComposeFailedError,
+  ComposeOptionError,
   ConfigurationError,
+  ContractExecutionError,
+  ContractStateInvalidError,
+  DownConvertFailedError,
   EnvironmentUnsupportedError,
   InvalidArgumentError,
   InvariantViolationError,
+  Ledger8InstanceMismatchError,
+  Ledger8RuntimeInvalidError,
+  Ledger8RuntimeMissingError,
+  MerkleNotRehashedError,
   MIDNIGHT_JS_ERROR_CATEGORIES,
   MidnightJsError,
+  PayloadNotATransactionError,
   PROTOCOL_ERROR_CATEGORIES,
-  PROTOCOL_ERROR_CODES
+  PROTOCOL_ERROR_CODES,
+  StateDecodeFailedError,
+  UnknownLedger8AxisError,
+  UnknownLedgerVersionError,
+  UnknownProtocolVersionError
 } from '../errors';
 
 describe('general errors', () => {
@@ -63,5 +77,57 @@ describe('category tables', () => {
 
   it('are frozen', () => {
     expect([Object.isFrozen(COMMON_ERROR_CATEGORIES), Object.isFrozen(PROTOCOL_ERROR_CATEGORIES)]).toEqual([true, true]);
+  });
+});
+
+describe('protocol error classes', () => {
+  it('every exported error class extends MidnightJsError', () => {
+    // Arrange
+    const classes = [
+      ComposeFailedError, ComposeOptionError, ContractExecutionError, ContractStateInvalidError,
+      DownConvertFailedError, Ledger8InstanceMismatchError, Ledger8RuntimeInvalidError, Ledger8RuntimeMissingError,
+      MerkleNotRehashedError, PayloadNotATransactionError, StateDecodeFailedError, UnknownLedger8AxisError,
+      UnknownLedgerVersionError, UnknownProtocolVersionError
+    ];
+
+    // Act
+    const outsiders = classes.filter((c) => !(c.prototype instanceof MidnightJsError)).map((c) => c.name);
+
+    // Assert
+    expect(outsiders).toEqual([]);
+  });
+
+  it('reads the category of a dynamically coded error from the table', () => {
+    // Act
+    const error = new UnknownProtocolVersionError(99, 'read', 'unknown');
+
+    // Assert
+    expect([error.code, error.category]).toEqual(['MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_READ', 'ENVIRONMENT']);
+  });
+
+  it('reads the construct-path category of a dynamically coded error from the table', () => {
+    // Act
+    const error = new UnknownProtocolVersionError(99, 'construct', 'unknown');
+
+    // Assert
+    expect([error.code, error.category]).toEqual(['MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_CONSTRUCT', 'ENVIRONMENT']);
+  });
+
+  it.each([
+    [new ContractExecutionError('circuit failed', { cause: new Error('assert') }), 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED', 'REJECTED'],
+    [new ContractStateInvalidError('no operation'), 'MIDNIGHT_JS_P_CONTRACT_STATE_INVALID', 'INTEGRITY']
+  ] as const)('new protocol class %# carries code and category', (error, code, category) => {
+    expect([error.code, error.category, error.message.length > 0]).toEqual([code, category, true]);
+  });
+
+  it('keeps the cause of a ContractExecutionError', () => {
+    // Arrange
+    const cause = new Error('assert failed');
+
+    // Act
+    const error = new ContractExecutionError('circuit failed', { cause });
+
+    // Assert
+    expect(error.cause).toBe(cause);
   });
 });

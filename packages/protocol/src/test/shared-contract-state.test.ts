@@ -20,7 +20,7 @@ import * as ledgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import { PROTOCOL_ERROR_CODES, StateDecodeFailedError } from '../errors';
+import { ContractStateInvalidError, PROTOCOL_ERROR_CODES, StateDecodeFailedError } from '../errors';
 import { extractV9EncodedStateValue } from '../lib/era/envelope';
 import {
   type ContractBalance,
@@ -150,6 +150,11 @@ describe('decodeContractStateWith', () => {
     expect(caught).toBeInstanceOf(StateDecodeFailedError);
     expect(caught).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED, version: 'v9' });
     expect((caught as StateDecodeFailedError).cause).toBeInstanceOf(Error);
+    const cause = (caught as StateDecodeFailedError).cause;
+    expect(cause).toBeInstanceOf(ContractStateInvalidError);
+    expect((cause as ContractStateInvalidError).message).toBe(
+      "contract state declares entry point 'increment' but resolves no operation for it."
+    );
   });
 
   // The facade's boundary rule, mechanised by two assertions that check
@@ -319,6 +324,16 @@ describe('decodeContractStateWith refuses a state that resolves no balance', () 
     expect(caught).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED, version: 'v9' });
     expect((caught as StateDecodeFailedError).cause).toBeInstanceOf(Error);
     expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
+  });
+
+  it('reports the absent balance as a ContractStateInvalidError on the cause', () => {
+    const caught = decodeFailure(undefined);
+
+    const cause = (caught as StateDecodeFailedError).cause;
+    expect(cause).toBeInstanceOf(ContractStateInvalidError);
+    expect((cause as ContractStateInvalidError).message).toBe(
+      'contract state resolves no usable balance (received undefined); a contract that holds nothing still declares an empty map.'
+    );
   });
 
   // A separate case, not a restatement: `new Map(null)` is an empty map too, so

@@ -48,7 +48,10 @@ import { Cause, Clock, Effect, Exit, Layer, Option, type Types } from 'effect';
 import {
   ComposeFailedError,
   ComposeOptionError,
+  ContractExecutionError,
   DownConvertFailedError,
+  InvalidArgumentError,
+  InvariantViolationError,
   PROTOCOL_ERROR_CODES,
   type ProtocolErrorCode
 } from '../../errors';
@@ -333,7 +336,7 @@ export const pinnedClock = (nowSeconds: number): Clock.Clock => {
   // `number` on the published option, and `Number(process.env.X)` with the
   // variable unset is the obvious way to produce one.
   if (!Number.isFinite(nowSeconds)) {
-    throw new Error(
+    throw new InvalidArgumentError(
       `the retained era cannot pin its execution clock to '${String(nowSeconds)}'. ` +
         '`nowSeconds` must be a finite number of seconds since the epoch.'
     );
@@ -659,7 +662,7 @@ export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A
     const chain = causeChain(failure);
     return chain.length > 0 ? chain.join(': ') : String(failure);
   };
-  throw new Error(failures.length > 1 ? failures.map(describe).join('; ') : describe(error), { cause: error });
+  throw new ContractExecutionError(failures.length > 1 ? failures.map(describe).join('; ') : describe(error), { cause: error });
 };
 
 /**
@@ -674,12 +677,12 @@ export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A
  * @param calls The calls the execution reported.
  * @param circuitId The circuit they were produced for, for the message.
  * @returns The sole call.
- * @throws Error If the list is empty.
+ * @throws InvariantViolationError If the list is empty.
  */
 export const soleCall = <T>(calls: readonly T[], circuitId: string): T => {
   const [only] = calls;
   if (only === undefined) {
-    throw new Error(
+    throw new InvariantViolationError(
       `circuit '${circuitId}' produced no contract call. The retained era cannot make a ` +
         'cross-contract call, so exactly one is expected.'
     );
@@ -701,14 +704,14 @@ export const soleCall = <T>(calls: readonly T[], circuitId: string): T => {
  *
  * @param contract The contract the call names.
  * @param circuitId The circuit the caller asked for.
- * @throws Error If the contract declares no such circuit.
+ * @throws InvalidArgumentError If the contract declares no such circuit.
  */
 const assertDeclaredCircuit = (contract: RetainedContract, circuitId: string): void => {
   const circuit = Object.hasOwn(contract.provableCircuits, circuitId)
     ? contract.provableCircuits[circuitId]
     : undefined;
   if (typeof circuit !== 'function') {
-    throw new Error(
+    throw new InvalidArgumentError(
       `No circuit named '${circuitId}' on this retained-era contract instance. ` +
         `Available circuits: ${Object.keys(contract.provableCircuits).sort().join(', ')}.`
     );
