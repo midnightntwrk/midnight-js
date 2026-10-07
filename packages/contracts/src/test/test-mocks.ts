@@ -59,6 +59,7 @@ import {
   type AnyProvableCircuitId,
   type FinalizedTxData,
   type FinalizedTxDataV8,
+  type MidnightConfig,
   type PrivateStateId,
   type ProverKey,
   SucceedEntirely,
@@ -265,9 +266,12 @@ const MOCK_HEAD_PROTOCOL_VERSION = 2_000_000;
  * gap replaces one provider's declaration explicitly — see
  * `seam-era-support.test.ts`.
  */
+export const MOCK_CONFIG: MidnightConfig = { networkId: 'undeployed', ttlSeconds: 3600 };
+
 const MOCK_SUPPORTED_ERAS: readonly LedgerVersion[] = Object.freeze<LedgerVersion[]>(['v8', 'v9']);
 
 export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvableCircuitId, AnyPrivateState> => ({
+  config: MOCK_CONFIG,
   midnightProvider: {
     supportedEras: MOCK_SUPPORTED_ERAS,
     submitTx: vi.fn()

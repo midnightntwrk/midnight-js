@@ -65,6 +65,7 @@ export const initializeMidnightProviders = <PCK extends string, PS>(
     zkConfigProvider,
     proofProvider: httpClientProofProvider(environmentConfiguration.proofServer, zkConfigProvider),
     walletProvider: midnightWalletProvider,
-    midnightProvider: midnightWalletProvider
+    midnightProvider: midnightWalletProvider,
+    config: { networkId: environmentConfiguration.networkId, ttlSeconds: 3600 }
   };
 };

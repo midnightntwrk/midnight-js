@@ -16,6 +16,7 @@
 import type { ContractModuleProvider } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 
 import type { LoggerProvider } from './logger-provider';
+import type { MidnightConfig } from './midnight-config';
 import type { MidnightProvider } from './midnight-provider';
 import type { AnyProvableCircuitId } from './midnight-types';
 import type { PrivateStateId, PrivateStateProvider } from './private-state-provider';
@@ -61,6 +62,10 @@ export interface MidnightProviders<
    * Submits proven, balanced transactions to the network.
    */
   readonly midnightProvider: MidnightProvider;
+  /**
+   * Network and transaction settings applied to every transaction built with this provider set.
+   */
+  readonly config: MidnightConfig;
   /**
    * Resolves a cross-contract callee's address to the compiled module implementing it. Only the
    * application knows which modules it bundled, so there is no default; a circuit that makes a
