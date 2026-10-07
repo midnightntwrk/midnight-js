@@ -40,7 +40,7 @@ interface MidnightProviders {
 - The framework does not read the global network id anywhere, and does not fall
   back to it. A silent fallback would hide an incomplete migration.
 - `ttlSeconds` is a duration, not a date or a date factory. The framework adds it
-  to the current time when it builds each intent, and again when balancing starts,
+  to the current time when it starts building a transaction, and again when balancing starts,
   passing that expiry to `walletProvider.balanceTx` as its `ttl` argument. The
   intent the wallet adds therefore lives as long as the framework's own, counted
   from a slightly later moment.
@@ -55,13 +55,15 @@ interface MidnightProviders {
 - Low-level functions that do not receive `providers` take the config explicitly
   (`CallOptionsProviderDataDependencies.config`, the last argument of
   `createUnprovenDeployTxFromVerifierKeys`).
-- `NetworkId` moves to `types`. `network-id` re-exports it, so `types` never
-  depends on the package being deprecated.
+- `NetworkId` moves to `types`. `network-id` keeps its own deprecated
+  `NetworkId = string`, so neither package depends on the other and the
+  deprecated package does not pull in the framework.
 - `@midnight-ntwrk/midnight-js-network-id` is deprecated, not removed. Its
   functions keep working so dApp code still compiles, and their docs say the
   framework ignores them. An ESLint `no-restricted-imports` rule keeps the
-  package out of every package's source except `network-id` itself and the
-  `midnight-js` barrel, and out of the testkit source.
+  package out of every package's source and the testkit source. Test files, the
+  `protocol` source (which has its own import rules), `network-id` itself and the
+  `midnight-js` barrel are exempt.
 
 ## Consequences
 
@@ -85,6 +87,13 @@ built, so there is no user need to configure it.
 
 - **Split the change: TTL in 5.0.0, network id in 6.0.** Rejected: dApps would
   migrate twice for one concern.
+- **A root object `{ providers, config }` passed to every entry point.**
+  Rejected: it keeps services and settings apart, but it changes the first
+  argument of every call (`deployContract`, `findDeployedContract`,
+  `submitCallTx`, ...) instead of one provider literal, and every
+  `Pick<MidnightProviders, ...>` subset the API is built on would have to
+  become a nested `{ providers: Pick<...>; config }`. It fixes no bug the flat
+  field allows.
 - **Optional `config` with a fallback to the global network id.** Rejected: an
   incomplete migration would keep working on the wrong value without any signal.
 - **`ttl: () => Date`.** Rejected: harder to use, and a caller can return a fixed

@@ -337,8 +337,8 @@ Internally the provider was split into 7 layered files (#960): `config.ts`, `tra
 
 ### New exports
 
-- `assertValidMidnightConfig(config, source?)` — checks a `MidnightConfig` and throws `TypeError` / `RangeError` naming the bad field; every framework entry point that builds a transaction calls it first (#982).
-- `intentTtl(config, now?)` — the expiry `Date` for an intent built at `now`: `now + config.ttlSeconds` (#982).
+- `assertValidMidnightConfig(config, source?)` — checks a `MidnightConfig` and throws `TypeError` / `RangeError` naming the bad field; every framework entry point that builds a transaction calls it before reading chain state or running the circuit (#982).
+- `intentTtl(config)` — the expiry `Date` for an intent built now: the current time plus `config.ttlSeconds` (#982).
 
 ```ts
 // Coded-error registry and guard (#1204). Prefer hasErrorCode over instanceof

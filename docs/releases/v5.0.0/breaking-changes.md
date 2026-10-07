@@ -521,12 +521,14 @@ interface MidnightProviders {
   is built. 4.x used a fixed one hour; `ttlSeconds: 3600` keeps that. The framework
   also passes the TTL to `walletProvider.balanceTx` (its existing `ttl?: Date`
   argument, which it did not pass before), so a wallet that honours it gives the
-  balancing intent the same lifetime. `submitTx` reads `providers.config` too.
+  balancing intent the same lifetime. A wallet behind the DApp Connector cannot
+  receive a TTL, so its balancing intent keeps the wallet's own lifetime.
+  `submitTx` reads `providers.config` too.
 - **Validation:** a missing (`undefined` or `null`) config, or a `networkId` that is
   not a non-empty string without surrounding whitespace, throws a `TypeError`; a
   `ttlSeconds` that is not a positive whole number (or that overflows a `Date`)
   throws a `RangeError`. Every entry point that builds a transaction checks this
-  first, before chain state is read and before the circuit or constructor runs.
+  before chain state is read and before the circuit or constructor runs.
   The same check is public as `assertValidMidnightConfig` in
   `@midnight-ntwrk/midnight-js-utils`.
 - **Low-level functions:** `createUnprovenCallTxFromInitialStates` reads
