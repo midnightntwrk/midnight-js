@@ -19,7 +19,6 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { NetworkId } from '@midnightntwrk/wallet-sdk';
 import type { Logger } from 'pino';
 import { DockerComposeEnvironment, type StartedDockerComposeEnvironment, Wait } from 'testcontainers';
@@ -489,7 +488,6 @@ export class ForkTestEnvironment extends TestEnvironment {
       // selected strategy, overwriting the per-service values above.
       .up();
 
-    setNetworkId('undeployed');
     this.environmentConfiguration = this.configurationFor(this.getPreForkProofServer());
     this.logger.info(`Fork test environment configuration: ${redactedJson(this.environmentConfiguration)}`);
     return this.environmentConfiguration;

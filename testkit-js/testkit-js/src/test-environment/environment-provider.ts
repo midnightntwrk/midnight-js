@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Logger } from 'pino';
 
 import { getEnvVarEnvironment } from '../env-vars';
@@ -37,23 +36,19 @@ export const getTestEnvironment = (logger: Logger): TestEnvironment => {
   switch (testEnv) {
     case 'preview':
       env = new PreviewTestEnvironment(logger);
-      setNetworkId('preview');
       break;
     case 'preprod':
       env = new PreprodTestEnvironment(logger);
-      setNetworkId('preprod');
       break;
     case 'qanet':
       env = new QanetTestEnvironment(logger);
-      setNetworkId('qanet');
       break;
     case 'env-var-remote':
       env = new EnvVarRemoteTestEnvironment(logger);
-      setNetworkId(env.getEnvironmentConfiguration().networkId);
+      env.getEnvironmentConfiguration();
       break;
     default:
       env = new LocalTestEnvironment(logger);
-      setNetworkId('undeployed');
   }
   return env;
 };

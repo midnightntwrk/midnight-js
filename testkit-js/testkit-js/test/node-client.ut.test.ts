@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import axios from 'axios';
 import pino from 'pino';
 
@@ -28,8 +29,28 @@ describe('[Unit tests] NodeClient', () => {
   let client: NodeClient;
 
   beforeEach(() => {
-    client = new NodeClient(nodeURL, logger);
+    client = new NodeClient(nodeURL, logger, 'preview');
     vi.clearAllMocks();
+  });
+
+  it('contractState queries the contract under the client network id', async () => {
+    const contractAddress = 'ab'.repeat(32);
+    mockedAxios.post.mockResolvedValue({
+      data: { result: Buffer.from(new ContractState().serialize()).toString('hex') },
+      statusText: 'OK'
+    });
+
+    const state = await client.contractState(contractAddress);
+
+    expect(state).toBeInstanceOf(ContractState);
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      nodeURL,
+      expect.objectContaining({
+        method: 'midnight_contractState',
+        params: [`preview${contractAddress}`]
+      }),
+      expect.anything()
+    );
   });
 
   it('ledgerStateBlob should pass blockHash to RPC call', async () => {

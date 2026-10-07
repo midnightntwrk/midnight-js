@@ -104,7 +104,7 @@ describe('[Unit tests] Client error propagation', () => {
     it('health should throw when node is unreachable', async () => {
       mockedAxios.get.mockRejectedValue(new Error('ECONNREFUSED'));
 
-      const client = new NodeClient('http://localhost:9944', logger);
+      const client = new NodeClient('http://localhost:9944', logger, 'undeployed');
 
       await expect(client.health()).rejects.toThrow('ECONNREFUSED');
     });
@@ -112,7 +112,7 @@ describe('[Unit tests] Client error propagation', () => {
     it('health should use the protocol from the configured URL', async () => {
       mockedAxios.get.mockResolvedValue({ data: { status: 'ok' } });
 
-      const client = new NodeClient('http://localhost:9944', logger);
+      const client = new NodeClient('http://localhost:9944', logger, 'undeployed');
       await client.health();
 
       expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:9944/health', expect.anything());

@@ -13,10 +13,9 @@
  * limitations under the License.
  */
 
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { ContractState, LedgerState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { BlockHash } from '@midnight-ntwrk/midnight-js-types';
+import type { BlockHash, NetworkId } from '@midnight-ntwrk/midnight-js-types';
 import axios, { type AxiosResponse } from 'axios';
 import type { Logger } from 'pino';
 
@@ -28,15 +27,18 @@ import { buildUrlWithPath, redactUrl } from '../utils';
 export class NodeClient {
   readonly nodeURL: string;
   private logger: Logger;
+  private readonly networkId: NetworkId;
 
   /**
    * Creates a new NodeClient instance
    * @param {string} nodeURL - URL of the Midnight node
    * @param {Logger} logger - Logger instance for recording operations
+   * @param {NetworkId} networkId - Network the node serves, used to address contract state
    */
-  constructor(nodeURL: string, logger: Logger) {
+  constructor(nodeURL: string, logger: Logger, networkId: NetworkId) {
     this.nodeURL = nodeURL;
     this.logger = logger;
+    this.networkId = networkId;
   }
 
   /**
@@ -100,7 +102,7 @@ export class NodeClient {
   async contractState(contractAddress: ContractAddress): Promise<ContractState | null> {
     this.logger.info(`Fetching contract state for address '${contractAddress}'`);
     const result = await this.jsonRPC('midnight_contractState', [
-      `${getNetworkId()}${contractAddress}`
+      `${this.networkId}${contractAddress}`
     ]);
     return result === '' ? null : ContractState.deserialize(Buffer.from(result, 'hex'));
   }
