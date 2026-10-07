@@ -18,7 +18,7 @@ import { FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CURRENT_PIPELINE_ERA } from '../era';
-import { DeployTxFailedError } from '../errors';
+import { DeployTxFailedError, IncompleteDeployContractPrivateStateConfig } from '../errors';
 import { submitDeployTx } from '../submit-deploy-tx';
 import { submitTx } from '../submit-tx';
 import { createUnprovenDeployTx } from '../unproven-deploy-tx';
@@ -334,6 +334,76 @@ describe('submit-deploy-tx', () => {
         await submitDeployTx(mockProviders, options);
 
         expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, undefined);
+      });
+    });
+
+    describe('half a private-state pairing', () => {
+      it('submits an initial private state written as undefined and no id, storing nothing', async () => {
+        const options = {
+          compiledContract: mockCompiledContract,
+          args: [],
+          signingKey: mockSigningKey,
+          initialPrivateState: undefined
+        };
+        vi.mocked(createUnprovenDeployTx).mockResolvedValue(createMockUnprovenDeployTxData());
+        vi.mocked(submitTx).mockResolvedValue(createMockFinalizedTxData());
+
+        await submitDeployTx(mockProviders, options);
+
+        expect(submitTx).toHaveBeenCalledTimes(1);
+        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+      });
+
+      it('refuses an initial private state with no id to store it under, before anything is built', async () => {
+        const options = {
+          compiledContract: mockCompiledContract,
+          args: [],
+          signingKey: mockSigningKey,
+          initialPrivateState: { someState: 'test' }
+        };
+
+        const submitting = submitDeployTx(mockProviders, options);
+
+        await expect(submitting).rejects.toBeInstanceOf(IncompleteDeployContractPrivateStateConfig);
+        await expect(submitting).rejects.toThrow(
+          "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined"
+        );
+        expect(createUnprovenDeployTx).not.toHaveBeenCalled();
+        expect(submitTx).not.toHaveBeenCalled();
+      });
+
+      it('refuses a private state id with no initial private state, before anything is built', async () => {
+        const options = {
+          compiledContract: mockCompiledContract,
+          args: [],
+          signingKey: mockSigningKey,
+          privateStateId: mockPrivateStateId
+        };
+
+        const submitting = submitDeployTx(mockProviders, options);
+
+        await expect(submitting).rejects.toBeInstanceOf(IncompleteDeployContractPrivateStateConfig);
+        await expect(submitting).rejects.toThrow(
+          "'privateStateId' was defined for contract deploy while 'initialPrivateState' was omitted"
+        );
+        expect(createUnprovenDeployTx).not.toHaveBeenCalled();
+        expect(submitTx).not.toHaveBeenCalled();
+      });
+
+      it('refuses a private state id given as undefined, before anything is built', async () => {
+        const options = {
+          compiledContract: mockCompiledContract,
+          args: [],
+          signingKey: mockSigningKey,
+          privateStateId: undefined,
+          initialPrivateState: { someState: 'test' }
+        };
+
+        const submitting = submitDeployTx(mockProviders, options);
+
+        await expect(submitting).rejects.toThrow("'privateStateId' was given as undefined");
+        expect(createUnprovenDeployTx).not.toHaveBeenCalled();
+        expect(submitTx).not.toHaveBeenCalled();
       });
     });
   });

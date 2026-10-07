@@ -75,7 +75,6 @@ import {
   EraInvariantViolationError,
   type EraSeam,
   IncompleteCallTxPrivateStateConfig,
-  IncompleteDeployContractPrivateStateConfig,
   Ledger8CallTxFailedError,
   Ledger8DeployNotStoredError,
   Ledger8DeployTxFailedError,
@@ -1271,14 +1270,13 @@ export interface Ledger8DeployedState {
  * The verifier keys are fetched for EVERY entry point the artifact declares,
  * off the artifact rather than off any state.
  *
+ * The private-state pairing is NOT checked here: `deployContract`, the only
+ * caller, checks it before any provider is touched.
+ *
  * @param providers The provider set.
  * @param options The deployment the entry point received.
  * @returns The minted address, the finalized record, the signing key now stored
  * against that address, and everything the constructor produced.
- * @throws IncompleteDeployContractPrivateStateConfig if an `initialPrivateState`
- * is supplied with no `privateStateId` to store it under.
- * @throws Error if `privateStateId` is present with an undefined value, which is
- * a caller that believes it named an id.
  * @throws Ledger8DeployTxFailedError if the node recorded a non-success status.
  * @throws Ledger8DeployUnconfirmedError if the record cannot be read back and
  * attributed to the head at all, the record's era included.
@@ -1293,26 +1291,7 @@ export const submitLedger8DeployTx = async (
   providers: Ledger8DeployEntryProviders,
   options: Ledger8DeployEntryOptions
 ): Promise<Ledger8DeployedState> => {
-  // Before any provider is touched, and read off the KEY rather than the value,
-  // exactly as the attach arm reads it. `undefined` is a legitimate private
-  // state -- a contract that declares none stores exactly that -- but no id is a
-  // usable id: a caller that wrote `privateStateId: cfg.someId` with an
-  // undefined `someId` BELIEVES it named one, and reading that as "no id given"
-  // stores nothing and hands `callTx` an undefined id, so every later call
-  // proves against a state the contract never had and writes nothing back.
-  const namesPrivateStateId = 'privateStateId' in options;
-  const privateStateId = namesPrivateStateId ? options.privateStateId : undefined;
-  if (namesPrivateStateId) {
-    assertDefined(
-      privateStateId,
-      "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
-        'for a contract that stores no private state.'
-    );
-  } else if ('initialPrivateState' in options) {
-    // There is nowhere to put the state, so it would be silently dropped -- and
-    // a caller that supplied one believes it was stored.
-    throw new IncompleteDeployContractPrivateStateConfig();
-  }
+  const { privateStateId } = options;
 
   const { deploy, head } = await runLedger8Deploy(providers, {
     contract: options.compiledContract,
