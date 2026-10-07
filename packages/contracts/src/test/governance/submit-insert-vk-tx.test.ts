@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -93,9 +94,45 @@ describe('submitInsertVerifierKeyTx', () => {
       expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(result).toBe(mockFinalizedTxData);
     });
+
+    it('should insert a key into a registered operation that carries no verifier key', async () => {
+      const circuitId = 'testCircuit';
+      const mockFinalizedTxData = createMockFinalizedTxData();
+
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
+      mockContractState.operation = vi.fn().mockReturnValue(new ContractOperation());
+
+      vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
+      vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+
+      const result = await submitInsertVerifierKeyTx(
+        mockProviders,
+        mockCompiledContract,
+        mockContractAddress,
+        circuitId,
+        mockVerifierKey
+      );
+
+      expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
+      expect(result).toBe(mockFinalizedTxData);
+    });
   });
 
   describe('error scenarios', () => {
+    it('should reject before submitting when the operation already carries a verifier key', async () => {
+      const circuitId = 'testCircuit';
+
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockContractState.operation = vi.fn().mockReturnValue({ verifierKey: new Uint8Array(32) });
+
+      await expect(
+        submitInsertVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId, mockVerifierKey)
+      ).rejects.toThrow(`Circuit '${circuitId}' is already defined for contract at address '${mockContractAddress}'`);
+      expect(createUnprovenInsertVerifierKeyTx).not.toHaveBeenCalled();
+      expect(submitTx).not.toHaveBeenCalled();
+    });
+
     it('should throw InsertVerifierKeyTxFailedError when transaction fails', async () => {
       const { InsertVerifierKeyTxFailedError } = await import('../../governance/errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
