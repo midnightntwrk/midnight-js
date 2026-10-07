@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createProverKey, createVerifierKey, createZKIR } from '../midnight-types';
@@ -167,5 +168,14 @@ describe('ZKConfigRegistry', () => {
     await expect(keyMaterialProvider.getProverKey('midnight/zswap/spend')).rejects.toThrow(
       /is not a contract key location/
     );
+  });
+
+  it('refuses a non-contract key location with an InvalidArgumentError', async () => {
+    const keyMaterialProvider = new ZKConfigRegistry([sourceA()]).asKeyMaterialProvider();
+
+    const attempt = keyMaterialProvider.getZKIR('midnight/zswap/spend');
+
+    await expect(attempt).rejects.toBeInstanceOf(InvalidArgumentError);
+    await expect(attempt).rejects.toThrow("'midnight/zswap/spend' is not a contract key location");
   });
 });

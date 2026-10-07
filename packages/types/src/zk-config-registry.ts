@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+
+import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from './errors';
 import type { VerifierKey, ZKConfig } from './midnight-types';
 import type { KeyMaterialProvider, ZKConfigProvider } from './zk-config-provider';
 import { type ContractKeyLocation, encodeContractKeyLocation, hashVerifierKey, parseContractKeyLocation } from './zk-key-location';
@@ -22,7 +25,10 @@ import { type ContractKeyLocation, encodeContractKeyLocation, hashVerifierKey, p
  * verifier key matches the deployed one — i.e. the local artifacts have drifted from (or were
  * never compiled for) the deployed contract.
  */
-export class ZKArtifactNotFoundError extends Error {
+export class ZKArtifactNotFoundError extends MidnightJsError {
+  readonly code = PROVIDER_ERROR_CODES.ZK_ARTIFACT_NOT_FOUND;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.ZK_ARTIFACT_NOT_FOUND];
+
   /**
    * @param keyLocation The location that could not be resolved.
    * @param suppressedErrors Errors raised by individual sources while probing their verifier key
@@ -128,7 +134,7 @@ export class ZKConfigRegistry {
     const resolve = async (circuitKeyLocation: string): Promise<ZKConfig<string>> => {
       const config = await this.resolveKeyLocation(circuitKeyLocation);
       if (config === undefined) {
-        throw new Error(`'${circuitKeyLocation}' is not a contract key location`);
+        throw new InvalidArgumentError(`'${circuitKeyLocation}' is not a contract key location`);
       }
       return config;
     };

@@ -16,6 +16,7 @@
 import { type CompiledContract, Contract, type ContractExecutable, ContractExecutableRuntime,
   ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect';
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js';
 import * as Configuration from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/Configuration';
 import { Cause, type ConfigError, ConfigProvider, Effect, Exit,Layer, Option } from 'effect';
@@ -114,7 +115,7 @@ export const exitResultOrError: <A, E>(exit: Exit.Exit<A, E>) => A =
     onSuccess: (a) => a,
     onFailure: (cause) => {
       if (Cause.isFailType(cause)) throw cause.error;
-      throw new Error(`Unexpected error: ${Cause.pretty(cause)}`);
+      throw new InvariantViolationError(`Unexpected error: ${Cause.pretty(cause)}`);
     }
   });
 

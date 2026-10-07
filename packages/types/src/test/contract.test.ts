@@ -14,11 +14,12 @@
  */
 
 import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import * as Configuration from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/Configuration';
-import { Effect, Option } from 'effect';
+import { Cause, Effect, Exit, Option } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { makeContractExecutableRuntime } from '../contract';
+import { exitResultOrError, makeContractExecutableRuntime } from '../contract';
 import { type ProverKey, type VerifierKey, type ZKIR } from '../midnight-types';
 import { ZKConfigProvider } from '../zk-config-provider';
 
@@ -57,5 +58,14 @@ describe('makeContractExecutableRuntime', () => {
     const configured = await readConfiguredSigningKey(signingKey);
 
     expect(Option.getOrNull(configured)).toEqual(signingKey);
+  });
+});
+
+describe('exitResultOrError', () => {
+  it('throws an InvariantViolationError for a defect', () => {
+    const defect = Exit.failCause(Cause.die(new Error('boom')));
+
+    expect(() => exitResultOrError(defect)).toThrow(InvariantViolationError);
+    expect(() => exitResultOrError(defect)).toThrow(/^Unexpected error: /);
   });
 });

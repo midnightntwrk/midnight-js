@@ -15,6 +15,7 @@
 
 import {
   MIDNIGHT_JS_ERROR_CATEGORIES,
+  MidnightJsError,
   type MidnightJsErrorCategory
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
 
@@ -69,12 +70,37 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   // one means "this provider states it does not serve that era", raised from a
   // declaration before any payload exists.
   SEAM_ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED',
-  PRIVATE_STATE_NOT_SERIALIZABLE: 'MIDNIGHT_JS_PR_PRIVATE_STATE_NOT_SERIALIZABLE'
+  PRIVATE_STATE_NOT_SERIALIZABLE: 'MIDNIGHT_JS_PR_PRIVATE_STATE_NOT_SERIALIZABLE',
+  INVALID_PROTOCOL_SCHEME: 'MIDNIGHT_JS_PR_INVALID_PROTOCOL_SCHEME',
+  ARTIFACT_RUNTIME_VERSION_UNAVAILABLE: 'MIDNIGHT_JS_PR_ARTIFACT_RUNTIME_VERSION_UNAVAILABLE',
+  ZK_ARTIFACT_NOT_FOUND: 'MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_FOUND',
+  ZK_ARTIFACT_FETCH_FAILED: 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED',
+  ZK_ARTIFACT_NOT_SERVED: 'MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED',
+  PROOF_SERVER_UNAVAILABLE: 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE',
+  PROOF_SERVER_REFUSED: 'MIDNIGHT_JS_PR_PROOF_SERVER_REFUSED',
+  PRIVATE_STATE_EXPORT_FAILED: 'MIDNIGHT_JS_PR_PRIVATE_STATE_EXPORT_FAILED',
+  SIGNING_KEY_EXPORT_FAILED: 'MIDNIGHT_JS_PR_SIGNING_KEY_EXPORT_FAILED',
+  PRIVATE_STATE_IMPORT_FAILED: 'MIDNIGHT_JS_PR_PRIVATE_STATE_IMPORT_FAILED',
+  EXPORT_DECRYPTION_FAILED: 'MIDNIGHT_JS_PR_EXPORT_DECRYPTION_FAILED',
+  INVALID_EXPORT_FORMAT: 'MIDNIGHT_JS_PR_INVALID_EXPORT_FORMAT',
+  IMPORT_CONFLICT: 'MIDNIGHT_JS_PR_IMPORT_CONFLICT',
+  PRIVATE_STATE_LOCK_TIMEOUT: 'MIDNIGHT_JS_PR_PRIVATE_STATE_LOCK_TIMEOUT',
+  PRIVATE_STATE_DECRYPTION_FAILED: 'MIDNIGHT_JS_PR_PRIVATE_STATE_DECRYPTION_FAILED',
+  PRIVATE_STATE_STORAGE_FAILED: 'MIDNIGHT_JS_PR_PRIVATE_STATE_STORAGE_FAILED',
+  PRIVATE_STATE_LIMIT_EXCEEDED: 'MIDNIGHT_JS_PR_PRIVATE_STATE_LIMIT_EXCEEDED',
+  STORED_SIGNING_KEY_INVALID: 'MIDNIGHT_JS_PR_STORED_SIGNING_KEY_INVALID',
+  INDEXER_GRAPHQL_FAILED: 'MIDNIGHT_JS_PR_INDEXER_GRAPHQL_FAILED',
+  INDEXER_QUERY_FAILED: 'MIDNIGHT_JS_PR_INDEXER_QUERY_FAILED',
+  INDEXER_DATA_INVALID: 'MIDNIGHT_JS_PR_INDEXER_DATA_INVALID',
+  INDEXER_SUBSCRIPTION_DATA_INVALID: 'MIDNIGHT_JS_PR_INDEXER_SUBSCRIPTION_DATA_INVALID',
+  INDEXER_CONFIG_INVALID: 'MIDNIGHT_JS_PR_INDEXER_CONFIG_INVALID',
+  INDEXER_INVARIANT_VIOLATED: 'MIDNIGHT_JS_PR_INDEXER_INVARIANT_VIOLATED',
+  INDEXER_PAYLOAD_TOO_LARGE: 'MIDNIGHT_JS_PR_INDEXER_PAYLOAD_TOO_LARGE'
 } as const);
 /** The union of every value in {@link PROVIDER_ERROR_CODES}. */
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
 
-const { USAGE, ENVIRONMENT } = MIDNIGHT_JS_ERROR_CATEGORIES;
+const { USAGE, ENVIRONMENT, TRANSIENT, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
 
 export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, MidnightJsErrorCategory>> = Object.freeze({
   [PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED]: USAGE,
@@ -82,11 +108,56 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
   [PROVIDER_ERROR_CODES.ERA_UNSUPPORTED]: ENVIRONMENT,
   [PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE]: ENVIRONMENT,
   [PROVIDER_ERROR_CODES.SEAM_ERA_UNSUPPORTED]: USAGE,
-  [PROVIDER_ERROR_CODES.PRIVATE_STATE_NOT_SERIALIZABLE]: USAGE
+  [PROVIDER_ERROR_CODES.PRIVATE_STATE_NOT_SERIALIZABLE]: USAGE,
+  [PROVIDER_ERROR_CODES.INVALID_PROTOCOL_SCHEME]: USAGE,
+  [PROVIDER_ERROR_CODES.ARTIFACT_RUNTIME_VERSION_UNAVAILABLE]: ENVIRONMENT,
+  [PROVIDER_ERROR_CODES.ZK_ARTIFACT_NOT_FOUND]: ENVIRONMENT,
+  [PROVIDER_ERROR_CODES.ZK_ARTIFACT_FETCH_FAILED]: TRANSIENT,
+  [PROVIDER_ERROR_CODES.ZK_ARTIFACT_NOT_SERVED]: ENVIRONMENT,
+  [PROVIDER_ERROR_CODES.PROOF_SERVER_UNAVAILABLE]: TRANSIENT,
+  [PROVIDER_ERROR_CODES.PROOF_SERVER_REFUSED]: ENVIRONMENT,
+  [PROVIDER_ERROR_CODES.PRIVATE_STATE_EXPORT_FAILED]: USAGE,
+  [PROVIDER_ERROR_CODES.SIGNING_KEY_EXPORT_FAILED]: USAGE,
+  [PROVIDER_ERROR_CODES.PRIVATE_STATE_IMPORT_FAILED]: INTEGRITY,
+  [PROVIDER_ERROR_CODES.EXPORT_DECRYPTION_FAILED]: INTEGRITY,
+  [PROVIDER_ERROR_CODES.INVALID_EXPORT_FORMAT]: INTEGRITY,
+  [PROVIDER_ERROR_CODES.IMPORT_CONFLICT]: USAGE,
+  [PROVIDER_ERROR_CODES.PRIVATE_STATE_LOCK_TIMEOUT]: TRANSIENT,
+  [PROVIDER_ERROR_CODES.PRIVATE_STATE_DECRYPTION_FAILED]: INTEGRITY,
+  [PROVIDER_ERROR_CODES.PRIVATE_STATE_STORAGE_FAILED]: ENVIRONMENT,
+  [PROVIDER_ERROR_CODES.PRIVATE_STATE_LIMIT_EXCEEDED]: USAGE,
+  [PROVIDER_ERROR_CODES.STORED_SIGNING_KEY_INVALID]: INTEGRITY,
+  [PROVIDER_ERROR_CODES.INDEXER_GRAPHQL_FAILED]: ENVIRONMENT,
+  [PROVIDER_ERROR_CODES.INDEXER_QUERY_FAILED]: TRANSIENT,
+  [PROVIDER_ERROR_CODES.INDEXER_DATA_INVALID]: INTEGRITY,
+  [PROVIDER_ERROR_CODES.INDEXER_SUBSCRIPTION_DATA_INVALID]: INTEGRITY,
+  [PROVIDER_ERROR_CODES.INDEXER_CONFIG_INVALID]: USAGE,
+  [PROVIDER_ERROR_CODES.INDEXER_INVARIANT_VIOLATED]: INTERNAL,
+  [PROVIDER_ERROR_CODES.INDEXER_PAYLOAD_TOO_LARGE]: INTEGRITY
 });
 
-const { V8_PAYLOAD_UNSUPPORTED, UNTAGGED_PAYLOAD, SEAM_ERA_UNSUPPORTED, PRIVATE_STATE_NOT_SERIALIZABLE } =
-  PROVIDER_ERROR_CODES;
+const {
+  V8_PAYLOAD_UNSUPPORTED,
+  UNTAGGED_PAYLOAD,
+  SEAM_ERA_UNSUPPORTED,
+  PRIVATE_STATE_NOT_SERIALIZABLE,
+  INVALID_PROTOCOL_SCHEME,
+  ARTIFACT_RUNTIME_VERSION_UNAVAILABLE,
+  PRIVATE_STATE_EXPORT_FAILED,
+  SIGNING_KEY_EXPORT_FAILED,
+  PRIVATE_STATE_IMPORT_FAILED,
+  EXPORT_DECRYPTION_FAILED,
+  INVALID_EXPORT_FORMAT,
+  IMPORT_CONFLICT,
+  PRIVATE_STATE_LOCK_TIMEOUT,
+  PRIVATE_STATE_DECRYPTION_FAILED,
+  PRIVATE_STATE_STORAGE_FAILED,
+  PRIVATE_STATE_LIMIT_EXCEEDED,
+  ZK_ARTIFACT_FETCH_FAILED,
+  ZK_ARTIFACT_NOT_SERVED,
+  PROOF_SERVER_UNAVAILABLE,
+  PROOF_SERVER_REFUSED
+} = PROVIDER_ERROR_CODES;
 
 /**
  * Thrown by a provider that only speaks the v9 ledger runtime when it is
@@ -103,8 +174,9 @@ const { V8_PAYLOAD_UNSUPPORTED, UNTAGGED_PAYLOAD, SEAM_ERA_UNSUPPORTED, PRIVATE_
  * @see {@link SeamEraDeclarations} for which providers raise it and why, and for
  * how it differs from {@link SeamEraUnsupportedError}.
  */
-export class V8PayloadUnsupportedError extends Error {
+export class V8PayloadUnsupportedError extends MidnightJsError {
   readonly code = V8_PAYLOAD_UNSUPPORTED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[V8_PAYLOAD_UNSUPPORTED];
 
   /**
    * @param seam The provider method that received the payload.
@@ -174,8 +246,9 @@ const describeVersion = (payload: unknown): string => {
  * `midnight-js-types`, or from a payload that crossed an untyped boundary.
  * It carries a `code` so a caller can tell this apart from an arbitrary crash.
  */
-export class UntaggedPayloadError extends Error {
+export class UntaggedPayloadError extends MidnightJsError {
   readonly code = UNTAGGED_PAYLOAD;
+  readonly category = PROVIDER_ERROR_CATEGORIES[UNTAGGED_PAYLOAD];
 
   /** What the payload's `version` field actually held. */
   readonly received: string;
@@ -226,8 +299,9 @@ export class UntaggedPayloadError extends Error {
  * Catch it via its stable `code`, using `hasErrorCode` from
  * `@midnight-ntwrk/midnight-js-utils`.
  */
-export class SeamEraUnsupportedError extends Error {
+export class SeamEraUnsupportedError extends MidnightJsError {
   readonly code = SEAM_ERA_UNSUPPORTED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[SEAM_ERA_UNSUPPORTED];
 
   /**
    * @param seam The seam whose provider does not declare `era`. Reported in
@@ -258,7 +332,10 @@ export class SeamEraUnsupportedError extends Error {
 /**
  * An error describing an invalid protocol scheme.
  */
-export class InvalidProtocolSchemeError extends Error {
+export class InvalidProtocolSchemeError extends MidnightJsError {
+  readonly code = INVALID_PROTOCOL_SCHEME;
+  readonly category = PROVIDER_ERROR_CATEGORIES[INVALID_PROTOCOL_SCHEME];
+
   /**
    * @param invalidScheme The invalid scheme.
    * @param allowableSchemes The valid schemes that are allowed.
@@ -282,7 +359,10 @@ export class InvalidProtocolSchemeError extends Error {
  * Raised rather than answered with a default, because every default would be a guess about which
  * ledger era a caller's artifacts belong to.
  */
-export class ArtifactRuntimeVersionUnavailableError extends Error {
+export class ArtifactRuntimeVersionUnavailableError extends MidnightJsError {
+  readonly code = ARTIFACT_RUNTIME_VERSION_UNAVAILABLE;
+  readonly category = PROVIDER_ERROR_CATEGORIES[ARTIFACT_RUNTIME_VERSION_UNAVAILABLE];
+
   /**
    * @param providerName The runtime name of the provider that could not answer.
    */
@@ -300,7 +380,10 @@ export class ArtifactRuntimeVersionUnavailableError extends Error {
 /**
  * An error thrown when exporting private states fails.
  */
-export class PrivateStateExportError extends Error {
+export class PrivateStateExportError extends MidnightJsError {
+  readonly code = PRIVATE_STATE_EXPORT_FAILED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PRIVATE_STATE_EXPORT_FAILED];
+
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = 'PrivateStateExportError';
@@ -354,8 +437,9 @@ export const PRIVATE_STATE_ROOT_PATH = '<root>';
  * stores faithfully depends on how it serializes, so that set is documented by the
  * implementation rather than here.
  */
-export class PrivateStateSerializationError extends Error {
+export class PrivateStateSerializationError extends MidnightJsError {
   readonly code = PRIVATE_STATE_NOT_SERIALIZABLE;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PRIVATE_STATE_NOT_SERIALIZABLE];
 
   /**
    * @param path Where the offending value sits inside the private state, as a
@@ -381,7 +465,10 @@ export class PrivateStateSerializationError extends Error {
 /**
  * An error thrown when exporting signing keys fails.
  */
-export class SigningKeyExportError extends Error {
+export class SigningKeyExportError extends MidnightJsError {
+  readonly code = SIGNING_KEY_EXPORT_FAILED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[SIGNING_KEY_EXPORT_FAILED];
+
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = 'SigningKeyExportError';
@@ -397,10 +484,19 @@ export type PrivateStateImportErrorCause =
   | 'conflict'
   | 'unknown';
 
+type PrivateStateImportErrorCode =
+  | typeof PRIVATE_STATE_IMPORT_FAILED
+  | typeof EXPORT_DECRYPTION_FAILED
+  | typeof INVALID_EXPORT_FORMAT
+  | typeof IMPORT_CONFLICT;
+
 /**
  * Base error thrown when importing private states fails.
  */
-export class PrivateStateImportError extends Error {
+export class PrivateStateImportError extends MidnightJsError {
+  readonly code: PrivateStateImportErrorCode = PRIVATE_STATE_IMPORT_FAILED;
+  readonly category: MidnightJsErrorCategory = PROVIDER_ERROR_CATEGORIES[PRIVATE_STATE_IMPORT_FAILED];
+
   constructor(
     message: string,
     public readonly cause?: PrivateStateImportErrorCause
@@ -416,6 +512,9 @@ export class PrivateStateImportError extends Error {
  * The specific cause is intentionally not disclosed to prevent oracle attacks.
  */
 export class ExportDecryptionError extends PrivateStateImportError {
+  readonly code = EXPORT_DECRYPTION_FAILED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[EXPORT_DECRYPTION_FAILED];
+
   constructor() {
     super(
       'Failed to decrypt export data. The password may be incorrect or the data may be corrupted.',
@@ -429,6 +528,9 @@ export class ExportDecryptionError extends PrivateStateImportError {
  * Error thrown when the export data format is invalid.
  */
 export class InvalidExportFormatError extends PrivateStateImportError {
+  readonly code = INVALID_EXPORT_FORMAT;
+  readonly category = PROVIDER_ERROR_CATEGORIES[INVALID_EXPORT_FORMAT];
+
   constructor(message = 'Invalid export format') {
     super(message, 'invalid_format');
     this.name = 'InvalidExportFormatError';
@@ -439,6 +541,9 @@ export class InvalidExportFormatError extends PrivateStateImportError {
  * Error thrown when import conflicts with existing data and conflictStrategy is 'error'.
  */
 export class ImportConflictError extends PrivateStateImportError {
+  readonly code = IMPORT_CONFLICT;
+  readonly category = PROVIDER_ERROR_CATEGORIES[IMPORT_CONFLICT];
+
   constructor(
     public readonly conflictCount: number,
     entityName = 'private state'
@@ -448,5 +553,91 @@ export class ImportConflictError extends PrivateStateImportError {
       'conflict'
     );
     this.name = 'ImportConflictError';
+  }
+}
+
+/** A ZK artifact could not be fetched. `status` is the HTTP status, absent when the request itself failed. */
+export class ZkArtifactFetchError extends MidnightJsError {
+  readonly code: typeof ZK_ARTIFACT_FETCH_FAILED | typeof ZK_ARTIFACT_NOT_SERVED;
+  readonly category: MidnightJsErrorCategory;
+
+  /**
+   * @param status The HTTP status, absent when the request itself failed.
+   * @param options `notServed` marks an answer that is not the artifact although its status is 2xx
+   *   (an HTML fallback page).
+   */
+  constructor(
+    message: string,
+    readonly status?: number,
+    options?: { cause?: unknown; notServed?: boolean }
+  ) {
+    super(message, options?.cause === undefined ? undefined : { cause: options.cause });
+    this.name = 'ZkArtifactFetchError';
+    this.code =
+      options?.notServed !== true && (status === undefined || status >= 500)
+        ? ZK_ARTIFACT_FETCH_FAILED
+        : ZK_ARTIFACT_NOT_SERVED;
+    this.category = PROVIDER_ERROR_CATEGORIES[this.code];
+  }
+}
+
+/** The proof server could not be reached or did not accept the request. */
+export class ProofServerError extends MidnightJsError {
+  readonly code: typeof PROOF_SERVER_UNAVAILABLE | typeof PROOF_SERVER_REFUSED;
+  readonly category: MidnightJsErrorCategory;
+
+  constructor(
+    message: string,
+    readonly status?: number,
+    options?: ErrorOptions
+  ) {
+    super(message, options);
+    this.name = 'ProofServerError';
+    this.code = status === undefined || status >= 500 ? PROOF_SERVER_UNAVAILABLE : PROOF_SERVER_REFUSED;
+    this.category = PROVIDER_ERROR_CATEGORIES[this.code];
+  }
+}
+
+/** A password-rotation lock was not released in time. */
+export class PrivateStateLockTimeoutError extends MidnightJsError {
+  readonly code = PRIVATE_STATE_LOCK_TIMEOUT;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PRIVATE_STATE_LOCK_TIMEOUT];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'PrivateStateLockTimeoutError';
+  }
+}
+
+/** Stored private state could not be decrypted. */
+export class PrivateStateDecryptionError extends MidnightJsError {
+  readonly code = PRIVATE_STATE_DECRYPTION_FAILED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PRIVATE_STATE_DECRYPTION_FAILED];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'PrivateStateDecryptionError';
+  }
+}
+
+/** Reading or writing the private-state store failed. */
+export class PrivateStateStorageError extends MidnightJsError {
+  readonly code = PRIVATE_STATE_STORAGE_FAILED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PRIVATE_STATE_STORAGE_FAILED];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'PrivateStateStorageError';
+  }
+}
+
+/** More private-state entries than the configured maximum were processed. */
+export class PrivateStateLimitExceededError extends MidnightJsError {
+  readonly code = PRIVATE_STATE_LIMIT_EXCEEDED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PRIVATE_STATE_LIMIT_EXCEEDED];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'PrivateStateLimitExceededError';
   }
 }
