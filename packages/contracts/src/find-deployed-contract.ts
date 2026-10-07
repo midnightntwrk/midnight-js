@@ -21,20 +21,23 @@ import {
   sampleSigningKey,
   type SigningKey
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   type AnyProvableCircuitId,
   type PrivateStateId,
   type PrivateStateProvider,
   type VerifierKey,
   type VersionedFinalizedTxData} from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
 import { CURRENT_PIPELINE_ERA, type CurrentPipelineEra, RETAINED_PIPELINE_ERA } from './era';
 import {
+  ContractNotFoundError,
   ContractTypeError,
   IncompleteFindContractPrivateStateConfig,
-  Ledger8SigningKeyUnusableError
+  Ledger8SigningKeyUnusableError,
+  PrivateStateNotFoundError
 } from './errors';
 import {
   type CircuitMaintenanceTxInterfaces,
@@ -90,7 +93,9 @@ const queryFoundDeployTxPublicData = async (
       return { ...deployRecord, contractAddress };
     case 'v9': {
       const initialContractState = await publicDataProvider.queryDeployContractState(contractAddress);
-      assertDefined(initialContractState, `No contract deployed at contract address '${contractAddress}'`);
+      if (initialContractState === undefined || initialContractState === null) {
+        throw new ContractNotFoundError(`No contract deployed at contract address '${contractAddress}'`);
+      }
       return { ...deployRecord, contractAddress, initialContractState };
     }
     default:
@@ -233,17 +238,20 @@ const setOrGetInitialPrivateState = async <PS>(
     // wrote `privateStateId: cfg.someId` with an undefined `someId` BELIEVES it named one, and
     // reading that as "no id given" would attach against no state at all and leave every later
     // call running on a state the contract never had. Refused instead, at the configuration.
-    assertDefined(
-      privateStateId,
-      "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
-        'for a contract that carries no private state.'
-    );
+    if (privateStateId === undefined || privateStateId === null) {
+      throw new InvalidArgumentError(
+        "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
+          'for a contract that carries no private state.'
+      );
+    }
     if (hasInitialPrivateState(options)) {
       await privateStateProvider.set(privateStateId, options.initialPrivateState);
       return options.initialPrivateState;
     }
     const currentPrivateState = await privateStateProvider.get(privateStateId);
-    assertDefined(currentPrivateState, `No private state found at private state ID '${privateStateId}'`);
+    if (currentPrivateState === undefined || currentPrivateState === null) {
+      throw new PrivateStateNotFoundError(`No private state found at private state ID '${privateStateId}'`);
+    }
     return currentPrivateState;
   }
   if (hasInitialPrivateState(options)) {
@@ -588,7 +596,9 @@ export async function findDeployedContract<C extends Contract.Any>(
   );
 
   const currentContractState = await providers.publicDataProvider.queryContractState(contractAddress);
-  assertDefined(currentContractState, `No contract deployed at contract address '${contractAddress}'`);
+  if (currentContractState === undefined || currentContractState === null) {
+    throw new ContractNotFoundError(`No contract deployed at contract address '${contractAddress}'`);
+  }
 
   const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
     ContractExecutable.make(compiledContract).getProvableCircuitIds()

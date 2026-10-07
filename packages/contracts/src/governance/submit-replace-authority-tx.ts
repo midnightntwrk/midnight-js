@@ -15,11 +15,13 @@
 
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type FinalizedTxData, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from '../contract-providers';
+import { ContractNotFoundError } from '../errors';
 import { submitTx } from '../submit-tx';
 import { ReplaceMaintenanceAuthorityTxFailedError } from './errors';
 import { createUnprovenReplaceAuthorityTx } from './unproven-tx';
@@ -81,9 +83,13 @@ export const submitReplaceAuthorityTx =
     assertValidMidnightConfig(providers.config);
     assertIsContractAddress(contractAddress);
     const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
-    assertDefined(contractState, `No contract state found on chain for contract address '${contractAddress}'`);
+    if (contractState === undefined || contractState === null) {
+      throw new ContractNotFoundError(`No contract state found on chain for contract address '${contractAddress}'`);
+    }
     const currentAuthority = await providers.privateStateProvider.getSigningKey(contractAddress);
-    assertDefined(currentAuthority, `Signing key for contract address '${contractAddress}' not found`);
+    if (currentAuthority === undefined || currentAuthority === null) {
+      throw new InvalidArgumentError(`Signing key for contract address '${contractAddress}' not found`);
+    }
     const unprovenTx = await createUnprovenReplaceAuthorityTx(
       providers.zkConfigProvider,
       compiledContract,

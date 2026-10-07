@@ -20,6 +20,7 @@ import {
   type ContractState,
   type QueryContext,
   type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   ChargedState,
   communicationCommitmentRandomness,
@@ -217,16 +218,19 @@ export const createUnprovenLedgerCallTx = (
     const callContractState = contractStateFor(call.contractAddress);
     assertDefined(callContractState, `Contract state for '${call.contractAddress}' is undefined`);
     const op = toLedgerContractState(callContractState).operation(call.circuitId);
-    assertDefined(op, `Operation '${call.circuitId}' is undefined for contract '${call.contractAddress}'`);
+    if (op === undefined || op === null) {
+      throw new InvalidArgumentError(`Operation '${call.circuitId}' is undefined for contract '${call.contractAddress}'`);
+    }
     // The key location hashes the operation's deployed verifier key; a state whose operation carries
     // no key (e.g. a bare `ContractOperation`) is a caller error, surfaced here rather than as an
     // opaque "expected Uint8Array" throw from the hasher.
-    assertDefined(
-      op.verifierKey,
-      `Operation '${call.circuitId}' on contract '${call.contractAddress}' has no verifier key. Each ` +
-        'invoked operation must carry its deployed verifier key (present in states read from chain, or ' +
-        "produced by a real deploy), which the call's key location hashes."
-    );
+    if (op.verifierKey === undefined || op.verifierKey === null) {
+      throw new InvalidArgumentError(
+        `Operation '${call.circuitId}' on contract '${call.contractAddress}' has no verifier key. Each ` +
+          'invoked operation must carry its deployed verifier key (present in states read from chain, or ' +
+          "produced by a real deploy), which the call's key location hashes."
+      );
+    }
     intent = intent.addCall(
       new ContractCallPrototype(
         call.contractAddress,

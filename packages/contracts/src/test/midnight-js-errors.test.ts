@@ -79,7 +79,9 @@ const cases: readonly Case[] = [
   ['Ledger8DeployNotStoredError', new errors.Ledger8DeployNotStoredError(ADDRESS, SIGNING_KEY, 'signing-key', CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_NOT_STORED, 'ENVIRONMENT'],
   ['Ledger8SigningKeyUnusableError', new errors.Ledger8SigningKeyUnusableError(ADDRESS), CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNUSABLE, 'USAGE'],
   ['HeadReadFailedError', new errors.HeadReadFailedError('head read failed', { cause: CAUSE }), CONTRACTS_ERROR_CODES.HEAD_READ_FAILED, 'TRANSIENT'],
-  ['ZswapOutputResolutionError', new errors.ZswapOutputResolutionError('unresolved', { cause: CAUSE }), CONTRACTS_ERROR_CODES.ZSWAP_OUTPUT_UNRESOLVED, 'USAGE']
+  ['ZswapOutputResolutionError', new errors.ZswapOutputResolutionError('unresolved', { cause: CAUSE }), CONTRACTS_ERROR_CODES.ZSWAP_OUTPUT_UNRESOLVED, 'USAGE'],
+  ['ContractNotFoundError', new errors.ContractNotFoundError('no contract'), CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND, 'USAGE'],
+  ['PrivateStateNotFoundError', new errors.PrivateStateNotFoundError('no private state'), CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND, 'USAGE']
 ];
 
 describe('contracts error classes', () => {
@@ -111,6 +113,13 @@ describe('contracts error classes', () => {
 
   it('IncompleteCallTxPrivateStateConfig keeps a name of its own', () => {
     expect(new errors.IncompleteCallTxPrivateStateConfig().name).toBe('IncompleteCallTxPrivateStateConfig');
+  });
+
+  it.each([
+    ['ContractNotFoundError', new errors.ContractNotFoundError('no contract')],
+    ['PrivateStateNotFoundError', new errors.PrivateStateNotFoundError('no private state')]
+  ])('%s keeps a name of its own', (name, error) => {
+    expect(error.name).toBe(name);
   });
 
   it('ContractTypeError keeps a name of its own', () => {

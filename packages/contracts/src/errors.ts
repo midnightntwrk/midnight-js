@@ -733,6 +733,28 @@ export class ZswapOutputResolutionError extends MidnightJsError {
   }
 }
 
+/** No contract is deployed at the given address on the network the providers point to. */
+export class ContractNotFoundError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'ContractNotFoundError';
+  }
+}
+
+/** No private state is stored under the private state id the caller named. */
+export class PrivateStateNotFoundError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'PrivateStateNotFoundError';
+  }
+}
+
 export const isEffectContractError = (error: unknown): error is EffectContractError =>
   typeof error === 'object' &&
   error !== null &&

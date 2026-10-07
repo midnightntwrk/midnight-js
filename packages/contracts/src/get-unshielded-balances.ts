@@ -15,7 +15,9 @@
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PublicDataProvider, UnshieldedBalances } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+
+import { ContractNotFoundError } from './errors';
 
 /**
  * Fetches the unshielded balances associated with a specific contract address.
@@ -29,6 +31,8 @@ export const getUnshieldedBalances = async (
 ): Promise<UnshieldedBalances> => {
   assertIsContractAddress(contractAddress);
   const unshieldedBalances = await publicDataProvider.queryUnshieldedBalances(contractAddress);
-  assertDefined(unshieldedBalances, `No unshielded balances found at contract address '${contractAddress}'`);
+  if (unshieldedBalances === undefined || unshieldedBalances === null) {
+    throw new ContractNotFoundError(`No unshielded balances found at contract address '${contractAddress}'`);
+  }
   return unshieldedBalances;
 };

@@ -41,7 +41,7 @@ import {
   loadLedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
 import { type Recipient } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   LedgerParameters,
   type ProvingProvider,
@@ -1476,7 +1476,11 @@ describe('the retained-native pipeline through the unchanged entry points', () =
         circuitId: 'not_a_declared_circuit',
         args: [recording.receivedCoin]
       })
-    ).rejects.toThrow("Circuit 'not_a_declared_circuit' is undefined");
+    ).rejects.toMatchObject({
+      name: 'InvalidArgumentError',
+      code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+      message: "Circuit 'not_a_declared_circuit' is undefined"
+    });
     expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
     expect(providers.publicDataProvider.queryRawContractState).not.toHaveBeenCalled();
   });
@@ -1852,7 +1856,11 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
     await expect(
       submitCallTx(providers, { ...callOptions(), privateStateId: 'retained-private-state' })
-    ).rejects.toThrow("No private state found at private state ID 'retained-private-state'");
+    ).rejects.toMatchObject({
+      name: 'PrivateStateNotFoundError',
+      code: CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND,
+      message: expect.stringContaining("No private state found at private state ID 'retained-private-state'")
+    });
 
     // Refused BEFORE the circuit ran and before anything was proven or stored.
     // Passing `undefined` down is what makes this expensive rather than merely
@@ -2914,7 +2922,11 @@ describe('deploying a retained-era contract through deployContract', () => {
     // with nothing erroring. The attach arm refuses exactly this shape.
     await expect(
       deployContract(providers, { compiledContract: contract, privateStateId: undefined })
-    ).rejects.toThrow("'privateStateId' was given as undefined");
+    ).rejects.toMatchObject({
+      name: 'InvalidArgumentError',
+      code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+      message: expect.stringContaining("'privateStateId' was given as undefined")
+    });
     expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
@@ -2929,7 +2941,11 @@ describe('deploying a retained-era contract through deployContract', () => {
       { compiledContract: contract, privateStateId: undefined, initialPrivateState: {} }
     );
 
-    await expect(deploying).rejects.toThrow("'privateStateId' was given as undefined");
+    await expect(deploying).rejects.toMatchObject({
+      name: 'InvalidArgumentError',
+      code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+      message: expect.stringContaining("'privateStateId' was given as undefined")
+    });
     expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
@@ -3364,7 +3380,11 @@ describe('attaching to a retained-era contract already on chain', () => {
     // never had.
     await expect(
       findDeployedContract(providers, { ...attachOptions(), privateStateId: 'retained-private-state' })
-    ).rejects.toThrow("No private state found at private state ID 'retained-private-state'");
+    ).rejects.toMatchObject({
+      name: 'PrivateStateNotFoundError',
+      code: CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND,
+      message: expect.stringContaining("No private state found at private state ID 'retained-private-state'")
+    });
     // No handle was built, so there is no `callTx` for a caller to reach the missing state through.
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
@@ -3387,7 +3407,11 @@ describe('attaching to a retained-era contract already on chain', () => {
     // contract never had.
     await expect(
       findDeployedContract(providers, { ...attachOptions(), privateStateId: undefined })
-    ).rejects.toThrow("'privateStateId' was given as undefined");
+    ).rejects.toMatchObject({
+      name: 'InvalidArgumentError',
+      code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+      message: expect.stringContaining("'privateStateId' was given as undefined")
+    });
     expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
@@ -3399,7 +3423,11 @@ describe('attaching to a retained-era contract already on chain', () => {
     // the provider, storing the state under an id of `undefined`.
     await expect(
       findDeployedContract(providers, { ...attachOptions(), privateStateId: undefined, initialPrivateState: {} })
-    ).rejects.toThrow("'privateStateId' was given as undefined");
+    ).rejects.toMatchObject({
+      name: 'InvalidArgumentError',
+      code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+      message: expect.stringContaining("'privateStateId' was given as undefined")
+    });
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
 
@@ -3455,7 +3483,11 @@ describe('attaching to a retained-era contract already on chain', () => {
         contractAddress: recording.contractAddress,
         circuitIds: []
       })
-    ).rejects.toThrow('declares no callable circuits');
+    ).rejects.toMatchObject({
+      name: 'InvalidArgumentError',
+      code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+      message: expect.stringContaining('declares no callable circuits')
+    });
     expect(providers.zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
     expect(providers.publicDataProvider.queryRawContractState).not.toHaveBeenCalled();
   });

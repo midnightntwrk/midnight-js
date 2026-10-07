@@ -416,6 +416,8 @@ new coded error cannot ship without an entry here and an entry cannot outlive it
 | `MIDNIGHT_JS_C_LEDGER8_SIGNING_KEY_UNUSABLE` | The stored signing key cannot be used for a retained-era operation. | Check the key belongs to this contract and era. |
 | `MIDNIGHT_JS_C_HEAD_READ_FAILED` | The network head could not be re-read while checking an era disagreement. | Retry once the indexer is reachable; the transport error is on `cause`. |
 | `MIDNIGHT_JS_C_ZSWAP_OUTPUT_UNRESOLVED` | A Zswap output or its recipient's encryption key could not be resolved. | Check the recipient is a supported address and the coin type is supported. |
+| `MIDNIGHT_JS_C_CONTRACT_NOT_FOUND` | No contract is deployed at the given address on the network the providers point to. | Check the address and that the providers target the network the contract was deployed on. |
+| `MIDNIGHT_JS_C_PRIVATE_STATE_NOT_FOUND` | No private state is stored under the given private state id. | Check the id, or store the initial private state first (deploy or find with an initial state). |
 
 ### Provider seams (`MIDNIGHT_JS_PR_*`, `MIDNIGHT_JS_U_*`)
 

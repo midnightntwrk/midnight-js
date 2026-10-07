@@ -16,8 +16,9 @@
 import { readFileSync } from 'node:fs';
 
 import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { submitInsertVerifierKeyTx } from '../../governance/submit-insert-vk-tx';
@@ -141,6 +142,34 @@ describe('submitInsertVerifierKeyTx', () => {
   });
 
   describe('error scenarios', () => {
+    it('refuses an address with no contract state as ContractNotFoundError', async () => {
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(null);
+
+      await expect(
+        submitInsertVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, 'testCircuit', mockVerifierKey)
+      ).rejects.toMatchObject({
+        name: 'ContractNotFoundError',
+        code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND,
+        message: `No contract state found on chain for contract address '${mockContractAddress}'`
+      });
+      expect(submitTx).not.toHaveBeenCalled();
+    });
+
+    it('refuses a contract this caller holds no signing key for as InvalidArgumentError', async () => {
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockContractState.operation = vi.fn().mockReturnValue(undefined);
+      mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(undefined);
+
+      await expect(
+        submitInsertVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, 'testCircuit', mockVerifierKey)
+      ).rejects.toMatchObject({
+        name: 'InvalidArgumentError',
+        code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+        message: `Signing key for contract address '${mockContractAddress}' not found`
+      });
+      expect(submitTx).not.toHaveBeenCalled();
+    });
+
     it('should reject before submitting when the operation already carries a verifier key', async () => {
       const circuitId = 'testCircuit';
 
@@ -149,7 +178,11 @@ describe('submitInsertVerifierKeyTx', () => {
 
       await expect(
         submitInsertVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId, mockVerifierKey)
-      ).rejects.toThrow(`Circuit '${circuitId}' is already defined for contract at address '${mockContractAddress}'`);
+      ).rejects.toMatchObject({
+        name: 'InvalidArgumentError',
+        code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+        message: `Circuit '${circuitId}' is already defined for contract at address '${mockContractAddress}'`
+      });
       expect(mockProviders.privateStateProvider.getSigningKey).not.toHaveBeenCalled();
       expect(createUnprovenInsertVerifierKeyTx).not.toHaveBeenCalled();
       expect(submitTx).not.toHaveBeenCalled();

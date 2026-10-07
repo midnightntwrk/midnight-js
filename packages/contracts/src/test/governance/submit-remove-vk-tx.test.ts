@@ -14,7 +14,8 @@
  */
 
 import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { submitRemoveVerifierKeyTx } from '../../governance/submit-remove-vk-tx';
@@ -104,6 +105,34 @@ describe('submitRemoveVerifierKeyTx', () => {
   });
 
   describe('error scenarios', () => {
+    it('refuses an address with no contract state as ContractNotFoundError', async () => {
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(null);
+
+      await expect(
+        submitRemoveVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, 'testCircuit')
+      ).rejects.toMatchObject({
+        name: 'ContractNotFoundError',
+        code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND,
+        message: `No contract state found on chain for contract address '${mockContractAddress}'`
+      });
+      expect(submitTx).not.toHaveBeenCalled();
+    });
+
+    it('refuses a contract this caller holds no signing key for as InvalidArgumentError', async () => {
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockContractState.operation = vi.fn().mockReturnValue({ verifierKey: new Uint8Array(32) });
+      mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(undefined);
+
+      await expect(
+        submitRemoveVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, 'testCircuit')
+      ).rejects.toMatchObject({
+        name: 'InvalidArgumentError',
+        code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+        message: `Signing key for contract address '${mockContractAddress}' not found`
+      });
+      expect(submitTx).not.toHaveBeenCalled();
+    });
+
     it('should reject before proving when the circuit is not registered on the contract', async () => {
       const circuitId = 'testCircuit';
 
@@ -112,7 +141,11 @@ describe('submitRemoveVerifierKeyTx', () => {
 
       await expect(
         submitRemoveVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId)
-      ).rejects.toThrow(`Circuit '${circuitId}' not found for contract at address '${mockContractAddress}'`);
+      ).rejects.toMatchObject({
+        name: 'InvalidArgumentError',
+        code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+        message: `Circuit '${circuitId}' not found for contract at address '${mockContractAddress}'`
+      });
       expect(mockProviders.privateStateProvider.getSigningKey).not.toHaveBeenCalled();
       expect(createUnprovenRemoveVerifierKeyTx).not.toHaveBeenCalled();
       expect(submitTx).not.toHaveBeenCalled();

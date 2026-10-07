@@ -15,7 +15,8 @@
 
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import { assertDefined, assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
@@ -185,12 +186,12 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
     return submitLedger8CallTx(providers, toLedger8CallEntryOptions(options));
   }
   assertIsContractAddress(options.contractAddress);
-  assertDefined(
-    ContractExecutable.make(options.compiledContract)
-      .getProvableCircuitIds()
-      .find((circuitId) => circuitId as unknown as PCK === options.circuitId), // eslint-disable-line no-restricted-syntax
-    `Circuit '${options.circuitId}' is undefined`
-  );
+  const declaredCircuitId = ContractExecutable.make(options.compiledContract)
+    .getProvableCircuitIds()
+    .find((circuitId) => circuitId as unknown as PCK === options.circuitId); // eslint-disable-line no-restricted-syntax
+  if (declaredCircuitId === undefined) {
+    throw new InvalidArgumentError(`Circuit '${options.circuitId}' is undefined`);
+  }
 
   const hasPrivateStateProvider = 'privateStateProvider' in providers;
   const hasPrivateStateId = 'privateStateId' in options;
@@ -349,12 +350,12 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
     return submitLedger8CallTxAsync(providers, toLedger8CallEntryOptions(options));
   }
   assertIsContractAddress(options.contractAddress);
-  assertDefined(
-    ContractExecutable.make(options.compiledContract)
-      .getProvableCircuitIds()
-      .find((circuitId) => circuitId as unknown as PCK === options.circuitId), // eslint-disable-line no-restricted-syntax
-    `Circuit '${options.circuitId}' is undefined`
-  );
+  const declaredCircuitId = ContractExecutable.make(options.compiledContract)
+    .getProvableCircuitIds()
+    .find((circuitId) => circuitId as unknown as PCK === options.circuitId); // eslint-disable-line no-restricted-syntax
+  if (declaredCircuitId === undefined) {
+    throw new InvalidArgumentError(`Circuit '${options.circuitId}' is undefined`);
+  }
 
   const hasPrivateStateProvider = 'privateStateProvider' in providers;
   const hasPrivateStateId = 'privateStateId' in options;

@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { submitReplaceAuthorityTx } from '../../governance/submit-replace-authority-tx';
@@ -99,6 +100,33 @@ describe('submitReplaceAuthorityTx', () => {
   });
 
   describe('error scenarios', () => {
+    it('refuses an address with no contract state as ContractNotFoundError', async () => {
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(null);
+
+      await expect(
+        submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress)(mockNewAuthority)
+      ).rejects.toMatchObject({
+        name: 'ContractNotFoundError',
+        code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND,
+        message: `No contract state found on chain for contract address '${mockContractAddress}'`
+      });
+      expect(submitTx).not.toHaveBeenCalled();
+    });
+
+    it('refuses a contract this caller holds no signing key for as InvalidArgumentError', async () => {
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(undefined);
+
+      await expect(
+        submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress)(mockNewAuthority)
+      ).rejects.toMatchObject({
+        name: 'InvalidArgumentError',
+        code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+        message: `Signing key for contract address '${mockContractAddress}' not found`
+      });
+      expect(submitTx).not.toHaveBeenCalled();
+    });
+
     it('should throw ReplaceMaintenanceAuthorityTxFailedError when transaction fails', async () => {
       const { ReplaceMaintenanceAuthorityTxFailedError } = await import('../../governance/errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');

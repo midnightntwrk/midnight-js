@@ -18,7 +18,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { ConfigurationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { COMMON_ERROR_CODES, ConfigurationError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   PrivateStateDecryptionError,
   PrivateStateLimitExceededError,
@@ -438,8 +438,8 @@ describe('level-private-state-provider error classes', () => {
     });
   });
 
-  describe('PrivateStateDecryptionError', () => {
-    test('reports a wrong old password and keeps the cause', async () => {
+  describe('a wrong old password', () => {
+    test('is reported as InvalidArgumentError (USAGE) and keeps the decryption failure as cause', async () => {
       const db = levelPrivateStateProvider<string, string>(config);
       db.setContractAddress(CONTRACT_ADDRESS);
       await db.set('key1', 'value1');
@@ -448,12 +448,15 @@ describe('level-private-state-provider error classes', () => {
 
       const thrown = expectThrownAs(
         error,
-        PrivateStateDecryptionError,
+        InvalidArgumentError,
         'Old password is incorrect: failed to decrypt existing data'
       );
+      expect(thrown).toMatchObject({ code: COMMON_ERROR_CODES.INVALID_ARGUMENT, category: 'USAGE' });
       expect(thrown.cause).toBeInstanceOf(Error);
     });
+  });
 
+  describe('PrivateStateDecryptionError', () => {
     test('reports an entry that cannot be decrypted after the first one', async () => {
       const db = levelPrivateStateProvider<string, string>(config);
       db.setContractAddress(CONTRACT_ADDRESS);

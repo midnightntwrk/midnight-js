@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 
 import { IncompleteDeployContractPrivateStateConfig } from '../errors';
 
@@ -24,11 +24,12 @@ import { IncompleteDeployContractPrivateStateConfig } from '../errors';
  */
 export const assertDeployPrivateStatePairing = (options: object): void => {
   if ('privateStateId' in options) {
-    assertDefined(
-      options.privateStateId,
-      "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
-        'for a contract that stores no private state.'
-    );
+    if (options.privateStateId === undefined || options.privateStateId === null) {
+      throw new InvalidArgumentError(
+        "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
+          'for a contract that stores no private state.'
+      );
+    }
     if (!('initialPrivateState' in options)) {
       throw new IncompleteDeployContractPrivateStateConfig('initialPrivateState');
     }

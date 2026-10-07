@@ -15,12 +15,13 @@
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
 import { UntaggedPayloadError } from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ContractTypeError } from '../errors';
+import { ContractNotFoundError, ContractTypeError, PrivateStateNotFoundError } from '../errors';
 import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
 import { toStoredLedger8SigningKey } from '../internal/ledger8-signing-key';
 import {
@@ -216,9 +217,17 @@ describe('findDeployedContract', () => {
     it('still refuses an address with no current contract state', async () => {
       vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(null);
 
-      await expect(findDeployedContract(providers, { compiledContract, contractAddress })).rejects.toThrow(
-        `No contract deployed at contract address '${contractAddress}'`
+      const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
+        () => undefined,
+        (error: unknown) => error
       );
+
+      expect(rejection).toBeInstanceOf(ContractNotFoundError);
+      expect(rejection).toMatchObject({
+        code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND,
+        category: 'USAGE',
+        message: `No contract deployed at contract address '${contractAddress}'`
+      });
       expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
     });
   });
@@ -276,6 +285,41 @@ describe('findDeployedContract', () => {
     expect(providers.privateStateProvider.get).toHaveBeenCalledWith(privateStateId);
   });
 
+  it('refuses a private state id under which nothing is stored as PrivateStateNotFoundError', async () => {
+    const privateStateId = createMockPrivateStateId();
+    vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
+    vi.mocked(providers.privateStateProvider.get).mockResolvedValue(null);
+
+    const rejection = await findDeployedContract(providers, { compiledContract, contractAddress, privateStateId }).then(
+      () => undefined,
+      (error: unknown) => error
+    );
+
+    expect(rejection).toBeInstanceOf(PrivateStateNotFoundError);
+    expect(rejection).toMatchObject({
+      code: CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND,
+      category: 'USAGE',
+      message: `No private state found at private state ID '${privateStateId}'`
+    });
+  });
+
+  it('refuses a private state id given as undefined as InvalidArgumentError', async () => {
+    const options = { compiledContract, contractAddress, privateStateId: undefined };
+
+    const rejection = await findDeployedContract(providers, options).then(
+      () => undefined,
+      (error: unknown) => error
+    );
+
+    expect(rejection).toBeInstanceOf(InvalidArgumentError);
+    expect(rejection).toMatchObject({
+      message:
+        "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
+        'for a contract that carries no private state.'
+    });
+    expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
+  });
+
   it('should find deployed contract and store new private state', async () => {
     const privateStateId = createMockPrivateStateId();
     const initialPrivateState = { test: 'initial-private-state' };
@@ -324,10 +368,17 @@ describe('findDeployedContract', () => {
       contractAddress
     };
 
-    await expect(findDeployedContract(providers, options)).rejects.toThrow(
-      `No contract deployed at contract address '${contractAddress}'`
+    const rejection = await findDeployedContract(providers, options).then(
+      () => undefined,
+      (error: unknown) => error
     );
 
+    expect(rejection).toBeInstanceOf(ContractNotFoundError);
+    expect(rejection).toMatchObject({
+      code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND,
+      category: 'USAGE',
+      message: `No contract deployed at contract address '${contractAddress}'`
+    });
     expect(providers.publicDataProvider.watchForDeployTxData).toHaveBeenCalledWith(contractAddress);
     expect(providers.publicDataProvider.queryDeployContractState).toHaveBeenCalledWith(contractAddress);
     expect(providers.publicDataProvider.queryContractState).not.toHaveBeenCalled();

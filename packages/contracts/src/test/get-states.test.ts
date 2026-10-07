@@ -15,8 +15,10 @@
 
 import type { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ContractNotFoundError, PrivateStateNotFoundError } from '../errors';
 import { getPublicStates, getStates } from '../get-states';
 import {
   createMockContractAddress,
@@ -63,9 +65,42 @@ describe('get-states', () => {
         });
       });
     });
+
+    it('refuses an address with no public state as ContractNotFoundError', async () => {
+      mockProviders.publicDataProvider.queryZSwapAndContractState = vi.fn().mockResolvedValue(null);
+
+      const rejection = getPublicStates(mockProviders.publicDataProvider, mockContractAddress);
+
+      await expect(rejection).rejects.toBeInstanceOf(ContractNotFoundError);
+      await expect(rejection).rejects.toMatchObject({
+        code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND,
+        category: 'USAGE',
+        message: `No public state found at contract address '${mockContractAddress}'`
+      });
+    });
   });
 
   describe('getStates', () => {
+    it('refuses a private state id under which nothing is stored as PrivateStateNotFoundError', async () => {
+      mockProviders.publicDataProvider.queryZSwapAndContractState = vi.fn()
+        .mockResolvedValue([mockZswapChainState, mockContractState, mockLedgerParameters]);
+      mockProviders.privateStateProvider.get = vi.fn().mockResolvedValue(null);
+
+      const rejection = getStates(
+        mockProviders.publicDataProvider,
+        mockProviders.privateStateProvider,
+        mockContractAddress,
+        mockPrivateStateId
+      );
+
+      await expect(rejection).rejects.toBeInstanceOf(PrivateStateNotFoundError);
+      await expect(rejection).rejects.toMatchObject({
+        code: CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND,
+        category: 'USAGE',
+        message: `No private state found at private state ID '${mockPrivateStateId}'`
+      });
+    });
+
     describe('happy path', () => {
       it('should successfully retrieve all states', async () => {
         mockProviders.publicDataProvider.queryZSwapAndContractState = vi.fn()

@@ -25,7 +25,7 @@ import {
   QueryContext,
   type Recipient
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   type CoinCommitment,
   coinCommitment,
@@ -247,7 +247,7 @@ describe('ledger-utils', () => {
       callTxWithSingleState(
         [
           {
-            contractAddress: PlatformContractAddress.ContractAddress(sampleContractAddress()),
+            contractAddress: PlatformContractAddress.ContractAddress(dummyContractAddress),
             circuitId: unregisteredCircuitId,
             public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: emptyTranscript, partitionInputs: makePartitionInputs() },
             private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
@@ -264,7 +264,49 @@ describe('ledger-utils', () => {
         },
         dummyEncPublicKey
       )
-    ).toThrow(`Operation '${unregisteredCircuitId}' is undefined`);
+    ).toThrow(
+      expect.objectContaining({
+        name: 'InvalidArgumentError',
+        code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+        message: `Operation '${unregisteredCircuitId}' is undefined for contract '${dummyContractAddress}'`
+      })
+    );
+  });
+
+  it('createUnprovenLedgerCallTx refuses an operation that carries no verifier key as InvalidArgumentError', () => {
+    const circuitId = 'keylessCircuit';
+    const contractState = new CompactContractState();
+    contractState.setOperation(circuitId, new ContractOperation());
+    const alignedValue: AlignedValue = { value: [new Uint8Array()], alignment: [{ tag: 'atom', value: { tag: 'field' } }] };
+
+    expect(() =>
+      callTxWithSingleState(
+        [
+          {
+            contractAddress: PlatformContractAddress.ContractAddress(dummyContractAddress),
+            circuitId,
+            public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: emptyTranscript, partitionInputs: makePartitionInputs() },
+            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
+            communicationCommitment: Option.none()
+          }
+        ],
+        () => contractState,
+        new ZswapChainState(),
+        {
+          outputs: [],
+          inputs: [],
+          coinPublicKey: sampleCoinPublicKey(),
+          currentIndex: 0n
+        },
+        dummyEncPublicKey
+      )
+    ).toThrow(
+      expect.objectContaining({
+        name: 'InvalidArgumentError',
+        code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+        message: expect.stringContaining(`Operation '${circuitId}' on contract '${dummyContractAddress}' has no verifier key.`)
+      })
+    );
   });
 
   describe('config', () => {

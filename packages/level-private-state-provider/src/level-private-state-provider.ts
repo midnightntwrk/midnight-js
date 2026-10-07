@@ -14,7 +14,7 @@
  */
 
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { ConfigurationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { ConfigurationError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   ExportDecryptionError,
   type ExportPrivateStatesOptions,
@@ -442,7 +442,7 @@ const rotateStorePassword = async (
             await decryptValue(encryptedValue, oldEncryption, oldPassword);
           } catch (error: unknown) {
             if (isDecryptionError(error)) {
-              throw new PrivateStateDecryptionError('Old password is incorrect: failed to decrypt existing data', { cause: error });
+              throw new InvalidArgumentError('Old password is incorrect: failed to decrypt existing data', { cause: error });
             }
             throw error;
           }

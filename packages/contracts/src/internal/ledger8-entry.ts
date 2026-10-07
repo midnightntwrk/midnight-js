@@ -41,6 +41,7 @@ import {
   loadLedgerEra,
   UnknownLedgerVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   type CoinPublicKey,
   type EncPublicKey,
@@ -63,7 +64,6 @@ import {
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import {
-  assertDefined,
   assertIsContractAddress,
   assertValidMidnightConfig,
   hasErrorCode,
@@ -81,6 +81,7 @@ import {
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
   Ledger8SeamFailedError,
+  PrivateStateNotFoundError,
   type SubmittedOperation
 } from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
@@ -831,11 +832,12 @@ export const findLedger8Contract = async (
   // never. An empty circuit list is refused first of all: it would otherwise
   // make the loop below a no-op and attach to any state at all without
   // checking a single key.
-  assertDefined(
-    request.circuitIds.length > 0 ? request.circuitIds : undefined,
-    `Contract at '${request.contractAddress}' cannot be attached to: the artifact declares no callable ` +
-      'circuits, so there is no verifier key to check it against and nothing to call on it.'
-  );
+  if (request.circuitIds.length === 0) {
+    throw new InvalidArgumentError(
+      `Contract at '${request.contractAddress}' cannot be attached to: the artifact declares no callable ` +
+        'circuits, so there is no verifier key to check it against and nothing to call on it.'
+    );
+  }
 
   // ONE snapshot for every key checked, never one read per circuit: two reads
   // could answer differently and leave half the keys checked against one state
@@ -1003,14 +1005,15 @@ const readLedger8PrivateState = async (
   // must already have been written by an earlier operation, and naming which
   // operations those are is what separates "nothing is stored under this id"
   // from "there is no way to store anything under it".
-  assertDefined(
-    privateState,
-    `No private state found at private state ID '${privateStateId}'. A retained-era call cannot ` +
-      'seed one - only `deployContract` and `findDeployedContract` take an `initialPrivateState`, ' +
-      'each alongside the `privateStateId` it is stored under - so seed it at deploy time or at ' +
-      'attach time, or write it directly with `privateStateProvider.set(privateStateId, state)` ' +
-      'before calling, or omit `privateStateId` for a contract that carries no private state.'
-  );
+  if (privateState === undefined || privateState === null) {
+    throw new PrivateStateNotFoundError(
+      `No private state found at private state ID '${privateStateId}'. A retained-era call cannot ` +
+        'seed one - only `deployContract` and `findDeployedContract` take an `initialPrivateState`, ' +
+        'each alongside the `privateStateId` it is stored under - so seed it at deploy time or at ' +
+        'attach time, or write it directly with `privateStateProvider.set(privateStateId, state)` ' +
+        'before calling, or omit `privateStateId` for a contract that carries no private state.'
+    );
+  }
   return privateState;
 };
 
@@ -1126,10 +1129,9 @@ const runLedger8CallEntry = async (
   // verifier-key slot -- a diagnosis pointing at the chain when the fault is a
   // typo in the caller's own call.
   assertIsContractAddress(options.contractAddress);
-  assertDefined(
-    Object.hasOwn(options.compiledContract.provableCircuits, options.circuitId) ? options.circuitId : undefined,
-    `Circuit '${options.circuitId}' is undefined`
-  );
+  if (!Object.hasOwn(options.compiledContract.provableCircuits, options.circuitId)) {
+    throw new InvalidArgumentError(`Circuit '${options.circuitId}' is undefined`);
+  }
 
   if (options.privateStateId !== undefined && providers.privateStateProvider === undefined) {
     throw new IncompleteCallTxPrivateStateConfig();

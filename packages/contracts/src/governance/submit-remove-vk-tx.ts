@@ -15,11 +15,13 @@
 
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type FinalizedTxData,SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from '../contract-providers';
+import { ContractNotFoundError } from '../errors';
 import { submitTx } from '../submit-tx';
 import { RemoveVerifierKeyTxFailedError } from './errors';
 import { createUnprovenRemoveVerifierKeyTx } from './unproven-tx';
@@ -75,9 +77,13 @@ export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
   assertValidMidnightConfig(providers.config);
   assertIsContractAddress(contractAddress);
   const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
-  assertDefined(contractState, `No contract state found on chain for contract address '${contractAddress}'`);
+  if (contractState === undefined || contractState === null) {
+    throw new ContractNotFoundError(`No contract state found on chain for contract address '${contractAddress}'`);
+  }
   const operation = contractState.operation(circuitId);
-  assertDefined(operation, `Circuit '${circuitId}' not found for contract at address '${contractAddress}'`);
+  if (operation === undefined || operation === null) {
+    throw new InvalidArgumentError(`Circuit '${circuitId}' not found for contract at address '${contractAddress}'`);
+  }
   const verifierKey: Uint8Array | undefined = operation.verifierKey;
   assertDefined(
     verifierKey,
@@ -85,7 +91,9 @@ export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
       'so there is nothing to remove. The deployed state is incomplete or corrupt.'
   );
   const signingKey = await providers.privateStateProvider.getSigningKey(contractAddress);
-  assertDefined(signingKey, `Signing key for contract address '${contractAddress}' not found`);
+  if (signingKey === undefined || signingKey === null) {
+    throw new InvalidArgumentError(`Signing key for contract address '${contractAddress}' not found`);
+  }
   const unprovenTx = await createUnprovenRemoveVerifierKeyTx(
     providers.zkConfigProvider,
     compiledContract,

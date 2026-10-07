@@ -96,6 +96,8 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | C | `LEDGER8_SIGNING_KEY_UNUSABLE` | USAGE | `Ledger8SigningKeyUnusableError` |
 | C | `HEAD_READ_FAILED` | TRANSIENT | `HeadReadFailedError`* |
 | C | `ZSWAP_OUTPUT_UNRESOLVED` | USAGE | `ZswapOutputResolutionError`* |
+| C | `CONTRACT_NOT_FOUND` | USAGE | `ContractNotFoundError`* |
+| C | `PRIVATE_STATE_NOT_FOUND` | USAGE | `PrivateStateNotFoundError`* |
 | U | `ZK_ARTIFACT_INTEGRITY_FAILED` | INTEGRITY | `ZkArtifactIntegrityError` |
 | U | `ZK_ARTIFACT_CONTRACT_INFO_INVALID` | INTEGRITY | `ZkArtifactContractInfoError` |
 | U | `PASSWORD_INVALID` | USAGE | `PasswordValidationError` |

@@ -15,6 +15,7 @@
 
 import { type CompiledContract, type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type AlignedValue, type ContractAddress, type IntentHash, type PartitionedTranscript, type RawTokenType } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type AnyPrivateState,
@@ -451,7 +452,11 @@ describe('submit-call-tx', () => {
       it('should validate circuit exists in contract', async () => {
         const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as AnyProvableCircuitId });
 
-        await expect(submitCallTx(mockProviders, options)).rejects.toThrow("Circuit 'nonExistentCircuit' is undefined");
+        await expect(submitCallTx(mockProviders, options)).rejects.toMatchObject({
+          name: 'InvalidArgumentError',
+          code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+          message: "Circuit 'nonExistentCircuit' is undefined"
+        });
       });
     });
 
@@ -640,7 +645,11 @@ describe('submit-call-tx', () => {
       it('should validate circuit exists in contract', async () => {
         const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as AnyProvableCircuitId });
 
-        await expect(submitCallTxAsync(mockProviders, options)).rejects.toThrow("Circuit 'nonExistentCircuit' is undefined");
+        await expect(submitCallTxAsync(mockProviders, options)).rejects.toMatchObject({
+          name: 'InvalidArgumentError',
+          code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+          message: "Circuit 'nonExistentCircuit' is undefined"
+        });
       });
     });
 

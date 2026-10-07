@@ -22,6 +22,7 @@ import { describe, expect, it } from 'vitest';
 // assertion -- a class dropped from `src/index.ts` fails `yarn typecheck:tests` here.
 import {
   BlankVerifierKeySlotError,
+  ContractNotFoundError,
   EraArtifactMismatchError,
   type EraArtifactMismatchReason,
   EraInvariantViolationError,
@@ -30,6 +31,7 @@ import {
   IndexerInconsistencyError,
   Ledger8,
   LedgerParametersUnservedError,
+  PrivateStateNotFoundError,
   RetainedArtifactOnCurrentEraStateError,
   VerifierKeyMismatchError,
   ZswapOutputResolutionError
@@ -48,6 +50,8 @@ describe('the era and verification-path errors a caller has to catch are reachab
       { error: new HeadReadFailedError('head read failed'), code: CONTRACTS_ERROR_CODES.HEAD_READ_FAILED },
       { error: new ZswapOutputResolutionError('unresolved'), code: CONTRACTS_ERROR_CODES.ZSWAP_OUTPUT_UNRESOLVED },
       { error: new LedgerParametersUnservedError('addr'), code: CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED },
+      { error: new ContractNotFoundError('no contract'), code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND },
+      { error: new PrivateStateNotFoundError('no private state'), code: CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND },
       {
         error: new RetainedArtifactOnCurrentEraStateError('addr'),
         code: CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE
