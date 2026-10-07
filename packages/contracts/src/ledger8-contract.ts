@@ -618,9 +618,8 @@ export interface Ledger8DeployContractOptionsBase<C extends Ledger8Contract>
  *
  * Both members together or neither: a state with no id has nowhere to go, and
  * an id with no state stores `undefined` under a name a later call will read
- * back. `IncompleteDeployContractPrivateStateConfig` reports the first pairing
- * at run time for a caller that reached it through an untyped route; the type
- * refuses both. The current era's `DeployContractOptionsWithPrivateState` is
+ * back. `IncompleteDeployContractPrivateStateConfig` reports both at run time
+ * for a caller that reached it through an untyped route; the type refuses both. The current era's `DeployContractOptionsWithPrivateState` is
  * the same shape for the same reason.
  */
 export interface Ledger8DeployContractOptionsWithPrivateState<C extends Ledger8Contract>

@@ -196,6 +196,15 @@ describe('the incomplete private-state configuration refusals', () => {
     expect(deployRefusal.message).not.toBe(findRefusal.message);
   });
 
+  it('names which half of the deploy pairing is missing', () => {
+    expect(new IncompleteDeployContractPrivateStateConfig('privateStateId').message).toBe(
+      "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined"
+    );
+    expect(new IncompleteDeployContractPrivateStateConfig('initialPrivateState').message).toBe(
+      "'privateStateId' was defined for contract deploy while 'initialPrivateState' was omitted"
+    );
+  });
+
   it('carries its own name, so a handler that discriminates by name can tell the two apart', () => {
     // `Error.name` defaults to `'Error'` on a subclass that does not set it, which makes
     // name-based discrimination -- the route a serialized error across a worker or an IPC boundary

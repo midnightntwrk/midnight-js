@@ -1019,20 +1019,23 @@ export class IncompleteCallTxPrivateStateConfig extends Error {
 }
 
 /**
- * An error indicating that an initial private state was specified for a contract deploy while a
- * private state ID was not. We can't store the initial private state if we don't have a private state ID,
- * and we need to let the user know that.
+ * An error indicating that a contract deploy named only one half of the private-state pairing:
+ * an initial private state with no private state ID to store it under, or a private state ID with
+ * no initial private state to store. The message names the missing half.
  *
- * Raised by the RETAINED-era deploy arm, which is its only throw site today. It stays on the flat
+ * Raised by `deployContract` for both eras, before any provider is touched. It stays on the flat
  * surface rather than under the `Ledger8` namespace because it is the deploy member of the
  * three-refusal family `IncompleteCallTxPrivateStateConfig` and
  * {@link IncompleteFindContractPrivateStateConfig} belong to — one client-side rule per entry
  * point, and client-side storage is era-independent.
  */
 export class IncompleteDeployContractPrivateStateConfig extends Error {
-  constructor() {
+  constructor(missing: 'privateStateId' | 'initialPrivateState' = 'privateStateId') {
     super('Incorrect deploy contract configuration');
-    this.message = "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined";
+    this.message =
+      missing === 'privateStateId'
+        ? "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined"
+        : "'privateStateId' was defined for contract deploy while 'initialPrivateState' was omitted";
     this.name = 'IncompleteDeployContractPrivateStateConfig';
   }
 }

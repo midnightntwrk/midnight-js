@@ -2618,9 +2618,28 @@ describe('deploying a retained-era contract through deployContract', () => {
     await expect(
       // @ts-expect-error - a private state with no id naming where it goes
       deployContract(providers, { compiledContract: contract, initialPrivateState: {} })
-    ).rejects.toBeInstanceOf(IncompleteDeployContractPrivateStateConfig);
+    ).rejects.toThrow("'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined");
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
-    // Refused before anything is composed or submitted.
+    // Refused before any provider is touched, the era resolution included.
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+  });
+
+  it('refuses a private state id with no initial private state, before any provider is touched', async () => {
+    const providers = deployProviders();
+
+    const deploying = deployContract(
+      providers,
+      // @ts-expect-error - an id with no state beside it
+      { compiledContract: contract, privateStateId: 'retained-deploy-id' }
+    );
+
+    await expect(deploying).rejects.toBeInstanceOf(IncompleteDeployContractPrivateStateConfig);
+    await expect(deploying).rejects.toThrow(
+      "'privateStateId' was defined for contract deploy while 'initialPrivateState' was omitted"
+    );
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
   });
 
@@ -2794,6 +2813,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     await expect(
       deployContract(providers, { compiledContract: contract, privateStateId: undefined })
     ).rejects.toThrow("'privateStateId' was given as undefined");
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
   });
