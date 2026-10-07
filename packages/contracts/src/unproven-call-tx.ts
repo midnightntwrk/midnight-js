@@ -16,6 +16,7 @@
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { type Contract, ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { type CoinPublicKey, type ContractModuleProvider, type ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { ContractExecutionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import { exitResultOrError, makeContractExecutableRuntime, type MidnightConfig, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
@@ -225,7 +226,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
     // "Error executing circuit '<id>'". Tested via the inherited `isCompactError` brand so every
     // CompactError subclass qualifies, not just the base class (whose `name` differs per subclass).
     if (!error.cause.isCompactError) throw error;
-    throw new Error(error.cause.message, { cause: error });
+    throw new ContractExecutionError(error.cause.message, { cause: error });
   }
 }
 

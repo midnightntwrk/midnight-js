@@ -130,6 +130,16 @@ describe('per-scope era resolution', () => {
     expect(fn).not.toHaveBeenCalled();
   });
 
+  it('refuses a scope that submitted no calls, with an InvalidArgumentError as the cause', async () => {
+    onPostForkHead();
+
+    const error = await withContractScopedTransaction(providers, async () => undefined).catch((e: unknown) => e);
+
+    const cause = error instanceof Error ? error.cause : undefined;
+    expect(cause).toBeInstanceOf(InvalidArgumentError);
+    expect(cause).toHaveProperty('message', 'No calls were submitted.');
+  });
+
   it('resolves the head era ONCE per scope, however many calls are merged into it', async () => {
     onPostForkHead();
 
@@ -397,7 +407,7 @@ describe('a retained-era call handed a scope', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(TypeError);
+    expect(caught).toBeInstanceOf(InvalidArgumentError);
     expect(caught).not.toBeInstanceOf(MixedEraScopeError);
     expect((caught as Error).message).toContain('is not a transaction context');
     // And it says where a real one comes from, so the mistake is fixable.

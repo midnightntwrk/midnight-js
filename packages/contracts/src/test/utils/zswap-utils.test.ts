@@ -15,6 +15,7 @@
 
 import { fc } from '@fast-check/vitest';
 import { type Recipient } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   type AlignedValue,
   type CoinCommitment,
@@ -42,6 +43,7 @@ import { parseEncPublicKeyToHex, toHex } from '@midnight-ntwrk/midnight-js-utils
 import { randomBytes } from 'crypto';
 import { expect, vi } from 'vitest';
 
+import { ZswapOutputResolutionError } from '../../errors';
 import {
   BURN_ENCRYPTION_PUBLIC_KEY,
   createEncryptionPublicKeyResolver,
@@ -866,8 +868,12 @@ describe('Zswap utilities', () => {
       };
       const resolver = createEncryptionPublicKeyResolver(NETWORK_ID, walletCpk, walletEpk);
 
-      expect(() => createZswapOutput({ coinInfo, recipient: unknownRecipient }, resolver)).toThrow(
-        /Unable to resolve encryption public key/
+      const act = () => createZswapOutput({ coinInfo, recipient: unknownRecipient }, resolver);
+
+      expect(act).toThrow(ZswapOutputResolutionError);
+      expect(act).toThrow(
+        `Unable to resolve encryption public key for recipient ${unknownCpk}. ` +
+          'Provide a mapping via the encryptionPublicKeyResolver.'
       );
     });
 
@@ -954,9 +960,10 @@ describe('Zswap utilities', () => {
         outputs: []
       };
 
-      expect(() => encryptionPublicKeyResolverForZswapState(NETWORK_ID, zswapState, walletCpk, walletEpk)).toThrow(
-        /Unsupported coin/
-      );
+      const act = () => encryptionPublicKeyResolverForZswapState(NETWORK_ID, zswapState, walletCpk, walletEpk);
+
+      expect(act).toThrow(ZswapOutputResolutionError);
+      expect(act).toThrow('Unable to lookup encryption public key (Unsupported coin)');
     });
   });
 
@@ -1166,9 +1173,10 @@ describe('Zswap utilities', () => {
         outputs: [{ coinInfo, recipient: { is_left: true, left: recipientCpk, right: sampleContractAddress() } }]
       };
       // Act + Assert
-      expect(() => zswapStateToSegmentedOffer(zswapState, () => epk, undefined, partitioned)).toThrow(
-        /not present in either segment/
-      );
+      const act = () => zswapStateToSegmentedOffer(zswapState, () => epk, undefined, partitioned);
+
+      expect(act).toThrow(InvariantViolationError);
+      expect(act).toThrow(/not present in either segment/);
     });
 
     it('falls back to the guaranteed offer when at least one transcript half is undefined (no-transcript callers)', () => {
@@ -1463,6 +1471,7 @@ describe('Zswap utilities', () => {
         outputs: [walletOutput, unknownOutput]
       };
 
+      expect(() => zswapStateToOffer(zswapState, resolver)).toThrow(ZswapOutputResolutionError);
       expect(() => zswapStateToOffer(zswapState, resolver)).toThrow(/Unable to resolve encryption public key/);
     });
   });

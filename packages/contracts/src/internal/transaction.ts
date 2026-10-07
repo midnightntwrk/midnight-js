@@ -15,6 +15,7 @@
 
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type AnyProvableCircuitId, type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
@@ -218,7 +219,7 @@ export class TransactionContextImpl<
   async [Submit](): Promise<FinalizedCallTxData<C, PCK>> {
     const current = this.currentUnsubmittedCall;
     if (current === undefined) {
-      throw new Error('No calls were submitted.');
+      throw new InvalidArgumentError('No calls were submitted.');
     }
     const { callTxData: unprovenCallTxData, privateStateId, circuitId } = current;
     const finalizedTxData = await submitTx(this.providers, this.submitTxOptions!);
@@ -339,7 +340,7 @@ export const assertScopeAdmitsRetainedEraCall = (circuitId: string, transactionC
   if (isTransactionContext(transactionContext)) {
     throw new MixedEraScopeError(circuitId);
   }
-  throw new TypeError(
+  throw new InvalidArgumentError(
     `submitCallTx was passed a third argument that is not a transaction context (received ` +
       `${transactionContext === null ? 'null' : typeof transactionContext}). A transaction context comes ` +
       `from the callback withContractScopedTransaction runs; pass that value, or omit the argument to ` +
@@ -400,7 +401,7 @@ const runScope = async <
     const [unprovenCallTxData] = innerTxCtx.getLastUnsubmittedCallTxDataToTransact() ?? [];
     if (!unprovenCallTxData) {
       //disable-next-line: no-throw-literal
-      throw new Error('No calls were submitted.');
+      throw new InvalidArgumentError('No calls were submitted.');
     }
     // ANNOTATED, not asserted: this function answers both scope arms and so
     // returns `any`, which on its own would let a member fall off this rebuild

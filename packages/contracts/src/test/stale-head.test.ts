@@ -377,7 +377,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     // Whether the head moved is now UNRESOLVED, so neither failure may be
     // dropped: the submit rejection is what happened, and the failed head read
     // is why it cannot be diagnosed.
-    expect(caught).toBeInstanceOf(AggregateError);
+    expect(caught).not.toBeInstanceOf(AggregateError);
     expect(caught).toBeInstanceOf(SubmitRejectionUndiagnosedError);
     expect((caught as SubmitRejectionUndiagnosedError).errors).toEqual([rejection, transportFailure]);
     // And the proximate failure is on `cause` too, so a consumer that only
@@ -387,11 +387,26 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     expect((caught as SubmitRejectionUndiagnosedError).reason).toBe('head-read-failed');
   });
 
+  it('keeps the AggregateError shape after leaving AggregateError', async () => {
+    const headReadFailure = new Error('indexer unreachable');
+    const pdp = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(headReadFailure) };
+    const rejection = wrappedRejection();
+
+    const error = await handleSubmitRejection(pdp, callOperation(), rejection).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(SubmitRejectionUndiagnosedError);
+    expect(error).not.toBeInstanceOf(AggregateError);
+    if (!(error instanceof SubmitRejectionUndiagnosedError)) throw error;
+    expect(error.errors).toEqual([rejection, headReadFailure]);
+    expect(error.cause).toBe(headReadFailure);
+    expect([error.code, error.category]).toEqual(['MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED', 'TRANSIENT']);
+  });
+
   it('CARRIES A REGISTERED CODE when it cannot diagnose, so a retry handler does not intermittently escalate', async () => {
     // A node rejection and an unreachable indexer are the same network, so they
     // correlate. Without a code of its own, one and the same node rejection
     // would reach a handler branching on `hasErrorCode` as a coded seam failure
-    // when the indexer answered, and as an uncoded AggregateError when it did
+    // when the indexer answered, and as an uncoded error when it did
     // not -- retrying in one case and escalating in the other.
     const rejection = wrappedRejection();
     const readFailed = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(new Error('indexer unreachable')) };

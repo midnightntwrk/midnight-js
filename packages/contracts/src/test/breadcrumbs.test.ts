@@ -51,6 +51,7 @@ import type { RawContractState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import {
+  HeadReadFailedError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
   Ledger8DeployOnV9Error,
@@ -628,6 +629,24 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
         readingProvenance: 'disagreement-re-read'
       }
     ]);
+  });
+
+  it('refuses with HeadReadFailedError, keeping the transport failure on cause, when the re-read fails', async () => {
+    const transportFailure = new Error('indexer unreachable');
+    const failing = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(transportFailure) };
+
+    const error = await resolveContractStateEra('v8', rawState(v9Envelope, V8_HEAD, 'v8'), failing, createSink()).catch(
+      (e: unknown) => e
+    );
+
+    expect(error).toBeInstanceOf(HeadReadFailedError);
+    expect(error).toHaveProperty('cause', transportFailure);
+    expect(error).toHaveProperty(
+      'message',
+      "Could not re-read the network head while checking a 'v8'-era head reading against a " +
+        "'v9'-era contract state envelope. Whether those two disagree is still unresolved, so " +
+        'this operation is refused rather than run against a guess. Retry once the read surface is reachable.'
+    );
   });
 
   it('breadcrumbs a re-read that still disagrees, before reporting an inconsistent read surface', async () => {

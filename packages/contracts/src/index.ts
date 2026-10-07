@@ -82,12 +82,15 @@ export {
   type EraArtifactMismatchReason,
   EraInvariantViolationError,
   type EraSeam,
+  HeadReadFailedError,
   HeadStateEraMismatchError,
   IncompleteCallTxPrivateStateConfig,
   IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   IndexerInconsistencyError,
+  LedgerParametersUnservedError,
   MixedEraScopeError,
+  RetainedArtifactOnCurrentEraStateError,
   ScopedTransactionIdentityMismatchError,
   ScopedTxEraUnsupportedError,
   StaleHeadError,
@@ -97,7 +100,8 @@ export {
   type SubmittedOperation,
   TxFailedError,
   UnrecognisedResultEraError,
-  VerifierKeyMismatchError} from './errors';
+  VerifierKeyMismatchError,
+  ZswapOutputResolutionError} from './errors';
 export {
   findDeployedContract,
   FindDeployedContractOptions,

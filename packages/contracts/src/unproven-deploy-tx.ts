@@ -16,6 +16,7 @@
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { ContractExecutionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   exitResultOrError,
@@ -176,7 +177,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
     if (!isEffectContractError(error)) throw error;
     if (error._tag !== 'ContractRuntimeError' && error._tag !== 'ContractConfigurationError') throw error;
     if (error.cause.name !== 'CompactError') throw error;
-    throw new Error(error.cause.message, { cause: error });
+    throw new ContractExecutionError(error.cause.message, { cause: error });
   }
 }
 

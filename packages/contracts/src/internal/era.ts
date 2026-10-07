@@ -37,6 +37,7 @@ import {
   EraArtifactMismatchError,
   EraInvariantViolationError,
   type EraSeam,
+  HeadReadFailedError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
   Ledger8DeployOnV9Error,
@@ -768,7 +769,7 @@ export const resolveContractStateEra = async (
   } catch (cause) {
     // Nothing is swallowed -- the transport failure propagates on `cause` -- but on its own it
     // carries no trace that an era disagreement was under investigation.
-    throw new Error(
+    throw new HeadReadFailedError(
       `Could not re-read the network head while checking a '${head}'-era head reading against a ` +
         `'${stateEra}'-era contract state envelope. Whether those two disagree is still unresolved, so ` +
         `this operation is refused rather than run against a guess. Retry once the read surface is reachable.`,

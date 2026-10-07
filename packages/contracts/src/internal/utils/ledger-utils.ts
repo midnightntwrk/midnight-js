@@ -51,6 +51,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
+import { ZswapOutputResolutionError } from '../../errors';
 import { type EncryptionPublicKeyResolver, zswapCallsToSegmentedOffer, zswapStateToOffer } from './zswap-utils';
 
 const PKG = '@midnight-ntwrk/midnight-js-contracts';
@@ -160,7 +161,7 @@ const assertReceivesMatchClaims = (
     .filter(({ offered: o, claimed: c }) => o !== c);
   if (differences.length === 0) return;
 
-  throw new Error(
+  throw new ZswapOutputResolutionError(
     `A shielded coin addressed to a contract must be claimed as received by that contract as many ` +
       `times as the offers carry it, and these do not match. A transaction like this is rejected ` +
       `after proving. Offer count vs claim count:\n` +
