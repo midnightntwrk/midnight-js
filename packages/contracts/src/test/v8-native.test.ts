@@ -1078,6 +1078,17 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 30_000);
   });
 
+  it('passes the providers.config TTL to the wallet on the retained-era arm', async () => {
+    const providers = { ...preForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 30 } };
+    const before = Date.now();
+
+    await submitCallTx(providers, callOptions());
+
+    const ttl = vi.mocked(providers.walletProvider.balanceTx).mock.calls[0]?.[1];
+    expect(ttl?.getTime()).toBeGreaterThanOrEqual(before + 30_000);
+    expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 30_000);
+  });
+
   it('completes a call through submitCallTx, reading the head ONCE and the state ONCE', async () => {
     const providers = preForkProviders(v6Envelope);
 

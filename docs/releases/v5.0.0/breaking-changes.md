@@ -518,9 +518,10 @@ interface MidnightProviders {
   `getNetworkId()`, and there is no fallback to it. A leftover `setNetworkId()`
   call has no effect.
 - **TTL:** every intent the framework builds expires `config.ttlSeconds` after it
-  is built. 4.x used a fixed one hour; `ttlSeconds: 3600` keeps that. The value is
-  not passed to `walletProvider.balanceTx`: an intent the wallet adds while
-  balancing keeps the wallet's own TTL.
+  is built. 4.x used a fixed one hour; `ttlSeconds: 3600` keeps that. The framework
+  also passes the TTL to `walletProvider.balanceTx` (its existing `ttl?: Date`
+  argument, which it did not pass before), so a wallet that honours it gives the
+  balancing intent the same lifetime. `submitTx` reads `providers.config` too.
 - **Validation:** a missing `providers.config` or an empty `networkId` throws a
   `TypeError`; a `ttlSeconds` that is not a positive whole number (or that
   overflows a `Date`) throws a `RangeError`. Both happen before the circuit or

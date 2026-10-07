@@ -733,9 +733,9 @@ const providers = {
 
 - `ttlSeconds: 3600` keeps the 4.x behaviour. It must be a positive whole number;
   any other value is rejected with a `RangeError` before the circuit runs.
-- `ttlSeconds` sets the expiry of the intents the framework builds. It is not
-  passed to `walletProvider.balanceTx`, so any intent the wallet adds while
-  balancing keeps the wallet's own TTL.
+- The same TTL is passed to `walletProvider.balanceTx` as its `ttl` argument. If you
+  implement `WalletProvider` yourself, use that argument for the intent your wallet
+  adds while balancing, instead of a TTL of your own.
 - `setNetworkId` has **no effect** on the framework any more. Remove the call once
   `config` is in place; `@midnight-ntwrk/midnight-js-network-id` is deprecated and
   is removed in 6.0.

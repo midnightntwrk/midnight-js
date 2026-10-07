@@ -421,7 +421,7 @@ type SubmitSeam = (call: () => Promise<string>) => Promise<string>;
  * @returns The transaction id the network assigned.
  */
 const submitLedger8TxOnCurrentEra = async (
-  providers: Pick<Ledger8EntryProviders, 'proofProvider' | 'walletProvider' | 'midnightProvider'>,
+  providers: Pick<Ledger8EntryProviders, 'proofProvider' | 'walletProvider' | 'midnightProvider' | 'config'>,
   txBytes: Uint8Array,
   circuitId: string,
   submit: SubmitSeam
@@ -433,7 +433,7 @@ const submitLedger8TxOnCurrentEra = async (
     circuitId
   );
   const balanced = requireV9(
-    await atSeam('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v9', tx: proven })),
+    await atSeam('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v9', tx: proven }, intentTtl(providers.config))),
     'balanceTx',
     circuitId
   );
@@ -450,7 +450,7 @@ const submitLedger8TxOnCurrentEra = async (
  * @returns The transaction id the network assigned.
  */
 const submitLedger8TxOnRetainedEra = async (
-  providers: Pick<Ledger8EntryProviders, 'proofProvider' | 'walletProvider' | 'midnightProvider'>,
+  providers: Pick<Ledger8EntryProviders, 'proofProvider' | 'walletProvider' | 'midnightProvider' | 'config'>,
   txBytes: Uint8Array,
   circuitId: string,
   submit: SubmitSeam
@@ -461,7 +461,7 @@ const submitLedger8TxOnRetainedEra = async (
     circuitId
   );
   const balanced = requireV8(
-    await atSeam('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v8', txBytes: proven })),
+    await atSeam('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v8', txBytes: proven }, intentTtl(providers.config))),
     'balanceTx',
     circuitId
   );
@@ -506,7 +506,7 @@ const submitLedger8TxOnRetainedEra = async (
 export const submitLedger8Tx = async (
   providers: Pick<
     Ledger8EntryProviders,
-    'publicDataProvider' | 'proofProvider' | 'walletProvider' | 'midnightProvider' | 'loggerProvider'
+    'publicDataProvider' | 'proofProvider' | 'walletProvider' | 'midnightProvider' | 'loggerProvider' | 'config'
   >,
   txBytes: Uint8Array,
   operation: SubmittedOperation

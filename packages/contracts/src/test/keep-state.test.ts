@@ -420,6 +420,17 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(providers.publicDataProvider.queryRawContractState).toHaveBeenCalledTimes(1);
   });
 
+  it('passes the providers.config TTL to the wallet on the current-era arm', async () => {
+    const providers = { ...postForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 30 } };
+    const before = Date.now();
+
+    await submitCallTx(providers, callOptions());
+
+    const ttl = vi.mocked(providers.walletProvider.balanceTx).mock.calls[0]?.[1];
+    expect(ttl?.getTime()).toBeGreaterThanOrEqual(before + 30_000);
+    expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 30_000);
+  });
+
   it('hands every provider seam the CURRENT-era arm, as a live ledger transaction', async () => {
     const providers = postForkProviders(v6Envelope);
 

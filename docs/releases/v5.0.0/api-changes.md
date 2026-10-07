@@ -210,6 +210,7 @@ interface MidnightProviders {
 | `CallOptionsProviderDataDependencies` | new required `config: MidnightConfig` (so `createUnprovenCallTxFromInitialStates` options carry it) |
 | `createUnprovenDeployTxFromVerifierKeys` | new last parameter `config: MidnightConfig` |
 | `UnprovenCallTxProvidersBase`, `UnprovenDeployTxProviders` | now include `config` |
+| `submitTx` / `submitTxAsync` and every entry point that submits | read `providers.config` and pass its TTL to `walletProvider.balanceTx(tx, ttl)` |
 
 
 ### `CallResultPublic.events` + `ContractLog` re-export (#1083)
