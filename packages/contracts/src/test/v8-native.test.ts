@@ -28,7 +28,6 @@
  * that differs is which era object the pipeline is handed, and which arm of the
  * provider seams the result crosses on.
  */
-
 import { readFileSync } from 'node:fs';
 import { inspect } from 'node:util';
 
@@ -42,6 +41,7 @@ import {
   loadLedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
 import { type Recipient } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   LedgerParameters,
   type ProvingProvider,
@@ -1081,7 +1081,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
   it('submitCallTx refuses an invalid config before resolving the artifact or proving', async () => {
     const providers = { ...preForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 0 } };
 
-    await expect(submitCallTx(providers, callOptions())).rejects.toThrow(RangeError);
+    await expect(submitCallTx(providers, callOptions())).rejects.toThrow(InvalidArgumentError);
     expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });
@@ -1089,7 +1089,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
   it('submitCallTxAsync refuses an invalid config before resolving the artifact or proving', async () => {
     const providers = { ...preForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 0 } };
 
-    await expect(submitCallTxAsync(providers, callOptions())).rejects.toThrow(RangeError);
+    await expect(submitCallTxAsync(providers, callOptions())).rejects.toThrow(InvalidArgumentError);
     expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });
@@ -2447,7 +2447,7 @@ describe('deploying a retained-era contract through deployContract', () => {
   it('refuses an invalid config before resolving the artifact or running the constructor', async () => {
     const providers = { ...deployProviders(), config: { networkId: 'undeployed', ttlSeconds: 0 } };
 
-    await expect(deployContract(providers, { compiledContract: contract })).rejects.toThrow(RangeError);
+    await expect(deployContract(providers, { compiledContract: contract })).rejects.toThrow(InvalidArgumentError);
     expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });

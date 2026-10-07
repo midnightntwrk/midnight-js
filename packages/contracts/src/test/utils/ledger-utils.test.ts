@@ -25,6 +25,7 @@ import {
   QueryContext,
   type Recipient
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   type CoinCommitment,
   coinCommitment,
@@ -320,7 +321,7 @@ describe('ledger-utils', () => {
     });
 
     it('rejects an invalid TTL', () => {
-      expect(() => buildCall({ networkId: 'preview', ttlSeconds: 0 })).toThrow(RangeError);
+      expect(() => buildCall({ networkId: 'preview', ttlSeconds: 0 })).toThrow(InvalidArgumentError);
     });
 
     it('ignores a leftover global network id', () => {

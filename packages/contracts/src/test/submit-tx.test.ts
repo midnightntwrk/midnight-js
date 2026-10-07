@@ -16,6 +16,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type AnyProvableCircuitId, UntaggedPayloadError } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -212,7 +213,7 @@ describe('submit-tx', () => {
         const providers = { ...mockProviders, config: { networkId: 'preview', ttlSeconds: 0 } };
         providers.proofProvider.proveTx = vi.fn();
 
-        await expect(submitTxAsync(providers, { unprovenTx: mockUnprovenTx })).rejects.toThrow(RangeError);
+        await expect(submitTxAsync(providers, { unprovenTx: mockUnprovenTx })).rejects.toThrow(InvalidArgumentError);
         expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
       });
     });

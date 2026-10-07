@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { NetworkId } from '@midnightntwrk/wallet-sdk';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -44,7 +45,7 @@ describe('initializeMidnightProviders', () => {
           privateStateStoreName: 'providers-test'
         });
 
-      expect(build).toThrow(TypeError);
+      expect(build).toThrow(InvalidArgumentError);
       expect(build).toThrow(/^environmentConfiguration\.networkId/);
       expect(getCoinPublicKey).not.toHaveBeenCalled();
     }

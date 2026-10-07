@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from '../internal/utils';
@@ -136,7 +137,7 @@ describe('unproven-deploy-tx', () => {
           createMockEncryptionPublicKey(),
           { networkId: 'preview', ttlSeconds: 0 }
         )
-      ).rejects.toThrow(RangeError);
+      ).rejects.toThrow(InvalidArgumentError);
     });
   });
 

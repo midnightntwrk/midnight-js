@@ -14,6 +14,7 @@
  */
 
 import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { submitRemoveVerifierKeyTx } from '../../governance/submit-remove-vk-tx';
@@ -59,7 +60,7 @@ describe('submitRemoveVerifierKeyTx', () => {
 
     await expect(
       submitRemoveVerifierKeyTx(providers, mockCompiledContract, mockContractAddress, 'testCircuit')
-    ).rejects.toThrow(RangeError);
+    ).rejects.toThrow(InvalidArgumentError);
     expect(providers.publicDataProvider.queryContractState).not.toHaveBeenCalled();
   });
 

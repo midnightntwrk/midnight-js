@@ -43,7 +43,7 @@ import { type ContractConfiguration } from './contract-types';
  *   - midnightProvider: For Midnight-specific operations
  *   - config: The environment's network id and a one-hour TTL
  *
- * @throws TypeError If `environmentConfiguration.networkId` is not a non-empty string without surrounding whitespace.
+ * @throws InvalidArgumentError If `environmentConfiguration.networkId` is not a non-empty string without surrounding whitespace.
  */
 export const initializeMidnightProviders = <PCK extends string, PS>(
   midnightWalletProvider: MidnightWalletProvider,

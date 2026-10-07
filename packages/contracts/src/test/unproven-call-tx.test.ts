@@ -20,6 +20,7 @@ import {
   type ContractStateProvider,
   StateValue
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -248,7 +249,7 @@ describe('unproven-call-tx', () => {
         createMockZKConfigProvider(),
         options,
         createMockEncryptionPublicKey()
-      )).rejects.toThrow(RangeError);
+      )).rejects.toThrow(InvalidArgumentError);
     });
   });
 
@@ -319,7 +320,7 @@ describe('unproven-call-tx', () => {
       };
       vi.mocked(getPublicStates).mockClear();
 
-      await expect(createUnprovenCallTx(providers, options)).rejects.toThrow(RangeError);
+      await expect(createUnprovenCallTx(providers, options)).rejects.toThrow(InvalidArgumentError);
       expect(publicDataProvider.queryBlock).not.toHaveBeenCalled();
       expect(getPublicStates).not.toHaveBeenCalled();
     });

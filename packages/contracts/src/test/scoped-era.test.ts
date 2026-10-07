@@ -30,11 +30,11 @@
  * contract is single-call by construction, so a pre-fork scope also has little
  * to be atomic about.
  */
-
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { AnyProvableCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -125,7 +125,7 @@ describe('per-scope era resolution', () => {
     const invalid = { ...providers, config: { networkId: 'undeployed', ttlSeconds: 0 } };
     const fn = vi.fn();
 
-    await expect(withContractScopedTransaction(invalid, fn)).rejects.toThrow(RangeError);
+    await expect(withContractScopedTransaction(invalid, fn)).rejects.toThrow(InvalidArgumentError);
     expect(invalid.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
     expect(fn).not.toHaveBeenCalled();
   });

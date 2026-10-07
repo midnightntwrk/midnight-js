@@ -16,6 +16,7 @@
 import { readFileSync } from 'node:fs';
 
 import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -72,7 +73,7 @@ describe('submitInsertVerifierKeyTx', () => {
 
     await expect(
       submitInsertVerifierKeyTx(providers, mockCompiledContract, mockContractAddress, 'testCircuit', mockVerifierKey)
-    ).rejects.toThrow(RangeError);
+    ).rejects.toThrow(InvalidArgumentError);
     expect(providers.publicDataProvider.queryContractState).not.toHaveBeenCalled();
   });
 
