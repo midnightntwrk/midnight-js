@@ -22,6 +22,8 @@ let currentNetworkId: NetworkId | undefined;
  * Sets the global network identifier.
  *
  * @param id A valid {@link NetworkId} value.
+ * @deprecated Since 5.0.0 the framework no longer reads this value. Set
+ * `MidnightProviders.config.networkId` instead. Removed in 6.0.
  */
 export const setNetworkId = (id: NetworkId): void => {
   currentNetworkId = id;
@@ -32,6 +34,8 @@ export const setNetworkId = (id: NetworkId): void => {
  *
  * @returns The currently set {@link NetworkId}.
  * @throws {Error} If {@link setNetworkId} has not been called.
+ * @deprecated Since 5.0.0 the framework no longer reads this value. Read
+ * `MidnightProviders.config.networkId` instead. Removed in 6.0.
  */
 export const getNetworkId = (): NetworkId => {
   if (currentNetworkId === undefined) {

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import {
   type AlignedValue,
@@ -320,6 +321,14 @@ describe('ledger-utils', () => {
 
     it('rejects an invalid TTL before building', () => {
       expect(() => buildCall({ networkId: 'preview', ttlSeconds: 0 })).toThrow(RangeError);
+    });
+
+    it('ignores a leftover global network id', () => {
+      setNetworkId('preview');
+
+      const tx = buildCall({ networkId: 'undeployed', ttlSeconds: 60 });
+
+      expect(networkIdOfTx(tx)).toBe('undeployed');
     });
   });
 

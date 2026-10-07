@@ -2149,7 +2149,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-utils@workspace:packages/utils"
   dependencies:
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnightntwrk/wallet-sdk-address-format": "npm:4.0.0-rc.0"

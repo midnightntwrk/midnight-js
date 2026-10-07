@@ -24,7 +24,6 @@
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnightntwrk/wallet-sdk-address-format": "4.0.0-rc.0",
