@@ -1445,12 +1445,6 @@ const driveCallsAcrossTheBoundary = async (forkOutcome) => {
 const testkit = await import('@midnight-ntwrk/testkit-js');
 const logger = testkit.createLogger(config.logPath);
 
-// The dApp is its own process, so it configures its own network id -- the driver
-// setting one says nothing here. Taken off the barrel rather than by adding a
-// dependency on `network-id`, which is what a consumer would reach for too.
-const { networkId } = await import('@midnight-ntwrk/midnight-js');
-networkId.setNetworkId(config.environment.networkId);
-
 let session = await buildProviders('v8', testkit, logger);
 let deployment;
 
