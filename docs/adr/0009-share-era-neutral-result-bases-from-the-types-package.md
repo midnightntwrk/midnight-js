@@ -167,9 +167,8 @@ is what the key-set gate asserts directly.
   One handle divergence is excused rather than closed: both eras hold the
   deployer's `signingKey`, `initialPrivateState`, `initialZswapState` and
   `initialContractState`, but the current era nests them under `deployTxData`
-  and the retained era publishes them flat. Which path wins is a breaking
-  change to a published surface either way, so it is its own decision,
-  tracked in #1298.
+  and the retained era publishes them flat. The ADR-0010 amendment of
+  2026-10-07 keeps that layout until the retained era is removed.
 
 ## Alternatives considered
 

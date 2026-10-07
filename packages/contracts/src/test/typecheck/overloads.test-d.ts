@@ -608,12 +608,12 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
       | 'callTx'
       | 'signingKey'
       | 'initialContractState'
-      | 'initialState'
+      | 'initialContractStateEncoded'
       | 'initialPrivateState'
       | 'initialZswapState'
     >();
     // ADR-0010: the handle and the bytes, not one instead of the other.
-    expectTypeOf<Ledger8DeployedContract<Counter016Contract>['initialState']>().toEqualTypeOf<Uint8Array>();
+    expectTypeOf<Ledger8DeployedContract<Counter016Contract>['initialContractStateEncoded']>().toEqualTypeOf<Uint8Array>();
     expectTypeOf<
       Ledger8DeployedContract<Counter016Contract>['initialContractState']
       // The published handle stays the narrow `{ serialize }` it always was --
@@ -897,18 +897,17 @@ describe('both eras answer with the SAME contract-handle structure', () => {
    * Members the retained era's DEPLOYED contract carries at the top level and
    * the current era carries under `deployTxData` instead.
    *
-   * Not a missing member on either side: both eras hold all five facts. They
-   * disagree about the PATH, which no key-set assertion at one level can state
-   * -- the current era nests the first four under `deployTxData.private` and
-   * `initialContractState` under `deployTxData.public`. Excused here so the
-   * rest of the surface is gated, and tracked in #1298 as its own decision
-   * about which shape wins, because moving either side is a breaking change to
-   * a published surface.
+   * Both eras hold the first four facts and disagree only about the PATH,
+   * which no key-set assertion at one level can state: the current era nests
+   * three under `deployTxData.private` and `initialContractState` under
+   * `deployTxData.public`. `initialContractStateEncoded` has no current-era
+   * twin. The layout is kept until the retained era is removed; ADR-0010's
+   * 2026-10-07 amendment records why.
    */
   type RetainedEraOnlyDeployedMembers =
     | 'signingKey'
     | 'initialContractState'
-    | 'initialState'
+    | 'initialContractStateEncoded'
     | 'initialPrivateState'
     | 'initialZswapState';
 
@@ -939,7 +938,7 @@ describe('both eras answer with the SAME contract-handle structure', () => {
     expectTypeOf<RetainedFound>().toHaveProperty('signingKey');
     expectTypeOf<RetainedDeployed>().toHaveProperty('signingKey');
     expectTypeOf<RetainedDeployed>().toHaveProperty('initialContractState');
-    expectTypeOf<RetainedDeployed>().toHaveProperty('initialState');
+    expectTypeOf<RetainedDeployed>().toHaveProperty('initialContractStateEncoded');
     expectTypeOf<RetainedDeployed>().toHaveProperty('initialPrivateState');
     expectTypeOf<RetainedDeployed>().toHaveProperty('initialZswapState');
   });

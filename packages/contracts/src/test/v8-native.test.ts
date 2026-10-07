@@ -2391,7 +2391,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(deployed.contractAddress.length).toBeGreaterThan(0);
     // The key the authority was built from, which only the deployer ever holds.
     expect(deployed.signingKey).toBe(SAMPLED_SIGNING_KEY);
-    expect(deployed.initialState).toBeInstanceOf(Uint8Array);
+    expect(deployed.initialContractStateEncoded).toBeInstanceOf(Uint8Array);
     // The LIVE handle beside the bytes, as the retained constructor built it.
     expect(deployed.initialContractState.serialize()).toEqual(v6Envelope);
     // This deploy named no private state, so the constructor was handed

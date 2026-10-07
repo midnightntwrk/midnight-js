@@ -249,3 +249,34 @@ usable balance rather than substituting an empty map.
 decoded state. The addition here is not a general licence to carry ledger fields
 "in case"; it is the one field an execution path demonstrably could not run
 without.
+
+## Amendment — the retained deployed handle keeps its flat layout (2026-10-07)
+
+The decision above stands. This note settles where the retained deployed
+handle keeps the deployer's data, and renames its bytes member.
+
+**The layout stays as it is.** The current era nests the deployer's data under
+`deployTxData.private` (`signingKey`, `initialPrivateState`,
+`initialZswapState`) and `deployTxData.public` (`initialContractState`).
+`Ledger8DeployedContract` carries the same facts at the top level. Both eras
+hold every fact; they disagree only about the path. The two paths are
+documented in the v5.0.0 migration guide.
+
+Moving the retained members under `deployTxData` was rejected. It would not
+give a caller one path across the eras: the retained `deployTxData` is the read
+surface's flat `VersionedFinalizedTxData`, so `txId` already sits at a
+different path from the current era's `deployTxData.public.txId`, and
+`Ledger8DeployedContract` extends `Ledger8FoundContract`, whose `signingKey`
+stays at the top level for the reason given on that member. The change would
+mix two record shapes in one object and still leave the caller branching on
+`era`. Hoisting the current era's members to the top level was rejected
+because it breaks every current-era caller. The divergence ends with the
+retained era itself.
+
+**`initialState` is renamed `initialContractStateEncoded`.** The pair on a
+retained deploy now reads like the pair on a call result,
+`nextContractState` / `nextContractStateEncoded`: a live handle, and the same
+state encoded. `packages/protocol/src/test/v8-deploy.test.ts` pins that the
+two are the same state: given the verifier keys the deploy registers, the
+bytes the deploy derives the address from are byte-identical to the
+constructor's handle serialized.

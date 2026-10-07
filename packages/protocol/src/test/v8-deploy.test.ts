@@ -199,6 +199,32 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     expect(initial.counter).toBe(0n);
   });
 
+  it('composes a deploy whose initial state is byte-identical to the state the constructor built, given the same verifier keys', async () => {
+    const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
+    const result = await runRetainedConstructor({
+      contract: new Contract({}),
+      args: [],
+      privateState: {},
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: readFixtureVerifierKey
+    });
+    const constructedBytes = result.contractState.serialize();
+
+    const deployed = composeV8DeployTx(
+      {
+        contractState: constructedBytes,
+        verifierKeys: new Map([
+          ['increment', new Uint8Array(readFileSync(resolve(FIXTURE_DIR, 'compiled', 'keys', 'increment.verifier')))]
+        ]),
+        networkId: NETWORK_ID,
+        ttl: TTL
+      },
+      LedgerV8
+    );
+
+    expect(deployed.initialState).toEqual(constructedBytes);
+  });
+
   // The sampled key is random, so only the RELATIONSHIP between the reported
   // key and the committee is assertable. Two runs are needed to say it was
   // really sampled: a constant returned in place of a sample would satisfy the

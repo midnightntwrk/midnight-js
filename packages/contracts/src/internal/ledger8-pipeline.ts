@@ -797,7 +797,7 @@ export interface Ledger8DeployPipelineResult {
    */
   readonly contractAddress: string;
   /** The state that address was derived from — what a caller later calls against. */
-  readonly initialState: Uint8Array;
+  readonly initialContractStateEncoded: Uint8Array;
   /**
    * The same state as a LIVE handle, as the constructor built it. Published
    * under ADR-0010 next to the bytes rather than instead of them: the handle is
@@ -895,7 +895,7 @@ export const runLedger8DeployPipeline = async (request: Ledger8DeployPipelineReq
   return {
     txBytes: deployed.transaction,
     contractAddress: deployed.contractAddress,
-    initialState: deployed.initialState,
+    initialContractStateEncoded: deployed.initialState,
     initialContractState: constructed.contractState,
     nextPrivateState: constructed.privateState,
     initialZswapState: constructed.zswapLocalState,

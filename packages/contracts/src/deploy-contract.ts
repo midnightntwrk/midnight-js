@@ -312,7 +312,7 @@ export async function deployContract<C extends Contract.Any>(
       contractAddress: deployed.contractAddress,
       deployTxData: deployed.deployTxData,
       signingKey: deployed.signingKey,
-      initialState: deployed.initialState,
+      initialContractStateEncoded: deployed.initialContractStateEncoded,
       initialContractState: deployed.initialContractState,
       initialPrivateState: deployed.initialPrivateState,
       initialZswapState: deployed.initialZswapState,
