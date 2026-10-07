@@ -13,41 +13,42 @@
  * limitations under the License.
  */
 
-import { ApolloClient, type ObservableQuery } from '@apollo/client/core';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractStateObservableConfig, PositionedRecord } from '@midnight-ntwrk/midnight-js-types';
+import { contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
+import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
-import { indexerPublicDataProvider } from '..';
-import { parseHexContractState } from '../codec';
+import { IndexerFormattedError, IndexerProviderConfigError, IndexerSubscriptionDataError } from '../errors';
+import { type ChainPosition, dropReplayed, ordinalWithinBlock } from '../observables';
+import { IndexerPublicDataProvider } from '../provider';
 import {
-  type Block,
-  blockToPositionedState$,
-  type ChainPosition,
-  dropReplayed,
-  type PositionedContractState
-} from '../observables';
-import { mintV9ContractStateHex } from './state-fixtures';
+  BLOCK_QUERY,
+  CONTRACT_STATE_QUERY,
+  CONTRACT_STATE_SUB,
+  LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
+  TX_ID_QUERY,
+  UNSHIELDED_BALANCE_QUERY,
+  UNSHIELDED_BALANCE_SUB
+} from '../query-definitions';
+import { type ApolloRequest, reconnectingSubscription, stubApolloHandle, subscribedOffsets } from './apollo-stub';
+import { mintV8ContractStateHex, mintV9ContractStateHex, V9_ERA_PROTOCOL_VERSION } from './state-fixtures';
 
-const contractAddress =
-  '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' as ContractAddress;
-const otherAddress =
-  'fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321' as ContractAddress;
-
-/** The protocol version the v9 ledger runtime answers to, matching the fixtures below. */
-const V9_PROTOCOL_VERSION = 1000;
+const ADDRESS = '12'.repeat(32) as ContractAddress;
+const STATE = mintV9ContractStateHex();
 
 const positions = (...pairs: [number, number][]): Rx.Observable<ChainPosition> =>
-  Rx.from(pairs.map(([height, ordinal]) => ({ height, ordinal })));
+  Rx.from(pairs.map(([blockHeight, ordinal]) => ({ blockHeight, ordinal })));
 
-const collect = async (source: Rx.Observable<ChainPosition>): Promise<[number, number][]> => {
+const collectPositions = async (source: Rx.Observable<ChainPosition>): Promise<[number, number][]> => {
   const seen = await Rx.lastValueFrom(source.pipe(Rx.toArray()));
-  return seen.map((p) => [p.height, p.ordinal]);
+  return seen.map((p) => [p.blockHeight, p.ordinal]);
 };
 
 describe('dropReplayed', () => {
   test('passes through positions that advance', async () => {
-    const seen = await collect(positions([10, 0], [11, 0], [12, 0]).pipe(dropReplayed()));
+    const seen = await collectPositions(positions([10, 0], [11, 0], [12, 0]).pipe(dropReplayed()));
 
     expect(seen).toEqual([
       [10, 0],
@@ -57,7 +58,7 @@ describe('dropReplayed', () => {
   });
 
   test('drops a position that has already been delivered', async () => {
-    const seen = await collect(positions([10, 0], [11, 0], [10, 0], [11, 0]).pipe(dropReplayed()));
+    const seen = await collectPositions(positions([10, 0], [11, 0], [10, 0], [11, 0]).pipe(dropReplayed()));
 
     expect(seen).toEqual([
       [10, 0],
@@ -65,8 +66,8 @@ describe('dropReplayed', () => {
     ]);
   });
 
-  test('drops a position behind the last delivered one', async () => {
-    const seen = await collect(positions([10, 0], [11, 0], [9, 4]).pipe(dropReplayed()));
+  test('drops a position in an earlier block whatever its ordinal', async () => {
+    const seen = await collectPositions(positions([10, 0], [11, 0], [9, 4]).pipe(dropReplayed()));
 
     expect(seen).toEqual([
       [10, 0],
@@ -75,26 +76,18 @@ describe('dropReplayed', () => {
   });
 
   test('drops an earlier ordinal within a block already delivered', async () => {
-    const seen = await collect(positions([10, 0], [10, 2], [10, 1]).pipe(dropReplayed()));
+    const seen = await collectPositions(positions([10, 0], [10, 2], [10, 1]).pipe(dropReplayed()));
 
     expect(seen).toEqual([
       [10, 0],
-      [10, 2]
-    ]);
-  });
-
-  test('passes a later action in a block already partly delivered', async () => {
-    const seen = await collect(positions([10, 0], [10, 1], [10, 2]).pipe(dropReplayed()));
-
-    expect(seen).toEqual([
-      [10, 0],
-      [10, 1],
       [10, 2]
     ]);
   });
 
   test('resumes after a replay, delivering the states that follow it', async () => {
-    const seen = await collect(positions([10, 0], [11, 0], [10, 0], [11, 0], [12, 0]).pipe(dropReplayed()));
+    const seen = await collectPositions(
+      positions([10, 0], [11, 0], [10, 0], [11, 0], [12, 0]).pipe(dropReplayed())
+    );
 
     expect(seen).toEqual([
       [10, 0],
@@ -106,13 +99,10 @@ describe('dropReplayed', () => {
   test('tracks each subscription separately', async () => {
     const guarded = positions([10, 0], [11, 0]).pipe(dropReplayed());
 
-    const first = await collect(guarded);
-    const second = await collect(guarded);
+    const first = await collectPositions(guarded);
+    const second = await collectPositions(guarded);
 
-    expect(first).toEqual([
-      [10, 0],
-      [11, 0]
-    ]);
+    expect(first).toEqual(second);
     expect(second).toEqual([
       [10, 0],
       [11, 0]
@@ -120,199 +110,373 @@ describe('dropReplayed', () => {
   });
 });
 
-/** The decoded binding of the shared pipeline — the one `contractStateObservable` uses. */
-const blockToPositionedContractState$ = blockToPositionedState$(parseHexContractState);
+describe('ordinalWithinBlock', () => {
+  const numbered = (heights: readonly number[], connectionCount: () => number): Promise<[number, number][]> =>
+    collectPositions(
+      Rx.from(heights.map((blockHeight) => ({ blockHeight }))).pipe(ordinalWithinBlock(connectionCount))
+    );
 
-const action = (address: ContractAddress, state: string) => ({ state, address });
+  test('numbers the records of one block from zero and starts again at the next block', async () => {
+    const seen = await numbered([10, 10, 11, 12, 12, 12], () => 1);
 
-const blockWith = (height: number, transactions: { state: string; address: string }[][]): Block => ({
-  hash: `0x${height}`,
-  height,
-  protocolVersion: V9_PROTOCOL_VERSION,
-  transactions: transactions.map((contractActions, index) => ({
-    hash: `0xtx${height}-${index}`,
-    identifiers: [],
-    protocolVersion: V9_PROTOCOL_VERSION,
-    blockHeight: height,
-    blockHash: `0x${height}`,
-    contractActions
-  }))
-});
-
-/** Subscribes synchronously — `blockToPositionedContractState$` emits from an array. */
-const drain = (
-  source: Rx.Observable<PositionedContractState>
-): { seen: PositionedContractState[]; error: unknown } => {
-  const seen: PositionedContractState[] = [];
-  let error: unknown = null;
-  source.subscribe({
-    next: (value) => seen.push(value),
-    error: (caught: unknown) => {
-      error = caught;
-    }
+    expect(seen).toEqual([
+      [10, 0],
+      [10, 1],
+      [11, 0],
+      [12, 0],
+      [12, 1],
+      [12, 2]
+    ]);
   });
-  return { seen, error };
-};
 
-describe('blockToPositionedContractState$', () => {
-  test('numbers the matching actions of a block from zero across its transactions', () => {
-    const state = mintV9ContractStateHex();
-    const block = blockWith(10, [[action(contractAddress, state)], [action(contractAddress, state)]]);
+  test('numbers a block replayed on a new connection exactly as it was numbered first', async () => {
+    let connection = 1;
+    const replayAfterSecond = Rx.from([
+      { blockHeight: 10, servedOn: 1 },
+      { blockHeight: 10, servedOn: 1 },
+      { blockHeight: 10, servedOn: 2 },
+      { blockHeight: 10, servedOn: 2 }
+    ]).pipe(
+      Rx.tap(({ servedOn }) => {
+        connection = servedOn;
+      }),
+      ordinalWithinBlock(() => connection)
+    );
 
-    const { seen, error } = drain(blockToPositionedContractState$(contractAddress)(block));
+    const seen = await collectPositions(replayAfterSecond);
 
-    expect(error).toBeNull();
-    expect(seen.map((s) => [s.height, s.ordinal])).toEqual([
+    expect(seen).toEqual([
+      [10, 0],
+      [10, 1],
       [10, 0],
       [10, 1]
     ]);
   });
+});
 
-  test('does not let an action for another contract consume an ordinal', () => {
-    const state = mintV9ContractStateHex();
-    const block = blockWith(10, [
-      [action(otherAddress, state), action(contractAddress, state)],
-      [action(otherAddress, state), action(contractAddress, state)]
-    ]);
+/** One `CONTRACT_STATE_SUB` frame: a single action, dated by its own transaction. */
+const stateFrame = (height: number, identifier: string, state: string = STATE): unknown => ({
+  data: {
+    contractActions: {
+      state,
+      transaction: {
+        protocolVersion: V9_ERA_PROTOCOL_VERSION,
+        identifiers: [identifier],
+        block: { height, hash: `0x${height}` }
+      }
+    }
+  }
+});
 
-    const { seen } = drain(blockToPositionedContractState$(contractAddress)(block));
+/** One `UNSHIELDED_BALANCE_SUB` frame. */
+const balanceFrame = (height: number): unknown => ({
+  data: {
+    contractActions: {
+      transaction: { block: { height, hash: `0x${height}` } },
+      unshieldedBalances: []
+    }
+  }
+});
 
-    expect(seen.map((s) => s.ordinal)).toEqual([0, 1]);
+const queryEmission = (data: unknown): Rx.Observable<unknown> =>
+  Rx.of({ data, dataState: 'complete', loading: false, networkStatus: 7, partial: false });
+
+/** Every poll a branch issues before it subscribes, each answered as though the contract sits at block 10. */
+const POLLS: ReadonlyMap<DocumentNode, unknown> = new Map<DocumentNode, unknown>([
+  [LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY, { contractAction: { transaction: { block: { height: 10 } } } }],
+  [CONTRACT_STATE_QUERY, { block: { protocolVersion: V9_ERA_PROTOCOL_VERSION }, contract: { state: STATE } }],
+  [UNSHIELDED_BALANCE_QUERY, { contractAction: { unshieldedBalances: [] } }],
+  [BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }],
+  [TX_ID_QUERY, { transactions: [{ block: { height: 10 }, contractActions: [{ address: ADDRESS }] }] }]
+]);
+
+const watchQuery = vi
+  .fn<(request: ApolloRequest) => unknown>()
+  .mockImplementation(({ query }: ApolloRequest) => queryEmission(POLLS.get(query)));
+
+const providerOver = (subscription: ReturnType<typeof reconnectingSubscription>): IndexerPublicDataProvider =>
+  new IndexerPublicDataProvider(stubApolloHandle({ watchQuery, ...subscription }), 1000);
+
+const heightsOf = async (source: Rx.Observable<PositionedRecord<unknown>>): Promise<number[]> => {
+  const records = await Rx.lastValueFrom(source.pipe(Rx.toArray()));
+  return records.map(({ blockHeight }) => blockHeight);
+};
+
+/** Names each record by its block and the envelope of its bytes, so a test can tell which records survived. */
+const tracedRaw = async (
+  provider: IndexerPublicDataProvider,
+  config: ContractStateObservableConfig
+): Promise<string[]> => {
+  const records = await Rx.lastValueFrom(provider.rawContractStateObservable(ADDRESS, config).pipe(Rx.toArray()));
+  return records.map(({ blockHeight, value }) => `${blockHeight}:${contractStateEnvelopeVersion(value.raw)}`);
+};
+
+const NAMED_TX = 'tx-10' as TransactionId;
+
+const INCLUSIVE_STATE_CONFIGS: readonly [string, ContractStateObservableConfig][] = [
+  ['latest', { type: 'latest' }],
+  ['all', { type: 'all' }],
+  ['blockHeight', { type: 'blockHeight', blockHeight: 10 }],
+  ['blockHash', { type: 'blockHash', blockHash: '0x10' }],
+  ['txId', { type: 'txId', txId: NAMED_TX }]
+];
+
+const EXCLUSIVE_STATE_CONFIGS: readonly [string, ContractStateObservableConfig][] = [
+  ['blockHeight', { type: 'blockHeight', blockHeight: 10, inclusive: false }],
+  ['blockHash', { type: 'blockHash', blockHash: '0x10', inclusive: false }],
+  ['txId', { type: 'txId', txId: NAMED_TX, inclusive: false }]
+];
+
+describe('contract-state streams — one subscription for every branch', () => {
+  test.each(INCLUSIVE_STATE_CONFIGS)('%s: subscribes to this contract’s action feed', async (_, config) => {
+    const subscription = reconnectingSubscription([stateFrame(10, 'tx-10')], []);
+
+    await heightsOf(providerOver(subscription).contractStateObservable(ADDRESS, config));
+
+    expect(subscription.subscribe).toHaveBeenCalledTimes(1);
+    expect(subscription.subscribe).toHaveBeenCalledWith(
+      expect.objectContaining({ query: CONTRACT_STATE_SUB, variables: expect.objectContaining({ address: ADDRESS }) })
+    );
   });
 
-  test('emits nothing for a block with no action for the contract', () => {
-    const block = blockWith(10, [[action(otherAddress, mintV9ContractStateHex())]]);
+  test('all: subscribes from genesis, so the whole history is served', async () => {
+    const subscription = reconnectingSubscription([], []);
 
-    const { seen, error } = drain(blockToPositionedContractState$(contractAddress)(block));
+    await heightsOf(providerOver(subscription).contractStateObservable(ADDRESS, { type: 'all' }));
 
-    expect(seen).toEqual([]);
-    expect(error).toBeNull();
-  });
-
-  test('emits the states preceding an undecodable one before it errors', () => {
-    const block = blockWith(10, [
-      [action(contractAddress, mintV9ContractStateHex()), action(contractAddress, 'not-hex')]
-    ]);
-
-    const { seen, error } = drain(blockToPositionedContractState$(contractAddress)(block));
-
-    expect(seen.map((s) => s.ordinal)).toEqual([0]);
-    expect(error).toBeInstanceOf(Error);
+    expect(subscribedOffsets(subscription.subscribe)).toEqual([{ height: 0 }]);
   });
 });
 
-type QueryEmission = { data: unknown; dataState: string };
+describe('contract-state streams — a reconnect replays nothing already delivered', () => {
+  test.each(INCLUSIVE_STATE_CONFIGS)(
+    '%s: a single delivered state is not delivered again',
+    async (_, config) => {
+      const subscription = reconnectingSubscription(
+        [stateFrame(10, 'tx-10')],
+        [stateFrame(10, 'tx-10'), stateFrame(11, 'tx-11')]
+      );
 
-// Apollo's ObservableQuery is a class with private fields and an invariant
-// TData generic; structural typing of an Rx.Observable widened to `unknown` is
-// the cleanest test seam available without injecting a custom ApolloLink into
-// the provider's internal client construction.
-const buildQueryEmission = (data: unknown): ObservableQuery<unknown> =>
-  Rx.of({
-    data,
-    dataState: 'complete',
-    loading: false,
-    networkStatus: 7,
-    partial: false
-  } satisfies QueryEmission & Record<string, unknown>) as unknown as ObservableQuery<unknown>;
+      const heights = await heightsOf(providerOver(subscription).contractStateObservable(ADDRESS, config));
 
-describe('contractStateObservable — replayed blocks', () => {
-  const queryURL = 'http://localhost:4000/api/v1/graphql';
-  const subscriptionURL = 'ws://localhost:4000/api/v1/graphql/ws';
-
-  /**
-   * Block 10 carries one action for the contract and block 11 carries two, so the
-   * emission count alone distinguishes a correctly deduplicated stream (3) from one
-   * that dropped block 11 and delivered block 10 twice (2).
-   */
-  const blockPayload = (height: number, state: string) => ({
-    data: {
-      blocks: {
-        hash: `0x${height}`,
-        height,
-        protocolVersion: V9_PROTOCOL_VERSION,
-        transactions: [
-          {
-            hash: `0xtx${height}`,
-            identifiers: [`id-${height}`],
-            contractActions: Array.from({ length: height === 11 ? 2 : 1 }, () => ({
-              state,
-              address: contractAddress
-            }))
-          }
-        ]
-      }
+      expect(heights).toEqual([10, 11]);
     }
+  );
+
+  test.each(INCLUSIVE_STATE_CONFIGS)(
+    '%s: every state of a block with several is delivered exactly once',
+    async (_, config) => {
+      const served = [stateFrame(10, 'tx-10'), stateFrame(10, 'tx-10b'), stateFrame(11, 'tx-11')];
+      const subscription = reconnectingSubscription(served, [...served, stateFrame(12, 'tx-12')]);
+
+      const heights = await heightsOf(providerOver(subscription).contractStateObservable(ADDRESS, config));
+
+      expect(heights).toEqual([10, 10, 11, 12]);
+    }
+  );
+
+  test.each(EXCLUSIVE_STATE_CONFIGS)('%s: inclusive false still holds after a reconnect', async (_, config) => {
+    const served = [stateFrame(10, 'tx-10'), stateFrame(11, 'tx-11')];
+    const subscription = reconnectingSubscription(served, [...served, stateFrame(12, 'tx-12')]);
+
+    const heights = await heightsOf(providerOver(subscription).contractStateObservable(ADDRESS, config));
+
+    expect(heights).toEqual([11, 12]);
   });
 
-  const stubSubscription = (payloads: unknown[]): void => {
-    vi.spyOn(ApolloClient.prototype, 'subscribe').mockReturnValue(
-      Rx.from(payloads) as unknown as ReturnType<ApolloClient['subscribe']>
-    );
-  };
+  test('txId: the states of transactions before the named one stay withheld after a reconnect', async () => {
+    const earlier = await mintV8ContractStateHex();
+    const served = [stateFrame(10, 'tx-earlier', earlier), stateFrame(10, 'tx-10'), stateFrame(11, 'tx-11')];
+    const subscription = reconnectingSubscription(served, served);
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+    const traced = await tracedRaw(providerOver(subscription), { type: 'txId', txId: NAMED_TX });
+
+    expect(traced).toEqual(['10:v9', '11:v9']);
   });
 
-  test('latest: emits each block once when the indexer replays after a reconnect', async () => {
-    vi.spyOn(ApolloClient.prototype, 'watchQuery').mockReturnValue(
-      buildQueryEmission({ contractAction: { transaction: { block: { height: 10 } } } })
-    );
-    const state = mintV9ContractStateHex();
-    stubSubscription([
-      blockPayload(10, state),
-      blockPayload(11, state),
-      blockPayload(10, state),
-      blockPayload(11, state)
-    ]);
-    const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
+  test.each([
+    [true, ['10:v9', '11:v8']],
+    [false, ['11:v8']]
+  ])(
+    'txId (inclusive:%s): a reconnect before the named transaction was seen still starts at it',
+    async (inclusive, expected) => {
+      const earlier = await mintV8ContractStateHex();
+      const subscription = reconnectingSubscription(
+        [stateFrame(10, 'tx-earlier', earlier)],
+        [stateFrame(10, 'tx-earlier', earlier), stateFrame(10, 'tx-10'), stateFrame(11, 'tx-11', earlier)]
+      );
 
-    const seen = await Rx.lastValueFrom(
-      provider.contractStateObservable(contractAddress, { type: 'latest' }).pipe(Rx.toArray())
+      const traced = await tracedRaw(providerOver(subscription), { type: 'txId', txId: NAMED_TX, inclusive });
+
+      expect(traced).toEqual(expected);
+    }
+  );
+
+  test.each([
+    [true, ['10:v9', '10:v9', '10:v8']],
+    [false, ['10:v8']]
+  ])(
+    'txId (inclusive:%s): every action of the named transaction is kept or dropped together',
+    async (inclusive, expected) => {
+      const later = await mintV8ContractStateHex();
+      const subscription = reconnectingSubscription(
+        [stateFrame(10, 'tx-10'), stateFrame(10, 'tx-10'), stateFrame(10, 'tx-later', later)],
+        []
+      );
+
+      const traced = await tracedRaw(providerOver(subscription), { type: 'txId', txId: NAMED_TX, inclusive });
+
+      expect(traced).toEqual(expected);
+    }
+  );
+
+  test('txId: a state in the named transaction’s block after it is kept when inclusive is false', async () => {
+    const later = await mintV8ContractStateHex();
+    const subscription = reconnectingSubscription(
+      [stateFrame(10, 'tx-earlier'), stateFrame(10, 'tx-10'), stateFrame(10, 'tx-later', later)],
+      []
     );
 
-    expect(seen.map(({ blockHeight, blockHash }) => ({ blockHeight, blockHash }))).toEqual([
-      { blockHeight: 10, blockHash: '0x10' },
-      { blockHeight: 11, blockHash: '0x11' },
-      { blockHeight: 11, blockHash: '0x11' }
-    ]);
+    const traced = await tracedRaw(providerOver(subscription), { type: 'txId', txId: NAMED_TX, inclusive: false });
+
+    expect(traced).toEqual(['10:v8']);
   });
 
-  test('latest: emits every distinct block the subscription delivers', async () => {
-    vi.spyOn(ApolloClient.prototype, 'watchQuery').mockReturnValue(
-      buildQueryEmission({ contractAction: { transaction: { block: { height: 10 } } } })
-    );
-    const state = mintV9ContractStateHex();
-    stubSubscription([blockPayload(10, state), blockPayload(11, state), blockPayload(12, state)]);
-    const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
+  test('txId: a second subscription to the same stream starts from the named transaction again', async () => {
+    const earlier = await mintV8ContractStateHex();
+    const served = [stateFrame(10, 'tx-earlier', earlier), stateFrame(10, 'tx-10'), stateFrame(11, 'tx-11')];
+    const stream = providerOver(reconnectingSubscription(served, [])).rawContractStateObservable(ADDRESS, {
+      type: 'txId',
+      txId: NAMED_TX
+    });
 
-    const seen = await Rx.lastValueFrom(
-      provider.contractStateObservable(contractAddress, { type: 'latest' }).pipe(Rx.toArray())
-    );
+    const first = await Rx.lastValueFrom(stream.pipe(Rx.toArray()));
+    const second = await Rx.lastValueFrom(stream.pipe(Rx.toArray()));
 
-    expect(seen).toHaveLength(4);
+    expect(second).toEqual(first);
+    expect(second.map(({ blockHeight }) => blockHeight)).toEqual([10, 11]);
+  });
+});
+
+describe('contract-state streams — a broken feed fails the stream', () => {
+  test.each(INCLUSIVE_STATE_CONFIGS)(
+    '%s: a frame without contract actions errors after the states before it',
+    async (_, config) => {
+      const delivered: number[] = [];
+      const subscription = reconnectingSubscription([stateFrame(10, 'tx-10'), { data: { contractActions: null } }], []);
+
+      const outcome = Rx.lastValueFrom(
+        providerOver(subscription)
+          .contractStateObservable(ADDRESS, config)
+          .pipe(Rx.tap(({ blockHeight }) => delivered.push(blockHeight)))
+      );
+
+      await expect(outcome).rejects.toBeInstanceOf(IndexerSubscriptionDataError);
+      expect(delivered).toEqual([10]);
+    }
+  );
+
+  test('a frame carrying GraphQL errors fails the stream', async () => {
+    const subscription = reconnectingSubscription([{ errors: [{ message: 'indexer failure' }] }], []);
+
+    const outcome = Rx.lastValueFrom(providerOver(subscription).contractStateObservable(ADDRESS, { type: 'all' }));
+
+    await expect(outcome).rejects.toBeInstanceOf(IndexerFormattedError);
   });
 
-  test('blockHeight: emits each block once when the indexer replays after a reconnect', async () => {
-    vi.spyOn(ApolloClient.prototype, 'watchQuery').mockReturnValue(
-      buildQueryEmission({ block: { height: 10, hash: '0x10' } })
-    );
-    const state = mintV9ContractStateHex();
-    stubSubscription([
-      blockPayload(10, state),
-      blockPayload(11, state),
-      blockPayload(10, state),
-      blockPayload(11, state)
-    ]);
-    const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
+  test('a balance frame without contract actions fails the balance stream', async () => {
+    const subscription = reconnectingSubscription([{ data: { contractActions: null } }], []);
 
-    const seen = await Rx.lastValueFrom(
-      provider
-        .contractStateObservable(contractAddress, { type: 'blockHeight', blockHeight: 10 })
-        .pipe(Rx.toArray())
+    const outcome = Rx.lastValueFrom(providerOver(subscription).unshieldedBalancesObservable(ADDRESS, { type: 'all' }));
+
+    await expect(outcome).rejects.toBeInstanceOf(IndexerSubscriptionDataError);
+  });
+});
+
+describe('contract-state streams — txId names a transaction of this contract', () => {
+  test('a transaction with no action for this contract is refused before anything is subscribed', async () => {
+    const otherAddress = 'ab'.repeat(32);
+    const subscription = reconnectingSubscription([stateFrame(11, 'tx-11')], []);
+    const provider = new IndexerPublicDataProvider(
+      stubApolloHandle({
+        watchQuery: vi
+          .fn<(request: ApolloRequest) => unknown>()
+          .mockReturnValue(
+            queryEmission({ transactions: [{ block: { height: 10 }, contractActions: [{ address: otherAddress }] }] })
+          ),
+        ...subscription
+      }),
+      1000
     );
 
-    expect(seen).toHaveLength(3);
+    const outcome = Rx.lastValueFrom(
+      provider.contractStateObservable(ADDRESS, { type: 'txId', txId: NAMED_TX }).pipe(Rx.toArray())
+    );
+
+    await expect(outcome).rejects.toBeInstanceOf(IndexerProviderConfigError);
+    expect(subscription.subscribe).not.toHaveBeenCalled();
+  });
+});
+
+describe('unshieldedBalancesObservable — a reconnect replays nothing already delivered', () => {
+  test.each<[string, ContractStateObservableConfig]>([
+    ['latest', { type: 'latest' }],
+    ['all', { type: 'all' }],
+    ['blockHeight', { type: 'blockHeight', blockHeight: 10 }],
+    ['blockHash', { type: 'blockHash', blockHash: '0x10' }]
+  ])('%s: a single delivered balance is not delivered again', async (_, config) => {
+    const subscription = reconnectingSubscription([balanceFrame(10)], [balanceFrame(10), balanceFrame(11)]);
+
+    const heights = await heightsOf(providerOver(subscription).unshieldedBalancesObservable(ADDRESS, config));
+
+    expect(heights).toEqual([10, 11]);
+    expect(subscription.subscribe).toHaveBeenCalledWith(expect.objectContaining({ query: UNSHIELDED_BALANCE_SUB }));
+  });
+
+  test('every balance of a block with several is delivered exactly once', async () => {
+    const served = [balanceFrame(10), balanceFrame(10), balanceFrame(11)];
+    const subscription = reconnectingSubscription(served, [...served, balanceFrame(12)]);
+
+    const heights = await heightsOf(providerOver(subscription).unshieldedBalancesObservable(ADDRESS, { type: 'all' }));
+
+    expect(heights).toEqual([10, 10, 11, 12]);
+  });
+
+  test('blockHash: inclusive false still holds after a reconnect', async () => {
+    const served = [balanceFrame(10), balanceFrame(11)];
+    const subscription = reconnectingSubscription(served, [...served, balanceFrame(12)]);
+
+    const heights = await heightsOf(
+      providerOver(subscription).unshieldedBalancesObservable(ADDRESS, {
+        type: 'blockHash',
+        blockHash: '0x10',
+        inclusive: false
+      })
+    );
+
+    expect(heights).toEqual([11, 12]);
+  });
+
+  test('blockHeight: inclusive false still holds after a reconnect', async () => {
+    const served = [balanceFrame(10), balanceFrame(11)];
+    const subscription = reconnectingSubscription(served, [...served, balanceFrame(12)]);
+
+    const heights = await heightsOf(
+      providerOver(subscription).unshieldedBalancesObservable(ADDRESS, {
+        type: 'blockHeight',
+        blockHeight: 10,
+        inclusive: false
+      })
+    );
+
+    expect(heights).toEqual([11, 12]);
+  });
+
+  test('all: subscribes from genesis, so the whole history is served', async () => {
+    const subscription = reconnectingSubscription([], []);
+
+    await heightsOf(providerOver(subscription).unshieldedBalancesObservable(ADDRESS, { type: 'all' }));
+
+    expect(subscribedOffsets(subscription.subscribe)).toEqual([{ height: 0 }]);
   });
 });

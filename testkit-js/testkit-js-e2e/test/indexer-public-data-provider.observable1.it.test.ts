@@ -27,7 +27,7 @@ import {
   type TestEnvironment
 } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
-import { firstValueFrom, type Observable, take, timeout, timer, toArray } from 'rxjs';
+import { firstValueFrom, type Observable, take, timeout, toArray } from 'rxjs';
 
 import { SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '../src/constants';
 import { CompiledCounter } from '../src/contract';
@@ -42,7 +42,6 @@ const logger = createLogger(
 const { ledger } = CompiledCounter;
 
 const STATE_WAIT_MS = 120_000;
-const QUIET_WINDOW_MS = 30_000;
 
 describe('Indexer API', () => {
   let publicDataProvider: PublicDataProvider;
@@ -67,29 +66,6 @@ describe('Indexer API', () => {
     ).toEqual(
       expected.map(([round, { blockHeight, blockHash }]) => ({ round, blockHeight, blockHash }))
     );
-  };
-
-  const roundsObservedAcrossAnIncrement = async (
-    observable$: Observable<PositionedRecord<ContractState>>
-  ): Promise<bigint[]> => {
-    const rounds: bigint[] = [];
-    let failure: unknown;
-    const subscription = observable$.subscribe({
-      next: ({ value }) => rounds.push(ledger(value.data).round),
-      error: (error: unknown) => {
-        failure = error;
-      }
-    });
-    try {
-      await api.increment(deployedContractObserved);
-      await firstValueFrom(timer(QUIET_WINDOW_MS));
-    } finally {
-      subscription.unsubscribe();
-    }
-    if (failure !== undefined) {
-      throw failure;
-    }
-    return rounds;
   };
 
   beforeEach(async () => {
@@ -149,26 +125,32 @@ describe('Indexer API', () => {
   );
 
   /**
-   * Pins known defect #1424: against a real indexer the txId branch emits no state at all, not even
-   * the named transaction's. When #1424 is fixed this test fails; replace it with the expected
-   * history (inclusive: 1n, 2n; exclusive: 2n), asserted with expectObservedContractStatesToEqual.
+   * Test contract state observable with transaction ID starting point.
    *
    * @given A deployed contract with incremented state
    * @and The increment's transaction ID as starting point
-   * @when Observing from that transaction ID across an additional increment
-   * @then No state arrives
+   * @when Creating observable from that transaction ID with inclusive/exclusive options
+   * @and Executing additional increment operation
+   * @then Should return the named transaction's state only when inclusive, then every later state
    */
   test.each([true, false])(
-    'known defect #1424: the txId stream emits no state (inclusive:%s) [@slow]',
+    'should return the history of states starting from defined txId (inclusive:%s) [@slow]',
     async (inclusive) => {
       const observable$ = publicDataProvider.contractStateObservable(
         deployedContractObserved.deployTxData.public.contractAddress,
         { type: 'txId', txId: incrementFinalizedTxData.txId, inclusive }
       );
+      const secondIncrement = await api.increment(deployedContractObserved);
 
-      const rounds = await roundsObservedAcrossAnIncrement(observable$);
-
-      expect(rounds).toEqual([]);
+      await expectObservedContractStatesToEqual(
+        observable$,
+        inclusive
+          ? [
+              [1n, incrementFinalizedTxData],
+              [2n, secondIncrement]
+            ]
+          : [[2n, secondIncrement]]
+      );
     },
     SLOW_TEST_TIMEOUT
   );

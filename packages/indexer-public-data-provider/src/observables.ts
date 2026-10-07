@@ -15,7 +15,6 @@
 
 import type { ApolloClient, ApolloQueryResult, FetchResult, OperationVariables } from '@apollo/client/core';
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { ContractEvent, PositionedRecord, UnshieldedBalances } from '@midnight-ntwrk/midnight-js-types';
 import * as Rx from 'rxjs';
@@ -25,12 +24,13 @@ import {
   IndexerDataError,
   IndexerFormattedError,
   IndexerInvariantError,
+  IndexerProviderConfigError,
   IndexerQueryError,
   IndexerSubscriptionDataError
 } from './errors';
 import { toContractEvent } from './events-mapping';
 import type { BlockOffset, ContractEventsSubSubscriptionVariables } from './gen/graphql';
-import type { InputMaybe, RegularTransaction } from './gen/schema-types';
+import type { InputMaybe } from './gen/schema-types';
 import { hasBlock, hasContract, hasContractAction } from './mapping';
 import {
   BLOCK_QUERY,
@@ -39,70 +39,70 @@ import {
   CONTRACT_STATE_SUB,
   LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
   TX_ID_QUERY,
-  TXS_FROM_BLOCK_SUB,
   UNSHIELDED_BALANCE_QUERY,
   UNSHIELDED_BALANCE_SUB
 } from './query-definitions';
 
-export type Block = {
-  hash: string;
-  height: number;
-  protocolVersion: number;
-  transactions: Transaction[];
-};
-
 /**
- * A transaction as the block subscription serves it. `protocolVersion`,
- * `blockHeight` and `blockHash` are the containing block's, copied onto every
- * transaction when the block is flattened: the block is what dates and
- * positions the serialized states its transactions carry, and downstream
- * operators see transactions with the block already gone.
- */
-export type Transaction = {
-  hash: string;
-  identifiers: readonly string[];
-  protocolVersion: number;
-  blockHeight: number;
-  blockHash: string;
-  contractActions: readonly { state: string; address: string }[];
-};
-
-/**
- * Where a contract state sits in the chain: the block that carried it, and its
- * rank among the states for one address within that block. The rank is derived
- * from the payload the indexer delivered, not asserted by the indexer, so it is
- * only as stable as that block's transaction order.
+ * Where a served record sits in the chain: the block that carried it, and its
+ * rank among this contract's records within that block. The indexer asserts no
+ * rank, so {@link ordinalWithinBlock} counts it from the feed, and it is only as
+ * stable as the order in which the indexer serves a block's actions.
  */
 export type ChainPosition = {
-  readonly height: number;
+  readonly blockHeight: number;
   readonly ordinal: number;
 };
 
-/** A stream element carrying the {@link ChainPosition} it was served at, plus the hash of that block. */
-export type Positioned<T> = ChainPosition & {
-  readonly hash: string;
-  readonly state: T;
+/** The identifiers of the transaction that carried a record; empty for a system transaction. */
+export type Identified = {
+  readonly identifiers: readonly string[];
 };
 
-/** A contract state carrying the {@link ChainPosition} it was served at. */
-export type PositionedContractState = Positioned<ContractState>;
+/** One contract action off the per-contract feed. */
+export type FeedRecord<T> = PositionedRecord<T> & Identified;
 
 /**
  * Turns one served contract action into a stream element.
  *
  * The single point of variation between the decoded and the raw contract-state
- * stream: the three pipelines below that take one of these are written once and
- * bound twice by the provider.
+ * stream: {@link blockOffsetToState$} is written once and bound twice by the
+ * provider.
  *
  * @param hexState The action's serialized state, in the indexer's hex encoding.
  * @param protocolVersion The protocol version the indexer reported for the
- *   record that carried the state -- a block on the block-subscription
- *   branches, the action's own transaction on `all`.
+ *   action's own transaction.
  */
 export type ContractStateMapper<T> = (hexState: string, protocolVersion: number) => T;
 
 /**
- * Suppresses states at or behind the last one delivered. The indexer replays
+ * Ranks each record within its block. The rank restarts at every new block and
+ * at every new connection: after a reconnect the indexer replays from the
+ * subscription's original offset, so restarting there numbers the replayed
+ * records exactly as they were numbered the first time.
+ *
+ * @param connectionCount Reads how many connections the transport has made.
+ */
+export const ordinalWithinBlock =
+  (connectionCount: () => number) =>
+  <R extends { readonly blockHeight: number }>(source: Rx.Observable<R>): Rx.Observable<R & ChainPosition> =>
+    Rx.defer(() => {
+      let previous: { connection: number; blockHeight: number; ordinal: number } | null = null;
+      return source.pipe(
+        Rx.map((record) => {
+          const connection = connectionCount();
+          const ordinal =
+            previous?.connection === connection && previous.blockHeight === record.blockHeight
+              ? previous.ordinal + 1
+              : 0;
+          previous = { connection, blockHeight: record.blockHeight, ordinal };
+          return { ...record, ordinal };
+        })
+      );
+    });
+
+/**
+ * Suppresses records at or behind the last one delivered. The indexer replays
  * from the subscription's original offset whenever the socket reconnects, so
  * without this a recovered stream re-delivers history as though it were new.
  */
@@ -117,12 +117,42 @@ export const dropReplayed =
         Rx.filter((value) => {
           const replayed =
             last !== null &&
-            (value.height < last.height || (value.height === last.height && value.ordinal <= last.ordinal));
+            (value.blockHeight < last.blockHeight ||
+              (value.blockHeight === last.blockHeight && value.ordinal <= last.ordinal));
           if (replayed) {
             return false;
           }
           last = value;
           return true;
+        })
+      );
+    });
+
+/**
+ * Starts a feed served from `blockHeight` at the transaction `transactionId`.
+ * Records of that block before the named transaction are dropped, and so are
+ * the named transaction's own when `inclusive` is false.
+ *
+ * The named transaction's rank is remembered once seen. A replay reproduces
+ * ranks exactly, so the remembered rank keeps holding after a reconnect. The
+ * named transaction must carry an action for the contract, which
+ * {@link transactionToBlockOffset$} checks before the feed is subscribed.
+ */
+export const fromTransaction =
+  (transactionId: TransactionId, blockHeight: number, inclusive: boolean) =>
+  <R extends ChainPosition & Identified>(source: Rx.Observable<R>): Rx.Observable<R> =>
+    Rx.defer(() => {
+      let named: number | null = null;
+      return source.pipe(
+        Rx.filter((record) => {
+          if (record.blockHeight !== blockHeight) {
+            return record.blockHeight > blockHeight;
+          }
+          if (record.identifiers.includes(transactionId)) {
+            named ??= record.ordinal;
+            return inclusive;
+          }
+          return named !== null && record.ordinal > named;
         })
       );
     });
@@ -212,56 +242,20 @@ export function pollUntilPresent<TQuery, TVars extends OperationVariables, TResu
 }
 
 /**
- * Subscribes to `TXS_FROM_BLOCK_SUB`, which emits every block on the
- * indexer from `offset` onward. **Heavy wire traffic** — no server-side
- * filter by address; every block on chain flows through the WebSocket.
- *
- * Use when the caller needs the block-grouped "states-at-this-block"
- * view (typically paired with {@link blockToPositionedState$} to extract
- * contract states from each block's transactions). For a continuous
- * change feed of a single contract, prefer {@link blockOffsetToState$}
- * — it's server-side filtered (light).
- *
- * Assumes that the block at `offset` exists.
+ * Apollo shares an in-flight subscription between identical requests without
+ * replaying it, so a second subscriber would join mid-stream and miss the
+ * history its offset asks for, and every rank after it.
  */
-export const blockOffsetToBlock$ = (apolloClient: ApolloClient) => (offset: InputMaybe<BlockOffset>) =>
-  apolloClient
-    .subscribe({
-      query: TXS_FROM_BLOCK_SUB,
-      variables: {
-        offset
-      },
-      fetchPolicy: 'no-cache'
-    })
-    .pipe(
-      withValidFetchData(),
-      Rx.map((data) => {
-        const blocks = data.blocks;
-        if (!blocks) {
-          throw new IndexerSubscriptionDataError('blocks');
-        }
-        return {
-          hash: blocks.hash,
-          height: blocks.height,
-          protocolVersion: blocks.protocolVersion,
-          transactions: blocks.transactions
-            .filter((tx): tx is RegularTransaction & { hash: string; contractActions: { state: string; address: string }[] } =>
-              'identifiers' in tx
-            )
-            .map(tx => ({
-              hash: tx.hash,
-              identifiers: tx.identifiers,
-              protocolVersion: blocks.protocolVersion,
-              blockHeight: blocks.height,
-              blockHash: blocks.hash,
-              contractActions: tx.contractActions
-            }))
-        };
-      })
-    );
+const FRESH_SUBSCRIPTION = { queryDeduplication: false };
 
-export const transactionIdToTransaction$ =
-  (apolloClient: ApolloClient, pollInterval: number) => (identifier: TransactionId) =>
+/**
+ * Waits for the transaction `identifier` to be indexed, then emits the height of
+ * its block. Refuses a transaction that carries no action for `contractAddress`:
+ * a stream started from it has no transaction to start at.
+ */
+export const transactionToBlockOffset$ =
+  (apolloClient: ApolloClient, pollInterval: number) =>
+  (identifier: TransactionId, contractAddress: ContractAddress) =>
     pollUntilPresent(
       apolloClient,
       TX_ID_QUERY,
@@ -271,60 +265,17 @@ export const transactionIdToTransaction$ =
         const first = data.transactions[0];
         if (first === undefined) {
           throw new IndexerInvariantError(
-            'transactionIdToTransaction$: transactions array unexpectedly empty after predicate'
+            'transactionToBlockOffset$: transactions array unexpectedly empty after predicate'
+          );
+        }
+        if (!first.contractActions.some(({ address }) => address === contractAddress)) {
+          throw new IndexerProviderConfigError(
+            `Transaction ${identifier} carries no action for contract ${contractAddress}`
           );
         }
         return { height: first.block.height };
       },
       pollInterval
-    ).pipe(
-      Rx.concatMap(blockOffsetToBlock$(apolloClient)),
-      Rx.concatMap(({ transactions }) => Rx.from(transactions))
-    );
-
-/**
- * Emits the states a transaction carries from `transactionId` onward, mapped by
- * `mapState`. Bound below for both streams.
- */
-export const transactionToState$ =
-  <T>(mapState: ContractStateMapper<T>) =>
-  (transactionId: TransactionId) =>
-  ({ identifiers, contractActions, protocolVersion, blockHeight, blockHash }: Transaction): Rx.Observable<PositionedRecord<T>> =>
-    Rx.zip(identifiers, contractActions).pipe(
-      Rx.skipWhile((pair) => pair[0] !== transactionId),
-      Rx.map((pair) => ({ value: mapState(pair[1].state, protocolVersion), blockHeight, blockHash }))
-    );
-
-/**
- * Walks a block's transactions and emits one {@link Positioned} element per
- * `contractAction` whose `address` matches `contractAddress`, mapped by
- * `mapState`. Client-side filter. Paired with {@link blockOffsetToBlock$} to
- * produce the block-grouped "states-at-this-block" view used by
- * `contractStateObservable` and `rawContractStateObservable` for the `latest`,
- * `blockHeight`, and `blockHash` branches.
- *
- * Multiple states can come from a single block (every matching contract
- * action in every transaction of that block emits one), so the position
- * carries an ordinal as well as a height — see {@link dropReplayed}.
- */
-export const blockToPositionedState$ =
-  <T>(mapState: ContractStateMapper<T>) =>
-  (contractAddress: ContractAddress) =>
-  (block: Block): Rx.Observable<Positioned<T>> =>
-    // Filtering eagerly is what makes the ordinal deterministic; mapping stays
-    // inside the pipe so a state that fails to map does not withhold the states
-    // that precede it in the same block.
-    Rx.from(
-      block.transactions
-        .flatMap(({ contractActions }) => contractActions)
-        .filter((call) => call.address === contractAddress)
-    ).pipe(
-      Rx.map((call, ordinal) => ({
-        height: block.height,
-        hash: block.hash,
-        ordinal,
-        state: mapState(call.state, block.protocolVersion)
-      }))
     );
 
 export const contractAddressToLatestBlockOffset$ =
@@ -339,29 +290,22 @@ export const contractAddressToLatestBlockOffset$ =
     );
 
 /**
- * Subscribes to `CONTRACT_STATE_SUB($address, $offset)`. **Light wire
- * traffic** — server-side filtered by `contractAddress`; only state
- * changes for this contract flow through the WebSocket.
+ * Subscribes to `CONTRACT_STATE_SUB($address, $offset)`, the indexer's feed of
+ * this contract's actions, filtered by address on the server. It serves every
+ * action from the block at `offset` onward, that block included, then continues
+ * live.
  *
- * Emits one element per state change (per-change feed, not per-block snapshot),
- * mapped by `mapState`. Used by the `all` branch of both state streams; NOT
- * used by `latest`/`blockHeight`/`blockHash`, which need the per-block view
- * from {@link blockOffsetToBlock$} + {@link blockToPositionedState$}.
+ * Emits one element per action, mapped by `mapState`, carrying the block and the
+ * identifiers of the action's transaction. A system transaction carries no
+ * identifiers.
  *
- * Each element carries the block of the action's transaction but no ordinal,
- * so {@link dropReplayed} is not applied: a reconnect re-delivers the states
- * the indexer replays.
- *
- * Assumes block already exists.
- *
- * @see {@link SubscriptionShapes} for why a per-change feed cannot serve the
- * block-anchored branches.
+ * @see {@link SubscriptionShapes} for how every branch is built on this feed.
  */
 export const blockOffsetToState$ =
   <T>(mapState: ContractStateMapper<T>) =>
   (apolloClient: ApolloClient) =>
   (contractAddress: ContractAddress) =>
-  (offset: InputMaybe<BlockOffset>): Rx.Observable<PositionedRecord<T>> =>
+  (offset: BlockOffset): Rx.Observable<FeedRecord<T>> =>
     apolloClient
       .subscribe({
         query: CONTRACT_STATE_SUB,
@@ -369,7 +313,8 @@ export const blockOffsetToState$ =
           address: contractAddress,
           offset
         },
-        fetchPolicy: 'no-cache'
+        fetchPolicy: 'no-cache',
+        context: FRESH_SUBSCRIPTION
       })
       .pipe(
         withValidFetchData(),
@@ -380,10 +325,11 @@ export const blockOffsetToState$ =
           }
           return contractActions;
         }),
-        Rx.map((contractAction) => ({
-          value: mapState(contractAction.state, contractAction.transaction.protocolVersion),
-          blockHeight: contractAction.transaction.block.height,
-          blockHash: contractAction.transaction.block.hash
+        Rx.map(({ state, transaction }) => ({
+          value: mapState(state, transaction.protocolVersion),
+          blockHeight: transaction.block.height,
+          blockHash: transaction.block.hash,
+          identifiers: 'identifiers' in transaction ? transaction.identifiers : []
         }))
       );
 
@@ -430,17 +376,14 @@ export const waitForUnshieldedBalancesToAppear =
     );
 
 /**
- * Subscribes to `UNSHIELDED_BALANCE_SUB($address, $offset)`. **Light wire
- * traffic** — server-side filtered by `contractAddress`. The indexer has
- * no `BALANCES_FROM_BLOCK_SUB` analogue, so this is the only subscription
- * for balances regardless of config branch. `unshieldedBalancesObservable`
- * uses it uniformly across `latest`/`all`/`blockHeight`/`blockHash` —
- * no light/heavy asymmetry analogous to {@link contractStateObservable}.
+ * Subscribes to `UNSHIELDED_BALANCE_SUB($address, $offset)`: the same
+ * server-filtered feed of this contract's actions as {@link blockOffsetToState$},
+ * selecting the balances each action leaves instead of the state.
  */
 export const blockOffsetToUnshieldedBalances$ =
   (apolloClient: ApolloClient) =>
   (contractAddress: ContractAddress) =>
-  (offset: InputMaybe<BlockOffset>): Rx.Observable<PositionedRecord<UnshieldedBalances>> =>
+  (offset: BlockOffset): Rx.Observable<PositionedRecord<UnshieldedBalances>> =>
     apolloClient
       .subscribe({
         query: UNSHIELDED_BALANCE_SUB,
@@ -448,7 +391,8 @@ export const blockOffsetToUnshieldedBalances$ =
           address: contractAddress,
           offset
         },
-        fetchPolicy: 'no-cache'
+        fetchPolicy: 'no-cache',
+        context: FRESH_SUBSCRIPTION
       })
       .pipe(
         withValidFetchData(),

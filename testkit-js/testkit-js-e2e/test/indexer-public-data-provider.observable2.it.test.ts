@@ -29,7 +29,7 @@ import {
   type TestEnvironment
 } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
-import { firstValueFrom, type Observable, ReplaySubject, take, timeout, timer, toArray } from 'rxjs';
+import { firstValueFrom, type Observable, ReplaySubject, take, timeout, toArray } from 'rxjs';
 
 import { SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '../src/constants';
 import { CompiledCounter } from '../src/contract';
@@ -44,7 +44,6 @@ const logger = createLogger(
 const { ledger } = CompiledCounter;
 
 const STATE_WAIT_MS = 120_000;
-const QUIET_WINDOW_MS = 30_000;
 
 describe('Indexer API', () => {
   let publicDataProvider: PublicDataProvider;
@@ -168,36 +167,13 @@ describe('Indexer API', () => {
     }
   };
 
-  /**
-   * Pins known defect #1398: `all` subscribes from the latest block, not from the deploy, so the
-   * deploy state never arrives and the increment's state arrives only if no block was produced
-   * between it and the subscription. When #1398 is fixed this test fails; replace it with
-   * `expectStatesObservedAcrossAnIncrement` with `{ type: 'all' }`, expecting round 0n at the deploy's
-   * block and 1n at the increment's.
-   */
   test(
-    'known defect #1398: the all stream starts at the latest block, not at the deploy (config:all) [@slow]',
-    async () => {
-      const rounds: bigint[] = [];
-      let failure: unknown;
-      const subscription = publicDataProvider
-        .contractStateObservable(deployedContractObserved.deployTxData.public.contractAddress, { type: 'all' })
-        .subscribe({
-          next: ({ value }) => rounds.push(ledger(value.data).round),
-          error: (error: unknown) => {
-            failure = error;
-          }
-        });
-      try {
-        await api.increment(deployedContractObserved);
-        await firstValueFrom(timer(QUIET_WINDOW_MS));
-      } finally {
-        subscription.unsubscribe();
-      }
-
-      expect(failure).toBeUndefined();
-      expect([[2n], [1n, 2n]]).toContainEqual(rounds);
-    },
+    'should return the whole history of states of the contract, from its deploy (config:all, expected states:0,1,2) [@slow]',
+    () =>
+      expectStatesObservedAcrossAnIncrement({ type: 'all' }, [
+        [0n, deployedContractObserved.deployTxData.public],
+        [1n, incrementFinalizedTxData]
+      ]),
     SLOW_TEST_TIMEOUT
   );
 

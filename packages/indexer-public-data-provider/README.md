@@ -328,16 +328,15 @@ arrive again; nothing after it is skipped. Leave `inclusive` unset when you
 resume: `inclusive: false` skips the whole block, including any values in it
 that came after the record you resumed from.
 
-A resumed stream is a `blockHeight` stream. If you started with `all`, that
-moves it from the light per-contract subscription to the block subscription,
-which streams every block on chain (see [Subscription shapes](./docs/subscription-shapes.md)). The `all` and `txId` branches and the
-balance stream can also repeat values after a transport reconnect, because they
-do not suppress the indexer's replay.
+A resumed stream is a `blockHeight` stream, and reads the same per-contract
+subscription as every other branch (see [Subscription shapes](./docs/subscription-shapes.md)).
+A transport reconnect inside one stream repeats nothing: every branch, and the
+balance stream, suppresses the values the indexer replays.
 
 #### Which state stream to use
 
-The two contract-state streams run the identical pipeline — same branches, same
-wire-traffic costs, same replay suppression — and differ only in what one served
+The two contract-state streams run the identical pipeline — same branches and
+replay suppression — and differ only in what one served
 contract action becomes.
 
 | | `contractStateObservable` | `rawContractStateObservable` |
@@ -368,10 +367,8 @@ provider.rawContractStateObservable(contractAddress).subscribe(({ value: record 
 ```
 
 `ledgerParameters` is **always absent on this stream**, although
-`queryRawContractState` serves it. Neither subscription asks for it: the four
-block-subscription branches would receive one for every block on chain, whether
-or not that block touches this contract, and the `all` branch one for every
-contract action.
+`queryRawContractState` serves it. The subscription does not ask for it, which
+would cost one blob per contract action.
 
 If you need the parameters for a streamed state, read them at the block the
 record names:
@@ -572,7 +569,7 @@ docstring resolves to it.
 
 | Document | What it explains |
 |---|---|
-| [Subscription shapes](./docs/subscription-shapes.md) | What each `contractStateObservable` branch costs on the wire, and why the per-block and per-change subscriptions cannot be collapsed into one |
+| [Subscription shapes](./docs/subscription-shapes.md) | How every contract-state and balance branch starts on the one per-contract subscription, and how a reconnect is kept from repeating values |
 | [Error boundaries](./docs/error-boundaries.md) | Why `IndexerError` is not exhaustive over a read, and what the two escaping failure classes actually report |
 
 Docstrings in `src/` carry the API contract: what a symbol does, its

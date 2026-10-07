@@ -20,7 +20,7 @@ import * as Rx from 'rxjs';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { indexerPublicDataProvider } from '..';
-import { BLOCK_QUERY, TXS_FROM_BLOCK_SUB } from '../query-definitions';
+import { BLOCK_QUERY, CONTRACT_STATE_SUB } from '../query-definitions';
 
 type BlockQueryData = { block: { height: number; hash: string } | null };
 
@@ -71,7 +71,7 @@ describe('contractStateObservable - block offset configs', () => {
     vi.restoreAllMocks();
   });
 
-  test('blockHeight config dispatches the block subscription', async () => {
+  test('blockHeight config subscribes to the contract action feed', async () => {
     const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
     const config: ContractStateObservableConfig = {
       type: 'blockHeight',
@@ -88,12 +88,12 @@ describe('contractStateObservable - block offset configs', () => {
     expect(watchQuerySpy).toHaveBeenCalledTimes(1);
     expect(watchQuerySpy).toHaveBeenCalledWith(expect.objectContaining({ query: BLOCK_QUERY }));
     expect(subscribeSpy).toHaveBeenCalledTimes(1);
-    expect(subscribeSpy).toHaveBeenCalledWith(expect.objectContaining({ query: TXS_FROM_BLOCK_SUB }));
+    expect(subscribeSpy).toHaveBeenCalledWith(expect.objectContaining({ query: CONTRACT_STATE_SUB }));
 
     subscription.unsubscribe();
   });
 
-  test('blockHash config dispatches the block subscription', async () => {
+  test('blockHash config subscribes to the contract action feed', async () => {
     const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
     const config: ContractStateObservableConfig = {
       type: 'blockHash',
@@ -110,12 +110,12 @@ describe('contractStateObservable - block offset configs', () => {
     expect(watchQuerySpy).toHaveBeenCalledTimes(1);
     expect(watchQuerySpy).toHaveBeenCalledWith(expect.objectContaining({ query: BLOCK_QUERY }));
     expect(subscribeSpy).toHaveBeenCalledTimes(1);
-    expect(subscribeSpy).toHaveBeenCalledWith(expect.objectContaining({ query: TXS_FROM_BLOCK_SUB }));
+    expect(subscribeSpy).toHaveBeenCalledWith(expect.objectContaining({ query: CONTRACT_STATE_SUB }));
 
     subscription.unsubscribe();
   });
 
-  test('blockHeight config with no matching block does not dispatch the block subscription', async () => {
+  test('blockHeight config with no matching block does not subscribe to the contract action feed', async () => {
     watchQuerySpy.mockReturnValue(buildBlockQueryEmission({ block: null }));
 
     const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
