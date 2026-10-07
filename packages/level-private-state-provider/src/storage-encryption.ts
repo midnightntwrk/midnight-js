@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError, InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { PrivateStateDecryptionError } from '@midnight-ntwrk/midnight-js-types';
 import { validatePassword } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
@@ -48,12 +50,12 @@ interface EncryptedComponents {
 
 const extractEncryptedComponents = (data: Buffer): EncryptedComponents => {
   if (data.length < HEADER_LENGTH) {
-    throw new Error('Invalid encrypted data: too short');
+    throw new PrivateStateDecryptionError('Invalid encrypted data: too short');
   }
 
   const version = data[0];
   if (version !== ENCRYPTION_VERSION_V1 && version !== ENCRYPTION_VERSION_V2) {
-    throw new Error(`Unsupported encryption version: ${version}`);
+    throw new PrivateStateDecryptionError(`Unsupported encryption version: ${version}`);
   }
 
   return {
@@ -75,7 +77,7 @@ const getIterationsForVersion = (version: number): number => {
     case ENCRYPTION_VERSION_V2:
       return PBKDF2_ITERATIONS_V2;
     default:
-      throw new Error(`Unsupported encryption version: ${version}`);
+      throw new PrivateStateDecryptionError(`Unsupported encryption version: ${version}`);
   }
 };
 
@@ -91,7 +93,7 @@ const deriveEncryptionKey = async (
 
 const constantTimeBufferEqual = (aBuf: Buffer, bBuf: Buffer): boolean => {
   if (aBuf.length !== bBuf.length) {
-    throw new RangeError('Input buffers must have the same byte length');
+    throw new InvariantViolationError('Input buffers must have the same byte length');
   }
   let result = 0;
   for (let i = 0; i < aBuf.length; i++) {
@@ -160,11 +162,11 @@ export class StorageEncryption {
     const { version, salt, iv, authTag, encrypted } = extractEncryptedComponents(data);
 
     if (version === ENCRYPTION_VERSION_V1) {
-      throw new Error('V1 encrypted data requires password for decryption. Use decryptWithPassword() instead.');
+      throw new InvalidArgumentError('V1 encrypted data requires password for decryption. Use decryptWithPassword() instead.');
     }
 
     if (!timingSafeEqual(Buffer.from(this.salt), salt)) {
-      throw new Error('Salt mismatch: data was encrypted with a different password');
+      throw new PrivateStateDecryptionError('Salt mismatch: data was encrypted with a different password');
     }
 
     const decrypted = await this.backend.aesGcmDecrypt(this.encryptionKey, iv, encrypted, authTag);
@@ -176,7 +178,7 @@ export class StorageEncryption {
     const { version, salt, iv, authTag, encrypted } = extractEncryptedComponents(data);
 
     if (!timingSafeEqual(Buffer.from(this.salt), salt)) {
-      throw new Error('Salt mismatch: data was encrypted with a different password');
+      throw new PrivateStateDecryptionError('Salt mismatch: data was encrypted with a different password');
     }
 
     const iterations = getIterationsForVersion(version);
@@ -198,7 +200,7 @@ export class StorageEncryption {
   static getVersion(encryptedData: string): number {
     const buffer = Buffer.from(encryptedData, 'base64');
     if (buffer.length < 1) {
-      throw new Error('Invalid encrypted data: too short');
+      throw new PrivateStateDecryptionError('Invalid encrypted data: too short');
     }
     return buffer[0];
   }
@@ -220,7 +222,7 @@ export const decryptValue = async (
   password: string
 ): Promise<string> => {
   if (!StorageEncryption.isEncrypted(encryptedValue)) {
-    throw new Error(
+    throw new PrivateStateDecryptionError(
       'Unrecognized or unencrypted data encountered during decryption'
     );
   }

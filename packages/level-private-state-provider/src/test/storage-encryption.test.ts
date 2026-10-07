@@ -15,6 +15,8 @@
 
 import { createHash } from 'node:crypto';
 
+import { InvalidArgumentError, InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { PrivateStateDecryptionError } from '@midnight-ntwrk/midnight-js-types';
 import { PasswordValidationError,type PasswordValidationFailure } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
@@ -501,5 +503,113 @@ describe('StorageEncryption with noble backend', () => {
 
       expect(decrypted).toBe(testData);
     });
+  });
+});
+
+describe('StorageEncryption error classes', () => {
+  const password = 'Test-Password-123!';
+  const V1_ENCRYPTED =
+    'AYse8BxWbiRb618I8CQKwLJoGyzx0zddBBQ3LORO2wBSgi/4kHm3CqznHcvmSNPw5Y0wW9XDhweunjM/zyq8cHVQYoS53gzsFYEae5imclcA03IJN2Rr5Gf+z1GNd5J5Vg==';
+  const V1_SALT = '8b1ef01c566e245beb5f08f0240ac0b2681b2cf1d3375d0414372ce44edb0052';
+
+  const captureRejection = async (action: () => Promise<unknown>): Promise<unknown> => {
+    try {
+      await action();
+    } catch (error) {
+      return error;
+    }
+    return undefined;
+  };
+
+  const expectError = (error: unknown, errorClass: new (message: string) => Error, message: string): void => {
+    expect(error).toBeInstanceOf(errorClass);
+    if (!(error instanceof Error)) {
+      throw error;
+    }
+    expect(error.message).toBe(message);
+  };
+
+  test('decrypt refuses data shorter than the header', async () => {
+    const encryption = await StorageEncryption.create(password);
+
+    const error = await captureRejection(() => encryption.decrypt(Buffer.alloc(3).toString('base64')));
+
+    expectError(error, PrivateStateDecryptionError, 'Invalid encrypted data: too short');
+  });
+
+  test('decrypt refuses an unknown encryption version', async () => {
+    const encryption = await StorageEncryption.create(password);
+    const data = Buffer.alloc(200);
+    data[0] = 9;
+
+    const error = await captureRejection(() => encryption.decrypt(data.toString('base64')));
+
+    expectError(error, PrivateStateDecryptionError, 'Unsupported encryption version: 9');
+  });
+
+  test('decrypt refuses V1 data without a password', async () => {
+    const encryption = await StorageEncryption.create(password, { existingSalt: Buffer.from(V1_SALT, 'hex') });
+
+    const error = await captureRejection(() => encryption.decrypt(V1_ENCRYPTED));
+
+    expectError(
+      error,
+      InvalidArgumentError,
+      'V1 encrypted data requires password for decryption. Use decryptWithPassword() instead.'
+    );
+  });
+
+  test('decrypt refuses data written under another salt', async () => {
+    const writer = await StorageEncryption.create(password);
+    const reader = await StorageEncryption.create(password);
+    const encrypted = await writer.encrypt('data');
+
+    const error = await captureRejection(() => reader.decrypt(encrypted));
+
+    expectError(error, PrivateStateDecryptionError, 'Salt mismatch: data was encrypted with a different password');
+  });
+
+  test('decryptWithPassword refuses data written under another salt', async () => {
+    const writer = await StorageEncryption.create(password);
+    const reader = await StorageEncryption.create(password);
+    const encrypted = await writer.encrypt('data');
+
+    const error = await captureRejection(() => reader.decryptWithPassword(encrypted, password));
+
+    expectError(error, PrivateStateDecryptionError, 'Salt mismatch: data was encrypted with a different password');
+  });
+
+  test('getVersion refuses empty input', () => {
+    let error: unknown;
+    try {
+      StorageEncryption.getVersion('');
+    } catch (caught) {
+      error = caught;
+    }
+
+    expectError(error, PrivateStateDecryptionError, 'Invalid encrypted data: too short');
+  });
+
+  test('decryptValue refuses data that is not encrypted', async () => {
+    const encryption = await StorageEncryption.create(password);
+
+    const error = await captureRejection(() => decryptValue('not-encrypted-data', encryption, password));
+
+    expectError(
+      error,
+      PrivateStateDecryptionError,
+      'Unrecognized or unencrypted data encountered during decryption'
+    );
+  });
+
+  test('timingSafeEqual refuses buffers of different lengths', () => {
+    let error: unknown;
+    try {
+      timingSafeEqual(Buffer.from([1, 2, 3]), Buffer.from([1, 2, 3, 4]));
+    } catch (caught) {
+      error = caught;
+    }
+
+    expectError(error, InvariantViolationError, 'Input buffers must have the same byte length');
   });
 });

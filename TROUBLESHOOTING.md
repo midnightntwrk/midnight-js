@@ -406,7 +406,6 @@ new coded error cannot ship without an entry here and an entry cannot outlive it
 | `MIDNIGHT_JS_PR_EXPORT_DECRYPTION_FAILED` | An export could not be decrypted. | Use the password the export was created with; the file may be corrupt. |
 | `MIDNIGHT_JS_PR_INVALID_EXPORT_FORMAT` | An import file is not a valid midnight-js export. | Use a file produced by the export function of a compatible version. |
 | `MIDNIGHT_JS_PR_IMPORT_CONFLICT` | An import would overwrite existing private state. | Choose the conflict strategy explicitly, or remove the existing entries first. |
-| `MIDNIGHT_JS_PR_PRIVATE_STATE_LOCK_TIMEOUT` | A password-rotation lock was not released in time. | Retry once the other rotation finishes; check no rotation is stuck. |
 | `MIDNIGHT_JS_PR_PRIVATE_STATE_DECRYPTION_FAILED` | Stored private state could not be decrypted (wrong password, other salt, unknown format or corrupt data). | Use the right password. If it is right, the store is corrupt: restore from an export. |
 | `MIDNIGHT_JS_PR_PRIVATE_STATE_STORAGE_FAILED` | Reading or writing the private-state store failed (open, read, write, migration). | Check disk space and permissions; the underlying error is on `cause`. |
 | `MIDNIGHT_JS_PR_PRIVATE_STATE_LIMIT_EXCEEDED` | More entries than the configured maximum were processed. | Raise the `maxEntries` option if the volume is expected. |
