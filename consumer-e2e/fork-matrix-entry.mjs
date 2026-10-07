@@ -2942,12 +2942,14 @@ if (DRIVES_STALE_HEAD) {
     }
     // NEITHER failure is dropped, and in this order: the submission's rejection
     // first, the read's failure second. Carrying only one of the two is what
-    // this arm's `AggregateError` shape exists to rule out, and reading the
+    // this arm's `errors` list (rejection first) exists to rule out, and reading the
     // second one's message is what proves it is the injected failure rather than
     // whatever else was to hand.
-    if (error.errors.length !== 2 || !String(error.errors[1]?.message).includes('the indexer is unreachable')) {
+    const second = error.errors[1];
+    const secondMessage = second instanceof Error ? second.message : String(second);
+    if (error.errors.length !== 2 || !secondMessage.includes('the indexer is unreachable')) {
       throw new Error(
-        `expected the rejection and the injected read failure, in that order; got ${error.errors.length} entries ending '${error.errors[1]?.message}'`,
+        `expected the rejection and the injected read failure, in that order; got ${error.errors.length} entries ending '${secondMessage}'`,
         { cause: error }
       );
     }
