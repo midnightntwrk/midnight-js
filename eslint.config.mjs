@@ -27,12 +27,19 @@ const unsafeCastSelectors = [
 
 // Package sources signal failure with a coded MidnightJsError subclass, so
 // consumers can branch on `code` and `category` instead of parsing messages.
+const PLAIN_THROW_MESSAGE =
+  'Throw a MidnightJsError subclass with a registered code (see docs/adr/0017-error-codes-are-the-contract.md). ' +
+  'General cases: InvalidArgumentError, ConfigurationError, EnvironmentUnsupportedError, InvariantViolationError.';
 const plainThrowSelectors = [
   {
     selector: 'ThrowStatement > NewExpression[callee.name=/^(Error|TypeError|RangeError|AggregateError)$/]',
-    message:
-      'Throw a MidnightJsError subclass with a registered code (see docs/adr/0017-error-codes-are-the-contract.md). ' +
-      'General cases: InvalidArgumentError, ConfigurationError, EnvironmentUnsupportedError, InvariantViolationError.'
+    message: PLAIN_THROW_MESSAGE
+  },
+  {
+    selector:
+      "CallExpression[callee.object.name='Promise'][callee.property.name='reject'] > " +
+      'NewExpression[callee.name=/^(Error|TypeError|RangeError|AggregateError)$/]',
+    message: PLAIN_THROW_MESSAGE
   }
 ];
 

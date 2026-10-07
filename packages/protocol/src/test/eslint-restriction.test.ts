@@ -304,6 +304,21 @@ describe('plain-throw gate', () => {
     expect(await lintMessagesFor(plainThrow, filePath, SYNTAX_RULE_ID)).toEqual([]);
   });
 
+  it.each([
+    'export const f = () => Promise.reject(new Error("x"));\n',
+    'export const f = () => Promise.reject(new TypeError("x"));\n',
+    'export const f = () => Promise.reject(new RangeError("x"));\n',
+    'export const f = () => Promise.reject(new AggregateError([], "x"));\n'
+  ])('flags a plain error rejected through Promise.reject: %s', async (code) => {
+    expect((await lintMessagesFor(code, CONSUMER_PATH, SYNTAX_RULE_ID)).length).toBe(1);
+  });
+
+  it('allows a coded error rejected through Promise.reject', async () => {
+    const code = 'export const f = () => Promise.reject(new CodedError("x"));\n';
+
+    expect(await lintMessagesFor(code, CONSUMER_PATH, SYNTAX_RULE_ID)).toEqual([]);
+  });
+
   it('allows a plain Error used only as a cause', async () => {
     const code = 'export const f = () => { throw new CodedError("x", { cause: new Error("y") }); };\n';
     const messages = await lintMessagesFor(code, CONSUMER_PATH, SYNTAX_RULE_ID);
