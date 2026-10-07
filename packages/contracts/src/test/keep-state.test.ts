@@ -35,7 +35,6 @@
 
 import { readFileSync } from 'node:fs';
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import {
   type ComposeCallOptions,
@@ -174,7 +173,6 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
   });
 
   beforeEach(() => {
-    setNetworkId(NETWORK_ID);
     engineSlot.engine = createReplayEngine(loadCoinReceiverRecording(), []);
   });
 

@@ -31,7 +31,6 @@
  * @see {@link Breadcrumbs} for all four readings and what each provenance means.
  */
 
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type {
   Ledger8SigningKey,
   LedgerEra
@@ -50,6 +49,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   assertSeamsSupportEra,
+  type MidnightConfig,
   type MidnightProvider,
   type PrivateStateId,
   type PrivateStateProvider,
@@ -66,8 +66,7 @@ import {
   assertDefined,
   assertIsContractAddress,
   hasErrorCode,
-  parseCoinPublicKeyToHex,
-  ttlOneHour
+  parseCoinPublicKeyToHex
 } from '@midnight-ntwrk/midnight-js-utils';
 
 import { RETAINED_PIPELINE_ERA } from '../era';
@@ -112,6 +111,7 @@ import {
   runLedger8DeployPipeline
 } from './ledger8-pipeline';
 import { toStoredLedger8SigningKey } from './ledger8-signing-key';
+import { intentTtl, networkIdOf } from './midnight-config';
 import { handleSubmitRejection } from './stale-head';
 import { createEncryptionPublicKeyResolver } from './utils';
 
@@ -139,6 +139,7 @@ export interface Ledger8EntryProviders {
   readonly proofProvider: ProofProvider;
   readonly walletProvider: WalletProvider;
   readonly midnightProvider: MidnightProvider;
+  readonly config: MidnightConfig;
   /**
    * OPTIONAL, exactly as it is on the provider set the entry points receive.
    * Only the dispatch breadcrumbs read it, so an absent logger costs an
@@ -602,6 +603,8 @@ export const runLedger8Call = async (
   providers: Ledger8EntryProviders,
   request: Ledger8CallRequest
 ): Promise<Ledger8SubmittedCall> => {
+  const networkId = networkIdOf(providers.config);
+  const ttl = intentTtl(providers.config);
   const { resolved, engine, retainedEra } = await acquireLedger8Runtime(providers, 'call', {
     logger: providers.loggerProvider,
     contractAddress: request.contractAddress
@@ -620,7 +623,7 @@ export const runLedger8Call = async (
   // passes hex through unchanged, so this is free for a wallet that already
   // answers in hex. DO NOT DROP IT: the testkit wallet answers in hex, so no
   // test in this repo can catch its absence.
-  const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId());
+  const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), networkId);
 
   const call = await runLedger8CallPipeline({
     era: resolved.era,
@@ -636,10 +639,10 @@ export const runLedger8Call = async (
     coinPublicKey,
     privateState: request.privateState,
     localVerifierKey,
-    networkId: getNetworkId(),
-    ttl: ttlOneHour(),
+    networkId,
+    ttl,
     encryptionPublicKey: createEncryptionPublicKeyResolver(
-      getNetworkId(),
+      networkId,
       coinPublicKey,
       providers.walletProvider.getEncryptionPublicKey(),
       request.additionalCoinEncPublicKeyMappings
@@ -710,6 +713,8 @@ export const runLedger8Deploy = async (
   providers: Ledger8EntryProviders,
   request: Ledger8DeployRequest
 ): Promise<Ledger8SubmittedDeploy> => {
+  const networkId = networkIdOf(providers.config);
+  const ttl = intentTtl(providers.config);
   // No contract address on this arm: a deploy has none until the composition
   // below mints one, so the selection breadcrumb leaves the field out.
   const { resolved, engine } = await acquireLedger8Runtime(providers, 'deploy', {
@@ -726,7 +731,7 @@ export const runLedger8Deploy = async (
   // constructor executed under is exactly the mismatch that mis-encrypts a coin
   // the constructor minted. Normalized once too, so both uses get the same
   // form rather than relying on the resolver normalizing again internally.
-  const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId());
+  const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), networkId);
 
   const deploy = await runLedger8DeployPipeline({
     era: resolved.era,
@@ -737,12 +742,12 @@ export const runLedger8Deploy = async (
     coinPublicKey,
     verifierKeys,
     signingKey: request.signingKey,
-    networkId: getNetworkId(),
-    ttl: ttlOneHour(),
+    networkId,
+    ttl,
     // Built the same way the call arm builds it, so a coin a constructor mints
     // is encrypted to the same key a coin a circuit mints would be.
     encryptionPublicKey: createEncryptionPublicKeyResolver(
-      getNetworkId(),
+      networkId,
       coinPublicKey,
       providers.walletProvider.getEncryptionPublicKey()
     )
