@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { type Contract, ProvableCircuitId, VerifierKey as ContractVerifierKey } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type {
@@ -31,20 +30,25 @@ import {
   asContractAddress,
   asEffectOption,
   makeContractExecutableRuntime,
+  type MidnightConfig,
   Transaction,
   type VerifierKey,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
+
+import { intentTtl, networkIdOf } from '../internal/midnight-config';
 
 export const unprovenTxFromContractUpdates = async (
-  updateAndSignFn: () => Promise<MaintenanceUpdate>
+  updateAndSignFn: () => Promise<MaintenanceUpdate>,
+  config: MidnightConfig
 ): Promise<UnprovenTransaction> => {
+  const networkId = networkIdOf(config);
+  const ttl = intentTtl(config);
   return Transaction.fromParts(
-    getNetworkId(),
+    networkId,
     undefined,
     undefined,
-    Intent.new(ttlOneHour()).addMaintenanceUpdate(await updateAndSignFn())
+    Intent.new(ttl).addMaintenanceUpdate(await updateAndSignFn())
   );
 };
 
@@ -56,6 +60,7 @@ export const createUnprovenReplaceAuthorityTx = <C extends Contract.Any>(
   contractState: ContractState,
   currentAuthority: SigningKey,
   coinPublicKey: CoinPublicKey,
+  config: MidnightConfig
 ): Promise<UnprovenTransaction> => {
   const contractExec = ContractExecutable.make(compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
@@ -71,7 +76,7 @@ export const createUnprovenReplaceAuthorityTx = <C extends Contract.Any>(
         contractState
       }
     ))).public.maintenanceUpdate
-  });
+  }, config);
 };
 
 export const createUnprovenRemoveVerifierKeyTx = <C extends Contract.Any>(
@@ -82,6 +87,7 @@ export const createUnprovenRemoveVerifierKeyTx = <C extends Contract.Any>(
   contractState: ContractState,
   currentAuthority: SigningKey,
   coinPublicKey: CoinPublicKey,
+  config: MidnightConfig
 ): Promise<UnprovenTransaction> => {
   const contractExec = ContractExecutable.make(compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
@@ -97,7 +103,7 @@ export const createUnprovenRemoveVerifierKeyTx = <C extends Contract.Any>(
         contractState
       }
     ))).public.maintenanceUpdate
-  });
+  }, config);
 };
 
 export const createUnprovenInsertVerifierKeyTx = <C extends Contract.Any>(
@@ -109,6 +115,7 @@ export const createUnprovenInsertVerifierKeyTx = <C extends Contract.Any>(
   contractState: ContractState,
   currentAuthority: SigningKey,
   coinPublicKey: CoinPublicKey,
+  config: MidnightConfig
 ): Promise<UnprovenTransaction> => {
   const contractExec = ContractExecutable.make(compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
@@ -125,5 +132,5 @@ export const createUnprovenInsertVerifierKeyTx = <C extends Contract.Any>(
         contractState
       }
     ))).public.maintenanceUpdate
-  });
+  }, config);
 };

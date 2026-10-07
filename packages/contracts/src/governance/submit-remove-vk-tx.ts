@@ -92,7 +92,8 @@ export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
     circuitId,
     contractState,
     signingKey,
-    providers.walletProvider.getCoinPublicKey()
+    providers.walletProvider.getCoinPublicKey(),
+    providers.config
   );
   const submitTxResult = await submitTx(providers, { unprovenTx });
   if (submitTxResult.status !== SucceedEntirely) {

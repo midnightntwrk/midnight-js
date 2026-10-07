@@ -85,7 +85,8 @@ describe('submitRemoveVerifierKeyTx', () => {
         circuitId,
         mockContractState,
         mockSigningKey,
-        mockCoinPublicKey
+        mockCoinPublicKey,
+        mockProviders.config
       );
       expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(result).toBe(mockFinalizedTxData);

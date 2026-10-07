@@ -79,7 +79,8 @@ describe('submitReplaceAuthorityTx', () => {
         mockNewAuthority,
         mockContractState,
         mockCurrentAuthority,
-        mockCoinPublicKey
+        mockCoinPublicKey,
+        mockProviders.config
       );
       expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(mockContractAddress, mockNewAuthority);

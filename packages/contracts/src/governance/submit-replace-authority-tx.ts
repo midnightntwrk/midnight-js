@@ -90,7 +90,8 @@ export const submitReplaceAuthorityTx =
       newAuthority,
       contractState,
       currentAuthority,
-      providers.walletProvider.getCoinPublicKey()
+      providers.walletProvider.getCoinPublicKey(),
+      providers.config
     );
     const submitTxResult = await submitTx(providers, { unprovenTx });
     if (submitTxResult.status !== SucceedEntirely) {
