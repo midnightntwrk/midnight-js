@@ -2090,7 +2090,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-network-id@workspace:packages/network-id"
   dependencies:
-    "@midnight-ntwrk/midnight-js-types": "workspace:*"
     rollup: "npm:^4.60.4"
     vitest: "npm:^4.1.7"
   languageName: unknown

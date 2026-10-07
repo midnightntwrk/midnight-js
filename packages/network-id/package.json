@@ -23,9 +23,6 @@
   "files": [
     "dist/"
   ],
-  "dependencies": {
-    "@midnight-ntwrk/midnight-js-types": "workspace:*"
-  },
   "devDependencies": {
     "rollup": "^4.60.4",
     "vitest": "^4.1.7"

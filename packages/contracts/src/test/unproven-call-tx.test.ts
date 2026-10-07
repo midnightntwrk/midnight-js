@@ -20,7 +20,7 @@ import {
   type ContractStateProvider,
   StateValue
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createUnprovenLedgerCallTx, makeCalleeStateResolver } from '../internal/utils';
@@ -256,7 +256,7 @@ describe('unproven-call-tx', () => {
     it('decodes a Bech32m wallet key with providers.config.networkId', async () => {
       const { getPublicStates } = await import('../get-states');
       vi.mocked(getPublicStates, { partial: true }).mockResolvedValue({
-        zswapChainState: { test: 'zswap-chain-state' } as unknown as ZswapChainState,
+        zswapChainState: new ZswapChainState(),
         contractState: await getInitialContractState(),
         ledgerParameters: LedgerParameters.initialParameters()
       });
@@ -425,7 +425,7 @@ describe('unproven-call-tx', () => {
     it('forwards providers.config to the ledger builder', async () => {
       const { getPublicStates } = await import('../get-states');
       vi.mocked(getPublicStates, { partial: true }).mockResolvedValue({
-        zswapChainState: { test: 'zswap-chain-state' } as unknown as ZswapChainState,
+        zswapChainState: new ZswapChainState(),
         contractState: await getInitialContractState(),
         ledgerParameters: LedgerParameters.initialParameters()
       });

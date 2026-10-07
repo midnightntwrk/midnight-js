@@ -33,8 +33,9 @@ describe('[Unit tests] NodeClient', () => {
     vi.clearAllMocks();
   });
 
-  it('rejects an empty network id', () => {
-    expect(() => new NodeClient(nodeURL, logger, '')).toThrow(/networkId/);
+  it.each(['', ' preview', 'preview\n'])('rejects network id %j, quoting it in the error', (networkId) => {
+    expect(() => new NodeClient(nodeURL, logger, networkId)).toThrow(TypeError);
+    expect(() => new NodeClient(nodeURL, logger, networkId)).toThrow(`got ${JSON.stringify(networkId)}`);
   });
 
   it('contractState queries the contract under the client network id', async () => {

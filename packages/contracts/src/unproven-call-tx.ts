@@ -82,8 +82,9 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PC
  * @param walletEncryptionPublicKey
  * @param crossContract Enables cross-contract calls; required for circuits that make them.
  * @returns Data produced by the circuit call and an unproven transaction assembled from the call result.
- * @throws TypeError If `options.config` is missing, or its `networkId` is not a non-empty string.
- * @throws RangeError If `options.config``.ttlSeconds` is not a positive whole number.
+ * @throws TypeError If `options.config` is missing, or its `networkId` is not a non-empty string without
+ *         surrounding whitespace.
+ * @throws RangeError If `options.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
  *
  * @remarks
  * The returned {@link UnsubmittedCallTxData} is privacy-sensitive and carries
@@ -407,8 +408,9 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
  * @throws IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privateStateProvider`
  *                                           was not. We assume that when a user gives a `privateStateId`,
  *                                           they want to update the private state store.
- * @throws TypeError If `providers.config` is missing, or its `networkId` is not a non-empty string.
- * @throws RangeError If `providers.config``.ttlSeconds` is not a positive whole number.
+ * @throws TypeError If `providers.config` is missing, or its `networkId` is not a non-empty string without
+ *         surrounding whitespace.
+ * @throws RangeError If `providers.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
  *
  * @remarks
  * The returned {@link UnsubmittedCallTxData} is privacy-sensitive and carries

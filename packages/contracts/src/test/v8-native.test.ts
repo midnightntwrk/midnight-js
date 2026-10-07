@@ -1078,10 +1078,18 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 30_000);
   });
 
-  it('refuses an invalid config before resolving the artifact or proving', async () => {
+  it('submitCallTx refuses an invalid config before resolving the artifact or proving', async () => {
     const providers = { ...preForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 0 } };
 
     await expect(submitCallTx(providers, callOptions())).rejects.toThrow(RangeError);
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+  });
+
+  it('submitCallTxAsync refuses an invalid config before resolving the artifact or proving', async () => {
+    const providers = { ...preForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 0 } };
+
+    await expect(submitCallTxAsync(providers, callOptions())).rejects.toThrow(RangeError);
     expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });

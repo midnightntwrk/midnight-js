@@ -14,7 +14,7 @@
  */
 
 import type { MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { assertValidMidnightConfig, intentTtl } from '../midnight-config';
 
@@ -59,11 +59,20 @@ describe('assertValidMidnightConfig', () => {
 });
 
 describe('intentTtl', () => {
-  it('adds ttlSeconds to now', () => {
-    expect(intentTtl(config({ ttlSeconds: 600 }), NOW)).toEqual(new Date(NOW + 600_000));
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('adds ttlSeconds to the current time', () => {
+    expect(intentTtl(config({ ttlSeconds: 600 }))).toEqual(new Date(NOW + 600_000));
   });
 
   it('rejects an invalid ttlSeconds', () => {
-    expect(() => intentTtl(config({ ttlSeconds: 0 }), NOW)).toThrow(RangeError);
+    expect(() => intentTtl(config({ ttlSeconds: 0 }))).toThrow(RangeError);
   });
 });

@@ -49,8 +49,8 @@ export interface WalletProvider {
    * @param tx The version-tagged transaction to balance: `{ version: 'v9', tx }` for a live v9
    *           ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes.
    * @param ttl Expiry for the intent the wallet adds while balancing. The framework always passes
-   *            `providers.config.ttlSeconds` from when balancing starts; honour it rather than a TTL
-   *            of your own. Implementation-defined when omitted; the testkit's
+   *            a `Date` `providers.config.ttlSeconds` after balancing starts; honour it rather than a
+   *            TTL of your own. Implementation-defined when omitted; the testkit's
    *            `MidnightWalletProvider` defaults to one hour.
    * @returns The balanced, signed transaction, version-tagged. Narrow on `version` — or call
    *          `unwrapV9` — before reading the payload.

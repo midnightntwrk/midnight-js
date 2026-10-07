@@ -108,8 +108,9 @@ export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
  * @param config The network the transaction is built for and how long it stays valid, normally `providers.config`.
  * @returns Data produced by the contract constructor call and an unproven deployment transaction
  *          assembled from the contract constructor result.
- * @throws TypeError If `config` is missing, or its `networkId` is not a non-empty string.
- * @throws RangeError If `config``.ttlSeconds` is not a positive whole number.
+ * @throws TypeError If `config` is missing, or its `networkId` is not a non-empty string without
+ *         surrounding whitespace.
+ * @throws RangeError If `config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
  *
  * @remarks
  * The returned {@link UnsubmittedDeployTxData} is privacy-sensitive and
@@ -207,8 +208,9 @@ export async function createUnprovenDeployTx<C extends Contract.Any>(
  *
  * @returns A promise that contains all data produced by the constructor call and an unproven
  *          transaction assembled from the constructor result.
- * @throws TypeError If `providers.config` is missing, or its `networkId` is not a non-empty string.
- * @throws RangeError If `providers.config``.ttlSeconds` is not a positive whole number.
+ * @throws TypeError If `providers.config` is missing, or its `networkId` is not a non-empty string without
+ *         surrounding whitespace.
+ * @throws RangeError If `providers.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
  *
  * @remarks
  * The returned {@link UnsubmittedDeployTxData} is privacy-sensitive and

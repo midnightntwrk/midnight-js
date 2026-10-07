@@ -23,14 +23,15 @@ export type NetworkId = string;
  */
 export interface MidnightConfig {
   /**
-   * The network transactions are built for. Must be non-empty. Bech32m wallet keys must be encoded for
-   * this network; hex keys are not checked against it.
+   * The network transactions are built for. Must be a non-empty string without surrounding whitespace.
+   * Bech32m wallet keys must be encoded for this network; hex keys are not checked against it.
    */
   readonly networkId: NetworkId;
   /**
-   * How long a built transaction stays valid, in whole seconds, counted from when each intent is built.
-   * The framework also passes it to `walletProvider.balanceTx`, counted from when balancing starts.
-   * Must be a positive whole number.
+   * How long a built transaction stays valid, in whole seconds, counted from when the framework starts
+   * building it. The framework also passes it to `walletProvider.balanceTx`, counted from when balancing
+   * starts. The intent the wallet adds gets this lifetime only if the wallet honours that `ttl`; a wallet
+   * behind the DApp Connector cannot, and uses its own. Must be a positive whole number.
    */
   readonly ttlSeconds: number;
 }

@@ -54,13 +54,12 @@ export function assertValidMidnightConfig(
 }
 
 /**
- * The expiry for an intent built now: `now` plus `config.ttlSeconds`.
+ * The expiry for an intent built now: the current time plus `config.ttlSeconds`.
  *
  * @param config The config whose `ttlSeconds` is applied.
- * @param now The build time in milliseconds since the epoch.
  * @throws TypeError, RangeError As {@link assertValidMidnightConfig}.
  */
-export const intentTtl = (config: MidnightConfig, now: number = Date.now()): Date => {
+export const intentTtl = (config: MidnightConfig): Date => {
   assertValidMidnightConfig(config);
-  return new Date(now + config.ttlSeconds * 1000);
+  return new Date(Date.now() + config.ttlSeconds * 1000);
 };

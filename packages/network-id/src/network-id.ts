@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { NetworkId as TypesNetworkId } from '@midnight-ntwrk/midnight-js-types';
-
 /**
+ * Identifies a Midnight network, e.g. `'preview'` or `'undeployed'`.
+ *
  * @deprecated Since 5.0.0 import `NetworkId` from `@midnight-ntwrk/midnight-js-types`. Removed in 6.0.
  */
-export type NetworkId = TypesNetworkId;
+export type NetworkId = string;

@@ -83,7 +83,7 @@ const distImportPattern = {
 
 // The framework reads the network id from `MidnightProviders.config` (#982);
 // the deprecated global must not creep back into package or testkit source.
-// `network-id` itself and the `midnight-js` barrel that re-exports it are exempt.
+// Test files, `network-id` itself and the `midnight-js` barrel that re-exports it are exempt.
 const networkIdImportPath = {
   name: '@midnight-ntwrk/midnight-js-network-id',
   message: 'Deprecated: the framework reads the network id from MidnightProviders.config (#982).'
