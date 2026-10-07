@@ -40,7 +40,7 @@ export interface WrapKeepStateCallOptions {
    * is whatever this supplies. Defaulting it would make this function the silent
    * wrong-cost-model path the option exists to close. See {@link LedgerParametersOption}.
    */
-  readonly ledgerParameters: LedgerParametersOption;
+  readonly ledgerParametersBytes: LedgerParametersOption;
 }
 
 /**
@@ -64,7 +64,7 @@ export interface WrapKeepStateCallOptions {
  * @see {@link RetainedEraExecution}
  */
 export const wrapKeepStateCall = (options: WrapKeepStateCallOptions): ledgerV9.ContractCallPrototype => {
-  const { transcript, contractAddress, contractState, ledgerParameters } = options;
+  const { transcript, contractAddress, contractState, ledgerParametersBytes } = options;
   const { prototype } = assembleCallPrototype(ledgerV9, {
     circuitId: transcript.circuitId,
     contractAddress,
@@ -80,7 +80,7 @@ export const wrapKeepStateCall = (options: WrapKeepStateCallOptions): ledgerV9.C
     input: transcript.input,
     output: transcript.output,
     operations: contractState,
-    ledgerParameters,
+    ledgerParametersBytes,
     stage: 'wrap-call',
     version: 'v9'
   });

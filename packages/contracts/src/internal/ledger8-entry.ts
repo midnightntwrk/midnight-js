@@ -1250,7 +1250,7 @@ export interface Ledger8DeployedState {
   readonly contractAddress: string;
   readonly deployTxData: VersionedFinalizedTxData;
   readonly signingKey: Ledger8SigningKey;
-  readonly initialState: Uint8Array;
+  readonly initialContractStateBytes: Uint8Array;
   readonly initialContractState: Ledger8ConstructedState['contractState'];
   /** The private state the CONSTRUCTOR produced. */
   readonly initialPrivateState: unknown;
@@ -1399,7 +1399,7 @@ export const submitLedger8DeployTx = async (
     contractAddress: deploy.contractAddress,
     deployTxData,
     signingKey: deploy.signingKey,
-    initialState: deploy.initialState,
+    initialContractStateBytes: deploy.initialContractStateBytes,
     initialContractState: deploy.initialContractState,
     initialPrivateState: deploy.nextPrivateState,
     initialZswapState: deploy.initialZswapState

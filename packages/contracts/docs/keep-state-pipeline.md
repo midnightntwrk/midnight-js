@@ -383,10 +383,10 @@ public `ContractMaintenanceAuthority(committee, threshold, counter?)` whose own
 documentation states that `counter` must be `0n` at deployment, and a MUTABLE
 `ContractState.maintenanceAuthority`. An authority written there survives
 serialization, the bridge into the retained ledger's `ContractState`, and
-`ContractDeploy` — it is readable off the composed `initialState` afterwards,
+`ContractDeploy` — it is readable off the composed `initialContractStateBytes` afterwards,
 which `packages/protocol/src/test/v8-deploy.test.ts` measures at both ends. The
 era seam needed no new field: `ComposeDeployOptions` already carries the
-serialized `contractState`, which is where the authority lives.
+serialized `contractStateBytes`, which is where the authority lives.
 
 The key is the caller's own when one is supplied, and a freshly sampled one
 otherwise. Either way it is reported on `Ledger8DeployedContract.signingKey` and

@@ -60,8 +60,9 @@ Four rules bound this:
 
 1. **Additive, never a replacement.** Every plain-data member the earlier rule
    introduced as a substitute stays exactly where it is — `txBytes` alongside a
-   handle, `initialState` bytes alongside the constructor's handle. A caller
-   that clones, persists or ships a result keeps a member it can use; nothing
+   handle, `initialState` bytes (now `initialContractStateBytes`) alongside the
+   constructor's handle. A caller that clones, persists or ships a result keeps
+   a member it can use; nothing
    that works today stops working.
 2. **`LedgerEra` still trades only plain data, in both directions.** That
    facade's caller is era-agnostic by construction — it holds whichever era the
@@ -249,3 +250,68 @@ usable balance rather than substituting an empty map.
 decoded state. The addition here is not a general licence to carry ledger fields
 "in case"; it is the one field an execution path demonstrably could not run
 without.
+
+## Amendment — the retained deployed handle keeps its flat layout, and bytes are named as bytes (2026-10-07)
+
+The decision above stands. This note settles where the retained deployed
+handle keeps the deployer's data, and how a member holding serialized bytes
+is named.
+
+**The layout stays as it is.** The current era nests the deployer's data under
+`deployTxData.private` (`signingKey`, `initialPrivateState`,
+`initialZswapState`) and `deployTxData.public` (`initialContractState`).
+`Ledger8DeployedContract` carries the same facts at the top level. Both eras
+hold every fact; they disagree only about the path. The two paths are
+documented in the v5.0.0 migration guide.
+
+Moving the retained members under `deployTxData` was rejected. It would not
+give a caller one path across the eras: the retained `deployTxData` is the read
+surface's flat `VersionedFinalizedTxData`, so `txId` already sits at a
+different path from the current era's `deployTxData.public.txId`, and
+`Ledger8DeployedContract` extends `Ledger8FoundContract`, whose `signingKey`
+has to stay at the top level: a found handle's `deployTxData` is that same read
+record, which has no private half to nest a key in. The change would
+mix two record shapes in one object and still leave the caller branching on
+`era`. Hoisting the current era's members to the top level was rejected
+because it breaks every current-era caller. The divergence ends with the
+retained era itself.
+
+**A serialized member is named with a `Bytes` suffix.** A name that also
+belongs to a live handle somewhere in the framework does not say which of the
+two a member holds, and `contractState` was a live handle, a POJO and bytes in
+different places. A member that holds serialized bytes therefore ends in
+`Bytes`, as `txBytes` already did. `Encoded` is NOT used for bytes: it already
+names `EncodedStateValue`, the structured value `StateValue.encode()` returns,
+on `nextContractStateEncoded`. Renamed under this rule:
+
+| Type | Was | Now |
+|---|---|---|
+| `Ledger8DeployedContract` (contracts) | `initialState` | `initialContractStateBytes` |
+| `ComposeCallEntry`, `ComposeDeployOptions` (protocol) | `contractState` | `contractStateBytes` |
+| `ComposeDeployOptions` (protocol) | `guaranteedZswapOffer` | `guaranteedZswapOfferBytes` |
+| `ZswapOfferFactory` result (protocol) | `guaranteed`, `fallible` | `guaranteedBytes`, `fallibleBytes` |
+| `ComposeCallResultPojo`, `DeployResultPojo` (protocol) | `transaction` | `txBytes` |
+| `DeployResultPojo` (protocol) | `initialState` | `initialContractStateBytes` |
+| `ComposeCallEntry`, `ComposeV8CallOptions`, `WrapKeepStateCallOptions` (protocol) | `ledgerParameters` | `ledgerParametersBytes` |
+| `ComposeOption`, the `option` on `ComposeOptionError` (protocol) | `'contractState'`, `'ledgerParameters'` | `'contractStateBytes'`, `'ledgerParametersBytes'` |
+
+`ComposeOptionError.option` names the field that was unusable, so a deploy
+whose offer bytes are rejected now reports `'guaranteedZswapOfferBytes'`. A
+call keeps `'zswapOffer'`, because there the option really is the `zswapOffer`
+factory.
+
+The rule covers the compose surface and the retained deploy handle. Two
+`Uint8Array` members of `RawContractState` in `packages/types` keep their
+names: `raw` already says what it is, and `ledgerParameters` sits beside it in
+a type whose name says its members are undecoded. Renaming either would be a
+breaking change to the package every other package depends on, for no gain in
+clarity.
+
+`packages/protocol/src/test/protocol-type-acl.test.ts` pins the member sets of
+`DeployResultPojo` and `ComposeCallResultPojo`, so a member added to either --
+a live handle in particular -- fails the build.
+
+`packages/protocol/src/test/v8-deploy.test.ts` pins that
+`initialContractStateBytes` and the constructor's handle are the same state:
+given the verifier keys the deploy registers, the bytes the deploy derives the
+address from are byte-identical to the handle serialized.

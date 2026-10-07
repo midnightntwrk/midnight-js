@@ -108,9 +108,9 @@ const callEntryFromTranscript = (
 ): ComposeCallEntry => ({
   contractAddress,
   circuitId: transcript.circuitId,
-  contractState: serializedV8StateWithOperation(),
+  contractStateBytes: serializedV8StateWithOperation(),
   // Named explicitly: these entries exercise the v8 arm's assembly, not the cost model.
-  ledgerParameters: 'initial',
+  ledgerParametersBytes: 'initial',
   transcript: {
     kind: 'unpartitioned',
     preState: transcript.preContractState.encode(),
@@ -181,9 +181,9 @@ const payingTranscript = (
 const payingCallEntry = (owner: string, token: string): ComposeCallEntry => ({
   contractAddress: ocrt3.dummyContractAddress(),
   circuitId: 'increment',
-  contractState: serializedV8StateWithOperation(),
+  contractStateBytes: serializedV8StateWithOperation(),
   // Named explicitly: these entries exercise the v8 arm's assembly, not the cost model.
-  ledgerParameters: 'initial',
+  ledgerParametersBytes: 'initial',
   transcript: {
     kind: 'partitioned',
     guaranteed: payingTranscript(owner, token, 42n),
@@ -200,7 +200,7 @@ describe('the v8 era arm', () => {
     const { entry, address } = await runIncrement();
     const ttl = new Date(Date.now() + 3_600_000);
 
-    const { transaction: bytes } = era.composeCallTx({ calls: [entry], networkId: NETWORK_ID, ttl });
+    const { txBytes: bytes } = era.composeCallTx({ calls: [entry], networkId: NETWORK_ID, ttl });
 
     const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
     const intents = [...(back.intents?.values() ?? [])];
@@ -230,7 +230,7 @@ describe('the v8 era arm', () => {
     const owner = LedgerV8.sampleUserAddress();
     const token = LedgerV8.sampleRawTokenType();
 
-    const { transaction: bytes } = era.composeCallTx({
+    const { txBytes: bytes } = era.composeCallTx({
       calls: [payingCallEntry(owner, token)],
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000)
@@ -254,7 +254,7 @@ describe('the v8 era arm', () => {
       verifierKeys: readFixtureVerifierKey
     });
     const result = era.composeDeployTx({
-      contractState: constructorResult.contractState.serialize(),
+      contractStateBytes: constructorResult.contractState.serialize(),
       verifierKeys: new Map([['increment', VERIFIER_KEY]]),
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000)
@@ -263,15 +263,15 @@ describe('the v8 era arm', () => {
     // Read the deploy back apart rather than only round-tripping it: the
     // deployed state must carry the supplied key under the circuit it was
     // supplied for, which byte-identity of a re-serialization cannot show.
-    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', result.transaction);
+    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', result.txBytes);
     const deploys = [...(back.intents?.values() ?? [])]
       .flatMap((intent) => intent.actions)
       .filter((action) => action instanceof LedgerV8.ContractDeploy);
     expect(deploys).toHaveLength(1);
     expect(result.contractAddress).toBe(deploys[0].address);
-    expect(Buffer.from(result.initialState)).toEqual(Buffer.from(deploys[0].initialState.serialize()));
+    expect(Buffer.from(result.initialContractStateBytes)).toEqual(Buffer.from(deploys[0].initialState.serialize()));
 
-    const registered = LedgerV8.ContractState.deserialize(result.initialState);
+    const registered = LedgerV8.ContractState.deserialize(result.initialContractStateBytes);
     expect(registered.operations()).toEqual(['increment']);
     expect(Buffer.from(registered.operation('increment')?.verifierKey ?? new Uint8Array())).toEqual(
       Buffer.from(VERIFIER_KEY)
@@ -291,11 +291,11 @@ describe('the v8 era arm', () => {
       return LedgerV8.ZswapOffer.fromOutput(output).serialize();
     };
 
-    const { transaction: bytes } = era.composeCallTx({
+    const { txBytes: bytes } = era.composeCallTx({
       calls: [entry],
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
-      zswapOffer: () => ({ guaranteed: buildOffer(), fallible: buildOffer() })
+      zswapOffer: () => ({ guaranteedBytes: buildOffer(), fallibleBytes: buildOffer() })
     });
 
     const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
@@ -321,7 +321,7 @@ describe('the v8 era arm', () => {
         calls: [entry],
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000),
-        zswapOffer: () => ({ guaranteed: new Uint8Array([1, 2, 3]) })
+        zswapOffer: () => ({ guaranteedBytes: new Uint8Array([1, 2, 3]) })
       });
     } catch (error) {
       caught = error;
@@ -345,7 +345,7 @@ describe('the v8 era arm', () => {
         calls: [entry],
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000),
-        zswapOffer: () => ({ fallible: new Uint8Array([1, 2, 3]) })
+        zswapOffer: () => ({ fallibleBytes: new Uint8Array([1, 2, 3]) })
       })
     ).toThrowError(
       expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'zswapOffer', version: 'v8' })
@@ -382,7 +382,7 @@ describe('the v8 era arm', () => {
     let caught: unknown;
     try {
       era.composeCallTx({
-        calls: [{ ...entry, contractState: new Uint8Array([1, 2, 3]) }],
+        calls: [{ ...entry, contractStateBytes: new Uint8Array([1, 2, 3]) }],
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000)
       });
@@ -391,7 +391,7 @@ describe('the v8 era arm', () => {
     }
 
     expect(caught).toBeInstanceOf(ComposeOptionError);
-    expect(caught).toMatchObject({ option: 'contractState', version: 'v8' });
+    expect(caught).toMatchObject({ option: 'contractStateBytes', version: 'v8' });
     expect((caught as ComposeOptionError).cause).toBeInstanceOf(Error);
   });
 
@@ -412,7 +412,7 @@ describe('the v8 era arm', () => {
     let caught: unknown;
     try {
       era.composeDeployTx({
-        contractState: constructorResult.contractState.serialize(),
+        contractStateBytes: constructorResult.contractState.serialize(),
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000)
       });
@@ -438,14 +438,14 @@ describe('the v8 era arm', () => {
     const output = LedgerV8.ZswapOutput.new(coin, 0, LedgerV8.sampleCoinPublicKey(), LedgerV8.sampleEncryptionPublicKey());
 
     const result = era.composeDeployTx({
-      contractState: constructorResult.contractState.serialize(),
+      contractStateBytes: constructorResult.contractState.serialize(),
       verifierKeys: new Map([['increment', VERIFIER_KEY]]),
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
-      guaranteedZswapOffer: LedgerV8.ZswapOffer.fromOutput(output).serialize()
+      guaranteedZswapOfferBytes: LedgerV8.ZswapOffer.fromOutput(output).serialize()
     });
 
-    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', result.transaction);
+    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', result.txBytes);
     expect(back.guaranteedOffer?.outputs).toHaveLength(1);
   });
 
@@ -462,14 +462,14 @@ describe('the v8 era arm', () => {
 
     expect(() =>
       era.composeDeployTx({
-        contractState: constructorResult.contractState.serialize(),
+        contractStateBytes: constructorResult.contractState.serialize(),
         verifierKeys: new Map([['increment', VERIFIER_KEY]]),
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000),
-        guaranteedZswapOffer: new Uint8Array([1, 2, 3])
+        guaranteedZswapOfferBytes: new Uint8Array([1, 2, 3])
       })
     ).toThrowError(
-      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'zswapOffer', version: 'v8' })
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'guaranteedZswapOfferBytes', version: 'v8' })
     );
   });
 

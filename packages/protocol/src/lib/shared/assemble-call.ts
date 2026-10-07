@@ -104,7 +104,7 @@ export interface CallAssemblyLedger<
  */
 type PartitionCallOptions = Pick<
   AssembleCallOptions<never>,
-  'circuitId' | 'contractAddress' | 'transcript' | 'ledgerParameters' | 'version'
+  'circuitId' | 'contractAddress' | 'transcript' | 'ledgerParametersBytes' | 'version'
 >;
 
 /**
@@ -169,7 +169,7 @@ export interface AssembleCallOptions<TOperation> {
    * compatibility path explicitly -- there is no way to reach it by omission, because that made a
    * cost model the chain does not run the default for anyone who forgot.
    */
-  readonly ledgerParameters: LedgerParametersOption;
+  readonly ledgerParametersBytes: LedgerParametersOption;
   readonly stage: CallResolutionStage;
   // The era every failure raised here names -- see ComposeRefusalOrder.
   readonly version: LedgerVersion;
@@ -247,7 +247,7 @@ const resolvePartition = <
   let parameters: TParams;
   try {
     parameters =
-      options.ledgerParameters === INITIAL_LEDGER_PARAMETERS
+      options.ledgerParametersBytes === INITIAL_LEDGER_PARAMETERS
         ? // The ledger's INITIAL parameters: a compatibility path for a caller with no read
           // surface, and not a correct substitute. They are the model the chain started with, not
           // the one it is running -- prices adjust per block -- so partitioning against them draws
@@ -257,9 +257,9 @@ const resolvePartition = <
           ledger.LedgerParameters.initialParameters()
         : // Deserialized with THIS era's reader, which is right because the bytes came from a block
           // this era's call is being built against.
-          ledger.LedgerParameters.deserialize(options.ledgerParameters);
+          ledger.LedgerParameters.deserialize(options.ledgerParametersBytes);
   } catch (cause) {
-    throw new ComposeOptionError(version, 'ledgerParameters', cause);
+    throw new ComposeOptionError(version, 'ledgerParametersBytes', cause);
   }
 
   try {

@@ -99,7 +99,7 @@ const ARMS: Readonly<Record<LedgerVersion, (transcript: TranscriptPojo, partitio
         circuitId: CIRCUIT_ID,
         contractAddress: ocrt3.dummyContractAddress(),
         // Named explicitly: these arms compare era ASSEMBLY, not cost models.
-        ledgerParameters: 'initial',
+        ledgerParametersBytes: 'initial',
         transcript: {
           kind: 'unpartitioned',
           preState: transcript.preContractState.encode(),
@@ -123,7 +123,7 @@ const ARMS: Readonly<Record<LedgerVersion, (transcript: TranscriptPojo, partitio
         circuitId: CIRCUIT_ID,
         contractAddress: ocrt3.dummyContractAddress(),
         // Named explicitly: these arms compare era ASSEMBLY, not cost models.
-        ledgerParameters: 'initial',
+        ledgerParametersBytes: 'initial',
         transcript: {
           kind: 'unpartitioned',
           preState: transcript.preContractState.encode(),
