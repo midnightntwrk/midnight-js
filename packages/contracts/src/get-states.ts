@@ -166,7 +166,7 @@ export interface AnyEraContractState extends ContractStatePojo {
  * @param contractAddress The ledger address of the contract.
  * @returns The decoded state, or `null` when the read surface reports no contract at
  * `contractAddress`.
- * @throws TypeError if `contractAddress` is not a well-formed contract address.
+ * @throws InvalidArgumentError if `contractAddress` is not a well-formed contract address.
  * @throws TagParseError if the served payload carries no supported contract-state envelope.
  * @throws StateDecodeFailedError if the envelope's own era cannot read the state behind it.
  * @throws Ledger8RuntimeMissingError if the state carries a retained-era envelope and that runtime

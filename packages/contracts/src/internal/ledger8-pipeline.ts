@@ -269,7 +269,7 @@ export interface Ledger8Snapshot {
  * @param contractAddress The contract being operated on.
  * @param logger The optional logger the dating step's breadcrumbs are written to.
  * @returns The snapshot, its extracted state and its decoded entry points.
- * @throws Error if no contract is deployed at `contractAddress`.
+ * @throws ContractNotFoundError if no contract is deployed at `contractAddress`.
  * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the head and
  * the state's envelope belong to different eras.
  * @throws StateDecodeFailedError if this era's decoder rejects the envelope.
@@ -547,7 +547,7 @@ export interface Ledger8CallPipelineResult<TState> {
  * @param request The era and engine to run against, the read surface, and the
  * call's own inputs.
  * @returns The serialized unproven transaction and what the circuit produced.
- * @throws Error if no contract is deployed at the address.
+ * @throws ContractNotFoundError if no contract is deployed at the address.
  * @throws HeadStateEraMismatchError, IndexerInconsistencyError, BlankVerifierKeySlotError,
  * VerifierKeyMismatchError from {@link readLedger8Snapshot}.
  * @throws Ledger8ShieldedSpendUnsupportedError if the circuit spends a shielded

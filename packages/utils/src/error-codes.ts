@@ -146,8 +146,8 @@ export const UTILS_ERROR_CATEGORIES: Readonly<Record<UtilsErrorCode, MidnightJsE
 /**
  * Union of every error code carried by a *coded* midnight-js error.
  *
- * Not every midnight-js error carries a code, so `hasErrorCode(e) === false`
- * does not mean the error came from somewhere else.
+ * Every error midnight-js raises itself carries a code, so `hasErrorCode(e) === false`
+ * means the error came from a dependency or from user code.
  */
 export type MidnightJsErrorCode =
   CommonErrorCode | ProtocolErrorCode | ContractsErrorCode | ProviderErrorCode | UtilsErrorCode;

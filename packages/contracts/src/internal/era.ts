@@ -708,7 +708,7 @@ export const assertEraCompatible = (
  * @returns The era whose decoder owns these bytes: `'v8'` for a retained envelope, `'v9'` for a
  * current-era one.
  * @throws TagParseError if `state.raw` carries no supported contract-state envelope.
- * @throws Error, carrying the transport failure on `cause`, if the fresh head read rejects — so the
+ * @throws HeadReadFailedError, carrying the transport failure on `cause`, if the fresh head read rejects — so the
  * disagreement that was under investigation is not lost behind a bare transport error.
  * @throws HeadStateEraMismatchError if a fresh head read agrees with the state's era.
  * @throws IndexerInconsistencyError if a fresh head read still disagrees with it.

@@ -323,7 +323,7 @@ docker compose ps
 
 ## Midnight.js error codes
 
-Every midnight-js error extends `MidnightJsError` and carries a `code` and a `category`.
+Every error midnight-js raises itself extends `MidnightJsError` and carries a `code` and a `category`; a failure from a dependency can still pass through uncoded, as the `cause` of a coded error or on its own.
 Handle errors by category first, then by code:
 
 ```typescript
@@ -333,7 +333,7 @@ try {
   await submitCallTx(providers, options);
 } catch (e) {
   switch (errorCategory(e)) {
-    case 'TRANSIENT': /* retry with backoff */ break;
+    case 'TRANSIENT': /* may retry; on submit paths follow the code's row first (check whether the transaction finalized) */ break;
     case 'REJECTED': /* show the refusal to the user */ break;
     case 'USAGE': case 'ENVIRONMENT': /* fix code or setup; do not retry */ throw e;
     case 'INTEGRITY': case 'INTERNAL': /* alert or report */ throw e;
@@ -341,6 +341,8 @@ try {
   }
 }
 ```
+
+`MIDNIGHT_JS_C_STALE_HEAD`, `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED` and `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED` are TRANSIENT but must not be blindly re-submitted: the transaction may already be on chain, so follow the code's row first.
 
 Use `hasErrorCode`, `isMidnightJsError` and `errorCategory` rather than `instanceof`: two installed copies
 of a package make `instanceof` answer `false`.

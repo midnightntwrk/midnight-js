@@ -84,7 +84,7 @@ export async function submitDeployTx<C extends Contract.Any>(
  * @throws {IncompleteDeployContractPrivateStateConfig} When `privateStateId` is present without
  *         `initialPrivateState`, or `initialPrivateState` holds a value without `privateStateId`.
  *         Raised before anything is built or submitted.
- * @throws {Error} When `privateStateId` is present with an undefined value. Raised before anything
+ * @throws {InvalidArgumentError} When `privateStateId` is present with an undefined value. Raised before anything
  *         is built or submitted, and ahead of the pairing refusal.
  *
  * @remarks

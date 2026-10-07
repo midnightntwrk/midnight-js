@@ -249,7 +249,8 @@ through the registry or the DApp-connector path.
 There is exactly one deliberate exception to the coding rule:
 `partitionTranscripts` returning nothing for the single call submitted is an
 internal invariant of the ledger module, not a caller error, so that one throws
-a plain `Error` and deliberately carries no protocol error code.
+`InvariantViolationError` (`MIDNIGHT_JS_G_INVARIANT_VIOLATED`, INTERNAL) and
+deliberately carries no protocol error code.
 
 ## One stage union across both eras
 

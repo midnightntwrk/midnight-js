@@ -801,8 +801,8 @@ export interface Ledger8FoundState {
  * @param providers The provider set.
  * @param request The contract, its address and the entry points to check.
  * @returns The deploy record as the read surface reported it.
- * @throws Error if the artifact declares no callable circuits, or if the
- * address is malformed.
+ * @throws InvalidArgumentError if the artifact declares no callable circuits,
+ * or if the address is malformed.
  * @throws EraArtifactMismatchError, UnknownLedgerVersionError from era resolution.
  * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the fetched
  * envelope's era disagrees with the head.
@@ -988,7 +988,7 @@ export type Ledger8DeployPrivateStateSurface = Ledger8PrivateStateSurface &
  * @param privateStateId The id the caller named, or `undefined` for a contract
  * that carries no private state.
  * @returns The stored private state, or `undefined` when no id was named.
- * @throws Error if an id was named and the provider holds nothing under it.
+ * @throws PrivateStateNotFoundError if an id was named and the provider holds nothing under it.
  * @see {@link KeepStatePipeline} for the full failure mode.
  */
 const readLedger8PrivateState = async (
@@ -1177,9 +1177,10 @@ const runLedger8CallEntry = async (
  * @returns The transaction id, the circuit, the next private state, and the
  * execution data — everything but a finalized record, which a submission that
  * does not wait for one cannot have.
- * @throws TypeError if the contract address is malformed.
- * @throws Error if the artifact declares no such circuit, or if a named
- * `privateStateId` has nothing stored under it.
+ * @throws InvalidArgumentError if the contract address is malformed, or if the
+ * artifact declares no such circuit.
+ * @throws PrivateStateNotFoundError if a named `privateStateId` has nothing
+ * stored under it.
  * @throws IncompleteCallTxPrivateStateConfig if a `privateStateId` is named
  * with no private-state provider.
  * @throws Every error {@link runLedger8Call} raises.

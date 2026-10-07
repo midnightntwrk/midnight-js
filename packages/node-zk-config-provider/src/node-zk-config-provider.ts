@@ -238,7 +238,7 @@ const isArtifactBundle = async (directory: string): Promise<boolean> => {
  * (bundles do not nest).
  *
  * @param artifactRoot The directory to search for artifact bundles.
- * @throws Error If no artifact bundle exists under `artifactRoot`.
+ * @throws ConfigurationError If no artifact bundle exists under `artifactRoot`.
  */
 export const nodeZkConfigRegistry = async (artifactRoot: string): Promise<ZKConfigRegistry> => {
   const sources: NodeZkConfigProvider<string>[] = [];

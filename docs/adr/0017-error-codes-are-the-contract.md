@@ -27,16 +27,23 @@ Each code group owner keeps a total `code → category` table next to its code t
 category from that table. Inheritance below the base is at most two levels, and a sub-family exists only
 when callers handle the whole family the same way.
 
-Plain `throw new Error/TypeError/RangeError/AggregateError` is forbidden in `packages/*/src` (tests and the
-`compact` CLI exempt). Failures of `fetch` at provider I/O seams are wrapped with the original on `cause`.
+Plain `throw new Error/TypeError/RangeError/AggregateError`, and the same classes passed to
+`Promise.reject`, are forbidden in `packages/*/src` (tests, the `compact` CLI and `network-id` exempt;
+`network-id` is deprecated and being removed). Failures of `fetch` at provider I/O seams are wrapped with the original on `cause`.
 
 ## Consequences
 
 - **Positive:** one way to handle every error; the compiler refuses a class without a code; the category
   tells the caller what to do.
 - **Negative:** `ContractTypeError` is no longer a `TypeError`; `SubmitRejectionUndiagnosedError` is no
-  longer an `AggregateError` (keeps `errors`); 14 former `TypeError`/`RangeError` throws change class.
-- **Follow-ups:** wrap ledger WASM exceptions outside the deserialization wrappers.
+  longer an `AggregateError` (keeps `errors`, now an own enumerable field); 14 former
+  `TypeError`/`RangeError` throws change class. The level-provider close-failure `cause` is now an
+  `AggregateError` of both failures. Coded errors pass through `runOrRethrow` and the scoped-transaction
+  wrappers unchanged, so the wrapper message no longer appears for them and they are not logged at the
+  root scope.
+- **Follow-ups:** wrap ledger WASM exceptions outside the deserialization wrappers; a scoped-transaction
+  wrapper for uncoded foreign failures; the native `TypeError` from `inflate` on malformed input; foreign
+  errors from `exitResultOrError` and bech32 parsing.
 
 ## Alternatives considered
 
