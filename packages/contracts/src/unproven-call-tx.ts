@@ -31,7 +31,7 @@ import { type ContractProviders } from './contract-providers';
 import { CURRENT_PIPELINE_ERA } from './era';
 import { IncompleteCallTxPrivateStateConfig, isEffectContractError } from './errors';
 import { type ContractStates, getPublicStates, getStates, type PublicContractStates } from './get-states';
-import { networkIdOf } from './internal/midnight-config';
+import { assertValidConfig, networkIdOf } from './internal/midnight-config';
 import * as Transaction from './internal/transaction';
 import {
   createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver,
@@ -97,6 +97,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
   crossContract?: CrossContractConfig
 ): Promise<UnsubmittedCallTxData<C, PCK>> {
   const { compiledContract, contractAddress, coinPublicKey, initialContractState, initialZswapChainState, ledgerParameters, config } = options;
+  assertValidConfig(config);
   const networkId = networkIdOf(config);
   assertIsContractAddress(contractAddress);
   assertDefined(
@@ -417,6 +418,7 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
   options: CallTxOptions<C, PCK>,
   transactionContext?: TransactionContext<C, PCK>
 ): Promise<UnsubmittedCallTxData<C, PCK>> {
+  assertValidConfig(providers.config);
   assertIsContractAddress(options.contractAddress);
   assertDefined(
     ContractExecutable.make(options.compiledContract)

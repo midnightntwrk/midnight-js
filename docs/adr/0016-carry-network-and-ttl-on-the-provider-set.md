@@ -41,10 +41,10 @@ interface MidnightProviders {
   back to it. A silent fallback would hide an incomplete migration.
 - `ttlSeconds` is a duration, not a date or a date factory. The framework computes
   the expiry when it builds the intent.
-- The values are checked when a transaction is built, before any proof is
-  requested: a missing config or an empty network id is a `TypeError`; a
-  `ttlSeconds` that is not a positive whole number, or that overflows a `Date`,
-  is a `RangeError`.
+- The values are checked at the start of every entry point, before chain state
+  is read and before the circuit or constructor runs: a missing config or an
+  empty network id is a `TypeError`; a `ttlSeconds` that is not a positive whole
+  number, or that overflows a `Date`, is a `RangeError`.
 - Low-level functions that do not receive `providers` take the config explicitly
   (`CallOptionsProviderDataDependencies.config`, the last argument of
   `createUnprovenDeployTxFromVerifierKeys`).
@@ -64,7 +64,12 @@ interface MidnightProviders {
 - **Negative:** every provider literal and every caller of the two low-level
   builders must change in 5.0.0. Code that still calls `setNetworkId()` compiles
   but no longer affects the framework.
-- **Follow-ups:** remove `@midnight-ntwrk/midnight-js-network-id` in 6.0.
+- **Negative:** `ttlSeconds` covers only the intents the framework builds. It is
+  not passed to `walletProvider.balanceTx`, so an intent the wallet adds while
+  balancing keeps the wallet's own TTL.
+- **Follow-ups:** remove `@midnight-ntwrk/midnight-js-network-id` in 6.0. Decide
+  whether to pass the TTL to `balanceTx` (its `ttl?: Date` parameter already
+  exists).
 
 The Zswap Merkle-root retention window (`ZSWAP_MERKLE_ROOT_RETENTION_SECONDS`)
 stays an internal constant. It controls how many past roots are kept when the

@@ -39,3 +39,8 @@ export const intentTtl = (config: MidnightConfig | undefined, now: number = Date
   if (Number.isNaN(expiry.getTime())) throw invalid();
   return expiry;
 };
+
+export const assertValidConfig = (config: MidnightConfig | undefined): void => {
+  networkIdOf(config);
+  intentTtl(config);
+};

@@ -517,12 +517,14 @@ interface MidnightProviders {
   both ledger eras) uses `config.networkId`. The framework no longer reads
   `getNetworkId()`, and there is no fallback to it. A leftover `setNetworkId()`
   call has no effect.
-- **TTL:** every built intent expires `config.ttlSeconds` after it is built. 4.x
-  used a fixed one hour; `ttlSeconds: 3600` keeps that.
+- **TTL:** every intent the framework builds expires `config.ttlSeconds` after it
+  is built. 4.x used a fixed one hour; `ttlSeconds: 3600` keeps that. The value is
+  not passed to `walletProvider.balanceTx`: an intent the wallet adds while
+  balancing keeps the wallet's own TTL.
 - **Validation:** a missing `providers.config` or an empty `networkId` throws a
   `TypeError`; a `ttlSeconds` that is not a positive whole number (or that
-  overflows a `Date`) throws a `RangeError`. Both happen when the transaction is
-  built, before any proof is requested.
+  overflows a `Date`) throws a `RangeError`. Both happen before the circuit or
+  constructor runs and before any chain state is read.
 - **Low-level functions:** `createUnprovenCallTxFromInitialStates` reads
   `options.config` (a new required member of `CallOptionsProviderDataDependencies`);
   `createUnprovenDeployTxFromVerifierKeys` takes `config` as a new last argument.

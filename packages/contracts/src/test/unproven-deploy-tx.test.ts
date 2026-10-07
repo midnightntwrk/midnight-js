@@ -115,6 +115,26 @@ describe('unproven-deploy-tx', () => {
         )
       ).rejects.toThrow('FAIL');
     });
+
+    it('rejects an invalid TTL before running the constructor', async () => {
+      const options = {
+        compiledContract: createMockCompiledContract({
+          initialStateErrorMessage: 'FAIL'
+        }),
+        signingKey: createMockSigningKey(),
+        args: ['deploy-arg']
+      };
+
+      await expect(
+        createUnprovenDeployTxFromVerifierKeys(
+          createMockZKConfigProvider(),
+          createMockCoinPublicKey(),
+          options,
+          createMockEncryptionPublicKey(),
+          { networkId: 'preview', ttlSeconds: 0 }
+        )
+      ).rejects.toThrow(RangeError);
+    });
   });
 
   describe('createUnprovenDeployTx', () => {

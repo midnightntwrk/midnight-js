@@ -30,7 +30,7 @@ import type { ContractConstructorOptionsWithArguments } from './call-constructor
 import { type ContractProviders } from './contract-providers';
 import { CURRENT_PIPELINE_ERA } from './era';
 import { isEffectContractError } from './errors';
-import { networkIdOf } from './internal/midnight-config';
+import { assertValidConfig, networkIdOf } from './internal/midnight-config';
 import { createEncryptionPublicKeyResolver, createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './internal/utils';
 import type { UnsubmittedDeployTxData } from './tx-model';
 
@@ -123,6 +123,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
   encryptionPublicKey: EncPublicKey,
   config: MidnightConfig
 ): Promise<UnsubmittedDeployTxData<C>> {
+  assertValidConfig(config);
   const contractExec = ContractExecutable.make(options.compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey: coinPublicKey,

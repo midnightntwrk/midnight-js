@@ -232,9 +232,48 @@ describe('unproven-call-tx', () => {
         walletEncryptionPublicKey
       )).rejects.toThrow('failed assert: FAIL');
     });
+
+    it('rejects an invalid TTL before running the circuit', async () => {
+      const options = createMockCallOptions({
+        compiledContract: createMockCompiledContract({
+          testCircuit: createFailingCircuit('FAIL')
+        }),
+        initialContractState: await getInitialContractState(),
+        config: { networkId: 'preview', ttlSeconds: 0 }
+      });
+
+      await expect(createUnprovenCallTxFromInitialStates(
+        createMockZKConfigProvider(),
+        options,
+        createMockEncryptionPublicKey()
+      )).rejects.toThrow(RangeError);
+    });
   });
 
   describe('createUnprovenCallTx', () => {
+    it('rejects an invalid TTL before reading chain state', async () => {
+      const { getPublicStates } = await import('../get-states');
+      const publicDataProvider = createMockProviders().publicDataProvider;
+      const providers = {
+        zkConfigProvider: createMockZKConfigProvider(),
+        publicDataProvider,
+        walletProvider: createMockProviders().walletProvider,
+        config: { networkId: 'preview', ttlSeconds: 0 }
+      };
+      const options = {
+        contract: createMockContract(),
+        compiledContract: createMockCompiledContract(),
+        circuitId: 'testCircuit',
+        contractAddress: createMockContractAddress(),
+        args: ['test-arg']
+      };
+      vi.mocked(getPublicStates).mockClear();
+
+      await expect(createUnprovenCallTx(providers, options)).rejects.toThrow(RangeError);
+      expect(publicDataProvider.queryBlock).not.toHaveBeenCalled();
+      expect(getPublicStates).not.toHaveBeenCalled();
+    });
+
     it('throws when the latest block cannot be fetched from the public data provider', async () => {
       const publicDataProvider = createMockProviders().publicDataProvider;
       publicDataProvider.queryBlock = vi.fn().mockResolvedValue(null);
