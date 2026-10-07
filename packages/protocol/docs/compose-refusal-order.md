@@ -114,7 +114,8 @@ the two carry different remediations.
 Inside the v8-native DEPLOY leg the offer is a v8-native offer HANDLE rather
 than bytes: that leg runs inside the retained era with the module already in
 hand, so the era arm that read the caller's offer bytes hands the decoded offer
-straight over — exactly as it already does for `contractState`. The v8-native
+straight over. The contract state is different: it crosses as
+`contractStateBytes` and that leg decodes it itself. The v8-native
 CALL leg takes the `zswapOffer` factory unchanged and decodes the bytes it
 answers with itself, because the split it must be handed does not exist until
 that leg has assembled the call.

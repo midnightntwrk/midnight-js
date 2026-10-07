@@ -78,7 +78,7 @@ describe('wrapKeepStateCall', () => {
     const address = sampleContractAddress();
     const contractState = buildContractStateWithOperation('increment');
 
-    const prototype = wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState, ledgerParameters: 'initial' });
+    const prototype = wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState, ledgerParametersBytes: 'initial' });
 
     expect(prototype).toBeInstanceOf(ContractCallPrototype);
   });
@@ -86,7 +86,7 @@ describe('wrapKeepStateCall', () => {
   it('produces a ContractCallPrototype (carrying the real registered operation) accepted by Intent.new(ttl).addCall(...)', () => {
     const address = sampleContractAddress();
     const contractState = buildContractStateWithOperation('increment');
-    const prototype = wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState, ledgerParameters: 'initial' });
+    const prototype = wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState, ledgerParametersBytes: 'initial' });
     const ttl = new Date(Date.now() + 3_600_000);
 
     expect(() => Intent.new(ttl).addCall(prototype)).not.toThrow();
@@ -117,7 +117,7 @@ describe('wrapKeepStateCall', () => {
       transcript,
       contractAddress: address,
       contractState: buildContractStateWithOperation('increment'),
-      ledgerParameters: 'initial'
+      ledgerParametersBytes: 'initial'
     });
 
     const intent = Intent.new(new Date(Date.now() + 3_600_000)).addCall(prototype);
@@ -132,7 +132,7 @@ describe('wrapKeepStateCall', () => {
 
     let caught: unknown;
     try {
-      wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState: blankContractState, ledgerParameters: 'initial' });
+      wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState: blankContractState, ledgerParametersBytes: 'initial' });
     } catch (error) {
       caught = error;
     }
@@ -153,7 +153,7 @@ describe('wrapKeepStateCall', () => {
 
     let caught: unknown;
     try {
-      wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState, ledgerParameters: 'initial' });
+      wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState, ledgerParametersBytes: 'initial' });
     } catch (error) {
       caught = error;
     }

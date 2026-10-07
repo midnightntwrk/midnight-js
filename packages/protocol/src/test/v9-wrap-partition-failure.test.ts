@@ -79,7 +79,7 @@ describe('wrapKeepStateCall defensive guard', () => {
     contractState.setOperation('increment', operation);
 
     expect(() =>
-      wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: LedgerV9.sampleContractAddress(), contractState, ledgerParameters: 'initial' })
+      wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: LedgerV9.sampleContractAddress(), contractState, ledgerParametersBytes: 'initial' })
     ).toThrow(/partitionTranscripts returned no result/);
   });
 });

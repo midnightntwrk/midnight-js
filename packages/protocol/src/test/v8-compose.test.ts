@@ -83,7 +83,7 @@ const buildCallOptions = (contractState: LedgerV8.ContractState): ComposeV8CallO
     contractAddress: LedgerV8.sampleContractAddress(),
     contractState,
     // Named explicitly: this helper's cases are about the compose leg, not the cost model.
-    ledgerParameters: 'initial',
+    ledgerParametersBytes: 'initial',
     transcript: {
       kind: 'unpartitioned',
       preState: transcript.preContractState.encode(),
@@ -102,7 +102,7 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
   it('composes and serializes a v8-native call transaction, tag-prefixed exactly as ledger-v8 emits it', () => {
     const contractState = buildV8ContractStateWithOperation('increment');
 
-    const { transaction: bytes } = composeV8CallTx(buildCallOptions(contractState), LedgerV8);
+    const { txBytes: bytes } = composeV8CallTx(buildCallOptions(contractState), LedgerV8);
 
     expect(bytes).toBeInstanceOf(Uint8Array);
     const tag = Buffer.from(bytes.subarray(0, V8_UNPROVEN_TX_TAG.length)).toString('latin1');
@@ -114,7 +114,7 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
   it('round-trips through the real v8 decoder: deserialize then re-serialize yields byte-identical output', () => {
     const contractState = buildV8ContractStateWithOperation('increment');
 
-    const { transaction: bytes } = composeV8CallTx(buildCallOptions(contractState), LedgerV8);
+    const { txBytes: bytes } = composeV8CallTx(buildCallOptions(contractState), LedgerV8);
     const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
 
     expect(Buffer.from(back.serialize())).toEqual(Buffer.from(bytes));
