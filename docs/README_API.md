@@ -28,7 +28,7 @@ MidnightProviders
 | `@midnight-ntwrk/midnight-js` | Barrel package re-exporting the framework's public API |
 | `@midnight-ntwrk/midnight-js-types` | Shared types, interfaces, and provider contracts |
 | `@midnight-ntwrk/midnight-js-contracts` | Contract deployment, circuit calls, and transaction submission |
-| `@midnight-ntwrk/midnight-js-network-id` | Network identifier configuration for runtime and ledger WASM APIs |
+| `@midnight-ntwrk/midnight-js-network-id` | Deprecated global network id; the framework reads `MidnightProviders.config` since 5.0.0 |
 | `@midnight-ntwrk/midnight-js-protocol` | Version-agnostic re-exports of Midnight protocol packages |
 | `@midnight-ntwrk/midnight-js-utils` | Shared utilities (hex encoding, bech32m, assertions) |
 
@@ -52,15 +52,7 @@ MidnightProviders
 
 ## Quick Start
 
-### 1. Configure the network
-
-```typescript
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-
-setNetworkId('testnet');
-```
-
-### 2. Assemble providers
+### 1. Assemble providers
 
 ```typescript
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
@@ -80,10 +72,11 @@ const providers: MidnightProviders = {
   proofProvider: httpClientProofProvider(proofServerUrl, zkConfigProvider),
   walletProvider,    // from @midnight-ntwrk/wallet-sdk
   midnightProvider,  // from @midnight-ntwrk/wallet-sdk
+  config: { networkId: 'preview', ttlSeconds: 3600 }, // network and transaction TTL
 };
 ```
 
-### 3. Deploy and interact with a contract
+### 2. Deploy and interact with a contract
 
 ```typescript
 import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
@@ -97,7 +90,7 @@ const deployed = await deployContract(providers, {
 const result = await deployed.callTx.increment();
 ```
 
-### 4. Query state
+### 3. Query state
 
 ```typescript
 import { getStates, getPublicStates } from '@midnight-ntwrk/midnight-js-contracts';

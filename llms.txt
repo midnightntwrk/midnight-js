@@ -24,6 +24,7 @@ MidnightProviders
 ├── proofProvider          - ZK proof generation
 ├── walletProvider         - Transaction balancing & signing
 ├── midnightProvider       - Transaction submission
+├── config                 - Network id and transaction TTL (required)
 └── loggerProvider         - Optional diagnostics
 ```
 
@@ -42,7 +43,7 @@ MidnightProviders
 | `@midnight-ntwrk/midnight-js-http-client-proof-provider` | HTTP client for proof server |
 | `@midnight-ntwrk/midnight-js-fetch-zk-config-provider` | Browser-based ZK artifact provider |
 | `@midnight-ntwrk/midnight-js-node-zk-config-provider` | Node.js filesystem ZK artifact provider |
-| `@midnight-ntwrk/midnight-js-network-id` | Network identifier management |
+| `@midnight-ntwrk/midnight-js-network-id` | Deprecated global network id (use `MidnightProviders.config`) |
 | `@midnight-ntwrk/midnight-js-logger-provider` | Pino logger wrapper |
 | `@midnight-ntwrk/midnight-js-utils` | Shared utilities (hex, bech32m, assertions, error-code registry) |
 | `@midnight-ntwrk/midnight-js-compact` | Compact compiler manager |
@@ -337,14 +338,13 @@ const provingProvider = await dappConnectorProvingProvider(
 
 ```typescript
 // Single import for all core modules
-import { contracts, networkId, protocol, types, utils } from '@midnight-ntwrk/midnight-js';
+import { contracts, protocol, types, utils } from '@midnight-ntwrk/midnight-js';
 
-networkId.setNetworkId('testnet');
+// providers.config carries the network id: { networkId: 'preview', ttlSeconds: 3600 }
 const deployed = await contracts.deployContract(providers, options);
 
 // Or use sub-path imports for tree-shaking
 import { deployContract } from '@midnight-ntwrk/midnight-js/contracts';
-import { setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
 ```
 
 ### Annotating the Contract APIs
@@ -449,11 +449,13 @@ ledger and onchain-runtime, because `contracts` needs them.
 
 ### Network Setup
 
-```typescript
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+The network id is not global state: it travels on the provider set as
+`config.networkId` (see the provider setup example below).
+`@midnight-ntwrk/midnight-js-network-id` is deprecated — the framework ignores
+`setNetworkId()`.
 
-setNetworkId('testnet');
+```typescript
+import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 
 const publicDataProvider = indexerPublicDataProvider(
   'https://indexer.example.com/graphql',    // HTTP endpoint
@@ -464,13 +466,10 @@ const publicDataProvider = indexerPublicDataProvider(
 ## Provider Setup Example
 
 ```typescript
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
-
-setNetworkId('testnet');
 
 const zkConfigProvider = new FetchZkConfigProvider(zkArtifactsUrl);
 
@@ -483,7 +482,8 @@ const providers: MidnightProviders = {
   zkConfigProvider,
   proofProvider: httpClientProofProvider(proofServerUrl, zkConfigProvider),
   walletProvider,    // from @midnight-ntwrk/wallet-sdk-facade
-  midnightProvider   // from @midnight-ntwrk/wallet-sdk-facade
+  midnightProvider,  // from @midnight-ntwrk/wallet-sdk-facade
+  config: { networkId: 'preview', ttlSeconds: 3600 } // network and transaction TTL, required
 };
 ```
 

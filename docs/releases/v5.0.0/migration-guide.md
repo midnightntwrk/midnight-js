@@ -711,6 +711,40 @@ See [breaking-changes.md](./breaking-changes.md#10-contract-state-and-balance-st
 
 ---
 
+## Step 16 — Pass `MidnightConfig` on your providers
+
+The framework no longer reads the global network id, and the transaction TTL is
+no longer fixed at one hour (#982). Both come from a new, required
+`config: MidnightConfig` on `MidnightProviders`:
+
+```ts
+// Before (4.x)
+import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+
+setNetworkId('preview');
+const providers = { privateStateProvider, publicDataProvider, zkConfigProvider, proofProvider, walletProvider, midnightProvider };
+
+// After (5.0.0)
+const providers = {
+  privateStateProvider, publicDataProvider, zkConfigProvider, proofProvider, walletProvider, midnightProvider,
+  config: { networkId: 'preview', ttlSeconds: 3600 }
+};
+```
+
+- `ttlSeconds: 3600` keeps the 4.x behaviour. It must be a positive whole number;
+  any other value is rejected with a `RangeError` before a proof is requested.
+- `setNetworkId` has **no effect** on the framework any more. Remove the call once
+  `config` is in place; `@midnight-ntwrk/midnight-js-network-id` is deprecated and
+  is removed in 6.0.
+- Import the `NetworkId` type from `@midnight-ntwrk/midnight-js-types`.
+- Low-level calls that do not take `providers`:
+  - `createUnprovenCallTxFromInitialStates`: add `config` to the options.
+  - `createUnprovenDeployTxFromVerifierKeys`: pass `config` as the new last argument.
+
+See [breaking-changes.md](./breaking-changes.md#11-midnightconfig-on-midnightproviders-replaces-the-global-network-id-and-the-fixed-ttl-982).
+
+---
+
 ## Verification checklist
 
 - [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.
@@ -732,3 +766,4 @@ See [breaking-changes.md](./breaking-changes.md#10-contract-state-and-balance-st
 - [ ] Bundle checked: retained-era chunk separate, not preloaded, retained runtime not duplicated.
 - [ ] Checked back for the pending operator, wallet and connector-proving sections.
 - [ ] Every `contractStateObservable` / `rawContractStateObservable` / `unshieldedBalancesObservable` subscriber reads `record.value`.
+- [ ] Every provider set carries `config: { networkId, ttlSeconds }`, and no code relies on `setNetworkId`.

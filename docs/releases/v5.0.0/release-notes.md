@@ -80,6 +80,10 @@ The testkit wallet stack moved to the 2.0.0 major beta line (`@midnightntwrk/wal
 
 `contractStateObservable`, `rawContractStateObservable` and `unshieldedBalancesObservable` emit `{ value, blockHeight, blockHash }`. Read `record.value` where you read the emitted value before; pass the position back as a `blockHeight` / `blockHash` config to resume the stream. See [breaking-changes.md](./breaking-changes.md).
 
+### `MidnightConfig` on `MidnightProviders` replaces the global network id and the fixed TTL (#982)
+
+`MidnightProviders.config: { networkId, ttlSeconds }` is required. The framework builds every transaction for `config.networkId` with a TTL of `config.ttlSeconds`, and no longer reads `setNetworkId()`. `@midnight-ntwrk/midnight-js-network-id` is deprecated and is removed in 6.0. `NetworkId` moved to `@midnight-ntwrk/midnight-js-types`.
+
 ## New Features
 
 ### Cross-contract call support (#967)
