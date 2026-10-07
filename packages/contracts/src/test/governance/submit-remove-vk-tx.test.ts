@@ -93,6 +93,20 @@ describe('submitRemoveVerifierKeyTx', () => {
   });
 
   describe('error scenarios', () => {
+    it('should reject before proving when the circuit is not registered on the contract', async () => {
+      const circuitId = 'testCircuit';
+
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockContractState.operation = vi.fn().mockReturnValue(undefined);
+
+      await expect(
+        submitRemoveVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId)
+      ).rejects.toThrow(`Circuit '${circuitId}' not found for contract at address '${mockContractAddress}'`);
+      expect(mockProviders.privateStateProvider.getSigningKey).not.toHaveBeenCalled();
+      expect(createUnprovenRemoveVerifierKeyTx).not.toHaveBeenCalled();
+      expect(submitTx).not.toHaveBeenCalled();
+    });
+
     it('should reject before proving when the operation carries no verifier key', async () => {
       const circuitId = 'testCircuit';
 
@@ -104,6 +118,7 @@ describe('submitRemoveVerifierKeyTx', () => {
       ).rejects.toThrow(
         `Circuit '${circuitId}' is registered on the contract at '${mockContractAddress}' but carries no verifier key`
       );
+      expect(mockProviders.privateStateProvider.getSigningKey).not.toHaveBeenCalled();
       expect(createUnprovenRemoveVerifierKeyTx).not.toHaveBeenCalled();
       expect(submitTx).not.toHaveBeenCalled();
     });

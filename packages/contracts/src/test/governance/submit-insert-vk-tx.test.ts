@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { readFileSync } from 'node:fs';
+
 import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -33,6 +35,14 @@ import {
 
 vi.mock('../../submit-tx');
 vi.mock('../../governance/unproven-tx');
+
+const createKeyedOperation = (): ContractOperation => {
+  const operation = new ContractOperation();
+  operation.verifierKey = new Uint8Array(
+    readFileSync(new URL('../resources/compiled/shielded-map/keys/deposit.verifier', import.meta.url))
+  );
+  return operation;
+};
 
 describe('submitInsertVerifierKeyTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
@@ -124,11 +134,12 @@ describe('submitInsertVerifierKeyTx', () => {
       const circuitId = 'testCircuit';
 
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
-      mockContractState.operation = vi.fn().mockReturnValue({ verifierKey: new Uint8Array(32) });
+      mockContractState.operation = vi.fn().mockReturnValue(createKeyedOperation());
 
       await expect(
         submitInsertVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId, mockVerifierKey)
       ).rejects.toThrow(`Circuit '${circuitId}' is already defined for contract at address '${mockContractAddress}'`);
+      expect(mockProviders.privateStateProvider.getSigningKey).not.toHaveBeenCalled();
       expect(createUnprovenInsertVerifierKeyTx).not.toHaveBeenCalled();
       expect(submitTx).not.toHaveBeenCalled();
     });
