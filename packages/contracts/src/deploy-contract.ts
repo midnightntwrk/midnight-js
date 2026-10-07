@@ -17,12 +17,10 @@ import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/e
 import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
 import { CURRENT_PIPELINE_ERA, RETAINED_PIPELINE_ERA } from './era';
-import { IncompleteDeployContractPrivateStateConfig } from './errors';
 import type { FoundContract } from './find-deployed-contract';
 import {
   createCircuitMaintenanceTxInterfaces,
@@ -30,6 +28,7 @@ import {
 } from './governance/tx-interfaces';
 import { isLedger8Request, resolveArtifactEra } from './internal/era';
 import { submitLedger8DeployTx } from './internal/ledger8-entry';
+import { assertDeployPrivateStatePairing } from './internal/private-state-pairing';
 import {
   type AnyLedger8DeployContractOptions,
   type AnyLedger8DeployedContract,
@@ -153,31 +152,7 @@ export interface DeployedContract<C extends Contract.Any> extends FoundContract<
 }
 
 /**
- * Refuses half a private-state pairing on either era, before any provider is touched.
- *
- * Reads the KEYS, so `initialPrivateState: undefined` beside an id stays legal: a contract that
- * declares no private state stores exactly that. The id's VALUE is checked first, because a caller
- * that wrote `privateStateId: cfg.someId` with an undefined `someId` believes it named an id, and
- * "given as undefined" is the accurate message for it.
- */
-const assertPrivateStatePairing = <C extends Contract.Any>(
-  options: DeployContractOptions<C> | AnyLedger8DeployContractOptions
-): void => {
-  const namesId = 'privateStateId' in options;
-  if (namesId) {
-    assertDefined(
-      options.privateStateId,
-      "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
-        'for a contract that stores no private state.'
-    );
-  }
-  if (namesId !== 'initialPrivateState' in options) {
-    throw new IncompleteDeployContractPrivateStateConfig(namesId ? 'initialPrivateState' : 'privateStateId');
-  }
-};
-
-/**
- * Narrows on the id's KEY. Only reached after {@link assertPrivateStatePairing}, so the key names
+ * Narrows on the id's KEY. Only reached after `assertDeployPrivateStatePairing`, so the key names
  * the arm and the id is defined.
  */
 const namesPrivateState = <C extends Contract.Any>(
@@ -298,18 +273,12 @@ export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: DeployContractOptions<C> | AnyLedger8DeployContractOptions
 ): Promise<DeployedContract<C> | AnyLedger8DeployedContract> {
-  assertPrivateStatePairing(options);
+  assertDeployPrivateStatePairing(options);
   const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
   if (isLedger8Request<AnyLedger8DeployContractOptions>(options, artifactEra)) {
     // `args`, `privateStateId` and `initialPrivateState` are CONDITIONAL members on the caller's
     // type -- a nullary constructor carries no `args` at all, and the no-private-state arm admits
     // only `undefined` for the other two -- so each is read with an `in` check rather than accessed.
-    //
-    // The two private-state members are FORWARDED BY KEY, not by value: the layer below reads both
-    // off their key, so writing `privateStateId: undefined` here would turn a caller that named an
-    // undefined id -- which is refused, because it believes it named one -- into a caller that
-    // named none, and turn an `initialPrivateState: undefined` -- a legitimate private state --
-    // into a caller that supplied none.
     const deployed = await submitLedger8DeployTx(providers, {
       compiledContract: options.compiledContract,
       args: 'args' in options ? options.args : [],

@@ -156,6 +156,16 @@ describe('deployContract', () => {
     expect(mockSubmitDeployTx).not.toHaveBeenCalled();
   });
 
+  it('refuses a private state id written as undefined even when a state is beside it', async () => {
+    const options = { ...baseOptions, privateStateId: undefined, initialPrivateState: { test: 'initial-private-state' } };
+
+    // @ts-expect-error - an undefined id beside a state
+    const deploying = deployContract(providers, options);
+
+    await expect(deploying).rejects.toThrow("'privateStateId' was given as undefined");
+    expect(mockSubmitDeployTx).not.toHaveBeenCalled();
+  });
+
   it('refuses a private state id with no initial private state, before any transaction is built', async () => {
     const options = { ...baseOptions, privateStateId: createMockPrivateStateId() };
 

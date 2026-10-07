@@ -1271,7 +1271,7 @@ export interface Ledger8DeployedState {
  * off the artifact rather than off any state.
  *
  * The private-state pairing is NOT checked here: `deployContract`, the only
- * caller, refuses half a pairing before any provider is touched.
+ * caller, checks it before any provider is touched.
  *
  * @param providers The provider set.
  * @param options The deployment the entry point received.

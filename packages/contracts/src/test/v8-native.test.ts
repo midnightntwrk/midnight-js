@@ -2615,10 +2615,16 @@ describe('deploying a retained-era contract through deployContract', () => {
     // a caller that supplied one believes it was stored. The TYPE refuses this shape too, which
     // is what the directive below records; the run-time guard is what a JavaScript caller, or one
     // that built its options dynamically, still reaches.
-    await expect(
+    const deploying = deployContract(
+      providers,
       // @ts-expect-error - a private state with no id naming where it goes
-      deployContract(providers, { compiledContract: contract, initialPrivateState: {} })
-    ).rejects.toThrow("'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined");
+      { compiledContract: contract, initialPrivateState: {} }
+    );
+
+    await expect(deploying).rejects.toBeInstanceOf(IncompleteDeployContractPrivateStateConfig);
+    await expect(deploying).rejects.toThrow(
+      "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined"
+    );
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
     // Refused before any provider is touched, the era resolution included.
     expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
@@ -2813,6 +2819,21 @@ describe('deploying a retained-era contract through deployContract', () => {
     await expect(
       deployContract(providers, { compiledContract: contract, privateStateId: undefined })
     ).rejects.toThrow("'privateStateId' was given as undefined");
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+  });
+
+  it('refuses a privateStateId written as undefined even when a state is beside it', async () => {
+    const providers = deployProviders();
+
+    const deploying = deployContract(
+      providers,
+      // @ts-expect-error - an undefined id beside a state
+      { compiledContract: contract, privateStateId: undefined, initialPrivateState: {} }
+    );
+
+    await expect(deploying).rejects.toThrow("'privateStateId' was given as undefined");
     expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();

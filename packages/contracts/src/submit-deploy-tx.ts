@@ -19,6 +19,7 @@ import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { type ContractProviders } from './contract-providers';
 import { CURRENT_PIPELINE_ERA } from './era';
 import { DeployTxFailedError } from './errors';
+import { assertDeployPrivateStatePairing } from './internal/private-state-pairing';
 import { submitTx } from './submit-tx';
 import type { FinalizedDeployTxData } from './tx-model';
 import type { DeployTxOptionsBase, DeployTxOptionsWithPrivateStateId } from './unproven-deploy-tx';
@@ -80,6 +81,10 @@ export async function submitDeployTx<C extends Contract.Any>(
  *
  * @throws {DeployTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging.
+ * @throws {IncompleteDeployContractPrivateStateConfig} When only one of `privateStateId` and
+ *         `initialPrivateState` is present. Raised before anything is built or submitted.
+ * @throws {Error} When `privateStateId` is present with an undefined value. Raised before anything
+ *         is built or submitted, and ahead of the pairing refusal.
  *
  * @remarks
  * The returned {@link FinalizedDeployTxData} is privacy-sensitive and carries
@@ -91,6 +96,7 @@ export async function submitDeployTx<C extends Contract.Any>(
   providers: SubmitDeployTxProviders<C>,
   options: DeployTxOptions<C>
 ): Promise<FinalizedDeployTxData<C>> {
+  assertDeployPrivateStatePairing(options);
   const unprovenDeployTxData = await createUnprovenDeployTx(providers, options);
   const finalizedTxData = await submitTx(providers, {
     unprovenTx: unprovenDeployTxData.private.unprovenTx

@@ -1023,9 +1023,9 @@ export class IncompleteCallTxPrivateStateConfig extends Error {
  * an initial private state with no private state ID to store it under, or a private state ID with
  * no initial private state to store. The message names the missing half.
  *
- * Raised by `deployContract` for both eras, before any provider is touched. It stays on the flat
- * surface rather than under the `Ledger8` namespace because it is the deploy member of the
- * three-refusal family `IncompleteCallTxPrivateStateConfig` and
+ * Raised by `deployContract` (both eras) and `submitDeployTx`, before any provider is touched.
+ * It stays on the flat surface rather than under the `Ledger8` namespace because it is the deploy
+ * member of the three-refusal family `IncompleteCallTxPrivateStateConfig` and
  * {@link IncompleteFindContractPrivateStateConfig} belong to — one client-side rule per entry
  * point, and client-side storage is era-independent.
  */
