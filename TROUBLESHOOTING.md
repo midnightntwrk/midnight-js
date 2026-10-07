@@ -332,6 +332,15 @@ The set below is asserted against the code registry by
 `packages/utils/src/test/troubleshooting-coverage.test.ts` in both directions, so a
 new coded error cannot ship without an entry here and an entry cannot outlive its code.
 
+### General (`MIDNIGHT_JS_G_*`)
+
+| Code | What happened | What to do |
+|---|---|---|
+| `MIDNIGHT_JS_G_INVALID_ARGUMENT` | A value passed to a midnight-js function was refused; the message names it. | Fix the value at the call site. Do not retry. |
+| `MIDNIGHT_JS_G_CONFIGURATION_MISSING` | Required setup is missing or was done out of order (e.g. no network id, no contract address set). | Do the setup step the message names before the call. |
+| `MIDNIGHT_JS_G_ENVIRONMENT_UNSUPPORTED` | The JavaScript runtime lacks an API midnight-js needs. | Run on a supported Node/browser version, or supply the alternative the message names. |
+| `MIDNIGHT_JS_G_INVARIANT_VIOLATED` | An internal guarantee of midnight-js did not hold. | Report it as a midnight-js bug with the full error and `cause`. |
+
 ### Version resolution (`MIDNIGHT_JS_P_*`)
 
 | Code | What happened | What to do |

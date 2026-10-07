@@ -40,6 +40,110 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
 /** The union of every value in {@link PROTOCOL_ERROR_CODES}; the type of every error class's `code` field. */
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[keyof typeof PROTOCOL_ERROR_CODES];
 
+export const MIDNIGHT_JS_ERROR_CATEGORIES = Object.freeze({
+  USAGE: 'USAGE',
+  ENVIRONMENT: 'ENVIRONMENT',
+  TRANSIENT: 'TRANSIENT',
+  REJECTED: 'REJECTED',
+  INTEGRITY: 'INTEGRITY',
+  INTERNAL: 'INTERNAL'
+} as const);
+/**
+ * What the caller should do about an error: fix its own code (`USAGE`), fix the installation or
+ * infrastructure (`ENVIRONMENT`), retry (`TRANSIENT`), handle a refusal by contract or network rules
+ * (`REJECTED`), stop and alert on bad data (`INTEGRITY`), or report a midnight-js bug (`INTERNAL`).
+ */
+export type MidnightJsErrorCategory = (typeof MIDNIGHT_JS_ERROR_CATEGORIES)[keyof typeof MIDNIGHT_JS_ERROR_CATEGORIES];
+
+export type MidnightJsErrorCodeFormat = `MIDNIGHT_JS_${string}`;
+
+/**
+ * Base class of every error midnight-js throws. Recognise one with `hasErrorCode`, `isMidnightJsError`
+ * or `errorCategory` from the `midnight-js-utils` package: they read `code`, so they also work when
+ * two copies of a package are installed, where `instanceof` does not.
+ */
+export abstract class MidnightJsError extends Error {
+  abstract readonly code: MidnightJsErrorCodeFormat;
+  abstract readonly category: MidnightJsErrorCategory;
+}
+
+const { USAGE, ENVIRONMENT, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
+
+export const PROTOCOL_ERROR_CATEGORIES: Readonly<Record<ProtocolErrorCode, MidnightJsErrorCategory>> = Object.freeze({
+  [PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ]: ENVIRONMENT,
+  [PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT]: ENVIRONMENT,
+  [PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH]: ENVIRONMENT,
+  [PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING]: ENVIRONMENT,
+  [PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED]: INTEGRITY,
+  [PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED]: INTERNAL,
+  [PROTOCOL_ERROR_CODES.COMPOSE_FAILED]: USAGE,
+  [PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID]: USAGE,
+  [PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED]: INTEGRITY,
+  [PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION]: ENVIRONMENT,
+  [PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID]: ENVIRONMENT,
+  [PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS]: INTERNAL,
+  [PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION]: USAGE
+});
+
+export const COMMON_ERROR_CODES = Object.freeze({
+  INVALID_ARGUMENT: 'MIDNIGHT_JS_G_INVALID_ARGUMENT',
+  CONFIGURATION_MISSING: 'MIDNIGHT_JS_G_CONFIGURATION_MISSING',
+  ENVIRONMENT_UNSUPPORTED: 'MIDNIGHT_JS_G_ENVIRONMENT_UNSUPPORTED',
+  INVARIANT_VIOLATED: 'MIDNIGHT_JS_G_INVARIANT_VIOLATED'
+} as const);
+export type CommonErrorCode = (typeof COMMON_ERROR_CODES)[keyof typeof COMMON_ERROR_CODES];
+
+export const COMMON_ERROR_CATEGORIES: Readonly<Record<CommonErrorCode, MidnightJsErrorCategory>> = Object.freeze({
+  [COMMON_ERROR_CODES.INVALID_ARGUMENT]: USAGE,
+  [COMMON_ERROR_CODES.CONFIGURATION_MISSING]: USAGE,
+  [COMMON_ERROR_CODES.ENVIRONMENT_UNSUPPORTED]: ENVIRONMENT,
+  [COMMON_ERROR_CODES.INVARIANT_VIOLATED]: INTERNAL
+});
+
+/** A value passed to a midnight-js function is not acceptable. Fix the call. */
+export class InvalidArgumentError extends MidnightJsError {
+  readonly code = COMMON_ERROR_CODES.INVALID_ARGUMENT;
+  readonly category = COMMON_ERROR_CATEGORIES[COMMON_ERROR_CODES.INVALID_ARGUMENT];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'InvalidArgumentError';
+  }
+}
+
+/** Required setup is missing or was done in the wrong order. */
+export class ConfigurationError extends MidnightJsError {
+  readonly code = COMMON_ERROR_CODES.CONFIGURATION_MISSING;
+  readonly category = COMMON_ERROR_CATEGORIES[COMMON_ERROR_CODES.CONFIGURATION_MISSING];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'ConfigurationError';
+  }
+}
+
+/** The JavaScript runtime lacks an API midnight-js needs. */
+export class EnvironmentUnsupportedError extends MidnightJsError {
+  readonly code = COMMON_ERROR_CODES.ENVIRONMENT_UNSUPPORTED;
+  readonly category = COMMON_ERROR_CATEGORIES[COMMON_ERROR_CODES.ENVIRONMENT_UNSUPPORTED];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'EnvironmentUnsupportedError';
+  }
+}
+
+/** A condition midnight-js guarantees did not hold. This is a midnight-js bug; report it. */
+export class InvariantViolationError extends MidnightJsError {
+  readonly code = COMMON_ERROR_CODES.INVARIANT_VIOLATED;
+  readonly category = COMMON_ERROR_CATEGORIES[COMMON_ERROR_CODES.INVARIANT_VIOLATED];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'InvariantViolationError';
+  }
+}
+
 /**
  * Which call path asked for a ledger version:
  * - `'read'` — the version was taken off an existing record.
