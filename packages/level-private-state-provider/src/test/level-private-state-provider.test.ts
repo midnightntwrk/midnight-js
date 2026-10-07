@@ -25,6 +25,7 @@ import {
   PrivateStateExportError,
   PrivateStateSerializationError,
   type PrivateStateSerializationFailure,
+  PrivateStateStorageError,
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
@@ -3485,9 +3486,22 @@ describe('Level Private State Provider', (): void => {
 
       const error = await captureError(() => provider.set('unreachable', { n: 1 }));
 
-      const reported = collectErrorMessages(error).join(' | ');
-      expect(reported).toContain('password unavailable');
-      expect(reported).toContain('close failed');
+      expect(error).toBeInstanceOf(PrivateStateStorageError);
+      if (!(error instanceof PrivateStateStorageError)) {
+        throw new Error('expected a PrivateStateStorageError');
+      }
+      expect(error.message).toBe(
+        `Operation on private state database "${CLOSE_FAILURE_DB_NAME}" failed, and the database handle ` +
+        `could not be closed afterwards. The database stays locked for the rest of this process.`
+      );
+      expect(error.cause).toBeInstanceOf(AggregateError);
+      if (!(error.cause instanceof AggregateError)) {
+        throw new Error('expected an AggregateError cause');
+      }
+      expect(error.cause.errors).toHaveLength(2);
+      const [operationFailure, closeFailure] = error.cause.errors;
+      expect(collectErrorMessages(operationFailure).join(' | ')).toContain('password unavailable');
+      expect(closeFailure).toEqual(new Error('close failed'));
 
       // Release the handle the provider could not close, so later tests can open the directory.
       for (const { level, restore } of handles) {

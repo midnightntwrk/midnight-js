@@ -280,11 +280,10 @@ const withSubLevel = <A>(
         (failure: unknown) => failure
       );
       if (closeError !== undefined) {
-        throw new AggregateError(
-          [error, closeError],
+        throw new PrivateStateStorageError(
           `Operation on private state database "${ctx.dbName}" failed, and the database handle ` +
           `could not be closed afterwards. The database stays locked for the rest of this process.`,
-          { cause: error }
+          { cause: new AggregateError([error, closeError]) }
         );
       }
       throw error;

@@ -9,7 +9,7 @@ import unusedImports from 'eslint-plugin-unused-imports';
 
 // No-new-occurrences gate for unsafe casts in package sources. Existing,
 // reviewed occurrences carry an inline eslint-disable; test files and
-// testkit-js are exempt (see the four `no-restricted-syntax` blocks below).
+// testkit-js are exempt (see the five `no-restricted-syntax` blocks below).
 const unsafeCastSelectors = [
   {
     selector: "TSAsExpression[typeAnnotation.type='TSAnyKeyword'], TSTypeAssertion[typeAnnotation.type='TSAnyKeyword']",
@@ -22,6 +22,17 @@ const unsafeCastSelectors = [
   {
     selector: "TSAsExpression[typeAnnotation.type='TSNeverKeyword'], TSTypeAssertion[typeAnnotation.type='TSNeverKeyword']",
     message: "Unsafe cast to 'never'. Use a precise type or a type guard instead; a reviewed exception needs an inline eslint-disable."
+  }
+];
+
+// Package sources signal failure with a coded MidnightJsError subclass, so
+// consumers can branch on `code` and `category` instead of parsing messages.
+const plainThrowSelectors = [
+  {
+    selector: 'ThrowStatement > NewExpression[callee.name=/^(Error|TypeError|RangeError|AggregateError)$/]',
+    message:
+      'Throw a MidnightJsError subclass with a registered code (see docs/adr/0017-error-codes-are-the-contract.md). ' +
+      'General cases: InvalidArgumentError, ConfigurationError, EnvironmentUnsupportedError, InvariantViolationError.'
   }
 ];
 
@@ -73,6 +84,8 @@ const PACKAGE_SOURCE_GLOBS = ['packages/**/*.ts', 'packages/**/*.tsx', 'packages
 const PACKAGE_TEST_GLOBS = ['packages/*/src/test/**/*.ts', 'packages/*/src/test/**/*.tsx', 'packages/*/src/test/**/*.mts'];
 const PACKAGE_TEST_DIRS = 'packages/*/src/test/**';
 const PROTOCOL_SOURCE_DIRS = 'packages/protocol/src/**';
+// The compact CLI is not a runtime API; network-id is deprecated and being removed.
+const PLAIN_THROW_EXEMPT_DIRS = ['packages/compact/**', 'packages/network-id/**'];
 
 // Generic hygiene: applies everywhere, since a dist import is wrong in any
 // package regardless of who owns the module being imported.
@@ -343,18 +356,32 @@ export default tseslint.config(
       ]
     }
   },
-  // `no-restricted-syntax` carries two independent gates with different
+  // `no-restricted-syntax` carries independent gates with different
   // exemptions: unsafe casts are off in test files, the v8 ban is off in
   // packages/protocol/src/. Flat config replaces a rule's options wholesale,
   // so a file matched by two blocks keeps only the last one's selectors. The
-  // four blocks below are therefore mutually exclusive, and each spells out
+  // five blocks below are therefore mutually exclusive, and each spells out
   // every selector list that applies to its scope. Never express one of these
   // exemptions as `'no-restricted-syntax': 'off'`: that would also drop the
   // other gate, silently, because an absent rule reports nothing.
   {
     // Package sources, the overlap: both gates apply.
     files: PACKAGE_SOURCE_GLOBS,
-    ignores: [PACKAGE_TEST_DIRS, PROTOCOL_SOURCE_DIRS],
+    ignores: [PACKAGE_TEST_DIRS, PROTOCOL_SOURCE_DIRS, ...PLAIN_THROW_EXEMPT_DIRS],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        ...unsafeCastSelectors,
+        ...plainThrowSelectors,
+        ...v8DynamicImportSelectors,
+        ...engineDynamicImportSelectors
+      ]
+    }
+  },
+  {
+    // Exempt from the plain-throw gate only: casts and v8 stay gated.
+    files: PLAIN_THROW_EXEMPT_DIRS,
+    ignores: [PACKAGE_TEST_DIRS],
     rules: {
       'no-restricted-syntax': ['error', ...unsafeCastSelectors, ...v8DynamicImportSelectors, ...engineDynamicImportSelectors]
     }
@@ -364,7 +391,7 @@ export default tseslint.config(
     files: [PROTOCOL_SOURCE_DIRS],
     ignores: [PACKAGE_TEST_DIRS],
     rules: {
-      'no-restricted-syntax': ['error', ...unsafeCastSelectors]
+      'no-restricted-syntax': ['error', ...unsafeCastSelectors, ...plainThrowSelectors]
     }
   },
   {

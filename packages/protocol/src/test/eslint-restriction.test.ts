@@ -285,3 +285,34 @@ describe('protocol/engine gate canaries', () => {
     expect(messages).toEqual([]);
   });
 });
+
+describe('plain-throw gate', () => {
+  const plainThrow = 'export const f = () => { throw new Error("x"); };\n';
+
+  it.each(['packages/contracts/src/some-consumer.ts', 'packages/protocol/src/some-reexport.ts'])(
+    'flags a plain throw in %s',
+    async (filePath) => {
+      expect((await lintMessagesFor(plainThrow, filePath, SYNTAX_RULE_ID)).length).toBe(1);
+    }
+  );
+
+  it.each([
+    'packages/contracts/src/test/some-consumer.test.ts',
+    'packages/compact/src/some-cli.ts',
+    'packages/network-id/src/some-module.ts'
+  ])('allows a plain throw in %s', async (filePath) => {
+    expect(await lintMessagesFor(plainThrow, filePath, SYNTAX_RULE_ID)).toEqual([]);
+  });
+
+  it('allows a plain Error used only as a cause', async () => {
+    const code = 'export const f = () => { throw new CodedError("x", { cause: new Error("y") }); };\n';
+    const messages = await lintMessagesFor(code, CONSUMER_PATH, SYNTAX_RULE_ID);
+
+    expect(messages).toEqual([]);
+  });
+
+  it('still gates unsafe casts in the compact CLI', async () => {
+    const cast = 'export const f = (x: number) => x as unknown as string;\n';
+    expect((await lintMessagesFor(cast, 'packages/compact/src/some-cli.ts', SYNTAX_RULE_ID)).length).toBeGreaterThan(0);
+  });
+});

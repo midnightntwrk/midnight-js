@@ -323,6 +323,28 @@ docker compose ps
 
 ## Midnight.js error codes
 
+Every midnight-js error extends `MidnightJsError` and carries a `code` and a `category`.
+Handle errors by category first, then by code:
+
+```typescript
+import { errorCategory } from '@midnight-ntwrk/midnight-js-utils';
+
+try {
+  await submitCallTx(providers, options);
+} catch (e) {
+  switch (errorCategory(e)) {
+    case 'TRANSIENT': /* retry with backoff */ break;
+    case 'REJECTED': /* show the refusal to the user */ break;
+    case 'USAGE': case 'ENVIRONMENT': /* fix code or setup; do not retry */ throw e;
+    case 'INTEGRITY': case 'INTERNAL': /* alert or report */ throw e;
+    case undefined: /* not a midnight-js error */ throw e;
+  }
+}
+```
+
+Use `hasErrorCode`, `isMidnightJsError` and `errorCategory` rather than `instanceof`: two installed copies
+of a package make `instanceof` answer `false`.
+
 Every error midnight-js raises with a stable `code` is listed here. Discriminate on
 one with `hasErrorCode(error, code)` from `@midnight-ntwrk/midnight-js-utils`; the
 one-argument form answers "is this one of ours" and returns `false` for a foreign
