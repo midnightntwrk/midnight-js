@@ -141,11 +141,8 @@ export const expectSuccessfulDeployTx = async <C extends Contract.Any>(
     // We only test contracts that pass 'initialPrivateState' through the contract constructor unchanged
     // so this equality comparison is justified.
     if ('privateStateId' in deployTxOptions && 'initialPrivateState' in deployTxOptions) {
-      // `DeployContractOptionsBase` declares both members as `undefined`, so these `in` checks
-      // narrow to the pair's PRESENCE and not to a usable value. Assert here rather than reading an
-      // undefined id as "no private state": this helper also accepts `DeployTxOptions`, and
-      // `submitDeployTx` runs no such refusal, so not every deploy reaching this assertion came
-      // through `deployContract`'s guard.
+      // `DeployContractOptionsBase` declares both members as `undefined`, so these `in` checks narrow
+      // to presence only; both deploy entry points refuse an undefined id, so this only narrows the type.
       const { privateStateId, initialPrivateState } = deployTxOptions;
       assertDefined(privateStateId, "'privateStateId' was given as undefined");
       expect(deployTxData.private.initialPrivateState).toEqual(initialPrivateState);

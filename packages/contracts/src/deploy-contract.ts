@@ -17,7 +17,6 @@ import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/e
 import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
@@ -29,6 +28,7 @@ import {
 } from './governance/tx-interfaces';
 import { isLedger8Request, resolveArtifactEra } from './internal/era';
 import { submitLedger8DeployTx } from './internal/ledger8-entry';
+import { assertDeployPrivateStatePairing } from './internal/private-state-pairing';
 import {
   type AnyLedger8DeployContractOptions,
   type AnyLedger8DeployedContract,
@@ -152,13 +152,8 @@ export interface DeployedContract<C extends Contract.Any> extends FoundContract<
 }
 
 /**
- * Narrows on the id's KEY, never on its value. The value is checked separately by the caller: the
- * no-private-state arm declares the key as `undefined`, so a `true` here does not yet mean a
- * usable id.
- *
- * For a caller the compiler has checked, the key does name the arm — the two arms declare the id
- * and the state together or neither. A caller that reached this without types can still carry the
- * key alone, which no check here refuses; see the `@throws` list on {@link deployContract}.
+ * Narrows on the id's KEY. Only reached after `assertDeployPrivateStatePairing`, so the key names
+ * the arm and the id is defined.
  */
 const namesPrivateState = <C extends Contract.Any>(
   options: DeployContractOptions<C>
@@ -173,16 +168,6 @@ const createDeployTxOptions = <C extends Contract.Any>(
     return { ...deployContractOptions, signingKey };
   }
   const { privateStateId } = deployContractOptions;
-  // Read off the KEY above and the VALUE here, exactly as `find-deployed-contract.ts` and the
-  // retained arm read it. A caller that wrote `privateStateId: cfg.someId` with an undefined
-  // `someId` BELIEVES it named one, and reading that as "no id given" would deploy the contract,
-  // store nothing, and hand `callTx` an undefined id — so every later call proves against a state
-  // the contract never had. Refused at the configuration instead, before anything is built.
-  assertDefined(
-    privateStateId,
-    "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
-      'for a contract that stores no private state.'
-  );
   // Returned through a local rather than as a literal, which is what lets this be CHECKED instead
   // of asserted. The checker computes the spread fine; what it refuses is a FRESH literal typed
   // against `DeployTxOptions<C>` while `C` keeps that union's `args` conditional deferred. The
@@ -275,30 +260,27 @@ export async function deployContract<C extends Contract.Any>(
  *                                        back from an era the head it composed on cannot have
  *                                        recorded. Carries the signing key, and the underlying
  *                                        failure on `cause`.
- * @throws IncompleteDeployContractPrivateStateConfig If an `initialPrivateState` reaches the
- *                                                    retained arm with no `privateStateId` to store
- *                                                    it under.
+ * @throws IncompleteDeployContractPrivateStateConfig If `privateStateId` is present without
+ *                                                    `initialPrivateState`, or `initialPrivateState`
+ *                                                    holds a value without `privateStateId`. The
+ *                                                    option types refuse both shapes, so only a
+ *                                                    caller the compiler never checked can reach it.
+ *                                                    Raised on both eras, before any provider is
+ *                                                    touched.
  * @throws Error If `privateStateId` is present with an undefined value, which is a caller that
- *               believes it named an id. Raised on both eras, before any transaction is built.
- *               NOT raised for a `privateStateId` present with a usable value and no
- *               `initialPrivateState` beside it: the option types refuse that pairing, so only a
- *               caller the compiler never checked can reach it, and it deploys as it always did.
+ *               believes it named an id. Raised on both eras, before any provider is touched, and
+ *               ahead of the pairing refusal.
  */
 export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: DeployContractOptions<C> | AnyLedger8DeployContractOptions
 ): Promise<DeployedContract<C> | AnyLedger8DeployedContract> {
+  assertDeployPrivateStatePairing(options);
   const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
   if (isLedger8Request<AnyLedger8DeployContractOptions>(options, artifactEra)) {
     // `args`, `privateStateId` and `initialPrivateState` are CONDITIONAL members on the caller's
     // type -- a nullary constructor carries no `args` at all, and the no-private-state arm admits
     // only `undefined` for the other two -- so each is read with an `in` check rather than accessed.
-    //
-    // The two private-state members are FORWARDED BY KEY, not by value: the layer below reads both
-    // off their key, so writing `privateStateId: undefined` here would turn a caller that named an
-    // undefined id -- which is refused, because it believes it named one -- into a caller that
-    // named none, and turn an `initialPrivateState: undefined` -- a legitimate private state --
-    // into a caller that supplied none.
     const deployed = await submitLedger8DeployTx(providers, {
       compiledContract: options.compiledContract,
       args: 'args' in options ? options.args : [],
