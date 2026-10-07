@@ -260,11 +260,13 @@ export async function deployContract<C extends Contract.Any>(
  *                                        back from an era the head it composed on cannot have
  *                                        recorded. Carries the signing key, and the underlying
  *                                        failure on `cause`.
- * @throws IncompleteDeployContractPrivateStateConfig If only one of `privateStateId` and
- *                                                    `initialPrivateState` is present. The option
- *                                                    types refuse that shape, so only a caller the
- *                                                    compiler never checked can reach it. Raised on
- *                                                    both eras, before any provider is touched.
+ * @throws IncompleteDeployContractPrivateStateConfig If `privateStateId` is present without
+ *                                                    `initialPrivateState`, or `initialPrivateState`
+ *                                                    holds a value without `privateStateId`. The
+ *                                                    option types refuse both shapes, so only a
+ *                                                    caller the compiler never checked can reach it.
+ *                                                    Raised on both eras, before any provider is
+ *                                                    touched.
  * @throws Error If `privateStateId` is present with an undefined value, which is a caller that
  *               believes it named an id. Raised on both eras, before any provider is touched, and
  *               ahead of the pairing refusal.

@@ -2608,6 +2608,15 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
 
+  it('deploys an initial private state written as undefined and no id, storing nothing', async () => {
+    const providers = deployProviders();
+
+    await deployContract(providers, { compiledContract: contract, initialPrivateState: undefined });
+
+    expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
   it('refuses an initial private state with no id to store it under', async () => {
     const providers = deployProviders();
 

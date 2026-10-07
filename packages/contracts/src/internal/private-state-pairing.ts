@@ -18,19 +18,21 @@ import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 import { IncompleteDeployContractPrivateStateConfig } from '../errors';
 
 /**
- * Refuses half a deploy private-state pairing. Reads the KEYS, so `initialPrivateState: undefined`
- * beside an id is legal; an id given as `undefined` is refused first.
+ * Refuses half a deploy private-state pairing, mirroring the option types: beside an id the
+ * `initialPrivateState` KEY must be present (its value may be `undefined`); without an id only
+ * `initialPrivateState: undefined` is admitted. An id given as `undefined` is refused first.
  */
 export const assertDeployPrivateStatePairing = (options: object): void => {
-  const namesId = 'privateStateId' in options;
-  if (namesId) {
+  if ('privateStateId' in options) {
     assertDefined(
       options.privateStateId,
       "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
         'for a contract that stores no private state.'
     );
-  }
-  if (namesId !== 'initialPrivateState' in options) {
-    throw new IncompleteDeployContractPrivateStateConfig(namesId ? 'initialPrivateState' : 'privateStateId');
+    if (!('initialPrivateState' in options)) {
+      throw new IncompleteDeployContractPrivateStateConfig('initialPrivateState');
+    }
+  } else if ('initialPrivateState' in options && options.initialPrivateState !== undefined) {
+    throw new IncompleteDeployContractPrivateStateConfig('privateStateId');
   }
 };

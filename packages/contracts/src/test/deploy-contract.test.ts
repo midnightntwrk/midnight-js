@@ -166,6 +166,17 @@ describe('deployContract', () => {
     expect(mockSubmitDeployTx).not.toHaveBeenCalled();
   });
 
+  it('deploys with an initial private state written as undefined and no id', async () => {
+    mockDeployTxData = createMockDeployTxData();
+    mockSubmitDeployTx.mockResolvedValue(asFinalized(mockDeployTxData));
+    const options = { ...baseOptions, initialPrivateState: undefined };
+
+    const result = await deployContract(providers, options);
+
+    assertDeployResult(result, mockDeployTxData);
+    expect(mockSubmitDeployTx).toHaveBeenCalledTimes(1);
+  });
+
   it('refuses a private state id with no initial private state, before any transaction is built', async () => {
     const options = { ...baseOptions, privateStateId: createMockPrivateStateId() };
 

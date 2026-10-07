@@ -81,8 +81,9 @@ export async function submitDeployTx<C extends Contract.Any>(
  *
  * @throws {DeployTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging.
- * @throws {IncompleteDeployContractPrivateStateConfig} When only one of `privateStateId` and
- *         `initialPrivateState` is present. Raised before anything is built or submitted.
+ * @throws {IncompleteDeployContractPrivateStateConfig} When `privateStateId` is present without
+ *         `initialPrivateState`, or `initialPrivateState` holds a value without `privateStateId`.
+ *         Raised before anything is built or submitted.
  * @throws {Error} When `privateStateId` is present with an undefined value. Raised before anything
  *         is built or submitted, and ahead of the pairing refusal.
  *

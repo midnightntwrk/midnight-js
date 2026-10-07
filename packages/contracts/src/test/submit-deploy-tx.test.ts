@@ -338,6 +338,22 @@ describe('submit-deploy-tx', () => {
     });
 
     describe('half a private-state pairing', () => {
+      it('submits an initial private state written as undefined and no id, storing nothing', async () => {
+        const options = {
+          compiledContract: mockCompiledContract,
+          args: [],
+          signingKey: mockSigningKey,
+          initialPrivateState: undefined
+        };
+        vi.mocked(createUnprovenDeployTx).mockResolvedValue(createMockUnprovenDeployTxData());
+        vi.mocked(submitTx).mockResolvedValue(createMockFinalizedTxData());
+
+        await submitDeployTx(mockProviders, options);
+
+        expect(submitTx).toHaveBeenCalledTimes(1);
+        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+      });
+
       it('refuses an initial private state with no id to store it under, before anything is built', async () => {
         const options = {
           compiledContract: mockCompiledContract,
