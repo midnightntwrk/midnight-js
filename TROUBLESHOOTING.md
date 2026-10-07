@@ -420,6 +420,10 @@ new coded error cannot ship without an entry here and an entry cannot outlive it
 | `MIDNIGHT_JS_PR_INDEXER_PAYLOAD_TOO_LARGE` | A compressed subscription message inflated beyond the size limit (possible compression bomb). | Check the indexer endpoint is trusted; report if it is. |
 | `MIDNIGHT_JS_U_TAG_PARSE_FAILED` | A serialized payload's `namespace:version:` tag prefix could not be parsed. | Verify the payload came from a sanctioned seam — a wallet balance response, a proof request, or a raw contract-state query. |
 | `MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER` | A `switch` closed with `assertNever` was reached, so a value the compiler ruled out arrived anyway. `context` names the switch. | The union grew and this switch was not updated, or a payload was decoded from outside the build. Add the missing arm at the call site `context` names. |
+| `MIDNIGHT_JS_U_ZK_ARTIFACT_INTEGRITY_FAILED` | A ZK artifact's hash does not match its manifest. | Do not use the artifact; re-download or rebuild it from a trusted source. |
+| `MIDNIGHT_JS_U_ZK_ARTIFACT_CONTRACT_INFO_INVALID` | A compiled contract's `contract-info` file is missing or malformed. | Recompile the contract with a supported `compactc`. |
+| `MIDNIGHT_JS_U_PASSWORD_INVALID` | A private-storage password does not meet the strength rules. | Choose a password that satisfies the rules in the message. |
+| `MIDNIGHT_JS_U_DESERIALIZATION_FAILED` | Ledger/runtime bytes could not be decoded; `context` holds classification and mitigation. | Follow `context.mitigation`; a version mismatch usually means a midnight-js upgrade is needed. |
 
 ## Getting Help
 

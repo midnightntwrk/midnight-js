@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { randomBytes } from 'crypto';
 
 import { toHex } from '../hex-utils';
@@ -40,6 +41,14 @@ describe('Type Utils', () => {
     it('throws with prefixed but valid contract address', () => {
       expect(() => assertIsContractAddress(`0x${createHexString(EXPECTED_CONTRACT_ADDRESS_BYTE_LENGTH)}`)).toThrow(
         /Unexpected '0x' prefix in contract address/
+      );
+    });
+
+    it('refuses a prefixed address with InvalidArgumentError and the unchanged message', () => {
+      const address = `0x${createHexString(EXPECTED_CONTRACT_ADDRESS_BYTE_LENGTH)}`;
+
+      expect(() => assertIsContractAddress(address)).toThrow(
+        new InvalidArgumentError(`Unexpected '0x' prefix in contract address '${address}'`)
       );
     });
   });

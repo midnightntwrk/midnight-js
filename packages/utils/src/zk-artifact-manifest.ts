@@ -13,9 +13,11 @@
  * limitations under the License.
  */
 
+import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
 
+import { UTILS_ERROR_CATEGORIES, UTILS_ERROR_CODES } from './error-codes';
 import { isJsonObject } from './internal/json-object';
 
 /** Directory (relative to a provider's base location) holding the manifest. */
@@ -61,7 +63,10 @@ export interface ZkConfigIntegrityOptions {
 }
 
 /** Thrown when a ZK artifact (or the manifest itself) fails integrity verification. */
-export class ZkArtifactIntegrityError extends Error {
+export class ZkArtifactIntegrityError extends MidnightJsError {
+  readonly code = UTILS_ERROR_CODES.ZK_ARTIFACT_INTEGRITY_FAILED;
+  readonly category = UTILS_ERROR_CATEGORIES[UTILS_ERROR_CODES.ZK_ARTIFACT_INTEGRITY_FAILED];
+
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options);
     this.name = 'ZkArtifactIntegrityError';

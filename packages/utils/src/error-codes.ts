@@ -21,6 +21,7 @@ import {
   COMMON_ERROR_CATEGORIES,
   COMMON_ERROR_CODES,
   type CommonErrorCode,
+  InvalidArgumentError,
   MIDNIGHT_JS_ERROR_CATEGORIES,
   type MidnightJsErrorCategory,
   PROTOCOL_ERROR_CATEGORIES,
@@ -75,7 +76,11 @@ export {
 
 export const UTILS_ERROR_CODES = Object.freeze({
   TAG_PARSE_FAILED: 'MIDNIGHT_JS_U_TAG_PARSE_FAILED',
-  UNHANDLED_UNION_MEMBER: 'MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER'
+  UNHANDLED_UNION_MEMBER: 'MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER',
+  ZK_ARTIFACT_INTEGRITY_FAILED: 'MIDNIGHT_JS_U_ZK_ARTIFACT_INTEGRITY_FAILED',
+  ZK_ARTIFACT_CONTRACT_INFO_INVALID: 'MIDNIGHT_JS_U_ZK_ARTIFACT_CONTRACT_INFO_INVALID',
+  PASSWORD_INVALID: 'MIDNIGHT_JS_U_PASSWORD_INVALID',
+  DESERIALIZATION_FAILED: 'MIDNIGHT_JS_U_DESERIALIZATION_FAILED'
 } as const);
 export type UtilsErrorCode = (typeof UTILS_ERROR_CODES)[keyof typeof UTILS_ERROR_CODES];
 
@@ -103,7 +108,11 @@ export const CONTRACTS_ERROR_CATEGORIES: Readonly<Record<ContractsErrorCode, Mid
 
 export const UTILS_ERROR_CATEGORIES: Readonly<Record<UtilsErrorCode, MidnightJsErrorCategory>> = Object.freeze({
   [UTILS_ERROR_CODES.TAG_PARSE_FAILED]: INTEGRITY,
-  [UTILS_ERROR_CODES.UNHANDLED_UNION_MEMBER]: INTERNAL
+  [UTILS_ERROR_CODES.UNHANDLED_UNION_MEMBER]: INTERNAL,
+  [UTILS_ERROR_CODES.ZK_ARTIFACT_INTEGRITY_FAILED]: INTEGRITY,
+  [UTILS_ERROR_CODES.ZK_ARTIFACT_CONTRACT_INFO_INVALID]: INTEGRITY,
+  [UTILS_ERROR_CODES.PASSWORD_INVALID]: USAGE,
+  [UTILS_ERROR_CODES.DESERIALIZATION_FAILED]: INTEGRITY
 });
 
 /**
@@ -201,7 +210,7 @@ export const errorCategory = (e: unknown): MidnightJsErrorCategory | undefined =
  * codes is deliberate and visible at the call site. Foreignness is enforced
  * twice: by the compiler via {@link ForeignErrorCode}, and at run time by prefix.
  *
- * @throws Error if `code` carries this framework's own `MIDNIGHT_JS_` prefix.
+ * @throws InvalidArgumentError if `code` carries this framework's own `MIDNIGHT_JS_` prefix.
  *   That is a mistake at the call site, not a property of `e`, so it is raised
  *   rather than reported as a non-match.
  * @see {@link ErrorVocabulary} for why the two guards are separate, and why one
@@ -213,7 +222,7 @@ export function hasForeignErrorCode<C extends string>(
 ): e is Error & { code: C };
 export function hasForeignErrorCode(e: unknown, code: string): boolean {
   if (code.startsWith(OWN_CODE_PREFIX)) {
-    throw new Error(
+    throw new InvalidArgumentError(
       `hasForeignErrorCode was given '${code}', which uses this framework's own ` +
         `${OWN_CODE_PREFIX} prefix. Use hasErrorCode with a member of MidnightJsErrorCode. ` +
         `If you believe '${code}' is a real midnight-js code, it is misspelled or was never ` +

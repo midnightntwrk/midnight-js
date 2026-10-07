@@ -170,6 +170,15 @@ describe('hasErrorCode', () => {
   });
 });
 
+describe('hasForeignErrorCode misuse', () => {
+  it('refuses a framework-prefixed code with InvalidArgumentError', () => {
+    const act = () => hasForeignErrorCode(new Error('boom'), 'MIDNIGHT_JS_X');
+
+    expect(act).toThrow(InvalidArgumentError);
+    expect(act).toThrow(/^hasForeignErrorCode was given 'MIDNIGHT_JS_X', which uses this framework's own MIDNIGHT_JS_ prefix\./);
+  });
+});
+
 describe('hasForeignErrorCode', () => {
   const econnrefused = (): unknown => Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
 

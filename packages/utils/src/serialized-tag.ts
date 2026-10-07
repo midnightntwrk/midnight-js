@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
-import { UTILS_ERROR_CODES } from './error-codes';
+import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+
+import { UTILS_ERROR_CATEGORIES, UTILS_ERROR_CODES } from './error-codes';
 
 // A serialized value may carry a `namespace:version:` prefix ahead of its
 // binary body (e.g. `midnight:v8:<bytes>`). This tag is a defence-in-depth
@@ -37,8 +39,9 @@ const NEXT_STEP_NOTE =
   "Expected a '<namespace>:<version>:' prefix — verify the payload came from a sanctioned serialization seam " +
   '(wallet balance response, proof request, or raw contract-state query).';
 
-export class TagParseError extends Error {
+export class TagParseError extends MidnightJsError {
   readonly code = UTILS_ERROR_CODES.TAG_PARSE_FAILED;
+  readonly category = UTILS_ERROR_CATEGORIES[UTILS_ERROR_CODES.TAG_PARSE_FAILED];
 
   constructor(message: string, options?: { cause: unknown }) {
     super(message, options);

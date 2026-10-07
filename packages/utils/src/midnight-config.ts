@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { ConfigurationError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
 
 const show = (value: unknown): string => {
@@ -26,9 +27,9 @@ const show = (value: unknown): string => {
  *
  * @param config The config to check; `undefined` or `null` when a caller did not pass one.
  * @param source Where the config was read from, named in the error.
- * @throws TypeError If `config` is missing, or `config.networkId` is not a non-empty string
- * without surrounding whitespace.
- * @throws RangeError If `config.ttlSeconds` is not a positive whole number, or is too large for the
+ * @throws ConfigurationError If `config` is missing.
+ * @throws InvalidArgumentError If `config.networkId` is not a non-empty string
+ * without surrounding whitespace, or if `config.ttlSeconds` is not a positive whole number, or is too large for the
  * expiry to be a valid `Date`.
  */
 export function assertValidMidnightConfig(
@@ -36,11 +37,11 @@ export function assertValidMidnightConfig(
   source = 'providers.config'
 ): asserts config is MidnightConfig {
   if (typeof config !== 'object' || config === null) {
-    throw new TypeError(`${source} is missing. Pass { networkId, ttlSeconds } as ${source}.`);
+    throw new ConfigurationError(`${source} is missing. Pass { networkId, ttlSeconds } as ${source}.`);
   }
   const { networkId, ttlSeconds } = config;
   if (typeof networkId !== 'string' || networkId.length === 0 || networkId.trim() !== networkId) {
-    throw new TypeError(
+    throw new InvalidArgumentError(
       `${source}.networkId must be a non-empty string without surrounding whitespace, got ${show(networkId)}.`
     );
   }
@@ -49,7 +50,7 @@ export function assertValidMidnightConfig(
     ttlSeconds < 1 ||
     Number.isNaN(new Date(Date.now() + ttlSeconds * 1000).getTime())
   ) {
-    throw new RangeError(`${source}.ttlSeconds must be a positive whole number of seconds, got ${show(ttlSeconds)}.`);
+    throw new InvalidArgumentError(`${source}.ttlSeconds must be a positive whole number of seconds, got ${show(ttlSeconds)}.`);
   }
 }
 
@@ -57,7 +58,7 @@ export function assertValidMidnightConfig(
  * The expiry for an intent built now: the current time plus `config.ttlSeconds`.
  *
  * @param config The config whose `ttlSeconds` is applied.
- * @throws TypeError, RangeError As {@link assertValidMidnightConfig}.
+ * @throws ConfigurationError, InvalidArgumentError As {@link assertValidMidnightConfig}.
  */
 export const intentTtl = (config: MidnightConfig): Date => {
   assertValidMidnightConfig(config);

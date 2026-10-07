@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+
+import { UTILS_ERROR_CATEGORIES, UTILS_ERROR_CODES } from './error-codes';
 import { isJsonObject } from './internal/json-object';
 
 /** File name of the `compactc`-emitted contract description, beside the integrity manifest. */
@@ -26,7 +29,10 @@ export const ZK_CONTRACT_INFO_FILE_NAME = 'contract-info.json';
  * file is the artifact set's own statement of which toolchain produced it, and this error says
  * that statement is missing or unreadable.
  */
-export class ZkArtifactContractInfoError extends Error {
+export class ZkArtifactContractInfoError extends MidnightJsError {
+  readonly code = UTILS_ERROR_CODES.ZK_ARTIFACT_CONTRACT_INFO_INVALID;
+  readonly category = UTILS_ERROR_CATEGORIES[UTILS_ERROR_CODES.ZK_ARTIFACT_CONTRACT_INFO_INVALID];
+
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = 'ZkArtifactContractInfoError';

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { describe, expect, it } from 'vitest';
 
 import { DeserializationError, isDeserializationError } from '../deserialization';
@@ -116,10 +117,13 @@ describe('withDeserializationContext', () => {
   });
 
   describe('sync-only enforcement', () => {
-    it('throws TypeError when fn() returns a Promise (silent bypass guard)', () => {
+    it('throws InvalidArgumentError when fn() returns a Promise (silent bypass guard)', () => {
       expect(() =>
         withDeserializationContext<Promise<number>>(callSite, () => Promise.resolve(42))
-      ).toThrow(TypeError);
+      ).toThrow(InvalidArgumentError);
+      expect(() =>
+        withDeserializationContext<Promise<number>>(callSite, () => Promise.resolve(42))
+      ).toThrow(`withDeserializationContext is sync-only; received a thenable from ${callSite.caller}.`);
     });
   });
 });

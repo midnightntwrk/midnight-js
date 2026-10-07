@@ -13,7 +13,21 @@
  * limitations under the License.
  */
 
+import { InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+
 import { assertDefined, assertUndefined } from '../assertion-utils';
+
+describe('assertion failures', () => {
+  it('assertDefined refuses null with InvariantViolationError and the unchanged message', () => {
+    expect(() => assertDefined(null)).toThrow(InvariantViolationError);
+    expect(() => assertDefined(null)).toThrow('Expected value to be defined');
+  });
+
+  it('assertUndefined refuses a value with InvariantViolationError and the unchanged message', () => {
+    expect(() => assertUndefined(1)).toThrow(InvariantViolationError);
+    expect(() => assertUndefined(1)).toThrow('Expected value to be null or undefined');
+  });
+});
 
 describe('assertDefined', () => {
   it('does not throw for truthy values', () => {
