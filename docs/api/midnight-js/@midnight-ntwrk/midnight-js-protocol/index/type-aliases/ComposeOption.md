@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -6,11 +6,15 @@
 
 # Type Alias: ComposeOption
 
-> **ComposeOption** = `"calls"` \| `"contractState"` \| `"ledgerParameters"` \| `"networkId"` \| `"signingKey"` \| `"ttl"` \| `"verifierKeys"` \| `"zswapOffer"`
+> **ComposeOption** = `"calls"` \| `"contractStateBytes"` \| `"guaranteedZswapOfferBytes"` \| `"ledgerParametersBytes"` \| `"networkId"` \| `"signingKey"` \| `"ttl"` \| `"verifierKeys"` \| `"zswapOffer"`
 
 Which option handed to a composition leg was unusable:
-- `'contractState'` — the state could not be bridged into the target
+- `'contractStateBytes'` — the state could not be bridged into the target
   ledger era (its serialized envelope was rejected by the era's decoder).
+- `'guaranteedZswapOfferBytes'` — the offer bytes supplied to a deploy were
+  rejected by the target era's decoder.
+- `'ledgerParametersBytes'` — the supplied ledger parameters could not be
+  read by the target era.
 - `'networkId'` — the network id was empty. The ledger accepts an empty
   string and bakes it into the transaction, so a caller that forgot to
   resolve one would only find out at submission.
@@ -28,8 +32,8 @@ Which option handed to a composition leg was unusable:
   contract's keys itself and so always needs the map, while the current era
   accepts its omission for a state that already carries its keys and refuses
   it only for a state still declaring a blank-keyed entry point.
-- `'zswapOffer'` — the supplied offer bytes were rejected by the target era's
-  decoder. Raised on BOTH eras, for the same reason and with the same
+- `'zswapOffer'` — the offer bytes a call's offer factory returned were
+  rejected by the target era's decoder. Raised on BOTH eras, for the same reason and with the same
   remediation: pass the bytes that era's own offer serialization produced.
 
 ## See

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
 
 ***
 
@@ -19,6 +19,18 @@ The target of a retained-era circuit invocation, without its arguments.
 `K` *extends* [`CircuitId`](../type-aliases/CircuitId.md)\<`C`\>
 
 ## Properties
+
+### additionalCoinEncPublicKeyMappings?
+
+> `readonly` `optional` **additionalCoinEncPublicKeyMappings?**: `ReadonlyMap`\<`string`, `string`\>
+
+An optional mapping of [CoinPublicKey](https://github.com/midnightntwrk/midnight-ledger) to [EncPublicKey](https://github.com/midnightntwrk/midnight-ledger) used to
+encrypt shielded coins the circuit pays to a recipient other than the
+calling wallet. A user-owned recipient that is neither the calling wallet,
+the burn address, nor a key in this map is refused with
+`Ledger8RecipientUnmappableError` before anything is proven.
+
+***
 
 ### circuitId
 

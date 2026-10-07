@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v5.0.0-beta.8**](../README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-rc.3**](../README.md)
 
 ***
 
@@ -18,7 +18,7 @@
 
 ### foundDeployTxData
 
-`FinalizedDeployTxDataBase`\<`C`\>
+`FoundDeployTxData`\<`C`\>
 
 ## Returns
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
 
 ***
 
@@ -8,12 +8,14 @@
 
 A retained-era contract deployed by the caller.
 
-It differs from [Ledger8FoundContract](FoundContract.md) in ONE thing: its
+It differs from [Ledger8FoundContract](FoundContract.md) in two ways. Its
 [Ledger8DeployedContract.signingKey](#signingkey) is REQUIRED where the found
 handle's may be `undefined`. The key itself is no longer something only a
 deployer has -- the deploy stores it, and an attach through the same provider
 reports it back -- so what a deploy guarantees is that there IS one, not that
-nobody else could hold it.
+nobody else could hold it. And it carries what the constructor produced:
+the initial contract state, as a handle and as bytes, and the initial private
+and Zswap states.
 
 Published under the retained-era namespace so a caller that receives one by
 inference can also NAME it. This is what `deployContract`'s retained-era arm
@@ -79,8 +81,8 @@ because a retained-era contract was deployed in whichever era was current
 at the time — narrow it with `switch (deployTxData.version)`.
 
 SHAPED DIFFERENTLY from the current era's `FoundContract.deployTxData`,
-which is a `FinalizedDeployTxData` whose transaction id sits under
-`.public`. Here the record is the read surface's own
+which is a `FoundDeployTxData` whose record sits under `.public` and is
+tagged on `.public.version`. Here the record is the read surface's own
 `VersionedFinalizedTxData`, so `txId`, `status` and the rest are top-level
 members. Code written against one era does not read the other's record
 unchanged.
@@ -112,8 +114,18 @@ produced the objects below.
 
 The state the contract was deployed with, as the LIVE handle the retained
 constructor built. See ADR-0010 for its lifetime, and prefer
-[Ledger8DeployedContract.initialState](#initialstate) for anything that has to
+[Ledger8DeployedContract.initialContractStateBytes](#initialcontractstatebytes) for anything that has to
 outlive the runtime instance.
+
+***
+
+### initialContractStateBytes
+
+> `readonly` **initialContractStateBytes**: `Uint8Array`
+
+The same state, serialized — the bytes the contract address was derived
+from. A deploy mints a fresh nonce, so these bytes and that address belong
+to each other and to no other deployment.
 
 ***
 
@@ -126,16 +138,6 @@ The private state the constructor produced.
 #### Remarks
 
 **Privacy-sensitive.**
-
-***
-
-### initialState
-
-> `readonly` **initialState**: `Uint8Array`
-
-The same state, serialized — the bytes the contract address was derived
-from. A deploy mints a fresh nonce, so these bytes and that address belong
-to each other and to no other deployment.
 
 ***
 

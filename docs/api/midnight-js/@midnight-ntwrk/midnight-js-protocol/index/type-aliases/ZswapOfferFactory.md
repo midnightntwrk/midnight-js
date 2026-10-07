@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -25,13 +25,13 @@ readonly [`PartitionedCallTranscript`](PartitionedCallTranscript.md)[]
 
 `object`
 
-### fallible?
+### fallibleBytes?
 
-> `readonly` `optional` **fallible?**: `Uint8Array`
+> `readonly` `optional` **fallibleBytes?**: `Uint8Array`
 
-### guaranteed?
+### guaranteedBytes?
 
-> `readonly` `optional` **guaranteed?**: `Uint8Array`
+> `readonly` `optional` **guaranteedBytes?**: `Uint8Array`
 
 ## See
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -58,7 +58,7 @@ Optional stream start.
 
 ### contractStateObservable()
 
-> **contractStateObservable**(`address`, `config`): `Observable`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
+> **contractStateObservable**(`address`, `config`): `Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>\>
 
 Creates a stream of contract states. The observable emits a value every time a state is either
 created or updated at the given address.
@@ -80,7 +80,12 @@ The configuration for the observable.
 
 #### Returns
 
-`Observable`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
+`Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>\>
+
+One [PositionedRecord](../type-aliases/PositionedRecord.md) per value, carrying the block that
+  served it. Passing its `blockHeight` or `blockHash` back as the config
+  resumes the stream from that block; values from that block may be
+  delivered again.
 
 ***
 
@@ -331,7 +336,7 @@ The configuration of the query.
 
 ### rawContractStateObservable()
 
-> **rawContractStateObservable**(`address`, `config`): `Observable`\<[`RawContractState`](RawContractState.md)\>
+> **rawContractStateObservable**(`address`, `config`): `Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`RawContractState`](RawContractState.md)\>\>
 
 Creates a stream of contract states as the raw serialized bytes the network
 returned, without deserializing them, each together with the era its record
@@ -358,9 +363,9 @@ stated on the field.
 where the same implementation serves it on
 [queryRawContractState](#queryrawcontractstate). The parameters are a per-block blob, and a
 stream may have no cheap way to obtain one per emission; an implementation
-is free to refuse that cost. The record carries no block identifier either,
-so a caller that needs the parameters for a streamed state must read
-[queryRawContractState](#queryrawcontractstate) at a block it obtained some other way.
+is free to refuse that cost. A caller that needs the parameters for a
+streamed state reads [queryRawContractState](#queryrawcontractstate) with
+`{ type: 'blockHash', blockHash }` from the same [PositionedRecord](../type-aliases/PositionedRecord.md).
 
 #### Parameters
 
@@ -378,13 +383,18 @@ The configuration for the observable.
 
 #### Returns
 
-`Observable`\<[`RawContractState`](RawContractState.md)\>
+`Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`RawContractState`](RawContractState.md)\>\>
+
+One [PositionedRecord](../type-aliases/PositionedRecord.md) per value, carrying the block that
+  served it. Passing its `blockHeight` or `blockHash` back as the config
+  resumes the stream from that block; values from that block may be
+  delivered again.
 
 ***
 
 ### unshieldedBalancesObservable()
 
-> **unshieldedBalancesObservable**(`address`, `config`): `Observable`\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>
+> **unshieldedBalancesObservable**(`address`, `config`): `Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>\>
 
 Retrieves an observable that tracks the unshielded balances for a specific contract address.
 
@@ -404,9 +414,12 @@ The configuration object for observing contract state changes.
 
 #### Returns
 
-`Observable`\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>
+`Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>\>
 
-An observable that emits the unshielded balances for the provided address.
+One [PositionedRecord](../type-aliases/PositionedRecord.md) per balance change, carrying the block
+  that served it. Passing its `blockHeight` or `blockHash` back as the
+  config resumes the stream from that block; values from that block may be
+  delivered again.
 
 ***
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -14,9 +14,9 @@ Starts a contract state stream at the given block hash.
 
 ### blockHash
 
-> `readonly` **blockHash**: `string`
+> `readonly` **blockHash**: [`BlockHash`](BlockHash.md)
 
-The block height indicating where to begin the state stream.
+The block hash indicating where to begin the state stream.
 
 ***
 
