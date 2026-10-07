@@ -34,7 +34,7 @@ const readContractState = (raw: Uint8Array, v8: ProtocolV8): InstanceType<Protoc
   try {
     return v8.ContractState.deserialize(raw);
   } catch (cause) {
-    throw new ComposeOptionError('v8', 'contractState', cause);
+    throw new ComposeOptionError('v8', 'contractStateBytes', cause);
   }
 };
 
@@ -83,7 +83,7 @@ export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8):
       // Carried across the adapter, not dropped. Without this the retained-native arm silently
       // partitions against this era's INITIAL parameters while the caller believed it had supplied
       // the chain's -- the same defect this option exists to close, one layer down.
-      ledgerParameters: call.ledgerParameters,
+      ledgerParametersBytes: call.ledgerParametersBytes,
       networkId,
       ttl,
       zswapOffer
@@ -120,7 +120,7 @@ export const composeEraV8DeployTx = (options: ComposeDeployOptions, v8: Protocol
   const { contractStateBytes, verifierKeys, networkId, ttl, guaranteedZswapOfferBytes } = options;
   // See `composeEraV8CallTx` — hoisted so both arms refuse the envelope first.
   assertComposeEnvelope(options, 'v8');
-  const guaranteedOffer = readZswapOffer(guaranteedZswapOfferBytes, v8);
+  const guaranteedOffer = readZswapOffer(guaranteedZswapOfferBytes, v8, 'guaranteedZswapOfferBytes');
   if (verifierKeys === undefined) {
     throw new ComposeOptionError('v8', 'verifierKeys');
   }

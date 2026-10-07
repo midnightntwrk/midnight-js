@@ -96,7 +96,7 @@ const callEntry = (overrides: Partial<ComposeCallEntry> = {}): ComposeCallEntry 
   contractStateBytes: serializedStateWith(keyedOperation()),
   // These tests are about assembly, not about the cost model, so the initial parameters are named
   // explicitly. The option is required precisely so that this choice is visible rather than assumed.
-  ledgerParameters: 'initial',
+  ledgerParametersBytes: 'initial',
   transcript: {
     kind: 'unpartitioned',
     preState: PRE_STATE,
@@ -231,7 +231,7 @@ describe('composeV9CallTx', () => {
 
     expect(error).toBeInstanceOf(ComposeOptionError);
     expect(error).toMatchObject({
-      option: 'contractState',
+      option: 'contractStateBytes',
       version: 'v9',
       code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID
     });
@@ -495,6 +495,14 @@ describe('composeV9DeployTx', () => {
     expect(readBack(result.txBytes).guaranteedOffer?.outputs).toHaveLength(1);
   });
 
+  it('refuses deploy Zswap offer bytes this era cannot read, naming the deploy option', () => {
+    const error = caughtDeploy(() => composeV9DeployTx(deployOptions({ guaranteedZswapOfferBytes: new Uint8Array([1, 2, 3]) })));
+
+    expect(error).toBeInstanceOf(ComposeOptionError);
+    expect(error).toMatchObject({ option: 'guaranteedZswapOfferBytes', version: 'v9' });
+    expect((error as ComposeOptionError).cause).toBeInstanceOf(Error);
+  });
+
   // `setOperation` CREATES a slot rather than requiring one, so an unchecked
   // stray key would give the deployed contract an entry point its source never
   // had and silently change its address.
@@ -558,7 +566,7 @@ describe('composeV9DeployTx', () => {
     const error = caughtDeploy(() => composeV9DeployTx(deployOptions({ contractStateBytes: new Uint8Array([1, 2, 3]) })));
 
     expect(error).toBeInstanceOf(ComposeOptionError);
-    expect(error).toMatchObject({ option: 'contractState', version: 'v9' });
+    expect(error).toMatchObject({ option: 'contractStateBytes', version: 'v9' });
     expect((error as ComposeOptionError).cause).toBeInstanceOf(Error);
   });
 

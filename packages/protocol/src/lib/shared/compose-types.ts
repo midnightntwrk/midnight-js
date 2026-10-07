@@ -132,7 +132,7 @@ export type ZswapOfferFactory = (partitions: readonly PartitionedCallTranscript[
 /**
  * One contract call in a call transaction.
  *
- * `contractState` is the raw, serialized state the call is dispatched against,
+ * `contractStateBytes` is the raw, serialized state the call is dispatched against,
  * as read from chain. It supplies the registered operation for `circuitId`,
  * including its verifier key, which the call's key location hashes; a
  * constructor-built state will not do, because it declares its entry points
@@ -155,7 +155,7 @@ export interface ComposeCallEntry {
    *
    * Required, and deliberately so. See {@link LedgerParametersOption}.
    */
-  readonly ledgerParameters: LedgerParametersOption;
+  readonly ledgerParametersBytes: LedgerParametersOption;
   readonly transcript: CallTranscriptSource;
   readonly privateTranscriptOutputs: AlignedValue[];
   readonly input: AlignedValue;
@@ -204,7 +204,7 @@ export interface ComposeCallResultPojo {
 /**
  * Everything a deploy transaction needs.
  *
- * `contractState` is the raw, serialized initial state the contract's
+ * `contractStateBytes` is the raw, serialized initial state the contract's
  * constructor produced.
  *
  * `verifierKeys` maps entry-point name -> raw, tagged verifier key bytes

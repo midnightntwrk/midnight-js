@@ -766,7 +766,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
   // `zswapOffer` is OPTIONAL on `ComposeCallOptions`, so an era that never calls
   // it back is type-correct. The pipeline builds its offer only inside that
   // callback, so such an era would compose a transaction carrying none of the
-  // circuit's coin movements -- and report `guaranteedZswapOffer: undefined`,
+  // circuit's coin movements -- and report `guaranteedZswapOfferBytes: undefined`,
   // which is also the honest shape of a call that moved nothing. Nothing
   // downstream can tell the two apart, and the wallet reports the difference as
   // `Wallet.InsufficientFunds`. So the pipeline refuses instead of reporting it.
@@ -2391,9 +2391,10 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(deployed.contractAddress.length).toBeGreaterThan(0);
     // The key the authority was built from, which only the deployer ever holds.
     expect(deployed.signingKey).toBe(SAMPLED_SIGNING_KEY);
-    expect(deployed.initialContractStateBytes).toBeInstanceOf(Uint8Array);
     // The LIVE handle beside the bytes, as the retained constructor built it.
     expect(deployed.initialContractState.serialize()).toEqual(v6Envelope);
+    // The bytes the address was derived from are the same state as the handle.
+    expect(deployed.initialContractStateBytes).toEqual(deployed.initialContractState.serialize());
     // This deploy named no private state, so the constructor was handed
     // `undefined` and threaded it back. Presence is asserted separately: a
     // handle that dropped the member entirely would otherwise read the same.

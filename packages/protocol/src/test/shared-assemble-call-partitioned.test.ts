@@ -98,7 +98,7 @@ const assembleWithParameters = (
     input: fieldValue(0x10),
     output: fieldValue(0x20),
     operations,
-    ledgerParameters,
+    ledgerParametersBytes: ledgerParameters,
     stage: 'call-operation',
     version: 'v9'
   }).prototype;
@@ -119,7 +119,7 @@ const assembleWith = (
     communicationCommitmentRandomness,
     operations,
     // Named explicitly: this helper's cases are about assembly, not the cost model.
-    ledgerParameters: 'initial',
+    ledgerParametersBytes: 'initial',
     stage: 'call-operation',
     version: 'v9'
   }).prototype;
@@ -247,7 +247,7 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
       output: fieldValue(0x20),
       communicationCommitmentRandomness: randomness,
       operations: contractStateWithOperation(),
-      ledgerParameters: 'initial',
+      ledgerParametersBytes: 'initial',
       stage: 'call-operation',
       version: 'v9'
     });
@@ -286,7 +286,7 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
       operations: contractStateWithOperation(),
       // Supplied but never read: this transcript arrives already partitioned, so the partitioner --
       // poisoned here to prove it does not run -- never asks for a cost model.
-      ledgerParameters: 'initial',
+      ledgerParametersBytes: 'initial',
       stage: 'call-operation',
       version: 'v9'
     });
@@ -468,7 +468,7 @@ describe('the transcript partitioner and the chain\'s own ledger parameters', ()
     }
 
     expect(caught).toBeInstanceOf(ComposeOptionError);
-    expect((caught as ComposeOptionError).option).toBe('ledgerParameters');
+    expect((caught as ComposeOptionError).option).toBe('ledgerParametersBytes');
   });
 
   it('refuses parameters this era cannot read, naming the option rather than the partition', () => {
@@ -487,7 +487,7 @@ describe('the transcript partitioner and the chain\'s own ledger parameters', ()
     // Assert: reported as a bad OPTION, so a reader is sent to the bytes they passed rather than to
     // the transcript, and the ledger's own diagnosis survives on `cause`.
     expect(caught).toBeInstanceOf(ComposeOptionError);
-    expect((caught as ComposeOptionError).option).toBe('ledgerParameters');
+    expect((caught as ComposeOptionError).option).toBe('ledgerParametersBytes');
     expect((caught as ComposeOptionError).version).toBe('v9');
     expect((caught as ComposeOptionError).cause).toBeDefined();
   });

@@ -816,12 +816,14 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
 /**
  * A retained-era contract deployed by the caller.
  *
- * It differs from {@link Ledger8FoundContract} in ONE thing: its
+ * It differs from {@link Ledger8FoundContract} in two ways. Its
  * {@link Ledger8DeployedContract.signingKey} is REQUIRED where the found
  * handle's may be `undefined`. The key itself is no longer something only a
  * deployer has -- the deploy stores it, and an attach through the same provider
  * reports it back -- so what a deploy guarantees is that there IS one, not that
- * nobody else could hold it.
+ * nobody else could hold it. And it carries what the constructor produced:
+ * the initial contract state, as a handle and as bytes, and the initial private
+ * and Zswap states.
  *
  * Published under the retained-era namespace so a caller that receives one by
  * inference can also NAME it. This is what `deployContract`'s retained-era arm

@@ -322,7 +322,7 @@ const callOptionsFor = (version: LedgerVersion): ComposeCallOptions => ({
       circuitId: 'increment',
       contractStateBytes: FIXTURES[version].keyedContractState(),
       // Named explicitly: this test compares the two eras' assembly, not their cost models.
-      ledgerParameters: 'initial',
+      ledgerParametersBytes: 'initial',
       transcript: {
         kind: 'unpartitioned',
         preState: PRE_STATE,

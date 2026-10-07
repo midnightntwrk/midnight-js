@@ -96,7 +96,7 @@ The address is derived from the initial state AFTER the verifier keys are
 registered AND a fresh nonce is minted, so a caller cannot recompute it at all:
 repeating the registration would not reproduce it. That is why a composed deploy
 hands back a record rather than a bare `Uint8Array` — the transaction alone is
-not enough to use the deployment. The `initialState` beside it is the state that
+not enough to use the deployment. The `initialContractStateBytes` beside it is the state that
 address was derived from, which is what a caller stores and later hands to a
 call.
 

@@ -68,7 +68,7 @@ const bridgeContractState = (
   try {
     return v8.ContractState.deserialize(contractState);
   } catch (error) {
-    throw new ComposeOptionError('v8', 'contractState', error);
+    throw new ComposeOptionError('v8', 'contractStateBytes', error);
   }
 };
 

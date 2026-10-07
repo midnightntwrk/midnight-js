@@ -36,7 +36,7 @@ const readContractState = (raw: Uint8Array): ledgerV9.ContractState => {
   try {
     return ledgerV9.ContractState.deserialize(raw);
   } catch (cause) {
-    throw new ComposeOptionError('v9', 'contractState', cause);
+    throw new ComposeOptionError('v9', 'contractStateBytes', cause);
   }
 };
 
@@ -45,14 +45,17 @@ const readContractState = (raw: Uint8Array): ledgerV9.ContractState => {
  * {@link ComposeOptionError}. An absent offer is the normal shape of a call
  * that moved no shielded coins, and stays absent.
  */
-const readZswapOffer = (raw: Uint8Array | undefined): ledgerV9.UnprovenOffer | undefined => {
+const readZswapOffer = (
+  raw: Uint8Array | undefined,
+  option: 'zswapOffer' | 'guaranteedZswapOfferBytes'
+): ledgerV9.UnprovenOffer | undefined => {
   if (raw === undefined) {
     return undefined;
   }
   try {
     return ledgerV9.ZswapOffer.deserialize('pre-proof', raw);
   } catch (cause) {
-    throw new ComposeOptionError('v9', 'zswapOffer', cause);
+    throw new ComposeOptionError('v9', option, cause);
   }
 };
 
@@ -90,7 +93,7 @@ export const composeV9CallTx = (options: ComposeCallOptions): ComposeCallResultP
       input: call.input,
       output: call.output,
       communicationCommitmentRandomness: call.communicationCommitmentRandomness,
-      ledgerParameters: call.ledgerParameters,
+      ledgerParametersBytes: call.ledgerParametersBytes,
       operations: readContractState(call.contractStateBytes),
       stage: 'call-operation',
       version: 'v9'
@@ -124,8 +127,8 @@ export const composeV9CallTx = (options: ComposeCallOptions): ComposeCallResultP
   // see ComposeRefusalOrder. Built only once every call is split, which is the
   // whole point of taking a factory.
   const offers = zswapOffer?.(partitions);
-  const guaranteedOffer = readZswapOffer(offers?.guaranteedBytes);
-  const fallibleOffer = readZswapOffer(offers?.fallibleBytes);
+  const guaranteedOffer = readZswapOffer(offers?.guaranteedBytes, 'zswapOffer');
+  const fallibleOffer = readZswapOffer(offers?.fallibleBytes, 'zswapOffer');
 
   return {
     txBytes: ledgerV9.Transaction.fromPartsRandomized(networkId, guaranteedOffer, fallibleOffer, intent).serialize(),
@@ -203,7 +206,7 @@ export const composeV9DeployTx = (options: ComposeDeployOptions): DeployResultPo
   const { contractStateBytes, verifierKeys, networkId, ttl, guaranteedZswapOfferBytes } = options;
   assertComposeEnvelope(options, 'v9');
 
-  const guaranteedOffer = readZswapOffer(guaranteedZswapOfferBytes);
+  const guaranteedOffer = readZswapOffer(guaranteedZswapOfferBytes, 'guaranteedZswapOfferBytes');
   const state = readContractState(contractStateBytes);
   if (verifierKeys === undefined) {
     assertStateCarriesKeys(state);

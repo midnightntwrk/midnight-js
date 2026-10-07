@@ -100,7 +100,7 @@ describe('dist engine error gate', () => {
         transcript: transcriptForUnregisteredCircuit(),
         contractAddress: ledgerV9.sampleContractAddress(),
         contractState: new ledgerV9.ContractState(),
-        ledgerParameters: 'initial'
+        ledgerParametersBytes: 'initial'
       });
     } catch (error) {
       caught = error;
@@ -135,7 +135,7 @@ describe('dist engine error gate', () => {
             // the shortest real path to a failure raised inside the era arm.
             contractStateBytes: new ocrt3.ContractState().serialize(),
             // Named explicitly: the failure under test is raised before the partitioner runs.
-            ledgerParameters: 'initial',
+            ledgerParametersBytes: 'initial',
             transcript: {
               kind: 'unpartitioned',
               preState: ocrt3.StateValue.newCell(fieldValue(0x01)).encode(),

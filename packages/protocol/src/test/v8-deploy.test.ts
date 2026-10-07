@@ -37,6 +37,14 @@ const TTL = new Date(Date.now() + 3_600_000);
 
 const KEYS_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys');
 const REGISTERED_VERIFIER_KEY = new Uint8Array(readFileSync(resolve(KEYS_DIR, 'increment.verifier')));
+const OTHER_CONTRACT_VERIFIER_KEY = new Uint8Array(
+  readFileSync(
+    resolve(
+      __dirname,
+      '../../../../testkit-js/testkit-js-e2e/src/contract/compiled-retained/block-time/keys/testBlockTimeLt.verifier'
+    )
+  )
+);
 
 // Same redirect precedent as the retired v8-execute.test.ts: the ported artifact's
 // bare `@midnight-ntwrk/compact-runtime` import is scoped to this file's
@@ -126,8 +134,7 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     // builds the state, which is why this path takes a `verifierKeys` reader at
     // all. `composeV8DeployTx` still writes the keys it is given -- so it
     // overwrites rather than fills, and its refusal when a declared entry point
-    // has no key in the map is unaffected. Both are asserted in the compose
-    // suite below.
+    // has no key in the map is unaffected. Both are asserted below.
     const ledgerCS = LedgerV8.ContractState.deserialize(result.contractState.serialize());
     expect(ledgerCS.operations()).toEqual(['increment']);
     expect(ledgerCS.operation('increment')?.verifierKey).toEqual(
@@ -201,6 +208,31 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
 
   it('composes a deploy whose initial state is byte-identical to the state the constructor built, given the same verifier keys', async () => {
     const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
+    const verifierKey = new Uint8Array(readFileSync(resolve(FIXTURE_DIR, 'compiled', 'keys', 'increment.verifier')));
+    const result = await runRetainedConstructor({
+      contract: new Contract({}),
+      args: [],
+      privateState: {},
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: () => Promise.resolve(verifierKey)
+    });
+    const constructedBytes = result.contractState.serialize();
+
+    const deployed = composeV8DeployTx(
+      {
+        contractStateBytes: constructedBytes,
+        verifierKeys: new Map([['increment', verifierKey]]),
+        networkId: NETWORK_ID,
+        ttl: TTL
+      },
+      LedgerV8
+    );
+
+    expect(Buffer.from(deployed.initialContractStateBytes)).toEqual(Buffer.from(constructedBytes));
+  });
+
+  it('overwrites the key the constructor registered with the one the deploy is given', async () => {
+    const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
     const result = await runRetainedConstructor({
       contract: new Contract({}),
       args: [],
@@ -208,21 +240,19 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
       coinPk: SAMPLE_COIN_PUBLIC_KEY,
       verifierKeys: readFixtureVerifierKey
     });
-    const constructedBytes = result.contractState.serialize();
 
     const deployed = composeV8DeployTx(
       {
-        contractStateBytes: constructedBytes,
-        verifierKeys: new Map([
-          ['increment', new Uint8Array(readFileSync(resolve(FIXTURE_DIR, 'compiled', 'keys', 'increment.verifier')))]
-        ]),
+        contractStateBytes: result.contractState.serialize(),
+        verifierKeys: new Map([['increment', OTHER_CONTRACT_VERIFIER_KEY]]),
         networkId: NETWORK_ID,
         ttl: TTL
       },
       LedgerV8
     );
 
-    expect(deployed.initialContractStateBytes).toEqual(constructedBytes);
+    const registered = LedgerV8.ContractState.deserialize(deployed.initialContractStateBytes).operation('increment');
+    expect(Buffer.from(registered?.verifierKey ?? new Uint8Array())).toEqual(Buffer.from(OTHER_CONTRACT_VERIFIER_KEY));
   });
 
   // The sampled key is random, so only the RELATIONSHIP between the reported
@@ -435,7 +465,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
     expect(caught).toBeInstanceOf(ComposeOptionError);
     const error = caught as ComposeOptionError;
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID);
-    expect(error.option).toBe('contractState');
+    expect(error.option).toBe('contractStateBytes');
     expect(error.cause).toBeDefined();
   });
 

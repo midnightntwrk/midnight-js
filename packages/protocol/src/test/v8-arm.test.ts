@@ -110,7 +110,7 @@ const callEntryFromTranscript = (
   circuitId: transcript.circuitId,
   contractStateBytes: serializedV8StateWithOperation(),
   // Named explicitly: these entries exercise the v8 arm's assembly, not the cost model.
-  ledgerParameters: 'initial',
+  ledgerParametersBytes: 'initial',
   transcript: {
     kind: 'unpartitioned',
     preState: transcript.preContractState.encode(),
@@ -183,7 +183,7 @@ const payingCallEntry = (owner: string, token: string): ComposeCallEntry => ({
   circuitId: 'increment',
   contractStateBytes: serializedV8StateWithOperation(),
   // Named explicitly: these entries exercise the v8 arm's assembly, not the cost model.
-  ledgerParameters: 'initial',
+  ledgerParametersBytes: 'initial',
   transcript: {
     kind: 'partitioned',
     guaranteed: payingTranscript(owner, token, 42n),
@@ -391,7 +391,7 @@ describe('the v8 era arm', () => {
     }
 
     expect(caught).toBeInstanceOf(ComposeOptionError);
-    expect(caught).toMatchObject({ option: 'contractState', version: 'v8' });
+    expect(caught).toMatchObject({ option: 'contractStateBytes', version: 'v8' });
     expect((caught as ComposeOptionError).cause).toBeInstanceOf(Error);
   });
 
@@ -469,7 +469,7 @@ describe('the v8 era arm', () => {
         guaranteedZswapOfferBytes: new Uint8Array([1, 2, 3])
       })
     ).toThrowError(
-      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'zswapOffer', version: 'v8' })
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'guaranteedZswapOfferBytes', version: 'v8' })
     );
   });
 

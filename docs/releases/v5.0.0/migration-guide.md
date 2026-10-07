@@ -542,6 +542,10 @@ them:
 | Initial contract state (live handle) | `deployTxData.public.initialContractState` | `initialContractState` |
 | Initial contract state (bytes) | — | `initialContractStateBytes` |
 
+The signing key differs on a found handle too: `findDeployedContract` reports it
+at `deployTxData.private.signingKey` in the current era and at the top-level
+`signingKey` in the retained era.
+
 `initialContractStateBytes` was called `initialState` in the earlier 5.0.0
 release candidates. It holds the same bytes under the new name.
 
@@ -549,8 +553,12 @@ If you call `loadLedgerEra` from `midnight-js-protocol` directly, its compose
 members that hold bytes were renamed the same way: `contractState` →
 `contractStateBytes`, `guaranteedZswapOffer` → `guaranteedZswapOfferBytes`,
 the offer factory's `guaranteed` / `fallible` → `guaranteedBytes` /
-`fallibleBytes`, `transaction` → `txBytes`, and `initialState` →
-`initialContractStateBytes`.
+`fallibleBytes`, `transaction` → `txBytes`, `ledgerParameters` →
+`ledgerParametersBytes`, and `initialState` → `initialContractStateBytes`. The
+`option` a `ComposeOptionError` reports follows the field it names:
+`'contractStateBytes'`, `'ledgerParametersBytes'`, and
+`'guaranteedZswapOfferBytes'` for a deploy's offer. A call's offer still reports
+`'zswapOffer'`.
 
 **Paying a shielded coin to someone else.** A retained-era circuit that pays a
 shielded coin to a recipient other than the calling wallet needs that
