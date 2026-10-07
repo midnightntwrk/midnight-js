@@ -89,6 +89,7 @@ protocol errors reach a barrel consumer directly:
 | `ComposeFailedError` | `lib/shared/assemble-call.ts` and the era compose legs | `version`, `stage`, `circuitId` |
 | `ComposeOptionError` | `lib/shared/compose-options.ts` and the era adapt legs | `version`, `option` |
 | `StateDecodeFailedError` | `lib/shared/contract-state.ts` | `version` |
+| `StateInconsistentError` | `lib/shared/contract-state.ts` | `version` |
 | `UnknownLedgerVersionError` | `contracts/src/internal/era.ts`, `lib/era/load-era.ts` | `requestedVersion` |
 | `PayloadNotATransactionError` | `lib/prove`, as a `proveTx` rejection | none; caught, not constructed |
 
