@@ -466,6 +466,7 @@ export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.An
   initialContractState: createMockContractState(),
   initialZswapChainState: {} as ZswapChainState,
   ledgerParameters: LedgerParameters.initialParameters(),
+  config: MOCK_CONFIG,
   ...overrides
 });
 

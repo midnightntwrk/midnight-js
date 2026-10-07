@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import { createUnprovenLedgerDeployTx } from '../internal/utils';
 import { createUnprovenDeployTx, createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
   createMockCoinPublicKey,
@@ -23,7 +23,8 @@ import {
   createMockEncryptionPublicKey,
   createMockProviders,
   createMockSigningKey,
-  createMockZKConfigProvider
+  createMockZKConfigProvider,
+  MOCK_CONFIG
 } from './test-mocks';
 
 vi.mock('../call-constructor', () => ({
@@ -41,10 +42,6 @@ vi.mock('../internal/utils', () => ({
 }));
 
 describe('unproven-deploy-tx', () => {
-  beforeAll(() => {
-    setNetworkId('testnet');
-  });
-
   describe('createUnprovenDeployTxFromVerifierKeys', () => {
     it('should create unproven deploy tx from verifier keys without private state', async () => {
       const encryptionPublicKey = createMockEncryptionPublicKey();
@@ -59,7 +56,8 @@ describe('unproven-deploy-tx', () => {
         createMockZKConfigProvider(),
         createMockCoinPublicKey(),
         options,
-        encryptionPublicKey
+        encryptionPublicKey,
+        MOCK_CONFIG
       );
 
       expect(result).toBeDefined();
@@ -85,7 +83,8 @@ describe('unproven-deploy-tx', () => {
         createMockZKConfigProvider(),
         createMockCoinPublicKey(),
         options,
-        encryptionPublicKey
+        encryptionPublicKey,
+        MOCK_CONFIG
       );
 
       expect(result).toBeDefined();
@@ -111,7 +110,8 @@ describe('unproven-deploy-tx', () => {
           createMockZKConfigProvider(),
           createMockCoinPublicKey(),
           options,
-          encryptionPublicKey
+          encryptionPublicKey,
+          MOCK_CONFIG
         )
       ).rejects.toThrow('FAIL');
     });
@@ -121,7 +121,8 @@ describe('unproven-deploy-tx', () => {
     it('should create unproven deploy tx without private state', async () => {
       const providers = {
         zkConfigProvider: createMockZKConfigProvider(),
-        walletProvider: createMockProviders().walletProvider
+        walletProvider: createMockProviders().walletProvider,
+        config: MOCK_CONFIG
       };
 
       vi.spyOn(providers.zkConfigProvider, 'getVerifierKey');
@@ -141,7 +142,8 @@ describe('unproven-deploy-tx', () => {
     it('should create unproven deploy tx with private state', async () => {
       const providers = {
         zkConfigProvider: createMockZKConfigProvider(),
-        walletProvider: createMockProviders().walletProvider
+        walletProvider: createMockProviders().walletProvider,
+        config: MOCK_CONFIG
       };
 
       vi.spyOn(providers.zkConfigProvider, 'getVerifierKey');
@@ -157,6 +159,30 @@ describe('unproven-deploy-tx', () => {
 
       expect(result).toBeDefined();
       expect(providers.zkConfigProvider.getVerifierKey).toHaveBeenCalledWith('testCircuit');
+    });
+
+    it('forwards providers.config to the ledger builder', async () => {
+      const config = { networkId: 'preview', ttlSeconds: 45 };
+      const providers = {
+        zkConfigProvider: createMockZKConfigProvider(),
+        walletProvider: createMockProviders().walletProvider,
+        config
+      };
+
+      const options = {
+        compiledContract: createMockCompiledContract(),
+        signingKey: createMockSigningKey(),
+        args: ['deploy-arg']
+      };
+
+      await createUnprovenDeployTx(providers, options);
+
+      expect(vi.mocked(createUnprovenLedgerDeployTx)).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        config
+      );
     });
   });
 });

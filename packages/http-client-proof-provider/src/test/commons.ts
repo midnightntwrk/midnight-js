@@ -110,6 +110,8 @@ const createMockZKConfigProvider = (): ZKConfigProvider<string> => {
  * Creates a valid UnprovenTransaction for testing using proper object construction
  * from the topic contract instead of binary data.
  */
+const TEST_CONFIG = { networkId: 'undeployed', ttlSeconds: 3600 };
+
 export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
   const mockZKConfigProvider = createMockZKConfigProvider();
   const contractModule = await import(`${resourceDir}/managed/${CONTRACT}/contract/index.js`);
@@ -124,7 +126,8 @@ export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
       compiledContract: mockCompiledContract,
       signingKey: sampleSigningKey()
     },
-    encryptionPublicKey
+    encryptionPublicKey,
+    TEST_CONFIG
   );
 
 
@@ -136,6 +139,7 @@ export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
     initialContractState: deploy.public.initialContractState,
     initialZswapChainState: new ZswapChainState(),
     ledgerParameters: LedgerParameters.initialParameters(),
+    config: TEST_CONFIG,
     arguments: []
   };
 

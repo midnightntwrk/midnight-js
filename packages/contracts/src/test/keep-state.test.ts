@@ -246,6 +246,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -317,6 +318,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -371,6 +373,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -562,6 +565,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000),
         encryptionPublicKey: createEncryptionPublicKeyResolver(
+          NETWORK_ID,
           recording.coinPublicKey,
           providers.walletProvider.getEncryptionPublicKey()
         )

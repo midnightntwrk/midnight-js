@@ -159,7 +159,8 @@ describe('Contracts API', () => {
         initialPrivateState: createPrivateState(1),
         initialContractState: unprovenDeployTxResult.public.initialContractState,
         initialZswapChainState: new ZswapChainState(),
-        ledgerParameters: LedgerParameters.initialParameters()
+        ledgerParameters: LedgerParameters.initialParameters(),
+        config: providers.config
       },
       providers.walletProvider.getEncryptionPublicKey()
     );

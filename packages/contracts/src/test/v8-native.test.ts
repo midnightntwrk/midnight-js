@@ -470,6 +470,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -539,6 +540,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -573,6 +575,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -625,6 +628,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -666,6 +670,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -748,6 +753,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -802,6 +808,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000),
         encryptionPublicKey: createEncryptionPublicKeyResolver(
+          NETWORK_ID,
           recording.coinPublicKey,
           providers.walletProvider.getEncryptionPublicKey()
         )
@@ -835,6 +842,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -867,6 +875,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     // answers are the real helper's own.
     const resolver: EncryptionPublicKeyResolver = vi.fn(
       createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         walletEncryptionPublicKey,
         new Map([[thirdPartyCoinPublicKey, thirdPartyEncryptionPublicKey]])
@@ -988,6 +997,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )

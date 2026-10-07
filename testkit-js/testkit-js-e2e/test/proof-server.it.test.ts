@@ -50,6 +50,8 @@ const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `proof_server_${new Date().toISOString()}.log`)
 );
 
+const MIDNIGHT_CONFIG = { networkId: 'undeployed', ttlSeconds: 3600 };
+
 describe('Proof server integration', () => {
   const circuitId = 'increment';
   const privateStateZero = createInitialPrivateState(0);
@@ -89,7 +91,8 @@ describe('Proof server integration', () => {
         initialPrivateState: privateStateZero,
         signingKey
       },
-      encryptionPublicKey
+      encryptionPublicKey,
+      MIDNIGHT_CONFIG
     );
     unprovenDeployTx = unprovenDeployTxResult.private.unprovenTx!;
     unprovenCallTx = (await createUnprovenCallTxFromInitialStates(
@@ -102,7 +105,8 @@ describe('Proof server integration', () => {
         initialContractState: unprovenDeployTxResult.public.initialContractState,
         initialZswapChainState: new ZswapChainState(),
         initialPrivateState: unprovenDeployTxResult.private.initialPrivateState,
-        ledgerParameters: LedgerParameters.initialParameters()
+        ledgerParameters: LedgerParameters.initialParameters(),
+        config: MIDNIGHT_CONFIG
       },
       encryptionPublicKey
     )).private.unprovenTx;

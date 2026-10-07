@@ -28,7 +28,7 @@ import {
   type LedgerParameters,
   type ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { CallResultPrivateBase, CallResultPublicBase } from '@midnight-ntwrk/midnight-js-types';
+import type { CallResultPrivateBase, CallResultPublicBase, MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
 
 import type { CurrentPipelineEra } from './era';
 
@@ -91,6 +91,10 @@ export interface CallOptionsProviderDataDependencies {
    * The ledger parameters to use when executing the circuit.
    */
   readonly ledgerParameters: LedgerParameters;
+  /**
+   * Network and transaction settings, normally `providers.config`.
+   */
+  readonly config: MidnightConfig;
 }
 
 /**

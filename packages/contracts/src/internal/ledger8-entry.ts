@@ -639,6 +639,7 @@ export const runLedger8Call = async (
     networkId: getNetworkId(),
     ttl: ttlOneHour(),
     encryptionPublicKey: createEncryptionPublicKeyResolver(
+      getNetworkId(),
       coinPublicKey,
       providers.walletProvider.getEncryptionPublicKey(),
       request.additionalCoinEncPublicKeyMappings
@@ -741,6 +742,7 @@ export const runLedger8Deploy = async (
     // Built the same way the call arm builds it, so a coin a constructor mints
     // is encrypted to the same key a coin a circuit mints would be.
     encryptionPublicKey: createEncryptionPublicKeyResolver(
+      getNetworkId(),
       coinPublicKey,
       providers.walletProvider.getEncryptionPublicKey()
     )
