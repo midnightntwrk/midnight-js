@@ -14,8 +14,6 @@
  */
 
 /**
- * A valid named Midnight network identifier.
- *
  * @deprecated Since 5.0.0 import `NetworkId` from `@midnight-ntwrk/midnight-js-types`. Removed in 6.0.
  */
-export type NetworkId = string;
+export type { NetworkId } from '@midnight-ntwrk/midnight-js-types';
