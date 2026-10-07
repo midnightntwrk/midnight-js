@@ -423,7 +423,7 @@ const zkConfigurationLayer = (read: VerifierKeyReader): Layer.Layer<ZKConfigurat
  */
 export const refuseVerifierKeyRead: VerifierKeyReader = (provableCircuitId) =>
   Promise.reject(
-    new Error(
+    new InvariantViolationError(
       `a retained-era circuit call read the verifier key for '${provableCircuitId}'. Circuit calls are ` +
         'not supposed to read ZK configuration; only deployment and maintenance are.'
     )
@@ -607,16 +607,6 @@ export const causeChain = (error: unknown, seen: Set<unknown> = new Set()): read
   return 'cause' in error ? [...message, ...causeChain(error.cause, seen)] : message;
 };
 
-/**
- * Runs an effect and rethrows its failure with the whole cause chain in the
- * message.
- *
- * `Effect.runPromise` alone rejects with a `FiberFailure`, which carries neither
- * the failure's class nor its `cause` — so a caller loses both the error it
- * could have discriminated on and the diagnostic it needed. `runPromiseExit`
- * plus `Cause.squash` recovers the real error, which is then rethrown with the
- * underlying reason spelled out and the original on `cause`.
- */
 const PASSTHROUGH_ERROR_CODE_VALUES: ReadonlySet<string> = new Set([
   ...Object.values(PROTOCOL_ERROR_CODES),
   ...Object.values(COMMON_ERROR_CODES)
@@ -641,6 +631,51 @@ const isCodedProtocolError = (error: unknown): error is Error & { readonly code:
   return typeof code === 'string' && PASSTHROUGH_ERROR_CODE_VALUES.has(code);
 };
 
+const MAX_CAUSE_DEPTH = 8;
+
+const isMidnightJsCoded = (value: unknown): value is Error & { readonly code: string; readonly category: string } =>
+  value instanceof Error &&
+  'code' in value &&
+  typeof value.code === 'string' &&
+  value.code.startsWith('MIDNIGHT_JS_') &&
+  'category' in value &&
+  typeof value.category === 'string';
+
+const findCodedCause = (failure: unknown): Error | undefined => {
+  if (isMidnightJsCoded(failure)) {
+    return failure;
+  }
+  const seen = new Set<unknown>([failure]);
+  let current: unknown = failure;
+  for (let depth = 0; depth < MAX_CAUSE_DEPTH; depth++) {
+    if (typeof current !== 'object' || current === null || !('cause' in current)) {
+      return undefined;
+    }
+    current = current.cause;
+    if (seen.has(current)) {
+      return undefined;
+    }
+    seen.add(current);
+    if (isMidnightJsCoded(current)) {
+      return current;
+    }
+  }
+  return undefined;
+};
+
+/**
+ * Runs an effect and rethrows its failure with the whole cause chain in the
+ * message.
+ *
+ * `Effect.runPromise` alone rejects with a `FiberFailure`, which carries neither
+ * the failure's class nor its `cause` — so a caller loses both the error it
+ * could have discriminated on and the diagnostic it needed. `runPromiseExit`
+ * plus `Cause.squash` recovers the real error, which is then rethrown with the
+ * underlying reason spelled out and the original on `cause`.
+ *
+ * A midnight-js coded error is never flattened: one raised directly is rethrown
+ * as is, and so is the first one found on a failure's `cause` chain.
+ */
 export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {
   const exit = await Effect.runPromiseExit(effect);
   if (Exit.isSuccess(exit)) {
@@ -661,6 +696,12 @@ export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A
   const coded = failures.find(isCodedProtocolError);
   if (coded !== undefined) {
     throw coded;
+  }
+  for (const failure of failures.length > 0 ? failures : [error]) {
+    const codedCause = findCodedCause(failure);
+    if (codedCause !== undefined) {
+      throw codedCause;
+    }
   }
   const describe = (failure: unknown): string => {
     const chain = causeChain(failure);

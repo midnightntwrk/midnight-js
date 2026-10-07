@@ -551,8 +551,13 @@ describe('refuseVerifierKeyRead', () => {
     // assumed -- so this reader exists to make a future version that DOES read
     // one fail by name rather than silently serve `Option.none()` and compose a
     // call with a blank key slot.
-    expect(rejection).toBeInstanceOf(Error);
-    expect((rejection as Error).message).toContain("'increment'");
+    expect(rejection).toBeInstanceOf(InvariantViolationError);
+    expect(rejection).toMatchObject({
+      code: 'MIDNIGHT_JS_G_INVARIANT_VIOLATED',
+      message:
+        "a retained-era circuit call read the verifier key for 'increment'. Circuit calls are " +
+        'not supposed to read ZK configuration; only deployment and maintenance are.'
+    });
   });
 });
 
@@ -739,6 +744,45 @@ describe('runOrRethrow', () => {
 
     // Assert.
     expect(rejection).toBe(common);
+  });
+
+  it('rethrows, as the same instance, a coded error found on the cause chain of an uncoded one', async () => {
+    // Arrange. A provider's coded failure (shaped like `ZkArtifactFetchError`, which this package
+    // cannot import) wrapped by compact-js in an uncoded error.
+    class FetchFailure extends Error {
+      readonly code = 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED';
+      readonly category = 'TRANSIENT';
+    }
+    const coded = new FetchFailure('fetching the verifier key failed');
+    const wrapped = new Error('reading ZK configuration failed', { cause: new Error('middle', { cause: coded }) });
+
+    // Act.
+    const rejection = await runOrRethrow(Effect.fail(wrapped)).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBe(coded);
+  });
+
+  it('still flattens an uncoded cause chain, even a cyclic one, into ContractExecutionError', async () => {
+    // Arrange.
+    const root = new Error('Block time is <= time');
+    const wrapped = new Error("Error executing circuit 'testBlockTimeGt'", { cause: root });
+    const foreignCoded = Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' });
+    const cyclic: Error & { cause?: unknown } = new Error('cyclic', { cause: foreignCoded });
+    foreignCoded.cause = cyclic;
+
+    // Act.
+    const flattened = await runOrRethrow(Effect.fail(wrapped)).catch((error: unknown) => error);
+    const flattenedCyclic = await runOrRethrow(Effect.fail(cyclic)).catch((error: unknown) => error);
+
+    // Assert.
+    expect(flattened).toBeInstanceOf(ContractExecutionError);
+    expect(flattened).toMatchObject({
+      message: "Error executing circuit 'testBlockTimeGt': Block time is <= time",
+      cause: wrapped
+    });
+    expect(flattenedCyclic).toBeInstanceOf(ContractExecutionError);
+    expect(flattenedCyclic).toMatchObject({ message: 'cyclic: connection refused', cause: cyclic });
   });
 
   it('reports EVERY failure when concurrent work fails, not just the first', async () => {
