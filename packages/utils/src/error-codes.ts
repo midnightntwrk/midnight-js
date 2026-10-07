@@ -17,10 +17,23 @@
 // the root barrel re-exports the ledger/compact-js/onchain-runtime/platform
 // namespaces too, and pulling those into every `utils` consumer just to read
 // a handful of error-code strings would be a needless dependency footprint.
-import { PROTOCOL_ERROR_CODES, type ProtocolErrorCode } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import {
+  COMMON_ERROR_CATEGORIES,
+  COMMON_ERROR_CODES,
+  type CommonErrorCode,
+  MIDNIGHT_JS_ERROR_CATEGORIES,
+  type MidnightJsErrorCategory,
+  PROTOCOL_ERROR_CATEGORIES,
+  PROTOCOL_ERROR_CODES,
+  type ProtocolErrorCode
+} from '@midnight-ntwrk/midnight-js-protocol/errors';
 // Same leaf-subpath reasoning as above: the `types` root barrel pulls `effect`
 // and the protocol ledger namespace, neither of which reading a code needs.
-import { PROVIDER_ERROR_CODES, type ProviderErrorCode } from '@midnight-ntwrk/midnight-js-types/errors';
+import {
+  PROVIDER_ERROR_CATEGORIES,
+  PROVIDER_ERROR_CODES,
+  type ProviderErrorCode
+} from '@midnight-ntwrk/midnight-js-types/errors';
 
 // Declared here, above the package that throws them, because the no-argument
 // `hasErrorCode` needs a COMPLETE registry. That form is called from `contracts`
@@ -52,7 +65,13 @@ export type ContractsErrorCode = (typeof CONTRACTS_ERROR_CODES)[keyof typeof CON
 
 // Re-exported, not re-declared: the group is owned by `@midnight-ntwrk/midnight-js-types`.
 // Kept on this module so the published surface of this package is unchanged.
-export { PROVIDER_ERROR_CODES, type ProviderErrorCode };
+export {
+  MIDNIGHT_JS_ERROR_CATEGORIES,
+  type MidnightJsErrorCategory,
+  PROVIDER_ERROR_CATEGORIES,
+  PROVIDER_ERROR_CODES,
+  type ProviderErrorCode
+};
 
 export const UTILS_ERROR_CODES = Object.freeze({
   TAG_PARSE_FAILED: 'MIDNIGHT_JS_U_TAG_PARSE_FAILED',
@@ -60,20 +79,58 @@ export const UTILS_ERROR_CODES = Object.freeze({
 } as const);
 export type UtilsErrorCode = (typeof UTILS_ERROR_CODES)[keyof typeof UTILS_ERROR_CODES];
 
+const { USAGE, ENVIRONMENT, TRANSIENT, REJECTED, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
+
+export const CONTRACTS_ERROR_CATEGORIES: Readonly<Record<ContractsErrorCode, MidnightJsErrorCategory>> = Object.freeze({
+  [CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION]: INTERNAL,
+  [CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH]: USAGE,
+  [CONTRACTS_ERROR_CODES.UNRECOGNISED_RESULT_ERA]: USAGE,
+  [CONTRACTS_ERROR_CODES.TX_FAILED]: REJECTED,
+  [CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9]: USAGE,
+  [CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH]: TRANSIENT,
+  [CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY]: INTEGRITY,
+  [CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE]: USAGE,
+  [CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT]: INTEGRITY,
+  [CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH]: INTEGRITY,
+  [CONTRACTS_ERROR_CODES.LEDGER8_SHIELDED_SPEND_UNSUPPORTED]: USAGE,
+  [CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED]: ENVIRONMENT,
+  [CONTRACTS_ERROR_CODES.STALE_HEAD]: TRANSIENT,
+  [CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED]: TRANSIENT,
+  [CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED]: USAGE,
+  [CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE]: USAGE,
+  [CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED]: ENVIRONMENT
+});
+
+export const UTILS_ERROR_CATEGORIES: Readonly<Record<UtilsErrorCode, MidnightJsErrorCategory>> = Object.freeze({
+  [UTILS_ERROR_CODES.TAG_PARSE_FAILED]: INTEGRITY,
+  [UTILS_ERROR_CODES.UNHANDLED_UNION_MEMBER]: INTERNAL
+});
+
 /**
  * Union of every error code carried by a *coded* midnight-js error.
  *
  * Not every midnight-js error carries a code, so `hasErrorCode(e) === false`
  * does not mean the error came from somewhere else.
  */
-export type MidnightJsErrorCode = ProtocolErrorCode | ContractsErrorCode | ProviderErrorCode | UtilsErrorCode;
+export type MidnightJsErrorCode =
+  CommonErrorCode | ProtocolErrorCode | ContractsErrorCode | ProviderErrorCode | UtilsErrorCode;
 
 export const MIDNIGHT_JS_ERROR_CODES: readonly MidnightJsErrorCode[] = Object.freeze([
+  ...Object.values(COMMON_ERROR_CODES),
   ...Object.values(PROTOCOL_ERROR_CODES),
   ...Object.values(CONTRACTS_ERROR_CODES),
   ...Object.values(PROVIDER_ERROR_CODES),
   ...Object.values(UTILS_ERROR_CODES)
 ]);
+
+export const MIDNIGHT_JS_ERROR_CATEGORY_BY_CODE: Readonly<Record<MidnightJsErrorCode, MidnightJsErrorCategory>> =
+  Object.freeze({
+    ...COMMON_ERROR_CATEGORIES,
+    ...PROTOCOL_ERROR_CATEGORIES,
+    ...CONTRACTS_ERROR_CATEGORIES,
+    ...PROVIDER_ERROR_CATEGORIES,
+    ...UTILS_ERROR_CATEGORIES
+  });
 
 const MIDNIGHT_JS_ERROR_CODE_SET: ReadonlySet<string> = new Set(MIDNIGHT_JS_ERROR_CODES);
 
@@ -124,6 +181,16 @@ export function hasErrorCode<C extends MidnightJsErrorCode>(e: unknown, code?: C
   }
   return e.code === code;
 }
+
+/**
+ * True when `e` is an error midnight-js threw. Reads `e.code`, so it also recognises an error built by
+ * another installed copy of a midnight-js package, which `instanceof MidnightJsError` would not.
+ */
+export const isMidnightJsError = (e: unknown): e is Error & { code: MidnightJsErrorCode } => hasErrorCode(e);
+
+/** What the caller should do about `e`, or `undefined` when `e` is not a midnight-js error. */
+export const errorCategory = (e: unknown): MidnightJsErrorCategory | undefined =>
+  hasErrorCode(e) ? MIDNIGHT_JS_ERROR_CATEGORY_BY_CODE[e.code] : undefined;
 
 /**
  * Type guard for "this error carries exactly `code`", where `code` belongs to

@@ -13,6 +13,11 @@
  * limitations under the License.
  */
 
+import {
+  MIDNIGHT_JS_ERROR_CATEGORIES,
+  type MidnightJsErrorCategory
+} from '@midnight-ntwrk/midnight-js-protocol/errors';
+
 /**
  * The provider methods that carry a version-tagged transaction payload.
  *
@@ -68,6 +73,17 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
 } as const);
 /** The union of every value in {@link PROVIDER_ERROR_CODES}. */
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
+
+const { USAGE, ENVIRONMENT } = MIDNIGHT_JS_ERROR_CATEGORIES;
+
+export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, MidnightJsErrorCategory>> = Object.freeze({
+  [PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED]: USAGE,
+  [PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD]: USAGE,
+  [PROVIDER_ERROR_CODES.ERA_UNSUPPORTED]: ENVIRONMENT,
+  [PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE]: ENVIRONMENT,
+  [PROVIDER_ERROR_CODES.SEAM_ERA_UNSUPPORTED]: USAGE,
+  [PROVIDER_ERROR_CODES.PRIVATE_STATE_NOT_SERIALIZABLE]: USAGE
+});
 
 const { V8_PAYLOAD_UNSUPPORTED, UNTAGGED_PAYLOAD, SEAM_ERA_UNSUPPORTED, PRIVATE_STATE_NOT_SERIALIZABLE } =
   PROVIDER_ERROR_CODES;
