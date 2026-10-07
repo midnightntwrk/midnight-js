@@ -42,13 +42,23 @@ export {
 // names no circuit, and comparing against a hand-written string instead is
 // exactly what the constant exists to avoid. `PayloadNotATransactionError` arrives as a `proveTx`
 // rejection rather than from the era pipeline, and has a private constructor:
-// it is published to be caught, not built. See BarrelPublishedSurface.
+// it is published to be caught, not built. The error base, its categories and
+// the general errors are published so a consumer can handle every midnight-js
+// error from the barrel. See BarrelPublishedSurface.
 export {
+  COMMON_ERROR_CODES,
   ComposeFailedError,
   type ComposeOption,
   ComposeOptionError,
   type ComposeStage,
+  ConfigurationError,
+  EnvironmentUnsupportedError,
+  InvalidArgumentError,
+  InvariantViolationError,
   Ledger8RuntimeMissingError,
+  MIDNIGHT_JS_ERROR_CATEGORIES,
+  MidnightJsError,
+  type MidnightJsErrorCategory,
   NO_CIRCUIT,
   PayloadNotATransactionError,
   PROTOCOL_ERROR_CODES,
