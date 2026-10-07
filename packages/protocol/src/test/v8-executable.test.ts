@@ -763,6 +763,40 @@ describe('runOrRethrow', () => {
     expect(rejection).toBe(coded);
   });
 
+  it('rethrows, as the same instance, a coded error from another package raised directly', async () => {
+    // Arrange.
+    class FetchFailure extends Error {
+      readonly code = 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED';
+      readonly category = 'TRANSIENT';
+    }
+    const coded = new FetchFailure('fetching the verifier key failed');
+
+    // Act.
+    const rejection = await runOrRethrow(Effect.fail(coded)).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBe(coded);
+  });
+
+  it('stops looking for a coded cause after eight levels and flattens the failure', async () => {
+    // Arrange.
+    class FetchFailure extends Error {
+      readonly code = 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED';
+      readonly category = 'TRANSIENT';
+    }
+    let chain: Error = new FetchFailure('deep');
+    for (let level = 0; level < 9; level++) {
+      chain = new Error(`level ${level}`, { cause: chain });
+    }
+
+    // Act.
+    const rejection = await runOrRethrow(Effect.fail(chain)).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBeInstanceOf(ContractExecutionError);
+    expect(rejection).toMatchObject({ cause: chain });
+  });
+
   it('still flattens an uncoded cause chain, even a cyclic one, into ContractExecutionError', async () => {
     // Arrange.
     const root = new Error('Block time is <= time');
