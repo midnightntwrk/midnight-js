@@ -75,9 +75,13 @@ export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
   assertIsContractAddress(contractAddress);
   const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
   assertDefined(contractState, `No contract state found on chain for contract address '${contractAddress}'`);
+  const operation = contractState.operation(circuitId);
+  assertDefined(operation, `Circuit '${circuitId}' not found for contract at address '${contractAddress}'`);
+  const verifierKey: Uint8Array | undefined = operation.verifierKey;
   assertDefined(
-    contractState.operation(circuitId),
-    `Circuit '${circuitId}' not found for contract at address '${contractAddress}'`
+    verifierKey,
+    `Circuit '${circuitId}' is registered on the contract at '${contractAddress}' but carries no verifier key, ` +
+      'so there is nothing to remove. The deployed state is incomplete or corrupt.'
   );
   const signingKey = await providers.privateStateProvider.getSigningKey(contractAddress);
   assertDefined(signingKey, `Signing key for contract address '${contractAddress}' not found`);
