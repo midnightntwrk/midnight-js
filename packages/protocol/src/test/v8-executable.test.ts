@@ -612,7 +612,10 @@ describe('pinnedClock refuses a second it cannot pin to', () => {
 
     // Assert.
     expect(refusal).toThrow(InvalidArgumentError);
-    expect(refusal).toThrow(/nowSeconds/);
+    expect(refusal).toThrow(
+      `the retained era cannot pin its execution clock to '${String(nowSeconds)}'. ` +
+        '`nowSeconds` must be a finite number of seconds since the epoch.'
+    );
   });
 
   it('still accepts a finite second, so the refusal is not refusing everything', () => {
@@ -725,6 +728,17 @@ describe('runOrRethrow', () => {
     // Assert.
     expect(rejection).toBe(coded);
     expect((rejection as ComposeFailedError).stage).toBe('deploy-verifier-key-blob');
+  });
+
+  it('rethrows a COMMON-coded error unchanged, so it is not flattened into a circuit refusal', async () => {
+    // Arrange.
+    const common = new InvalidArgumentError('bad argument');
+
+    // Act.
+    const rejection = await runOrRethrow(Effect.fail(common)).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBe(common);
   });
 
   it('reports EVERY failure when concurrent work fails, not just the first', async () => {
@@ -967,8 +981,9 @@ describe('runRetainedCircuit refuses a circuit the contract does not declare', (
 
       // Assert.
       expect(rejection).toBeInstanceOf(InvalidArgumentError);
-      expect(String(rejection)).toContain(circuitId);
-      expect(String(rejection)).toContain('increment');
+      expect((rejection as Error).message).toBe(
+        `No circuit named '${circuitId}' on this retained-era contract instance. Available circuits: increment.`
+      );
     }
   );
 

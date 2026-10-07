@@ -46,14 +46,14 @@ import * as glue from 'compact-runtime-ledger8';
 import { Cause, Clock, Effect, Exit, Layer, Option, type Types } from 'effect';
 
 import {
+  COMMON_ERROR_CODES,
   ComposeFailedError,
   ComposeOptionError,
   ContractExecutionError,
   DownConvertFailedError,
   InvalidArgumentError,
   InvariantViolationError,
-  PROTOCOL_ERROR_CODES,
-  type ProtocolErrorCode
+  PROTOCOL_ERROR_CODES
 } from '../../errors';
 import type { EncodedStateValue } from '../era/envelope';
 import type { PartitionContext } from '../shared/compose-types';
@@ -617,24 +617,28 @@ export const causeChain = (error: unknown, seen: Set<unknown> = new Set()): read
  * plus `Cause.squash` recovers the real error, which is then rethrown with the
  * underlying reason spelled out and the original on `cause`.
  */
-const PROTOCOL_ERROR_CODE_VALUES: ReadonlySet<string> = new Set(Object.values(PROTOCOL_ERROR_CODES));
+const PASSTHROUGH_ERROR_CODE_VALUES: ReadonlySet<string> = new Set([
+  ...Object.values(PROTOCOL_ERROR_CODES),
+  ...Object.values(COMMON_ERROR_CODES)
+]);
 
 /**
  * Whether a value is one of this package's own coded errors.
  *
- * The registry is the test rather than `instanceof` against a list: every class
- * in `errors.ts` carries a `code` drawn from {@link PROTOCOL_ERROR_CODES}, so a
- * class added later is recognised without this predicate being touched.
+ * The registries are the test rather than `instanceof` against a list: every class
+ * in `errors.ts` carries a `code` drawn from {@link PROTOCOL_ERROR_CODES} or
+ * {@link COMMON_ERROR_CODES}, so a class added later is recognised without this
+ * predicate being touched.
  *
  * @param error The value to test.
- * @returns `true` when the value carries a registered protocol error code.
+ * @returns `true` when the value carries a registered protocol or common error code.
  */
-const isCodedProtocolError = (error: unknown): error is Error & { readonly code: ProtocolErrorCode } => {
+const isCodedProtocolError = (error: unknown): error is Error & { readonly code: string } => {
   if (!(error instanceof Error) || !('code' in error)) {
     return false;
   }
   const { code } = error;
-  return typeof code === 'string' && PROTOCOL_ERROR_CODE_VALUES.has(code);
+  return typeof code === 'string' && PASSTHROUGH_ERROR_CODE_VALUES.has(code);
 };
 
 export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {
@@ -662,7 +666,10 @@ export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A
     const chain = causeChain(failure);
     return chain.length > 0 ? chain.join(': ') : String(failure);
   };
-  throw new ContractExecutionError(failures.length > 1 ? failures.map(describe).join('; ') : describe(error), { cause: error });
+  throw new ContractExecutionError(
+    failures.length > 1 ? failures.map(describe).join('; ') : describe(error),
+    { cause: error }
+  );
 };
 
 /**

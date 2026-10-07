@@ -1002,7 +1002,11 @@ export class PayloadNotATransactionError extends MidnightJsError {
   }
 }
 
-/** A contract circuit refused to run, e.g. a Compact `assert` failed. The original failure is on `cause`. */
+/**
+ * What a retained-era circuit or constructor execution fails with. A Compact `assert` refusal is the usual
+ * cause, but a key or config read failure or a runtime fault can also arrive this way, so `cause` is the
+ * source of truth.
+ */
 export class ContractExecutionError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED;
   readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED];
