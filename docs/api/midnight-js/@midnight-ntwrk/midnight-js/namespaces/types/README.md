@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -425,6 +425,12 @@ Re-exports [MidnightProviders](../../types/interfaces/MidnightProviders.md)
 ### narrowToEraArm
 
 Re-exports [narrowToEraArm](../../types/variables/narrowToEraArm.md)
+
+***
+
+### PositionedRecord
+
+Re-exports [PositionedRecord](../../types/type-aliases/PositionedRecord.md)
 
 ***
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -32,8 +32,8 @@ Which option was unusable — see [ComposeOption](../type-aliases/ComposeOption.
 
 **cause**
 
-The decoder's own failure, present only for `'contractState'`
-  and `'zswapOffer'`, where caller-supplied bytes were rejected.
+The decoder's own failure, present where caller-supplied bytes
+  were rejected.
 
 ## See
 

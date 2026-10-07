@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 Everything a deploy transaction needs.
 
-`contractState` is the raw, serialized initial state the contract's
+`contractStateBytes` is the raw, serialized initial state the contract's
 constructor produced.
 
 `verifierKeys` maps entry-point name -> raw, tagged verifier key bytes
@@ -23,15 +23,15 @@ ALREADY carries its keys.
 
 ## Properties
 
-### contractState
+### contractStateBytes
 
-> `readonly` **contractState**: `Uint8Array`
+> `readonly` **contractStateBytes**: `Uint8Array`
 
 ***
 
-### guaranteedZswapOffer?
+### guaranteedZswapOfferBytes?
 
-> `readonly` `optional` **guaranteedZswapOffer?**: `Uint8Array`\<`ArrayBufferLike`\>
+> `readonly` `optional` **guaranteedZswapOfferBytes?**: `Uint8Array`\<`ArrayBufferLike`\>
 
 ***
 

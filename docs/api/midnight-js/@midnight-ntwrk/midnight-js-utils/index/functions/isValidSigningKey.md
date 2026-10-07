@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -6,12 +6,11 @@
 
 # Function: isValidSigningKey()
 
-> **isValidSigningKey**(`value`): `boolean`
+> **isValidSigningKey**(`value`): `value is SigningKey`
 
 Determines whether `value` is a structurally valid signing key of the shape
-`{ tag: 'schnorr' | 'ecdsa', value: <hex> }`, where `value` is a non-empty,
-even-length, lowercase-or-uppercase hex string of at least
-SIGNING\_KEY\_MIN\_HEX\_LENGTH characters.
+`{ tag: 'schnorr' | 'ecdsa', value: <hex> }`, where `value` is a 32-byte key
+written as exactly 64 lowercase-or-uppercase hex characters.
 
 Pure predicate (never throws) so callers can attach their own domain error.
 
@@ -25,6 +24,6 @@ The value to validate (typically a parsed import payload entry).
 
 ## Returns
 
-`boolean`
+`value is SigningKey`
 
 `true` if `value` matches the structured signing-key shape.

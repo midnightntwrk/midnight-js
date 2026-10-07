@@ -305,7 +305,7 @@ const ARMS: Readonly<
       circuitId: CIRCUIT_ID,
       contractAddress: ocrt3.dummyContractAddress(),
       // Named explicitly: these arms compare era ASSEMBLY, not cost models.
-      ledgerParameters: 'initial',
+      ledgerParametersBytes: 'initial',
       transcript: { kind: 'unpartitioned', preState, publicTranscript: transcript.publicTranscript, partitionContext },
       privateTranscriptOutputs: transcript.privateTranscriptOutputs,
       input: transcript.input,
@@ -321,7 +321,7 @@ const ARMS: Readonly<
       circuitId: CIRCUIT_ID,
       contractAddress: ocrt3.dummyContractAddress(),
       // Named explicitly: these arms compare era ASSEMBLY, not cost models.
-      ledgerParameters: 'initial',
+      ledgerParametersBytes: 'initial',
       transcript: { kind: 'unpartitioned', preState, publicTranscript: transcript.publicTranscript, partitionContext },
       privateTranscriptOutputs: transcript.privateTranscriptOutputs,
       input: transcript.input,

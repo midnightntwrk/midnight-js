@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -9,7 +9,7 @@
 What a composed deploy hands back.
 
 `contractAddress` cannot be recomputed from the state a caller passed in, so
-it is handed back here rather than derived. `initialState` is the state that
+it is handed back here rather than derived. `initialContractStateBytes` is the state that
 address was derived from — what a caller stores and later hands to a call.
 
 All three are plain data.
@@ -27,12 +27,12 @@ All three are plain data.
 
 ***
 
-### initialState
+### initialContractStateBytes
 
-> `readonly` **initialState**: `Uint8Array`
+> `readonly` **initialContractStateBytes**: `Uint8Array`
 
 ***
 
-### transaction
+### txBytes
 
-> `readonly` **transaction**: `Uint8Array`
+> `readonly` **txBytes**: `Uint8Array`

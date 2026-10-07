@@ -18,6 +18,9 @@ import { resolve } from 'node:path';
 import ts from 'typescript';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import type { ComposeCallResultPojo, DeployResultPojo } from '../index';
+import type { Assert, MutuallyAssignable } from './type-assertions';
+
 const PACKAGE_ROOT = resolve(__dirname, '../..');
 
 const entryPath = (entryName: string): string => resolve(PACKAGE_ROOT, `src/${entryName}.ts`);
@@ -171,3 +174,10 @@ describe('Protocol type ACL', () => {
     ]);
   });
 });
+
+// The compose results are plain data with every serialized member named as bytes (ADR-0010). A member
+// added to either, such as a live handle, fails the build here.
+type _DeployResultMembers = Assert<
+  MutuallyAssignable<keyof DeployResultPojo, 'txBytes' | 'contractAddress' | 'initialContractStateBytes'>
+>;
+type _CallResultMembers = Assert<MutuallyAssignable<keyof ComposeCallResultPojo, 'txBytes' | 'partitions'>>;

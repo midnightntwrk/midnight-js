@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -26,6 +26,6 @@ the two answers stopped agreeing.
 
 ***
 
-### transaction
+### txBytes
 
-> `readonly` **transaction**: `Uint8Array`
+> `readonly` **txBytes**: `Uint8Array`

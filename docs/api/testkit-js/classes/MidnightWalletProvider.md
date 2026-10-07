@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v5.0.0-beta.8**](../README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-rc.3**](../README.md)
 
 ***
 
@@ -38,7 +38,7 @@ Handles transaction balancing, submission, and wallet state management.
 
 ### supportedEras
 
-> `readonly` **supportedEras**: readonly (`"v8"` \| `"v9"`)[]
+> `readonly` **supportedEras**: readonly (`"v9"` \| `"v8"`)[]
 
 Both eras, declared once for both seams this class implements.
 

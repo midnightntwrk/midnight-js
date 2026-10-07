@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -6,8 +6,13 @@
 
 # Class: IndexerPublicDataProvider
 
-Interface for a public data service. This service retrieves public data from the blockchain.
-TODO: Add timeouts or retry limits to 'watchFor' queries.
+Indexer-backed `PublicDataProvider`. Every method that takes a
+`ContractAddress` validates the input up front via
+`assertIsContractAddress`. The constructor shape `(handle, pollInterval)`
+maps directly onto `Layer.scoped` in the future Effect migration (#843).
+
+TODO: Re-examine caching when 'ContractCall' and 'ContractDeploy' have
+transaction identifiers included.
 
 ## Implements
 
@@ -70,7 +75,7 @@ contract for cursor, completion, and at-least-once semantics.
 
 ### contractStateObservable()
 
-> **contractStateObservable**(`contractAddress`, `config?`): `Observable`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
+> **contractStateObservable**(`contractAddress`, `config?`): `Observable`\<[`PositionedRecord`](../../../midnight-js/types/type-aliases/PositionedRecord.md)\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>\>
 
 Creates a stream of contract states for `contractAddress`.
 
@@ -81,17 +86,10 @@ callback. A contract deployed before the ledger fork and not written to
 since serves exactly such a state, indefinitely. Use
 [rawContractStateObservable](#rawcontractstateobservable) where that is possible.
 
-WIRE TRAFFIC DIFFERS SHARPLY BY BRANCH. `all` is server-side filtered and
-light; `latest`, `blockHeight`, `blockHash` and `txId` stream every block on
-chain and filter client-side, which is heavy on a busy chain.
-
-REPLAY SUPPRESSION IS NOT UNIFORM. A transport reconnect makes the indexer
-replay from the subscription's original offset. `latest`, `blockHeight` and
-`blockHash` suppress what they have already delivered; `all` and `txId` do
-not, so a consumer of those two should expect a state more than once.
-
-See blockOffsetToBlock$, blockOffsetToState$,
-and blockToPositionedState$ for per-subscription docs.
+Every branch reads the indexer's feed of this contract's actions, filtered
+by address on the server. A transport reconnect makes the indexer replay
+from the subscription's original offset; every branch suppresses what it
+has already delivered, and `inclusive: false` keeps holding.
 
 #### Parameters
 
@@ -109,12 +107,12 @@ The configuration of the stream. Defaults to `latest`.
 
 #### Returns
 
-`Observable`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
+`Observable`\<[`PositionedRecord`](../../../midnight-js/types/type-aliases/PositionedRecord.md)\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>\>
 
 #### See
 
-[SubscriptionShapes](../../documents/SubscriptionShapes.md) for what each branch costs, and why the two
-  subscription shapes are not interchangeable.
+[SubscriptionShapes](../../documents/SubscriptionShapes.md) for how each branch starts and how replays
+  are suppressed.
 
 #### Implementation of
 
@@ -398,7 +396,7 @@ The configuration of the query.
 
 ### rawContractStateObservable()
 
-> **rawContractStateObservable**(`contractAddress`, `config?`): `Observable`\<[`RawContractState`](../../../midnight-js/types/interfaces/RawContractState.md)\>
+> **rawContractStateObservable**(`contractAddress`, `config?`): `Observable`\<[`PositionedRecord`](../../../midnight-js/types/type-aliases/PositionedRecord.md)\<[`RawContractState`](../../../midnight-js/types/interfaces/RawContractState.md)\>\>
 
 Creates a stream of contract states for `contractAddress` as the bytes the
 indexer served, without deserializing them.
@@ -410,19 +408,16 @@ inside the pipeline, so one retained-era state terminates that
 subscription; here the era is carried on the record and the caller narrows
 on it.
 
-`ledgerParameters` IS ALWAYS ABSENT ON THIS STREAM, and the stream does not
-report which block a state came from, so the two CANNOT be paired through
-this member. Neither subscription asks for the parameters: the four
-block-subscription branches would receive one for every block on chain, and
-the `all` branch reads a per-contract-action feed with no block subtree to
-read them from. A caller that needs them reads
-[queryRawContractState](#queryrawcontractstate) at a block height it obtained some other way.
+`ledgerParameters` IS ALWAYS ABSENT ON THIS STREAM. The subscription does
+not ask for the parameters, which would cost one blob per contract action.
+A caller that needs them reads [queryRawContractState](#queryrawcontractstate) with the
+`blockHash` of the same record.
 
-Every branch, every wire-traffic cost and every replay-suppression rule is
-exactly [contractStateObservable](#contractstateobservable)'s; only the element type differs.
+Every branch and every replay-suppression rule is exactly
+[contractStateObservable](#contractstateobservable)'s; only the element type differs.
 
 WHAT IS WITHHELD, PRECISELY: the deserialization, and the envelope-versus-
-block era cross-check [parseHexContractState](../functions/parseHexContractState.md) runs. The envelope tag
+served-era cross-check [parseHexContractState](../functions/parseHexContractState.md) runs. The envelope tag
 is still read, so a payload carrying no supported contract-state envelope
 still fails the stream. Two things can still end it on era grounds — an
 envelope from an era this client's tag table does not list, and a
@@ -450,11 +445,11 @@ The configuration of the stream. Defaults to `latest`.
 
 #### Returns
 
-`Observable`\<[`RawContractState`](../../../midnight-js/types/interfaces/RawContractState.md)\>
+`Observable`\<[`PositionedRecord`](../../../midnight-js/types/type-aliases/PositionedRecord.md)\<[`RawContractState`](../../../midnight-js/types/interfaces/RawContractState.md)\>\>
 
 #### See
 
-[SubscriptionShapes](../../documents/SubscriptionShapes.md) for what each branch costs.
+[SubscriptionShapes](../../documents/SubscriptionShapes.md) for how each branch starts.
 
 #### Implementation of
 
@@ -464,21 +459,17 @@ The configuration of the stream. Defaults to `latest`.
 
 ### unshieldedBalancesObservable()
 
-> **unshieldedBalancesObservable**(`contractAddress`, `config?`): `Observable`\<[`UnshieldedBalances`](../../../midnight-js/types/type-aliases/UnshieldedBalances.md)\>
+> **unshieldedBalancesObservable**(`contractAddress`, `config?`): `Observable`\<[`PositionedRecord`](../../../midnight-js/types/type-aliases/PositionedRecord.md)\<[`UnshieldedBalances`](../../../midnight-js/types/type-aliases/UnshieldedBalances.md)\>\>
 
 Creates a stream of unshielded balances for `contractAddress`.
 
-All three non-`txId` branches (`latest`/`all`/`blockHeight`/`blockHash`)
-use `UNSHIELDED_BALANCE_SUB($address, $offset)` as the terminal
-subscription. **Wire traffic is uniformly light** — server-side
-filtered by `contractAddress`. The indexer has no per-block
-subscription analogue for balances, so there is no light/heavy
-asymmetry comparable to [contractStateObservable](#contractstateobservable).
+Reads the same feed of this contract's actions as
+[contractStateObservable](#contractstateobservable), through `UNSHIELDED_BALANCE_SUB`, with the
+same start rules and the same replay suppression.
 
 The `txId` configuration is not supported and throws
-[IndexerProviderConfigError](IndexerProviderConfigError.md). Tx-anchored balance streams are
-not exposed by the indexer's subscription surface — for the related
-contract-state stream see [contractStateObservable](#contractstateobservable).
+[IndexerProviderConfigError](IndexerProviderConfigError.md); this provider offers no tx-anchored
+balance stream.
 
 See blockOffsetToUnshieldedBalances$ for the per-subscription doc.
 
@@ -498,7 +489,7 @@ The configuration of the stream. Defaults to `latest`.
 
 #### Returns
 
-`Observable`\<[`UnshieldedBalances`](../../../midnight-js/types/type-aliases/UnshieldedBalances.md)\>
+`Observable`\<[`PositionedRecord`](../../../midnight-js/types/type-aliases/PositionedRecord.md)\<[`UnshieldedBalances`](../../../midnight-js/types/type-aliases/UnshieldedBalances.md)\>\>
 
 #### Implementation of
 

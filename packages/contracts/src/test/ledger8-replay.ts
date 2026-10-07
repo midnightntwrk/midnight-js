@@ -554,7 +554,7 @@ export const recordEraCalls = (
   era: LedgerEra,
   log: OrchestrationLog,
   onComposeCall?: (options: ComposeCallOptions) => void,
-  onZswapOffer?: (offers: { readonly guaranteed?: Uint8Array; readonly fallible?: Uint8Array }) => void
+  onZswapOffer?: (offers: { readonly guaranteedBytes?: Uint8Array; readonly fallibleBytes?: Uint8Array }) => void
 ): LedgerEra => ({
   version: era.version,
   extractState: (raw) => {

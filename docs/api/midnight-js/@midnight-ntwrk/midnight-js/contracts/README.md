@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
 
 ***
 
@@ -62,6 +62,8 @@
 - [FindDeployedContractOptionsExistingPrivateState](interfaces/FindDeployedContractOptionsExistingPrivateState.md)
 - [FindDeployedContractOptionsStorePrivateState](interfaces/FindDeployedContractOptionsStorePrivateState.md)
 - [FoundContract](interfaces/FoundContract.md)
+- [FoundDeployTxData](interfaces/FoundDeployTxData.md)
+- [FoundDeployTxPublicDataV8](interfaces/FoundDeployTxPublicDataV8.md)
 - [PublicContractStates](interfaces/PublicContractStates.md)
 - [ScopedTransactionOptions](interfaces/ScopedTransactionOptions.md)
 - [SubmittedCallTx](interfaces/SubmittedCallTx.md)
@@ -109,6 +111,7 @@
 - [EraArtifactMismatchReason](type-aliases/EraArtifactMismatchReason.md)
 - [EraSeam](type-aliases/EraSeam.md)
 - [FindDeployedContractOptions](type-aliases/FindDeployedContractOptions.md)
+- [FoundDeployTxPublicData](type-aliases/FoundDeployTxPublicData.md)
 - [PipelineEra](type-aliases/PipelineEra.md)
 - [RetainedPipelineEra](type-aliases/RetainedPipelineEra.md)
 - [StaleHeadOperationKind](type-aliases/StaleHeadOperationKind.md)

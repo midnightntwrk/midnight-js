@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -65,9 +65,11 @@ deployed.
 
 ### deployTxData
 
-> `readonly` **deployTxData**: [`FinalizedDeployTxDataBase`](FinalizedDeployTxDataBase.md)\<`C`\>
+> `readonly` **deployTxData**: [`FoundDeployTxData`](FoundDeployTxData.md)\<`C`\>
 
-Data for the finalized deploy transaction corresponding to this contract.
+Data for the finalized deploy transaction corresponding to this contract. The deploy record is
+tagged with the ledger era that recorded it: narrow on `public.version` before reading `tx` or
+`initialContractState`.
 
 ***
 

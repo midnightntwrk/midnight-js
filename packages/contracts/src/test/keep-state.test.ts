@@ -280,7 +280,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // NOT the chain's own bytes: the current composer cannot deserialize a
     // retained envelope at all. What it gets is the operation registry
     // re-expressed in its own era...
-    const registry = composed?.calls[0]?.contractState;
+    const registry = composed?.calls[0]?.contractStateBytes;
     expect(registry).toBeDefined();
     expect(registry).not.toBe(v6Envelope);
 
@@ -326,8 +326,8 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // the arm cannot route: this arm resolves the split before it builds the
     // offer too. See the retained arm's 'routes a coin the partition places in
     // the fallible half' for the other direction.
-    expect(result.guaranteedZswapOffer).toBeInstanceOf(Uint8Array);
-    expect(result.fallibleZswapOffer).toBeUndefined();
+    expect(result.guaranteedZswapOfferBytes).toBeInstanceOf(Uint8Array);
+    expect(result.fallibleZswapOfferBytes).toBeUndefined();
   });
 
   // The balance is the one part of the chain state the down-converted value

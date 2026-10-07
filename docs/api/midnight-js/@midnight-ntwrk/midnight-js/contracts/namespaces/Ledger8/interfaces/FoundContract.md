@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
 
 ***
 
@@ -64,8 +64,8 @@ because a retained-era contract was deployed in whichever era was current
 at the time — narrow it with `switch (deployTxData.version)`.
 
 SHAPED DIFFERENTLY from the current era's `FoundContract.deployTxData`,
-which is a `FinalizedDeployTxData` whose transaction id sits under
-`.public`. Here the record is the read surface's own
+which is a `FoundDeployTxData` whose record sits under `.public` and is
+tagged on `.public.version`. Here the record is the read surface's own
 `VersionedFinalizedTxData`, so `txId`, `status` and the rest are top-level
 members. Code written against one era does not read the other's record
 unchanged.
@@ -105,13 +105,14 @@ apart has to look at the logger rather than at this field:
    under the same address in the same provider, or one whose value is not
    the shape a retained-era key has;
 3. the entry could not be READ at all, because `getSigningKey` rejected: a
-   wrong store password, a rotation-lock timeout, store I/O.
+   wrong store password, a rotation-lock timeout, store I/O, or an entry the
+   provider refuses as not a signing key.
 
 Neither 2 nor 3 fails the attach. Both are reported to the logger provider
 as a DEBUG-level dispatch breadcrumb, which is the only place the three
 cases are distinguishable.
 
-The remedy for case 2 is the caller's either way: pass the retained-era key
+The remedy for case 2, and for a refused entry in case 3, is the caller's either way: pass the retained-era key
 on [Ledger8FindDeployedContractOptions.signingKey](FindDeployedContractOptions.md#signingkey), which replaces the
 entry, or remove the entry with
 `privateStateProvider.removeSigningKey(address)` first.

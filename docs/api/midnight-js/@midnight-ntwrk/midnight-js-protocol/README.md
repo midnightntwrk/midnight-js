@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../README.md)
 
 ***
 
@@ -168,18 +168,19 @@ const era = await loadLedgerEra(versionOfRecord(indexerRecord));
 
 const state = era.extractState(rawContractState);
 const decoded = era.decodeContractState(rawContractState);
-const { transaction, partitions } = era.composeCallTx({
+const { txBytes, partitions } = era.composeCallTx({
   calls,
   networkId,
   ttl,
-  // Called back ONCE, with one `[guaranteed, fallible]` pair per call, in
+  // Called back ONCE, with one `[guaranteed, fallible]` split per call, in
   // `calls` order -- cross-contract callees first, the root call last. Route
   // against all of them: a transaction carries one offer per segment, so
   // destructuring the first pair alone would route the whole transaction
   // against a callee's split and drop the root call's.
+  // Answers with `{ guaranteedBytes, fallibleBytes }`.
   zswapOffer: (partitions) => buildSegmentedOfferBytes(partitions)
 });
-const deploy = era.composeDeployTx({ contractState, verifierKeys, networkId, ttl });
+const deploy = era.composeDeployTx({ contractStateBytes, verifierKeys, networkId, ttl });
 ```
 
 | Method | What it does |
@@ -206,7 +207,7 @@ The same method names mostly mean the same capabilities. One thing the v8 arm re
 
 - **A call tree.** The v8 arm composes exactly one call. A cross-contract call is a ledger-9-only feature a pre-fork contract cannot emit, so that era has no call tree to express: a `calls` list longer than one throws `ComposeOptionError` with `option: 'calls'` rather than composing the first entry and dropping the rest.
 
-**A Zswap offer is not one of them.** Both eras call the `zswapOffer` factory back with the split they resolved and carry the offer it answers with into the transaction; both throw `ComposeOptionError` with `option: 'zswapOffer'` for bytes their own decoder rejects, with the decoder's failure on `cause`. Both read that offer LAST, after the call's unshielded payout has been aggregated, so a call with two faults is refused the same way on either era. A coin-moving call composes on either era.
+**A Zswap offer is not one of them.** Both eras call the `zswapOffer` factory back with the split they resolved and carry the offer it answers with into the transaction; both throw `ComposeOptionError` with `option: 'zswapOffer'` for bytes their own decoder rejects (`option: 'guaranteedZswapOfferBytes'` for the offer a deploy is given), with the decoder's failure on `cause`. Both read that offer LAST, after the call's unshielded payout has been aggregated, so a call with two faults is refused the same way on either era. A coin-moving call composes on either era.
 
 The v8 arm also *requires* `verifierKeys` on `composeDeployTx`, where the v9 arm accepts its omission in one case. The retained deploy leg registers the compiled contract's keys onto the initial state itself, so it always needs the map; omitting it throws `ComposeOptionError` with `option: 'verifierKeys'`. The v9 arm allows the omission only for a state that ALREADY carries its keys, and checks rather than assumes it: a state still declaring a blank-keyed entry point throws the same `ComposeOptionError` with the same `option`. So the two arms agree on every input except one — a pre-keyed state, which deploys as-is on v9 and needs its keys supplied again on v8.
 

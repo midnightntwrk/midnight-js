@@ -531,8 +531,12 @@ export class ComposeFailedError extends Error {
 
 /**
  * Which option handed to a composition leg was unusable:
- * - `'contractState'` — the state could not be bridged into the target
+ * - `'contractStateBytes'` — the state could not be bridged into the target
  *   ledger era (its serialized envelope was rejected by the era's decoder).
+ * - `'guaranteedZswapOfferBytes'` — the offer bytes supplied to a deploy were
+ *   rejected by the target era's decoder.
+ * - `'ledgerParametersBytes'` — the supplied ledger parameters could not be
+ *   read by the target era.
  * - `'networkId'` — the network id was empty. The ledger accepts an empty
  *   string and bakes it into the transaction, so a caller that forgot to
  *   resolve one would only find out at submission.
@@ -550,8 +554,8 @@ export class ComposeFailedError extends Error {
  *   contract's keys itself and so always needs the map, while the current era
  *   accepts its omission for a state that already carries its keys and refuses
  *   it only for a state still declaring a blank-keyed entry point.
- * - `'zswapOffer'` — the supplied offer bytes were rejected by the target era's
- *   decoder. Raised on BOTH eras, for the same reason and with the same
+ * - `'zswapOffer'` — the offer bytes a call's offer factory returned were
+ *   rejected by the target era's decoder. Raised on BOTH eras, for the same reason and with the same
  *   remediation: pass the bytes that era's own offer serialization produced.
  *
  * @see {@link ComposeRefusalOrder}
@@ -559,8 +563,9 @@ export class ComposeFailedError extends Error {
  */
 export type ComposeOption =
   | 'calls'
-  | 'contractState'
-  | 'ledgerParameters'
+  | 'contractStateBytes'
+  | 'guaranteedZswapOfferBytes'
+  | 'ledgerParametersBytes'
   | 'networkId'
   | 'signingKey'
   | 'ttl'
@@ -580,8 +585,8 @@ export type ComposeOption =
  * @param version The ledger era the option was being used against.
  * @param option Which option was unusable — see {@link ComposeOption}. A
  *   closed union, so a consumer can `switch` on it exhaustively.
- * @param cause The decoder's own failure, present only for `'contractState'`
- *   and `'zswapOffer'`, where caller-supplied bytes were rejected.
+ * @param cause The decoder's own failure, present where caller-supplied bytes
+ *   were rejected.
  * @see {@link ComposeRefusalOrder}
  * @see {@link VerifierKeys}
  */
@@ -600,12 +605,12 @@ export class ComposeOptionError extends Error {
   // A total Record, for exactly the reason `ComposeFailedError.MESSAGES` above
   // is one -- see SharedTableDiscipline. Never make this an if-chain.
   private static readonly MESSAGES: Readonly<Record<ComposeOption, (version: LedgerVersion) => string>> = {
-    contractState: (version) =>
+    contractStateBytes: (version) =>
       `Failed to compose a ${version} transaction: the given contract state could not be bridged into the ` +
       `${version} ledger era. Read the wrapped cause for what the decoder reported; it distinguishes an ` +
       'envelope tagged for a different ledger era from truncated or empty input bytes. Pass the contract ' +
       'state the era it targets produced, not an already down-converted or otherwise re-tagged one.',
-    ledgerParameters: (version) =>
+    ledgerParametersBytes: (version) =>
       `Failed to compose a ${version} transaction: the supplied ledger parameters could not be read by the ` +
       `${version} ledger. They are era-tagged, so bytes read from a block of the other era will be refused ` +
       'here — read the wrapped cause for the tag the decoder found. Pass the parameters the block this call ' +
@@ -637,6 +642,10 @@ export class ComposeOptionError extends Error {
       "entry points and be refused by the ledger's own well-formedness check. Supply keys for exactly the " +
       'circuits the contract declares. An era whose deploy leg accepts the omission still refuses it for a ' +
       'state that declares a blank-keyed entry point, for the same reason.',
+    guaranteedZswapOfferBytes: (version) =>
+      `Failed to compose a ${version} deploy transaction: the supplied guaranteed Zswap offer bytes could ` +
+      `not be read by the ${version} ledger. Read the wrapped cause for what the decoder reported. Pass the ` +
+      "bytes that era's own offer serialization produced.",
     zswapOffer: (version) =>
       `Failed to compose a ${version} transaction: the supplied Zswap offer bytes could not be read by ` +
       `the ${version} ledger. Read the wrapped cause for what the decoder reported. Pass the bytes that ` +

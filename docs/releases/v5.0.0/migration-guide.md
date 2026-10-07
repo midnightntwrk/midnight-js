@@ -399,11 +399,8 @@ applies before it lands, the framework raises `StaleHeadError`
 two remediations below — along with `startEra`, `freshEra`, `circuitId` and
 `contractAddress`. Its message carries the matching remediation in full.
 
-**Only the `'call'` arm is reachable through the public API today.** `deployContract`
-refuses every retained-era deploy outright, before any head is read (see the
-runtime-deploy chapter), so no public entry point can produce `kind: 'deploy'`. The
-deploy remediation is documented because it becomes reachable the day the era seam
-carries a maintenance authority — not because you can provoke it now.
+Both arms are reachable. `kind: 'deploy'` comes from a retained-era deploy that
+was built on a pre-fork head and overtaken by the fork before it landed.
 
 For a **call**, the remediation is two steps, in order:
 
@@ -425,8 +422,8 @@ For a **deploy** the remediation is different, and it is also two steps:
    fresh nonce, so a second attempt lands at a *different* address and a skipped check
    leaves two copies of the contract on chain.
 2. **Recompile with the current Compact toolchain and deploy that artifact.** Unlike the
-   call case, a plain re-run does not work: a contract produced by the retained toolchain
-   has no deployment path at all. See [the runtime-deploy chapter](#runtime-deploy-chapter-factory-patterns).
+   call case, a plain re-run does not work: after the fork a contract produced by the
+   retained toolchain has no deployment path. See [the runtime-deploy chapter](#runtime-deploy-chapter-factory-patterns).
 
 > **Why step 1 is not optional.** The guidance above assumes in-flight pre-fork
 > transactions are hard-rejected at the boundary. If any grace window exists, a
@@ -437,31 +434,28 @@ For a **deploy** the remediation is different, and it is also two steps:
 ### Runtime-deploy chapter: factory patterns
 
 This section is linked from `Ledger8.DeployOnV9Error`
-(`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9`). That code is **currently dormant** — do not
-write a `catch` for the class. The refusal you will actually meet is the uncoded
-`Error` described below, and it has the same remediation.
+(`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9`).
 
 If your dApp deploys contract instances **at runtime** — a factory that stands
 up a new contract per user, per market, per game — read this before the fork.
 
 The retained era stays supported for **calls against contracts deployed before
-the fork**. It does not support **new deployments at all** — not after the fork, and
-not today either. `deployContract` refuses a retained-toolchain artifact
-unconditionally, as its first act, before any network head is read.
+the fork**. New deployments of a retained-toolchain artifact work **only on a
+pre-fork head**. On a post-fork head `deployContract` refuses one with
+`Ledger8.DeployOnV9Error`, before the constructor runs and before any verifier
+key is fetched.
 
-The reason is not the era pairing, and not an unfinished pipeline: the deploy
-transaction itself composes and submits correctly. It is the *result* that is
-unusable. Neither the retained constructor nor the era deploy composition accepts a
-maintenance authority, and the authority a retained constructor leaves behind is an
-empty committee with a threshold of one — which nothing can ever satisfy. The
-deployed contract could never have a verifier key inserted, removed or replaced, by
-anyone, including you.
+A retained deploy registers a maintenance authority of one key, either
+`options.signingKey` or a freshly sampled one. The key is reported on the
+handle's `signingKey` and stored against the new address through
+`privateStateProvider`. That store is the only copy besides the handle: lose it
+and no verifier key on that contract can ever be inserted, removed or replaced.
 
 In practice:
 
 - **Obtain current-toolchain artifacts for every contract you deploy at
-  runtime.** Recompile and ship those artifacts with your build. This is not a
-  fork-day deadline — a retained artifact cannot be deployed now.
+  runtime**, and ship them before the fork. From the fork on, a retained
+  artifact cannot be deployed.
 - Contracts you deployed *before* the fork are unaffected — they keep working
   through the same call sites.
 - A dApp that only calls already-deployed contracts is not affected by this
@@ -525,15 +519,46 @@ either era.
 
 Two limits to plan around. Both eras now name the circuit on the result, and
 both handles carry `compiledContract` and `contractAddress`, so the contract
-HANDLES differ in only three places: the retained handle has no maintenance
+HANDLES differ in only four places: the retained handle has no maintenance
 interfaces (the retained era has no governance arm), its `deployTxData` is
-the flat record where the current era's is `{ era, public, private }`, and its
+the flat record where the current era's is `{ era, public, private }`, its
 `callTx.<circuit>(...)` takes no `TransactionContext`, so it cannot carry
-recipient key mappings (see below). And `getStates` / `getPublicStates` have no retained
+recipient key mappings (see below), and a deployed handle keeps the deployer's
+data at a different path (table below). And `getStates` / `getPublicStates` have no retained
 arm: they decode with the current-era deserializer and refuse anything else, so
 for a contract whose state envelope is still pre-fork, read the state through
 `queryRawContractState` and narrow on its `version`, or read
 `public.nextContractStateEncoded` off a call result.
+
+Where a deployed handle keeps the deployer's data. The paths stay different
+until the retained era is removed, so branch on `deployed.era` before reading
+them:
+
+| Fact | Current era (`DeployedContract`) | Retained era (`Ledger8.DeployedContract`) |
+|---|---|---|
+| Signing key | `deployTxData.private.signingKey` | `signingKey` |
+| Private state from the constructor | `deployTxData.private.initialPrivateState` | `initialPrivateState` |
+| Zswap state from the constructor | `deployTxData.private.initialZswapState` | `initialZswapState` |
+| Initial contract state (live handle) | `deployTxData.public.initialContractState` | `initialContractState` |
+| Initial contract state (bytes) | — | `initialContractStateBytes` |
+
+The signing key differs on a found handle too: `findDeployedContract` reports it
+at `deployTxData.private.signingKey` in the current era and at the top-level
+`signingKey` in the retained era.
+
+`initialContractStateBytes` was called `initialState` in the earlier 5.0.0
+release candidates. It holds the same bytes under the new name.
+
+If you call `loadLedgerEra` from `midnight-js-protocol` directly, its compose
+members that hold bytes were renamed the same way: `contractState` →
+`contractStateBytes`, `guaranteedZswapOffer` → `guaranteedZswapOfferBytes`,
+the offer factory's `guaranteed` / `fallible` → `guaranteedBytes` /
+`fallibleBytes`, `transaction` → `txBytes`, `ledgerParameters` →
+`ledgerParametersBytes`, and `initialState` → `initialContractStateBytes`. The
+`option` a `ComposeOptionError` reports follows the field it names:
+`'contractStateBytes'`, `'ledgerParametersBytes'`, and
+`'guaranteedZswapOfferBytes'` for a deploy's offer. A call's offer still reports
+`'zswapOffer'`.
 
 **Paying a shielded coin to someone else.** A retained-era circuit that pays a
 shielded coin to a recipient other than the calling wallet needs that
