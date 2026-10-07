@@ -13,6 +13,10 @@
  * limitations under the License.
  */
 
+import { EnvironmentUnsupportedError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+
+import { IndexerPayloadTooLargeError } from './errors';
+
 const decoder = new TextDecoder('utf-8', { fatal: true });
 
 /**
@@ -28,7 +32,7 @@ export const MAX_INFLATED_BYTES = 16 * 1024 * 1024;
  */
 export const inflate = async (data: ArrayBuffer): Promise<string> => {
   if (typeof globalThis.DecompressionStream !== 'function') {
-    throw new Error(
+    throw new EnvironmentUnsupportedError(
       'DecompressionStream is required for graphql-transport-ws+deflate subscriptions. ' +
       'Requires Node >= 18 or a browser shipped after March 2023 (Chrome 80, Firefox 113, Safari 16.4).'
     );
@@ -44,7 +48,7 @@ export const inflate = async (data: ArrayBuffer): Promise<string> => {
     total += value.byteLength;
     if (total > MAX_INFLATED_BYTES) {
       await reader.cancel();
-      throw new Error(
+      throw new IndexerPayloadTooLargeError(
         `Inflated payload exceeds MAX_INFLATED_BYTES (${MAX_INFLATED_BYTES} bytes); ` +
         'aborting (possible compression bomb).'
       );

@@ -15,6 +15,7 @@
 
 import { deflateSync } from 'node:zlib';
 
+import { EnvironmentUnsupportedError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type * as ws from 'isomorphic-ws';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
@@ -34,6 +35,16 @@ import {
  */
 const asWsCtor = (ctor: new (url: string, protocols?: string | string[]) => EventTarget): typeof ws.WebSocket =>
   ctor as unknown as typeof ws.WebSocket;
+
+describe('wrapWithDeflate — base class requirements', () => {
+  test('rejects a base WebSocket class without addEventListener as an unsupported environment', () => {
+    class BaseWithoutListeners extends EventTarget {}
+    Object.defineProperty(BaseWithoutListeners.prototype, 'addEventListener', { value: undefined });
+    const Wrapped = wrapWithDeflate(asWsCtor(BaseWithoutListeners));
+
+    expect(() => new Wrapped('ws://localhost/graphql/ws')).toThrow(EnvironmentUnsupportedError);
+  });
+});
 
 describe('wrapWithDeflate — subprotocol negotiation', () => {
   test('offers only the deflate protocol when no protocols argument is passed', () => {

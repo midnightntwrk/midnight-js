@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { EnvironmentUnsupportedError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type * as ws from 'isomorphic-ws';
 
 import { inflate } from './inflate';
@@ -111,7 +112,7 @@ export const wrapWithDeflate = <T extends typeof ws.WebSocket>(
       // Use the base class's listener slot — we don't want close handling to
       // route through our own addEventListener override.
       if (typeof super.addEventListener !== 'function') {
-        throw new Error(
+        throw new EnvironmentUnsupportedError(
           'DeflateWebSocket: base WebSocket class must implement addEventListener. ' +
           `Received: ${typeof super.addEventListener}.`
         );
