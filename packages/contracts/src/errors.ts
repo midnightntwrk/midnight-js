@@ -981,6 +981,7 @@ export class ContractTypeError extends MidnightJsError {
     readonly contractAddress?: ContractAddress
   ) {
     super(`${describeMismatch(mismatch, contractAddress)}\nDeployed state: ${describeContractState(contractState)}`);
+    this.name = 'ContractTypeError';
     this.missingCircuitIds = mismatch.missing;
     this.keylessCircuitIds = mismatch.keyless;
     this.mismatchedCircuitIds = mismatch.mismatched;

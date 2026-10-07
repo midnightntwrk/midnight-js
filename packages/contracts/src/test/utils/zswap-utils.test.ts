@@ -46,6 +46,7 @@ import { expect, vi } from 'vitest';
 import { ZswapOutputResolutionError } from '../../errors';
 import {
   BURN_ENCRYPTION_PUBLIC_KEY,
+  checkKeys,
   createEncryptionPublicKeyResolver,
   createZswapOutput,
   deserializeCoinInfo,
@@ -1177,6 +1178,54 @@ describe('Zswap utilities', () => {
 
       expect(act).toThrow(InvariantViolationError);
       expect(act).toThrow(/not present in either segment/);
+    });
+
+    it('refuses an input that pairs with several outputs when no spending contract is named', () => {
+      const coinInfo = createShieldedCoinInfo(nativeToken().raw, 100n);
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: randomCoinPublicKey(),
+        inputs: [{ ...coinInfo, mt_index: 0n }],
+        outputs: [
+          { recipient: sampleOne(arbitraryContractRecipient), coinInfo },
+          { recipient: sampleOne(arbitraryContractRecipient), coinInfo }
+        ]
+      };
+
+      const act = () => zswapStateToOffer(zswapState, randomEncryptionPublicKey());
+
+      expect(act).toThrow(ZswapOutputResolutionError);
+      expect(act).toThrow(
+        'Ambiguous transient: 2 outputs carry the coin info of an input whose spending contract is ' +
+          'unknown, so the pair cannot be identified. Supply the contract address that spent it.'
+      );
+    });
+
+    it('refuses a settled input when no spending contract is named', () => {
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: randomCoinPublicKey(),
+        inputs: [{ ...createShieldedCoinInfo(nativeToken().raw, 100n), mt_index: 0n }],
+        outputs: []
+      };
+
+      const act = () => zswapStateToOffer(zswapState, randomEncryptionPublicKey());
+
+      expect(act).toThrow(ZswapOutputResolutionError);
+      expect(act).toThrow(
+        'A call that spends a settled shielded coin must name the contract that spent it, since ' +
+          'the nullifier binds the spender. Only an input that pairs into a transient can be ' +
+          'assembled without one.'
+      );
+    });
+
+    it('refuses coin info carrying an unexpected key with an InvariantViolationError', () => {
+      const coinInfo = { ...createShieldedCoinInfo(nativeToken().raw, 100n), extra: 1 };
+
+      const act = () => checkKeys(coinInfo);
+
+      expect(act).toThrow(InvariantViolationError);
+      expect(act).toThrow("Key 'extra' should not be present in output data");
     });
 
     it('falls back to the guaranteed offer when at least one transcript half is undefined (no-transcript callers)', () => {

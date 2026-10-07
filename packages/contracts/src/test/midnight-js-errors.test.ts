@@ -112,4 +112,8 @@ describe('contracts error classes', () => {
   it('ContractTypeError is no longer a TypeError (accepted break)', () => {
     expect(errors.ContractTypeError.prototype instanceof TypeError).toBe(false);
   });
+
+  it('ContractTypeError keeps a name of its own', () => {
+    expect(new errors.ContractTypeError(new ContractState(), noMismatch, ADDRESS).name).toBe('ContractTypeError');
+  });
 });

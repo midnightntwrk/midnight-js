@@ -20,7 +20,7 @@ import {
   type ContractStateProvider,
   StateValue
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -234,6 +234,21 @@ describe('unproven-call-tx', () => {
         options,
         walletEncryptionPublicKey
       )).rejects.toThrow('failed assert: FAIL');
+    });
+
+    it('reports a circuit failure as a ContractExecutionError with the effect error as cause', async () => {
+      const options = createMockCallOptions({
+        compiledContract: createMockCompiledContract({
+          testCircuit: createFailingCircuit('FAIL')
+        }),
+        initialContractState: await getInitialContractState()
+      });
+
+      const act = () =>
+        createUnprovenCallTxFromInitialStates(createMockZKConfigProvider(), options, createMockEncryptionPublicKey());
+
+      await expect(act()).rejects.toThrow(ContractExecutionError);
+      await expect(act()).rejects.toThrow('failed assert: FAIL');
     });
 
     it('rejects an invalid TTL before running the circuit', async () => {

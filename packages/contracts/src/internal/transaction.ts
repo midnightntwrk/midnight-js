@@ -427,8 +427,8 @@ const runScope = async <
     };
     return nestedCallResult;
   } catch (err: unknown) {
-    // Rethrow known call transaction failures and errors occurring within an outer transaction context...
-    if (err instanceof CallTxFailedError || outerTxCtx) {
+    // Rethrow coded errors (call transaction failures included) and errors occurring within an outer transaction context...
+    if (outerTxCtx || hasErrorCode(err)) {
       throw err;
     }
     // ...otherwise, wrap and rethrow errors occurring during submission at the root transaction context.

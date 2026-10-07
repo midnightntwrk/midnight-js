@@ -65,6 +65,7 @@ import { Option } from 'effect';
 import { readFileSync } from 'fs';
 import { beforeAll } from 'vitest';
 
+import { ZswapOutputResolutionError } from '../../errors';
 import {
   createUnprovenLedgerCallTx,
   createUnprovenLedgerDeployTx,
@@ -352,6 +353,50 @@ describe('ledger-utils', () => {
       const depositOperation = shieldedInitialState.operation('deposit')!;
       depositOperation.verifierKey = DUMMY_VERIFIER_KEY;
       shieldedInitialState.setOperation('deposit', depositOperation);
+    });
+
+    it('refuses with a ZswapOutputResolutionError when the offers carry a coin the transcripts never claim', async () => {
+      const coin = { nonce: new Uint8Array(32).fill(1), color: new Uint8Array(32).fill(2), value: 100n };
+      const ctx = createCircuitContext({
+        circuitId: 'deposit',
+        contractAddress: shieldedAddr,
+        coinPublicKeyOrZswapState: shieldedCpk,
+        contractState: shieldedInitialState,
+        privateState: undefined
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { context, gasCost } = await (shieldedContract.circuits as any).deposit(ctx, coin);
+      const proofData = context.callProofDataTrace[context.callProofDataTrace.length - 1];
+      const transcript: Transcript<AlignedValue> = {
+        gas: gasCost,
+        effects: { ...context.callContext.currentQueryContext.effects, claimedShieldedReceives: [] },
+        program: proofData.publicTranscript
+      };
+
+      const act = () =>
+        callTxWithSingleState(
+          [
+            {
+              contractAddress: PlatformContractAddress.ContractAddress(shieldedAddr),
+              circuitId: 'deposit',
+              public: { contractState: shieldedInitialState.data.state, publicTranscript: [], partitionedTranscript: [transcript, undefined], partitionInputs: makePartitionInputs() },
+              private: {
+                input: proofData.input,
+                output: proofData.output,
+                privateTranscriptOutputs: proofData.privateTranscriptOutputs
+              },
+              communicationCommitment: Option.none()
+            }
+          ],
+          () => shieldedInitialState,
+          new ZswapChainState(),
+          decodeZswapLocalState(context.callContext.currentZswapLocalState),
+          dummyEncPublicKey
+        );
+
+      expect(act).toThrow(ZswapOutputResolutionError);
+      expect(act).toThrow(/A shielded coin addressed to a contract must be claimed as received by that contract/);
+      expect(act).toThrow(/offered 1, claimed 0/);
     });
 
     it('succeeds with deposit circuit that calls receiveShielded', async () => {

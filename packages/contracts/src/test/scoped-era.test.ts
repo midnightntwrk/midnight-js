@@ -130,14 +130,33 @@ describe('per-scope era resolution', () => {
     expect(fn).not.toHaveBeenCalled();
   });
 
-  it('refuses a scope that submitted no calls, with an InvalidArgumentError as the cause', async () => {
+  it('passes the InvalidArgumentError of a scope that submitted no calls through unchanged', async () => {
     onPostForkHead();
 
     const error = await withContractScopedTransaction(providers, async () => undefined).catch((e: unknown) => e);
 
-    const cause = error instanceof Error ? error.cause : undefined;
-    expect(cause).toBeInstanceOf(InvalidArgumentError);
-    expect(cause).toHaveProperty('message', 'No calls were submitted.');
+    expect(error).toBeInstanceOf(InvalidArgumentError);
+    expect(error).toHaveProperty('message', 'No calls were submitted.');
+  });
+
+  it('still wraps an uncoded failure of the submit step, naming the scope', async () => {
+    onPostForkHead();
+    const failure = new Error('node unreachable');
+    vi.mocked(submitTx).mockRejectedValue(failure);
+
+    const error = await withContractScopedTransaction(
+      providers,
+      async (txCtx) => {
+        await submitCallTx(providers, callOptions(), txCtx);
+      },
+      { scopeName: 'myScope' }
+    ).catch((e: unknown) => e);
+
+    expect(error).toHaveProperty(
+      'message',
+      "Unexpected error submitting scoped transaction 'myScope': Error: node unreachable"
+    );
+    expect(error).toHaveProperty('cause', failure);
   });
 
   it('resolves the head era ONCE per scope, however many calls are merged into it', async () => {
