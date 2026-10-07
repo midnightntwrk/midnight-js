@@ -65,7 +65,9 @@ import {
 import {
   assertDefined,
   assertIsContractAddress,
+  assertValidMidnightConfig,
   hasErrorCode,
+  intentTtl,
   parseCoinPublicKeyToHex
 } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -110,7 +112,6 @@ import {
   runLedger8DeployPipeline
 } from './ledger8-pipeline';
 import { toStoredLedger8SigningKey } from './ledger8-signing-key';
-import { intentTtl, networkIdOf } from './midnight-config';
 import { handleSubmitRejection } from './stale-head';
 import { createEncryptionPublicKeyResolver } from './utils';
 
@@ -431,8 +432,9 @@ const submitLedger8TxOnCurrentEra = async (
     'proveTx',
     circuitId
   );
+  const balanceTtl = intentTtl(providers.config);
   const balanced = requireV9(
-    await atSeam('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v9', tx: proven }, intentTtl(providers.config))),
+    await atSeam('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v9', tx: proven }, balanceTtl)),
     'balanceTx',
     circuitId
   );
@@ -459,8 +461,9 @@ const submitLedger8TxOnRetainedEra = async (
     'proveTx',
     circuitId
   );
+  const balanceTtl = intentTtl(providers.config);
   const balanced = requireV8(
-    await atSeam('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v8', txBytes: proven }, intentTtl(providers.config))),
+    await atSeam('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v8', txBytes: proven }, balanceTtl)),
     'balanceTx',
     circuitId
   );
@@ -602,7 +605,8 @@ export const runLedger8Call = async (
   providers: Ledger8EntryProviders,
   request: Ledger8CallRequest
 ): Promise<Ledger8SubmittedCall> => {
-  const networkId = networkIdOf(providers.config);
+  assertValidMidnightConfig(providers.config);
+  const { networkId } = providers.config;
   const ttl = intentTtl(providers.config);
   const { resolved, engine, retainedEra } = await acquireLedger8Runtime(providers, 'call', {
     logger: providers.loggerProvider,
@@ -712,7 +716,8 @@ export const runLedger8Deploy = async (
   providers: Ledger8EntryProviders,
   request: Ledger8DeployRequest
 ): Promise<Ledger8SubmittedDeploy> => {
-  const networkId = networkIdOf(providers.config);
+  assertValidMidnightConfig(providers.config);
+  const { networkId } = providers.config;
   const ttl = intentTtl(providers.config);
   // No contract address on this arm: a deploy has none until the composition
   // below mints one, so the selection breadcrumb leaves the field out.

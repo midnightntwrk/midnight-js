@@ -522,10 +522,13 @@ interface MidnightProviders {
   also passes the TTL to `walletProvider.balanceTx` (its existing `ttl?: Date`
   argument, which it did not pass before), so a wallet that honours it gives the
   balancing intent the same lifetime. `submitTx` reads `providers.config` too.
-- **Validation:** a missing `providers.config` or an empty `networkId` throws a
-  `TypeError`; a `ttlSeconds` that is not a positive whole number (or that
-  overflows a `Date`) throws a `RangeError`. Both happen before the circuit or
-  constructor runs and before any chain state is read.
+- **Validation:** a missing (`undefined` or `null`) config, or a `networkId` that is
+  not a non-empty string without surrounding whitespace, throws a `TypeError`; a
+  `ttlSeconds` that is not a positive whole number (or that overflows a `Date`)
+  throws a `RangeError`. Every entry point that builds a transaction checks this
+  first, before chain state is read and before the circuit or constructor runs.
+  The same check is public as `assertValidMidnightConfig` in
+  `@midnight-ntwrk/midnight-js-utils`.
 - **Low-level functions:** `createUnprovenCallTxFromInitialStates` reads
   `options.config` (a new required member of `CallOptionsProviderDataDependencies`);
   `createUnprovenDeployTxFromVerifierKeys` takes `config` as a new last argument.
@@ -535,8 +538,9 @@ interface MidnightProviders {
   `getNetworkId` and `NetworkId` still compile and run, but the framework ignores
   them. The package is removed in 6.0.
 - **testkit-js:** `NodeClient` takes the network id as a third constructor
-  argument, and `initializeMidnightProviders` sets `config` from the environment
-  configuration. The test environments no longer call `setNetworkId`.
+  argument and rejects an empty one. `initializeMidnightProviders` sets
+  `config.networkId` from the environment configuration and `config.ttlSeconds`
+  to 3600. The test environments no longer call `setNetworkId`.
 
 ---
 

@@ -16,6 +16,7 @@ MidnightProviders
 ├── proofProvider          — Zero-knowledge proof generation
 ├── walletProvider         — Transaction balancing and signing
 ├── midnightProvider       — Transaction submission to the network
+├── config                 — Network id and transaction TTL (required)
 └── loggerProvider         — Optional diagnostics logging
 ```
 

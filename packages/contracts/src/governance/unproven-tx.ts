@@ -35,15 +35,15 @@ import {
   type VerifierKey,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
+import { intentTtl } from '@midnight-ntwrk/midnight-js-utils';
 
-import { intentTtl, networkIdOf } from '../internal/midnight-config';
 
 export const unprovenTxFromContractUpdates = async (
   updateAndSignFn: () => Promise<MaintenanceUpdate>,
   config: MidnightConfig
 ): Promise<UnprovenTransaction> => {
-  const networkId = networkIdOf(config);
   const ttl = intentTtl(config);
+  const { networkId } = config;
   return Transaction.fromParts(
     networkId,
     undefined,

@@ -36,6 +36,9 @@ export class NodeClient {
    * @param {NetworkId} networkId - Network the node serves, used to address contract state
    */
   constructor(nodeURL: string, logger: Logger, networkId: NetworkId) {
+    if (typeof networkId !== 'string' || networkId.length === 0) {
+      throw new TypeError(`NodeClient networkId must be a non-empty string, got ${String(networkId)}.`);
+    }
     this.nodeURL = nodeURL;
     this.logger = logger;
     this.networkId = networkId;

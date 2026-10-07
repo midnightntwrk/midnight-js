@@ -23,11 +23,14 @@ export type NetworkId = string;
  */
 export interface MidnightConfig {
   /**
-   * The network transactions are built for. Also selects the Bech32m prefix used to decode wallet keys.
+   * The network transactions are built for. Must be non-empty. Bech32m wallet keys must be encoded for
+   * this network; hex keys are not checked against it.
    */
   readonly networkId: NetworkId;
   /**
-   * How long a built transaction stays valid, in whole seconds. Must be a positive integer.
+   * How long a built transaction stays valid, in whole seconds, counted from when each intent is built.
+   * The framework also passes it to `walletProvider.balanceTx`, counted from when balancing starts.
+   * Must be a positive whole number.
    */
   readonly ttlSeconds: number;
 }

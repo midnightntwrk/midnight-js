@@ -15,7 +15,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { createUnprovenLedgerDeployTx } from '../internal/utils';
+import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from '../internal/utils';
 import { createUnprovenDeployTx, createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
   createMockCoinPublicKey,
@@ -40,6 +40,9 @@ vi.mock('../internal/utils', () => ({
   createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
   zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
 }));
+
+const BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY = 'mn_shield-cpk_undeployed1mjngjmnlutcq50trhcsk3hugvt9wyjnhq3c7prryd5nqmvtzva0sn7kq7h';
+const BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY_HEX = 'dca6896e7fe2f00a3d63be2168df8862cae24a770471e08c646d260db162675f';
 
 describe('unproven-deploy-tx', () => {
   describe('createUnprovenDeployTxFromVerifierKeys', () => {
@@ -179,6 +182,51 @@ describe('unproven-deploy-tx', () => {
 
       expect(result).toBeDefined();
       expect(providers.zkConfigProvider.getVerifierKey).toHaveBeenCalledWith('testCircuit');
+    });
+
+    it('refuses a missing providers.config before running the constructor', async () => {
+      const zkConfigProvider = createMockZKConfigProvider();
+      vi.spyOn(zkConfigProvider, 'getVerifierKey');
+      const providers = Object.assign(
+        { zkConfigProvider, walletProvider: createMockProviders().walletProvider, config: MOCK_CONFIG },
+        { config: undefined }
+      );
+      const options = {
+        compiledContract: createMockCompiledContract(),
+        signingKey: createMockSigningKey(),
+        args: ['deploy-arg']
+      };
+
+      await expect(createUnprovenDeployTx(providers, options)).rejects.toThrow(/^providers\.config is missing/);
+      expect(zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['undeployed', true],
+      ['preview', false]
+    ])('decodes a Bech32m wallet key with providers.config.networkId = %s', async (networkId, accepted) => {
+      const walletProvider = { ...createMockProviders().walletProvider, getCoinPublicKey: () => BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY };
+      const providers = { zkConfigProvider: createMockZKConfigProvider(), walletProvider, config: { networkId, ttlSeconds: 60 } };
+      const options = {
+        compiledContract: createMockCompiledContract(),
+        signingKey: createMockSigningKey(),
+        args: ['deploy-arg']
+      };
+
+      const deployed = createUnprovenDeployTx(providers, options);
+
+      if (accepted) {
+        await expect(deployed).resolves.toBeDefined();
+        expect(vi.mocked(createUnprovenLedgerDeployTx)).toHaveBeenLastCalledWith(
+          expect.anything(),
+          expect.anything(),
+          expect.anything(),
+          providers.config
+        );
+        expect(vi.mocked(zswapStateToNewCoins)).toHaveBeenLastCalledWith(BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY_HEX, expect.anything());
+      } else {
+        await expect(deployed).rejects.toThrow('Expected preview address, got undeployed one');
+      }
     });
 
     it('forwards providers.config to the ledger builder', async () => {

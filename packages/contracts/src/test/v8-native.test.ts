@@ -1066,7 +1066,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     args: [recording.receivedCoin]
   });
 
-  it('composes the retained-era call for providers.config, not the global network id', async () => {
+  it('composes the retained-era call for providers.config', async () => {
     const providers = { ...preForkProviders(v6Envelope), config: { networkId: 'preview', ttlSeconds: 30 } };
     const before = Date.now();
 
@@ -1076,6 +1076,26 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(networkId).toBe('preview');
     expect(ttl?.getTime()).toBeGreaterThanOrEqual(Math.floor((before + 30_000) / 1000) * 1000);
     expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 30_000);
+  });
+
+  it('refuses an invalid config before resolving the artifact or proving', async () => {
+    const providers = { ...preForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 0 } };
+
+    await expect(submitCallTx(providers, callOptions())).rejects.toThrow(RangeError);
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+  });
+
+  it('serves two provider sets with different networks in one process', async () => {
+    const preview = { ...preForkProviders(v6Envelope), config: { networkId: 'preview', ttlSeconds: 60 } };
+    const undeployed = { ...preForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 60 } };
+
+    await submitCallTx(preview, callOptions());
+    engineSlot.engine = createReplayEngine(loadCoinReceiverRecording(), [], v6Envelope);
+    await submitCallTx(undeployed, callOptions());
+
+    expect((await retainedTxFacts(preview.seen.proveTx)).networkId).toBe('preview');
+    expect((await retainedTxFacts(undeployed.seen.proveTx)).networkId).toBe('undeployed');
   });
 
   it('passes the providers.config TTL to the wallet on the retained-era arm', async () => {
@@ -2416,7 +2436,15 @@ describe('deploying a retained-era contract through deployContract', () => {
     return providers;
   };
 
-  it('composes the retained-era deploy for providers.config, not the global network id', async () => {
+  it('refuses an invalid config before resolving the artifact or running the constructor', async () => {
+    const providers = { ...deployProviders(), config: { networkId: 'undeployed', ttlSeconds: 0 } };
+
+    await expect(deployContract(providers, { compiledContract: contract })).rejects.toThrow(RangeError);
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+  });
+
+  it('composes the retained-era deploy for providers.config', async () => {
     const providers = { ...deployProviders(), config: { networkId: 'preview', ttlSeconds: 30 } };
     const before = Date.now();
 

@@ -17,7 +17,7 @@ import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/comp
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type FinalizedTxData, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined, assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from '../contract-providers';
 import { submitTx } from '../submit-tx';
@@ -78,6 +78,7 @@ export const submitReplaceAuthorityTx =
    *         The error contains the finalized transaction data for debugging.
    */
   async (newAuthority: SigningKey): Promise<FinalizedTxData> => {
+    assertValidMidnightConfig(providers.config);
     assertIsContractAddress(contractAddress);
     const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
     assertDefined(contractState, `No contract state found on chain for contract address '${contractAddress}'`);

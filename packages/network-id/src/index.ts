@@ -40,7 +40,7 @@ export const setNetworkId = (id: NetworkId): void => {
 export const getNetworkId = (): NetworkId => {
   if (currentNetworkId === undefined) {
     throw new Error(
-      'Network ID has not been configured. Call setNetworkId() before any wallet or contract operation.'
+      'Network ID has not been configured. Call setNetworkId() first. Deprecated: the framework reads MidnightProviders.config.networkId instead.'
     );
   }
   return currentNetworkId;

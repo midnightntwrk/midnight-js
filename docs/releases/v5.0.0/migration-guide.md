@@ -732,7 +732,9 @@ const providers = {
 ```
 
 - `ttlSeconds: 3600` keeps the 4.x behaviour. It must be a positive whole number;
-  any other value is rejected with a `RangeError` before the circuit runs.
+  any other value is rejected with a `RangeError` before any chain state is read.
+  To check a config yourself, call `assertValidMidnightConfig` from
+  `@midnight-ntwrk/midnight-js-utils`.
 - The same TTL is passed to `walletProvider.balanceTx` as its `ttl` argument. If you
   implement `WalletProvider` yourself, use that argument for the intent your wallet
   adds while balancing, instead of a TTL of your own.

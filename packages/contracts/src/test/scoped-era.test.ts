@@ -121,6 +121,15 @@ describe('per-scope era resolution', () => {
     providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(protocolVersion);
   };
 
+  it('refuses an invalid config before reading the head era', async () => {
+    const invalid = { ...providers, config: { networkId: 'undeployed', ttlSeconds: 0 } };
+    const fn = vi.fn();
+
+    await expect(withContractScopedTransaction(invalid, fn)).rejects.toThrow(RangeError);
+    expect(invalid.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+    expect(fn).not.toHaveBeenCalled();
+  });
+
   it('resolves the head era ONCE per scope, however many calls are merged into it', async () => {
     onPostForkHead();
 

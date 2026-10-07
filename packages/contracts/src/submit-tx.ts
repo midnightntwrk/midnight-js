@@ -24,10 +24,10 @@ import {
   assertSeamsSupportEra,
   type FinalizedTxData,
 } from '@midnight-ntwrk/midnight-js-types';
+import { assertValidMidnightConfig, intentTtl } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
 import { requireV9, requireV9Record } from './internal/era';
-import { assertValidConfig, intentTtl } from './internal/midnight-config';
 
 declare const __DEBUG__: boolean;
 
@@ -92,7 +92,7 @@ async function submitTxCore<C extends Contract.Any, PCK extends Contract.Provabl
   // cannot carry the transaction, and finding out at `balanceTx` would mean
   // paying for a proof first.
   assertSeamsSupportEra(CURRENT_LEDGER_VERSION, providers);
-  assertValidConfig(providers.config);
+  assertValidMidnightConfig(providers.config);
   const provenTx = requireV9(
     await providers.proofProvider.proveTx({ version: 'v9', tx: options.unprovenTx }),
     'proveTx',

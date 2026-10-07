@@ -17,7 +17,6 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createUnprovenCallTxFromInitialStates, createUnprovenDeployTxFromVerifierKeys } from '@midnight-ntwrk/midnight-js-contracts';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
@@ -43,6 +42,8 @@ import { createProverKey,
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import fs from 'fs/promises';
 
+const TEST_CONFIG = { networkId: 'undeployed', ttlSeconds: 3600 };
+
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
 export const resourceDir = `${currentDir}/resources`;
@@ -67,7 +68,7 @@ const createMockContractClass = (contractModule: any, coinPublicKey: CoinPublicK
         currentContractState: contract.initialState(
           createConstructorContext(
             undefined,
-            parseCoinPublicKeyToHex(coinPublicKey, getNetworkId())
+            parseCoinPublicKeyToHex(coinPublicKey, TEST_CONFIG.networkId)
           )
         ).currentContractState,
         currentPrivateState: { test: 'mock-private-state' },
@@ -110,8 +111,6 @@ const createMockZKConfigProvider = (): ZKConfigProvider<string> => {
  * Creates a valid UnprovenTransaction for testing using proper object construction
  * from the topic contract instead of binary data.
  */
-const TEST_CONFIG = { networkId: 'undeployed', ttlSeconds: 3600 };
-
 export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
   const mockZKConfigProvider = createMockZKConfigProvider();
   const contractModule = await import(`${resourceDir}/managed/${CONTRACT}/contract/index.js`);

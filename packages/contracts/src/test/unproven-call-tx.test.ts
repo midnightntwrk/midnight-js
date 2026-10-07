@@ -64,6 +64,8 @@ vi.mock('../internal/utils', () => ({
     makeCalleeStateResolver: vi.fn()
 }));
 
+const BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY = 'mn_shield-cpk_undeployed1mjngjmnlutcq50trhcsk3hugvt9wyjnhq3c7prryd5nqmvtzva0sn7kq7h';
+
 describe('unproven-call-tx', () => {
   let initialContractState: Promise<ContractState> | null = null;
   const getInitialContractState = async () => {
@@ -251,6 +253,54 @@ describe('unproven-call-tx', () => {
   });
 
   describe('createUnprovenCallTx', () => {
+    it('decodes a Bech32m wallet key with providers.config.networkId', async () => {
+      const { getPublicStates } = await import('../get-states');
+      vi.mocked(getPublicStates, { partial: true }).mockResolvedValue({
+        zswapChainState: { test: 'zswap-chain-state' } as unknown as ZswapChainState,
+        contractState: await getInitialContractState(),
+        ledgerParameters: LedgerParameters.initialParameters()
+      });
+      const walletProvider = { ...createMockProviders().walletProvider, getCoinPublicKey: () => BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY };
+      const providers = {
+        zkConfigProvider: createMockZKConfigProvider(),
+        publicDataProvider: createMockProviders().publicDataProvider,
+        walletProvider,
+        config: { networkId: 'preview', ttlSeconds: 60 }
+      };
+      const options = {
+        contract: createMockContract(),
+        compiledContract: createMockCompiledContract(),
+        circuitId: 'testCircuit',
+        contractAddress: createMockContractAddress(),
+        args: ['test-arg']
+      };
+
+      await expect(createUnprovenCallTx(providers, options)).rejects.toThrow('Expected preview address, got undeployed one');
+    });
+
+    it('refuses a missing providers.config before reading chain state', async () => {
+      const publicDataProvider = createMockProviders().publicDataProvider;
+      const providers = Object.assign(
+        {
+          zkConfigProvider: createMockZKConfigProvider(),
+          publicDataProvider,
+          walletProvider: createMockProviders().walletProvider,
+          config: MOCK_CONFIG
+        },
+        { config: undefined }
+      );
+      const options = {
+        contract: createMockContract(),
+        compiledContract: createMockCompiledContract(),
+        circuitId: 'testCircuit',
+        contractAddress: createMockContractAddress(),
+        args: ['test-arg']
+      };
+
+      await expect(createUnprovenCallTx(providers, options)).rejects.toThrow(/^providers\.config is missing/);
+      expect(publicDataProvider.queryBlock).not.toHaveBeenCalled();
+    });
+
     it('rejects an invalid TTL before reading chain state', async () => {
       const { getPublicStates } = await import('../get-states');
       const publicDataProvider = createMockProviders().publicDataProvider;

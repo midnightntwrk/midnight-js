@@ -24,13 +24,12 @@ import {
   type PrivateStateId,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import { assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
 import { CURRENT_PIPELINE_ERA } from './era';
 import { isEffectContractError } from './errors';
-import { assertValidConfig, networkIdOf } from './internal/midnight-config';
 import { createEncryptionPublicKeyResolver, createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './internal/utils';
 import type { UnsubmittedDeployTxData } from './tx-model';
 
@@ -102,13 +101,15 @@ export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
  * Calls a contract constructor and creates an unbalanced, unproven, unsubmitted, deploy transaction
  * from the constructor results.
  *
- * @param verifierKeys The verifier keys for the contract being deployed.
+ * @param zkConfigProvider Supplies the verifier keys for the contract being deployed.
  * @param coinPublicKey The Zswap coin public key of the current user.
  * @param options Configuration.
- * @param encryptionPublicKey
+ * @param encryptionPublicKey The Zswap encryption public key of the current user.
  * @param config The network the transaction is built for and how long it stays valid, normally `providers.config`.
  * @returns Data produced by the contract constructor call and an unproven deployment transaction
  *          assembled from the contract constructor result.
+ * @throws TypeError If `config` is missing, or its `networkId` is not a non-empty string.
+ * @throws RangeError If `config``.ttlSeconds` is not a positive whole number.
  *
  * @remarks
  * The returned {@link UnsubmittedDeployTxData} is privacy-sensitive and
@@ -123,7 +124,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
   encryptionPublicKey: EncPublicKey,
   config: MidnightConfig
 ): Promise<UnsubmittedDeployTxData<C>> {
-  assertValidConfig(config);
+  assertValidMidnightConfig(config, 'config');
   const contractExec = ContractExecutable.make(options.compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey: coinPublicKey,
@@ -142,7 +143,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
       }
     } = exitResultOrError(exitResult);
     const resolver = createEncryptionPublicKeyResolver(
-      networkIdOf(config),
+      config.networkId,
       coinPublicKey,
       encryptionPublicKey,
       options.additionalCoinEncPublicKeyMappings
@@ -206,6 +207,8 @@ export async function createUnprovenDeployTx<C extends Contract.Any>(
  *
  * @returns A promise that contains all data produced by the constructor call and an unproven
  *          transaction assembled from the constructor result.
+ * @throws TypeError If `providers.config` is missing, or its `networkId` is not a non-empty string.
+ * @throws RangeError If `providers.config``.ttlSeconds` is not a positive whole number.
  *
  * @remarks
  * The returned {@link UnsubmittedDeployTxData} is privacy-sensitive and
@@ -217,9 +220,10 @@ export async function createUnprovenDeployTx<C extends Contract.Any>(
   providers: UnprovenDeployTxProviders<C>,
   options: UnprovenDeployTxOptions<C>
 ): Promise<UnsubmittedDeployTxData<C>> {
+  assertValidMidnightConfig(providers.config);
   return createUnprovenDeployTxFromVerifierKeys(
     providers.zkConfigProvider,
-    parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), networkIdOf(providers.config)),
+    parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId),
     options,
     providers.walletProvider.getEncryptionPublicKey(),
     providers.config

@@ -20,7 +20,7 @@ import {
   type FinalizedTxData,
   SucceedEntirely,
   type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, assertUndefined } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined, assertIsContractAddress, assertUndefined,assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from '../contract-providers';
 import { submitTx } from '../submit-tx';
@@ -77,6 +77,7 @@ export const submitInsertVerifierKeyTx = async <C extends Contract.Any>(
   circuitId: Contract.ProvableCircuitId<C>,
   newVk: VerifierKey
 ): Promise<FinalizedTxData> => {
+  assertValidMidnightConfig(providers.config);
   assertIsContractAddress(contractAddress);
   const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
   assertDefined(contractState, `No contract state found on chain for contract address '${contractAddress}'`);

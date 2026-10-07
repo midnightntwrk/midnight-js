@@ -39,14 +39,19 @@ interface MidnightProviders {
   defaults, so an un-migrated dApp fails to compile.
 - The framework does not read the global network id anywhere, and does not fall
   back to it. A silent fallback would hide an incomplete migration.
-- `ttlSeconds` is a duration, not a date or a date factory. The framework computes
-  the expiry when it builds the intent, and passes the same duration to
-  `walletProvider.balanceTx` as its `ttl` argument, so the intent the wallet adds
-  while balancing gets the same lifetime.
-- The values are checked at the start of every entry point, before chain state
-  is read and before the circuit or constructor runs: a missing config or an
-  empty network id is a `TypeError`; a `ttlSeconds` that is not a positive whole
-  number, or that overflows a `Date`, is a `RangeError`.
+- `ttlSeconds` is a duration, not a date or a date factory. The framework adds it
+  to the current time when it builds each intent, and again when balancing starts,
+  passing that expiry to `walletProvider.balanceTx` as its `ttl` argument. The
+  intent the wallet adds therefore lives as long as the framework's own, counted
+  from a slightly later moment.
+- The values are checked by `assertValidMidnightConfig` from `utils` at the start
+  of every entry point that builds a transaction, before chain state is read and
+  before the circuit or constructor runs: a missing (`undefined` or `null`) config,
+  or a `networkId` that is not a non-empty string without surrounding whitespace,
+  is a `TypeError`; a `ttlSeconds` that is not a positive whole number, or that
+  overflows a `Date`, is a `RangeError`. The check is public so a dApp can run it
+  on its own config early. There is no upper bound: the node enforces the
+  network's own TTL limit.
 - Low-level functions that do not receive `providers` take the config explicitly
   (`CallOptionsProviderDataDependencies.config`, the last argument of
   `createUnprovenDeployTxFromVerifierKeys`).
@@ -55,14 +60,15 @@ interface MidnightProviders {
 - `@midnight-ntwrk/midnight-js-network-id` is deprecated, not removed. Its
   functions keep working so dApp code still compiles, and their docs say the
   framework ignores them. An ESLint `no-restricted-imports` rule keeps the
-  package out of `contracts`, `utils` and the testkit source.
+  package out of every package's source except `network-id` itself and the
+  `midnight-js` barrel, and out of the testkit source.
 
 ## Consequences
 
 - **Positive:** the settings are typed and discoverable in one place. Each
   provider set carries its own network, so one process can serve several. A
-  missing network id is a compile error, not a runtime exception. The TTL is
-  configurable.
+  missing network id is a compile error for TypeScript callers, and a `TypeError`
+  before any work otherwise. The TTL is configurable.
 - **Negative:** every provider literal and every caller of the two low-level
   builders must change in 5.0.0. Code that still calls `setNetworkId()` compiles
   but no longer affects the framework.

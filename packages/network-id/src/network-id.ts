@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
+import type { NetworkId as TypesNetworkId } from '@midnight-ntwrk/midnight-js-types';
+
 /**
  * @deprecated Since 5.0.0 import `NetworkId` from `@midnight-ntwrk/midnight-js-types`. Removed in 6.0.
  */
-export type { NetworkId } from '@midnight-ntwrk/midnight-js-types';
+export type NetworkId = TypesNetworkId;

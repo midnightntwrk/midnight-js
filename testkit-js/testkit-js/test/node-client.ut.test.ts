@@ -33,6 +33,10 @@ describe('[Unit tests] NodeClient', () => {
     vi.clearAllMocks();
   });
 
+  it('rejects an empty network id', () => {
+    expect(() => new NodeClient(nodeURL, logger, '')).toThrow(/networkId/);
+  });
+
   it('contractState queries the contract under the client network id', async () => {
     const contractAddress = 'ab'.repeat(32);
     mockedAxios.post.mockResolvedValue({

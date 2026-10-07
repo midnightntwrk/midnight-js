@@ -46,11 +46,11 @@ import {
   assertDefined,
   decodeLedgerStateValue,
   deserializeCompactContractState,
-  deserializeContractState
+  deserializeContractState,
+  intentTtl
 } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
-import { intentTtl, networkIdOf } from '../midnight-config';
 import { type EncryptionPublicKeyResolver, zswapCallsToSegmentedOffer, zswapStateToOffer } from './zswap-utils';
 
 const PKG = '@midnight-ntwrk/midnight-js-contracts';
@@ -76,8 +76,8 @@ export const createUnprovenLedgerDeployTx = (
   encryptionPublicKey: EncPublicKey | EncryptionPublicKeyResolver,
   config: MidnightConfig
 ): [ContractAddress, ContractState, UnprovenTransaction] => {
-  const networkId = networkIdOf(config);
   const ttl = intentTtl(config);
+  const { networkId } = config;
   const contractDeploy = new ContractDeploy(toLedgerContractState(contractState));
   return [
     contractDeploy.address,
@@ -198,8 +198,8 @@ export const createUnprovenLedgerCallTx = (
   encryptionPublicKey: EncPublicKey | EncryptionPublicKeyResolver,
   config: MidnightConfig
 ): UnprovenTransaction => {
-  const networkId = networkIdOf(config);
   const ttl = intentTtl(config);
+  const { networkId } = config;
   // Calls are in execution-trace order: cross-contract callees first, the root call last.
   const rootCall = calls[calls.length - 1];
   assertDefined(rootCall, 'Expected at least one contract call');

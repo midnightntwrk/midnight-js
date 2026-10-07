@@ -45,6 +45,7 @@ export const getTestEnvironment = (logger: Logger): TestEnvironment => {
       break;
     case 'env-var-remote':
       env = new EnvVarRemoteTestEnvironment(logger);
+      // Fails fast when a required MN_TEST_* variable is missing.
       env.getEnvironmentConfiguration();
       break;
     default:
