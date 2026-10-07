@@ -17,6 +17,7 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { ConfigurationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ZKConfigRegistry } from '@midnight-ntwrk/midnight-js-types';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -85,6 +86,10 @@ describe('nodeZkConfigRegistry', () => {
   it('throws when no bundle exists under the root', async () => {
     await mkdir(join(root, 'just-some-dir'), { recursive: true });
 
-    await expect(nodeZkConfigRegistry(root)).rejects.toThrow(/No compiled contract artifact bundles/);
+    const error = await nodeZkConfigRegistry(root).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ConfigurationError);
+    expect(error).toMatchObject({ code: 'MIDNIGHT_JS_G_CONFIGURATION_MISSING' });
+    expect((error as ConfigurationError).message).toMatch(/No compiled contract artifact bundles/);
   });
 });

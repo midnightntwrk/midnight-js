@@ -18,6 +18,7 @@ import {
   encodeContractKeyLocation,
   hashVerifierKey,
   InvalidProtocolSchemeError,
+  ProofServerError,
   type ProverKey,
   type VerifierKey,
   ZKArtifactNotFoundError,
@@ -355,6 +356,41 @@ describe('httpClientProvingProvider', () => {
       await expect(provider.prove(serializedPreimage, 'test-circuit')).rejects.toThrow(
         /Failed Proof Server response/
       );
+    });
+  });
+
+  describe('coded proof server errors', () => {
+    it.each([
+      [502, 'Bad Gateway', 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE'],
+      [400, 'Bad Request', 'MIDNIGHT_JS_PR_PROOF_SERVER_REFUSED']
+    ])('maps a %i answer to %s', async (status, statusText, code) => {
+      mockFetchRetry.mockResolvedValue({ ok: false, status, statusText, url: mockUrl });
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30]));
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
+
+      const error = await provider.prove(new Uint8Array([1]), 'test-circuit').catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(ProofServerError);
+      expect(error).toMatchObject({
+        code,
+        message: `Failed Proof Server response: url="${mockUrl}", code="${status}", status="${statusText}"`
+      });
+    });
+
+    it('wraps a transport failure and keeps it on cause', async () => {
+      const networkFailure = new TypeError('fetch failed');
+      mockFetchRetry.mockRejectedValue(networkFailure);
+      vi.mocked(ledger.createCheckPayload).mockReturnValue(new Uint8Array([20]));
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
+
+      const error = await provider.check(new Uint8Array([1]), 'test-circuit').catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(ProofServerError);
+      expect(error).toMatchObject({
+        code: 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE',
+        message: `Proof Server request failed: url="${mockUrl}/check"`
+      });
+      expect((error as ProofServerError).cause).toBe(networkFailure);
     });
   });
 

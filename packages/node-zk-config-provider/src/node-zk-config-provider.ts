@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { ConfigurationError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ProverKey, VerifierKey, ZKIR } from '@midnight-ntwrk/midnight-js-types';
 import { createProverKey, createVerifierKey, createZKIR, ZKConfigProvider, ZKConfigRegistry } from '@midnight-ntwrk/midnight-js-types';
 import {
@@ -67,7 +68,7 @@ export class NodeZkConfigProvider<K extends string> extends ZKConfigProvider<K> 
     const target = path.resolve(baseDir, circuitId + ext);
     const rel = path.relative(baseDir, target);
     if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
-      throw new Error(`Invalid circuitId: ${JSON.stringify(circuitId)}`);
+      throw new InvalidArgumentError(`Invalid circuitId: ${JSON.stringify(circuitId)}`);
     }
     return fs.readFile(target);
   }
@@ -255,7 +256,7 @@ export const nodeZkConfigRegistry = async (artifactRoot: string): Promise<ZKConf
   };
   await visit(path.resolve(artifactRoot));
   if (sources.length === 0) {
-    throw new Error(
+    throw new ConfigurationError(
       `No compiled contract artifact bundles (directories containing '${KEY_DIR}/' and '${ZKIR_DIR}/' subdirectories) found under '${artifactRoot}'`
     );
   }

@@ -14,7 +14,7 @@
  */
 
 import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
-import { PayloadNotATransactionError, PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { ConfigurationError, PayloadNotATransactionError, PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type ProverKey,
@@ -162,6 +162,15 @@ describe('httpClientProofProvider', () => {
   // drive the real retained runtime rather than a stub, because the two things
   // that can go wrong here -- proving with the wrong era's cost model, and
   // answering in the wrong arm -- are both invisible to a mocked ledger.
+  test('rejects the positional overload without a zkConfigProvider with a ConfigurationError', () => {
+    // @ts-expect-error the positional overload types the provider as required; JS callers can omit it
+    const act = (): unknown => httpClientProofProvider('http://localhost:8080');
+
+    expect(act).toThrow(ConfigurationError);
+    expect(act).toThrow('zkConfigProvider is required when calling the positional httpClientProofProvider overload');
+    expect(act).toThrow(expect.objectContaining({ code: 'MIDNIGHT_JS_G_CONFIGURATION_MISSING' }));
+  });
+
   describe('v8 payload', () => {
     let retainedEraTxBytes: Uint8Array;
     let circuitDrivingTxBytes: Uint8Array;

@@ -19,7 +19,7 @@ import {
   parseCheckResult,
   type ProvingKeyMaterial,
   type ProvingProvider} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { InvalidProtocolSchemeError, type ZKConfigProvider, ZKConfigRegistry, zkConfigToProvingKeyMaterial } from '@midnight-ntwrk/midnight-js-types';
+import { InvalidProtocolSchemeError, ProofServerError, type ZKConfigProvider, ZKConfigRegistry, zkConfigToProvingKeyMaterial } from '@midnight-ntwrk/midnight-js-types';
 import { warnIfInsecureRemoteUrl, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
@@ -81,16 +81,22 @@ const makeKeyMaterialResolver = <K extends string>(
 };
 
 const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, headers: Record<string, string> = {}): Promise<Uint8Array> => {
-  const response = await fetchRetry(url, {
-    method: 'POST',
-    body: new Uint8Array(payload),
-    headers: { 'Content-Type': 'application/octet-stream', ...headers },
-    signal: AbortSignal.timeout(timeout)
-  });
+  let response: Awaited<ReturnType<typeof fetchRetry>>;
+  try {
+    response = await fetchRetry(url, {
+      method: 'POST',
+      body: new Uint8Array(payload),
+      headers: { 'Content-Type': 'application/octet-stream', ...headers },
+      signal: AbortSignal.timeout(timeout)
+    });
+  } catch (cause) {
+    throw new ProofServerError(`Proof Server request failed: url="${url}"`, undefined, { cause });
+  }
 
   if (!response.ok) {
-    throw new Error(
-      `Failed Proof Server response: url="${response.url}", code="${response.status}", status="${response.statusText}"`
+    throw new ProofServerError(
+      `Failed Proof Server response: url="${response.url}", code="${response.status}", status="${response.statusText}"`,
+      response.status
     );
   }
 

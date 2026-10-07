@@ -19,6 +19,7 @@ import {
   createVerifierKey,
   createZKIR,
   InvalidProtocolSchemeError,
+  ZkArtifactFetchError,
   ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import {
@@ -83,6 +84,14 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     return (response.headers.get('content-type') ?? '').includes('text/html');
   }
 
+  private async fetchArtifact(url: string): Promise<Response> {
+    try {
+      return await this.fetchFunc(url, { method: 'GET' });
+    } catch (cause) {
+      throw new ZkArtifactFetchError(`Failed to fetch ZK artifact from ${url}`, undefined, { cause });
+    }
+  }
+
   private async sendRequest<T extends 'text' | 'arraybuffer'>(
     url: typeof KEY_PATH | typeof ZKIR_PATH,
     circuitId: K,
@@ -91,13 +100,18 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
   ): Promise<T extends 'text' ? string : Uint8Array> {
     assertSafeName(circuitId, 'circuitId');
     const fullUrl = new URL(`${url}/${encodeURIComponent(circuitId)}${ext}`, this.base).toString();
-    const response = await this.fetchFunc(fullUrl, { method: 'GET' });
+    const response = await this.fetchArtifact(fullUrl);
     if (!response.ok) {
-      throw new Error(`Failed to fetch ZK artifact from ${fullUrl}: ${response.status} ${response.statusText}`);
+      throw new ZkArtifactFetchError(
+        `Failed to fetch ZK artifact from ${fullUrl}: ${response.status} ${response.statusText}`,
+        response.status
+      );
     }
     if (FetchZkConfigProvider.isHtmlFallback(response)) {
-      throw new Error(
-        `Expected ZK artifact, but received text/html from ${fullUrl}. This usually means the file does not exist and the server returned an SPA fallback page.`
+      throw new ZkArtifactFetchError(
+        `Expected ZK artifact, but received text/html from ${fullUrl}. This usually means the file does not exist and the server returned an SPA fallback page.`,
+        response.status,
+        { notServed: true }
       );
     }
     /* eslint-disable @typescript-eslint/no-explicit-any, no-restricted-syntax */
@@ -125,7 +139,7 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
   private async fetchManifest(): Promise<ZkArtifactManifest | undefined> {
     const url = new URL(`${ZK_MANIFEST_DIR}/${ZK_MANIFEST_FILE_NAME}`, this.base).toString();
     const { expectedManifestHash } = this.integrityOptions;
-    const response = await this.fetchFunc(url, { method: 'GET' });
+    const response = await this.fetchArtifact(url);
     if (!response.ok || FetchZkConfigProvider.isHtmlFallback(response)) {
       if (expectedManifestHash !== undefined) {
         throw new ZkArtifactIntegrityError(
@@ -179,7 +193,7 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     }
 
     const url = new URL(`${ZK_MANIFEST_DIR}/${ZK_CONTRACT_INFO_FILE_NAME}`, this.base).toString();
-    const response = await this.fetchFunc(url, { method: 'GET' });
+    const response = await this.fetchArtifact(url);
     if (!response.ok) {
       throw new ZkArtifactContractInfoError(
         `No ${ZK_CONTRACT_INFO_FILE_NAME} was available at ${url} (status ${response.status}), so the ` +

@@ -33,6 +33,8 @@ describe('fetchZkConfigProvider factory', () => {
       throw new Error(sentinel);
     };
     const provider = fetchZkConfigProvider({ baseURL: 'http://localhost:5000', fetchFunc: throwingFetch });
-    await expect(provider.getProverKey('set_topic')).rejects.toThrow(sentinel);
+    const error = await provider.getProverKey('set_topic').catch((e: unknown) => e);
+
+    expect((error as Error).cause).toEqual(new Error(sentinel));
   });
 });

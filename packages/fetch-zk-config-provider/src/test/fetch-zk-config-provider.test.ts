@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { ZkArtifactFetchError } from '@midnight-ntwrk/midnight-js-types';
 import { computeSha256Hex, ZkArtifactContractInfoError, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
 import { fetch } from 'cross-fetch';
 import type { BinaryLike } from 'crypto';
@@ -219,6 +220,93 @@ describe('Fetch ZK config Provider', () => {
       const provider = new FetchZkConfigProvider(errorServerURL);
       await expect(provider.getProverKey('missing_circuit')).rejects.toThrow(/missing_circuit/);
       await expect(provider.getProverKey('missing_circuit')).rejects.toThrow(/404/);
+    });
+  });
+
+  describe('coded fetch errors', () => {
+    const BASE = 'https://artifacts.example';
+
+    it.each([
+      [503, 'Service Unavailable', 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED'],
+      [404, 'Not Found', 'MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED']
+    ])('maps a %i answer to %s', async (status, statusText, code) => {
+      const provider = new FetchZkConfigProvider(BASE, {
+        fetchFunc: async () => new Response('x', { status, statusText })
+      });
+
+      const error = await provider.getZKIR('circuit').catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(ZkArtifactFetchError);
+      expect(error).toMatchObject({
+        code,
+        message: `Failed to fetch ZK artifact from ${BASE}/zkir/circuit.bzkir: ${status} ${statusText}`
+      });
+    });
+
+    it('maps an HTML fallback answer to ZK_ARTIFACT_NOT_SERVED', async () => {
+      const provider = new FetchZkConfigProvider(BASE, {
+        fetchFunc: async () => new Response('<html>', { status: 200, headers: { 'content-type': 'text/html' } })
+      });
+
+      const error = await provider.getZKIR('circuit').catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(ZkArtifactFetchError);
+      expect(error).toMatchObject({
+        code: 'MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED',
+        message: `Expected ZK artifact, but received text/html from ${BASE}/zkir/circuit.bzkir. This usually means the file does not exist and the server returned an SPA fallback page.`
+      });
+    });
+
+    it('wraps an artifact network failure and keeps it on cause', async () => {
+      const networkFailure = new TypeError('fetch failed');
+      const provider = new FetchZkConfigProvider(BASE, {
+        fetchFunc: async () => {
+          throw networkFailure;
+        }
+      });
+
+      const error = await provider.getZKIR('circuit').catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(ZkArtifactFetchError);
+      expect(error).toMatchObject({
+        code: 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED',
+        message: `Failed to fetch ZK artifact from ${BASE}/zkir/circuit.bzkir`
+      });
+      expect((error as ZkArtifactFetchError).cause).toBe(networkFailure);
+    });
+
+    it('wraps a manifest network failure and keeps it on cause', async () => {
+      const networkFailure = new TypeError('fetch failed');
+      const provider = new FetchZkConfigProvider(BASE, {
+        fetchFunc: async (input) => {
+          if (String(input).includes('/compiler/')) {
+            throw networkFailure;
+          }
+          return new Response('x');
+        }
+      });
+
+      const error = await provider.getProverKey('circuit').catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(ZkArtifactFetchError);
+      expect((error as ZkArtifactFetchError).cause).toBe(networkFailure);
+    });
+
+    it('wraps a contract-info network failure and keeps it on cause', async () => {
+      const networkFailure = new TypeError('fetch failed');
+      const provider = new FetchZkConfigProvider(BASE, {
+        fetchFunc: async (input) => {
+          if (String(input).endsWith('contract-info.json')) {
+            throw networkFailure;
+          }
+          return new Response('x', { status: 404 });
+        }
+      });
+
+      const error = await provider.getArtifactRuntimeVersion().catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(ZkArtifactFetchError);
+      expect((error as ZkArtifactFetchError).cause).toBe(networkFailure);
     });
   });
 
@@ -497,7 +585,9 @@ describe('Fetch ZK config Provider', () => {
       const provider = new FetchZkConfigProvider(url, { fetchFunc: flakyFetch });
       try {
         // First call: fetchFunc throws on manifest → fetchManifest rejects → cache cleared → getProverKey rejects.
-        await expect(provider.getProverKey('set_topic')).rejects.toThrow('transient network error');
+        const firstError = await provider.getProverKey('set_topic').catch((e: unknown) => e);
+        expect(firstError).toBeInstanceOf(ZkArtifactFetchError);
+        expect((firstError as ZkArtifactFetchError).cause).toEqual(new Error('transient network error'));
         // Second call: manifest now fetched successfully (wrong hash) → digest mismatch error,
         // proving the cache was cleared and the manifest was re-fetched on retry.
         await expect(provider.getProverKey('set_topic')).rejects.toThrow(/failed integrity verification: expected sha-256/);
