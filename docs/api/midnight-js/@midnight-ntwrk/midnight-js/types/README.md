@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
 
 ***
 
@@ -94,6 +94,7 @@
 - [Fees](type-aliases/Fees.md)
 - [KeyMaterialProvider](type-aliases/KeyMaterialProvider.md)
 - [Latest](type-aliases/Latest.md)
+- [PositionedRecord](type-aliases/PositionedRecord.md)
 - [PrivateStateId](type-aliases/PrivateStateId.md)
 - [PrivateStateImportErrorCause](type-aliases/PrivateStateImportErrorCause.md)
 - [PrivateStateSerializationFailure](type-aliases/PrivateStateSerializationFailure.md)

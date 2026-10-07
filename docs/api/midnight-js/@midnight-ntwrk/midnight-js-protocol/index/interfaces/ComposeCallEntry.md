@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 One contract call in a call transaction.
 
-`contractState` is the raw, serialized state the call is dispatched against,
+`contractStateBytes` is the raw, serialized state the call is dispatched against,
 as read from chain. It supplies the registered operation for `circuitId`,
 including its verifier key, which the call's key location hashes; a
 constructor-built state will not do, because it declares its entry points
@@ -42,9 +42,9 @@ callee — omits it and gets fresh randomness.
 
 ***
 
-### contractState
+### contractStateBytes
 
-> `readonly` **contractState**: `Uint8Array`
+> `readonly` **contractStateBytes**: `Uint8Array`
 
 ***
 
@@ -54,9 +54,9 @@ callee — omits it and gets fresh randomness.
 
 ***
 
-### ledgerParameters
+### ledgerParametersBytes
 
-> `readonly` **ledgerParameters**: [`LedgerParametersOption`](../type-aliases/LedgerParametersOption.md)
+> `readonly` **ledgerParametersBytes**: [`LedgerParametersOption`](../type-aliases/LedgerParametersOption.md)
 
 The ledger parameters the chain held at the block this call is built against, serialized —
 `RawContractState.ledgerParameters`, passed through untouched — or
