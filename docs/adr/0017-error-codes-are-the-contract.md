@@ -63,10 +63,10 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | PR | `INVALID_PROTOCOL_SCHEME` | USAGE | `InvalidProtocolSchemeError` |
 | PR | `ARTIFACT_RUNTIME_VERSION_UNAVAILABLE` | ENVIRONMENT | `ArtifactRuntimeVersionUnavailableError` |
 | PR | `ZK_ARTIFACT_NOT_FOUND` | ENVIRONMENT | `ZKArtifactNotFoundError` |
-| PR | `ZK_ARTIFACT_FETCH_FAILED` | TRANSIENT | `ZkArtifactFetchError`* (network failure or HTTP ≥ 500) |
-| PR | `ZK_ARTIFACT_NOT_SERVED` | ENVIRONMENT | `ZkArtifactFetchError`* (HTTP < 500 or HTML fallback) |
-| PR | `PROOF_SERVER_UNAVAILABLE` | TRANSIENT | `ProofServerError`* (network failure or HTTP ≥ 500) |
-| PR | `PROOF_SERVER_REFUSED` | ENVIRONMENT | `ProofServerError`* (HTTP < 500) |
+| PR | `ZK_ARTIFACT_FETCH_FAILED` | TRANSIENT | `ZkArtifactFetchError`* (network failure, HTTP 408, 429 or ≥ 500) |
+| PR | `ZK_ARTIFACT_NOT_SERVED` | ENVIRONMENT | `ZkArtifactFetchError`* (other HTTP < 500 or HTML fallback) |
+| PR | `PROOF_SERVER_UNAVAILABLE` | TRANSIENT | `ProofServerError`* (network failure, HTTP 408, 429 or ≥ 500) |
+| PR | `PROOF_SERVER_REFUSED` | ENVIRONMENT | `ProofServerError`* (other HTTP < 500) |
 | PR | `PRIVATE_STATE_EXPORT_FAILED` | USAGE | `PrivateStateExportError` |
 | PR | `SIGNING_KEY_EXPORT_FAILED` | USAGE | `SigningKeyExportError` |
 | PR | `PRIVATE_STATE_IMPORT_FAILED` | INTEGRITY | `PrivateStateImportError` |

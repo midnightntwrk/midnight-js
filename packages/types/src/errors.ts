@@ -553,7 +553,13 @@ export class ImportConflictError extends PrivateStateImportError {
   }
 }
 
-/** A ZK artifact could not be fetched. `status` is the HTTP status, absent when the request itself failed. */
+const isTransientHttpStatus = (status: number | undefined): boolean =>
+  status === undefined || status >= 500 || status === 408 || status === 429;
+
+/**
+ * A ZK artifact could not be fetched. `status` is the HTTP status, absent when the request itself failed.
+ * A network failure, HTTP 408, 429 or 5xx is TRANSIENT; any other status is ENVIRONMENT.
+ */
 export class ZkArtifactFetchError extends MidnightJsError {
   readonly code: typeof ZK_ARTIFACT_FETCH_FAILED | typeof ZK_ARTIFACT_NOT_SERVED;
   readonly category: MidnightJsErrorCategory;
@@ -571,14 +577,17 @@ export class ZkArtifactFetchError extends MidnightJsError {
     super(message, options?.cause === undefined ? undefined : { cause: options.cause });
     this.name = 'ZkArtifactFetchError';
     this.code =
-      options?.notServed !== true && (status === undefined || status >= 500)
+      options?.notServed !== true && isTransientHttpStatus(status)
         ? ZK_ARTIFACT_FETCH_FAILED
         : ZK_ARTIFACT_NOT_SERVED;
     this.category = PROVIDER_ERROR_CATEGORIES[this.code];
   }
 }
 
-/** The proof server could not be reached or did not accept the request. */
+/**
+ * The proof server could not be reached or did not accept the request.
+ * A network failure, HTTP 408, 429 or 5xx is TRANSIENT; any other status is ENVIRONMENT.
+ */
 export class ProofServerError extends MidnightJsError {
   readonly code: typeof PROOF_SERVER_UNAVAILABLE | typeof PROOF_SERVER_REFUSED;
   readonly category: MidnightJsErrorCategory;
@@ -590,7 +599,7 @@ export class ProofServerError extends MidnightJsError {
   ) {
     super(message, options);
     this.name = 'ProofServerError';
-    this.code = status === undefined || status >= 500 ? PROOF_SERVER_UNAVAILABLE : PROOF_SERVER_REFUSED;
+    this.code = isTransientHttpStatus(status) ? PROOF_SERVER_UNAVAILABLE : PROOF_SERVER_REFUSED;
     this.category = PROVIDER_ERROR_CATEGORIES[this.code];
   }
 }

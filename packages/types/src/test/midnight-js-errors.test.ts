@@ -85,7 +85,26 @@ describe('types error classes', () => {
   });
 
   it.each([
+    ['PrivateStateDecryptionError', new PrivateStateDecryptionError('msg'), 'MIDNIGHT_JS_PR_PRIVATE_STATE_DECRYPTION_FAILED', 'INTEGRITY'],
+    ['PrivateStateStorageError', new PrivateStateStorageError('msg'), 'MIDNIGHT_JS_PR_PRIVATE_STATE_STORAGE_FAILED', 'ENVIRONMENT'],
+    ['PrivateStateLimitExceededError', new PrivateStateLimitExceededError('msg'), 'MIDNIGHT_JS_PR_PRIVATE_STATE_LIMIT_EXCEEDED', 'USAGE'],
+    ['PrivateStateExportError', new PrivateStateExportError('msg'), 'MIDNIGHT_JS_PR_PRIVATE_STATE_EXPORT_FAILED', 'USAGE'],
+    ['SigningKeyExportError', new SigningKeyExportError('msg'), 'MIDNIGHT_JS_PR_SIGNING_KEY_EXPORT_FAILED', 'USAGE'],
+    ['InvalidProtocolSchemeError', new InvalidProtocolSchemeError('ftp', ['http', 'https']), 'MIDNIGHT_JS_PR_INVALID_PROTOCOL_SCHEME', 'USAGE'],
+    [
+      'ArtifactRuntimeVersionUnavailableError',
+      new ArtifactRuntimeVersionUnavailableError('provider'),
+      'MIDNIGHT_JS_PR_ARTIFACT_RUNTIME_VERSION_UNAVAILABLE',
+      'ENVIRONMENT'
+    ]
+  ] as const)('%s carries its code and category', (_name, error, code, category) => {
+    expect([error.code, error.category]).toEqual([code, category]);
+  });
+
+  it.each([
     [503, 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED', 'TRANSIENT'],
+    [408, 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED', 'TRANSIENT'],
+    [429, 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED', 'TRANSIENT'],
     [404, 'MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED', 'ENVIRONMENT']
   ] as const)('ZkArtifactFetchError for HTTP %i is %s', (status, code, category) => {
     const error = new ZkArtifactFetchError('msg', status);
@@ -113,6 +132,8 @@ describe('types error classes', () => {
 
   it.each([
     [502, 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE', 'TRANSIENT'],
+    [408, 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE', 'TRANSIENT'],
+    [429, 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE', 'TRANSIENT'],
     [400, 'MIDNIGHT_JS_PR_PROOF_SERVER_REFUSED', 'ENVIRONMENT'],
     [undefined, 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE', 'TRANSIENT']
   ] as const)('ProofServerError for status %s is %s', (status, code, category) => {
