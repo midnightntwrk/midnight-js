@@ -88,7 +88,7 @@ describe('Unshielded Balances Integration', () => {
       const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
 
       expect(typeof provider.watchForUnshieldedBalances).toBe('function');
-      expect(provider.watchForUnshieldedBalances.length).toBe(1); // expects 1 parameter
+      expect(provider.watchForUnshieldedBalances.length).toBe(2);
     });
 
     test('should return a Promise that eventually times out in test environment', () => {

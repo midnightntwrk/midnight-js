@@ -35,6 +35,7 @@ import {
   SigningKeyExportError,
   UntaggedPayloadError,
   V8PayloadUnsupportedError,
+  WatchTimeoutError,
   ZkArtifactFetchError
 } from '../errors';
 import * as errors from '../errors';
@@ -64,6 +65,7 @@ describe('types error classes', () => {
     ['PrivateStateDecryptionError', new PrivateStateDecryptionError('msg', 'malformed')],
     ['PrivateStateStorageError', new PrivateStateStorageError('msg')],
     ['PrivateStateLimitExceededError', new PrivateStateLimitExceededError('msg')],
+    ['WatchTimeoutError', new WatchTimeoutError('watchForTxData', 'txId abc', 5000)],
     ['ZKArtifactNotFoundError', new ZKArtifactNotFoundError(keyLocation)]
   ];
 
@@ -177,6 +179,18 @@ describe('types error classes', () => {
     // Assert
     expect(error.cause).toBe(operationFailure);
     expect(error.closeError).toBe(closeFailure);
+  });
+
+  it('WatchTimeoutError is uncertain and names what it waited for', () => {
+    const error = new WatchTimeoutError('watchForTxData', 'txId abc', 5000);
+
+    expect([error.code, error.category, error.operation, error.subject, error.maxWaitMs]).toEqual([
+      'MIDNIGHT_JS_PR_WATCH_TIMED_OUT',
+      'UNCERTAIN',
+      'watchForTxData',
+      'txId abc',
+      5000
+    ]);
   });
 
   it('ZKArtifactNotFoundError is an environment error', () => {

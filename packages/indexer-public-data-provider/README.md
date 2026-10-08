@@ -228,24 +228,40 @@ Wait for data to appear on-chain (polling with automatic retry):
 ```typescript
 // Wait for contract to be deployed
 watchForContractState(
-  contractAddress: ContractAddress
+  contractAddress: ContractAddress,
+  options?: WatchOptions
 ): Promise<ContractState>
 
 // Wait for unshielded balances
 watchForUnshieldedBalances(
-  contractAddress: ContractAddress
+  contractAddress: ContractAddress,
+  options?: WatchOptions
 ): Promise<UnshieldedBalances>
 
 // Wait for deploy transaction data
 watchForDeployTxData(
-  contractAddress: ContractAddress
-): Promise<FinalizedTxData>
+  contractAddress: ContractAddress,
+  options?: WatchOptions
+): Promise<VersionedFinalizedTxData>
 
 // Wait for any transaction data
 watchForTxData(
-  txId: TransactionId
-): Promise<FinalizedTxData>
+  txId: TransactionId,
+  options?: WatchOptions
+): Promise<VersionedFinalizedTxData>
 ```
+
+Each method waits indefinitely unless you pass `maxWaitMs`. With it, the call
+rejects with `WatchTimeoutError` (code `MIDNIGHT_JS_PR_WATCH_TIMED_OUT`,
+category `UNCERTAIN`) once that many milliseconds pass without the data, and
+polling stops:
+
+```typescript
+const record = await provider.watchForTxData(txId, { maxWaitMs: 120_000 });
+```
+
+A timeout does not mean the transaction failed: it may still land. Check the
+chain before submitting it again.
 
 ### Observable Methods
 

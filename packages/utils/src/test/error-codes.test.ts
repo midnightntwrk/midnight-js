@@ -269,7 +269,8 @@ describe('error categories', () => {
     expect(codesIn('UNCERTAIN')).toEqual([
       'MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED',
       'MIDNIGHT_JS_C_STALE_HEAD',
-      'MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED'
+      'MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED',
+      'MIDNIGHT_JS_PR_WATCH_TIMED_OUT'
     ]);
   });
 

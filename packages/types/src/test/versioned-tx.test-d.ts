@@ -35,7 +35,7 @@ import type {
   VersionedUnboundTransaction,
   VersionedUnprovenTransaction
 } from '../proof-provider';
-import type { PublicDataProvider } from '../public-data-provider';
+import type { PublicDataProvider, WatchOptions } from '../public-data-provider';
 import type { V8TxBytes, VersionedFinalizedTxData } from '../versioned';
 import type { VersionedFinalizedTransaction, WalletProvider } from '../wallet-provider';
 
@@ -253,13 +253,13 @@ describe('tx-flow provider members', () => {
 describe('read-surface provider members', () => {
   it('watchForTxData resolves a version-tagged finalized record', () => {
     expectTypeOf<PublicDataProvider['watchForTxData']>().toEqualTypeOf<
-      (txId: TransactionId) => Promise<VersionedFinalizedTxData>
+      (txId: TransactionId, options?: WatchOptions) => Promise<VersionedFinalizedTxData>
     >();
   });
 
   it('watchForDeployTxData resolves a version-tagged finalized record', () => {
     expectTypeOf<PublicDataProvider['watchForDeployTxData']>().toEqualTypeOf<
-      (contractAddress: ContractAddress) => Promise<VersionedFinalizedTxData>
+      (contractAddress: ContractAddress, options?: WatchOptions) => Promise<VersionedFinalizedTxData>
     >();
   });
 });

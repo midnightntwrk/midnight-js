@@ -341,8 +341,23 @@ export interface ContractEventsPage {
 }
 
 /**
+ * Options for the `watchFor*` methods of {@link PublicDataProvider}.
+ */
+export interface WatchOptions {
+  /**
+   * How long to wait for the data to appear, in milliseconds: a positive
+   * integer no larger than 2147483647 (the largest delay a timer can hold).
+   * When it elapses, the call rejects with `WatchTimeoutError` and polling
+   * stops. Omit it to wait indefinitely.
+   *
+   * An implementation that ignores this option waits indefinitely instead, so
+   * a custom provider must honour it for the bound to hold.
+   */
+  readonly maxWaitMs?: number;
+}
+
+/**
  * Interface for a public data service. This service retrieves public data from the blockchain.
- * TODO: Add timeouts or retry limits to 'watchFor' queries.
  */
 export interface PublicDataProvider {
   /**
@@ -400,55 +415,48 @@ export interface PublicDataProvider {
 
   /**
    * Retrieves the contract state of the contract with the given address.
-   * Waits indefinitely for matching data to appear.
+   * Waits for matching data to appear, indefinitely unless `options.maxWaitMs` is given.
    * @param contractAddress The address of the contract of interest.
+   * @param options Bounds the wait; see {@link WatchOptions}.
    */
-  watchForContractState(contractAddress: ContractAddress): Promise<ContractState>;
+  watchForContractState(contractAddress: ContractAddress, options?: WatchOptions): Promise<ContractState>;
 
   /**
-   * Monitors for any unshielded balances associated with a specific contract address.
+   * Waits for unshielded balances to appear for the given contract address,
+   * indefinitely unless `options.maxWaitMs` is given.
    *
-   * @param {ContractAddress} contractAddress - The address of the contract to monitor for unshielded balances.
-   * @return {Promise<UnshieldedBalances>} A promise that resolves to the detected unshielded balances.
+   * @param contractAddress The address of the contract to monitor for unshielded balances.
+   * @param options Bounds the wait; see {@link WatchOptions}.
+   * @returns A promise that resolves to the detected unshielded balances.
    */
-  watchForUnshieldedBalances(contractAddress: ContractAddress): Promise<UnshieldedBalances>;
+  watchForUnshieldedBalances(contractAddress: ContractAddress, options?: WatchOptions): Promise<UnshieldedBalances>;
 
   /**
    * Retrieves data of the deployment transaction for the contract at the given contract address.
    *
-   * **IMPORTANT: This method waits indefinitely** until the deployment transaction appears on the
-   * blockchain. It will never timeout or reject unless an error occurs.
-   *
-   * Custom implementations MUST maintain this indefinite waiting behavior to ensure consistency
-   * across all PublicDataProvider implementations. Do not implement timeouts in this method.
+   * Waits until the deployment transaction appears on the blockchain, indefinitely unless
+   * `options.maxWaitMs` is given.
    *
    * @param contractAddress The address of the contract of interest.
+   * @param options Bounds the wait; see {@link WatchOptions}.
    *
    * @returns A promise that resolves with finalized transaction data when the deployment appears on-chain.
-   *          The promise never rejects due to timeout.
    */
-  watchForDeployTxData(contractAddress: ContractAddress): Promise<VersionedFinalizedTxData>;
+  watchForDeployTxData(contractAddress: ContractAddress, options?: WatchOptions): Promise<VersionedFinalizedTxData>;
 
   /**
    * Retrieves data of the transaction containing the call or deployment with the given identifier.
    *
-   * **IMPORTANT: This method waits indefinitely** until the transaction appears on the blockchain.
-   * It will never timeout or reject unless an error occurs.
-   *
-   * Custom implementations MUST maintain this indefinite waiting behavior to ensure consistency
-   * across all PublicDataProvider implementations. Do not implement timeouts in this method.
-   *
-   * Applications using this method should be aware that:
-   * - The promise will not resolve until the transaction appears on-chain
-   * - If a transaction is invalid and never appears, this will never return
-   * - Consider using application-level timeouts or cancellation mechanisms if needed
+   * Waits until the transaction appears on the blockchain, indefinitely unless
+   * `options.maxWaitMs` is given. Without a bound, a transaction that never
+   * appears (for example, an invalid one) means the promise never settles.
    *
    * @param txId The identifier of the call or deployment of interest.
+   * @param options Bounds the wait; see {@link WatchOptions}.
    *
    * @returns A promise that resolves with finalized transaction data when the transaction appears on-chain.
-   *          The promise never rejects due to timeout.
    */
-  watchForTxData(txId: TransactionId): Promise<VersionedFinalizedTxData>;
+  watchForTxData(txId: TransactionId, options?: WatchOptions): Promise<VersionedFinalizedTxData>;
 
   /**
    * Creates a stream of contract states. The observable emits a value every time a state is either
