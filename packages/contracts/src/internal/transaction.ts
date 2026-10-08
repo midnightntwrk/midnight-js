@@ -350,6 +350,9 @@ export const assertScopeAdmitsRetainedEraCall = (circuitId: string, transactionC
 /**
  * Logs a failure of the root scope, naming the scope, and returns it unchanged for the caller to
  * rethrow. A nested scope logs nothing: its failure reaches the root, which logs it once.
+ *
+ * The error object itself is logged under `err`, so a pino logger records its stack and `cause`
+ * chain, not only the one-line message.
  */
 const logScopeFailure = (
   providers: { readonly loggerProvider?: LoggerProvider } | undefined,
@@ -359,9 +362,11 @@ const logScopeFailure = (
   err: unknown
 ): unknown => {
   if (outerTxCtx === undefined) {
+    const scopeName = txOptions?.scopeName ?? '<unnamed>';
     providers?.loggerProvider?.error?.call(
       providers.loggerProvider,
-      `Scoped transaction '${txOptions?.scopeName ?? '<unnamed>'}' failed while ${phase}: ${String(err)}`
+      { err, scopeName, phase },
+      `Scoped transaction '${scopeName}' failed while ${phase}: ${String(err)}`
     );
   }
   return err;

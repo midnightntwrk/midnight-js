@@ -40,20 +40,28 @@ describe('scoped transaction failures', () => {
 
     // Assert
     await expect(rejection).rejects.toBe(failure);
-    expect(logError).toHaveBeenCalledWith("Scoped transaction 'myTransfer' failed while executing: Error: circuit failed");
+    expect(logError).toHaveBeenCalledExactlyOnceWith(
+      { err: failure, scopeName: 'myTransfer', phase: 'executing' },
+      "Scoped transaction 'myTransfer' failed while executing: Error: circuit failed"
+    );
+    expect(logError.mock.calls[0]?.[0]?.err).toBe(failure);
   });
 
   it('logs <unnamed> when no scopeName is provided', async () => {
     // Arrange
     const { providers, error: logError } = withErrorLog();
+    const failure = new Error('circuit failed');
 
     // Act
     const rejection = withContractScopedTransaction(providers, async () => {
-      throw new Error('circuit failed');
+      throw failure;
     });
 
     // Assert
-    await expect(rejection).rejects.toThrow('circuit failed');
-    expect(logError).toHaveBeenCalledWith("Scoped transaction '<unnamed>' failed while executing: Error: circuit failed");
+    await expect(rejection).rejects.toBe(failure);
+    expect(logError).toHaveBeenCalledExactlyOnceWith(
+      { err: failure, scopeName: '<unnamed>', phase: 'executing' },
+      "Scoped transaction '<unnamed>' failed while executing: Error: circuit failed"
+    );
   });
 });

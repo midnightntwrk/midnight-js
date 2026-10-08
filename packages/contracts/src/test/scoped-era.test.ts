@@ -162,7 +162,8 @@ describe('per-scope era resolution', () => {
 
     // Assert
     expect(error).toBe(failure);
-    expect(logError).toHaveBeenCalledWith("Scoped transaction 'myScope' failed while submitting: Error: node unreachable");
+    expect(logError).toHaveBeenCalledExactlyOnceWith({ err: failure, scopeName: 'myScope', phase: 'submitting' }, "Scoped transaction 'myScope' failed while submitting: Error: node unreachable");
+    expect(logError.mock.calls[0]?.[0]?.err).toBe(failure);
   });
 
   it('logs a coded failure of the submit step too, and passes it through unchanged', async () => {
@@ -183,9 +184,8 @@ describe('per-scope era resolution', () => {
 
     // Assert
     expect(error).toBe(failure);
-    expect(logError).toHaveBeenCalledWith(
-      "Scoped transaction 'myScope' failed while submitting: HeadReadFailedError: head read failed"
-    );
+    expect(logError).toHaveBeenCalledExactlyOnceWith({ err: failure, scopeName: 'myScope', phase: 'submitting' }, "Scoped transaction 'myScope' failed while submitting: HeadReadFailedError: head read failed");
+    expect(logError.mock.calls[0]?.[0]?.err).toBe(failure);
   });
 
   it('passes a foreign coded failure of the submit step through unchanged', async () => {
@@ -220,7 +220,8 @@ describe('per-scope era resolution', () => {
 
     // Assert
     expect(error).toBe(failure);
-    expect(logError).toHaveBeenCalledWith("Scoped transaction 'myScope' failed while executing: Error: witness refused");
+    expect(logError).toHaveBeenCalledExactlyOnceWith({ err: failure, scopeName: 'myScope', phase: 'executing' }, "Scoped transaction 'myScope' failed while executing: Error: witness refused");
+    expect(logError.mock.calls[0]?.[0]?.err).toBe(failure);
   });
 
   it('resolves the head era ONCE per scope, however many calls are merged into it', async () => {
