@@ -15,6 +15,7 @@
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { AnyPrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
@@ -149,9 +150,11 @@ describe('deployContract', () => {
   it('refuses a private state id written as undefined, before any transaction is built', async () => {
     const options = { ...baseOptions, privateStateId: undefined };
 
-    await expect(deployContract(providers, options)).rejects.toThrow(
-      "'privateStateId' was given as undefined"
-    );
+    await expect(deployContract(providers, options)).rejects.toMatchObject({
+      name: 'InvalidArgumentError',
+      code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+      message: expect.stringContaining("'privateStateId' was given as undefined")
+    });
 
     expect(mockSubmitDeployTx).not.toHaveBeenCalled();
   });
@@ -162,7 +165,11 @@ describe('deployContract', () => {
     // @ts-expect-error - an undefined id beside a state
     const deploying = deployContract(providers, options);
 
-    await expect(deploying).rejects.toThrow("'privateStateId' was given as undefined");
+    await expect(deploying).rejects.toMatchObject({
+      name: 'InvalidArgumentError',
+      code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+      message: expect.stringContaining("'privateStateId' was given as undefined")
+    });
     expect(mockSubmitDeployTx).not.toHaveBeenCalled();
   });
 

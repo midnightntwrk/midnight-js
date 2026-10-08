@@ -48,9 +48,11 @@ import { Cause, Clock, Effect, Exit, Layer, Option, type Types } from 'effect';
 import {
   ComposeFailedError,
   ComposeOptionError,
+  ContractExecutionError,
   DownConvertFailedError,
-  PROTOCOL_ERROR_CODES,
-  type ProtocolErrorCode
+  findCodedCause,
+  InvalidArgumentError,
+  InvariantViolationError
 } from '../../errors';
 import type { EncodedStateValue } from '../era/envelope';
 import type { PartitionContext } from '../shared/compose-types';
@@ -333,7 +335,7 @@ export const pinnedClock = (nowSeconds: number): Clock.Clock => {
   // `number` on the published option, and `Number(process.env.X)` with the
   // variable unset is the obvious way to produce one.
   if (!Number.isFinite(nowSeconds)) {
-    throw new Error(
+    throw new InvalidArgumentError(
       `the retained era cannot pin its execution clock to '${String(nowSeconds)}'. ` +
         '`nowSeconds` must be a finite number of seconds since the epoch.'
     );
@@ -420,7 +422,7 @@ const zkConfigurationLayer = (read: VerifierKeyReader): Layer.Layer<ZKConfigurat
  */
 export const refuseVerifierKeyRead: VerifierKeyReader = (provableCircuitId) =>
   Promise.reject(
-    new Error(
+    new InvariantViolationError(
       `a retained-era circuit call read the verifier key for '${provableCircuitId}'. Circuit calls are ` +
         'not supposed to read ZK configuration; only deployment and maintenance are.'
     )
@@ -586,54 +588,26 @@ const executableStateFrom = (contractState: ContractStatePojo): glue.ContractSta
   }
 };
 
-/**
- * Every message in a failure's cause chain, outermost first.
- *
- * compact-js reports an execution failure as `Error executing circuit 'x'` and
- * hangs the runtime's own diagnostic -- `Block time is <= time`, an out-of-gas,
- * a failed assertion -- on `cause`. Only the outer message reaches a caller who
- * reads `error.message`, so the reason the circuit ACTUALLY failed is lost at
- * exactly the moment someone needs it.
- */
-export const causeChain = (error: unknown, seen: Set<unknown> = new Set()): readonly string[] => {
-  if (typeof error !== 'object' || error === null || seen.has(error)) {
-    return typeof error === 'string' ? [error] : [];
-  }
-  seen.add(error);
-  const message = 'message' in error && typeof error.message === 'string' ? [error.message] : [];
-  return 'cause' in error ? [...message, ...causeChain(error.cause, seen)] : message;
-};
+export { causeChain } from '../shared/cause-chain';
 
 /**
- * Runs an effect and rethrows its failure with the whole cause chain in the
- * message.
+ * Runs an effect and rethrows its failure without losing the failure's class,
+ * message, stack or `cause`.
  *
  * `Effect.runPromise` alone rejects with a `FiberFailure`, which carries neither
  * the failure's class nor its `cause` — so a caller loses both the error it
  * could have discriminated on and the diagnostic it needed. `runPromiseExit`
- * plus `Cause.squash` recovers the real error, which is then rethrown with the
- * underlying reason spelled out and the original on `cause`.
- */
-const PROTOCOL_ERROR_CODE_VALUES: ReadonlySet<string> = new Set(Object.values(PROTOCOL_ERROR_CODES));
-
-/**
- * Whether a value is one of this package's own coded errors.
+ * recovers the real failures, which are then rethrown as follows:
  *
- * The registry is the test rather than `instanceof` against a list: every class
- * in `errors.ts` carries a `code` drawn from {@link PROTOCOL_ERROR_CODES}, so a
- * class added later is recognised without this predicate being touched.
- *
- * @param error The value to test.
- * @returns `true` when the value carries a registered protocol error code.
+ * - A midnight-js coded error raised directly is rethrown unchanged, however
+ *   many failures arrived beside it.
+ * - A lone failure carrying a coded error within eight links of its `cause`
+ *   chain is rethrown as that coded error.
+ * - Otherwise a {@link ContractExecutionError} is thrown. Its message spells out
+ *   every failure with its whole cause chain, `cause` is the first coded error
+ *   found or else the first failure, and `errors` holds every failure as the
+ *   original object.
  */
-const isCodedProtocolError = (error: unknown): error is Error & { readonly code: ProtocolErrorCode } => {
-  if (!(error instanceof Error) || !('code' in error)) {
-    return false;
-  }
-  const { code } = error;
-  return typeof code === 'string' && PROTOCOL_ERROR_CODE_VALUES.has(code);
-};
-
 export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {
   const exit = await Effect.runPromiseExit(effect);
   if (Exit.isSuccess(exit)) {
@@ -644,22 +618,20 @@ export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A
   // fails three times at once and `Cause.squash` answers with one -- sending the
   // caller round the fix-and-rerun loop once per missing key.
   const failures = Array.from(Cause.failures(exit.cause));
-  const error: unknown = failures.length > 0 ? failures[0] : Cause.squash(exit.cause);
-  // A coded error leaves with its CLASS intact, however many failures arrived
-  // beside it. Flattening one erases the `code` and `stage` a caller
-  // discriminates on, and this boundary sees errors this package raised itself
-  // on the way through, not only compact-js's. When several fail at once the
-  // coded one wins: a caller can branch on a code but not on a joined message,
-  // and the rest stay readable on the cause chain.
-  const coded = failures.find(isCodedProtocolError);
-  if (coded !== undefined) {
-    throw coded;
+  const all = failures.length > 0 ? failures : [Cause.squash(exit.cause)];
+  // A coded error raised directly leaves with its class intact, however many
+  // failures arrived beside it: the `@throws` of the entry points promise it.
+  // One found only on a cause chain leaves alone just when it is the only
+  // failure; otherwise every failure is reported, the first coded one on `cause`.
+  const direct = all.find((failure) => findCodedCause(failure) === failure);
+  if (direct !== undefined) {
+    throw direct;
   }
-  const describe = (failure: unknown): string => {
-    const chain = causeChain(failure);
-    return chain.length > 0 ? chain.join(': ') : String(failure);
-  };
-  throw new Error(failures.length > 1 ? failures.map(describe).join('; ') : describe(error), { cause: error });
+  const carried = all.length === 1 ? findCodedCause(all[0]) : undefined;
+  if (carried !== undefined) {
+    throw carried;
+  }
+  throw ContractExecutionError.fromFailures(all);
 };
 
 /**
@@ -674,12 +646,12 @@ export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A
  * @param calls The calls the execution reported.
  * @param circuitId The circuit they were produced for, for the message.
  * @returns The sole call.
- * @throws Error If the list is empty.
+ * @throws InvariantViolationError If the list is empty.
  */
 export const soleCall = <T>(calls: readonly T[], circuitId: string): T => {
   const [only] = calls;
   if (only === undefined) {
-    throw new Error(
+    throw new InvariantViolationError(
       `circuit '${circuitId}' produced no contract call. The retained era cannot make a ` +
         'cross-contract call, so exactly one is expected.'
     );
@@ -701,14 +673,14 @@ export const soleCall = <T>(calls: readonly T[], circuitId: string): T => {
  *
  * @param contract The contract the call names.
  * @param circuitId The circuit the caller asked for.
- * @throws Error If the contract declares no such circuit.
+ * @throws InvalidArgumentError If the contract declares no such circuit.
  */
 const assertDeclaredCircuit = (contract: RetainedContract, circuitId: string): void => {
   const circuit = Object.hasOwn(contract.provableCircuits, circuitId)
     ? contract.provableCircuits[circuitId]
     : undefined;
   if (typeof circuit !== 'function') {
-    throw new Error(
+    throw new InvalidArgumentError(
       `No circuit named '${circuitId}' on this retained-era contract instance. ` +
         `Available circuits: ${Object.keys(contract.provableCircuits).sort().join(', ')}.`
     );

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { ConfigurationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 
 import { assertValidMidnightConfig } from './midnight-config';
@@ -32,13 +33,13 @@ const REQUIRED_PROVIDERS = [
  *
  * @param providers The provider set to check.
  * @returns The same `providers` object.
- * @throws TypeError If a required provider is missing, or as {@link assertValidMidnightConfig}.
- * @throws RangeError As {@link assertValidMidnightConfig}.
+ * @throws ConfigurationError If a required provider is missing, or as {@link assertValidMidnightConfig}.
+ * @throws InvalidArgumentError As {@link assertValidMidnightConfig}.
  */
 export const createMidnightProviders = <P extends MidnightProviders>(providers: P): P => {
   for (const key of REQUIRED_PROVIDERS) {
     if (typeof providers[key] !== 'object' || providers[key] === null) {
-      throw new TypeError(`providers.${key} is missing.`);
+      throw new ConfigurationError(`providers.${key} is missing.`);
     }
   }
   assertValidMidnightConfig(providers.config);

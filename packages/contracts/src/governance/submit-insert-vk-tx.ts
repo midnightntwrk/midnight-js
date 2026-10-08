@@ -15,14 +15,16 @@
 
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type FinalizedTxData,
   SucceedEntirely,
   type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, assertUndefined,assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from '../contract-providers';
+import { getExistingSigningKey, queryExistingContractState } from '../internal/required-reads';
 import { submitTx } from '../submit-tx';
 import { InsertVerifierKeyTxFailedError } from './errors';
 import { createUnprovenInsertVerifierKeyTx } from './unproven-tx';
@@ -79,15 +81,12 @@ export const submitInsertVerifierKeyTx = async <C extends Contract.Any>(
 ): Promise<FinalizedTxData> => {
   assertValidMidnightConfig(providers.config);
   assertIsContractAddress(contractAddress);
-  const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
-  assertDefined(contractState, `No contract state found on chain for contract address '${contractAddress}'`);
+  const contractState = await queryExistingContractState(providers.publicDataProvider, contractAddress);
   const existingVerifierKey: Uint8Array | undefined = contractState.operation(circuitId)?.verifierKey;
-  assertUndefined(
-    existingVerifierKey,
-    `Circuit '${circuitId}' is already defined for contract at address '${contractAddress}'`
-  );
-  const signingKey = await providers.privateStateProvider.getSigningKey(contractAddress);
-  assertDefined(signingKey, `Signing key for contract address '${contractAddress}' not found`);
+  if (existingVerifierKey !== undefined && existingVerifierKey !== null) {
+    throw new InvalidArgumentError(`Circuit '${circuitId}' is already defined for contract at address '${contractAddress}'`);
+  }
+  const signingKey = await getExistingSigningKey(providers.privateStateProvider, contractAddress);
   const unprovenTx = await createUnprovenInsertVerifierKeyTx(
     providers.zkConfigProvider,
     compiledContract,

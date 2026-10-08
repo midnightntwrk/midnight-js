@@ -13,6 +13,10 @@
  * limitations under the License.
  */
 
+import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+
+import { UTILS_ERROR_CATEGORIES, UTILS_ERROR_CODES } from './error-codes';
+
 export const MIN_PASSWORD_LENGTH = 16;
 export const MIN_CHARACTER_CLASSES = 3;
 export const MAX_CONSECUTIVE_REPEATED = 3;
@@ -32,7 +36,10 @@ export type PasswordValidationFailure =
  * Thrown when a password does not satisfy the strength policy applied to
  * private storage and export/import operations.
  */
-export class PasswordValidationError extends Error {
+export class PasswordValidationError extends MidnightJsError {
+  readonly code = UTILS_ERROR_CODES.PASSWORD_INVALID;
+  readonly category = UTILS_ERROR_CATEGORIES[UTILS_ERROR_CODES.PASSWORD_INVALID];
+
   constructor(
     message: string,
     public readonly reason: PasswordValidationFailure

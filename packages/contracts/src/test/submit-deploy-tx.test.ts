@@ -14,6 +14,7 @@
  */
 
 import { type CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -401,7 +402,11 @@ describe('submit-deploy-tx', () => {
 
         const submitting = submitDeployTx(mockProviders, options);
 
-        await expect(submitting).rejects.toThrow("'privateStateId' was given as undefined");
+        await expect(submitting).rejects.toMatchObject({
+          name: 'InvalidArgumentError',
+          code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+          message: expect.stringContaining("'privateStateId' was given as undefined")
+        });
         expect(createUnprovenDeployTx).not.toHaveBeenCalled();
         expect(submitTx).not.toHaveBeenCalled();
       });

@@ -22,13 +22,19 @@ import { describe, expect, it } from 'vitest';
 // assertion -- a class dropped from `src/index.ts` fails `yarn typecheck:tests` here.
 import {
   BlankVerifierKeySlotError,
+  ContractNotFoundError,
   EraArtifactMismatchError,
   type EraArtifactMismatchReason,
   EraInvariantViolationError,
+  HeadReadFailedError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
   Ledger8,
-  VerifierKeyMismatchError
+  LedgerParametersUnservedError,
+  PrivateStateNotFoundError,
+  RetainedArtifactOnCurrentEraStateError,
+  VerifierKeyMismatchError,
+  ZswapOutputResolutionError
 } from '../index';
 
 describe('the era and verification-path errors a caller has to catch are reachable from the barrel', () => {
@@ -40,7 +46,16 @@ describe('the era and verification-path errors a caller has to catch are reachab
       { error: new IndexerInconsistencyError('v9', 'v8'), code: CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY },
       { error: new BlankVerifierKeySlotError('increment'), code: CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT },
       { error: new VerifierKeyMismatchError('increment'), code: CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH },
-      { error: new EraInvariantViolationError('submitTx'), code: CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION }
+      { error: new EraInvariantViolationError('submitTx'), code: CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION },
+      { error: new HeadReadFailedError('head read failed'), code: CONTRACTS_ERROR_CODES.HEAD_READ_FAILED },
+      { error: new ZswapOutputResolutionError('unresolved'), code: CONTRACTS_ERROR_CODES.ZSWAP_OUTPUT_UNRESOLVED },
+      { error: new LedgerParametersUnservedError('addr'), code: CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED },
+      { error: new ContractNotFoundError('no contract'), code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND },
+      { error: new PrivateStateNotFoundError('no private state'), code: CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND },
+      {
+        error: new RetainedArtifactOnCurrentEraStateError('addr'),
+        code: CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE
+      }
     ];
 
     // Both directions: the code the class registers, and that the class is the one `instanceof`

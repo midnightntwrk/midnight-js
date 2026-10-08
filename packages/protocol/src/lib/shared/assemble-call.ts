@@ -24,7 +24,7 @@ import type {
   Transcript
 } from '@midnightntwrk/ledger-v9';
 
-import { ComposeFailedError, ComposeOptionError, type ComposeStage } from '../../errors';
+import { ComposeFailedError, ComposeOptionError, type ComposeStage, InvariantViolationError } from '../../errors';
 import {
   type CallTranscriptSource,
   INITIAL_LEDGER_PARAMETERS,
@@ -272,7 +272,7 @@ const resolvePartition = <
   }
   const first = partitioned[0];
   if (first === undefined) {
-    throw new Error('partitionTranscripts returned no result for the call transcript.');
+    throw new InvariantViolationError('partitionTranscripts returned no result for the call transcript.');
   }
   return first;
 };
@@ -302,9 +302,8 @@ const resolvePartition = <
  * `'call-partition-context'` or `'call-partition'` from resolving the
  * transcript pair; at `'call-prototype'` when the module rejects the call's
  * own inputs.
- * @throws Error, deliberately carrying no protocol error code, when the
- * module's own partitioner returns no result — its invariant, not a caller
- * fault.
+ * @throws InvariantViolationError when the module's own partitioner returns no
+ * result — its invariant, not a caller fault.
  * @see {@link ComposeRefusalOrder}
  */
 export const assembleCallPrototype = <

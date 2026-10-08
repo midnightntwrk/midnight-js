@@ -13,9 +13,34 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 
 import { assertSafeName, assertSemVer, MAX_SAFE_NAME_LENGTH, warnIfInsecureRemoteUrl } from '../security-utils';
+
+describe('security assertion failures', () => {
+  it.each([
+    ['empty name', ''],
+    ['dot', '.'],
+    ['dot-dot', '..'],
+    ['unsafe characters', 'foo bar']
+  ])('assertSafeName refuses %s with InvalidArgumentError and the unchanged message', (_case, name) => {
+    expect(() => assertSafeName(name, 'circuitId')).toThrow(InvalidArgumentError);
+    expect(() => assertSafeName(name, 'circuitId')).toThrow(
+      new InvalidArgumentError(`Invalid circuitId: ${JSON.stringify(name)}`)
+    );
+  });
+
+  it.each([
+    ['empty version', ''],
+    ['non-semver version', 'not-a-version']
+  ])('assertSemVer refuses %s with InvalidArgumentError and the unchanged message', (_case, version) => {
+    expect(() => assertSemVer(version, 'version')).toThrow(InvalidArgumentError);
+    expect(() => assertSemVer(version, 'version')).toThrow(
+      new InvalidArgumentError(`Invalid version: ${JSON.stringify(version)}`)
+    );
+  });
+});
 
 describe('assertSafeName', () => {
   describe('accepts valid names', () => {

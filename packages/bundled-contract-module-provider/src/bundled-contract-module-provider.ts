@@ -14,6 +14,7 @@
  */
 
 import type { ContractModuleProvider, ModuleThunk } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 /**
@@ -41,8 +42,8 @@ const normalizeAddress = (address: string): string => address.toLowerCase();
  * @param modules The address-to-module table.
  * @returns A provider resolving an address to its thunk, or `undefined` when the table holds no
  * entry for it — which the runtime reports as an unsupported implementation.
- * @throws TypeError If a key is not a contract address.
- * @throws Error If two keys differ only in case and name different modules, since one of them would
+ * @throws InvalidArgumentError If a key is not a contract address.
+ * @throws InvalidArgumentError If two keys differ only in case and name different modules, since one of them would
  * otherwise be dropped silently.
  */
 export const bundledContractModuleProvider = (modules: ModulesByAddress): ContractModuleProvider => {
@@ -53,12 +54,12 @@ export const bundledContractModuleProvider = (modules: ModulesByAddress): Contra
     } catch (cause) {
       // Re-thrown to name the key: the underlying message reports the shape that was wrong, not
       // which of a generated table's entries carried it.
-      throw new TypeError(`Contract module table has a key that is not a contract address: '${address}'`, { cause });
+      throw new InvalidArgumentError(`Contract module table has a key that is not a contract address: '${address}'`, { cause });
     }
     const key = normalizeAddress(address);
     const collision = byAddress.get(key);
     if (collision !== undefined && collision !== module) {
-      throw new Error(`Two modules are registered for contract address '${key}', differing only in case`);
+      throw new InvalidArgumentError(`Two modules are registered for contract address '${key}', differing only in case`);
     }
     byAddress.set(key, module);
   }

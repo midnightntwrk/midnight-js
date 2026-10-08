@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { ConfigurationError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -28,7 +29,7 @@ describe('assertValidMidnightConfig', () => {
   });
 
   it.each([undefined, null])('rejects a %s config, naming providers.config and both fields', (missing) => {
-    expect(() => assertValidMidnightConfig(missing)).toThrow(TypeError);
+    expect(() => assertValidMidnightConfig(missing)).toThrow(ConfigurationError);
     expect(() => assertValidMidnightConfig(missing)).toThrow(/providers\.config.*networkId.*ttlSeconds/);
   });
 
@@ -36,15 +37,35 @@ describe('assertValidMidnightConfig', () => {
     expect(() => assertValidMidnightConfig(undefined, 'options.config')).toThrow(/^options\.config is missing/);
   });
 
+  it('refuses a missing config with the unchanged message', () => {
+    expect(() => assertValidMidnightConfig(undefined)).toThrow(
+      new ConfigurationError('providers.config is missing. Pass { networkId, ttlSeconds } as providers.config.')
+    );
+  });
+
+  it('refuses an empty networkId with InvalidArgumentError and the unchanged message', () => {
+    expect(() => assertValidMidnightConfig(config({ networkId: '' }))).toThrow(
+      new InvalidArgumentError(
+        'providers.config.networkId must be a non-empty string without surrounding whitespace, got "".'
+      )
+    );
+  });
+
+  it('refuses ttlSeconds 0 with InvalidArgumentError and the unchanged message', () => {
+    expect(() => assertValidMidnightConfig(config({ ttlSeconds: 0 }))).toThrow(
+      new InvalidArgumentError('providers.config.ttlSeconds must be a positive whole number of seconds, got 0.')
+    );
+  });
+
   it.each(['', ' preview', 'preview\n', 42, 1n, undefined, null])('rejects networkId = %s', (networkId) => {
-    expect(() => assertValidMidnightConfig(config({ networkId }))).toThrow(TypeError);
+    expect(() => assertValidMidnightConfig(config({ networkId }))).toThrow(InvalidArgumentError);
     expect(() => assertValidMidnightConfig(config({ networkId }))).toThrow(/networkId/);
   });
 
   it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, '600', 1e15])(
     'rejects ttlSeconds = %s',
     (ttlSeconds) => {
-      expect(() => assertValidMidnightConfig(config({ ttlSeconds }))).toThrow(RangeError);
+      expect(() => assertValidMidnightConfig(config({ ttlSeconds }))).toThrow(InvalidArgumentError);
       expect(() => assertValidMidnightConfig(config({ ttlSeconds }))).toThrow(/ttlSeconds/);
     }
   );
@@ -73,6 +94,6 @@ describe('intentTtl', () => {
   });
 
   it('rejects an invalid ttlSeconds', () => {
-    expect(() => intentTtl(config({ ttlSeconds: 0 }))).toThrow(RangeError);
+    expect(() => intentTtl(config({ ttlSeconds: 0 }))).toThrow(InvalidArgumentError);
   });
 });

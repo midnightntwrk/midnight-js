@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { ConfigurationError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type {
   MidnightProvider,
   MidnightProviders,
@@ -62,7 +63,7 @@ describe('createMidnightProviders', () => {
     (key, value) => {
       const input = providers({ [key]: value });
 
-      expect(() => createMidnightProviders(input)).toThrow(TypeError);
+      expect(() => createMidnightProviders(input)).toThrow(ConfigurationError);
       expect(() => createMidnightProviders(input)).toThrow(`providers.${key} is missing.`);
     }
   );
@@ -70,21 +71,21 @@ describe('createMidnightProviders', () => {
   it('rejects a set without config', () => {
     const input = providers({ config: undefined });
 
-    expect(() => createMidnightProviders(input)).toThrow(TypeError);
+    expect(() => createMidnightProviders(input)).toThrow(ConfigurationError);
     expect(() => createMidnightProviders(input)).toThrow(/^providers\.config is missing/);
   });
 
   it('rejects an invalid networkId', () => {
     const input = providers({ config: { networkId: ' preview', ttlSeconds: 600 } });
 
-    expect(() => createMidnightProviders(input)).toThrow(TypeError);
+    expect(() => createMidnightProviders(input)).toThrow(InvalidArgumentError);
     expect(() => createMidnightProviders(input)).toThrow(/providers\.config\.networkId/);
   });
 
   it('rejects an invalid ttlSeconds', () => {
     const input = providers({ config: { networkId: 'preview', ttlSeconds: 0 } });
 
-    expect(() => createMidnightProviders(input)).toThrow(RangeError);
+    expect(() => createMidnightProviders(input)).toThrow(InvalidArgumentError);
     expect(() => createMidnightProviders(input)).toThrow(/providers\.config\.ttlSeconds/);
   });
 });

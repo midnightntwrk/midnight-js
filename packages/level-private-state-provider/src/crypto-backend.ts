@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { EnvironmentUnsupportedError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+
 import { NobleCryptoBackend } from './crypto-backend-noble';
 import { WebCryptoCryptoBackend } from './crypto-backend-webcrypto';
 
@@ -50,7 +52,7 @@ export const resolveCryptoBackend = (preference?: CryptoBackendType): CryptoBack
   }
   if (preference === 'webcrypto') {
     if (!isWebCryptoAvailable()) {
-      throw new Error(
+      throw new EnvironmentUnsupportedError(
         'Web Crypto API is not available. Use the \'noble\' crypto backend or run in a secure context (HTTPS or localhost).',
       );
     }

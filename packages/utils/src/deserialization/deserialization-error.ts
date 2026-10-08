@@ -13,6 +13,10 @@
  * limitations under the License.
  */
 
+import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+
+import { UTILS_ERROR_CATEGORIES, UTILS_ERROR_CODES } from '../error-codes';
+
 /** Underlying library that produced the deserialization error. */
 export type SourceLibrary = 'ledger' | 'compact-runtime' | 'onchain-runtime';
 
@@ -113,7 +117,9 @@ const formatMessage = (ctx: DeserializationContext): string => {
  * Carries structured context for diagnosis: data type, call site,
  * classification, direction, mitigation.
  */
-export class DeserializationError extends Error {
+export class DeserializationError extends MidnightJsError {
+  readonly code = UTILS_ERROR_CODES.DESERIALIZATION_FAILED;
+  readonly category = UTILS_ERROR_CATEGORIES[UTILS_ERROR_CODES.DESERIALIZATION_FAILED];
   readonly context: DeserializationContext;
 
   /**

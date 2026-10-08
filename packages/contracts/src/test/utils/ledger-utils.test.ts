@@ -25,6 +25,7 @@ import {
   QueryContext,
   type Recipient
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   type CoinCommitment,
   coinCommitment,
@@ -58,12 +59,13 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import type { MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, isDeserializationError, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined, CONTRACTS_ERROR_CODES, isDeserializationError, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 import { Option } from 'effect';
 import { readFileSync } from 'fs';
 import { beforeAll } from 'vitest';
 
+import { ZswapOutputResolutionError } from '../../errors';
 import {
   createUnprovenLedgerCallTx,
   createUnprovenLedgerDeployTx,
@@ -245,7 +247,7 @@ describe('ledger-utils', () => {
       callTxWithSingleState(
         [
           {
-            contractAddress: PlatformContractAddress.ContractAddress(sampleContractAddress()),
+            contractAddress: PlatformContractAddress.ContractAddress(dummyContractAddress),
             circuitId: unregisteredCircuitId,
             public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: emptyTranscript, partitionInputs: makePartitionInputs() },
             private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
@@ -262,7 +264,50 @@ describe('ledger-utils', () => {
         },
         dummyEncPublicKey
       )
-    ).toThrow(`Operation '${unregisteredCircuitId}' is undefined`);
+    ).toThrow(
+      expect.objectContaining({
+        name: 'InvalidArgumentError',
+        code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+        message: `Operation '${unregisteredCircuitId}' is undefined for contract '${dummyContractAddress}'`
+      })
+    );
+  });
+
+  it('createUnprovenLedgerCallTx refuses an operation that carries no verifier key as a blank verifier-key slot', () => {
+    const circuitId = 'keylessCircuit';
+    const contractState = new CompactContractState();
+    contractState.setOperation(circuitId, new ContractOperation());
+    const alignedValue: AlignedValue = { value: [new Uint8Array()], alignment: [{ tag: 'atom', value: { tag: 'field' } }] };
+
+    expect(() =>
+      callTxWithSingleState(
+        [
+          {
+            contractAddress: PlatformContractAddress.ContractAddress(dummyContractAddress),
+            circuitId,
+            public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: emptyTranscript, partitionInputs: makePartitionInputs() },
+            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
+            communicationCommitment: Option.none()
+          }
+        ],
+        () => contractState,
+        new ZswapChainState(),
+        {
+          outputs: [],
+          inputs: [],
+          coinPublicKey: sampleCoinPublicKey(),
+          currentIndex: 0n
+        },
+        dummyEncPublicKey
+      )
+    ).toThrow(
+      expect.objectContaining({
+        name: 'BlankVerifierKeySlotError',
+        code: CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT,
+        category: 'INTEGRITY',
+        circuitId
+      })
+    );
   });
 
   describe('config', () => {
@@ -320,7 +365,7 @@ describe('ledger-utils', () => {
     });
 
     it('rejects an invalid TTL', () => {
-      expect(() => buildCall({ networkId: 'preview', ttlSeconds: 0 })).toThrow(RangeError);
+      expect(() => buildCall({ networkId: 'preview', ttlSeconds: 0 })).toThrow(InvalidArgumentError);
     });
 
     it('ignores a leftover global network id', () => {
@@ -351,6 +396,50 @@ describe('ledger-utils', () => {
       const depositOperation = shieldedInitialState.operation('deposit')!;
       depositOperation.verifierKey = DUMMY_VERIFIER_KEY;
       shieldedInitialState.setOperation('deposit', depositOperation);
+    });
+
+    it('refuses with a ZswapOutputResolutionError when the offers carry a coin the transcripts never claim', async () => {
+      const coin = { nonce: new Uint8Array(32).fill(1), color: new Uint8Array(32).fill(2), value: 100n };
+      const ctx = createCircuitContext({
+        circuitId: 'deposit',
+        contractAddress: shieldedAddr,
+        coinPublicKeyOrZswapState: shieldedCpk,
+        contractState: shieldedInitialState,
+        privateState: undefined
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { context, gasCost } = await (shieldedContract.circuits as any).deposit(ctx, coin);
+      const proofData = context.callProofDataTrace[context.callProofDataTrace.length - 1];
+      const transcript: Transcript<AlignedValue> = {
+        gas: gasCost,
+        effects: { ...context.callContext.currentQueryContext.effects, claimedShieldedReceives: [] },
+        program: proofData.publicTranscript
+      };
+
+      const act = () =>
+        callTxWithSingleState(
+          [
+            {
+              contractAddress: PlatformContractAddress.ContractAddress(shieldedAddr),
+              circuitId: 'deposit',
+              public: { contractState: shieldedInitialState.data.state, publicTranscript: [], partitionedTranscript: [transcript, undefined], partitionInputs: makePartitionInputs() },
+              private: {
+                input: proofData.input,
+                output: proofData.output,
+                privateTranscriptOutputs: proofData.privateTranscriptOutputs
+              },
+              communicationCommitment: Option.none()
+            }
+          ],
+          () => shieldedInitialState,
+          new ZswapChainState(),
+          decodeZswapLocalState(context.callContext.currentZswapLocalState),
+          dummyEncPublicKey
+        );
+
+      expect(act).toThrow(ZswapOutputResolutionError);
+      expect(act).toThrow(/A shielded coin addressed to a contract must be claimed as received by that contract/);
+      expect(act).toThrow(/offered 1, claimed 0/);
     });
 
     it('succeeds with deposit circuit that calls receiveShielded', async () => {

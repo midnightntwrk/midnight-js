@@ -149,8 +149,11 @@ describe('decodeContractStateWith', () => {
 
     expect(caught).toBeInstanceOf(StateInconsistentError);
     expect(caught).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_INCONSISTENT, version: 'v9' });
-    expect(((caught as StateInconsistentError).cause as Error).message).toMatch(
-      /declares entry point 'increment' but resolves no operation/
+    const cause = (caught as StateInconsistentError).cause;
+    expect(cause).toBeInstanceOf(Error);
+    expect(cause).not.toHaveProperty('code');
+    expect((cause as Error).message).toBe(
+      "contract state declares entry point 'increment' but resolves no operation for it."
     );
   });
 
@@ -350,6 +353,17 @@ describe('decodeContractStateWith refuses a state that resolves no balance', () 
     expect(caught).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_INCONSISTENT, version: 'v9' });
     expect((caught as StateInconsistentError).cause).toBeInstanceOf(Error);
     expect(((caught as StateInconsistentError).cause as Error).message).toMatch(/resolves no usable balance/);
+  });
+
+  it('carries the absent-balance diagnosis on cause without a second code', () => {
+    const caught = decodeFailure(undefined);
+
+    const cause = (caught as StateInconsistentError).cause;
+    expect(cause).toBeInstanceOf(Error);
+    expect(cause).not.toHaveProperty('code');
+    expect((cause as Error).message).toBe(
+      'contract state resolves no usable balance (received undefined); a contract that holds nothing still declares an empty map.'
+    );
   });
 
   // A separate case, not a restatement: `new Map(null)` is an empty map too, so

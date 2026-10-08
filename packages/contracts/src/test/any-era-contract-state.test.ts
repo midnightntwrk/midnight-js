@@ -15,7 +15,7 @@
 
 import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
 import type { LedgerEra, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
-import { PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError, PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { hasErrorCode, TagParseError } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -209,7 +209,7 @@ describe('getAnyEraContractState: one decoded read that spans both ledger eras',
     const surface = surfaceServing(CURRENT_ENVELOPE, POST_FORK_PROTOCOL_VERSION);
 
     // Act / Assert.
-    await expect(getAnyEraContractState(surface, `0x${contractAddress}`)).rejects.toBeInstanceOf(TypeError);
+    await expect(getAnyEraContractState(surface, `0x${contractAddress}`)).rejects.toBeInstanceOf(InvalidArgumentError);
     expect(surface.queryRawContractState).not.toHaveBeenCalled();
   });
 

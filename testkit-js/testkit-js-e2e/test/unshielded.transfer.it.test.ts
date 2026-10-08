@@ -141,7 +141,10 @@ describe('Unshielded tokens', () => {
           circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuit,
           args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
         })
-      ).rejects.toThrow('InsufficientFunds: Insufficient funds');
+      ).rejects.toMatchObject({
+        name: expect.stringContaining('Wallet.InsufficientFunds'),
+        message: 'Insufficient funds'
+      });
     });
 
     test('should send tokens to wallet', async () => {

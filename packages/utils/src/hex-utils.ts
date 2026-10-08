@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type NetworkId } from '@midnight-ntwrk/midnight-js-types';
 import {
   MidnightBech32m,
@@ -130,9 +131,9 @@ export const isHex = (source: string, byteLen?: number): boolean => {
  * @param byteLen An optional number of bytes that `source` should represent. If not specified
  * then any number of bytes can be represented by `source`.
  *
- * @throws `Error`
+ * @throws `InvalidArgumentError`
  * `byteLen` is \<= zero. Valid hex-strings will be required to have at least one byte.
- * @throws `TypeError`
+ * @throws `InvalidArgumentError`
  * `source` is not a hex-encoded string because it:
  * - is empty,
  * - contains invalid or incomplete characters, or
@@ -140,34 +141,34 @@ export const isHex = (source: string, byteLen?: number): boolean => {
  */
 export function assertIsHex(source: string, byteLen?: number): asserts source is NonNullable<string> {
   if (!source) {
-    throw new TypeError('Input string must have non-zero length.');
+    throw new InvalidArgumentError('Input string must have non-zero length.');
   }
   if (byteLen !== undefined && byteLen <= 0) {
-    throw new Error('Expected byte length must be greater than zero.');
+    throw new InvalidArgumentError('Expected byte length must be greater than zero.');
   }
 
   const parsedHex = parseHex(source);
 
   if (parsedHex.incompleteChars) {
     if (parsedHex.incompleteChars.length % 2 > 0) {
-      throw new TypeError(`The last byte of input string '${source}' is incomplete.`);
+      throw new InvalidArgumentError(`The last byte of input string '${source}' is incomplete.`);
     }
 
     const invalidCharPos = parsedHex.byteChars.length + (parsedHex.hasPrefix ? 2 : 0);
-    throw new TypeError(
+    throw new InvalidArgumentError(
       `Invalid hex-digit '${source[invalidCharPos]}' found in input string at index ${invalidCharPos}.`
     );
   }
 
   if (!parsedHex.byteChars) {
-    throw new TypeError(`Input string '${source}' is not a valid hex-string.`);
+    throw new InvalidArgumentError(`Input string '${source}' is not a valid hex-string.`);
   }
 
   if (byteLen) {
     const actualByteLen = parsedHex.byteChars.length / 2;
 
     if (byteLen !== actualByteLen) {
-      throw new TypeError(`Expected an input string with byte length of ${byteLen}, got ${actualByteLen}.`);
+      throw new InvalidArgumentError(`Expected an input string with byte length of ${byteLen}, got ${actualByteLen}.`);
     }
   }
 }

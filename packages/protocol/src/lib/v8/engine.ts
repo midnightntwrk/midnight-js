@@ -71,7 +71,7 @@ export interface Ledger8Engine {
    * @throws DownConvertFailedError At stage `'state down-convert'` when the
    *   state cannot be decoded, does not re-encode to its source, or carries a
    *   balance the retained runtime cannot read.
-   * @throws Error When the contract declares no circuit of that name.
+   * @throws InvalidArgumentError When the contract declares no circuit of that name.
    */
   executeCircuit<C extends RetainedContract, PS>(
     options: RunRetainedCircuitOptions<C, PS>

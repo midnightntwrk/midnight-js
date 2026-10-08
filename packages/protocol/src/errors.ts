@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { causeChain } from './lib/shared/cause-chain';
 import type { LedgerVersion } from './lib/shared/ledger-version';
 
 /**
@@ -36,10 +37,121 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
   LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
   UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS',
-  PAYLOAD_NOT_A_TRANSACTION: 'MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION'
+  PAYLOAD_NOT_A_TRANSACTION: 'MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION',
+  CONTRACT_EXECUTION_FAILED: 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED'
 } as const);
 /** The union of every value in {@link PROTOCOL_ERROR_CODES}; the type of every error class's `code` field. */
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[keyof typeof PROTOCOL_ERROR_CODES];
+
+export const MIDNIGHT_JS_ERROR_CATEGORIES = Object.freeze({
+  USAGE: 'USAGE',
+  ENVIRONMENT: 'ENVIRONMENT',
+  TRANSIENT: 'TRANSIENT',
+  REJECTED: 'REJECTED',
+  UNCERTAIN: 'UNCERTAIN',
+  INTEGRITY: 'INTEGRITY',
+  INTERNAL: 'INTERNAL'
+} as const);
+/**
+ * What the caller should do about an error: fix its own code (`USAGE`), fix the installation or
+ * infrastructure (`ENVIRONMENT`), retry (`TRANSIENT`), handle a refusal by contract or network rules
+ * (`REJECTED`), check on chain whether a submitted transaction landed before doing anything else
+ * (`UNCERTAIN`), stop and alert on bad data (`INTEGRITY`), or report a midnight-js bug (`INTERNAL`).
+ */
+export type MidnightJsErrorCategory = (typeof MIDNIGHT_JS_ERROR_CATEGORIES)[keyof typeof MIDNIGHT_JS_ERROR_CATEGORIES];
+
+export type MidnightJsErrorCodeFormat = `MIDNIGHT_JS_${string}`;
+
+/**
+ * Base class of every error midnight-js raises itself. An error without a registered code came from a
+ * dependency, the platform or user code, and midnight-js passed it through unchanged. Recognise one with
+ * `hasErrorCode`, `isMidnightJsError` or `errorCategory` from the `midnight-js-utils` package: they read
+ * `code`, so they also work when two copies of a package are installed, where `instanceof` does not.
+ */
+// eslint-disable-next-line no-restricted-syntax -- the one class allowed to extend Error directly
+export abstract class MidnightJsError extends Error {
+  abstract readonly code: MidnightJsErrorCodeFormat;
+  abstract readonly category: MidnightJsErrorCategory;
+}
+
+const { USAGE, ENVIRONMENT, REJECTED, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
+
+export const PROTOCOL_ERROR_CATEGORIES: Readonly<Record<ProtocolErrorCode, MidnightJsErrorCategory>> = Object.freeze({
+  [PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ]: ENVIRONMENT,
+  [PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT]: ENVIRONMENT,
+  [PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH]: ENVIRONMENT,
+  [PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING]: ENVIRONMENT,
+  [PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED]: INTEGRITY,
+  [PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED]: INTERNAL,
+  [PROTOCOL_ERROR_CODES.COMPOSE_FAILED]: USAGE,
+  [PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID]: USAGE,
+  [PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED]: INTEGRITY,
+  [PROTOCOL_ERROR_CODES.STATE_INCONSISTENT]: INTEGRITY,
+  [PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION]: ENVIRONMENT,
+  [PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID]: ENVIRONMENT,
+  [PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS]: INTERNAL,
+  [PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION]: USAGE,
+  [PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED]: REJECTED
+});
+
+export const COMMON_ERROR_CODES = Object.freeze({
+  INVALID_ARGUMENT: 'MIDNIGHT_JS_G_INVALID_ARGUMENT',
+  CONFIGURATION_MISSING: 'MIDNIGHT_JS_G_CONFIGURATION_MISSING',
+  ENVIRONMENT_UNSUPPORTED: 'MIDNIGHT_JS_G_ENVIRONMENT_UNSUPPORTED',
+  INVARIANT_VIOLATED: 'MIDNIGHT_JS_G_INVARIANT_VIOLATED'
+} as const);
+export type CommonErrorCode = (typeof COMMON_ERROR_CODES)[keyof typeof COMMON_ERROR_CODES];
+
+export const COMMON_ERROR_CATEGORIES: Readonly<Record<CommonErrorCode, MidnightJsErrorCategory>> = Object.freeze({
+  [COMMON_ERROR_CODES.INVALID_ARGUMENT]: USAGE,
+  [COMMON_ERROR_CODES.CONFIGURATION_MISSING]: USAGE,
+  [COMMON_ERROR_CODES.ENVIRONMENT_UNSUPPORTED]: ENVIRONMENT,
+  [COMMON_ERROR_CODES.INVARIANT_VIOLATED]: INTERNAL
+});
+
+/** A value passed to a midnight-js function is not acceptable. Fix the call. */
+export class InvalidArgumentError extends MidnightJsError {
+  readonly code = COMMON_ERROR_CODES.INVALID_ARGUMENT;
+  readonly category = COMMON_ERROR_CATEGORIES[COMMON_ERROR_CODES.INVALID_ARGUMENT];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'InvalidArgumentError';
+  }
+}
+
+/** Required setup is missing or was done in the wrong order. */
+export class ConfigurationError extends MidnightJsError {
+  readonly code = COMMON_ERROR_CODES.CONFIGURATION_MISSING;
+  readonly category = COMMON_ERROR_CATEGORIES[COMMON_ERROR_CODES.CONFIGURATION_MISSING];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'ConfigurationError';
+  }
+}
+
+/** The JavaScript runtime lacks an API midnight-js needs. */
+export class EnvironmentUnsupportedError extends MidnightJsError {
+  readonly code = COMMON_ERROR_CODES.ENVIRONMENT_UNSUPPORTED;
+  readonly category = COMMON_ERROR_CATEGORIES[COMMON_ERROR_CODES.ENVIRONMENT_UNSUPPORTED];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'EnvironmentUnsupportedError';
+  }
+}
+
+/** A condition midnight-js guarantees did not hold. This is a midnight-js bug; report it. */
+export class InvariantViolationError extends MidnightJsError {
+  readonly code = COMMON_ERROR_CODES.INVARIANT_VIOLATED;
+  readonly category = COMMON_ERROR_CATEGORIES[COMMON_ERROR_CODES.INVARIANT_VIOLATED];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'InvariantViolationError';
+  }
+}
 
 /**
  * Which call path asked for a ledger version:
@@ -77,10 +189,11 @@ export type ProtocolVersionUnknownReason = 'unknown' | 'malformed';
  *   version (a real protocol version this framework build does not support
  *   yet) — see {@link ProtocolVersionUnknownReason}.
  */
-export class UnknownProtocolVersionError extends Error {
+export class UnknownProtocolVersionError extends MidnightJsError {
   readonly code:
     | typeof PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ
     | typeof PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT;
+  readonly category: MidnightJsErrorCategory;
 
   constructor(
     readonly protocolVersion: number,
@@ -103,6 +216,7 @@ export class UnknownProtocolVersionError extends Error {
       path === 'read'
         ? PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ
         : PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT;
+    this.category = PROTOCOL_ERROR_CATEGORIES[this.code];
   }
 }
 
@@ -131,8 +245,9 @@ export type RetainedEraSubpath = '/v8' | '/engine';
  * @see {@link ModuleGraphAndLazyLoading}
  * @see {@link EraSeam}
  */
-export class Ledger8RuntimeMissingError extends Error {
+export class Ledger8RuntimeMissingError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING];
 
   constructor(
     readonly subpath: RetainedEraSubpath,
@@ -206,8 +321,9 @@ const axisPackageNames = (axis: Ledger8InstanceAxis): readonly string[] =>
  *   message tells the reader to trace.
  * @see {@link DualInstantiationGuard}
  */
-export class Ledger8InstanceMismatchError extends Error {
+export class Ledger8InstanceMismatchError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH];
 
   constructor(readonly axis: Ledger8InstanceAxis) {
     const packageNames = axisPackageNames(axis).join(' and ');
@@ -251,8 +367,9 @@ export type DownConvertStage = 'v8 envelope extraction' | 'v9 envelope extractio
  *   distinguishes a tag mismatch from truncated, trailing, or empty input.
  * @see {@link FailClosedDecoding}
  */
-export class DownConvertFailedError extends Error {
+export class DownConvertFailedError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED];
 
   constructor(
     readonly stage: DownConvertStage,
@@ -293,8 +410,9 @@ export class DownConvertFailedError extends Error {
  * @see {@link FailClosedDecoding}
  * @see {@link RetainedEraExecution}
  */
-export class MerkleNotRehashedError extends Error {
+export class MerkleNotRehashedError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED];
 
   constructor(cause?: unknown) {
     super(
@@ -421,8 +539,9 @@ export type ComposeStage =
  * @see {@link ComposeRefusalOrder}
  * @see {@link VerifierKeys}
  */
-export class ComposeFailedError extends Error {
+export class ComposeFailedError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.COMPOSE_FAILED;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.COMPOSE_FAILED];
 
   constructor(
     readonly version: LedgerVersion,
@@ -591,8 +710,9 @@ export type ComposeOption =
  * @see {@link ComposeRefusalOrder}
  * @see {@link VerifierKeys}
  */
-export class ComposeOptionError extends Error {
+export class ComposeOptionError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID];
 
   constructor(
     readonly version: LedgerVersion,
@@ -667,8 +787,9 @@ export class ComposeOptionError extends Error {
  *   distinguishes a tag mismatch from truncated, trailing or empty input.
  * @see {@link FailClosedDecoding}
  */
-export class StateDecodeFailedError extends Error {
+export class StateDecodeFailedError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED];
 
   constructor(
     readonly version: LedgerVersion,
@@ -701,8 +822,9 @@ export class StateDecodeFailedError extends Error {
  * @param cause The diagnosis of what was inconsistent, preserved unchanged.
  * @see {@link FailClosedDecoding}
  */
-export class StateInconsistentError extends Error {
+export class StateInconsistentError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.STATE_INCONSISTENT;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.STATE_INCONSISTENT];
 
   constructor(
     readonly version: LedgerVersion,
@@ -739,8 +861,9 @@ export class StateInconsistentError extends Error {
  * @see {@link FailClosedDecoding}
  * @see {@link DualInstantiationGuard}
  */
-export class Ledger8RuntimeInvalidError extends Error {
+export class Ledger8RuntimeInvalidError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID];
 
   constructor(readonly missingMember: string) {
     super(
@@ -768,8 +891,9 @@ export class Ledger8RuntimeInvalidError extends Error {
  *   programmatic use only; it is deliberately kept out of the message.
  * @see {@link DualInstantiationGuard}
  */
-export class UnknownLedger8AxisError extends Error {
+export class UnknownLedger8AxisError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS];
 
   constructor(readonly requestedAxis: string) {
     super(
@@ -797,8 +921,9 @@ export class UnknownLedger8AxisError extends Error {
  * @see {@link SharedTableDiscipline}
  * @see {@link FailClosedDecoding}
  */
-export class UnknownLedgerVersionError extends Error {
+export class UnknownLedgerVersionError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION];
 
   constructor(readonly requestedVersion: string) {
     super(
@@ -884,8 +1009,9 @@ const describeType = (value: unknown): string => {
  * `proveTx` rejection. Match it with `hasErrorCode` against
  * `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION` rather than constructing it.
  */
-export class PayloadNotATransactionError extends Error {
+export class PayloadNotATransactionError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION];
 
   private constructor(detail: string) {
     super(
@@ -913,5 +1039,82 @@ export class PayloadNotATransactionError extends Error {
       `Refusing to prove a ${byteLength}-byte payload that does not begin with the ` +
         `'${TRANSACTION_TAG_PREFIX}' tag of a serialized ledger transaction.`
     );
+  }
+}
+
+const MAX_CAUSE_DEPTH = 8;
+
+const CATEGORY_VALUES: ReadonlySet<string> = new Set(Object.values(MIDNIGHT_JS_ERROR_CATEGORIES));
+
+/** A midnight-js error recognised by its fields, which also matches one built by another installed copy. */
+export type CodedMidnightJsError = Error & {
+  readonly code: MidnightJsErrorCodeFormat;
+  readonly category: MidnightJsErrorCategory;
+};
+
+const isCodedMidnightJsError = (value: unknown): value is CodedMidnightJsError =>
+  value instanceof Error &&
+  'code' in value &&
+  typeof value.code === 'string' &&
+  value.code.startsWith('MIDNIGHT_JS_') &&
+  'category' in value &&
+  typeof value.category === 'string' &&
+  CATEGORY_VALUES.has(value.category);
+
+/**
+ * The midnight-js error a failure is or carries: the failure itself when it is one, otherwise the first
+ * one on its `cause` chain, at most eight links down. Use it when a dependency wraps a midnight-js error
+ * and hides its `code` and `category`.
+ */
+export const findCodedCause = (failure: unknown): CodedMidnightJsError | undefined => {
+  const seen = new Set<unknown>();
+  let current: unknown = failure;
+  for (let depth = 0; depth <= MAX_CAUSE_DEPTH; depth++) {
+    if (isCodedMidnightJsError(current)) {
+      return current;
+    }
+    if (typeof current !== 'object' || current === null || seen.has(current) || !('cause' in current)) {
+      return undefined;
+    }
+    seen.add(current);
+    current = current.cause;
+  }
+  return undefined;
+};
+
+/**
+ * What a retained-era circuit or constructor execution fails with. A Compact `assert` refusal is the usual
+ * cause, but a key or config read failure or a runtime fault can also arrive this way, so `cause` is the
+ * source of truth. A failure that is, or carries on its `cause` chain, a midnight-js coded error is not
+ * wrapped in this class: that coded error surfaces directly.
+ */
+export class ContractExecutionError extends MidnightJsError {
+  readonly code = PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED];
+
+  /**
+   * Every failure the execution reported, as the original objects, in the order they arrived. Filled by
+   * {@link ContractExecutionError.fromFailures}; empty when the error was built without a list.
+   */
+  readonly errors: readonly unknown[];
+
+  constructor(message: string, options?: ErrorOptions & { readonly errors?: readonly unknown[] }) {
+    super(message, options);
+    this.name = 'ContractExecutionError';
+    this.errors = options?.errors ?? [];
+  }
+
+  /**
+   * Reports every failure of an execution, each with its whole cause chain, separated by `; `.
+   * `cause` is the first coded error found on any failure's chain, or the first failure when none is coded.
+   * `errors` holds every failure as the original object, so no stack is lost.
+   */
+  static fromFailures(failures: readonly unknown[]): ContractExecutionError {
+    const describe = (failure: unknown): string => {
+      const chain = causeChain(failure);
+      return chain.length > 0 ? chain.join(': ') : String(failure);
+    };
+    const coded = failures.map(findCodedCause).find((candidate) => candidate !== undefined);
+    return new ContractExecutionError(failures.map(describe).join('; '), { cause: coded ?? failures[0], errors: failures });
   }
 }

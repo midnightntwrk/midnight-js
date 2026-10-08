@@ -463,6 +463,33 @@ const publicDataProvider = indexerPublicDataProvider(
 );
 ```
 
+### Error Handling
+
+Every error midnight-js raises itself extends `MidnightJsError` and carries a `code` and a `category`; a failure from a dependency can still pass through uncoded, as the `cause` of a coded error or on its own.
+Handle errors by category first, then by code:
+
+```typescript
+import { errorCategory } from '@midnight-ntwrk/midnight-js-utils';
+
+try {
+  await submitCallTx(providers, options);
+} catch (e) {
+  switch (errorCategory(e)) {
+    case 'TRANSIENT': /* safe to retry the operation; rethrow if you do not */ throw e;
+    case 'UNCERTAIN': /* a submitted transaction may be on chain: check before anything else (see the code's row) */ throw e;
+    case 'REJECTED': /* show the refusal to the user, then rethrow or stop */ throw e;
+    case 'USAGE': case 'ENVIRONMENT': /* fix code or setup; do not retry */ throw e;
+    case 'INTEGRITY': case 'INTERNAL': /* alert or report */ throw e;
+    case undefined: /* not a midnight-js error */ throw e;
+  }
+}
+```
+
+`UNCERTAIN` (`MIDNIGHT_JS_C_STALE_HEAD`, `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED`, `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED`) means a submitted transaction may already be on chain. Never retry these blindly: follow the code's row first.
+
+Use `hasErrorCode`, `isMidnightJsError` and `errorCategory` rather than `instanceof`: two installed copies
+of a package make `instanceof` answer `false`. All codes: [TROUBLESHOOTING.md](TROUBLESHOOTING.md#midnightjs-error-codes).
+
 ## Provider Setup Example
 
 ```typescript

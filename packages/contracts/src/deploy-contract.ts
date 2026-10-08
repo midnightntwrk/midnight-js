@@ -268,7 +268,7 @@ export async function deployContract<C extends Contract.Any>(
  *                                                    caller the compiler never checked can reach it.
  *                                                    Raised on both eras, before any provider is
  *                                                    touched.
- * @throws Error If `privateStateId` is present with an undefined value, which is a caller that
+ * @throws InvalidArgumentError If `privateStateId` is present with an undefined value, which is a caller that
  *               believes it named an id. Raised on both eras, before any provider is touched, and
  *               ahead of the pairing refusal.
  */

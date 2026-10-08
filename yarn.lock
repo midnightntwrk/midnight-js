@@ -2099,6 +2099,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-node-zk-config-provider@workspace:packages/node-zk-config-provider"
   dependencies:
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     rollup: "npm:^4.60.4"

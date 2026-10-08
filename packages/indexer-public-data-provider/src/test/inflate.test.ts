@@ -15,15 +15,20 @@
 
 import { deflateSync } from 'node:zlib';
 
+import { EnvironmentUnsupportedError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { describe, expect, test, vi } from 'vitest';
 
+import { IndexerPayloadTooLargeError } from '../errors';
 import { inflate } from '../inflate';
 
 describe('inflate', () => {
   test('inflate() throws if DecompressionStream is missing at call time', async () => {
     vi.stubGlobal('DecompressionStream', undefined);
     try {
-      await expect(inflate(new ArrayBuffer(0))).rejects.toThrow(/DecompressionStream is required/);
+      const rejection = inflate(new ArrayBuffer(0));
+
+      await expect(rejection).rejects.toThrow(/DecompressionStream is required/);
+      await expect(rejection).rejects.toBeInstanceOf(EnvironmentUnsupportedError);
     } finally {
       vi.unstubAllGlobals();
     }
@@ -64,8 +69,11 @@ describe('inflate', () => {
     const bomb = Buffer.alloc(16 * 1024 * 1024 + 1, 0);
     const compressed = deflateSync(bomb);
 
-    await expect(
-      inflate(compressed.buffer.slice(compressed.byteOffset, compressed.byteOffset + compressed.byteLength))
-    ).rejects.toThrow(/exceeds.*MAX_INFLATED_BYTES|compression bomb/i);
+    const rejection = inflate(
+      compressed.buffer.slice(compressed.byteOffset, compressed.byteOffset + compressed.byteLength)
+    );
+
+    await expect(rejection).rejects.toThrow(/exceeds.*MAX_INFLATED_BYTES|compression bomb/i);
+    await expect(rejection).rejects.toBeInstanceOf(IndexerPayloadTooLargeError);
   });
 });

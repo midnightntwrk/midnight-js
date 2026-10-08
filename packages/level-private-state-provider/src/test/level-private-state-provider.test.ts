@@ -25,6 +25,7 @@ import {
   PrivateStateExportError,
   PrivateStateSerializationError,
   type PrivateStateSerializationFailure,
+  PrivateStateStorageError,
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
@@ -2272,8 +2273,8 @@ describe('Level Private State Provider', (): void => {
         await directSublevel.close();
         await directLevel.close();
 
-        // First-entry path at rotateStorePassword: isDecryptionError returns false for the new message,
-        // so the error propagates raw (not wrapped by "Failed to decrypt entry" nor "Old password is incorrect").
+        // First-entry path at rotateStorePassword: a malformed entry is not a wrong-key failure, so the error
+        // propagates raw (not wrapped by "Failed to decrypt entry" nor "Old password is incorrect").
         await expect(
           db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD)
         ).rejects.toThrow(/^Unrecognized or unencrypted data encountered during decryption$/);
@@ -3471,6 +3472,7 @@ describe('Level Private State Provider', (): void => {
 
     test('a failing close is reported alongside the failure that triggered it', async () => {
       const handles: { level: DatabaseLevel; restore: () => Promise<void> }[] = [];
+      const closeFailure = new Error('close failed');
       const provider = levelPrivateStateProvider<string, unknown>({
         midnightDbName: CLOSE_FAILURE_DB_NAME,
         privateStoragePasswordProvider: () => {
@@ -3480,7 +3482,7 @@ describe('Level Private State Provider', (): void => {
         levelFactory: (dbName: string): DatabaseLevel => {
           const level = new Level(dbName, { createIfMissing: true }) as DatabaseLevel;
           handles.push({ level, restore: level.close.bind(level) });
-          level.close = () => Promise.reject(new Error('close failed'));
+          level.close = () => Promise.reject(closeFailure);
           return level;
         }
       });
@@ -3488,9 +3490,17 @@ describe('Level Private State Provider', (): void => {
 
       const error = await captureError(() => provider.set('unreachable', { n: 1 }));
 
-      const reported = collectErrorMessages(error).join(' | ');
-      expect(reported).toContain('password unavailable');
-      expect(reported).toContain('close failed');
+      expect(error).toBeInstanceOf(PrivateStateStorageError);
+      if (!(error instanceof PrivateStateStorageError)) {
+        throw new Error('expected a PrivateStateStorageError');
+      }
+      expect(error.message).toBe(
+        `Operation on private state database "${CLOSE_FAILURE_DB_NAME}" failed, and the database handle ` +
+        `could not be closed afterwards. The database stays locked for the rest of this process.`
+      );
+      expect(error.cause).not.toBeInstanceOf(AggregateError);
+      expect(collectErrorMessages(error.cause)).toEqual(expect.arrayContaining(['password unavailable']));
+      expect(error.closeError).toBe(closeFailure);
 
       // Release the handle the provider could not close, so later tests can open the directory.
       for (const { level, restore } of handles) {

@@ -19,8 +19,15 @@ import {
   parseCheckResult,
   type ProvingKeyMaterial,
   type ProvingProvider} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { InvalidProtocolSchemeError, type ZKConfigProvider, ZKConfigRegistry, zkConfigToProvingKeyMaterial } from '@midnight-ntwrk/midnight-js-types';
-import { warnIfInsecureRemoteUrl, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
+import {
+  InvalidProtocolSchemeError,
+  ProofServerError,
+  PROVIDER_ERROR_CODES,
+  type ZKConfigProvider,
+  ZKConfigRegistry,
+  zkConfigToProvingKeyMaterial
+} from '@midnight-ntwrk/midnight-js-types';
+import { hasErrorCode, warnIfInsecureRemoteUrl, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
 
@@ -69,10 +76,10 @@ const makeKeyMaterialResolver = <K extends string>(
       return zkConfigToProvingKeyMaterial(await flatProvider.get(keyLocation as K));
     } catch (error) {
       // A flat provider legitimately doesn't serve protocol builtins (or bare names it lacks); those
-      // resolve to `undefined` and are supplied by the proof server. An integrity violation, however,
-      // means the artifact IS present but tampered with or stale — that must surface, not be masked
-      // as "no key material" sent to the proof server.
-      if (error instanceof ZkArtifactIntegrityError) {
+      // resolve to `undefined` and are supplied by the proof server. A tampered artifact or an
+      // artifact source that is down says nothing about absence, so it must surface rather than be
+      // masked as "no key material" sent to the proof server.
+      if (error instanceof ZkArtifactIntegrityError || hasErrorCode(error, PROVIDER_ERROR_CODES.ZK_ARTIFACT_FETCH_FAILED)) {
         throw error;
       }
       return undefined;
@@ -81,20 +88,30 @@ const makeKeyMaterialResolver = <K extends string>(
 };
 
 const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, headers: Record<string, string> = {}): Promise<Uint8Array> => {
-  const response = await fetchRetry(url, {
-    method: 'POST',
-    body: new Uint8Array(payload),
-    headers: { 'Content-Type': 'application/octet-stream', ...headers },
-    signal: AbortSignal.timeout(timeout)
-  });
+  let response: Awaited<ReturnType<typeof fetchRetry>>;
+  try {
+    response = await fetchRetry(url, {
+      method: 'POST',
+      body: new Uint8Array(payload),
+      headers: { 'Content-Type': 'application/octet-stream', ...headers },
+      signal: AbortSignal.timeout(timeout)
+    });
+  } catch (cause) {
+    throw new ProofServerError(`Proof Server request failed: url="${url}"`, undefined, { cause });
+  }
 
   if (!response.ok) {
-    throw new Error(
-      `Failed Proof Server response: url="${response.url}", code="${response.status}", status="${response.statusText}"`
+    throw new ProofServerError(
+      `Failed Proof Server response: url="${response.url}", code="${response.status}", status="${response.statusText}"`,
+      response.status
     );
   }
 
-  return new Uint8Array(await response.arrayBuffer());
+  try {
+    return new Uint8Array(await response.arrayBuffer());
+  } catch (cause) {
+    throw new ProofServerError(`Proof Server response could not be read: url="${url}"`, undefined, { cause });
+  }
 };
 
 export interface ProvingProviderConfig {

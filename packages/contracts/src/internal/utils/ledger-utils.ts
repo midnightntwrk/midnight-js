@@ -20,6 +20,7 @@ import {
   type ContractState,
   type QueryContext,
   type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   ChargedState,
   communicationCommitmentRandomness,
@@ -51,6 +52,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
+import { BlankVerifierKeySlotError, ZswapOutputResolutionError } from '../../errors';
 import { type EncryptionPublicKeyResolver, zswapCallsToSegmentedOffer, zswapStateToOffer } from './zswap-utils';
 
 const PKG = '@midnight-ntwrk/midnight-js-contracts';
@@ -160,7 +162,7 @@ const assertReceivesMatchClaims = (
     .filter(({ offered: o, claimed: c }) => o !== c);
   if (differences.length === 0) return;
 
-  throw new Error(
+  throw new ZswapOutputResolutionError(
     `A shielded coin addressed to a contract must be claimed as received by that contract as many ` +
       `times as the offers carry it, and these do not match. A transaction like this is rejected ` +
       `after proving. Offer count vs claim count:\n` +
@@ -216,16 +218,14 @@ export const createUnprovenLedgerCallTx = (
     const callContractState = contractStateFor(call.contractAddress);
     assertDefined(callContractState, `Contract state for '${call.contractAddress}' is undefined`);
     const op = toLedgerContractState(callContractState).operation(call.circuitId);
-    assertDefined(op, `Operation '${call.circuitId}' is undefined for contract '${call.contractAddress}'`);
-    // The key location hashes the operation's deployed verifier key; a state whose operation carries
-    // no key (e.g. a bare `ContractOperation`) is a caller error, surfaced here rather than as an
-    // opaque "expected Uint8Array" throw from the hasher.
-    assertDefined(
-      op.verifierKey,
-      `Operation '${call.circuitId}' on contract '${call.contractAddress}' has no verifier key. Each ` +
-        'invoked operation must carry its deployed verifier key (present in states read from chain, or ' +
-        "produced by a real deploy), which the call's key location hashes."
-    );
+    if (op === undefined || op === null) {
+      throw new InvalidArgumentError(`Operation '${call.circuitId}' is undefined for contract '${call.contractAddress}'`);
+    }
+    // The key location hashes the operation's deployed verifier key, so a blank slot is refused here
+    // rather than as an opaque "expected Uint8Array" throw from the hasher.
+    if (op.verifierKey === undefined || op.verifierKey === null) {
+      throw new BlankVerifierKeySlotError(call.circuitId);
+    }
     intent = intent.addCall(
       new ContractCallPrototype(
         call.contractAddress,

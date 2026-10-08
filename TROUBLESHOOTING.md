@@ -323,6 +323,31 @@ docker compose ps
 
 ## Midnight.js error codes
 
+Every error midnight-js raises itself extends `MidnightJsError` and carries a `code` and a `category`; a failure from a dependency can still pass through uncoded, as the `cause` of a coded error or on its own.
+Handle errors by category first, then by code:
+
+```typescript
+import { errorCategory } from '@midnight-ntwrk/midnight-js-utils';
+
+try {
+  await submitCallTx(providers, options);
+} catch (e) {
+  switch (errorCategory(e)) {
+    case 'TRANSIENT': /* safe to retry the operation; rethrow if you do not */ throw e;
+    case 'UNCERTAIN': /* a submitted transaction may be on chain: check before anything else (see the code's row) */ throw e;
+    case 'REJECTED': /* show the refusal to the user, then rethrow or stop */ throw e;
+    case 'USAGE': case 'ENVIRONMENT': /* fix code or setup; do not retry */ throw e;
+    case 'INTEGRITY': case 'INTERNAL': /* alert or report */ throw e;
+    case undefined: /* not a midnight-js error */ throw e;
+  }
+}
+```
+
+`UNCERTAIN` (`MIDNIGHT_JS_C_STALE_HEAD`, `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED`, `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED`) means a submitted transaction may already be on chain. Never retry these blindly: follow the code's row first.
+
+Use `hasErrorCode`, `isMidnightJsError` and `errorCategory` rather than `instanceof`: two installed copies
+of a package make `instanceof` answer `false`.
+
 Every error midnight-js raises with a stable `code` is listed here. Discriminate on
 one with `hasErrorCode(error, code)` from `@midnight-ntwrk/midnight-js-utils`; the
 one-argument form answers "is this one of ours" and returns `false` for a foreign
@@ -331,6 +356,15 @@ coded error such as Node's `ECONNREFUSED`.
 The set below is asserted against the code registry by
 `packages/utils/src/test/troubleshooting-coverage.test.ts` in both directions, so a
 new coded error cannot ship without an entry here and an entry cannot outlive its code.
+
+### General (`MIDNIGHT_JS_G_*`)
+
+| Code | What happened | What to do |
+|---|---|---|
+| `MIDNIGHT_JS_G_INVALID_ARGUMENT` | A value passed to a midnight-js function was refused; the message names it. | Fix the value at the call site. Do not retry. |
+| `MIDNIGHT_JS_G_CONFIGURATION_MISSING` | Required setup is missing or was done out of order (e.g. no network id, no contract address set). | Do the setup step the message names before the call. |
+| `MIDNIGHT_JS_G_ENVIRONMENT_UNSUPPORTED` | The JavaScript runtime lacks an API midnight-js needs. | Run on a supported Node/browser version, or supply the alternative the message names. |
+| `MIDNIGHT_JS_G_INVARIANT_VIOLATED` | An internal guarantee of midnight-js did not hold. | Report it as a midnight-js bug with the full error and `cause`. |
 
 ### Version resolution (`MIDNIGHT_JS_P_*`)
 
@@ -350,6 +384,7 @@ new coded error cannot ship without an entry here and an entry cannot outlive it
 | `MIDNIGHT_JS_P_STATE_INCONSISTENT` | Serialized contract state decoded, but the state is internally inconsistent (an unresolvable entry point, an unhashable verifier key, or no usable balance). | Read the cause. Do not retry with the other era — the bytes were this era's. Check the decoder the era was loaded with and the source of the state. |
 | `MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION` | An era was requested by name that is not a `LedgerVersion`. | `requestedVersion` carries it. Usually a hand-built value; use `LEDGER_VERSIONS`. |
 | `MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION` | Bytes handed to the retained-era proving seam do not carry a transaction tag. | The payload came from somewhere other than a sanctioned serialization seam. Do not re-wrap bytes by hand. |
+| `MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED` | A circuit or constructor execution failed. A Compact `assert` refusal is the usual cause, but an uncoded key or config read failure or a runtime fault can also arrive this way. A lone failure that carries a coded midnight-js error (for example a ZK artifact fetch failure) surfaces as that error instead. When several failures arrive at once, this error lists them all and `cause` is the first coded one. | Read `cause`: it is the source of truth. If it is an `assert`, check the inputs and the contract's rules. |
 
 ### Era dispatch and the fork window (`MIDNIGHT_JS_C_*`)
 
@@ -370,8 +405,22 @@ new coded error cannot ship without an entry here and an entry cannot outlive it
 | `MIDNIGHT_JS_C_VERIFIER_KEY_MISMATCH` | The verifier key compiled locally for `circuitId` does not byte-match the one the deployed contract registers for that entry point. Raised before proving, so the proving cost is not paid. | The deployed contract is a different build from this local one: point the operation at the address this artifact was compiled for, or rebuild against the deployed contract's source. |
 | `MIDNIGHT_JS_C_SCOPED_TX_ERA_UNSUPPORTED` | A scoped transaction was attempted on an era that does not support them. | Scoped transactions are current-era only. Split the work into separate transactions. |
 | `MIDNIGHT_JS_C_MIXED_ERA_SCOPE` | A retained-era call was given a contract-scoped transaction. A scope merges its calls into one current-era transaction, so a retained-era call cannot join one at all — even a scope holding nothing else. | Submit this call as its own transaction with `submitCallTx`, outside the scope, and keep the scope for calls against contracts produced by the current toolchain. |
-| `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED` | A submission was rejected and whether the network crossed the fork mid-build could not be resolved. `reason` says why: the head could not be re-read, or it reported an earlier era. | Check whether the transaction finalized first, the same way as for `STALE_HEAD` — this error carries `contractAddress` and `circuitId`. Then retry once the read surface is reachable, or check indexer health, per `reason`. An `AggregateError`: the submission rejection is the first entry of `errors`. |
+| `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED` | A submission was rejected and whether the network crossed the fork mid-build could not be resolved. `reason` says why: the head could not be re-read, or it reported an earlier era. | Check whether the transaction finalized first, the same way as for `STALE_HEAD` — this error carries `contractAddress` and `circuitId`. Then retry once the read surface is reachable, or check indexer health, per `reason`. The submission rejection is the first entry of `errors`. |
 | `MIDNIGHT_JS_C_LEDGER_PARAMETERS_UNSERVED` | The read surface served the state of the contract at `contractAddress` without the ledger parameters of the block that dates it, so the call cannot be partitioned against the cost model the chain is running. | Configure a `PublicDataProvider` whose `queryRawContractState` serves `ledgerParameters`; the bundled indexer provider does. Substituting the ledger's initial parameters is not the fix — it draws the guaranteed and fallible segment boundary from a model the chain does not run, and the node then refuses the guaranteed segment for running out of gas after proving has already been paid for. A caller that genuinely has no read surface selects that path by name, with `INITIAL_LEDGER_PARAMETERS` from `midnight-js-protocol`. |
+| `MIDNIGHT_JS_C_CONTRACT_TYPE_MISMATCH` | The deployed contract at the address does not match the local contract (missing, keyless or different circuits). | Use the address of a contract of this type, or the artifacts it was deployed with. |
+| `MIDNIGHT_JS_C_INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG` | A call needs private state but its private-state options are incomplete. | Pass both `privateStateId` and a `privateStateProvider`. |
+| `MIDNIGHT_JS_C_INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG` | A deploy was given a partial private-state configuration. | Pass `privateStateId` together with `initialPrivateState`. |
+| `MIDNIGHT_JS_C_INCOMPLETE_FIND_PRIVATE_STATE_CONFIG` | `findDeployedContract` was given a partial private-state configuration. | Pass `privateStateId` together with the private-state value to store. |
+| `MIDNIGHT_JS_C_SCOPED_TX_IDENTITY_MISMATCH` | A call in a scoped transaction targets a different contract identity than the scope. | Keep every call in one scope on the same contract and providers. |
+| `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED` | A retained-era deploy was submitted but its outcome is unknown. | Save `signingKey` from the error first: it is the only copy of the contract's maintenance key. Then look up `contractAddress` before deploying again; a second deploy lands at a new address. |
+| `MIDNIGHT_JS_C_LEDGER8_AMBIGUOUS_ENTRY_POINT` | The on-chain state of a retained-era contract declares the same entry-point name more than once, so a call cannot tell which slot it would run on. | Nothing in the call can fix this: report the contract address. |
+| `MIDNIGHT_JS_C_LEDGER8_RECIPIENT_UNMAPPABLE` | A retained-era recipient cannot be expressed in the current era. | Provide the recipient mapping the message names. |
+| `MIDNIGHT_JS_C_LEDGER8_DEPLOY_NOT_STORED` | A retained-era deploy succeeded on chain but its local record was refused. | Do NOT deploy again. Store the key carried on the error with the private-state provider. |
+| `MIDNIGHT_JS_C_LEDGER8_SIGNING_KEY_UNUSABLE` | The `signingKey` passed to a retained-era attach is not a 32-byte key (64 hex characters), so it could not be stored and read back. | Pass a key of the form that era's `sampleSigningKey` produces. |
+| `MIDNIGHT_JS_C_HEAD_READ_FAILED` | The network head could not be read: a re-read while checking an era disagreement failed, or the public data provider returned no latest block to pin a call to. | Retry once the indexer is reachable; a transport error, when there is one, is on `cause`. |
+| `MIDNIGHT_JS_C_ZSWAP_OUTPUT_UNRESOLVED` | A Zswap output or its recipient's encryption key could not be resolved. | Check the recipient is a supported address and the coin type is supported. |
+| `MIDNIGHT_JS_C_CONTRACT_NOT_FOUND` | No contract is deployed at the given address on the network the providers point to. | Check the address and that the providers target the network the contract was deployed on. |
+| `MIDNIGHT_JS_C_PRIVATE_STATE_NOT_FOUND` | No private state is stored under the given private state id. | Check the id, or store the initial private state first (deploy or find with an initial state). |
 
 ### Provider seams (`MIDNIGHT_JS_PR_*`, `MIDNIGHT_JS_U_*`)
 
@@ -383,8 +432,36 @@ new coded error cannot ship without an entry here and an entry cannot outlive it
 | `MIDNIGHT_JS_PR_ERA_UNRESOLVABLE` | The indexer reported a `protocolVersion` that resolves to no era. | The originating error is on `cause`. Check the indexer's network matches the framework version. |
 | `MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED` | An operation was refused before it started: the provider wired to `seam` declares in `supportedEras` that it does not serve the era this operation runs on. Raised from the declaration, so no proof was requested. | `seam`, `era` and `declared` identify the gap. Wire a provider that serves that era on that seam — `createProofProviderFromHandlers`, `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers` build one from a handler per era. |
 | `MIDNIGHT_JS_PR_PRIVATE_STATE_NOT_SERIALIZABLE` | A private state was handed to `set` holding something storage cannot preserve: a function, a symbol, a class instance, an `ArrayBuffer`/`DataView`, an invalid `Date`, a sparse array, or a property storage would not write back. Nothing was written. | `path` names where it sits inside the state, `reason` says what storage would have done to it, and `privateStateId` names the state. Private state must be plain data: convert the member (`Buffer.from(buffer)`, `{ ...instance }`) or keep it outside the stored state. |
+| `MIDNIGHT_JS_PR_INVALID_PROTOCOL_SCHEME` | A provider URL uses a scheme other than the ones it supports. | Use a scheme the message lists: `http` or `https`, or `ws` or `wss` for subscriptions. |
+| `MIDNIGHT_JS_PR_ARTIFACT_RUNTIME_VERSION_UNAVAILABLE` | The ZK config provider cannot report the compact-runtime version of its artifacts. | Use a provider shipped with midnight-js, or implement the version accessor in yours. |
+| `MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_FOUND` | No artifact source holds a bundle whose verifier key matches the deployed one for the named contract and circuit: the local artifacts are missing, or stale against the deployed contract. A source that failed an integrity check or was temporarily unavailable is reported with that error instead. | Use the compiled artifacts of the deployed contract version. Read `cause`: the other source failures are attached there. |
+| `MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED` | Fetching or reading a ZK artifact, manifest or contract description failed at the network or with HTTP 408, 429 or 5xx. | Retry; if it persists, check the artifact server. Status is on `status`, the network error on `cause`. |
+| `MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED` | The artifact server answered with an HTTP status below 500 other than 408 or 429, or an HTML page instead of the artifact. | Fix the base URL or deploy the artifacts; an HTML answer usually means an SPA fallback for a missing file. |
+| `MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE` | The proof server could not be reached or answered HTTP 408, 429 or 5xx. | Retry; check the proof server is running and reachable. |
+| `MIDNIGHT_JS_PR_PROOF_SERVER_REFUSED` | The proof server answered another HTTP 4xx. | Check the proof server version matches this midnight-js release. |
+| `MIDNIGHT_JS_PR_PRIVATE_STATE_EXPORT_FAILED` | Exporting private states was refused; the message names why. | Fix the condition the message names (e.g. nothing to export, limit) and export again. |
+| `MIDNIGHT_JS_PR_SIGNING_KEY_EXPORT_FAILED` | Exporting signing keys was refused; the message names why. | Fix the condition the message names and export again. |
+| `MIDNIGHT_JS_PR_PRIVATE_STATE_IMPORT_FAILED` | Importing private states failed. | Check the export file and the password; see the more specific import codes. |
+| `MIDNIGHT_JS_PR_EXPORT_DECRYPTION_FAILED` | An export could not be decrypted. | Use the password the export was created with; the file may be corrupt. |
+| `MIDNIGHT_JS_PR_INVALID_EXPORT_FORMAT` | An import file is not a valid midnight-js export. | Use a file produced by the export function of a compatible version. |
+| `MIDNIGHT_JS_PR_IMPORT_CONFLICT` | An import would overwrite existing private state. | Choose the conflict strategy explicitly, or remove the existing entries first. |
+| `MIDNIGHT_JS_PR_PRIVATE_STATE_DECRYPTION_FAILED` | Stored private state could not be decrypted. `reason` is `wrong-key` (wrong password, other salt, or the data was modified; these cannot be told apart) or `malformed` (unknown format or corrupt data). | Use the right password. If it is right, the store is corrupt or was tampered with: restore from an export. |
+| `MIDNIGHT_JS_PR_PRIVATE_STATE_STORAGE_FAILED` | Reading or writing the private-state store failed (open, read, write, migration). | Check disk space and permissions; the underlying error is on `cause`. If closing the database failed too, that failure is on `closeError` and the database stays locked until the process exits. |
+| `MIDNIGHT_JS_PR_PRIVATE_STATE_LIMIT_EXCEEDED` | A migration or password rotation processed more entries than `maxEntries` allows. Export and import limits (`maxStates`, `maxKeys`) raise the export and import errors instead. | Raise the `maxEntries` option if the volume is expected. |
+| `MIDNIGHT_JS_PR_STORED_SIGNING_KEY_INVALID` | A stored signing key is not in a format this version can read. | Restore the key from a backup or an export; report it if the store was written by a supported version. |
+| `MIDNIGHT_JS_PR_INDEXER_GRAPHQL_FAILED` | The indexer answered a query with GraphQL errors; they are listed on `errors`. | Check the indexer version is supported by this midnight-js release. |
+| `MIDNIGHT_JS_PR_INDEXER_QUERY_FAILED` | A request to the indexer failed at the transport level. | Retry; check the indexer URL and network. The Apollo error is on `cause`. |
+| `MIDNIGHT_JS_PR_INDEXER_DATA_INVALID` | The indexer returned data that breaks the provider's expectations; `context.kind` names how. | Do not retry blindly; report with the indexer version. |
+| `MIDNIGHT_JS_PR_INDEXER_SUBSCRIPTION_DATA_INVALID` | A subscription message lacked a field the provider needs (`missingField`). | Check the indexer version; report if it is supported. |
+| `MIDNIGHT_JS_PR_INDEXER_CONFIG_INVALID` | The indexer provider was given a configuration it cannot serve. | Change the configuration as the message describes. |
+| `MIDNIGHT_JS_PR_INDEXER_INVARIANT_VIOLATED` | An internal guarantee of the indexer provider did not hold. | Report it as a midnight-js bug. |
+| `MIDNIGHT_JS_PR_INDEXER_PAYLOAD_TOO_LARGE` | A compressed subscription message inflated beyond the size limit (possible compression bomb). | Check the indexer endpoint is trusted; report if it is. |
 | `MIDNIGHT_JS_U_TAG_PARSE_FAILED` | A serialized payload's `namespace:version:` tag prefix could not be parsed. | Verify the payload came from a sanctioned seam — a wallet balance response, a proof request, or a raw contract-state query. |
 | `MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER` | A `switch` closed with `assertNever` was reached, so a value the compiler ruled out arrived anyway. `context` names the switch. | The union grew and this switch was not updated, or a payload was decoded from outside the build. Add the missing arm at the call site `context` names. |
+| `MIDNIGHT_JS_U_ZK_ARTIFACT_INTEGRITY_FAILED` | A ZK artifact's hash does not match its manifest. | Do not use the artifact; re-download or rebuild it from a trusted source. |
+| `MIDNIGHT_JS_U_ZK_ARTIFACT_CONTRACT_INFO_INVALID` | A compiled contract's `contract-info` file is missing or malformed. | Recompile the contract with a supported `compactc`. |
+| `MIDNIGHT_JS_U_PASSWORD_INVALID` | A private-storage password does not meet the strength rules. | Choose a password that satisfies the rules in the message. |
+| `MIDNIGHT_JS_U_DESERIALIZATION_FAILED` | Ledger/runtime bytes could not be decoded; `context` holds classification and mitigation. | Follow `context.mitigation`; a version mismatch usually means a midnight-js upgrade is needed. |
 
 ## Getting Help
 

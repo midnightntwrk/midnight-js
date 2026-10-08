@@ -13,6 +13,14 @@
  * limitations under the License.
  */
 
+import {
+  findCodedCause,
+  InvalidArgumentError,
+  MIDNIGHT_JS_ERROR_CATEGORIES,
+  MidnightJsError
+} from '@midnight-ntwrk/midnight-js-protocol/errors';
+
+import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from './errors';
 import type { VerifierKey, ZKConfig } from './midnight-types';
 import type { KeyMaterialProvider, ZKConfigProvider } from './zk-config-provider';
 import { type ContractKeyLocation, encodeContractKeyLocation, hashVerifierKey, parseContractKeyLocation } from './zk-key-location';
@@ -22,13 +30,15 @@ import { type ContractKeyLocation, encodeContractKeyLocation, hashVerifierKey, p
  * verifier key matches the deployed one — i.e. the local artifacts have drifted from (or were
  * never compiled for) the deployed contract.
  */
-export class ZKArtifactNotFoundError extends Error {
+export class ZKArtifactNotFoundError extends MidnightJsError {
+  readonly code = PROVIDER_ERROR_CODES.ZK_ARTIFACT_NOT_FOUND;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.ZK_ARTIFACT_NOT_FOUND];
+
   /**
    * @param keyLocation The location that could not be resolved.
    * @param suppressedErrors Errors raised by individual sources while probing their verifier key
-   * (integrity violations, permission/IO failures, or a genuine absence of the circuit). They are
-   * attached as this error's `cause` so a real failure — for example a `ZkArtifactIntegrityError` —
-   * is not hidden behind the "missing or stale" message.
+   * (permission/IO failures, or a genuine absence of the circuit). They are attached as this error's
+   * `cause` so none is lost. An integrity or transient failure is thrown instead of this error.
    */
   constructor(
     readonly keyLocation: ContractKeyLocation,
@@ -111,6 +121,8 @@ export class ZKConfigRegistry {
    * location (for example, a `midnight/` protocol builtin, which provers resolve elsewhere).
    * @throws ZKArtifactNotFoundError If `keyLocation` is a contract key location but no source's
    * verifier key for the circuit matches the embedded hash.
+   * @throws The INTEGRITY error, or else the TRANSIENT error, a source raised while probing, when no
+   * source matches and one of them failed that way.
    */
   async resolveKeyLocation(keyLocation: string): Promise<ZKConfig<string> | undefined> {
     const parsed = parseContractKeyLocation(keyLocation);
@@ -128,7 +140,7 @@ export class ZKConfigRegistry {
     const resolve = async (circuitKeyLocation: string): Promise<ZKConfig<string>> => {
       const config = await this.resolveKeyLocation(circuitKeyLocation);
       if (config === undefined) {
-        throw new Error(`'${circuitKeyLocation}' is not a contract key location`);
+        throw new InvalidArgumentError(`'${circuitKeyLocation}' is not a contract key location`);
       }
       return config;
     };
@@ -150,10 +162,8 @@ export class ZKConfigRegistry {
       try {
         probe = await this.probeVerifierKeyHash(source, parsed.circuitId);
       } catch (error) {
-        // A source may simply not have this circuit, or the read may have failed for a real reason
-        // (integrity violation, permissions, IO). The provider interface can't tell them apart, so
-        // keep probing other sources but retain the error to surface as the cause if none matches —
-        // never silently discard it.
+        // A source may simply not have this circuit, or the read may have failed for a real reason.
+        // Keep probing the other sources, but never discard the error.
         suppressedErrors.push(error);
         continue;
       }
@@ -162,6 +172,14 @@ export class ZKConfigRegistry {
       }
       this.boundSource.set(keyLocation, source);
       return this.buildConfig(source, parsed.circuitId, probe.verifierKey);
+    }
+    // A tampered artifact or a source that is down tells the caller more than "missing or stale".
+    const coded = suppressedErrors.map(findCodedCause);
+    const blocking =
+      coded.find((error) => error?.category === MIDNIGHT_JS_ERROR_CATEGORIES.INTEGRITY) ??
+      coded.find((error) => error?.category === MIDNIGHT_JS_ERROR_CATEGORIES.TRANSIENT);
+    if (blocking !== undefined) {
+      throw blocking;
     }
     throw new ZKArtifactNotFoundError(parsed, suppressedErrors);
   }

@@ -13,32 +13,55 @@
  * limitations under the License.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { withContractScopedTransaction } from '../transaction';
 import { createMockProviders } from './test-mocks';
 
-describe('scoped transaction error messages', () => {
-  it('should include scopeName in execution error message for root transactions', async () => {
-    const mockProviders = createMockProviders();
+describe('scoped transaction failures', () => {
+  const withErrorLog = () => {
+    const error = vi.fn();
+    return { providers: { ...createMockProviders(), loggerProvider: { error, isLevelEnabled: () => true } }, error };
+  };
 
-    await expect(
-      withContractScopedTransaction(
-        mockProviders,
-        async () => { throw new Error('circuit failed'); },
-        { scopeName: 'myTransfer' }
-      )
-    ).rejects.toThrow(/myTransfer/);
+  it('logs a root-scope failure with the scope name and rethrows it unchanged', async () => {
+    // Arrange
+    const { providers, error: logError } = withErrorLog();
+    const failure = new Error('circuit failed');
+
+    // Act
+    const rejection = withContractScopedTransaction(
+      providers,
+      async () => {
+        throw failure;
+      },
+      { scopeName: 'myTransfer' }
+    );
+
+    // Assert
+    await expect(rejection).rejects.toBe(failure);
+    expect(logError).toHaveBeenCalledExactlyOnceWith(
+      { err: failure, scopeName: 'myTransfer', phase: 'executing' },
+      "Scoped transaction 'myTransfer' failed while executing: Error: circuit failed"
+    );
+    expect(logError.mock.calls[0]?.[0]?.err).toBe(failure);
   });
 
-  it('should show <unnamed> when no scopeName is provided', async () => {
-    const mockProviders = createMockProviders();
+  it('logs <unnamed> when no scopeName is provided', async () => {
+    // Arrange
+    const { providers, error: logError } = withErrorLog();
+    const failure = new Error('circuit failed');
 
-    await expect(
-      withContractScopedTransaction(
-        mockProviders,
-        async () => { throw new Error('circuit failed'); }
-      )
-    ).rejects.toThrow(/<unnamed>/);
+    // Act
+    const rejection = withContractScopedTransaction(providers, async () => {
+      throw failure;
+    });
+
+    // Assert
+    await expect(rejection).rejects.toBe(failure);
+    expect(logError).toHaveBeenCalledExactlyOnceWith(
+      { err: failure, scopeName: '<unnamed>', phase: 'executing' },
+      "Scoped transaction '<unnamed>' failed while executing: Error: circuit failed"
+    );
   });
 });

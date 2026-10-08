@@ -30,16 +30,16 @@
  * contract is single-call by construction, so a pre-fork scope also has little
  * to be atomic about.
  */
-
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { AnyProvableCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { MixedEraScopeError, ScopedTxEraUnsupportedError } from '../errors';
+import { HeadReadFailedError, MixedEraScopeError, ScopedTxEraUnsupportedError } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
 import { assertScopeAdmitsRetainedEraCall, scopedTransaction, TransactionContextImpl } from '../internal/transaction';
 import { submitCallTx } from '../submit-call-tx';
@@ -125,9 +125,103 @@ describe('per-scope era resolution', () => {
     const invalid = { ...providers, config: { networkId: 'undeployed', ttlSeconds: 0 } };
     const fn = vi.fn();
 
-    await expect(withContractScopedTransaction(invalid, fn)).rejects.toThrow(RangeError);
+    await expect(withContractScopedTransaction(invalid, fn)).rejects.toThrow(InvalidArgumentError);
     expect(invalid.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
     expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('passes the InvalidArgumentError of a scope that submitted no calls through unchanged', async () => {
+    onPostForkHead();
+
+    const error = await withContractScopedTransaction(providers, async () => undefined).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(InvalidArgumentError);
+    expect(error).toHaveProperty('message', 'No calls were submitted.');
+  });
+
+  const withErrorLog = () => {
+    const error = vi.fn();
+    return { logged: { ...providers, loggerProvider: { error, isLevelEnabled: () => true } }, error };
+  };
+
+  it('passes an uncoded failure of the submit step through unchanged and logs it with the scope name', async () => {
+    // Arrange
+    onPostForkHead();
+    const failure = new Error('node unreachable');
+    vi.mocked(submitTx).mockRejectedValue(failure);
+    const { logged, error: logError } = withErrorLog();
+
+    // Act
+    const error = await withContractScopedTransaction(
+      logged,
+      async (txCtx) => {
+        await submitCallTx(logged, callOptions(), txCtx);
+      },
+      { scopeName: 'myScope' }
+    ).catch((e: unknown) => e);
+
+    // Assert
+    expect(error).toBe(failure);
+    expect(logError).toHaveBeenCalledExactlyOnceWith({ err: failure, scopeName: 'myScope', phase: 'submitting' }, "Scoped transaction 'myScope' failed while submitting: Error: node unreachable");
+    expect(logError.mock.calls[0]?.[0]?.err).toBe(failure);
+  });
+
+  it('logs a coded failure of the submit step too, and passes it through unchanged', async () => {
+    // Arrange
+    onPostForkHead();
+    const failure = new HeadReadFailedError('head read failed');
+    vi.mocked(submitTx).mockRejectedValue(failure);
+    const { logged, error: logError } = withErrorLog();
+
+    // Act
+    const error = await withContractScopedTransaction(
+      logged,
+      async (txCtx) => {
+        await submitCallTx(logged, callOptions(), txCtx);
+      },
+      { scopeName: 'myScope' }
+    ).catch((e: unknown) => e);
+
+    // Assert
+    expect(error).toBe(failure);
+    expect(logError).toHaveBeenCalledExactlyOnceWith({ err: failure, scopeName: 'myScope', phase: 'submitting' }, "Scoped transaction 'myScope' failed while submitting: HeadReadFailedError: head read failed");
+    expect(logError.mock.calls[0]?.[0]?.err).toBe(failure);
+  });
+
+  it('passes a foreign coded failure of the submit step through unchanged', async () => {
+    // Arrange
+    onPostForkHead();
+    const failure = Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
+    vi.mocked(submitTx).mockRejectedValue(failure);
+
+    // Act
+    const error = await withContractScopedTransaction(providers, async (txCtx) => {
+      await submitCallTx(providers, callOptions(), txCtx);
+    }).catch((e: unknown) => e);
+
+    // Assert
+    expect(error).toBe(failure);
+  });
+
+  it('passes a failure raised inside the scope through unchanged and logs it with the scope name', async () => {
+    // Arrange
+    onPostForkHead();
+    const failure = new Error('witness refused');
+    const { logged, error: logError } = withErrorLog();
+
+    // Act
+    const error = await withContractScopedTransaction(
+      logged,
+      async () => {
+        throw failure;
+      },
+      { scopeName: 'myScope' }
+    ).catch((e: unknown) => e);
+
+    // Assert
+    expect(error).toBe(failure);
+    expect(logError).toHaveBeenCalledExactlyOnceWith({ err: failure, scopeName: 'myScope', phase: 'executing' }, "Scoped transaction 'myScope' failed while executing: Error: witness refused");
+    expect(logError.mock.calls[0]?.[0]?.err).toBe(failure);
   });
 
   it('resolves the head era ONCE per scope, however many calls are merged into it', async () => {
@@ -397,7 +491,7 @@ describe('a retained-era call handed a scope', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(TypeError);
+    expect(caught).toBeInstanceOf(InvalidArgumentError);
     expect(caught).not.toBeInstanceOf(MixedEraScopeError);
     expect((caught as Error).message).toContain('is not a transaction context');
     // And it says where a real one comes from, so the mistake is fixable.

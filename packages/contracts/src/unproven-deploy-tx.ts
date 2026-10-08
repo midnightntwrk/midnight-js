@@ -16,6 +16,7 @@
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { ContractExecutionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   exitResultOrError,
@@ -108,9 +109,10 @@ export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
  * @param config The network the transaction is built for and how long it stays valid, normally `providers.config`.
  * @returns Data produced by the contract constructor call and an unproven deployment transaction
  *          assembled from the contract constructor result.
- * @throws TypeError If `config` is missing, or its `networkId` is not a non-empty string without
- *         surrounding whitespace.
- * @throws RangeError If `config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
+ * @throws ConfigurationError If `config` is missing.
+ * @throws InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
+ *         whitespace.
+ * @throws InvalidArgumentError If `config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
  *
  * @remarks
  * The returned {@link UnsubmittedDeployTxData} is privacy-sensitive and
@@ -176,7 +178,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
     if (!isEffectContractError(error)) throw error;
     if (error._tag !== 'ContractRuntimeError' && error._tag !== 'ContractConfigurationError') throw error;
     if (error.cause.name !== 'CompactError') throw error;
-    throw new Error(error.cause.message, { cause: error });
+    throw new ContractExecutionError(error.cause.message, { cause: error });
   }
 }
 
@@ -208,9 +210,10 @@ export async function createUnprovenDeployTx<C extends Contract.Any>(
  *
  * @returns A promise that contains all data produced by the constructor call and an unproven
  *          transaction assembled from the constructor result.
- * @throws TypeError If `providers.config` is missing, or its `networkId` is not a non-empty string without
- *         surrounding whitespace.
- * @throws RangeError If `providers.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
+ * @throws ConfigurationError If `providers.config` is missing.
+ * @throws InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
+ *         whitespace.
+ * @throws InvalidArgumentError If `providers.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
  *
  * @remarks
  * The returned {@link UnsubmittedDeployTxData} is privacy-sensitive and

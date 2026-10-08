@@ -14,6 +14,7 @@
  */
 
 import { ContractState as CompactContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   MaintenanceUpdate,
   sampleCoinPublicKey,
@@ -77,7 +78,7 @@ describe('governance/unproven-tx', () => {
   it('refuses an invalid TTL before signing the update', async () => {
     const updateAndSign = vi.fn(() => Promise.resolve(new MaintenanceUpdate(dummyContractAddress, [], 1n)));
 
-    await expect(unprovenTxFromContractUpdates(updateAndSign, { networkId: 'preview', ttlSeconds: -5 })).rejects.toThrow(RangeError);
+    await expect(unprovenTxFromContractUpdates(updateAndSign, { networkId: 'preview', ttlSeconds: -5 })).rejects.toThrow(InvalidArgumentError);
     expect(updateAndSign).not.toHaveBeenCalled();
   });
 

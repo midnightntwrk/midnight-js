@@ -15,6 +15,7 @@
 
 import type { Ledger8SigningKey, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvariantViolationError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type {
   AnyProvableCircuitId,
   FinalizedTxData,
@@ -22,7 +23,7 @@ import type {
   Seam,
   VersionedFinalizedTxData
 } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 
 import { CURRENT_PIPELINE_ERA, RETAINED_PIPELINE_ERA } from './era';
 import { NEITHER_ERA_CONTRACT_MESSAGE } from './ledger8-contract';
@@ -81,8 +82,9 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
  * missing or unrecognised is a different fault and raises
  * {@link UntaggedPayloadError} instead.
  */
-export class EraInvariantViolationError extends Error {
+export class EraInvariantViolationError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION];
 
   /**
    * @param seam The provider method that returned the payload.
@@ -194,8 +196,9 @@ export interface EraArtifactMismatchOptions extends ErrorOptions {
  *
  * @see {@link EraDispatch} for how the era is established and which pairings are refused.
  */
-export class EraArtifactMismatchError extends Error {
+export class EraArtifactMismatchError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH];
 
   /**
    * @param reason Which era mismatch this is. Also the discriminant a caller branches on, so it is
@@ -232,8 +235,9 @@ export class EraArtifactMismatchError extends Error {
  * Distinct from the era disagreements either side of it: nothing here is stale or inconsistent, and
  * a retry cannot change it. What has to change is which artifacts the caller passes.
  */
-export class RetainedArtifactOnCurrentEraStateError extends Error {
+export class RetainedArtifactOnCurrentEraStateError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE];
 
   /**
    * @param contractAddress The contract whose on-chain state was read.
@@ -265,8 +269,9 @@ export class RetainedArtifactOnCurrentEraStateError extends Error {
  * pre-fork deployments callable. A new deployment has no such history to preserve, so it is refused
  * rather than written to the chain in an era the network has left.
  */
-export class Ledger8DeployOnV9Error extends Error {
+export class Ledger8DeployOnV9Error extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9];
 
   constructor() {
     super(
@@ -293,8 +298,9 @@ export class Ledger8DeployOnV9Error extends Error {
  *
  * @see {@link EraDispatch} for the five-step check that produces this error.
  */
-export class HeadStateEraMismatchError extends Error {
+export class HeadStateEraMismatchError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH];
 
   /**
    * @param head The era the operation resolved from the network head.
@@ -326,8 +332,9 @@ export class HeadStateEraMismatchError extends Error {
  * observed here establishes that one is under way, and telling a caller to wait out a fork that is
  * not happening is worse than telling it to retry.
  */
-export class IndexerInconsistencyError extends Error {
+export class IndexerInconsistencyError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY];
 
   /**
    * @param head The era the network head reported, confirmed by a fresh read.
@@ -357,8 +364,9 @@ export class IndexerInconsistencyError extends Error {
  * @see {@link ErrorTaxonomy} for why this refuses rather than substituting the ledger's initial
  * parameters.
  */
-export class LedgerParametersUnservedError extends Error {
+export class LedgerParametersUnservedError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED];
 
   /**
    * @param contractAddress The contract whose state was read without its block's parameters.
@@ -389,8 +397,9 @@ export class LedgerParametersUnservedError extends Error {
  * @see {@link ErrorTaxonomy} for what the retained arm is missing and why this
  * refuses before the offer is built.
  */
-export class Ledger8ShieldedSpendUnsupportedError extends Error {
+export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SHIELDED_SPEND_UNSUPPORTED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_SHIELDED_SPEND_UNSUPPORTED];
 
   /**
    * @param circuitId The circuit whose call was refused.
@@ -428,8 +437,9 @@ export class Ledger8ShieldedSpendUnsupportedError extends Error {
  *
  * @see {@link KeepStatePipeline} for what redaction removes and what is dropped.
  */
-export class Ledger8SeamFailedError extends Error {
+export class Ledger8SeamFailedError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED];
 
   /**
    * @param seam The provider method that rejected.
@@ -552,8 +562,9 @@ const STALE_HEAD_MESSAGES: Readonly<
  * @see {@link StaleHeadRemediation} for why a submit rejection is diagnosed
  *      rather than propagated, and why a deploy's remediation differs.
  */
-export class StaleHeadError extends Error {
+export class StaleHeadError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.STALE_HEAD;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.STALE_HEAD];
 
   /** The era the operation resolved when it started. */
   readonly startEra: LedgerVersion;
@@ -637,20 +648,20 @@ const undiagnosedMessage = (operation: SubmittedOperation, undiagnosed: SubmitRe
       // The runtime throw is not redundant with the compile-time gate: a new reason reaches here
       // before this switch is updated.
       const unhandled: never = undiagnosed;
-      throw new Error(`unhandled undiagnosed-rejection reason: ${String(unhandled)}`);
+      throw new InvariantViolationError(`unhandled undiagnosed-rejection reason: ${String(unhandled)}`);
     }
   }
 };
 
-const undiagnosedErrors = (rejection: unknown, undiagnosed: SubmitRejectionUndiagnosedCause): unknown[] =>
+const undiagnosedErrors = (rejection: unknown, undiagnosed: SubmitRejectionUndiagnosedCause): readonly unknown[] =>
   undiagnosed.reason === 'head-read-failed' ? [rejection, undiagnosed.headReadFailure] : [rejection];
 
 /**
  * An error indicating that a submission was rejected and that whether the
  * network crossed the ledger fork under it could not be established.
  *
- * An `AggregateError`: the submission rejection is what happened to the
- * transaction and is always the FIRST entry of `errors`, {@link reason} is why
+ * The submission rejection is what happened to the transaction and is always
+ * the FIRST entry of `errors`, {@link reason} is why
  * no diagnosis could be made, and `cause` names the proximate failure.
  *
  * DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own.
@@ -658,9 +669,12 @@ const undiagnosedErrors = (rejection: unknown, undiagnosed: SubmitRejectionUndia
  * @see {@link ErrorTaxonomy} for why the two codes name different things.
  * @see {@link StaleHeadRemediation} for the two arms.
  */
-export class SubmitRejectionUndiagnosedError extends AggregateError {
+export class SubmitRejectionUndiagnosedError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED];
 
+  /** The submission rejection first, then the head-read failure when there was one. */
+  readonly errors: readonly unknown[];
   /** Which of the two undiagnosable conditions this is. */
   readonly reason: SubmitRejectionUndiagnosedCause['reason'];
   /** The era the operation resolved when it started. */
@@ -676,10 +690,11 @@ export class SubmitRejectionUndiagnosedError extends AggregateError {
    * @param undiagnosed Why no diagnosis could be made.
    */
   constructor(operation: SubmittedOperation, rejection: unknown, undiagnosed: SubmitRejectionUndiagnosedCause) {
-    super(undiagnosedErrors(rejection, undiagnosed), undiagnosedMessage(operation, undiagnosed), {
+    super(undiagnosedMessage(operation, undiagnosed), {
       cause: undiagnosed.reason === 'head-read-failed' ? undiagnosed.headReadFailure : rejection
     });
     this.name = 'SubmitRejectionUndiagnosedError';
+    this.errors = undiagnosedErrors(rejection, undiagnosed);
     this.reason = undiagnosed.reason;
     this.startEra = operation.head;
     this.kind = operation.kind;
@@ -691,6 +706,54 @@ export class SubmitRejectionUndiagnosedError extends AggregateError {
 interface EffectContractError {
   readonly _tag: string;
   readonly cause: { readonly name: string; readonly message: string; readonly isCompactError?: boolean };
+}
+
+/**
+ * The network head could not be read: either re-reading it while checking an era disagreement failed,
+ * or the public data provider returned no latest block to pin a call to. Retry when the read surface is
+ * reachable; a transport failure, when there is one, is on `cause`.
+ */
+export class HeadReadFailedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.HEAD_READ_FAILED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.HEAD_READ_FAILED];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'HeadReadFailedError';
+  }
+}
+
+/** A Zswap output or its recipient's encryption key could not be resolved for this transaction. */
+export class ZswapOutputResolutionError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.ZSWAP_OUTPUT_UNRESOLVED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.ZSWAP_OUTPUT_UNRESOLVED];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'ZswapOutputResolutionError';
+  }
+}
+
+/** No contract is deployed at the given address on the network the providers point to. */
+export class ContractNotFoundError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'ContractNotFoundError';
+  }
+}
+
+/** No private state is stored under the private state id the caller named. */
+export class PrivateStateNotFoundError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND];
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'PrivateStateNotFoundError';
+  }
 }
 
 export const isEffectContractError = (error: unknown): error is EffectContractError =>
@@ -713,8 +776,9 @@ export const isEffectContractError = (error: unknown): error is EffectContractEr
  * literals; a value that does not has been round-tripped through something
  * that dropped it -- a queue, a JSON boundary, a structured clone.
  */
-export class UnrecognisedResultEraError extends Error {
+export class UnrecognisedResultEraError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.UNRECOGNISED_RESULT_ERA;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.UNRECOGNISED_RESULT_ERA];
 
   /**
    * @param received What the result's `era` field actually held.
@@ -741,7 +805,7 @@ export class UnrecognisedResultEraError extends Error {
  *
  * @see {@link ErrorTaxonomy} for why the two eras cannot share a record type.
  */
-export abstract class AnyEraTxFailedError extends Error {
+export abstract class AnyEraTxFailedError extends MidnightJsError {
   /**
    * The one code every recorded-failure class in this package answers to.
    *
@@ -752,6 +816,7 @@ export abstract class AnyEraTxFailedError extends Error {
    * @see {@link ErrorTaxonomy} for why the code sits on the base.
    */
   readonly code = CONTRACTS_ERROR_CODES.TX_FAILED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.TX_FAILED];
 
   /**
    * The finalized record the chain reported, version-tagged.
@@ -904,7 +969,10 @@ const describeMismatch = (mismatch: ContractTypeMismatch, contractAddress?: Cont
  * mismatched key means the local artifacts are wrong, while a keyless slot means the deployed state
  * itself is incomplete and rebuilding locally cannot help.
  */
-export class ContractTypeError extends TypeError {
+export class ContractTypeError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.CONTRACT_TYPE_MISMATCH;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.CONTRACT_TYPE_MISMATCH];
+
   /**
    * The circuits that the deployed state registers no operation for.
    */
@@ -936,6 +1004,7 @@ export class ContractTypeError extends TypeError {
     readonly contractAddress?: ContractAddress
   ) {
     super(`${describeMismatch(mismatch, contractAddress)}\nDeployed state: ${describeContractState(contractState)}`);
+    this.name = 'ContractTypeError';
     this.missingCircuitIds = mismatch.missing;
     this.keylessCircuitIds = mismatch.keyless;
     this.mismatchedCircuitIds = mismatch.mismatched;
@@ -957,8 +1026,9 @@ export class ContractTypeError extends TypeError {
  * @see {@link ErrorTaxonomy} for the refuse-before-you-pay placement rule.
  * @see {@link StaleHeadRemediation} for what each placement property prevents.
  */
-export class ScopedTxEraUnsupportedError extends Error {
+export class ScopedTxEraUnsupportedError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED];
 
   /**
    * @param head The era the network head is on, as the scope resolved it.
@@ -988,8 +1058,9 @@ export class ScopedTxEraUnsupportedError extends Error {
  *
  * @see {@link StaleHeadRemediation} for why the two cannot be batched.
  */
-export class MixedEraScopeError extends Error {
+export class MixedEraScopeError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE];
 
   /**
    * @param circuitId The circuit whose call was refused.
@@ -1011,10 +1082,14 @@ export class MixedEraScopeError extends Error {
  * state provider was not. We want to let the user know so that they aren't under the impression the
  * private state of a contract was updated when it wasn't.
  */
-export class IncompleteCallTxPrivateStateConfig extends Error {
+export class IncompleteCallTxPrivateStateConfig extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG];
+
   constructor() {
     super('Incorrect call transaction configuration');
     this.message = "'privateStateId' was defined for call transaction while 'privateStateProvider' was undefined";
+    this.name = 'IncompleteCallTxPrivateStateConfig';
   }
 }
 
@@ -1029,7 +1104,10 @@ export class IncompleteCallTxPrivateStateConfig extends Error {
  * {@link IncompleteFindContractPrivateStateConfig} belong to — one client-side rule per entry
  * point, and client-side storage is era-independent.
  */
-export class IncompleteDeployContractPrivateStateConfig extends Error {
+export class IncompleteDeployContractPrivateStateConfig extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG];
+
   constructor(missing: 'privateStateId' | 'initialPrivateState' = 'privateStateId') {
     super('Incorrect deploy contract configuration');
     this.message =
@@ -1045,7 +1123,10 @@ export class IncompleteDeployContractPrivateStateConfig extends Error {
  * private state ID was not. We can't store the initial private state if we don't have a private state ID,
  * and we need to let the user know that.
  */
-export class IncompleteFindContractPrivateStateConfig extends Error {
+export class IncompleteFindContractPrivateStateConfig extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.INCOMPLETE_FIND_PRIVATE_STATE_CONFIG;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.INCOMPLETE_FIND_PRIVATE_STATE_CONFIG];
+
   constructor() {
     super('Incorrect find contract configuration');
     this.message = "'initialPrivateState' was defined for contract find while 'privateStateId' was undefined";
@@ -1058,7 +1139,10 @@ export class IncompleteFindContractPrivateStateConfig extends Error {
  * with a different contract address or private state ID than the one originally cached.
  * This prevents silent state mismatches when batching calls to different contracts.
  */
-export class ScopedTransactionIdentityMismatchError extends Error {
+export class ScopedTransactionIdentityMismatchError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TX_IDENTITY_MISMATCH;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TX_IDENTITY_MISMATCH];
+
   constructor(
     readonly cached: { contractAddress: string; privateStateId?: PrivateStateId },
     readonly requested: { contractAddress: string; privateStateId?: PrivateStateId }
@@ -1082,8 +1166,9 @@ export class ScopedTransactionIdentityMismatchError extends Error {
  * (`packages/protocol/docs/fail-closed-decoding.md`). There is nothing for a proof to be verified
  * against, so the call is refused before any proving happens.
  */
-export class BlankVerifierKeySlotError extends Error {
+export class BlankVerifierKeySlotError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT];
 
   /**
    * @param circuitId The entry point whose slot is blank.
@@ -1111,8 +1196,9 @@ export class BlankVerifierKeySlotError extends Error {
  *
  * @see {@link VerificationPath} for what this check buys and what it cannot classify.
  */
-export class VerifierKeyMismatchError extends Error {
+export class VerifierKeyMismatchError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH];
 
   /**
    * @param circuitId The entry point whose key did not match.
@@ -1179,10 +1265,10 @@ export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
  * into the message: it is the only copy of the authority over a deployment that
  * may have landed.
  *
- * Carries no registered error code of its own.
+ * Carries no registered error code of its own; it inherits {@link AnyEraTxFailedError.code}.
  *
  * @see {@link ErrorTaxonomy} for why a failed deploy is a separate class from a
- * failed call, why no code is registered, and why the key is never rendered.
+ * failed call, why no code of its own is registered, and why the key is never rendered.
  */
 export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
   /**
@@ -1254,11 +1340,12 @@ const DEPLOY_KEY_STRANDED_REMEDIATION =
  * Reachable only AFTER submission. Every refusal ahead of it is raised with no
  * key having been sampled.
  *
- * Carries no registered error code of its own.
- *
  * @see {@link ErrorTaxonomy} for why one class covers the whole window.
  */
-export class Ledger8DeployUnconfirmedError extends Error {
+export class Ledger8DeployUnconfirmedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_UNCONFIRMED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_UNCONFIRMED];
+
   /**
    * @param contractAddress The address the submitted deployment composed.
    * @param signingKey The key that deployment's maintenance authority was built
@@ -1296,11 +1383,13 @@ export class Ledger8DeployUnconfirmedError extends Error {
  * dispatches the proof on another, which is a paid-for proof rejected at
  * submission — the exact late failure that check exists to prevent.
  *
- * Carries no registered error code: it reports a chain state this package
- * cannot act on, and there is no remediation a caller can apply beyond
- * reporting it.
+ * It reports a chain state this package cannot act on, and there is no remediation a caller can apply
+ * beyond reporting it.
  */
-export class Ledger8AmbiguousEntryPointError extends Error {
+export class Ledger8AmbiguousEntryPointError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_AMBIGUOUS_ENTRY_POINT;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_AMBIGUOUS_ENTRY_POINT];
+
   constructor(
     readonly circuitId: string,
     readonly matchCount: number
@@ -1340,7 +1429,10 @@ export class Ledger8AmbiguousEntryPointError extends Error {
 /** The entry-point name a retained-era deploy reports its constructor under. */
 export const LEDGER8_CONSTRUCTOR_ENTRY_POINT = 'initialState';
 
-export class Ledger8RecipientUnmappableError extends Error {
+export class Ledger8RecipientUnmappableError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_RECIPIENT_UNMAPPABLE;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_RECIPIENT_UNMAPPABLE];
+
   constructor(
     readonly circuitId: string,
     readonly recipientCoinPublicKey: string
@@ -1377,12 +1469,13 @@ export class Ledger8RecipientUnmappableError extends Error {
  * {@link Ledger8DeployNotStoredError.signingKey} is NAMED but never rendered
  * into the message.
  *
- * Carries no registered error code of its own.
- *
  * @see {@link ErrorTaxonomy} for the after-submission region this closes and
  * why the key rides along even where only one write can strand it.
  */
-export class Ledger8DeployNotStoredError extends Error {
+export class Ledger8DeployNotStoredError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_NOT_STORED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_NOT_STORED];
+
   /**
    * @param contractAddress The address the confirmed deployment created.
    * @param signingKey The key that deployment's maintenance authority was built
@@ -1435,11 +1528,11 @@ export class Ledger8DeployNotStoredError extends Error {
  *
  * The key is not rendered, and is not carried as a member either: the caller
  * already holds it.
- *
- * Carries no registered error code of its own, for the same reason
- * {@link Ledger8DeployUnconfirmedError} does not.
  */
-export class Ledger8SigningKeyUnusableError extends Error {
+export class Ledger8SigningKeyUnusableError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNUSABLE;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNUSABLE];
+
   /**
    * @param contractAddress The address the key was supplied for.
    */

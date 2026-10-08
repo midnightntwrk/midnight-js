@@ -14,6 +14,8 @@
  */
 
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types';
 import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 
 const LEGACY_SIGNING_KEY = /^[0-9a-fA-F]{64}$/;
@@ -22,7 +24,9 @@ const LEGACY_SIGNING_KEY = /^[0-9a-fA-F]{64}$/;
  * Thrown when a signing key read from the store is neither a structured
  * `SigningKey` nor a key written by a 4.x client.
  */
-export class StoredSigningKeyFormatError extends Error {
+export class StoredSigningKeyFormatError extends MidnightJsError {
+  readonly code = PROVIDER_ERROR_CODES.STORED_SIGNING_KEY_INVALID;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.STORED_SIGNING_KEY_INVALID];
   readonly contractAddress: ContractAddress;
 
   constructor(contractAddress: ContractAddress) {

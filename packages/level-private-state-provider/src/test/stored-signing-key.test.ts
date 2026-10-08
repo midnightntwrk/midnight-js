@@ -14,6 +14,8 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types';
 
 import { readStoredSigningKey, StoredSigningKeyFormatError } from '../stored-signing-key';
 
@@ -71,5 +73,14 @@ describe('readStoredSigningKey', () => {
       expect(error.message).toContain(ADDRESS);
       expect(error.message).not.toContain(storedValue);
     }
+  });
+
+  test('is a MidnightJsError with the stored-signing-key code and its category', () => {
+    const error = new StoredSigningKeyFormatError(ADDRESS);
+
+    expect(error).toBeInstanceOf(MidnightJsError);
+    expect(error.code).toBe(PROVIDER_ERROR_CODES.STORED_SIGNING_KEY_INVALID);
+    expect(error.category).toBe(PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.STORED_SIGNING_KEY_INVALID]);
+    expect(error.category).toBe('INTEGRITY');
   });
 });

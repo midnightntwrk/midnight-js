@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ZkArtifactFetchError } from '../errors';
 import { createProverKey, createVerifierKey, createZKIR } from '../midnight-types';
 import { ZKConfigProvider } from '../zk-config-provider';
 import { ZKArtifactNotFoundError, ZKConfigRegistry } from '../zk-config-registry';
@@ -116,6 +118,57 @@ describe('ZKConfigRegistry', () => {
     }
   });
 
+  describe('when no source matches but a source failed for a reason that matters', () => {
+    class IntegrityFailure extends Error {
+      readonly code = 'MIDNIGHT_JS_U_ZK_ARTIFACT_INTEGRITY_FAILED';
+      readonly category = 'INTEGRITY';
+    }
+    const failingSource = (failure: Error): TestSource => {
+      const source = sourceB();
+      source.getVerifierKey.mockRejectedValue(failure);
+      return source;
+    };
+    const missing = () => locationFor(ADDRESS_A, 'transfer', bytes(9, 9));
+
+    it('rethrows a transient fetch failure so the caller can retry, instead of reporting stale artifacts', async () => {
+      // Arrange
+      const unavailable = new ZkArtifactFetchError('ZK artifact request failed', 503);
+      const registry = new ZKConfigRegistry([sourceA(), failingSource(unavailable)]);
+
+      // Act
+      const rejection = registry.resolveKeyLocation(missing());
+
+      // Assert
+      await expect(rejection).rejects.toBe(unavailable);
+    });
+
+    it('rethrows an integrity failure ahead of a transient one', async () => {
+      // Arrange
+      const tampered = new IntegrityFailure('verifier key hash mismatch');
+      const registry = new ZKConfigRegistry([
+        failingSource(new ZkArtifactFetchError('ZK artifact request failed', 503)),
+        failingSource(tampered)
+      ]);
+
+      // Act
+      const rejection = registry.resolveKeyLocation(missing());
+
+      // Assert
+      await expect(rejection).rejects.toBe(tampered);
+    });
+
+    it('still reports missing artifacts when every failure only says the artifact is not served', async () => {
+      // Arrange
+      const registry = new ZKConfigRegistry([failingSource(new ZkArtifactFetchError('not found', 404))]);
+
+      // Act
+      const rejection = registry.resolveKeyLocation(missing());
+
+      // Assert
+      await expect(rejection).rejects.toBeInstanceOf(ZKArtifactNotFoundError);
+    });
+  });
+
   it('caches the location→source binding so repeat resolutions skip re-scanning other sources', async () => {
     const a = sourceA(); // does not define 'burn'
     const b = sourceB(); // defines 'burn'
@@ -167,5 +220,14 @@ describe('ZKConfigRegistry', () => {
     await expect(keyMaterialProvider.getProverKey('midnight/zswap/spend')).rejects.toThrow(
       /is not a contract key location/
     );
+  });
+
+  it('refuses a non-contract key location with an InvalidArgumentError', async () => {
+    const keyMaterialProvider = new ZKConfigRegistry([sourceA()]).asKeyMaterialProvider();
+
+    const attempt = keyMaterialProvider.getZKIR('midnight/zswap/spend');
+
+    await expect(attempt).rejects.toBeInstanceOf(InvalidArgumentError);
+    await expect(attempt).rejects.toThrow("'midnight/zswap/spend' is not a contract key location");
   });
 });

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { ConfigurationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { CostModel, type ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 import {
@@ -104,7 +105,7 @@ export function httpClientProofProvider<K extends string>(
 
   if (typeof optionsOrUrl === 'string') {
     if (zkConfigProvider === undefined) {
-      throw new Error('zkConfigProvider is required when calling the positional httpClientProofProvider overload');
+      throw new ConfigurationError('zkConfigProvider is required when calling the positional httpClientProofProvider overload');
     }
     url = optionsOrUrl;
     resolvedZkConfigProvider = zkConfigProvider;

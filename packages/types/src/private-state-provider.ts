@@ -247,7 +247,7 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    *         that keeps state in memory by reference preserves every member and so
    *         does not raise it — though such a state may still lose those members
    *         when it is exported.
-   * @throws {Error} If no contract address has been set.
+   * @throws {ConfigurationError} If no contract address has been set.
    */
   set(privateStateId: PSI, state: PS): Promise<void>;
 
