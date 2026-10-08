@@ -15,7 +15,7 @@
 
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { NetworkId } from '@midnightntwrk/wallet-sdk';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { initializeMidnightProviders } from '../src/contract/providers';
 import type { EnvironmentConfiguration } from '../src/test-environment/environment-configuration';
@@ -33,21 +33,16 @@ const environment = (networkId: string): EnvironmentConfiguration => ({
 });
 
 describe('initializeMidnightProviders', () => {
-  it.each(['', ' undeployed'])(
-    'refuses network id %j from the environment before touching the wallet',
-    (networkId) => {
-      const getCoinPublicKey = vi.fn();
-      const wallet: Partial<MidnightWalletProvider> = { getCoinPublicKey };
+  it.each(['', ' undeployed'])('refuses network id %j from the environment', (networkId) => {
+    const wallet: Partial<MidnightWalletProvider> = { getCoinPublicKey: () => 'coin-public-key' };
 
-      const build = () =>
-        initializeMidnightProviders(wallet as MidnightWalletProvider, environment(networkId), {
-          zkConfigPath: '/nonexistent',
-          privateStateStoreName: 'providers-test'
-        });
+    const build = () =>
+      initializeMidnightProviders(wallet as MidnightWalletProvider, environment(networkId), {
+        zkConfigPath: '/nonexistent',
+        privateStateStoreName: 'providers-test'
+      });
 
-      expect(build).toThrow(InvalidArgumentError);
-      expect(build).toThrow(/^environmentConfiguration\.networkId/);
-      expect(getCoinPublicKey).not.toHaveBeenCalled();
-    }
-  );
+    expect(build).toThrow(InvalidArgumentError);
+    expect(build).toThrow(/^providers\.config\.networkId/);
+  });
 });

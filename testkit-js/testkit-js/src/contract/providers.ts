@@ -17,8 +17,8 @@ import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
-import { type MidnightConfig, type MidnightProviders, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import { type MidnightProviders, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import { createMidnightProviders } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type EnvironmentConfiguration } from '../test-environment';
 import { type MidnightWalletProvider } from '../wallet';
@@ -43,16 +43,14 @@ import { type ContractConfiguration } from './contract-types';
  *   - midnightProvider: For Midnight-specific operations
  *   - config: The environment's network id and a one-hour TTL
  *
- * @throws InvalidArgumentError If `environmentConfiguration.networkId` is not a non-empty string without surrounding whitespace.
+ * @throws InvalidArgumentError If `environmentConfiguration.networkId` is not a non-empty string without surrounding whitespace,
+ *   reported by {@link createMidnightProviders} as `providers.config.networkId`.
  */
 export const initializeMidnightProviders = <PCK extends string, PS>(
   midnightWalletProvider: MidnightWalletProvider,
   environmentConfiguration: EnvironmentConfiguration,
   contractConfiguration: ContractConfiguration
 ): MidnightProviders<PCK, PrivateStateId, PS> => {
-  const config: MidnightConfig = { networkId: environmentConfiguration.networkId, ttlSeconds: 3600 };
-  assertValidMidnightConfig(config, 'environmentConfiguration');
-
   const zkConfigProvider = new NodeZkConfigProvider<PCK>(
     contractConfiguration.zkConfigPath,
     contractConfiguration.zkConfigIntegrity
@@ -61,7 +59,7 @@ export const initializeMidnightProviders = <PCK extends string, PS>(
   const coinPublicKey = midnightWalletProvider.getCoinPublicKey();
   const accountId = Buffer.from(coinPublicKey).toString('hex');
 
-  return {
+  return createMidnightProviders({
     privateStateProvider: levelPrivateStateProvider<PrivateStateId, PS>({
       privateStateStoreName: contractConfiguration.privateStateStoreName,
       signingKeyStoreName: `${contractConfiguration.privateStateStoreName}-signing-keys`,
@@ -73,6 +71,6 @@ export const initializeMidnightProviders = <PCK extends string, PS>(
     proofProvider: httpClientProofProvider(environmentConfiguration.proofServer, zkConfigProvider),
     walletProvider: midnightWalletProvider,
     midnightProvider: midnightWalletProvider,
-    config
-  };
+    config: { networkId: environmentConfiguration.networkId, ttlSeconds: 3600 }
+  });
 };
