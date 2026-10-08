@@ -27,16 +27,25 @@ import type { KeyMaterialProvider, ProvingProvider } from '@midnightntwrk/dapp-c
 
 import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from './dapp-connector-proving-provider';
 
-// These fail the build once the wallet API can carry a timeout; forward it then and drop the
-// rejection below. Tracked in midnightntwrk/midnight-dapp-connector-api#97.
 type Assert<T extends true> = T;
-type Exactly<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
-type _WalletCheckTakesNoTimeout = Assert<Exactly<Parameters<ProvingProvider['check']>, [Uint8Array, string]>>;
-type _WalletProveTakesNoTimeout = Assert<
-  Exactly<Parameters<ProvingProvider['prove']>, [Uint8Array, string, bigint?]>
+type Identical<A, B> = (<T>() => T extends A ? 1 : 0) extends <T>() => T extends B ? 1 : 0 ? true : false;
+
+// The typecheck fails here once the wallet proving surface changes shape; forward a timeout then
+// and drop refuseTimeout. See https://github.com/midnightntwrk/midnight-dapp-connector-api/issues/97
+type _WalletProvingProviderUnchanged = Assert<
+  Identical<
+    ProvingProvider,
+    {
+      check(serializedPreimage: Uint8Array, keyLocation: string): Promise<(bigint | undefined)[]>;
+      prove(serializedPreimage: Uint8Array, keyLocation: string, overwriteBindingInput?: bigint): Promise<Uint8Array>;
+    }
+  >
 >;
-type _GetProvingProviderTakesNoTimeout = Assert<
-  Exactly<Parameters<DAppConnectorProvingAPI['getProvingProvider']>, [KeyMaterialProvider]>
+type _GetProvingProviderUnchanged = Assert<
+  Identical<
+    DAppConnectorProvingAPI,
+    { getProvingProvider(keyMaterialProvider: KeyMaterialProvider): Promise<ProvingProvider> }
+  >
 >;
 
 const refuseTimeout = (config: ProveTxConfig | undefined): void => {
@@ -70,9 +79,9 @@ const refuseTimeout = (config: ProveTxConfig | undefined): void => {
  * passed here would be rejected outright. Pairing the transaction with its own era's model is the
  * only correct pairing, so an override is not offered at all rather than offered and quietly
  * ignored.
- * @returns A {@link ProofProvider} whose `proveTx` method delegates to the wallet.
- * @throws InvalidArgumentError from `proveTx` when `proveTxConfig.timeout` is set. The wallet
- * proving API takes no timeout, so the request is refused before any proving starts.
+ * @returns A {@link ProofProvider} whose `proveTx` method delegates to the wallet. Its `proveTx`
+ * rejects with `InvalidArgumentError` when `proveTxConfig.timeout` is set, before any proving
+ * starts, because the wallet proving API takes no timeout.
  */
 export const dappConnectorProofProvider = async <K extends string>(
   api: DAppConnectorProvingAPI,

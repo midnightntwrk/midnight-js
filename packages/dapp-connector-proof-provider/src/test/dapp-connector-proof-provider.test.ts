@@ -129,8 +129,6 @@ describe('dappConnectorProofProvider', () => {
     expect(result.version === 'v9' && result.tx).toBe(mockUnboundTx);
   });
 
-  // The wallet's proving provider takes no timeout, so a timeout the caller
-  // relies on must be refused rather than silently dropped.
   describe('proveTxConfig.timeout', () => {
     it('refuses a v9 proof with a timeout before the wallet is asked to prove', async () => {
       const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
@@ -161,11 +159,18 @@ describe('dappConnectorProofProvider', () => {
 
       expect(result.version === 'v9' && result.tx).toBe(mockUnboundTx);
     });
+
+    it('proves a v9 transaction when the timeout key is present but undefined', async () => {
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      const result = await proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx }, { timeout: undefined });
+
+      expect(result.version === 'v9' && result.tx).toBe(mockUnboundTx);
+    });
   });
 
-  // This package delegates the current era to `createProofProvider` but owns
-  // the retained arm itself, so these cases cover a body the types package's
-  // tests do not reach.
+  // The retained arm's body lives in this package, so these cases cover code the
+  // types package's tests do not reach.
   describe('v8 payload', () => {
     let retainedEraTxBytes: Uint8Array;
     let circuitDrivingTxBytes: Uint8Array;
