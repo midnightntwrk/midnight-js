@@ -1987,6 +1987,7 @@ describe('Level Private State Provider', (): void => {
 
     test('encryption instance is reused for multiple operations (caching works)', async () => {
       const verifyPasswordSpy = vi.spyOn(StorageEncryption.prototype, 'verifyPassword');
+      const createSpy = vi.spyOn(StorageEncryption, 'create');
       const config = {
         midnightDbName: CACHE_TEST_DB,
         privateStoragePasswordProvider: () => TEST_PASSWORD,
@@ -1997,17 +1998,19 @@ describe('Level Private State Provider', (): void => {
       db.setContractAddress(CACHE_CONTRACT_ADDRESS);
 
       await db.set('key-0', 'value-0');
+      expect(createSpy).toHaveBeenCalledTimes(1);
       expect(verifyPasswordSpy).not.toHaveBeenCalled();
 
       await db.set('key-1', 'value-1');
-      expect(verifyPasswordSpy).toHaveBeenCalledTimes(1);
-      await expect(verifyPasswordSpy).toHaveLastResolvedWith(true);
+      expect(createSpy).toHaveBeenCalledTimes(1);
+      expect(verifyPasswordSpy).not.toHaveBeenCalled();
 
       await db.set('key-2', 'value-2');
-      expect(verifyPasswordSpy).toHaveBeenCalledTimes(2);
-      await expect(verifyPasswordSpy).toHaveLastResolvedWith(true);
+      expect(createSpy).toHaveBeenCalledTimes(1);
+      expect(verifyPasswordSpy).not.toHaveBeenCalled();
 
       verifyPasswordSpy.mockRestore();
+      createSpy.mockRestore();
     });
 
     test('cache is invalidated when password changes', async () => {
