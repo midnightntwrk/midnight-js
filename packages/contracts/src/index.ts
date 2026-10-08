@@ -62,9 +62,9 @@ export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // a scope at all.
 //
 // The three `Incomplete*PrivateStateConfig` refusals are one family stating one client-side rule
-// per entry point -- call, deploy, find -- and they stay together on the flat surface even though
-// only the retained-era deploy arm raises the deploy one today. Client-side private-state storage
-// is era-independent, which is why the find rule is already one rule serving both eras; splitting
+// per entry point -- call, deploy, find -- and they stay together on the flat surface; the deploy
+// one is raised by `deployContract` on both eras and by `submitDeployTx`. Client-side private-state
+// storage is era-independent, which is why the find rule is already one rule serving both eras; splitting
 // the family across the flat surface and the `Ledger8` namespace would make three related refusals
 // importable from two places.
 //
@@ -107,7 +107,14 @@ export {
   FoundContract,
   verifierKeysEqual,
   verifyContractState} from './find-deployed-contract';
-export { ContractStates,getPublicStates, getStates, PublicContractStates } from './get-states';
+export {
+  AnyEraContractState,
+  AnyEraContractStateReadSurface,
+  ContractStates,
+  getAnyEraContractState,
+  getPublicStates,
+  getStates,
+  PublicContractStates} from './get-states';
 export { getUnshieldedBalances } from './get-unshielded-balances';
 export {
   CircuitMaintenanceTxInterface,
@@ -161,6 +168,9 @@ export {
   FinalizedDeployTxData,
   FinalizedDeployTxDataBase,
   FinalizedDeployTxPublicData,
+  FoundDeployTxData,
+  FoundDeployTxPublicData,
+  FoundDeployTxPublicDataV8,
   SubmittedCallTx,
   UnsubmittedCallTxData,
   UnsubmittedCallTxPrivateData,

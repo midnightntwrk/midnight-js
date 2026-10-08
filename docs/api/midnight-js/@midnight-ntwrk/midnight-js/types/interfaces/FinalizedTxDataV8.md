@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -24,6 +24,11 @@ remain v9-only — see the provider's own documentation.
 ## Extends
 
 - [`FinalizedTxRecord`](FinalizedTxRecord.md)
+
+## Extended by
+
+- [`FoundDeployTxPublicDataV8`](../../contracts/interfaces/FoundDeployTxPublicDataV8.md)
+- [`FoundDeployTxPublicDataV8`](../../../midnight-js-contracts/index/interfaces/FoundDeployTxPublicDataV8.md)
 
 ## Properties
 

@@ -125,14 +125,14 @@ export type PartitionedCallTranscript = [
  * composer has split the transcripts.
  */
 export type ZswapOfferFactory = (partitions: readonly PartitionedCallTranscript[]) => {
-  readonly guaranteed?: Uint8Array;
-  readonly fallible?: Uint8Array;
+  readonly guaranteedBytes?: Uint8Array;
+  readonly fallibleBytes?: Uint8Array;
 };
 
 /**
  * One contract call in a call transaction.
  *
- * `contractState` is the raw, serialized state the call is dispatched against,
+ * `contractStateBytes` is the raw, serialized state the call is dispatched against,
  * as read from chain. It supplies the registered operation for `circuitId`,
  * including its verifier key, which the call's key location hashes; a
  * constructor-built state will not do, because it declares its entry points
@@ -147,7 +147,7 @@ export type ZswapOfferFactory = (partitions: readonly PartitionedCallTranscript[
 export interface ComposeCallEntry {
   readonly contractAddress: string;
   readonly circuitId: string;
-  readonly contractState: Uint8Array;
+  readonly contractStateBytes: Uint8Array;
   /**
    * The ledger parameters the chain held at the block this call is built against, serialized —
    * `RawContractState.ledgerParameters`, passed through untouched — or
@@ -155,7 +155,7 @@ export interface ComposeCallEntry {
    *
    * Required, and deliberately so. See {@link LedgerParametersOption}.
    */
-  readonly ledgerParameters: LedgerParametersOption;
+  readonly ledgerParametersBytes: LedgerParametersOption;
   readonly transcript: CallTranscriptSource;
   readonly privateTranscriptOutputs: AlignedValue[];
   readonly input: AlignedValue;
@@ -197,14 +197,14 @@ export interface ComposeCallOptions {
  * @see {@link EraSeam}
  */
 export interface ComposeCallResultPojo {
-  readonly transaction: Uint8Array;
+  readonly txBytes: Uint8Array;
   readonly partitions: readonly PartitionedCallTranscript[];
 }
 
 /**
  * Everything a deploy transaction needs.
  *
- * `contractState` is the raw, serialized initial state the contract's
+ * `contractStateBytes` is the raw, serialized initial state the contract's
  * constructor produced.
  *
  * `verifierKeys` maps entry-point name -> raw, tagged verifier key bytes
@@ -216,18 +216,18 @@ export interface ComposeCallResultPojo {
  * @see {@link EraSeam}
  */
 export interface ComposeDeployOptions {
-  readonly contractState: Uint8Array;
+  readonly contractStateBytes: Uint8Array;
   readonly verifierKeys?: ReadonlyMap<string, Uint8Array>;
   readonly networkId: string;
   readonly ttl: Date;
-  readonly guaranteedZswapOffer?: Uint8Array;
+  readonly guaranteedZswapOfferBytes?: Uint8Array;
 }
 
 /**
  * What a composed deploy hands back.
  *
  * `contractAddress` cannot be recomputed from the state a caller passed in, so
- * it is handed back here rather than derived. `initialState` is the state that
+ * it is handed back here rather than derived. `initialContractStateBytes` is the state that
  * address was derived from — what a caller stores and later hands to a call.
  *
  * All three are plain data.
@@ -236,7 +236,7 @@ export interface ComposeDeployOptions {
  * @see {@link EraSeam}
  */
 export interface DeployResultPojo {
-  readonly transaction: Uint8Array;
+  readonly txBytes: Uint8Array;
   readonly contractAddress: string;
-  readonly initialState: Uint8Array;
+  readonly initialContractStateBytes: Uint8Array;
 }

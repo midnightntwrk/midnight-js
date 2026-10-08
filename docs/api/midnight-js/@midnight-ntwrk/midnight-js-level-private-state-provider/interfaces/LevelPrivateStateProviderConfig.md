@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
 
 ***
 
@@ -80,6 +80,15 @@ export/import paths.
 
 SECURITY: Use a strong, secret password. Never use public key material
 or other non-secret values as the password source.
+
+Private state is stored with `superjson`. Plain objects, arrays, `string`,
+`number`, `boolean`, `null`, `undefined`, `bigint`, `NaN`, `Infinity`, `Date`,
+`RegExp`, `URL`, `Map`, `Set`, `Buffer` and the nine built-in typed arrays are
+read back unchanged, and shared references and cycles are preserved. Anything
+else — including `Error`, `ArrayBuffer`, `DataView`, `BigInt64Array`, and any
+subclass of the types above — is refused by
+[PrivateStateProvider.set](../../midnight-js/types/interfaces/PrivateStateProvider.md#set) with a `PrivateStateSerializationError`,
+because storage would drop it, empty it or read it back as a different value.
 
 #### Example
 

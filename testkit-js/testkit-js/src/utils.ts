@@ -57,5 +57,24 @@ export const tryDeleteDirectory = async (dirPath: string) => {
 
 export const buildUrlWithPath = (baseUrl: string, urlPath: string): string => {
   const url = new URL(baseUrl);
-  return `${url.protocol}//${url.host}${urlPath}`;
+  url.pathname = urlPath;
+  url.hash = '';
+  return url.toString();
 };
+
+export const redactUrl = (value: string): string => {
+  if (!URL.canParse(value)) {
+    return value;
+  }
+  const url = new URL(value);
+  const hasUserInfo = url.username !== '' || url.password !== '';
+  if (url.search === '' && !hasUserInfo) {
+    return value;
+  }
+  const userInfo = hasUserInfo ? '<redacted>@' : '';
+  const query = url.search === '' ? '' : '?<redacted>';
+  return `${url.protocol}//${userInfo}${url.host}${url.pathname}${query}`;
+};
+
+export const redactedJson = (value: unknown): string =>
+  JSON.stringify(value, (_key, field: unknown) => (typeof field === 'string' ? redactUrl(field) : field));

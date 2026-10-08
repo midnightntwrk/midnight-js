@@ -8,8 +8,8 @@ Reading a contract state is the one place in `@midnightntwrk/midnight-js-protoco
 where bytes of unknown provenance meet a WASM codec that will happily answer a
 question it was never asked. This document records the discipline that keeps
 that seam honest: what the decoders treat as authoritative, why no read is
-allowed to return a plausible-looking empty answer, and why the three failures
-this seam can raise are three distinct classes rather than one.
+allowed to return a plausible-looking empty answer, and why the four failures
+this seam can raise are four distinct classes rather than one.
 
 ## The envelope is the only authority over the bytes
 
@@ -47,7 +47,19 @@ empty bytes.
 `decodeContractStateWith`
 (`packages/protocol/src/lib/shared/contract-state.ts`) holds the same line one
 level up: the whole read is covered, not just the deserialization, so no raw
-runtime error escapes this seam uncoded.
+runtime error escapes this seam uncoded. It is covered by two codes, not one.
+A failure inside the era's `deserialize` is `StateDecodeFailedError`: the bytes
+are not this era's to read, and resolving the right era may fix it. A failure
+after `deserialize` succeeded — an entry point the state cannot resolve, a
+verifier key that will not hash, no usable balance — is
+`StateInconsistentError`: the bytes were this era's, so retrying with the other
+era cannot fix it, and a caller that retried on it would loop.
+
+The second code covers every failure after `deserialize`, not only those three.
+A fault in the environment rather than the state — `hashVerifierKey` failing
+because its runtime did not load, for one — also leaves as
+`StateInconsistentError`. That still fails closed and still says not to retry
+with the other era; read `cause` before auditing the state's source.
 
 That is why the per-entry-point lookup inside it does not use `?.`. The entry
 point came from `operations()` on that same object, so a state that cannot
@@ -55,25 +67,29 @@ resolve it is internally inconsistent, not a state with a blank slot. Optional
 chaining collapsed the two into the same answer, and `verifierKey: undefined`
 has a specific documented meaning — never deployed. A whole contract reading as
 never-deployed would send a caller comparing key hashes hunting a deployment
-bug that does not exist, so this leaves as `StateDecodeFailedError` like every
-other read failure here.
+bug that does not exist, so this leaves as `StateInconsistentError`, like
+every other failure after the bytes decoded.
 
-The same refusal to repair quietly governs the Merkle assertion further down
-the pipeline. A bounded Merkle tree only has a readable root once every node
-hash has been computed; the vendor documents `root()` as returning `undefined`
-until then, and `rehash()` as necessary "because the onchain runtime does not
-automatically rehash trees". `downConvertForExecution` asserts this on every
-tree it decodes, failing fast with `MerkleNotRehashedError` instead of silently
-repairing.
+The same refusal to accept quietly governs the structural round trip further
+down the pipeline. `decodeExecutableStateValue` (`lib/v8/executable.ts`)
+decodes the primary state a circuit runs against, re-encodes it, and refuses a
+value that did not come back — `DownConvertFailedError` at stage `'state
+down-convert'`. The comparison is cross-codec by construction: a contract an
+earlier post-fork call migrated carries a current-era envelope, so its state is
+encoded by ledger-v9 and decoded by the retained runtime, and a retained
+envelope crosses between two physical copies of that runtime either way. A
+shape one side writes and the other merely tolerates would decode without
+complaint and execute against a state that is not the chain's.
 
-## Three failures, three remediations
+## Four failures, four remediations
 
-The seam raises three coded failures, and folding any two of them together
+The seam raises four coded failures, and folding any two of them together
 would misdescribe the fix.
 
 | Error | Reports |
 |---|---|
 | `StateDecodeFailedError` | the envelope was never readable at all by the era it was requested for |
+| `StateInconsistentError` | the envelope was readable, but the state it decoded to is internally inconsistent |
 | `DownConvertFailedError` | a raw envelope, or an already-extracted `EncodedStateValue`, could not be turned into an executable pre-fork state |
 | `Ledger8RuntimeInvalidError` | the injected pre-fork runtime cannot be used — nothing is wrong with the input |
 
@@ -81,6 +97,14 @@ would misdescribe the fix.
 reports a failure to bridge an already-extracted state into the pre-fork
 execution algebra: the first reports the envelope never having been readable at
 all. `version` names the era whose decoder rejected it.
+
+`StateInconsistentError` is distinct from `StateDecodeFailedError` because the
+remediation is opposite: the first says the bytes were this era's to read, the
+second says they may belong to the other era. A caller can tell the two apart
+by `code` alone. `STATE_DECODE_FAILED` is worth a retry only when the era was
+chosen from something other than the envelope, such as a reported protocol
+version. `getAnyEraContractState` already reads the era off the envelope, so
+there a retry with the other era cannot help either.
 
 `Ledger8RuntimeInvalidError` is separate from `DownConvertFailedError` because
 the remediation is unrelated: nothing is wrong with the caller's input. Folding
@@ -182,7 +206,8 @@ truncated, trailing-bytes and empty input in its own message; that detail is
 preserved on `cause`. `StateDecodeFailedError` likewise renders no hex and no
 byte dump of its own, and preserves the decoder's own diagnosis — which
 distinguishes a tag mismatch from truncated, trailing or empty input — on
-`cause`.
+`cause`. `StateInconsistentError` renders no hex and no decoded state contents
+either; what was inconsistent is on `cause`.
 
 The property has to hold on the two errors that carry an offending value, or it
 is not worth having:
@@ -216,7 +241,30 @@ that are not valid UTF-8 both resolve to the replacement character), and a
 name-keyed result would silently drop one of them. An array leaves both visible
 to a caller that has to reconcile them.
 
-**`maintenanceAuthority` and `balance` are deliberately absent** from
+**`maintenanceAuthority` is deliberately absent** from
 `DecodableContractState`, the slice of a ledger `ContractState` this decoder
-reads: nothing in this framework reads them off a decoded state, and a field
+reads: nothing in this framework reads it off a decoded state, and a field
 carried "in case" becomes a field a caller depends on.
+
+**`balance` is refused when it is not a map.** `decodeContractStateWith` reads
+`decoded.balance` exactly once and checks that it answers the `ReadonlyMap`
+surface before copying it. Once, because a decoder is injectable and one that
+answers with a fresh object per access would have the guard validate one map and
+the copy take another. Checked, because `new Map(...)` turns an absent value, an
+empty array, an empty `Set` and an empty string alike into an empty map — which
+is indistinguishable from a contract that holds nothing, and is the substitution
+#1345 was made of. The check is structural rather than `instanceof Map`, so a
+map from another realm is still accepted; it covers the entries as well as the
+container, because a map of the wrong entry types passes every structural clause
+and then produces the same silent wrong answer one layer in; and it answers
+rather than throws for a proxied map or a prototype-only object, both of which
+make `Map.prototype`'s members reject the receiver.
+
+**`balance` is read, and was not always.** It was excluded on the same reasoning
+until the retained-era execution path turned out to need it: the balances a
+circuit reads arrive through `CallContext.balance`, which the caller has to
+carry, and the down-converted state carries only `.data`. With the field absent
+there was nothing for a caller to carry, so every retained-era circuit executed
+against an empty balance and read every balance back as zero — silently, until
+the node refused the transcript that produced it (#1345). It is plain data, so it
+crosses an era boundary like every other member.

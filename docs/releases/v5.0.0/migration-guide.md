@@ -60,19 +60,21 @@ yarn upgrade \
 
 ## Step 2 — Pin the protocol packages to a single version
 
-The v9 / v4 protocol packages are release candidates and can be pulled in transitively by other dependencies under different publications, causing duplicate-major type clashes (TS2345, `Transaction<...>` mismatches). Pin them with resolutions so the whole tree dedupes:
+Two copies of a protocol package in one install break in two places: TypeScript sees two different classes (TS2345, `Transaction<...>` mismatches), and at run time each copy's WebAssembly classes reject objects made by the other (`expected instance of StateValue`). A resolver installs a second copy when two packages ask for the same one with different ranges and a newer publication matches only one of them.
+
+The framework asks for `@midnightntwrk/onchain-runtime-v4` and `@midnight-ntwrk/onchain-runtime-v3` with the same ranges `@midnight-ntwrk/compact-runtime` does, so each resolves to one copy on its own. `@midnight-ntwrk/compact-js` asks for `@midnightntwrk/ledger-v9` and `@midnight-ntwrk/platform-js` with a caret, but the framework — and, for `ledger-v9`, `@midnightntwrk/wallet-sdk` — asks for exact versions, so pin those two:
 
 ```jsonc
 // package.json
 {
   "resolutions": {
-    "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
-    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3",
-    "@midnight-ntwrk/platform-js": "3.0.0",
-    "@midnight-ntwrk/compact-runtime": "0.18.0-rc.1"
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
+    "@midnight-ntwrk/platform-js": "3.0.0"
   }
 }
 ```
+
+There is no `@midnight-ntwrk/compact-runtime` entry: depend on the version your contracts were compiled for, which with the current toolchain is `0.20.0`, the framework's own.
 
 Register the new scope if you import the protocol packages anywhere (the framework already does this in `packages/protocol`):
 
@@ -93,8 +95,8 @@ Register the new scope if you import the protocol packages anywhere (the framewo
 ```diff
   const options: ContractExecutableRuntimeOptions = {
     // ...
--   signingKey: '0102030a1b2c3d4e5f',
-+   signingKey: { tag: 'schnorr', value: '0102030a1b2c3d4e5f' },
+-   signingKey: keyHex, // 64 hex characters (32 bytes)
++   signingKey: { tag: 'schnorr', value: keyHex },
   };
 ```
 
@@ -112,17 +114,30 @@ The key round-trips through the config layer, so the returned value is structura
 ```ts
 import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 
-isValidSigningKey({ tag: 'schnorr', value: '0102030a1b2c3d4e5f' }); // true
-isValidSigningKey('0102030a1b2c3d4e5f');                            // false (old string shape)
+const keyHex = 'ab'.repeat(32); // 64 hex characters (32 bytes)
+
+isValidSigningKey({ tag: 'schnorr', value: keyHex }); // true
+isValidSigningKey(keyHex);                            // false (old string shape)
+isValidSigningKey({ tag: 'schnorr', value: 'abcdef' }); // false (not 32 bytes)
 ```
 
 ---
 
 ## Step 4 — Re-export or transform persisted signing-key exports
 
-`importSigningKey` now validates the structured shape **before** any write. A v4.x export that stored a bare hex string fails with `InvalidExportFormatError`.
+**Keys already in a level private-state store need no action.** A 4.x client stored each signing key as a bare 64-character hex string. The 5.x level provider reads such an entry as `{ tag: 'schnorr', value: <stored string> }`, so current-era maintenance calls, `findDeployedContract` and `exportSigningKeys` work on an upgraded store as they are.
 
-- **Preferred:** re-export signing keys from a v5.0.0 client.
+A stored entry that is neither shape makes `getSigningKey`, `exportSigningKeys` (for the whole export) and current-era `findDeployedContract` throw `StoredSigningKeyFormatError`, which names the contract address. A retained-era (ledger-8) attach reports no stored key instead and logs an `unreadable-entry` breadcrumb. To fix the entry, do one of:
+
+- store a valid key with `setSigningKey(address, { tag, value })`;
+- import a valid key with `importSigningKeys(export, { conflictStrategy: 'overwrite' })`;
+- remove it with `removeSigningKey(address)`.
+
+The steps below apply only to export *files* made by a 4.x client.
+
+`importSigningKeys` now validates the structured shape **before** any write. A v4.x export that stored a bare hex string fails with `InvalidExportFormatError`.
+
+- **Preferred:** open the store the 4.x client wrote with a v5.0.0 client and run `exportSigningKeys` again.
 - **Alternatively:** transform stored exports to `{ tag: 'schnorr', value: <oldHexString> }` (or `ecdsa`, per your key type) before import.
 
 ---
@@ -299,6 +314,21 @@ Do not narrow this one by throwing on anything that is not `'v9'`. A v8-era
 record is a record the provider decodes and returns, not an error condition,
 and a dApp that reads its own pre-fork history will meet one.
 
+`findDeployedContract` reports the deploy record the same way. A contract deployed
+before the ledger fork keeps a ledger-8 deploy record forever, so
+`found.deployTxData.public` is tagged too. `contractAddress` is on both arms; narrow
+on `version` before reading `tx` or `initialContractState`. The `v8` arm has no
+`initialContractState`, because the current runtime cannot decode a ledger-8
+deploy-time state — read the current state with `queryContractState` instead.
+
+```ts
+const found = await findDeployedContract(providers, { compiledContract, contractAddress });
+const address = found.deployTxData.public.contractAddress; // both eras
+if (found.deployTxData.public.version === 'v9') {
+  use(found.deployTxData.public.initialContractState);
+}
+```
+
 If you *implement* `WalletProvider` or `MidnightProvider`, wrap a v9-only
 implementation with `createWalletProvider` / `createMidnightProvider` rather
 than tagging by hand — see [breaking-changes.md 8e](./breaking-changes.md).
@@ -324,8 +354,18 @@ compiler tells you to.
 
 **If you recompile your contracts with the current Compact toolchain, there is
 no further code change**, and most of this step is about timing and operations
-rather than code. Nothing in that path asks you to call a new API, branch on
+rather than code. This includes re-attaching to a contract deployed before the
+fork: `findDeployedContract` accepts it, and reports its deploy record tagged `v8`
+(see Step 13). Nothing in that path asks you to call a new API, branch on
 the network's era, or maintain a second code path.
+
+One case does need more. A contract deployed before the fork that has had **no
+state-changing call since the fork** still has its state in the ledger-8 format.
+The indexer serves it that way, so `findDeployedContract` itself throws
+`IndexerDataError`, and so does any call through recompiled artifacts. The first
+state-changing call after the fork must therefore go through the pre-fork
+artifacts (see the next paragraph). After that call, recompiled artifacts find
+and call the contract as described above.
 
 **If you keep pre-fork artifacts callable instead**, there is more to it, and it
 is not optional reading: those calls run the retained pipeline and answer with
@@ -359,11 +399,8 @@ applies before it lands, the framework raises `StaleHeadError`
 two remediations below — along with `startEra`, `freshEra`, `circuitId` and
 `contractAddress`. Its message carries the matching remediation in full.
 
-**Only the `'call'` arm is reachable through the public API today.** `deployContract`
-refuses every retained-era deploy outright, before any head is read (see the
-runtime-deploy chapter), so no public entry point can produce `kind: 'deploy'`. The
-deploy remediation is documented because it becomes reachable the day the era seam
-carries a maintenance authority — not because you can provoke it now.
+Both arms are reachable. `kind: 'deploy'` comes from a retained-era deploy that
+was built on a pre-fork head and overtaken by the fork before it landed.
 
 For a **call**, the remediation is two steps, in order:
 
@@ -385,8 +422,8 @@ For a **deploy** the remediation is different, and it is also two steps:
    fresh nonce, so a second attempt lands at a *different* address and a skipped check
    leaves two copies of the contract on chain.
 2. **Recompile with the current Compact toolchain and deploy that artifact.** Unlike the
-   call case, a plain re-run does not work: a contract produced by the retained toolchain
-   has no deployment path at all. See [the runtime-deploy chapter](#runtime-deploy-chapter-factory-patterns).
+   call case, a plain re-run does not work: after the fork a contract produced by the
+   retained toolchain has no deployment path. See [the runtime-deploy chapter](#runtime-deploy-chapter-factory-patterns).
 
 > **Why step 1 is not optional.** The guidance above assumes in-flight pre-fork
 > transactions are hard-rejected at the boundary. If any grace window exists, a
@@ -397,31 +434,28 @@ For a **deploy** the remediation is different, and it is also two steps:
 ### Runtime-deploy chapter: factory patterns
 
 This section is linked from `Ledger8.DeployOnV9Error`
-(`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9`). That code is **currently dormant** — do not
-write a `catch` for the class. The refusal you will actually meet is the uncoded
-`Error` described below, and it has the same remediation.
+(`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9`).
 
 If your dApp deploys contract instances **at runtime** — a factory that stands
 up a new contract per user, per market, per game — read this before the fork.
 
 The retained era stays supported for **calls against contracts deployed before
-the fork**. It does not support **new deployments at all** — not after the fork, and
-not today either. `deployContract` refuses a retained-toolchain artifact
-unconditionally, as its first act, before any network head is read.
+the fork**. New deployments of a retained-toolchain artifact work **only on a
+pre-fork head**. On a post-fork head `deployContract` refuses one with
+`Ledger8.DeployOnV9Error`, before the constructor runs and before any verifier
+key is fetched.
 
-The reason is not the era pairing, and not an unfinished pipeline: the deploy
-transaction itself composes and submits correctly. It is the *result* that is
-unusable. Neither the retained constructor nor the era deploy composition accepts a
-maintenance authority, and the authority a retained constructor leaves behind is an
-empty committee with a threshold of one — which nothing can ever satisfy. The
-deployed contract could never have a verifier key inserted, removed or replaced, by
-anyone, including you.
+A retained deploy registers a maintenance authority of one key, either
+`options.signingKey` or a freshly sampled one. The key is reported on the
+handle's `signingKey` and stored against the new address through
+`privateStateProvider`. That store is the only copy besides the handle: lose it
+and no verifier key on that contract can ever be inserted, removed or replaced.
 
 In practice:
 
 - **Obtain current-toolchain artifacts for every contract you deploy at
-  runtime.** Recompile and ship those artifacts with your build. This is not a
-  fork-day deadline — a retained artifact cannot be deployed now.
+  runtime**, and ship them before the fork. From the fork on, a retained
+  artifact cannot be deployed.
 - Contracts you deployed *before* the fork are unaffected — they keep working
   through the same call sites.
 - A dApp that only calls already-deployed contracts is not affected by this
@@ -485,13 +519,56 @@ either era.
 
 Two limits to plan around. Both eras now name the circuit on the result, and
 both handles carry `compiledContract` and `contractAddress`, so the contract
-HANDLES differ in only two places: the retained handle has no maintenance
-interfaces (the retained era has no governance arm), and its `deployTxData` is
-the flat record where the current era's is `{ era, public, private }`. And `getStates` / `getPublicStates` have no retained
+HANDLES differ in only four places: the retained handle has no maintenance
+interfaces (the retained era has no governance arm), its `deployTxData` is
+the flat record where the current era's is `{ era, public, private }`, its
+`callTx.<circuit>(...)` takes no `TransactionContext`, so it cannot carry
+recipient key mappings (see below), and a deployed handle keeps the deployer's
+data at a different path (table below). And `getStates` / `getPublicStates` have no retained
 arm: they decode with the current-era deserializer and refuse anything else, so
 for a contract whose state envelope is still pre-fork, read the state through
 `queryRawContractState` and narrow on its `version`, or read
 `public.nextContractStateEncoded` off a call result.
+
+Where a deployed handle keeps the deployer's data. The paths stay different
+until the retained era is removed, so branch on `deployed.era` before reading
+them:
+
+| Fact | Current era (`DeployedContract`) | Retained era (`Ledger8.DeployedContract`) |
+|---|---|---|
+| Signing key | `deployTxData.private.signingKey` | `signingKey` |
+| Private state from the constructor | `deployTxData.private.initialPrivateState` | `initialPrivateState` |
+| Zswap state from the constructor | `deployTxData.private.initialZswapState` | `initialZswapState` |
+| Initial contract state (live handle) | `deployTxData.public.initialContractState` | `initialContractState` |
+| Initial contract state (bytes) | — | `initialContractStateBytes` |
+
+The signing key differs on a found handle too: `findDeployedContract` reports it
+at `deployTxData.private.signingKey` in the current era and at the top-level
+`signingKey` in the retained era.
+
+`initialContractStateBytes` was called `initialState` in the earlier 5.0.0
+release candidates. It holds the same bytes under the new name.
+
+If you call `loadLedgerEra` from `midnight-js-protocol` directly, its compose
+members that hold bytes were renamed the same way: `contractState` →
+`contractStateBytes`, `guaranteedZswapOffer` → `guaranteedZswapOfferBytes`,
+the offer factory's `guaranteed` / `fallible` → `guaranteedBytes` /
+`fallibleBytes`, `transaction` → `txBytes`, `ledgerParameters` →
+`ledgerParametersBytes`, and `initialState` → `initialContractStateBytes`. The
+`option` a `ComposeOptionError` reports follows the field it names:
+`'contractStateBytes'`, `'ledgerParametersBytes'`, and
+`'guaranteedZswapOfferBytes'` for a deploy's offer. A call's offer still reports
+`'zswapOffer'`.
+
+**Paying a shielded coin to someone else.** A retained-era circuit that pays a
+shielded coin to a recipient other than the calling wallet needs that
+recipient's encryption public key. Pass it in
+`additionalCoinEncPublicKeyMappings` on the `submitCallTx` or
+`submitCallTxAsync` options, as you would for a current-era call. Without it
+the call is refused with `Ledger8RecipientUnmappableError` before anything is
+proven. The `callTx.<circuit>(...)` handle on a deployed or found retained
+contract cannot carry mappings; call `submitCallTx` or `submitCallTxAsync`
+directly for these circuits.
 
 ### Catching a failure in either era
 
@@ -613,10 +690,31 @@ question to raise, not as an omission that implies "it just works".
 
 ---
 
+## Step 15 — Read `record.value` from the contract-state and balance streams
+
+`contractStateObservable`, `rawContractStateObservable` and
+`unshieldedBalancesObservable` emit `PositionedRecord<T>` (#1399). Read the value
+from `record.value`:
+
+```ts
+// Before
+publicDataProvider.contractStateObservable(address, { type: 'latest' }).subscribe((state) => render(state));
+
+// After
+publicDataProvider.contractStateObservable(address, { type: 'latest' }).subscribe((record) => render(record.value));
+```
+
+To resume after a restart, keep the last record's `blockHeight` (or `blockHash`)
+and pass it back as `{ type: 'blockHeight', blockHeight }`. Leave `inclusive`
+unset: the stream then repeats that block rather than skipping the rest of it.
+See [breaking-changes.md](./breaking-changes.md#10-contract-state-and-balance-streams-emit-positionedrecordt-1399).
+
+---
+
 ## Verification checklist
 
 - [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.
-- [ ] `yarn install` clean with the resolutions in place (no duplicate ledger-v9 majors).
+- [ ] `yarn install` clean with the Step 2 resolutions in place, and one installed version each of `ledger-v9`, `onchain-runtime-v4` and `platform-js`.
 - [ ] `yarn build` and `yarn lint` succeed.
 - [ ] All signing-key construction sites use the `{ tag, value }` shape.
 - [ ] Persisted signing-key exports re-exported or transformed.
@@ -633,3 +731,4 @@ question to raise, not as an omission that implies "it just works".
 - [ ] Contracts deployed at runtime have current-toolchain artifacts shipped.
 - [ ] Bundle checked: retained-era chunk separate, not preloaded, retained runtime not duplicated.
 - [ ] Checked back for the pending operator, wallet and connector-proving sections.
+- [ ] Every `contractStateObservable` / `rawContractStateObservable` / `unshieldedBalancesObservable` subscriber reads `record.value`.

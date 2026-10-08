@@ -51,7 +51,7 @@ export const reexpressOperationsForCurrentEra = (entryPoints: readonly ContractE
   }
 
   if (registered === 0) {
-    throw new ComposeOptionError('v9', 'contractState');
+    throw new ComposeOptionError('v9', 'contractStateBytes');
   }
 
   return state.serialize();

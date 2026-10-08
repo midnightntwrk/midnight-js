@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
 
 ***
 
@@ -30,7 +30,7 @@ they are, what stands in for them, and why.
 
 ### calls
 
-> `readonly` **calls**: readonly [`ContractCall`](ContractCall.md)\<`DownConvertedState`\>[]
+> `readonly` **calls**: readonly [`ContractCall`](ContractCall.md)\<`StateValue`\>[]
 
 See [Ledger8UnsubmittedCallTxData.calls](UnsubmittedCallTxData.md#calls).
 

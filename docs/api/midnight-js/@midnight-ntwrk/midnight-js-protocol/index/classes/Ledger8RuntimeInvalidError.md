@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -8,10 +8,11 @@
 
 Thrown by `extractEncodedStateValue` (`lib/era/envelope.ts`) when the
 injected pre-fork runtime cannot be used — it was not passed at all, or the
-binding the decoder needs is absent from it. Also raised by
-`downConvertForExecution` (`lib/v8/down-convert.ts`) and
-`assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`), the latter for a
-nullish instance probe.
+binding the decoder needs is absent from it.
+
+`downConvertForExecution` and the shared-instance guard used to raise it too;
+both are gone with the hand-maintained execution layer, so the envelope
+decoder is now its only source.
 
 Nothing is wrong with the caller's input here. Distinct from
 [Ledger8RuntimeMissingError](Ledger8RuntimeMissingError.md), which reports the v8 chunk failing to

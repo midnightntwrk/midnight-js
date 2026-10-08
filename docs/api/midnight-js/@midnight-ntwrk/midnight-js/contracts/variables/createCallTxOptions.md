@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -10,18 +10,8 @@
 
 Creates a [CallTxOptions](../type-aliases/CallTxOptions.md) object from various data.
 
-`args` is indexed with CircuitKey-unbranded `PCK`, matching `call.ts`'s
-`CallOptionsWithArguments`. This function is part of the published surface (`index.ts`), and a
-CONSUMER instantiating `PCK` with a branded id -- what `getProvableCircuitIds()` hands back --
-is who hits the degradation: `Contract.CircuitParameters` resolves a branded key to `unknown[]`
-rather than the real tuple. Without the unbranding this parameter would accept any argument list
-while the return type -- `CallTxOptions<C, PCK>`, which is `CallOptionsWithArguments`
-underneath -- claims the real tuple: an unsound mismatch between what is checked and what is
-returned.
-
-This package's own call site does NOT go through that path: `createCircuitCallTxInterface` below
-instantiates `PCK` at the unbranded `Contract.ProvableCircuitId<C>` explicitly, as the comment
-there says.
+`args` carries the circuit's real parameter tuple, indexed at `PCK` -- including the branded id
+`getProvableCircuitIds()` hands back, which `Contract.CircuitParameters` unbrands itself.
 
 `circuitId` is constrained by `PCK extends Contract.ProvableCircuitId<C>`, which is the
 NAMESPACE member `keyof C['provableCircuits'] & string`. That `keyof` is what rejects a circuit
@@ -62,7 +52,7 @@ is accepted here.
 
 ### args
 
-[`Contract.CircuitParameters`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `CircuitKey`\<`PCK`\>\>
+[`Contract.CircuitParameters`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `PCK`\>
 
 ## Returns
 

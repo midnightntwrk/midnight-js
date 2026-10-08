@@ -87,7 +87,8 @@ There is no base for them and there will not be one.
 Almost every member the two arms share has an era-specific type: `era` is
 `CurrentPipelineEra` against `RetainedPipelineEra`, `callTx` is
 `CircuitCallTxInterface<C>` against `Ledger8CircuitCallTxInterface<C>`,
-`deployTxData` is `FinalizedDeployTxDataBase<C>` against
+`deployTxData` is `FoundDeployTxData<C>` (updated 2026-10-05 for #1408; it was
+`FinalizedDeployTxDataBase<C>`) against
 `VersionedFinalizedTxData`, and `compiledContract` is the era's own artifact
 type. A base over those four declares a key set and nothing else — the same
 shape this ADR already rejected for a top-level `FinalizedCallTxDataBase`, and
@@ -166,9 +167,8 @@ is what the key-set gate asserts directly.
   One handle divergence is excused rather than closed: both eras hold the
   deployer's `signingKey`, `initialPrivateState`, `initialZswapState` and
   `initialContractState`, but the current era nests them under `deployTxData`
-  and the retained era publishes them flat. Which path wins is a breaking
-  change to a published surface either way, so it is its own decision,
-  tracked in #1298.
+  and the retained era publishes them flat. The ADR-0010 amendment of
+  2026-10-07 keeps that layout until the retained era is removed.
 
 ## Alternatives considered
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: CircuitParameters\<C, K\>
 
-> **CircuitParameters**\<`C`, `K`\> = `Parameters`\<`C`\[`"impureCircuits"`\]\[`K`\]\> *extends* \[[`CircuitContext`](../interfaces/CircuitContext.md), `...(infer A)`\] ? `A` : `never`[]
+> **CircuitParameters**\<`C`, `K`\> = `Parameters`\<`C`\[`"provableCircuits"`\]\[`K`\]\> *extends* \[[`CircuitContext`](../interfaces/CircuitContext.md), `...(infer A)`\] ? `A` : `never`[]
 
 The arguments a caller supplies for circuit `K` on a retained-era contract.
 

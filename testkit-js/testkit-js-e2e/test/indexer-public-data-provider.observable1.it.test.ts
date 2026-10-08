@@ -14,7 +14,12 @@
  */
 
 import { type ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { type FinalizedTxData, type PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
+import {
+  type FinalizedTxData,
+  type FinalizedTxRecord,
+  type PositionedRecord,
+  type PublicDataProvider
+} from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
   getTestEnvironment,
@@ -22,7 +27,7 @@ import {
   type TestEnvironment
 } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
-import { type Observable, toArray } from 'rxjs';
+import { firstValueFrom, type Observable, take, timeout, toArray } from 'rxjs';
 
 import { SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '../src/constants';
 import { CompiledCounter } from '../src/contract';
@@ -36,6 +41,8 @@ const logger = createLogger(
 
 const { ledger } = CompiledCounter;
 
+const STATE_WAIT_MS = 120_000;
+
 describe('Indexer API', () => {
   let publicDataProvider: PublicDataProvider;
   let providers: CounterProviders;
@@ -44,19 +51,21 @@ describe('Indexer API', () => {
   let deployedContractObserved: DeployedCounterContract;
   let incrementFinalizedTxData: FinalizedTxData;
 
-  const expectObservedContractStatesToEqual = (observable$: Observable<ContractState>, expectedStates: bigint[]) => {
-    observable$
-      .pipe(toArray())
-      .subscribe((states) => {
-        const ledgerStates: bigint[] = [];
-        states.forEach((state) => {
-          expect(state).not.toBeNull();
-          expect(state?.operations()).toEqual(CONTRACT_CIRCUITS);
-          ledgerStates.push(ledger(state.data).round);
-        });
-        expect(ledgerStates).toEqual(expectedStates);
-      })
-      .unsubscribe();
+  const expectObservedContractStatesToEqual = async (
+    observable$: Observable<PositionedRecord<ContractState>>,
+    expected: readonly (readonly [round: bigint, writtenBy: FinalizedTxRecord])[]
+  ): Promise<void> => {
+    const records = await firstValueFrom(
+      observable$.pipe(timeout({ each: STATE_WAIT_MS }), take(expected.length), toArray())
+    );
+    for (const { value } of records) {
+      expect([...value.operations()].sort()).toEqual([...CONTRACT_CIRCUITS].sort());
+    }
+    expect(
+      records.map(({ value, blockHeight, blockHash }) => ({ round: ledger(value.data).round, blockHeight, blockHash }))
+    ).toEqual(
+      expected.map(([round, { blockHeight, blockHash }]) => ({ round, blockHeight, blockHash }))
+    );
   };
 
   beforeEach(async () => {
@@ -89,12 +98,9 @@ describe('Indexer API', () => {
    * @then Should return correct state history based on inclusive flag
    * @and Should observe states in proper chronological order
    */
-  test.each([
-    [true, [1n, 2n]],
-    [false, [2n]]
-  ])(
-    'should return the history of states starting from defined blockHash (inclusive:%s, expected:%s) [@slow]',
-    async (inclusive, expectedStates) => {
+  test.each([true, false])(
+    'should return the history of states starting from defined blockHash (inclusive:%s) [@slow]',
+    async (inclusive) => {
       const observable$ = publicDataProvider.contractStateObservable(
         deployedContractObserved.deployTxData.public.contractAddress,
         {
@@ -103,9 +109,17 @@ describe('Indexer API', () => {
           inclusive
         }
       );
-        await api.increment(deployedContractObserved);
+      const secondIncrement = await api.increment(deployedContractObserved);
 
-      expectObservedContractStatesToEqual(observable$, expectedStates);
+      await expectObservedContractStatesToEqual(
+        observable$,
+        inclusive
+          ? [
+              [1n, incrementFinalizedTxData],
+              [2n, secondIncrement]
+            ]
+          : [[2n, secondIncrement]]
+      );
     },
     SLOW_TEST_TIMEOUT
   );
@@ -114,25 +128,29 @@ describe('Indexer API', () => {
    * Test contract state observable with transaction ID starting point.
    *
    * @given A deployed contract with incremented state
-   * @and A specific transaction ID as starting point
-   * @when Creating observable from defined transaction ID with inclusive/exclusive options
+   * @and The increment's transaction ID as starting point
+   * @when Creating observable from that transaction ID with inclusive/exclusive options
    * @and Executing additional increment operation
-   * @then Should return correct state history based on inclusive flag
-   * @and Should observe states matching transaction-based filtering
+   * @then Should return the named transaction's state only when inclusive, then every later state
    */
-  test.each([
-    [true, [1n, 2n]],
-    [false, [2n]]
-  ])(
-    'should return the history of states starting from defined txId (inclusive:%s, expected states:%s) [@slow]',
-    async (inclusive, expectedStates) => {
+  test.each([true, false])(
+    'should return the history of states starting from defined txId (inclusive:%s) [@slow]',
+    async (inclusive) => {
       const observable$ = publicDataProvider.contractStateObservable(
         deployedContractObserved.deployTxData.public.contractAddress,
         { type: 'txId', txId: incrementFinalizedTxData.txId, inclusive }
       );
-        await api.increment(deployedContractObserved);
+      const secondIncrement = await api.increment(deployedContractObserved);
 
-      expectObservedContractStatesToEqual(observable$, expectedStates);
+      await expectObservedContractStatesToEqual(
+        observable$,
+        inclusive
+          ? [
+              [1n, incrementFinalizedTxData],
+              [2n, secondIncrement]
+            ]
+          : [[2n, secondIncrement]]
+      );
     },
     SLOW_TEST_TIMEOUT
   );

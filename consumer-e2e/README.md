@@ -185,6 +185,116 @@ precisely the case the probe is trying to provoke. Without a per-call ceiling it
 would hang until the outer deadline, which is fatal and sits before the `fork
 enacted` gate.
 
+### The three legs that do not race
+
+The probe above cannot assert on what it is for, and the numbers say why.
+Measured across six runs that could have seen it, three local and three in CI:
+it caught the boundary in **three of them** and missed in the other three. A miss
+looks the same every time -- nine or so calls admitted, then a run of refusals at
+`submitTx` with not one diagnosed, `metTheBoundary: false`, stopped at the
+attempt cap, because a refusal returns in about a second where an admitted call
+takes eighteen and a dozen of them burn the cap in moments.
+
+**So this is a coin toss, near enough, and that is the point.** A blocking gate
+cannot rest on one, which is what makes these legs worth their fork-window time.
+It is also not a long shot, which is why the probe stays beside them: when it
+does land, it observes the real race, and no injected version can.
+
+The undiagnosed refusals are the informative part. Each was a real refusal that
+`handleSubmitRejection`
+([`packages/contracts/src/internal/stale-head.ts`](../packages/contracts/src/internal/stale-head.ts))
+re-threw unchanged, which places them BEFORE the indexer's head flipped: the
+re-read reported no movement, and saying nothing about a fork there is exactly
+right. The window in which a live call can observe `StaleHeadError` is therefore
+not the fork window, but the part of it after the indexer catches up.
+
+Three legs replace that race with something a gate can rest on, and they are
+not the same size, deliberately.
+
+**One leg carries the whole claim about the network.** It starts a call before
+the fork, on a real pre-fork head, and really composes, proves and balances it
+there. Only the SUBMISSION is held -- at the `midnightProvider.submitTx` seam --
+until the head reports `v9`. Then the bytes go to the real node, and it really
+refuses them. In its own words, from `stack-logs/node.log` on a run where the
+diagnosis had been removed:
+
+```
+Error deserializing: "...Transaction<midnight_ledger_v9::structure::Signature, ...>":
+  expected header tag 'midnight:transaction[v12](signature[v2],proof,pedersen-schnorr[v1]):',
+  got 'midnight:transaction[v9](signature[v1],proof,pedersen-schnorr[v1]):'
+```
+
+The bytes are declined on their era tag, at decode, before the node considers
+what they spend -- which is worth knowing, because it also rules out the reading
+where a coin conflict, and not the boundary, is what refused them.
+
+**The other two legs inject the refusal**, and keep everything else real: a real
+post-fork head resolved at the operation's start, a real retained contract, a
+real composition through the keep-state pipeline, a real proof, a real
+balancing. They ask what the diagnosis DECIDES on the strength of one head
+reading, which is not a question about the network -- and the leg above is what
+establishes that this decision is reached on a live chain at all. Re-proving
+that for each arm would cost another balanced transaction on the one shared
+wallet, and another slice of the fork window, to assert nothing new.
+
+| Leg | Real | Injected |
+|---|---|---|
+| a retained call parked across the fork is refused as STALE | the operation, the refusal, the re-read | when the submission leaves |
+| a rejection whose head RE-READ FAILS is reported undiagnosed | the operation, the era it starts on | the refusal; the re-read throws |
+| a rejection under a head that moved BACKWARDS | the operation, the post-fork era it starts on, the arm its payload took | the refusal, and the re-read's answer |
+
+The first reads `kind`, `startEra` and `freshEra` off the `StaleHeadError` --
+the three that decide which remediation wording it carries -- and also
+`circuitId` and `contractAddress`, which are what that remediation's first step
+sends an operator to go and read; without those two the leg would pass on an
+error naming a different operation. The other two read `reason` off the
+`SubmitRejectionUndiagnosedError`. The `head-read-failed` one also asserts that
+the arm carries **both** failures, in order, and that the second of them is the
+injected one, since carrying only one is the defect its `AggregateError` shape
+exists to rule out; and that the injected reading was consulted exactly once, so
+a framework that took its re-read somewhere else would not pass unnoticed.
+
+The last is an arm no chain produces at all -- a head does not move backwards --
+so it could not be driven any other way. What the live chain still contributes
+there is the era the operation starts on and the arm its payload takes, both
+asserted as `v9`, so a leg that had quietly begun measuring its own injection
+would fail.
+
+**Verified by mutation, and here is what that does and does not establish.** With
+`handleSubmitRejection` reduced to `throw rejection`, all three legs go red and
+the shard exits 1. That rules out the classic e2e failure -- an assertion that
+never runs -- and shows each leg reaches the real diagnosis and can colour the
+exit code. It does not, on its own, show that each leg is sensitive to a *wrong*
+diagnosis rather than only to a missing one; the ablation removes every arm at
+once. Per-arm mutations are the stronger claim and have not been run.
+
+**Do not replace the holding with a faked head reading on a chain that has
+already forked.** Measured: a composition that has resolved a `v8` head after the
+boundary refuses the v9-tagged ledger parameters the block serves, with
+`ComposeOptionError`, before anything is proven -- so that mechanism never
+reaches the submit seam at all, and a leg built on it would be asserting on the
+composer. (A retained contract composes perfectly well after the fork; the two
+injected legs do it. The refusal is specific to a composition that believes the
+head is still pre-fork.)
+
+**What they cost.** They run on the same shard as the current-era pre-fork probe,
+and leave a `skipped` row on every other one: the diagnosis is a property of the
+framework and not of any contract, so thirteen copies would buy thirteen copies
+of one measurement and pay for each in fork-window time. On that shard, the cost
+inside the window is one parked call -- roughly one call's worth of composing,
+proving and balancing before the probe starts, and its balanced coins stay
+unspent until release, while the probe balances against the same wallet. All
+three runs saw the probe admit nine calls regardless, but that is measured
+alongside, not designed away.
+
+The two injected legs run LAST, after every other leg, and that position is
+load-bearing: each balances a real transaction and then never submits it, and
+the dust a balancing reserves does not come back to the wallet by itself.
+Measured -- with those two legs sitting before the keep-state legs, four later
+legs failed with `Wallet.InsufficientFunds: could not balance dust`, a red run
+blaming whichever contracts happened to follow them. Nothing draws on the wallet
+after them now, so the abandoned balancing costs nothing.
+
 ## Two things that bite
 
 **Path length.** pnpm's content-addressable store encodes a tarball's path into a
@@ -353,7 +463,9 @@ twin is now deployed through `deployContract` — the surface a consumer has —
 regression in that arm is visible to the matrix instead of being measured around.
 
 The second holds **only for the deploy branch**, which is what it was originally
-about. The stale-head path is now driven, but by calls, so the error it provokes
-carries `kind: 'call'`. The deploy branch's remediation still cannot be reached
-from any entry point here. See [The in-flight probe](#the-in-flight-probe) for
-what that probe can and cannot claim.
+about. The stale-head path is now driven, and asserted, but by calls, so the
+error it provokes carries `kind: 'call'`. The deploy branch's remediation still
+cannot be reached from any entry point here. See
+[The three legs that do not race](#the-three-legs-that-do-not-race) for what is
+asserted and what is injected, and [The in-flight probe](#the-in-flight-probe)
+for what that probe can and cannot claim.

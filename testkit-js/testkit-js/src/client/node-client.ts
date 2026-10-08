@@ -20,7 +20,7 @@ import type { BlockHash } from '@midnight-ntwrk/midnight-js-types';
 import axios, { type AxiosResponse } from 'axios';
 import type { Logger } from 'pino';
 
-import { buildUrlWithPath } from '../utils';
+import { buildUrlWithPath, redactUrl } from '../utils';
 
 /**
  * Client for interacting with a Midnight node's JSON-RPC API
@@ -47,7 +47,7 @@ export class NodeClient {
   async health() {
     const url = buildUrlWithPath(this.nodeURL, '/health');
     const response = await axios.get(url, { timeout: 1000 });
-    this.logger.info(`Connected to node ${url}: ${JSON.stringify(response.data)}`);
+    this.logger.info(`Connected to node ${redactUrl(url)}: ${JSON.stringify(response.data)}`);
     return response;
   }
 

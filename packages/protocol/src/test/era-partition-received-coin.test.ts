@@ -15,6 +15,7 @@
 
 import { readFileSync } from 'node:fs';
 
+import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
@@ -25,13 +26,13 @@ import { ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
 import { assembleCallPrototype } from '../lib/shared/assemble-call';
 import type { PartitionContext } from '../lib/shared/compose-types';
 import type { LedgerVersion } from '../lib/shared/ledger-version';
-import { executeCircuit, type Ledger8ContractLike, type TranscriptPojo } from '../lib/v8/execute';
+import { runRetainedCircuit, type TranscriptPojo } from '../lib/v8/executable';
 import { fixturePath } from './fixtures';
 
 // The fixture's compiled module imports `@midnight-ntwrk/compact-runtime`
 // bare and asserts `checkRuntimeVersion('0.16.0')`, so the specifier is
 // redirected to the retained alias for this file only — the same redirect
-// v8-execute.test.ts uses for counter-016.
+// the retired v8-execute.test.ts used for counter-016.
 vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
 
 const CIRCUIT_ID = 'receive_coin';
@@ -39,8 +40,9 @@ const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
 const REGISTERED_VERIFIER_KEY = readFileSync(fixturePath('twin-contract', 'compiled', 'keys', 'increment.verifier'));
 
 /** The slice of the compiled fixture module this suite drives. */
-interface CompiledReceiverContract extends Ledger8ContractLike {
+interface CompiledReceiverContract extends CompactContract.Contract<Record<string, never>> {
   initialState(constructorContext: ConstructorContext<Record<string, never>>): {
+    currentPrivateState: Record<string, never>;
     currentContractState: { data: ocrt3.ChargedState };
   };
 }
@@ -67,18 +69,19 @@ const runReceiveCoin = async (): Promise<TranscriptPojo> => {
   const contract = new Contract({});
   const initial = contract.initialState(ledger8Runtime.createConstructorContext({}, SAMPLE_COIN_PUBLIC_KEY));
 
-  return executeCircuit(
-    {
-      contract,
-      circuitId: CIRCUIT_ID,
-      args: [RECEIVED_COIN],
-      state: { data: initial.currentContractState.data },
-      address: ocrt3.dummyContractAddress(),
-      coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: {}
-    },
-    ledger8Runtime
-  );
+
+  return runRetainedCircuit({
+    contract,
+    circuitId: CIRCUIT_ID,
+    args: [RECEIVED_COIN],
+    // Freshly constructed, so the contract holds nothing. The coin this circuit
+    // receives arrives as an ARGUMENT; it is not a standing balance until a
+    // later block.
+    contractState: { state: initial.currentContractState.data.state.encode(), balance: new Map(), entryPoints: [] },
+    address: ocrt3.dummyContractAddress(),
+    coinPk: SAMPLE_COIN_PUBLIC_KEY,
+    privateState: {}
+  });
 };
 
 // One assembly per era, each against its own module and its own contract
@@ -96,10 +99,10 @@ const ARMS: Readonly<Record<LedgerVersion, (transcript: TranscriptPojo, partitio
         circuitId: CIRCUIT_ID,
         contractAddress: ocrt3.dummyContractAddress(),
         // Named explicitly: these arms compare era ASSEMBLY, not cost models.
-        ledgerParameters: 'initial',
+        ledgerParametersBytes: 'initial',
         transcript: {
           kind: 'unpartitioned',
-          preState: transcript.preContractState.data.state.encode(),
+          preState: transcript.preContractState.encode(),
           publicTranscript: transcript.publicTranscript,
           partitionContext
         },
@@ -120,10 +123,10 @@ const ARMS: Readonly<Record<LedgerVersion, (transcript: TranscriptPojo, partitio
         circuitId: CIRCUIT_ID,
         contractAddress: ocrt3.dummyContractAddress(),
         // Named explicitly: these arms compare era ASSEMBLY, not cost models.
-        ledgerParameters: 'initial',
+        ledgerParametersBytes: 'initial',
         transcript: {
           kind: 'unpartitioned',
-          preState: transcript.preContractState.data.state.encode(),
+          preState: transcript.preContractState.encode(),
           publicTranscript: transcript.publicTranscript,
           partitionContext
         },
@@ -159,7 +162,7 @@ describe('partitioning a transcript that received a shielded coin in-contract', 
 
     // The fixture is only worth anything while it emits the SYNC codegen the
     // retained leg runs. A recompile with the repo's own pinned compactc would
-    // silently produce 0.19-era async codegen that never reaches the seam under
+    // silently produce current-era async codegen that never reaches the seam under
     // test, so the artifact carries its provenance and this asserts it.
     expect(info['runtime-version']).toBe('0.16.0');
     expect(info['compiler-version']).toBe('0.31.1');

@@ -95,7 +95,7 @@ try {
 
 ```typescript
 // ✅ Use RxJS for streams and subscriptions
-function contractStateObservable(address: string): Observable<ContractState> {
+function stateChanges(address: string): Observable<ContractState> {
   return new Observable(subscriber => {
     const subscription = pollForChanges(address, state => {
       subscriber.next(state);
@@ -302,7 +302,7 @@ When adding dependencies:
 1. Check if functionality exists in current deps
 2. Prefer widely-used, maintained packages
 3. Add to correct package (not root unless shared)
-4. Update package.json with exact version for prod deps
+4. Update package.json with exact version for prod deps, except a native (WASM) package another dependency also declares: copy that dependency's range verbatim, so a consumer's install resolves one copy (`packages/protocol/src/test/native-package-ranges.test.ts` checks this)
 5. Document why dependency was added
 
 ## Debugging Tips

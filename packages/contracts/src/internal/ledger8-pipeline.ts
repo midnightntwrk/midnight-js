@@ -30,13 +30,13 @@
 import type {
   ContractStatePojo,
   DeployResultPojo,
-  DownConvertedState,
   EncodedStateValue,
   Ledger8SigningKey,
   LedgerEra,
   LedgerVersion,
   TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
+import { ComposeFailedError } from '@midnight-ntwrk/midnight-js-protocol';
 import type { AlignedValue, Op, ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PublicDataProvider, RawContractState } from '@midnight-ntwrk/midnight-js-types';
@@ -44,6 +44,7 @@ import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
 import {
+  LEDGER8_CONSTRUCTOR_ENTRY_POINT,
   Ledger8AmbiguousEntryPointError,
   Ledger8RecipientUnmappableError,
   Ledger8ShieldedSpendUnsupportedError,
@@ -51,6 +52,7 @@ import {
   RetainedArtifactOnCurrentEraStateError,
   VerifierKeyMismatchError
 } from '../errors';
+import type { Ledger8Contract } from '../ledger8-contract';
 import type { Ledger8ContractCall } from '../ledger8-contract';
 import type { BreadcrumbSink } from './breadcrumbs';
 import { resolveContractStateEra } from './era';
@@ -65,6 +67,14 @@ import {
 import { assertVerifierKeyMatches } from './verifier-key';
 
 /**
+ * The retained era's contract-state handle, derived from the engine's own
+ * result rather than restated: it is compact-js's ledger-8 `StateValue`, and
+ * naming it structurally here keeps this package from importing that era's
+ * runtime types directly.
+ */
+export type RetainedStateValue = TranscriptPojo['postContractState'];
+
+/**
  * The transcript members this pipeline is entitled to read, narrowed off the
  * engine's own result type so the two cannot drift.
  *
@@ -72,14 +82,13 @@ import { assertVerifierKeyMatches } from './verifier-key';
  * its own request. It stays in the `Pick` because the replay harness requires
  * the fixture to carry it.
  *
- * One member of the engine's result is deliberately left out,
- * `preContractState`. `postContractState` is generic rather than picked off
- * `TranscriptPojo`, because it is a live retained-runtime handle the replay
- * double cannot mint.
+ * `preContractState` and `postContractState` are declared below rather than
+ * picked off `TranscriptPojo`, because both are live retained-runtime handles
+ * the replay double cannot mint -- so both are generic in the state type.
  *
  * @see {@link KeepStatePipeline} for what is left out and why nothing is lost.
  */
-export type Ledger8Transcript<TState = DownConvertedState> = Pick<
+export type Ledger8Transcript<TState = RetainedStateValue> = Pick<
   TranscriptPojo,
   | 'circuitId'
   | 'result'
@@ -94,54 +103,29 @@ export type Ledger8Transcript<TState = DownConvertedState> = Pick<
 > & {
   /** The state the execution ENDED on, as a live handle. See ADR-0010. */
   readonly postContractState: TState;
+  /** The state the execution BOUND to, as a live handle. See ADR-0010. */
+  readonly preContractState: TState;
 };
-
-/**
- * Everything either arm needs off a caller's retained-era contract: the UNION of
- * the two arms' slices, so one entry point can accept a contract it will route
- * to whichever arm applies.
- *
- * Each arm passes on only its own member — see {@link Ledger8CallableContract}
- * and {@link Ledger8ConstructibleContract}, and why they stay separate.
- */
-export interface Ledger8ContractSlice extends Ledger8CallableContract, Ledger8ConstructibleContract {}
-
-/**
- * The circuit collection alone, which is all the call arm passes on.
- *
- * Widened to `unknown` values on purpose. The circuits are the previous
- * runtime's own functions and nothing here calls them — only the engine does —
- * so naming their signature would tie this package to a shape it never uses,
- * and would stop the real engine's own narrower contract type from satisfying
- * this slice.
- */
-export interface Ledger8CallableContract {
-  readonly impureCircuits: Readonly<Record<string, unknown>>;
-}
-
-/**
- * The constructor alone, which is all the deploy arm passes on.
- *
- * Separate from {@link Ledger8CallableContract} rather than folded into one
- * slice, and that separation is load-bearing: each engine method declares only
- * the member it uses, which is what keeps the real engine's own narrower
- * request types comparable with these and so assignable to
- * {@link Ledger8ExecutionEngine}.
- */
-export interface Ledger8ConstructibleContract {
-  readonly initialState: unknown;
-}
 
 /**
  * What {@link Ledger8ExecutionEngine.executeCircuit} is asked to run.
  *
- * @typeParam TState The engine's own down-converted state type, opaque here.
+ * `contractState` is the DECODED era-neutral state, balance included, not the
+ * chain's serialized bytes. The balances a circuit reads live beside the
+ * primary state rather than inside it, and the retained runtime populates them
+ * only when it is handed a whole contract state; the engine rebuilds one from
+ * both halves of this member, so neither can come off a different read.
  */
-export interface Ledger8ExecuteRequest<TState> {
-  readonly contract: Ledger8CallableContract;
+export interface Ledger8ExecuteRequest {
+  /**
+   * TYPED, not `unknown`. The engine and this package have to agree on what a
+   * retained contract IS; an `unknown` here compiles whatever either side
+   * believes and lets them disagree silently, which is exactly what it did.
+   */
+  readonly contract: Ledger8Contract;
   readonly circuitId: string;
   readonly args: readonly unknown[];
-  readonly state: TState;
+  readonly contractState: ContractStatePojo;
   readonly address: string;
   readonly coinPk: string;
   readonly privateState: unknown;
@@ -178,10 +162,18 @@ export interface Ledger8ConstructedState {
 
 /** What {@link Ledger8ExecutionEngine.executeConstructor} is asked to run. */
 export interface Ledger8ConstructRequest {
-  readonly contract: Ledger8ConstructibleContract;
+  readonly contract: Ledger8Contract;
   readonly args: readonly unknown[];
   readonly privateState: unknown;
   readonly coinPk: string;
+  /**
+   * Reads the verifier key for each entry point the constructor registers.
+   *
+   * Derived from the deploy's own `verifierKeys` map rather than taken
+   * separately, so the keys written at construction and the keys the composer
+   * writes cannot disagree.
+   */
+  readonly verifierKeys: (provableCircuitId: string) => Promise<Uint8Array | undefined>;
   /**
    * The key the contract's maintenance authority is built from. Optional: the
    * engine samples one when it is absent, and reports whichever it used.
@@ -190,20 +182,26 @@ export interface Ledger8ConstructRequest {
 }
 
 /**
- * The retained execution capability this pipeline consumes: down-convert a
- * state for retained-era execution, then run one circuit on it.
+ * The retained execution capability this pipeline consumes: run one circuit, or
+ * one constructor, in the retained era.
  *
- * Both members use METHOD syntax deliberately, so their parameters compare
+ * All three members use METHOD syntax deliberately, so their parameters compare
  * bivariantly. Do not rewrite them as property-typed arrow signatures — the
  * real engine stops satisfying the slice.
  *
- * @typeParam TState The down-converted state, threaded through opaquely.
+ * @typeParam TState The retained-era state handle, threaded through opaquely.
  * @see {@link KeepStatePipeline} for why the state is generic.
  */
 export interface Ledger8ExecutionEngine<TState> {
-  downConvertForExecution(state: EncodedStateValue): TState;
-  executeCircuit(options: Ledger8ExecuteRequest<TState>): Ledger8Transcript<TState>;
-  executeConstructor(options: Ledger8ConstructRequest): Ledger8ConstructedState;
+  /**
+   * ASYNCHRONOUS, unlike the synchronous member it replaced: compact-js builds
+   * a circuit call on `Effect.tryPromise`, so it cannot be discharged
+   * synchronously. There is no `downConvertForExecution` beside it any more:
+   * the state arrives already decoded on {@link Ledger8ExecuteRequest}, so
+   * there is no separate down-convert step for a caller to run first.
+   */
+  executeCircuit(options: Ledger8ExecuteRequest): Promise<Ledger8Transcript<TState>>;
+  executeConstructor(options: Ledger8ConstructRequest): Promise<Ledger8ConstructedState>;
   /**
    * Re-expresses the entry points a retained-era state declared as a CURRENT-era contract state.
    *
@@ -274,6 +272,7 @@ export interface Ledger8Snapshot {
  * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the head and
  * the state's envelope belong to different eras.
  * @throws StateDecodeFailedError if this era's decoder rejects the envelope.
+ * @throws StateInconsistentError if the decoded state is internally inconsistent.
  * @see {@link KeepStatePipeline} for why the two reads stay separate.
  */
 export const readLedger8Snapshot = async (
@@ -385,7 +384,8 @@ const spendsHeldCoin = (zswapLocalState: Ledger8Transcript['zswapLocalState']): 
  *
  * Without this the condition surfaces from inside `createZswapOutput` as a bare
  * `Error` naming neither the era nor the circuit, and advising a resolver
- * mapping the retained-era options carry no field for.
+ * mapping rather than the `additionalCoinEncPublicKeyMappings` option the
+ * caller actually sets.
  *
  * Only USER-owned outputs are checked. A contract-owned output takes
  * `ZswapOutput.newContractOwned`, which is given an address and never consults
@@ -426,7 +426,7 @@ export interface Ledger8CallPipelineRequest<TState> {
   readonly head: LedgerVersion;
   /** The optional logger the dating step's breadcrumbs are written to. */
   readonly logger?: BreadcrumbSink;
-  readonly contract: Ledger8ContractSlice;
+  readonly contract: Ledger8Contract;
   readonly contractAddress: string;
   readonly circuitId: string;
   readonly args: readonly unknown[];
@@ -449,8 +449,8 @@ export interface Ledger8CallPipelineRequest<TState> {
 /**
  * What one retained-era call produced.
  *
- * @typeParam TState - The down-converted state type the engine works in. The
- * framework's own engine fills it with `DownConvertedState`; the replay double
+ * @typeParam TState - The retained-era state type the engine works in. The
+ * framework's own engine fills it with `RetainedStateValue`; the replay double
  * fills it with its own marker.
  */
 export interface Ledger8CallPipelineResult<TState> {
@@ -527,21 +527,20 @@ export interface Ledger8CallPipelineResult<TState> {
    */
   readonly newCoins: ShieldedCoinInfo[];
   /** Present exactly when the call moved shielded coins. */
-  readonly guaranteedZswapOffer: Uint8Array | undefined;
+  readonly guaranteedZswapOfferBytes: Uint8Array | undefined;
   /**
    * Present exactly when the call's own partition places a shielded movement in
    * the fallible half. The offer is built from the split the composer hands
    * back, so a movement the transcript places there is routed there rather than
    * falling into the guaranteed segment.
    */
-  readonly fallibleZswapOffer: Uint8Array | undefined;
+  readonly fallibleZswapOfferBytes: Uint8Array | undefined;
 }
 
 /**
  * Runs one call against a retained-era contract, in the order this module
  * exists to fix: fetch the one snapshot, date it, read the state and the key
- * set off it, check the key, down-convert, execute the circuit, compose the
- * transaction.
+ * set off it, check the key, execute the circuit, compose the transaction.
  *
  * @param request The era and engine to run against, the read surface, and the
  * call's own inputs.
@@ -581,12 +580,16 @@ export const runLedger8CallPipeline = async <TState>(
   // turns a paid-for, late failure into a free, immediate one.
   assertSnapshotVerifierKey(snapshot, circuitId, request.localVerifierKey, contractAddress);
 
-  const downConverted = engine.downConvertForExecution(snapshot.encoded);
-  const transcript = engine.executeCircuit({
+  // The DECODED state, read by whichever era's reader the envelope named. A
+  // contract an earlier post-fork call migrated carries a current-era envelope
+  // while still executing on the retained runtime, so the chain's own bytes
+  // cannot be handed to one era's decoder. The balance rides on this same
+  // value, so the state and its balances cannot come off different reads.
+  const transcript = await engine.executeCircuit({
     contract,
     circuitId,
     args: request.args,
-    state: downConverted,
+    contractState: snapshot.decoded,
     address: contractAddress,
     coinPk: request.coinPublicKey,
     privateState: request.privateState
@@ -630,19 +633,19 @@ export const runLedger8CallPipeline = async <TState>(
   // refusal below rests on: an offer that is absent because the call moved no
   // shielded coin is a `routed` whose halves are both undefined, and that is a
   // different value from never having been asked at all.
-  let routed: { readonly guaranteed?: Uint8Array; readonly fallible?: Uint8Array } | undefined;
+  let routed: { readonly guaranteedBytes?: Uint8Array; readonly fallibleBytes?: Uint8Array } | undefined;
 
   const composed = era.composeCallTx({
     calls: [
       {
         contractAddress,
         circuitId,
-        contractState: registeredOperations,
+        contractStateBytes: registeredOperations,
         // From the SAME read as the state above, which is the point: the parameters are dynamic
         // and must date from the block the call is built against. Composing against the ledger's
         // initial parameters partitions the transcript with a cost model the chain does not use,
         // and the node refuses the guaranteed segment for running out of gas.
-        ledgerParameters: snapshot.state.ledgerParameters,
+        ledgerParametersBytes: snapshot.state.ledgerParameters,
         transcript: {
           kind: 'unpartitioned',
           preState: snapshot.encoded,
@@ -683,7 +686,7 @@ export const runLedger8CallPipeline = async <TState>(
       );
       // Captured so the result can report WHICH segment each movement was
       // routed into; these are the report of the routing, not its input.
-      routed = { guaranteed: offers.guaranteed?.serialize(), fallible: offers.fallible?.serialize() };
+      routed = { guaranteedBytes: offers.guaranteed?.serialize(), fallibleBytes: offers.fallible?.serialize() };
       return routed;
     }
   });
@@ -707,7 +710,7 @@ export const runLedger8CallPipeline = async <TState>(
   );
 
   return {
-    txBytes: composed.transaction,
+    txBytes: composed.txBytes,
     circuitId,
     nextPrivateState: transcript.privateStateAfter,
     result: transcript.result,
@@ -728,13 +731,12 @@ export const runLedger8CallPipeline = async <TState>(
           // answer the same question under the same name.
           contractState: transcript.postContractState,
           contractStateEncoded: transcript.postContractStateEncoded,
-          // The state this call BOUND to: the very handle the circuit executed
-          // against, not a second decode of the same bytes. Published under its
-          // own name because the current era means something else by
-          // `contractState`.
-          preContractState: downConverted,
-          // This one IS the snapshot's own primary state -- the value the
-          // handle was down-converted from -- so it is forwarded rather than
+          // The state this call BOUND to, as compact-js reports it: the very
+          // handle the circuit executed against, not a second decode of the
+          // same bytes. Published under its own name because the current era
+          // means something else by `contractState`.
+          preContractState: transcript.preContractState,
+          // This one IS the snapshot's own primary state, forwarded rather than
           // re-encoded.
           preContractStateEncoded: snapshot.encoded,
           publicTranscript: transcript.publicTranscript,
@@ -750,8 +752,8 @@ export const runLedger8CallPipeline = async <TState>(
     ],
     nextZswapLocalState: transcript.zswapLocalState,
     newCoins: zswapStateToNewCoins(request.coinPublicKey, transcript.zswapLocalState),
-    guaranteedZswapOffer: routed.guaranteed,
-    fallibleZswapOffer: routed.fallible
+    guaranteedZswapOfferBytes: routed.guaranteedBytes,
+    fallibleZswapOfferBytes: routed.fallibleBytes
   };
 };
 
@@ -759,7 +761,7 @@ export const runLedger8CallPipeline = async <TState>(
 export interface Ledger8DeployPipelineRequest {
   readonly era: LedgerEra;
   readonly engine: Ledger8ExecutionEngine<unknown>;
-  readonly contract: Ledger8ContractSlice;
+  readonly contract: Ledger8Contract;
   readonly args: readonly unknown[];
   readonly privateState: unknown;
   readonly coinPublicKey: string;
@@ -796,7 +798,7 @@ export interface Ledger8DeployPipelineResult {
    */
   readonly contractAddress: string;
   /** The state that address was derived from — what a caller later calls against. */
-  readonly initialState: Uint8Array;
+  readonly initialContractStateBytes: Uint8Array;
   /**
    * The same state as a LIVE handle, as the constructor built it. Published
    * under ADR-0010 next to the bytes rather than instead of them: the handle is
@@ -811,7 +813,7 @@ export interface Ledger8DeployPipelineResult {
    * Present exactly when the constructor minted a coin. Absent — not an empty
    * offer — when it minted none.
    */
-  readonly guaranteedZswapOffer: Uint8Array | undefined;
+  readonly guaranteedZswapOfferBytes: Uint8Array | undefined;
   /**
    * The key the deployed contract's maintenance authority was built from. The
    * caller's own when one was named, otherwise the sampled one.
@@ -844,9 +846,25 @@ export interface Ledger8DeployPipelineResult {
  * including `option: 'verifierKeys'` for a map that does not name exactly the
  * state's declared entry points.
  */
-export const runLedger8DeployPipeline = (request: Ledger8DeployPipelineRequest): Ledger8DeployPipelineResult => {
-  const constructed = request.engine.executeConstructor({
+export const runLedger8DeployPipeline = async (request: Ledger8DeployPipelineRequest): Promise<Ledger8DeployPipelineResult> => {
+  // BEFORE the constructor runs, and against `provableCircuits` because that is
+  // the set the engine asks for: compact-js's `initialize` reads one key per
+  // provable circuit and REFUSES a circuit the reader answers nothing for. Its
+  // refusal reaches a caller as an untyped `Error` -- the Effect runtime
+  // squashes the class away -- which is not the `ComposeFailedError` this
+  // function documents and a consumer switches on via `PROTOCOL_ERROR_CODES`.
+  // The composer checks the same map again, against the entry points the built
+  // state DECLARES; that check is unaffected and still the one that catches a
+  // key naming a circuit the state does not have.
+  for (const circuitId of Object.keys(request.contract.provableCircuits)) {
+    if (!request.verifierKeys.has(circuitId)) {
+      throw new ComposeFailedError(request.era.version, 'deploy-verifier-key', circuitId);
+    }
+  }
+
+  const constructed = await request.engine.executeConstructor({
     contract: request.contract,
+    verifierKeys: (circuitId) => Promise.resolve(request.verifierKeys.get(circuitId)),
     args: request.args,
     privateState: request.privateState,
     coinPk: request.coinPublicKey,
@@ -857,32 +875,32 @@ export const runLedger8DeployPipeline = (request: Ledger8DeployPipelineRequest):
   // builder, exactly as the call arm refuses it. A constructor cannot SPEND --
   // a contract that does not exist yet holds nothing -- so the recipient check
   // is the only one this arm needs.
-  assertRecipientsResolvable(constructed.zswapLocalState, request.encryptionPublicKey, 'initialState');
+  assertRecipientsResolvable(constructed.zswapLocalState, request.encryptionPublicKey, LEDGER8_CONSTRUCTOR_ENTRY_POINT);
 
   // A deploy has no transcript to partition against, and `composeDeployTx`
   // takes a guaranteed offer only, so the whole of the constructor's output
   // list belongs to the guaranteed segment.
-  const guaranteedZswapOffer = zswapStateToOffer(
+  const guaranteedZswapOfferBytes = zswapStateToOffer(
     constructed.zswapLocalState,
     request.encryptionPublicKey
   )?.serialize();
 
   const deployed: DeployResultPojo = request.era.composeDeployTx({
-    contractState: constructed.contractState.serialize(),
+    contractStateBytes: constructed.contractState.serialize(),
     verifierKeys: request.verifierKeys,
     networkId: request.networkId,
     ttl: request.ttl,
-    guaranteedZswapOffer
+    guaranteedZswapOfferBytes
   });
 
   return {
-    txBytes: deployed.transaction,
+    txBytes: deployed.txBytes,
     contractAddress: deployed.contractAddress,
-    initialState: deployed.initialState,
+    initialContractStateBytes: deployed.initialContractStateBytes,
     initialContractState: constructed.contractState,
     nextPrivateState: constructed.privateState,
     initialZswapState: constructed.zswapLocalState,
-    guaranteedZswapOffer,
+    guaranteedZswapOfferBytes,
     // Read off the CONSTRUCTOR's answer rather than echoed from the request:
     // the two differ exactly when the caller named none, which is the case
     // where losing the key loses the contract.

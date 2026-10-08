@@ -13,8 +13,11 @@
  * limitations under the License.
  */
 
-import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import { readFileSync } from 'node:fs';
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { fixturePath } from './fixtures';
 
 // Lives in its own file — a single doMock'd `'../lib/v8/load'`, reached only
 // through a dynamic re-import of `../lib/v8/engine` — so this poisoned module
@@ -22,12 +25,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // precedent as v8-load-failure.test.ts).
 //
 // What this pins is the laziness contract stated on `Ledger8Engine`
-// (`../lib/v8/engine.ts`): NOTHING on the engine surface needs the v8 ledger
-// module, so constructing the engine must not acquire it and neither must any
-// of its methods. Without this gate, hoisting the load back into
-// `createLedger8Engine`'s `Promise.all` would make every keep-state consumer
-// instantiate multi-megabyte v8 WASM it never calls, and hard-depend on
-// ledger-v8 resolving, with nothing failing.
+// (`../lib/v8/engine.ts`): the engine must not reach the v8 ledger through THIS
+// package's own loader.
+//
+// What this does NOT claim, and used to: that no v8 WASM is instantiated at all.
+// compact-js's ledger-8 line brings ledger-v8 with it -- `Ledger` on
+// `@midnight-ntwrk/compact-js/v8/effect` IS ledger-v8, and `lib/v8/executable.ts`
+// decodes chain bytes through it -- so a retained-era execution does load that
+// module now. The property still worth gating is that there is exactly ONE
+// acquisition path: `loadLedger8` exists for the composition legs, and an engine
+// method reaching for it would be a second one.
 //
 // The era facade has its own version of this property, and it is a DIFFERENT
 // one: `era-load-era-v8-laziness.test.ts` gates `loadLedgerEra('v9')`, which is
@@ -45,7 +52,7 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
     vi.doUnmock('../lib/v8/load');
   });
 
-  it('never acquires the v8 ledger module, and serves a working engine without it', async () => {
+  it('never acquires the v8 ledger module through this package\'s own loader', async () => {
     const loadLedger8 = vi.fn(() => Promise.reject(new Error('acquired the v8 ledger module')));
     vi.doMock('../lib/v8/load', () => ({ loadLedger8 }));
     const { createLedger8Engine } = await import('../lib/v8/engine');
@@ -55,15 +62,51 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
     expect(loadLedger8).not.toHaveBeenCalled();
 
     // Constructed but never used is a weaker claim than constructed and usable:
-    // a method that reached for the v8 module lazily would pass the assertion
-    // above and fail here. Down-conversion is the cheapest real work on the
-    // surface, and it is the step every retained-era consumer starts with.
-    const encoded = ocrt3.StateValue.newCell({
-      value: [new Uint8Array(32).fill(1)],
-      alignment: [{ tag: 'atom', value: { tag: 'field' } }]
-    }).encode();
+    // a method that reached for this package's v8 loader lazily would pass the
+    // assertion above and fail here. `reexpressOperationsForCurrentEra` is the
+    // cheapest real work on the surface and targets the CURRENT era, so it has
+    // no business touching the retained ledger at all. It refuses an empty
+    // entry-point list, so a real registered key is supplied.
+    expect(
+      engine.reexpressOperationsForCurrentEra([
+        {
+          circuitId: 'increment',
+          verifierKey: new Uint8Array(readFileSync(fixturePath('twin-contract', 'compiled', 'keys', 'increment.verifier'))),
+          verifierKeyHash: undefined
+        }
+      ])
+    ).toBeDefined();
+    expect(loadLedger8).not.toHaveBeenCalled();
 
-    expect(engine.downConvertForExecution(encoded)).toBeDefined();
+    // The two methods that could PLAUSIBLY reach the loader lazily, which the
+    // call above cannot speak for: it targets the current era, so it has no
+    // business touching the retained ledger either way. Both are driven far
+    // enough to run their own body -- each refuses its arguments before any
+    // execution -- which is all this gate needs: an `await loadLedger8()` added
+    // inside either one fires before the refusal does.
+    await engine
+      .executeCircuit({
+        contract: { provableCircuits: {}, initialState: () => undefined },
+        circuitId: 'increment',
+        args: [],
+        contractState: { state: { tag: 'null' }, balance: new Map(), entryPoints: [] },
+        address: '00'.repeat(32),
+        coinPk: '0'.repeat(64),
+        privateState: {}
+      })
+      .catch(() => undefined);
+    expect(loadLedger8).not.toHaveBeenCalled();
+
+    await engine
+      .executeConstructor({
+        contract: { provableCircuits: {}, initialState: () => undefined },
+        args: [],
+        privateState: {},
+        coinPk: '0'.repeat(64),
+        signingKey: 'not-a-signing-key',
+        verifierKeys: () => Promise.resolve(undefined)
+      })
+      .catch(() => undefined);
     expect(loadLedger8).not.toHaveBeenCalled();
   });
 
@@ -79,7 +122,6 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
     const engine = await createLedger8Engine();
 
     expect(Object.keys(engine).sort()).toEqual([
-      'downConvertForExecution',
       'executeCircuit',
       'executeConstructor',
       'reexpressOperationsForCurrentEra',

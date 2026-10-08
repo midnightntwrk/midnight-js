@@ -30,6 +30,7 @@ import type {
   ContractEventsPage,
   ContractEventSubscriptionFilter,
   ContractStateObservableConfig,
+  PositionedRecord,
   PublicDataProvider,
   RawContractState,
   UnshieldedBalances,
@@ -54,22 +55,24 @@ import type { InputMaybe, RegularTransaction } from './gen/schema-types';
 import {
   type ExcludeEmptyAndNull,
   extractRegularDeployTransaction,
-  extractUnshieldedBalances,
   isRegularTransaction,
   toFinalizedDeployTxData,
   toFinalizedTxData
 } from './mapping';
 import {
-  blockOffsetToBlock$,
-  blockOffsetToContractState$,
+  blockOffsetToState$,
   blockOffsetToUnshieldedBalances$,
-  blockToContractState$,
+  type ChainPosition,
   contractAddressToLatestBlockOffset$,
   contractEvents$,
+  type ContractStateMapper,
+  dropReplayed,
+  fromTransaction,
+  type Identified,
   maybeThrowQueryError,
+  ordinalWithinBlock,
   pollUntilPresent,
-  transactionIdToTransaction$,
-  transactionToContractState$,
+  transactionToBlockOffset$,
   waitForBlockToAppear,
   waitForContractToAppear,
   waitForUnshieldedBalancesToAppear
@@ -88,6 +91,30 @@ import {
 } from './query-definitions';
 import type { ApolloHandle } from './transport';
 
+/** Maps a block-height/block-hash config to the indexer's `BlockOffset` input. */
+const toStartOffset = (config: BlockHeightConfig | BlockHashConfig): BlockOffset =>
+  config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash };
+
+/**
+ * Maps an optional block-height/block-hash config to the indexer's `BlockOffset` input, or `null`
+ * to select the latest block.
+ */
+const toBlockOffset = (config?: BlockHeightConfig | BlockHashConfig): InputMaybe<BlockOffset> =>
+  config ? toStartOffset(config) : null;
+
+/** Rebuilds the public record so the feed's ordinal and identifiers never reach a consumer. */
+const toPositionedRecord = <T>({ value, blockHeight, blockHash }: PositionedRecord<T>): PositionedRecord<T> => ({
+  value,
+  blockHeight,
+  blockHash
+});
+
+/** The branch both contract-state streams select when the caller names none. */
+const DEFAULT_STATE_CONFIG: ContractStateObservableConfig = { type: 'latest' };
+
+/** The offset `all` subscribes from: the feed serves a contract's actions from its deploy onward. */
+const GENESIS: BlockOffset = { height: 0 };
+
 /**
  * Indexer-backed `PublicDataProvider`. Every method that takes a
  * `ContractAddress` validates the input up front via
@@ -97,13 +124,6 @@ import type { ApolloHandle } from './transport';
  * TODO: Re-examine caching when 'ContractCall' and 'ContractDeploy' have
  * transaction identifiers included.
  */
-/**
- * Maps an optional block-height/block-hash config to the indexer's `BlockOffset` input, or `null`
- * to select the latest block.
- */
-const toBlockOffset = (config?: BlockHeightConfig | BlockHashConfig): InputMaybe<BlockOffset> =>
-  config ? (config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }) : null;
-
 export class IndexerPublicDataProvider implements PublicDataProvider {
   private readonly handle: ApolloHandle;
   private readonly pollInterval: number;
@@ -138,7 +158,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       })
       .then(maybeThrowQueryError)
       .then((queryResult) => queryResult.data?.block ?? null);
-    return block ? { hash: block.hash, height: block.height } : null;
+    return block ? { hash: block.hash, height: block.height, protocolVersion: block.protocolVersion } : null;
   }
 
   /**
@@ -340,7 +360,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       .then((queryResult) => {
         const contractAction = queryResult.data?.contractAction;
         if (!contractAction) return null;
-        return extractUnshieldedBalances(contractAction, 'queryUnshieldedBalances');
+        return contractAction.unshieldedBalances;
       })
       .then((maybeUnshieldedBalances) =>
         maybeUnshieldedBalances ? toUnshieldedBalances(maybeUnshieldedBalances) : null
@@ -459,68 +479,154 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   }
 
   /**
-   * Creates a stream of contract states for `contractAddress`.
+   * The stream both public contract-state observables are built from, differing
+   * only in what one served contract action becomes.
    *
-   * WIRE TRAFFIC DIFFERS SHARPLY BY BRANCH. `all` is server-side filtered and
-   * light; `latest`, `blockHeight`, `blockHash` and `txId` stream every block on
-   * chain and filter client-side, which is heavy on a busy chain.
+   * See `docs/subscription-shapes.md` for why the topology is written once.
    *
-   * See {@link blockOffsetToBlock$}, {@link blockOffsetToContractState$},
-   * and {@link blockToContractState$} for per-subscription docs.
-   *
-   * @param contractAddress The address of the contract of interest.
-   * @param config The configuration of the stream. Defaults to `latest`.
-   * @see {@link SubscriptionShapes} for what each branch costs, and why the two
-   *   subscription shapes are not interchangeable.
+   * @param contractAddress Validated here, so both public members refuse an
+   *   invalid address synchronously.
+   * @param config Selects the branch; required here, defaulted by the callers.
+   * @param mapState Turns one served contract action into a stream element.
+   * @returns One element per contract action the selected branch delivers.
    */
-  contractStateObservable(
+  private contractStates$<T>(
     contractAddress: ContractAddress,
-    config: ContractStateObservableConfig = { type: 'latest' }
-  ): Rx.Observable<ContractState> {
+    config: ContractStateObservableConfig,
+    mapState: ContractStateMapper<T>
+  ): Rx.Observable<PositionedRecord<T>> {
     assertIsContractAddress(contractAddress);
-    if (config.type === 'txId') {
-      const contractStates = transactionIdToTransaction$(this.client, this.pollInterval)(config.txId).pipe(
-        Rx.filter(isRegularTransaction),
-        Rx.concatMap(transactionToContractState$(config.txId))
+    const feed = (offset: BlockOffset) =>
+      blockOffsetToState$(mapState)(this.client)(contractAddress)(offset).pipe(
+        ordinalWithinBlock(this.handle.connectionCount)
       );
-      return (config.inclusive ?? true) ? contractStates : contractStates.pipe(Rx.skip(1));
-    }
-    if (config.type === 'latest') {
-      return contractAddressToLatestBlockOffset$(this.client, this.pollInterval)(contractAddress).pipe(
-        Rx.concatMap(blockOffsetToBlock$(this.client)),
-        Rx.concatMap(blockToContractState$(contractAddress))
+    return this.contractStatesFeed$(contractAddress, config, feed).pipe(dropReplayed(), Rx.map(toPositionedRecord));
+  }
+
+  private contractStatesFeed$<R extends ChainPosition & Identified>(
+    contractAddress: ContractAddress,
+    config: ContractStateObservableConfig,
+    feed: (offset: BlockOffset) => Rx.Observable<R>
+  ): Rx.Observable<R> {
+    if (config.type === 'txId') {
+      const inclusive = config.inclusive ?? true;
+      return transactionToBlockOffset$(this.client, this.pollInterval)(config.txId, contractAddress).pipe(
+        Rx.concatMap((offset) => feed(offset).pipe(fromTransaction(config.txId, offset.height, inclusive)))
       );
     }
     if (config.type === 'all') {
       return waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(
-        Rx.concatMap(() => blockOffsetToContractState$(this.client)(contractAddress)(null))
+        Rx.concatMap(() => feed(GENESIS))
       );
     }
-    const offset = toBlockOffset(config);
-    const blocks = waitForBlockToAppear(this.client, this.pollInterval)(offset).pipe(
-      Rx.concatMap(() => blockOffsetToBlock$(this.client)(offset))
+    return this.fromBlock$(contractAddress, config, feed);
+  }
+
+  /**
+   * Starts a per-contract feed at the block a `blockHeight` or `blockHash`
+   * config names, or at the block of the latest action for `latest`.
+   * `inclusive: false` is a filter on the block height rather than a count of
+   * skipped records, so a reconnect cannot spend it.
+   */
+  private fromBlock$<R extends ChainPosition>(
+    contractAddress: ContractAddress,
+    config: Exclude<ContractStateObservableConfig, { readonly type: 'txId' | 'all' }>,
+    feed: (offset: BlockOffset) => Rx.Observable<R>
+  ): Rx.Observable<R> {
+    if (config.type === 'latest') {
+      return contractAddressToLatestBlockOffset$(this.client, this.pollInterval)(contractAddress).pipe(
+        Rx.concatMap(feed)
+      );
+    }
+    const offset = toStartOffset(config);
+    const inclusive = config.inclusive ?? true;
+    return waitForBlockToAppear(this.client, this.pollInterval)(offset).pipe(
+      Rx.concatMap((start) =>
+        inclusive ? feed(offset) : feed(offset).pipe(Rx.filter((record) => record.blockHeight > start.height))
+      )
     );
-    const maybeShortenedBlocks =
-      config.type === 'blockHeight' || config.type === 'blockHash'
-        ? Rx.iif(() => config.inclusive ?? true, blocks, blocks.pipe(Rx.skip(1)))
-        : blocks;
-    return maybeShortenedBlocks.pipe(Rx.concatMap(blockToContractState$(contractAddress)));
+  }
+
+  /**
+   * Creates a stream of contract states for `contractAddress`.
+   *
+   * DECODES WITH THE CURRENT ERA'S RUNTIME ONLY, and the decode runs inside the
+   * stream — so a state written by the retained runtime does not arrive as a
+   * skipped emission, it ends the subscription through the subscriber's `error`
+   * callback. A contract deployed before the ledger fork and not written to
+   * since serves exactly such a state, indefinitely. Use
+   * {@link rawContractStateObservable} where that is possible.
+   *
+   * Every branch reads the indexer's feed of this contract's actions, filtered
+   * by address on the server. A transport reconnect makes the indexer replay
+   * from the subscription's original offset; every branch suppresses what it
+   * has already delivered, and `inclusive: false` keeps holding.
+   *
+   * @param contractAddress The address of the contract of interest.
+   * @param config The configuration of the stream. Defaults to `latest`.
+   * @see {@link SubscriptionShapes} for how each branch starts and how replays
+   *   are suppressed.
+   */
+  contractStateObservable(
+    contractAddress: ContractAddress,
+    config: ContractStateObservableConfig = DEFAULT_STATE_CONFIG
+  ): Rx.Observable<PositionedRecord<ContractState>> {
+    return this.contractStates$(contractAddress, config, parseHexContractState);
+  }
+
+  /**
+   * Creates a stream of contract states for `contractAddress` as the bytes the
+   * indexer served, without deserializing them.
+   *
+   * The streaming twin of {@link queryRawContractState}: no era of contract
+   * state ends this subscription, because none is deserialized here.
+   * {@link contractStateObservable} decodes with the current era's runtime
+   * inside the pipeline, so one retained-era state terminates that
+   * subscription; here the era is carried on the record and the caller narrows
+   * on it.
+   *
+   * `ledgerParameters` IS ALWAYS ABSENT ON THIS STREAM. The subscription does
+   * not ask for the parameters, which would cost one blob per contract action.
+   * A caller that needs them reads {@link queryRawContractState} with the
+   * `blockHash` of the same record.
+   *
+   * Every branch and every replay-suppression rule is exactly
+   * {@link contractStateObservable}'s; only the element type differs.
+   *
+   * WHAT IS WITHHELD, PRECISELY: the deserialization, and the envelope-versus-
+   * served-era cross-check {@link parseHexContractState} runs. The envelope tag
+   * is still read, so a payload carrying no supported contract-state envelope
+   * still fails the stream. Two things can still end it on era grounds — an
+   * envelope from an era this client's tag table does not list, and a
+   * `protocolVersion` integer it cannot place on the era timeline. The second
+   * is the one asymmetry with {@link contractStateObservable}, which tolerates
+   * such an integer and decodes on the envelope alone; here `version` is a
+   * required field with nothing to fall back to, so the read is refused as
+   * {@link IndexerDataError} with `kind: 'unresolvable-era'` rather than
+   * guessed. Both arrive as an `IndexerError`, like every other failure from
+   * this package.
+   *
+   * @param contractAddress The address of the contract of interest.
+   * @param config The configuration of the stream. Defaults to `latest`.
+   * @see {@link SubscriptionShapes} for how each branch starts.
+   */
+  rawContractStateObservable(
+    contractAddress: ContractAddress,
+    config: ContractStateObservableConfig = DEFAULT_STATE_CONFIG
+  ): Rx.Observable<PositionedRecord<RawContractState>> {
+    return this.contractStates$(contractAddress, config, toRawContractState);
   }
 
   /**
    * Creates a stream of unshielded balances for `contractAddress`.
    *
-   * All three non-`txId` branches (`latest`/`all`/`blockHeight`/`blockHash`)
-   * use `UNSHIELDED_BALANCE_SUB($address, $offset)` as the terminal
-   * subscription. **Wire traffic is uniformly light** — server-side
-   * filtered by `contractAddress`. The indexer has no per-block
-   * subscription analogue for balances, so there is no light/heavy
-   * asymmetry comparable to {@link contractStateObservable}.
+   * Reads the same feed of this contract's actions as
+   * {@link contractStateObservable}, through `UNSHIELDED_BALANCE_SUB`, with the
+   * same start rules and the same replay suppression.
    *
    * The `txId` configuration is not supported and throws
-   * {@link IndexerProviderConfigError}. Tx-anchored balance streams are
-   * not exposed by the indexer's subscription surface — for the related
-   * contract-state stream see {@link contractStateObservable}.
+   * {@link IndexerProviderConfigError}; this provider offers no tx-anchored
+   * balance stream.
    *
    * See {@link blockOffsetToUnshieldedBalances$} for the per-subscription doc.
    *
@@ -530,30 +636,24 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   unshieldedBalancesObservable(
     contractAddress: ContractAddress,
     config: ContractStateObservableConfig = { type: 'latest' }
-  ): Rx.Observable<UnshieldedBalances> {
+  ): Rx.Observable<PositionedRecord<UnshieldedBalances>> {
     assertIsContractAddress(contractAddress);
     if (config.type === 'txId') {
       throw new IndexerProviderConfigError(
         'txId configuration not supported for unshielded balances observable'
       );
     }
-    if (config.type === 'latest') {
-      return contractAddressToLatestBlockOffset$(this.client, this.pollInterval)(contractAddress).pipe(
-        Rx.concatMap(blockOffsetToUnshieldedBalances$(this.client)(contractAddress))
+    const feed = (offset: BlockOffset) =>
+      blockOffsetToUnshieldedBalances$(this.client)(contractAddress)(offset).pipe(
+        ordinalWithinBlock(this.handle.connectionCount)
       );
-    }
-    if (config.type === 'all') {
-      return waitForUnshieldedBalancesToAppear(this.client, this.pollInterval)(contractAddress).pipe(
-        Rx.concatMap(() => blockOffsetToUnshieldedBalances$(this.client)(contractAddress)(null))
-      );
-    }
-    const offset = toBlockOffset(config);
-    const balances = waitForBlockToAppear(this.client, this.pollInterval)(offset).pipe(
-      Rx.concatMap(() => blockOffsetToUnshieldedBalances$(this.client)(contractAddress)(offset))
-    );
-    return config.type === 'blockHeight' || config.type === 'blockHash'
-      ? Rx.iif(() => config.inclusive ?? true, balances, balances.pipe(Rx.skip(1)))
-      : balances;
+    const balances =
+      config.type === 'all'
+        ? waitForUnshieldedBalancesToAppear(this.client, this.pollInterval)(contractAddress).pipe(
+            Rx.concatMap(() => feed(GENESIS))
+          )
+        : this.fromBlock$(contractAddress, config, feed);
+    return balances.pipe(dropReplayed(), Rx.map(toPositionedRecord));
   }
 
   /**

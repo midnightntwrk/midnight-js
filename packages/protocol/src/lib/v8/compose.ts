@@ -36,14 +36,18 @@ import type { ProtocolV8 } from './load';
  *
  * @see {@link ComposeRefusalOrder}
  */
-export const readZswapOffer = (raw: Uint8Array | undefined, v8: ProtocolV8): UnprovenOffer | undefined => {
+export const readZswapOffer = (
+  raw: Uint8Array | undefined,
+  v8: ProtocolV8,
+  option: 'zswapOffer' | 'guaranteedZswapOfferBytes'
+): UnprovenOffer | undefined => {
   if (raw === undefined) {
     return undefined;
   }
   try {
     return v8.ZswapOffer.deserialize('pre-proof', raw);
   } catch (cause) {
-    throw new ComposeOptionError('v8', 'zswapOffer', cause);
+    throw new ComposeOptionError('v8', option, cause);
   }
 };
 
@@ -85,7 +89,7 @@ export interface ComposeV8CallOptions {
    * {@link INITIAL_LEDGER_PARAMETERS} to select this era's initial parameters, which is a
    * compatibility path and not a correct one -- see `AssembleCallOptions.ledgerParameters`.
    */
-  readonly ledgerParameters: LedgerParametersOption;
+  readonly ledgerParametersBytes: LedgerParametersOption;
   readonly networkId: string;
   readonly ttl: Date;
   readonly zswapOffer?: ZswapOfferFactory;
@@ -124,7 +128,7 @@ export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): 
     input: options.input,
     output: options.output,
     communicationCommitmentRandomness: options.communicationCommitmentRandomness,
-    ledgerParameters: options.ledgerParameters,
+    ledgerParametersBytes: options.ledgerParametersBytes,
     operations: contractState,
     stage: 'call-operation',
     version: 'v8'
@@ -155,11 +159,11 @@ export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): 
   // Built only once the call is split, which is the whole point of taking a
   // factory -- see ComposeRefusalOrder.
   const offers = zswapOffer?.([partition]);
-  const guaranteedOffer = readZswapOffer(offers?.guaranteed, v8);
-  const fallibleOffer = readZswapOffer(offers?.fallible, v8);
+  const guaranteedOffer = readZswapOffer(offers?.guaranteedBytes, v8, 'zswapOffer');
+  const fallibleOffer = readZswapOffer(offers?.fallibleBytes, v8, 'zswapOffer');
 
   return {
-    transaction: v8.Transaction.fromPartsRandomized(networkId, guaranteedOffer, fallibleOffer, intent).serialize(),
+    txBytes: v8.Transaction.fromPartsRandomized(networkId, guaranteedOffer, fallibleOffer, intent).serialize(),
     partitions: [partition]
   };
 };

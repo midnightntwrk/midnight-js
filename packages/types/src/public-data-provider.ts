@@ -17,7 +17,7 @@ import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact
 import type { ContractAddress, LedgerParameters, TransactionId, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { Observable } from 'rxjs';
 
-import type { UnshieldedBalances } from './midnight-types';
+import type { BlockHash, UnshieldedBalances } from './midnight-types';
 import type { RawContractState } from './raw-contract-state';
 import type { VersionedFinalizedTxData } from './versioned';
 
@@ -64,13 +64,13 @@ export type BlockHeightConfig = {
 export type BlockHashConfig = {
   readonly type: 'blockHash';
   /**
-   * The block height indicating where to begin the state stream.
+   * The block hash indicating where to begin the state stream.
    */
-  readonly blockHash: string;
+  readonly blockHash: BlockHash;
 }
 
 /**
- * Minimal identifying information for a block.
+ * Identifying information for a block, and the ledger era it was produced under.
  */
 export type BlockInfo = {
   /**
@@ -81,7 +81,49 @@ export type BlockInfo = {
    * The block height.
    */
   readonly height: number;
+  /**
+   * The protocol-version integer this block was produced under, which dates it
+   * to a ledger era.
+   *
+   * Resolve it with `versionOfRecord` from `@midnight-ntwrk/midnight-js-protocol`:
+   * this type satisfies that function's `VersionedRecord` parameter, so
+   * `versionOfRecord(block)` is the whole call. It throws
+   * `UnknownProtocolVersionError` for a version this build cannot place on the
+   * era timeline.
+   *
+   * Implementations MUST report the era of *this* block, never the network
+   * head's, so a block read from before a hard fork keeps reporting the era it
+   * was produced in.
+   *
+   * Implementations carry the integer through as the network reported it, and
+   * do NOT reject a version this build cannot place. That failure surfaces
+   * when the caller resolves the era, not on the read.
+   */
+  readonly protocolVersion: number;
 }
+
+/**
+ * A value served by a stream, together with the block that carried it.
+ *
+ * `blockHeight` and `blockHash` have the types of {@link BlockHeightConfig}
+ * and {@link BlockHashConfig}, so a record resumes its stream when wrapped as
+ * `{ type: 'blockHeight', blockHeight }` or `{ type: 'blockHash', blockHash }`.
+ * With `inclusive` left unset or `true`, resuming includes that block: values
+ * from it may be delivered again, and no value after it is skipped. With
+ * `inclusive: false` the whole block is skipped, including any values in it
+ * that came after this record.
+ *
+ * A resumed stream is always a `blockHeight` or `blockHash` stream, whatever
+ * config the original stream had.
+ */
+export type PositionedRecord<T> = {
+  /** The value the stream served. */
+  readonly value: T;
+  /** The height of the block that carried the value. */
+  readonly blockHeight: number;
+  /** The hex-encoded hash of the block that carried the value, as the network served it. */
+  readonly blockHash: BlockHash;
+};
 
 /**
  * The configuration for a contract state observable. The corresponding observables may begin at different
@@ -414,17 +456,72 @@ export interface PublicDataProvider {
    * Waits indefinitely for matching data to appear.
    * @param address The address of the contract of interest.
    * @param config The configuration for the observable.
+   * @returns One {@link PositionedRecord} per value, carrying the block that
+   *   served it. Passing its `blockHeight` or `blockHash` back as the config
+   *   resumes the stream from that block; values from that block may be
+   *   delivered again.
    */
-  contractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<ContractState>;
+  contractStateObservable(
+    address: ContractAddress,
+    config: ContractStateObservableConfig
+  ): Observable<PositionedRecord<ContractState>>;
+
+  /**
+   * Creates a stream of contract states as the raw serialized bytes the network
+   * returned, without deserializing them, each together with the era its record
+   * is dated to. The observable emits a value every time a state is either
+   * created or updated at the given address.
+   * Waits indefinitely for matching data to appear.
+   *
+   * THE STREAMING COUNTERPART OF {@link queryRawContractState}, and the reason
+   * to prefer it over {@link contractStateObservable} is the same: it is the
+   * contract-state stream that works across the ledger fork. An implementation
+   * that deserializes inside the stream can only do so with the eras its own
+   * runtime has, and a state from any other era then ENDS the subscription
+   * rather than skipping one emission — a contract deployed before a fork and
+   * not written to since serves exactly such a state for as long as it stays
+   * dormant. Here the era travels on the record instead.
+   *
+   * {@link RawContractState.version} DATES THE RECORD, it does not read the
+   * bytes — see that field's own documentation. A caller that must know which
+   * runtime WROTE the bytes reads the envelope off
+   * {@link RawContractState.raw}; the two can disagree, and where they can is
+   * stated on the field.
+   *
+   * {@link RawContractState.ledgerParameters} MAY BE ABSENT ON A STREAM even
+   * where the same implementation serves it on
+   * {@link queryRawContractState}. The parameters are a per-block blob, and a
+   * stream may have no cheap way to obtain one per emission; an implementation
+   * is free to refuse that cost. A caller that needs the parameters for a
+   * streamed state reads {@link queryRawContractState} with
+   * `{ type: 'blockHash', blockHash }` from the same {@link PositionedRecord}.
+   *
+   * @param address The address of the contract of interest.
+   * @param config The configuration for the observable.
+   * @returns One {@link PositionedRecord} per value, carrying the block that
+   *   served it. Passing its `blockHeight` or `blockHash` back as the config
+   *   resumes the stream from that block; values from that block may be
+   *   delivered again.
+   */
+  rawContractStateObservable(
+    address: ContractAddress,
+    config: ContractStateObservableConfig
+  ): Observable<PositionedRecord<RawContractState>>;
 
   /**
    * Retrieves an observable that tracks the unshielded balances for a specific contract address.
    *
    * @param {ContractAddress} address - The contract address for which unshielded balances are being observed.
    * @param {ContractStateObservableConfig} config - The configuration object for observing contract state changes.
-   * @return {Observable<UnshieldedBalances>} An observable that emits the unshielded balances for the provided address.
+   * @returns One {@link PositionedRecord} per balance change, carrying the block
+   *   that served it. Passing its `blockHeight` or `blockHash` back as the
+   *   config resumes the stream from that block; values from that block may be
+   *   delivered again.
    */
-  unshieldedBalancesObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<UnshieldedBalances>;
+  unshieldedBalancesObservable(
+    address: ContractAddress,
+    config: ContractStateObservableConfig
+  ): Observable<PositionedRecord<UnshieldedBalances>>;
 
   /**
    * Queries contract events for a contract address — a finite, paginated,

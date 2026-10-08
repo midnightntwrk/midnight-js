@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -7,11 +7,14 @@
 # Interface: Ledger8Engine
 
 The public surface createLedger8Engine builds: the retained pre-fork
-EXECUTION capabilities, with the 0.16 runtime instance already captured in
-closure — no method here takes a runtime or module parameter.
+EXECUTION capabilities.
 
-Every method is synchronous: this object is handed over only after the
-retained toolchain has been acquired.
+The two execution members are ASYNCHRONOUS. They used to be synchronous, and
+the docblock here used to promise it: compact-js builds a circuit call on
+`Effect.tryPromise`, so `runSync` cannot discharge it and the promise is not
+satisfiable. Nothing else about the surface changed shape -- every value
+crossing it is still plain data or an era handle, and no `Effect` reaches a
+caller.
 
 ## See
 
@@ -19,51 +22,89 @@ retained toolchain has been acquired.
 
 ## Methods
 
-### downConvertForExecution()
-
-> **downConvertForExecution**(`state`): [`DownConvertedState`](DownConvertedState.md)
-
-#### Parameters
-
-##### state
-
-[`EncodedStateValue`](https://github.com/midnightntwrk/midnight-ledger)
-
-#### Returns
-
-[`DownConvertedState`](DownConvertedState.md)
-
-***
-
 ### executeCircuit()
 
-> **executeCircuit**(`options`): [`TranscriptPojo`](TranscriptPojo.md)
+> **executeCircuit**\<`C`, `PS`\>(`options`): `Promise`\<[`TranscriptPojo`](TranscriptPojo.md)\>
+
+Runs one circuit against the decoded contract state the chain serves.
+
+Takes the state and the balances beside it as ONE value -- see
+[RunRetainedCircuitOptions.contractState](RunRetainedCircuitOptions.md#contractstate) -- because the balances a
+circuit reads do not live inside the primary state, and two separate
+options could describe two different blocks.
+
+#### Type Parameters
+
+##### C
+
+`C` *extends* [`RetainedContract`](RetainedContract.md)
+
+##### PS
+
+`PS`
 
 #### Parameters
 
 ##### options
 
-[`ExecuteCircuitOptions`](ExecuteCircuitOptions.md)
+[`RunRetainedCircuitOptions`](RunRetainedCircuitOptions.md)\<`C`, `PS`\>
 
 #### Returns
 
-[`TranscriptPojo`](TranscriptPojo.md)
+`Promise`\<[`TranscriptPojo`](TranscriptPojo.md)\>
+
+#### Throws
+
+DownConvertFailedError At stage `'state down-convert'` when the
+  state cannot be decoded, does not re-encode to its source, or carries a
+  balance the retained runtime cannot read.
+
+#### Throws
+
+Error When the contract declares no circuit of that name.
 
 ***
 
 ### executeConstructor()
 
-> **executeConstructor**(`options`): [`ConstructorResultPojo`](ConstructorResultPojo.md)
+> **executeConstructor**\<`C`, `PS`\>(`options`): `Promise`\<[`ConstructorResultPojo`](ConstructorResultPojo.md)\>
+
+Runs one retained-era constructor and returns the state it built.
+
+ASYNCHRONOUS for the same reason [Ledger8Engine.executeCircuit](#executecircuit) is.
+Stricter than the leg it replaced: compact-js registers a verifier key
+against every declared entry point and refuses a missing one, where the
+hand-written constructor left every slot blank.
+
+#### Type Parameters
+
+##### C
+
+`C` *extends* [`RetainedContract`](RetainedContract.md)
+
+##### PS
+
+`PS`
 
 #### Parameters
 
 ##### options
 
-[`ExecuteConstructorOptions`](ExecuteConstructorOptions.md)
+[`RunRetainedConstructorOptions`](RunRetainedConstructorOptions.md)\<`C`, `PS`\>
 
 #### Returns
 
-[`ConstructorResultPojo`](ConstructorResultPojo.md)
+`Promise`\<[`ConstructorResultPojo`](ConstructorResultPojo.md)\>
+
+#### Throws
+
+ComposeOptionError Naming option `'signingKey'` when a supplied key
+  is not the 32 bytes of hex the retained runtime reads.
+
+#### Throws
+
+ComposeFailedError At stage `'deploy-verifier-key-blob'` when the
+  ledger refuses the bytes served for a circuit.
 
 ***
 

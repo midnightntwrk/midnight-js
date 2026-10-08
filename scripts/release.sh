@@ -158,7 +158,7 @@ execute_or_log "git checkout -b $RELEASE_BRANCH"
 
 log_info "Step 7: Commit changes"
 execute_or_log "git add ."
-execute_or_log "git commit -m 'chore(release): bump version to $NEW_VERSION'"
+execute_or_log "git commit -s -m 'chore(release): bump version to $NEW_VERSION'"
 
 log_info "Step 8: Push release branch"
 # No tag is created here. Publishing is driven by CI: when the release PR is

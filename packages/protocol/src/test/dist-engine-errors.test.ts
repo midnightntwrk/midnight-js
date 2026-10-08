@@ -47,9 +47,7 @@ const fieldValue = (byte: number): ocrt3.AlignedValue => ({
   value: [new Uint8Array(32).fill(byte)],
   alignment: FIELD_ALIGNMENT
 });
-const downConvertedState = (byte: number) => ({
-  data: new ocrt3.ChargedState(ocrt3.StateValue.newCell(fieldValue(byte)))
-});
+const stateValue = (byte: number) => ocrt3.StateValue.newCell(fieldValue(byte));
 
 // A transcript naming a circuit no contract state has registered: the shortest
 // real path to an error raised INSIDE the engine chunk.
@@ -62,9 +60,9 @@ const transcriptForUnregisteredCircuit = () => ({
   output: fieldValue(0x20),
   publicTranscript: [],
   privateTranscriptOutputs: [],
-  preContractState: downConvertedState(0x01),
-  postContractState: downConvertedState(0x02),
-  postContractStateEncoded: downConvertedState(0x02).data.state.encode(),
+  preContractState: stateValue(0x01),
+  postContractState: stateValue(0x02),
+  postContractStateEncoded: stateValue(0x02).encode(),
   privateStateAfter: {},
   partitionContext: emptyPartitionContext(),
   zswapLocalState: emptyZswapLocalState()
@@ -86,7 +84,7 @@ describe('dist engine error gate', () => {
     const engine = await loadLedger8Engine();
 
     expect(Object.keys(engine).sort()).toEqual(
-      ['downConvertForExecution', 'executeCircuit', 'executeConstructor', 'reexpressOperationsForCurrentEra', 'wrapKeepStateCall'].sort()
+      ['executeCircuit', 'executeConstructor', 'reexpressOperationsForCurrentEra', 'wrapKeepStateCall'].sort()
     );
   });
 
@@ -102,7 +100,7 @@ describe('dist engine error gate', () => {
         transcript: transcriptForUnregisteredCircuit(),
         contractAddress: ledgerV9.sampleContractAddress(),
         contractState: new ledgerV9.ContractState(),
-        ledgerParameters: 'initial'
+        ledgerParametersBytes: 'initial'
       });
     } catch (error) {
       caught = error;
@@ -135,9 +133,9 @@ describe('dist engine error gate', () => {
             circuitId: 'increment',
             // A blank state: it declares no operation for the circuit, which is
             // the shortest real path to a failure raised inside the era arm.
-            contractState: new ocrt3.ContractState().serialize(),
+            contractStateBytes: new ocrt3.ContractState().serialize(),
             // Named explicitly: the failure under test is raised before the partitioner runs.
-            ledgerParameters: 'initial',
+            ledgerParametersBytes: 'initial',
             transcript: {
               kind: 'unpartitioned',
               preState: ocrt3.StateValue.newCell(fieldValue(0x01)).encode(),

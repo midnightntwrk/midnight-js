@@ -410,6 +410,13 @@ const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
   return { ...providers, seen };
 };
 
+/**
+ * A caller-supplied signing key in the shape the retained era actually reads:
+ * 32 bytes of hex. The replay double refuses anything else, as the real
+ * `runRetainedConstructor` does.
+ */
+const CALLER_OWN_SIGNING_KEY = 'ab'.repeat(32);
+
 describe('the retained-native pipeline (previous-toolchain contract, pre-fork head)', () => {
   let recording: CoinReceiverRecording;
   let contract: CoinReceiver016Contract;
@@ -475,7 +482,6 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     expect(log).toEqual([
       'era.v8.extractState',
       'era.v8.decodeContractState',
-      'engine.downConvertForExecution',
       'engine.executeCircuit',
       'era.v8.composeCallTx',
       // INSIDE the composition, not before it: the composer resolves the split
@@ -489,7 +495,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     expect(composed?.calls).toHaveLength(1);
     // The state handed to the composition is the RAW envelope as read from
     // chain, which is what carries the registered operation and its key.
-    expect(composed?.calls[0]?.contractState).toBe(v6Envelope);
+    expect(composed?.calls[0]?.contractStateBytes).toBe(v6Envelope);
     // UNPARTITIONED: the split is the composer's to draw, once, and it hands it
     // back through the offer factory. The pipeline no longer draws its own.
     expect(composed?.calls[0]?.transcript.kind).toBe('unpartitioned');
@@ -636,7 +642,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
 
   it('carries the recorded coin movement in the GUARANTEED segment, with the fallible segment empty', async () => {
     const log: OrchestrationLog = [];
-    let routed: { readonly guaranteed?: Uint8Array; readonly fallible?: Uint8Array } | undefined;
+    let routed: { readonly guaranteedBytes?: Uint8Array; readonly fallibleBytes?: Uint8Array } | undefined;
     const providers = createMockProviders();
     providers.publicDataProvider.queryRawContractState = vi
       .fn()
@@ -672,12 +678,12 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     // the arm cannot route: the pipeline now resolves the split before it builds
     // the offer, so a fallible transcript places its movements in the fallible
     // offer. See 'routes a coin the partition places in the fallible half'.
-    expect(result.guaranteedZswapOffer).toBeInstanceOf(Uint8Array);
-    expect(result.fallibleZswapOffer).toBeUndefined();
+    expect(result.guaranteedZswapOfferBytes).toBeInstanceOf(Uint8Array);
+    expect(result.fallibleZswapOfferBytes).toBeUndefined();
     // The offer the composer was handed is the one the pipeline reports, so the
     // routing survives the hand-off rather than being re-decided.
-    expect(routed?.guaranteed).toBe(result.guaranteedZswapOffer);
-    expect(routed?.fallible).toBeUndefined();
+    expect(routed?.guaranteedBytes).toBe(result.guaranteedZswapOfferBytes);
+    expect(routed?.fallibleBytes).toBeUndefined();
   });
 
   // The regression #731/#877 named, on the arm that did not have it. Before the
@@ -694,7 +700,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
   // than the offer keeps the routing decision under test the pipeline's own.
   it('routes a coin the partition places in the fallible half into the fallible offer', async () => {
     const log: OrchestrationLog = [];
-    let routed: { readonly guaranteed?: Uint8Array; readonly fallible?: Uint8Array } | undefined;
+    let routed: { readonly guaranteedBytes?: Uint8Array; readonly fallibleBytes?: Uint8Array } | undefined;
     const providers = createMockProviders();
     providers.publicDataProvider.queryRawContractState = vi
       .fn()
@@ -749,18 +755,18 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
 
     // Both directions. `fallible` alone would pass on a pipeline that put the
     // coin in both segments, and `guaranteed` alone on one that dropped it.
-    expect(result.fallibleZswapOffer).toBeInstanceOf(Uint8Array);
-    expect(result.guaranteedZswapOffer).toBeUndefined();
+    expect(result.fallibleZswapOfferBytes).toBeInstanceOf(Uint8Array);
+    expect(result.guaranteedZswapOfferBytes).toBeUndefined();
     // The offer the composer received is the one the pipeline reports, so the
     // routing survives the hand-off rather than being re-decided.
-    expect(routed?.fallible).toBe(result.fallibleZswapOffer);
-    expect(routed?.guaranteed).toBeUndefined();
+    expect(routed?.fallibleBytes).toBe(result.fallibleZswapOfferBytes);
+    expect(routed?.guaranteedBytes).toBeUndefined();
   });
 
   // `zswapOffer` is OPTIONAL on `ComposeCallOptions`, so an era that never calls
   // it back is type-correct. The pipeline builds its offer only inside that
   // callback, so such an era would compose a transaction carrying none of the
-  // circuit's coin movements -- and report `guaranteedZswapOffer: undefined`,
+  // circuit's coin movements -- and report `guaranteedZswapOfferBytes: undefined`,
   // which is also the honest shape of a call that moved nothing. Nothing
   // downstream can tell the two apart, and the wallet reports the difference as
   // `Wallet.InsufficientFunds`. So the pipeline refuses instead of reporting it.
@@ -892,7 +898,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     expect(resolver).toHaveBeenCalledWith(thirdPartyCoinPublicKey);
     expect(resolver).toHaveReturnedWith(thirdPartyEncryptionPublicKey);
     expect(resolver).not.toHaveReturnedWith(walletEncryptionPublicKey);
-    expect(result.guaranteedZswapOffer).toBeInstanceOf(Uint8Array);
+    expect(result.guaranteedZswapOfferBytes).toBeInstanceOf(Uint8Array);
   });
 
   /**
@@ -1214,14 +1220,14 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       args: [],
       privateState: {},
       resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]])),
-      signingKey: 'caller-own-signing-key'
+      signingKey: CALLER_OWN_SIGNING_KEY
     });
 
     // The key the caller named, not a sampled one: a caller supplies its own
     // precisely so two contracts can share one maintenance authority, and a
     // pipeline that sampled anyway would register an authority the caller
     // cannot sign for.
-    expect(deployed.deploy.signingKey).toBe('caller-own-signing-key');
+    expect(deployed.deploy.signingKey).toBe(CALLER_OWN_SIGNING_KEY);
   });
 
   it('reports the SAMPLED signing key when the caller named none, which exists nowhere else', async () => {
@@ -1238,6 +1244,39 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // empty committee the retained constructor writes: the only copy of a
     // sampled key is the one the constructor reported.
     expect(deployed.deploy.signingKey).toBe(SAMPLED_SIGNING_KEY);
+  });
+
+  it('refuses a CONSTRUCTOR that pays a third party, telling the caller a retained deploy takes no mappings', async () => {
+    const providers = preForkProviders(v6Envelope);
+    const thirdPartyCoinPublicKey = sampleCoinPublicKey();
+    engineSlot.engine = createReplayEngine(recording, [], v6Envelope, {
+      constructorZswapLocalState: {
+        ...recording.transcript.zswapLocalState,
+        outputs: [
+          {
+            coinInfo: recording.transcript.zswapLocalState.outputs[0]!.coinInfo,
+            recipient: { is_left: true, left: thirdPartyCoinPublicKey, right: recording.contractAddress }
+          }
+        ]
+      }
+    });
+
+    const deploying = runLedger8Deploy(providers, {
+      contract,
+      args: [],
+      privateState: {},
+      resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
+    });
+
+    await expect(deploying).rejects.toBeInstanceOf(Ledger8RecipientUnmappableError);
+    await expect(deploying).rejects.toMatchObject({
+      circuitId: 'initialState',
+      recipientCoinPublicKey: thirdPartyCoinPublicKey
+    });
+    await expect(deploying).rejects.toThrow(/retained-era deploy takes no `additionalCoinEncPublicKeyMappings`/);
+    await expect(deploying).rejects.not.toThrow(/on the call options/);
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+    expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
   });
 
   it('routes a coin the CONSTRUCTOR minted into the deploy own guaranteed offer', async () => {
@@ -1264,7 +1303,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
     });
 
-    expect(deployed.deploy.guaranteedZswapOffer).toBeInstanceOf(Uint8Array);
+    expect(deployed.deploy.guaranteedZswapOfferBytes).toBeInstanceOf(Uint8Array);
     // The constructor's own post-state, published rather than discarded.
     expect(deployed.deploy.initialZswapState.outputs).toHaveLength(1);
   });
@@ -1281,7 +1320,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
     // Absent rather than an empty offer: an offer with no outputs is a
     // different thing to compose against than no offer at all.
-    expect(deployed.deploy.guaranteedZswapOffer).toBeUndefined();
+    expect(deployed.deploy.guaranteedZswapOfferBytes).toBeUndefined();
     expect(deployed.deploy.initialZswapState.outputs).toEqual([]);
   });
 
@@ -1790,8 +1829,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       const providers = preForkProviders(v6Envelope);
       // Some other wallet's coin public key: not this caller's, and not the
       // burn address, so nothing this arm knows can map it to an encryption
-      // key. The retained call options carry no additional mappings for the
-      // caller to supply one through either.
+      // key. The caller supplied no additional mappings.
       const thirdPartyCoinPublicKey = sampleCoinPublicKey();
       engineSlot.engine = createReplayEngine(
         recordingPayingUser(loadCoinReceiverRecording(), thirdPartyCoinPublicKey),
@@ -1812,19 +1850,97 @@ describe('the retained-native pipeline through the unchanged entry points', () =
         caught = error;
       }
 
-      // A TYPED refusal naming the era, the circuit and the recipient. The bare
-      // `Error` the offer builder raises names none of them, and its advice --
-      // supply a resolver mapping -- points at a field the retained call
-      // options do not have, so a caller could not act on it.
+      // A TYPED refusal naming the era, the circuit and the recipient, and
+      // pointing at the option that fixes it. The bare `Error` the offer
+      // builder raises names none of them, and its advice -- supply a resolver
+      // mapping -- names a knob the caller never sees.
       expect(caught).toBeInstanceOf(Ledger8RecipientUnmappableError);
       expect((caught as Ledger8RecipientUnmappableError).circuitId).toBe(CIRCUIT_ID);
       expect((caught as Ledger8RecipientUnmappableError).recipientCoinPublicKey).toBe(thirdPartyCoinPublicKey);
-      // The message must not send the caller after a knob this arm lacks.
+      // The message names the caller-facing option, not the internal resolver.
       expect((caught as Error).message).not.toMatch(/Provide a mapping via the encryptionPublicKeyResolver/);
+      expect((caught as Error).message).toContain('additionalCoinEncPublicKeyMappings');
+      expect((caught as Error).message).not.toMatch(/carry no field/);
+      expect((caught as Error).message).not.toMatch(/current toolchain/);
 
       // Refused BEFORE the offer is built, so nothing was proven, balanced or submitted.
       expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
       expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+    });
+
+    it('composes an output paying a THIRD PARTY the caller mapped to an encryption key', async () => {
+      const providers = preForkProviders(v6Envelope);
+      const thirdPartyCoinPublicKey = sampleCoinPublicKey();
+      engineSlot.engine = createReplayEngine(
+        recordingPayingUser(loadCoinReceiverRecording(), thirdPartyCoinPublicKey),
+        [],
+        v6Envelope
+      );
+
+      const finalized = await submitCallTx(providers, {
+        ...callOptions(),
+        additionalCoinEncPublicKeyMappings: new Map([[thirdPartyCoinPublicKey, sampleEncryptionPublicKey()]])
+      });
+
+      expect(finalized.circuitId).toBe(CIRCUIT_ID);
+      expect(providers.proofProvider.proveTx).toHaveBeenCalledTimes(1);
+      expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
+    });
+
+    it('still refuses a third party when the mappings name a DIFFERENT recipient', async () => {
+      const providers = preForkProviders(v6Envelope);
+      const thirdPartyCoinPublicKey = sampleCoinPublicKey();
+      engineSlot.engine = createReplayEngine(
+        recordingPayingUser(loadCoinReceiverRecording(), thirdPartyCoinPublicKey),
+        [],
+        v6Envelope
+      );
+
+      await expect(
+        submitCallTx(providers, {
+          ...callOptions(),
+          additionalCoinEncPublicKeyMappings: new Map([[sampleCoinPublicKey(), sampleEncryptionPublicKey()]])
+        })
+      ).rejects.toBeInstanceOf(Ledger8RecipientUnmappableError);
+      expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+      expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+    });
+
+    it('matches a mapping keyed by the Bech32m form a wallet hands out against the hex recipient the circuit emits', async () => {
+      const BECH32M_COIN_PUBLIC_KEY = 'mn_shield-cpk_undeployed1mjngjmnlutcq50trhcsk3hugvt9wyjnhq3c7prryd5nqmvtzva0sn7kq7h';
+      const BECH32M_DECODED_HEX = 'dca6896e7fe2f00a3d63be2168df8862cae24a770471e08c646d260db162675f';
+      const providers = preForkProviders(v6Envelope);
+      engineSlot.engine = createReplayEngine(
+        recordingPayingUser(loadCoinReceiverRecording(), BECH32M_DECODED_HEX),
+        [],
+        v6Envelope
+      );
+
+      const finalized = await submitCallTx(providers, {
+        ...callOptions(),
+        additionalCoinEncPublicKeyMappings: new Map([[BECH32M_COIN_PUBLIC_KEY, sampleEncryptionPublicKey()]])
+      });
+
+      expect(finalized.circuitId).toBe(CIRCUIT_ID);
+      expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
+    });
+
+    it('composes a mapped THIRD PARTY through submitCallTxAsync too', async () => {
+      const providers = preForkProviders(v6Envelope);
+      const thirdPartyCoinPublicKey = sampleCoinPublicKey();
+      engineSlot.engine = createReplayEngine(
+        recordingPayingUser(loadCoinReceiverRecording(), thirdPartyCoinPublicKey),
+        [],
+        v6Envelope
+      );
+
+      const submitted = await submitCallTxAsync(providers, {
+        ...callOptions(),
+        additionalCoinEncPublicKeyMappings: new Map([[thirdPartyCoinPublicKey, sampleEncryptionPublicKey()]])
+      });
+
+      expect(submitted.circuitId).toBe(CIRCUIT_ID);
+      expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
     });
 
     it("composes an output paying the caller's OWN key", async () => {
@@ -2275,9 +2391,10 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(deployed.contractAddress.length).toBeGreaterThan(0);
     // The key the authority was built from, which only the deployer ever holds.
     expect(deployed.signingKey).toBe(SAMPLED_SIGNING_KEY);
-    expect(deployed.initialState).toBeInstanceOf(Uint8Array);
     // The LIVE handle beside the bytes, as the retained constructor built it.
     expect(deployed.initialContractState.serialize()).toEqual(v6Envelope);
+    // The bytes the address was derived from are the same state as the handle.
+    expect(deployed.initialContractStateBytes).toEqual(deployed.initialContractState.serialize());
     // This deploy named no private state, so the constructor was handed
     // `undefined` and threaded it back. Presence is asserted separately: a
     // handle that dropped the member entirely would otherwise read the same.
@@ -2297,10 +2414,10 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     const deployed = await deployContract(providers, {
       compiledContract: contract,
-      signingKey: 'caller-own-signing-key'
+      signingKey: CALLER_OWN_SIGNING_KEY
     });
 
-    expect(deployed.signingKey).toBe('caller-own-signing-key');
+    expect(deployed.signingKey).toBe(CALLER_OWN_SIGNING_KEY);
   });
 
   it('asks for a verifier key for EVERY entry point the artifact declares', async () => {
@@ -2312,7 +2429,36 @@ describe('deploying a retained-era contract through deployContract', () => {
     // constructor builds every entry-point slot BLANK and the retained deploy
     // registers no keys of its own, so a map naming anything but exactly these
     // puts a contract on chain that nothing can call.
-    expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(Object.keys(contract.impureCircuits));
+    expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(Object.keys(contract.provableCircuits));
+  });
+
+  it('asks for a verifier key for every PROVABLE circuit, which is the map execution indexes', async () => {
+    // Arrange. An artifact whose two circuit maps DIFFER: `impureCircuits`
+    // carries an entry point `provableCircuits` does not, so it is not one the
+    // constructor registers on the state either. Keys sourced from
+    // `impureCircuits` name a circuit the state never declares, which the
+    // composer refuses -- a deploy broken by reading the wrong map.
+    // `provableCircuits` is what compact-js indexes to run a circuit and what
+    // the deploy pre-check demands keys for, so it is the one source.
+    const providers = deployProviders();
+    providers.zkConfigProvider.getVerifierKeys = vi
+      .fn()
+      .mockImplementation((ids: readonly string[]) =>
+        Promise.resolve(ids.map((id) => [id, STAND_IN_VERIFIER_KEY] as const))
+      );
+    const divergent = Object.create(Object.getPrototypeOf(contract) as object, {
+      ...Object.getOwnPropertyDescriptors(contract),
+      impureCircuits: {
+        value: { ...contract.impureCircuits, unprovable_entry_point: contract.impureCircuits[CIRCUIT_ID] },
+        enumerable: true
+      }
+    }) as CoinReceiver016Contract;
+
+    // Act.
+    await deployContract(providers, { compiledContract: divergent });
+
+    // Assert.
+    expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(Object.keys(divergent.provableCircuits));
   });
 
   it('refuses at the composer when the key map does not name what the state declares', async () => {
@@ -2463,6 +2609,15 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
 
+  it('deploys an initial private state written as undefined and no id, storing nothing', async () => {
+    const providers = deployProviders();
+
+    await deployContract(providers, { compiledContract: contract, initialPrivateState: undefined });
+
+    expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+  });
+
   it('refuses an initial private state with no id to store it under', async () => {
     const providers = deployProviders();
 
@@ -2470,12 +2625,37 @@ describe('deploying a retained-era contract through deployContract', () => {
     // a caller that supplied one believes it was stored. The TYPE refuses this shape too, which
     // is what the directive below records; the run-time guard is what a JavaScript caller, or one
     // that built its options dynamically, still reaches.
-    await expect(
+    const deploying = deployContract(
+      providers,
       // @ts-expect-error - a private state with no id naming where it goes
-      deployContract(providers, { compiledContract: contract, initialPrivateState: {} })
-    ).rejects.toBeInstanceOf(IncompleteDeployContractPrivateStateConfig);
+      { compiledContract: contract, initialPrivateState: {} }
+    );
+
+    await expect(deploying).rejects.toBeInstanceOf(IncompleteDeployContractPrivateStateConfig);
+    await expect(deploying).rejects.toThrow(
+      "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined"
+    );
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
-    // Refused before anything is composed or submitted.
+    // Refused before any provider is touched, the era resolution included.
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+  });
+
+  it('refuses a private state id with no initial private state, before any provider is touched', async () => {
+    const providers = deployProviders();
+
+    const deploying = deployContract(
+      providers,
+      // @ts-expect-error - an id with no state beside it
+      { compiledContract: contract, privateStateId: 'retained-deploy-id' }
+    );
+
+    await expect(deploying).rejects.toBeInstanceOf(IncompleteDeployContractPrivateStateConfig);
+    await expect(deploying).rejects.toThrow(
+      "'privateStateId' was defined for contract deploy while 'initialPrivateState' was omitted"
+    );
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
   });
 
@@ -2649,6 +2829,22 @@ describe('deploying a retained-era contract through deployContract', () => {
     await expect(
       deployContract(providers, { compiledContract: contract, privateStateId: undefined })
     ).rejects.toThrow("'privateStateId' was given as undefined");
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+  });
+
+  it('refuses a privateStateId written as undefined even when a state is beside it', async () => {
+    const providers = deployProviders();
+
+    const deploying = deployContract(
+      providers,
+      // @ts-expect-error - an undefined id beside a state
+      { compiledContract: contract, privateStateId: undefined, initialPrivateState: {} }
+    );
+
+    await expect(deploying).rejects.toThrow("'privateStateId' was given as undefined");
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
   });

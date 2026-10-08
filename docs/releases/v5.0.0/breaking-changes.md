@@ -38,8 +38,8 @@ type SigningKey = { tag: 'schnorr' | 'ecdsa'; value: string /* hex */ };
 ```diff
   const options: ContractExecutableRuntimeOptions = {
     // ...
--   signingKey: '0102030a1b2c3d4e5f',
-+   signingKey: { tag: 'schnorr', value: '0102030a1b2c3d4e5f' },
+-   signingKey: keyHex, // 64 hex characters (32 bytes)
++   signingKey: { tag: 'schnorr', value: keyHex },
   };
 ```
 
@@ -49,13 +49,17 @@ The Configuration layer maps the object to the `KEYS_SIGNING` / `KEYS_SIGNING_KI
 
 ### 2b. Signing-key import / export validation
 
-`importSigningKey` (LevelDB and the testkit in-memory provider) now validates the **structured shape** before any write:
+`importSigningKeys` (LevelDB and the testkit in-memory provider) now validates the **structured shape** before any write:
 
 - non-null object,
 - `tag` ∈ `{ 'schnorr', 'ecdsa' }`,
-- `value` an even-length hex string of length ≥ 6.
+- `value` exactly 64 hex characters (32 bytes, the only size the runtime accepts for either kind).
 
 A v4.x export that stored a bare hex string will fail import with `InvalidExportFormatError`. Re-export signing keys from a v5.0.0 client, or transform stored exports to the structured shape before import.
+
+Signing keys already in a level private-state store (bare 64-character hex strings written by v4.x) are read in the new shape automatically; only export files made by v4.x need this step. A stored entry that is neither shape throws `StoredSigningKeyFormatError`, exported from `@midnight-ntwrk/midnight-js-level-private-state-provider`.
+
+`isValidSigningKey` is now a type guard (`value is SigningKey`).
 
 The shared predicate is exported as `isValidSigningKey` from `@midnight-ntwrk/midnight-js-utils`.
 
@@ -248,12 +252,22 @@ switch (record.version) {
 }
 ```
 
-`submitTx` and `findDeployedContract` in `midnight-js-contracts` are v9-only
-flows: they narrow internally, so their return types are unchanged — `submitTx`
-still resolves `FinalizedTxData`, and `findDeployedContract` still resolves a
-`FoundContract`. Callers of those two are unaffected. A record from another era
-is reported as `EraInvariantViolationError`, which carries the `seam` and, where
-the flow knows it, the `circuitId`.
+`submitTx` in `midnight-js-contracts` is a v9-only flow: it narrows
+internally, so its return type is unchanged — it still resolves
+`FinalizedTxData`. A record from another era is reported as
+`EraInvariantViolationError`, which carries the `seam` and, where the flow knows
+it, the `circuitId`.
+
+`findDeployedContract` accepts a deploy record from either era, because a
+contract deployed before the fork keeps a ledger-8 deploy record.
+`FoundContract.deployTxData.public` is therefore `FoundDeployTxPublicData`, a
+union tagged by `version`. `contractAddress` is on both arms. Narrow on
+`version` before reading `tx` or `initialContractState`; the `v8` arm has no
+`initialContractState`. Code that does any of the following without narrowing no
+longer compiles: reads `found.deployTxData.public.initialContractState`, uses
+`found.deployTxData.public.tx` as a v9 `Transaction`, or passes
+`found.deployTxData` where a `FinalizedDeployTxDataBase<C>` is expected.
+`DeployedContract` is unchanged.
 
 `indexerPublicDataProvider` produces both arms. It decodes each record with the
 ledger runtime of the era that record's own `protocolVersion` reports, so a
@@ -357,9 +371,9 @@ const midnightProvider: MidnightProvider = {
 the factory compute the declaration:
 
 ```typescript
-import { createProofProviderFromArms } from '@midnight-ntwrk/midnight-js-types';
+import { createProofProviderFromHandlers } from '@midnight-ntwrk/midnight-js-types';
 
-const proofProvider = createProofProviderFromArms({
+const proofProvider = createProofProviderFromHandlers({
   currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
   retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
 });
@@ -387,9 +401,9 @@ See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-arms.md).
 `V9WalletProvider`, `createWalletProvider`, `createMidnightProvider`,
 `SeamEraUnsupportedError`, `assertSeamsSupportEra`, `TransactionSeams`,
 `EraDeclaringProvider`, `RetainedEraHandlers`, `EraArmRequest`, `erasServedBy`,
-`narrowToEraArm`, `createProofProviderFromArms`, `createWalletProviderFromArms`,
-`createMidnightProviderFromArms`, `ProofProviderArms`, `WalletProviderArms`,
-`MidnightProviderArms`, `CurrentEraProver`, `RetainedEraProver`,
+`narrowToEraArm`, `createProofProviderFromHandlers`, `createWalletProviderFromHandlers`,
+`createMidnightProviderFromHandlers`, `ProofProviderHandlers`, `WalletProviderHandlers`,
+`MidnightProviderHandlers`, `CurrentEraProver`, `RetainedEraProver`,
 `CurrentEraBalancer`, `RetainedEraBalancer`, `CurrentEraSubmitter`,
 `RetainedEraSubmitter`. Changed: `FinalizedTxData` gained `version: 'v9'`;
 `ProofProvider`, `WalletProvider` and `MidnightProvider` each gained a required
@@ -436,8 +450,55 @@ Catch any of these by code with `hasErrorCode(error, CODE)` from
 
 ---
 
+## 9. `BlockInfo` gained a required `protocolVersion` field (#1395)
+
+`BlockInfo`, returned by `PublicDataProvider.queryBlock()`, now carries
+`readonly protocolVersion: number` — the protocol-version integer the block was
+produced under, which dates it to a ledger era. Any code that *constructs* a
+`BlockInfo` — test fixtures and custom `PublicDataProvider` implementations —
+must set it. Code that only reads a `BlockInfo` is unaffected.
+
+Resolve it with `versionOfRecord(block)` from
+`@midnight-ntwrk/midnight-js-protocol`. Implementations must report the era of
+*that* block, never the network head's, so a block read from before a hard fork
+keeps reporting the era it was produced in.
+
+`queryBlock` itself is new in 5.0.0, so a consumer who never implemented the
+interface sees only an added field. The break lands on anyone who wrote an
+implementation or a test double against `5.0.0-rc.0` / `5.0.0-rc.1`, where the
+type had two fields.
+
+---
+
+## 10. Contract-state and balance streams emit `PositionedRecord<T>` (#1399)
+
+`PublicDataProvider.contractStateObservable`, `rawContractStateObservable` and
+`unshieldedBalancesObservable` now emit `PositionedRecord<T>` instead of the bare
+value:
+
+```ts
+type PositionedRecord<T> = {
+  readonly value: T;           // what the stream emitted before
+  readonly blockHeight: number; // the block that carried the value
+  readonly blockHash: BlockHash;
+};
+```
+
+- **Consumers:** read `record.value` where you read the emitted value before.
+- **Custom `PublicDataProvider` implementations:** the three members return
+  `Observable<PositionedRecord<T>>`.
+
+The position lets a consumer resume a stream after a restart: pass
+`{ type: 'blockHeight', blockHeight: record.blockHeight }` (or the `blockHash`
+form) as the config. With `inclusive` unset or `true` the stream resumes at that
+block, so values from it may arrive again but none after it is skipped.
+`contractEventsObservable` is unchanged; it already resumes from
+`ContractEvent.id`.
+
+---
+
 ## Non-breaking additions worth noting
 
-- **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)).
+- **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).
 - `dispose()` is exposed on the concrete `IndexerPublicDataProvider` returned by the factory (#961). It is **not** a member of the shared `PublicDataProvider` interface, so existing interface implementations are unaffected.
 - The new `queryContractEvents` / `contractEventsObservable` methods are **required** members of the `PublicDataProvider` interface; the framework's `IndexerPublicDataProvider` provides them. If you implement `PublicDataProvider` yourself, this is a required-method addition that will fail to type-check until you add both — see [api-changes.md](./api-changes.md).

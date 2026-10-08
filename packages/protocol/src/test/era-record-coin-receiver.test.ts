@@ -31,16 +31,17 @@
  * the fixture README. This file follows that precedent rather than inventing a
  * second provenance story.
  *
- * ## The one substitution made to the recorded data, and why
+ * ## Nothing in the recorded data is substituted
  *
- * `partitionContext.block` carries the wall clock the glue stamps when the
- * circuit context is built, and `executeCircuit` does not take a clock. A
- * recording that kept it would be a different file on every run, so
- * `secondsSinceEpoch` and `lastBlockTime` are replaced with the two fixed
- * values below. NOTHING ELSE is substituted: every other member is the real
- * runtime's own output. The `it` blocks assert both halves of that claim --
- * that the recording matches a live execution everywhere except those two
- * fields, and that the recording still composes on both eras with them frozen.
+ * `partitionContext.block` carries the execution clock, which used to be the
+ * wall clock the glue stamped -- so a recording that kept it was a different
+ * file on every run, and `secondsSinceEpoch` and `lastBlockTime` had to be
+ * overwritten in the result afterwards. compact-js takes the clock as an input
+ * now (midnightntwrk/midnight-sdk#403), so the execution is handed
+ * {@link FROZEN_SECONDS} and the recording is the runtime's own
+ * output end to end. The post-hoc substitution was removed only after both
+ * members were shown to be deterministic without it: neutralising it left all
+ * four assertions green.
  *
  * Run with `MINT_HF_FIXTURES=1` to (re)write the three files; without it this
  * suite only guards them.
@@ -48,6 +49,7 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 
+import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
@@ -57,13 +59,14 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { assembleCallPrototype } from '../lib/shared/assemble-call';
 import type { PartitionContext } from '../lib/shared/compose-types';
 import type { LedgerVersion } from '../lib/shared/ledger-version';
-import { executeCircuit, type Ledger8ContractLike, type TranscriptPojo } from '../lib/v8/execute';
+import { runRetainedCircuit, type TranscriptPojo } from '../lib/v8/executable';
 import { fixturePath, readHexFixture } from './fixtures';
+import type { Assert } from './type-assertions';
 
 // The fixture module asserts `checkRuntimeVersion('0.16.0')` against a bare
 // `@midnight-ntwrk/compact-runtime` import, so the specifier is redirected to
 // the retained alias for this file only -- the same redirect
-// `v8-execute.test.ts` and `era-partition-received-coin.test.ts` use.
+// the retired `v8-execute.test.ts` and `era-partition-received-coin.test.ts` use.
 vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
 
 const CIRCUIT_ID = 'receive_coin';
@@ -72,8 +75,11 @@ const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
 // The two frozen clock values. Chosen as round numbers rather than as any real
 // block's time: nothing downstream reads them for meaning, and the assertions
 // below prove the composition does not depend on their being recent.
-const FROZEN_SECONDS_SINCE_EPOCH = 1_700_000_000n;
-const FROZEN_LAST_BLOCK_TIME = 0n;
+// Declared as a NUMBER and widened to BigInt, never the other way round:
+// `Number(aBigInt)` is the conversion this repo rejects, and this is the
+// fixture-mint path -- a later constant above `Number.MAX_SAFE_INTEGER` would
+// lose precision silently and mint fixtures pinned to the wrong instant.
+const FROZEN_SECONDS = 1_700_000_000;
 
 // The coin the circuit receives. Fixed, so the recording is reproducible.
 const RECEIVED_COIN = { nonce: new Uint8Array(32).fill(0x07), color: new Uint8Array(32).fill(0), value: 42n };
@@ -97,9 +103,10 @@ const STATE_V6_PATH = fixturePath(STATE_V6_NAME);
 const STATE_V9_PATH = fixturePath(STATE_V9_NAME);
 
 /** The slice of the compiled fixture module this suite drives. */
-interface CompiledReceiverContract extends Ledger8ContractLike {
+interface CompiledReceiverContract extends CompactContract.Contract<Record<string, never>> {
   initialState(constructorContext: ConstructorContext<Record<string, never>>): {
-    currentContractState: { data: ocrt3.ChargedState };
+    currentPrivateState: Record<string, never>;
+    currentContractState: { data: ocrt3.ChargedState; serialize(): Uint8Array };
   };
 }
 
@@ -138,17 +145,6 @@ const encodeRecorded = (value: unknown): unknown => {
   return value;
 };
 
-/** Replaces the two non-deterministic clock members; documented at the top of this file. */
-const freezeClock = (partitionContext: PartitionContext): PartitionContext => ({
-  block: {
-    ...partitionContext.block,
-    secondsSinceEpoch: FROZEN_SECONDS_SINCE_EPOCH,
-    lastBlockTime: FROZEN_LAST_BLOCK_TIME
-  },
-  effects: partitionContext.effects,
-  comIndices: partitionContext.comIndices
-});
-
 interface RealExecution {
   readonly transcript: TranscriptPojo;
   readonly preState: ledgerV9.EncodedStateValue;
@@ -163,22 +159,26 @@ const runReceiveCoin = async (): Promise<RealExecution> => {
   const contract = new Contract({});
   const initial = contract.initialState(ledger8Runtime.createConstructorContext({}, SAMPLE_COIN_PUBLIC_KEY));
 
-  const transcript = executeCircuit(
-    {
-      contract,
-      circuitId: CIRCUIT_ID,
-      args: [RECEIVED_COIN],
-      state: { data: initial.currentContractState.data },
-      address: ocrt3.dummyContractAddress(),
-      coinPk: SAMPLE_COIN_PUBLIC_KEY,
-      privateState: {}
-    },
-    ledger8Runtime
-  );
+
+  const transcript = await runRetainedCircuit({
+    contract,
+    circuitId: CIRCUIT_ID,
+    args: [RECEIVED_COIN],
+    // Freshly constructed, so the contract holds nothing. The coin this circuit
+    // receives arrives as an ARGUMENT; it is not a standing balance until a
+    // later block.
+    contractState: { state: initial.currentContractState.data.state.encode(), balance: new Map(), entryPoints: [] },
+    address: ocrt3.dummyContractAddress(),
+    coinPk: SAMPLE_COIN_PUBLIC_KEY,
+    privateState: {},
+    // The clock the recording is pinned to, supplied to the execution rather
+    // than substituted into its result afterwards.
+    nowSeconds: FROZEN_SECONDS
+  });
 
   return {
     transcript,
-    preState: transcript.preContractState.data.state.encode(),
+    preState: transcript.preContractState.encode(),
     initialData: initial.currentContractState.data
   };
 };
@@ -221,7 +221,6 @@ interface RecordingFile {
 // (`preContractState`, `postContractState`), which cannot be serialized at all.
 // A member added to `TranscriptPojo` fails this, which is what stops the
 // recording drifting behind the runtime.
-type Assert<T extends true> = T;
 type SerializableTranscriptMember = Exclude<
   keyof TranscriptPojo,
   'preContractState' | 'postContractState'
@@ -240,10 +239,9 @@ const buildRecording = (execution: RealExecution): RecordingFile => {
       'Recording of the transcript the real retained-era (compact-runtime@0.16) runtime produces for ' +
       "coin-receiver-016's receive_coin circuit, minted by real execution from " +
       'packages/protocol/src/test/era-record-coin-receiver.test.ts. Values are tagged: {"__bigint"}, ' +
-      '{"__bytes"} (lower-case hex) and {"__map"}. partitionContext.block.secondsSinceEpoch and ' +
-      '.lastBlockTime are the only substituted members -- the runtime stamps a wall clock there and ' +
-      'executeCircuit takes no clock, so they are frozen to make the recording reproducible. Everything ' +
-      'else is the runtime\'s own output. Regenerate with MINT_HF_FIXTURES=1.',
+      '{"__bytes"} (lower-case hex) and {"__map"}. NO member is substituted: the execution clock is an ' +
+      'input, pinned to partitionContext.block.secondsSinceEpoch, so every value here is the runtime\'s ' +
+      'own output. Regenerate with MINT_HF_FIXTURES=1.',
     circuitId: transcript.circuitId,
     coinPublicKey: SAMPLE_COIN_PUBLIC_KEY,
     contractAddress: ocrt3.dummyContractAddress(),
@@ -256,7 +254,7 @@ const buildRecording = (execution: RealExecution): RecordingFile => {
       output: encodeRecorded(transcript.output),
       publicTranscript: encodeRecorded(transcript.publicTranscript),
       privateTranscriptOutputs: encodeRecorded(transcript.privateTranscriptOutputs),
-      partitionContext: encodeRecorded(freezeClock(transcript.partitionContext)),
+      partitionContext: encodeRecorded(transcript.partitionContext),
       // The post-state in the form that can be recorded at all. The HANDLE
       // beside it cannot: a WASM pointer means nothing outside the module that
       // minted it, which is why the two handle members are excluded above.
@@ -307,7 +305,7 @@ const ARMS: Readonly<
       circuitId: CIRCUIT_ID,
       contractAddress: ocrt3.dummyContractAddress(),
       // Named explicitly: these arms compare era ASSEMBLY, not cost models.
-      ledgerParameters: 'initial',
+      ledgerParametersBytes: 'initial',
       transcript: { kind: 'unpartitioned', preState, publicTranscript: transcript.publicTranscript, partitionContext },
       privateTranscriptOutputs: transcript.privateTranscriptOutputs,
       input: transcript.input,
@@ -323,7 +321,7 @@ const ARMS: Readonly<
       circuitId: CIRCUIT_ID,
       contractAddress: ocrt3.dummyContractAddress(),
       // Named explicitly: these arms compare era ASSEMBLY, not cost models.
-      ledgerParameters: 'initial',
+      ledgerParametersBytes: 'initial',
       transcript: { kind: 'unpartitioned', preState, publicTranscript: transcript.publicTranscript, partitionContext },
       privateTranscriptOutputs: transcript.privateTranscriptOutputs,
       input: transcript.input,
@@ -348,7 +346,7 @@ describe('coin-receiver-016 fixtures: minted by real retained-era execution, the
     }
   });
 
-  it('the committed recording is byte-for-byte what a live execution produces, once the clock is frozen', () => {
+  it('the committed recording is byte-for-byte what a live execution produces', () => {
     const committed: unknown = JSON.parse(readFileSync(RECORDING_PATH, 'utf8'));
 
     expect(buildRecording(execution)).toEqual(committed);
@@ -363,7 +361,7 @@ describe('coin-receiver-016 fixtures: minted by real retained-era execution, the
     );
   });
 
-  it.each(ERAS)('the frozen-clock recording still composes on %s, so the substitution is not load-bearing', (version) => {
-    expect(ARMS[version](execution.transcript, freezeClock(execution.transcript.partitionContext), execution.preState)).toBeDefined();
+  it.each(ERAS)('the recording still composes on %s', (version) => {
+    expect(ARMS[version](execution.transcript, execution.transcript.partitionContext, execution.preState)).toBeDefined();
   });
 });

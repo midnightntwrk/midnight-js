@@ -22,6 +22,7 @@ import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vites
 import { type ContractProviders } from '../contract-providers';
 import { deployContract, type DeployContractOptionsBase, type DeployedContract } from '../deploy-contract';
 import { CURRENT_PIPELINE_ERA } from '../era';
+import { IncompleteDeployContractPrivateStateConfig } from '../errors';
 import type { submitDeployTx } from '../submit-deploy-tx';
 import { type FinalizedDeployTxData, type UnsubmittedDeployTxData } from '../tx-model';
 import {
@@ -153,6 +154,67 @@ describe('deployContract', () => {
     );
 
     expect(mockSubmitDeployTx).not.toHaveBeenCalled();
+  });
+
+  it('refuses a private state id written as undefined even when a state is beside it', async () => {
+    const options = { ...baseOptions, privateStateId: undefined, initialPrivateState: { test: 'initial-private-state' } };
+
+    // @ts-expect-error - an undefined id beside a state
+    const deploying = deployContract(providers, options);
+
+    await expect(deploying).rejects.toThrow("'privateStateId' was given as undefined");
+    expect(mockSubmitDeployTx).not.toHaveBeenCalled();
+  });
+
+  it('deploys with an initial private state written as undefined and no id', async () => {
+    mockDeployTxData = createMockDeployTxData();
+    mockSubmitDeployTx.mockResolvedValue(asFinalized(mockDeployTxData));
+    const options = { ...baseOptions, initialPrivateState: undefined };
+
+    const result = await deployContract(providers, options);
+
+    assertDeployResult(result, mockDeployTxData);
+    expect(mockSubmitDeployTx).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses a private state id with no initial private state, before any transaction is built', async () => {
+    const options = { ...baseOptions, privateStateId: createMockPrivateStateId() };
+
+    // @ts-expect-error - an id with no state beside it
+    const deploying = deployContract(providers, options);
+
+    await expect(deploying).rejects.toBeInstanceOf(IncompleteDeployContractPrivateStateConfig);
+    await expect(deploying).rejects.toThrow(
+      "'privateStateId' was defined for contract deploy while 'initialPrivateState' was omitted"
+    );
+    expect(mockSubmitDeployTx).not.toHaveBeenCalled();
+  });
+
+  it('refuses an initial private state with no id to store it under, before any transaction is built', async () => {
+    const options = { ...baseOptions, initialPrivateState: { test: 'initial-private-state' } };
+
+    // @ts-expect-error - a private state with no id naming where it goes
+    const deploying = deployContract(providers, options);
+
+    await expect(deploying).rejects.toBeInstanceOf(IncompleteDeployContractPrivateStateConfig);
+    await expect(deploying).rejects.toThrow(
+      "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined"
+    );
+    expect(mockSubmitDeployTx).not.toHaveBeenCalled();
+  });
+
+  it('deploys with an initial private state given as undefined beside an id', async () => {
+    mockDeployTxData = createMockDeployTxData();
+    mockSubmitDeployTx.mockResolvedValue(asFinalized(mockDeployTxData));
+    const options = { ...baseOptions, privateStateId: createMockPrivateStateId(), initialPrivateState: undefined };
+
+    const result = await deployContract(providers, options);
+
+    assertDeployResult(result, mockDeployTxData);
+    expect(mockSubmitDeployTx).toHaveBeenCalledWith(
+      providers,
+      expect.objectContaining({ privateStateId: options.privateStateId, initialPrivateState: undefined })
+    );
   });
 
   it('should deploy contract with private state', async () => {

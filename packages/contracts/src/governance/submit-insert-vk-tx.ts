@@ -80,8 +80,9 @@ export const submitInsertVerifierKeyTx = async <C extends Contract.Any>(
   assertIsContractAddress(contractAddress);
   const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
   assertDefined(contractState, `No contract state found on chain for contract address '${contractAddress}'`);
+  const existingVerifierKey: Uint8Array | undefined = contractState.operation(circuitId)?.verifierKey;
   assertUndefined(
-    contractState.operation(circuitId),
+    existingVerifierKey,
     `Circuit '${circuitId}' is already defined for contract at address '${contractAddress}'`
   );
   const signingKey = await providers.privateStateProvider.getSigningKey(contractAddress);

@@ -32,6 +32,7 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   COMPOSE_FAILED: 'MIDNIGHT_JS_P_COMPOSE_FAILED',
   COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID',
   STATE_DECODE_FAILED: 'MIDNIGHT_JS_P_STATE_DECODE_FAILED',
+  STATE_INCONSISTENT: 'MIDNIGHT_JS_P_STATE_INCONSISTENT',
   UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
   LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
   UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS',
@@ -148,10 +149,21 @@ export class Ledger8RuntimeMissingError extends Error {
 }
 
 /**
- * Which physical-copy axis `assertSharedLedger8Instance`
- * (`lib/v8/instance-guard.ts`) detected two distinct instances on.
+ * Which physical-copy axis a dual-instantiation was detected on.
  *
- * `'onchain-runtime-v3'` is the only member this framework version checks.
+ * `'onchain-runtime-v3'` is the only member this framework version names.
+ *
+ * NOTHING IN THIS PACKAGE RAISES THIS ANY MORE. The construction-time guard
+ * that did (`lib/v8/instance-guard.ts`) compared `onchain-runtime-v3` against
+ * the retained glue. Both are still reachable — `lib/v8/executable.ts` imports
+ * the glue directly and compact-js resolves the same specifier for itself — so
+ * the axis remains; what was removed is the runtime check on it. The invariant
+ * is held at install time instead, by `src/test/single-instance.test.ts`, which
+ * pins one resolved copy of each. That answers on THIS repo's lockfile, not on
+ * physical instance identity in a consumer's process, so it is a narrower check
+ * than the one it replaced. The error and its code stay on the published
+ * surface because a consumer may switch on them, and `loadLedger8Engine` still
+ * passes one through unwrapped if a lower layer ever raises it.
  *
  * @see {@link DualInstantiationGuard}
  */
@@ -180,9 +192,11 @@ const axisPackageNames = (axis: Ledger8InstanceAxis): readonly string[] =>
   PUBLISHED_SCOPES.map((scope) => `${scope}/${AXIS_BARE_PACKAGE_NAMES[axis]}`);
 
 /**
- * Thrown by `assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`)
- * when the same-named WASM package resolved to two physically distinct copies
- * in this process (a dual-instantiation).
+ * Raised when the same-named WASM package resolves to two physically distinct
+ * copies in this process (a dual-instantiation).
+ *
+ * See {@link Ledger8InstanceAxis} for why nothing in this package raises it any
+ * more, and what holds the invariant instead.
  *
  * Carries no `cause`: this is a direct reference-equality assertion failure,
  * not a wrapped lower-level exception.
@@ -214,16 +228,20 @@ export class Ledger8InstanceMismatchError extends Error {
  * came from. A closed union, so a consumer can `switch` on `stage`
  * exhaustively.
  *
+ * `'state down-convert'` is the structural round trip `lib/v8/executable.ts`
+ * runs before a circuit executes; the other two are the envelope reads in
+ * `lib/era/envelope.ts`.
+ *
  * @see {@link FailClosedDecoding}
  */
 export type DownConvertStage = 'v8 envelope extraction' | 'v9 envelope extraction' | 'state down-convert';
 
 /**
- * Thrown by the down-convert engine (`lib/era/envelope.ts`,
- * `lib/v8/down-convert.ts`) when it cannot turn a raw contract-state
- * envelope, or an already-extracted `EncodedStateValue`, into an executable
- * pre-fork state. Raised by `extractV9EncodedStateValue` (`lib/era/envelope.ts`)
- * and `downConvertForExecution` (`lib/v8/down-convert.ts`).
+ * Thrown when a raw contract-state envelope, or an already-extracted
+ * `EncodedStateValue`, cannot be turned into an executable pre-fork state.
+ * Raised by `extractV9EncodedStateValue` (`lib/era/envelope.ts`) and by
+ * `decodeExecutableStateValue` (`lib/v8/executable.ts`), which refuses a state
+ * that decodes but does not re-encode to the bytes it came from.
  *
  * Renders no raw hex and no decoded state contents — only the stage name and
  * the wrapped `cause`.
@@ -251,12 +269,23 @@ export class DownConvertFailedError extends Error {
 }
 
 /**
- * Thrown by `checkRoot` (`lib/v8/down-convert.ts`) when a bounded Merkle
- * tree's root is read before the tree has been rehashed. Reaches a caller
- * through `assertMerkleTreesRehashed` and `downConvertForExecution`, which
- * assert it on every tree they decode.
+ * Raised when a bounded Merkle tree's root is read before the tree has been
+ * rehashed.
  *
- * The remediation is always the caller's: call `rehash()` on the tree before
+ * NOTHING RAISES THIS ANY MORE: the walk it served
+ * (`assertMerkleTreesRehashed`, `lib/v8/down-convert.ts`) was removed with the
+ * hand-maintained execution layer, and the condition it named cannot reach the
+ * seam that replaced it. Execution now takes an already-encoded
+ * `EncodedStateValue`, and a tree's rehash state does not survive that
+ * encoding: a never-rehashed tree and a rehashed one encode IDENTICALLY, and
+ * decoding either yields the same root. Being un-rehashed is a property of a
+ * live in-memory handle only, so there is nothing left for a guard on this
+ * side to refuse. Measured against the pinned runtime, not inferred.
+ *
+ * Kept on the published surface, with its code, rather than removed from a
+ * consumer's error taxonomy as a side effect of an internal refactor.
+ *
+ * The remediation was always the caller's: call `rehash()` on the tree before
  * executing against it. Nothing here repairs the tree.
  *
  * @param cause The runtime's own failure, when reading the root threw. Absent
@@ -503,8 +532,12 @@ export class ComposeFailedError extends Error {
 
 /**
  * Which option handed to a composition leg was unusable:
- * - `'contractState'` — the state could not be bridged into the target
+ * - `'contractStateBytes'` — the state could not be bridged into the target
  *   ledger era (its serialized envelope was rejected by the era's decoder).
+ * - `'guaranteedZswapOfferBytes'` — the offer bytes supplied to a deploy were
+ *   rejected by the target era's decoder.
+ * - `'ledgerParametersBytes'` — the supplied ledger parameters could not be
+ *   read by the target era.
  * - `'networkId'` — the network id was empty. The ledger accepts an empty
  *   string and bakes it into the transaction, so a caller that forgot to
  *   resolve one would only find out at submission.
@@ -522,8 +555,8 @@ export class ComposeFailedError extends Error {
  *   contract's keys itself and so always needs the map, while the current era
  *   accepts its omission for a state that already carries its keys and refuses
  *   it only for a state still declaring a blank-keyed entry point.
- * - `'zswapOffer'` — the supplied offer bytes were rejected by the target era's
- *   decoder. Raised on BOTH eras, for the same reason and with the same
+ * - `'zswapOffer'` — the offer bytes a call's offer factory returned were
+ *   rejected by the target era's decoder. Raised on BOTH eras, for the same reason and with the same
  *   remediation: pass the bytes that era's own offer serialization produced.
  *
  * @see {@link ComposeRefusalOrder}
@@ -531,8 +564,9 @@ export class ComposeFailedError extends Error {
  */
 export type ComposeOption =
   | 'calls'
-  | 'contractState'
-  | 'ledgerParameters'
+  | 'contractStateBytes'
+  | 'guaranteedZswapOfferBytes'
+  | 'ledgerParametersBytes'
   | 'networkId'
   | 'signingKey'
   | 'ttl'
@@ -552,8 +586,8 @@ export type ComposeOption =
  * @param version The ledger era the option was being used against.
  * @param option Which option was unusable — see {@link ComposeOption}. A
  *   closed union, so a consumer can `switch` on it exhaustively.
- * @param cause The decoder's own failure, present only for `'contractState'`
- *   and `'zswapOffer'`, where caller-supplied bytes were rejected.
+ * @param cause The decoder's own failure, present where caller-supplied bytes
+ *   were rejected.
  * @see {@link ComposeRefusalOrder}
  * @see {@link VerifierKeys}
  */
@@ -572,12 +606,12 @@ export class ComposeOptionError extends Error {
   // A total Record, for exactly the reason `ComposeFailedError.MESSAGES` above
   // is one -- see SharedTableDiscipline. Never make this an if-chain.
   private static readonly MESSAGES: Readonly<Record<ComposeOption, (version: LedgerVersion) => string>> = {
-    contractState: (version) =>
+    contractStateBytes: (version) =>
       `Failed to compose a ${version} transaction: the given contract state could not be bridged into the ` +
       `${version} ledger era. Read the wrapped cause for what the decoder reported; it distinguishes an ` +
       'envelope tagged for a different ledger era from truncated or empty input bytes. Pass the contract ' +
       'state the era it targets produced, not an already down-converted or otherwise re-tagged one.',
-    ledgerParameters: (version) =>
+    ledgerParametersBytes: (version) =>
       `Failed to compose a ${version} transaction: the supplied ledger parameters could not be read by the ` +
       `${version} ledger. They are era-tagged, so bytes read from a block of the other era will be refused ` +
       'here — read the wrapped cause for the tag the decoder found. Pass the parameters the block this call ' +
@@ -609,6 +643,10 @@ export class ComposeOptionError extends Error {
       "entry points and be refused by the ledger's own well-formedness check. Supply keys for exactly the " +
       'circuits the contract declares. An era whose deploy leg accepts the omission still refuses it for a ' +
       'state that declares a blank-keyed entry point, for the same reason.',
+    guaranteedZswapOfferBytes: (version) =>
+      `Failed to compose a ${version} deploy transaction: the supplied guaranteed Zswap offer bytes could ` +
+      `not be read by the ${version} ledger. Read the wrapped cause for what the decoder reported. Pass the ` +
+      "bytes that era's own offer serialization produced.",
     zswapOffer: (version) =>
       `Failed to compose a ${version} transaction: the supplied Zswap offer bytes could not be read by ` +
       `the ${version} ledger. Read the wrapped cause for what the decoder reported. Pass the bytes that ` +
@@ -648,12 +686,47 @@ export class StateDecodeFailedError extends Error {
 }
 
 /**
+ * Thrown by `decodeContractState` (`lib/shared/contract-state.ts`) when the
+ * era's decoder read the envelope but the state it produced is internally
+ * inconsistent: it declares an entry point it resolves no operation for, holds
+ * a verifier key that will not hash, or resolves no usable balance.
+ *
+ * Distinct from {@link StateDecodeFailedError}: the bytes were readable by the
+ * requested era, so decoding them as the other era cannot help. A caller that
+ * retries on `STATE_DECODE_FAILED` must not retry on this one.
+ *
+ * Renders no hex and no decoded state contents of its own.
+ *
+ * @param version The era whose decoder produced the state.
+ * @param cause The diagnosis of what was inconsistent, preserved unchanged.
+ * @see {@link FailClosedDecoding}
+ */
+export class StateInconsistentError extends Error {
+  readonly code = PROTOCOL_ERROR_CODES.STATE_INCONSISTENT;
+
+  constructor(
+    readonly version: LedgerVersion,
+    cause: unknown
+  ) {
+    super(
+      `Decoded a contract state for the ${version} ledger era, but the state is internally inconsistent. ` +
+        'Read the wrapped cause for what was inconsistent. The bytes were readable by this era, so decoding ' +
+        'them as another era will not fix it; check the decoder the era was loaded with and the source of ' +
+        'the state.',
+      { cause }
+    );
+    this.name = 'StateInconsistentError';
+  }
+}
+
+/**
  * Thrown by `extractEncodedStateValue` (`lib/era/envelope.ts`) when the
  * injected pre-fork runtime cannot be used — it was not passed at all, or the
- * binding the decoder needs is absent from it. Also raised by
- * `downConvertForExecution` (`lib/v8/down-convert.ts`) and
- * `assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`), the latter for a
- * nullish instance probe.
+ * binding the decoder needs is absent from it.
+ *
+ * `downConvertForExecution` and the shared-instance guard used to raise it too;
+ * both are gone with the hand-maintained execution layer, so the envelope
+ * decoder is now its only source.
  *
  * Nothing is wrong with the caller's input here. Distinct from
  * {@link Ledger8RuntimeMissingError}, which reports the v8 chunk failing to
@@ -682,12 +755,14 @@ export class Ledger8RuntimeInvalidError extends Error {
 }
 
 /**
- * Thrown by `assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`)
- * when the `axis` it was handed is not a member of {@link Ledger8InstanceAxis}.
+ * Raised when a shared-instance guard is handed an `axis` that is not a member
+ * of {@link Ledger8InstanceAxis}.
  *
- * A TypeScript caller cannot produce this — `axis` is typed as
- * {@link Ledger8InstanceAxis}. It exists for the untyped JavaScript consumers
- * this package also serves.
+ * NOTHING RAISES THIS ANY MORE: the guard it served
+ * (`lib/v8/instance-guard.ts`) was removed with the hand-maintained execution
+ * layer — see {@link Ledger8InstanceAxis}. It is kept on the published surface,
+ * with its code, rather than removed from a consumer's error taxonomy as a side
+ * effect of an internal refactor.
  *
  * @param requestedAxis The offending value that was passed. Carried for
  *   programmatic use only; it is deliberately kept out of the message.

@@ -16,6 +16,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import type { EncodedZswapLocalState } from 'compact-runtime-ledger8';
@@ -24,7 +25,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
 import { loadLedgerEra } from '../lib/era/load-era';
 import type { ComposeCallEntry, PartitionContext } from '../lib/shared/compose-types';
-import type { Ledger8ContractLike } from '../lib/v8/execute';
 import { loadLedger8Engine } from '../lib/v8/load-engine';
 
 const PKG_ROOT = resolve(__dirname, '..', '..');
@@ -40,7 +40,7 @@ const NETWORK_ID = 'test-network';
 
 // Redirects the ported spike fixture's bare `@midnight-ntwrk/compact-runtime`
 // import to this package's own `compact-runtime-ledger8` (the real retained
-// 0.16 instance) — see v8-execute.test.ts for the full rationale.
+// 0.16 instance) — see v8-executable.test.ts for the full rationale.
 vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
 
 // Both engine surfaces at once: the fixture is a real compiled pre-fork
@@ -50,14 +50,14 @@ vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-l
 // file's paths reach — the live `ChargedState` execution runs against, the
 // `serialize()` the deploy leg bridges by, and the `maintenanceAuthority`
 // `executeConstructor` writes the caller's signing key into.
-interface CompiledCounterContract extends Ledger8ContractLike {
+interface CompiledCounterContract extends CompactContract.Contract<Record<string, never>> {
   initialState(constructorContext: unknown): {
     currentContractState: {
       data: ocrt3.ChargedState;
       serialize: () => Uint8Array;
       maintenanceAuthority: ocrt3.ContractMaintenanceAuthority;
     };
-    currentPrivateState: unknown;
+    currentPrivateState: Record<string, never>;
     // The third member the artifact really returns, read since a constructor
     // that mints a coin needs it to compose a balanceable deploy.
     currentZswapLocalState: EncodedZswapLocalState;
@@ -74,6 +74,11 @@ const loadCounterContract = async (): Promise<CompiledCounterContract> => {
   )) as CompiledCounterModule;
   return new Contract({});
 };
+
+
+/** Serves the committed fixture key `initialize` registers onto each entry point. */
+const readFixtureVerifierKey = (circuitId: string): Promise<Uint8Array | undefined> =>
+  Promise.resolve(new Uint8Array(readFileSync(resolve(FIXTURE_DIR, 'compiled', 'keys', `${circuitId}.verifier`))));
 
 const VERIFIER_KEY = new Uint8Array(readFileSync(VERIFIER_KEY_PATH));
 
@@ -96,19 +101,19 @@ const callEntryFromTranscript = (
     readonly output: ocrt3.AlignedValue;
     readonly publicTranscript: ocrt3.Op<ocrt3.AlignedValue>[];
     readonly privateTranscriptOutputs: ocrt3.AlignedValue[];
-    readonly preContractState: { readonly data: ocrt3.ChargedState };
+    readonly preContractState: ocrt3.StateValue;
     readonly partitionContext: PartitionContext;
   },
   contractAddress: string
 ): ComposeCallEntry => ({
   contractAddress,
   circuitId: transcript.circuitId,
-  contractState: serializedV8StateWithOperation(),
+  contractStateBytes: serializedV8StateWithOperation(),
   // Named explicitly: these entries exercise the v8 arm's assembly, not the cost model.
-  ledgerParameters: 'initial',
+  ledgerParametersBytes: 'initial',
   transcript: {
     kind: 'unpartitioned',
-    preState: transcript.preContractState.data.state.encode(),
+    preState: transcript.preContractState.encode(),
     publicTranscript: transcript.publicTranscript,
     partitionContext: transcript.partitionContext
   },
@@ -128,11 +133,12 @@ const runIncrement = async (): Promise<{
   const initial = contract.initialState(constructorContext);
   const address = ocrt3.dummyContractAddress();
 
-  const transcript = engine.executeCircuit({
+  const transcript = await engine.executeCircuit({
     contract,
     circuitId: 'increment',
     args: [],
-    state: { data: initial.currentContractState.data },
+    // Freshly constructed, so the contract holds nothing.
+    contractState: { state: initial.currentContractState.data.state.encode(), balance: new Map(), entryPoints: [] },
     address,
     coinPk: SAMPLE_COIN_PUBLIC_KEY,
     privateState: {}
@@ -175,9 +181,9 @@ const payingTranscript = (
 const payingCallEntry = (owner: string, token: string): ComposeCallEntry => ({
   contractAddress: ocrt3.dummyContractAddress(),
   circuitId: 'increment',
-  contractState: serializedV8StateWithOperation(),
+  contractStateBytes: serializedV8StateWithOperation(),
   // Named explicitly: these entries exercise the v8 arm's assembly, not the cost model.
-  ledgerParameters: 'initial',
+  ledgerParametersBytes: 'initial',
   transcript: {
     kind: 'partitioned',
     guaranteed: payingTranscript(owner, token, 42n),
@@ -189,28 +195,12 @@ const payingCallEntry = (owner: string, token: string): ComposeCallEntry => ({
 });
 
 describe('the v8 era arm', () => {
-  it('extracts a v8-era envelope the engine can then down-convert for execution', async () => {
-    const era = await loadLedgerEra('v8');
-    const engine = await loadLedger8Engine();
-    const contractState = new ocrt3.ContractState();
-    contractState.data = new ocrt3.ChargedState(
-      ocrt3.StateValue.newCell({
-        value: [new Uint8Array(32).fill(7)],
-        alignment: [{ tag: 'atom', value: { tag: 'field' } }]
-      })
-    );
-
-    const downConverted = engine.downConvertForExecution(era.extractState(contractState.serialize()));
-
-    expect(downConverted.data.state.type()).toBe('cell');
-  });
-
   it('composes a v8-native call transaction from a real executeCircuit transcript passed as plain data', async () => {
     const era = await loadLedgerEra('v8');
     const { entry, address } = await runIncrement();
     const ttl = new Date(Date.now() + 3_600_000);
 
-    const { transaction: bytes } = era.composeCallTx({ calls: [entry], networkId: NETWORK_ID, ttl });
+    const { txBytes: bytes } = era.composeCallTx({ calls: [entry], networkId: NETWORK_ID, ttl });
 
     const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
     const intents = [...(back.intents?.values() ?? [])];
@@ -240,7 +230,7 @@ describe('the v8 era arm', () => {
     const owner = LedgerV8.sampleUserAddress();
     const token = LedgerV8.sampleRawTokenType();
 
-    const { transaction: bytes } = era.composeCallTx({
+    const { txBytes: bytes } = era.composeCallTx({
       calls: [payingCallEntry(owner, token)],
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000)
@@ -256,16 +246,15 @@ describe('the v8 era arm', () => {
   it('composes a v8-native deploy from a constructor result passed as bytes', async () => {
     const era = await loadLedgerEra('v8');
     const engine = await loadLedger8Engine();
-    const contract = await loadCounterContract();
-
-    const constructorResult = engine.executeConstructor({
-      contract,
+    const constructorResult = await engine.executeConstructor({
+      contract: await loadCounterContract(),
       args: [],
       privateState: {},
-      coinPk: SAMPLE_COIN_PUBLIC_KEY
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: readFixtureVerifierKey
     });
     const result = era.composeDeployTx({
-      contractState: constructorResult.contractState.serialize(),
+      contractStateBytes: constructorResult.contractState.serialize(),
       verifierKeys: new Map([['increment', VERIFIER_KEY]]),
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000)
@@ -274,15 +263,15 @@ describe('the v8 era arm', () => {
     // Read the deploy back apart rather than only round-tripping it: the
     // deployed state must carry the supplied key under the circuit it was
     // supplied for, which byte-identity of a re-serialization cannot show.
-    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', result.transaction);
+    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', result.txBytes);
     const deploys = [...(back.intents?.values() ?? [])]
       .flatMap((intent) => intent.actions)
       .filter((action) => action instanceof LedgerV8.ContractDeploy);
     expect(deploys).toHaveLength(1);
     expect(result.contractAddress).toBe(deploys[0].address);
-    expect(Buffer.from(result.initialState)).toEqual(Buffer.from(deploys[0].initialState.serialize()));
+    expect(Buffer.from(result.initialContractStateBytes)).toEqual(Buffer.from(deploys[0].initialState.serialize()));
 
-    const registered = LedgerV8.ContractState.deserialize(result.initialState);
+    const registered = LedgerV8.ContractState.deserialize(result.initialContractStateBytes);
     expect(registered.operations()).toEqual(['increment']);
     expect(Buffer.from(registered.operation('increment')?.verifierKey ?? new Uint8Array())).toEqual(
       Buffer.from(VERIFIER_KEY)
@@ -302,11 +291,11 @@ describe('the v8 era arm', () => {
       return LedgerV8.ZswapOffer.fromOutput(output).serialize();
     };
 
-    const { transaction: bytes } = era.composeCallTx({
+    const { txBytes: bytes } = era.composeCallTx({
       calls: [entry],
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
-      zswapOffer: () => ({ guaranteed: buildOffer(), fallible: buildOffer() })
+      zswapOffer: () => ({ guaranteedBytes: buildOffer(), fallibleBytes: buildOffer() })
     });
 
     const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
@@ -332,7 +321,7 @@ describe('the v8 era arm', () => {
         calls: [entry],
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000),
-        zswapOffer: () => ({ guaranteed: new Uint8Array([1, 2, 3]) })
+        zswapOffer: () => ({ guaranteedBytes: new Uint8Array([1, 2, 3]) })
       });
     } catch (error) {
       caught = error;
@@ -356,7 +345,7 @@ describe('the v8 era arm', () => {
         calls: [entry],
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000),
-        zswapOffer: () => ({ fallible: new Uint8Array([1, 2, 3]) })
+        zswapOffer: () => ({ fallibleBytes: new Uint8Array([1, 2, 3]) })
       })
     ).toThrowError(
       expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'zswapOffer', version: 'v8' })
@@ -393,7 +382,7 @@ describe('the v8 era arm', () => {
     let caught: unknown;
     try {
       era.composeCallTx({
-        calls: [{ ...entry, contractState: new Uint8Array([1, 2, 3]) }],
+        calls: [{ ...entry, contractStateBytes: new Uint8Array([1, 2, 3]) }],
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000)
       });
@@ -402,7 +391,7 @@ describe('the v8 era arm', () => {
     }
 
     expect(caught).toBeInstanceOf(ComposeOptionError);
-    expect(caught).toMatchObject({ option: 'contractState', version: 'v8' });
+    expect(caught).toMatchObject({ option: 'contractStateBytes', version: 'v8' });
     expect((caught as ComposeOptionError).cause).toBeInstanceOf(Error);
   });
 
@@ -412,18 +401,18 @@ describe('the v8 era arm', () => {
   it('refuses a deploy with no verifier-key map', async () => {
     const era = await loadLedgerEra('v8');
     const engine = await loadLedger8Engine();
-    const contract = await loadCounterContract();
-    const constructorResult = engine.executeConstructor({
-      contract,
+    const constructorResult = await engine.executeConstructor({
+      contract: await loadCounterContract(),
       args: [],
       privateState: {},
-      coinPk: SAMPLE_COIN_PUBLIC_KEY
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: readFixtureVerifierKey
     });
 
     let caught: unknown;
     try {
       era.composeDeployTx({
-        contractState: constructorResult.contractState.serialize(),
+        contractStateBytes: constructorResult.contractState.serialize(),
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000)
       });
@@ -438,49 +427,49 @@ describe('the v8 era arm', () => {
   it('carries a supplied guaranteed Zswap offer into the deploy transaction', async () => {
     const era = await loadLedgerEra('v8');
     const engine = await loadLedger8Engine();
-    const contract = await loadCounterContract();
-    const constructorResult = engine.executeConstructor({
-      contract,
+    const constructorResult = await engine.executeConstructor({
+      contract: await loadCounterContract(),
       args: [],
       privateState: {},
-      coinPk: SAMPLE_COIN_PUBLIC_KEY
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: readFixtureVerifierKey
     });
     const coin = LedgerV8.createShieldedCoinInfo(LedgerV8.sampleRawTokenType(), 100n);
     const output = LedgerV8.ZswapOutput.new(coin, 0, LedgerV8.sampleCoinPublicKey(), LedgerV8.sampleEncryptionPublicKey());
 
     const result = era.composeDeployTx({
-      contractState: constructorResult.contractState.serialize(),
+      contractStateBytes: constructorResult.contractState.serialize(),
       verifierKeys: new Map([['increment', VERIFIER_KEY]]),
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
-      guaranteedZswapOffer: LedgerV8.ZswapOffer.fromOutput(output).serialize()
+      guaranteedZswapOfferBytes: LedgerV8.ZswapOffer.fromOutput(output).serialize()
     });
 
-    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', result.transaction);
+    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', result.txBytes);
     expect(back.guaranteedOffer?.outputs).toHaveLength(1);
   });
 
   it('refuses deploy Zswap offer bytes this era cannot read', async () => {
     const era = await loadLedgerEra('v8');
     const engine = await loadLedger8Engine();
-    const contract = await loadCounterContract();
-    const constructorResult = engine.executeConstructor({
-      contract,
+    const constructorResult = await engine.executeConstructor({
+      contract: await loadCounterContract(),
       args: [],
       privateState: {},
-      coinPk: SAMPLE_COIN_PUBLIC_KEY
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: readFixtureVerifierKey
     });
 
     expect(() =>
       era.composeDeployTx({
-        contractState: constructorResult.contractState.serialize(),
+        contractStateBytes: constructorResult.contractState.serialize(),
         verifierKeys: new Map([['increment', VERIFIER_KEY]]),
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000),
-        guaranteedZswapOffer: new Uint8Array([1, 2, 3])
+        guaranteedZswapOfferBytes: new Uint8Array([1, 2, 3])
       })
     ).toThrowError(
-      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'zswapOffer', version: 'v8' })
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'guaranteedZswapOfferBytes', version: 'v8' })
     );
   });
 

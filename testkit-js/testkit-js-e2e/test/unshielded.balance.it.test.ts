@@ -15,7 +15,7 @@
 
 import { deployContract, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
 import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { type FinalizedTxRecord, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import {
   type ContractConfiguration,
   createLogger,
@@ -27,6 +27,7 @@ import {
   type TestEnvironment
 } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
+import { firstValueFrom, timeout } from 'rxjs';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
 import { CompiledUnshieldedContract } from '../src/contract';
@@ -54,6 +55,7 @@ class UnshieldedConfiguration implements ContractConfiguration {
 describe('Unshielded tokens - balance', () => {
   const MINT_DOMAIN_SEPARATOR = new Uint8Array(32).fill(1);
   const MINT_AMOUNT = 1_000_000n;
+  const BALANCE_WAIT_MS = 120_000;
 
   let testEnvironment: TestEnvironment;
   let wallet: MidnightWalletProvider;
@@ -62,6 +64,7 @@ describe('Unshielded tokens - balance', () => {
   let contractAddress: ContractAddress;
   let contractConfiguration: UnshieldedConfiguration;
   let mintedTokenColor: Uint8Array;
+  let mintTx: FinalizedTxRecord;
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -97,12 +100,28 @@ describe('Unshielded tokens - balance', () => {
 
     expect(mintTxData.public.status).toBe(SucceedEntirely);
     mintedTokenColor = mintTxData.private.result as Uint8Array;
+    mintTx = mintTxData.public;
 
     logger.info(`Minted initial tokens: ${JSON.stringify(mintTxData)}`);
   });
 
   afterAll(async () => {
     await testEnvironment.shutdown();
+  });
+
+  test('the provider reports the balance a call minted, at the block of that call', async () => {
+    const atMint = { type: 'blockHeight', blockHeight: mintTx.blockHeight } as const;
+    const minted = [{ balance: MINT_AMOUNT, tokenType: Buffer.from(mintedTokenColor).toString('hex') }];
+
+    const queried = await providers.publicDataProvider.queryUnshieldedBalances(contractAddress, atMint);
+    const streamed = await firstValueFrom(
+      providers.publicDataProvider
+        .unshieldedBalancesObservable(contractAddress, atMint)
+        .pipe(timeout({ first: BALANCE_WAIT_MS }))
+    );
+
+    expect(queried).toEqual(minted);
+    expect(streamed).toEqual({ value: minted, blockHeight: mintTx.blockHeight, blockHash: mintTx.blockHash });
   });
 
   test('should get balance of tokens - 0 value', async () => {

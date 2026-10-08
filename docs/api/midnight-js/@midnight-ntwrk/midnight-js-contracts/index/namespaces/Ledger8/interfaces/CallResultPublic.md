@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
 
 ***
 
@@ -23,7 +23,7 @@ second absence from joining it unnoticed.
 
 ### nextContractState
 
-> `readonly` **nextContractState**: `DownConvertedState`
+> `readonly` **nextContractState**: `StateValue`
 
 The state the execution ENDED on, as a LIVE `onchain-runtime-v3` handle
 rather than as bytes.

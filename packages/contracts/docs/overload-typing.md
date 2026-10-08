@@ -7,7 +7,7 @@ title: OverloadTyping
 The four entry points of this package — `deployContract`,
 `findDeployedContract`, `submitCallTx` and the call-transaction builder — accept
 contracts from two Compact toolchains. The current one
-(`compact-runtime@0.19`) hands over a `CompiledContract` container; the retained
+(`compact-runtime@0.20`) hands over a `CompiledContract` container; the retained
 one (`compact-runtime@0.16`) hands over a raw contract instance. Both are
 accepted through an ADDITIVE overload: a retained-era arm is declared alongside
 the current-era arms rather than replacing them.

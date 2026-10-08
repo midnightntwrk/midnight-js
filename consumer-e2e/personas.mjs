@@ -20,7 +20,7 @@
 // A retained-era dApp pins `@midnight-ntwrk/compact-runtime@0.16.0`, because the
 // contract module its pre-fork toolchain emitted calls
 // `checkRuntimeVersion('0.16.0')` and throws otherwise. The framework it installs
-// pins 0.19 for itself. Both majors therefore have to be resolvable in one
+// pins the current line for itself. Both therefore have to be resolvable in one
 // install -- which a hoisted linker cannot do and an isolated one can. That is
 // the whole point of the smoke, and it is why the monorepo cannot show it: there
 // is only ever one copy in the workspace tree.
@@ -232,8 +232,8 @@ export const contractPackageManifest = (contract) => ({
   // state value must mint it in THAT instance: `ledger()` checks its argument
   // with `instanceof`, and a handle from any other copy is refused. Resolving
   // the runtime from outside cannot answer which copy the wrapper got, so the
-  // wrapper hands it over instead -- the same injection `protocol` does with
-  // `Ledger8CompactRuntime`.
+  // wrapper hands it over instead -- the same reason `protocol` takes its
+  // retained-era values from one module rather than assembling them.
   exports: {
     '.': './contract/index.js',
     './contract/*': './contract/*',

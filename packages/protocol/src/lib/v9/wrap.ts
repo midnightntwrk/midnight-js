@@ -17,7 +17,7 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 
 import { assembleCallPrototype } from '../shared/assemble-call';
 import type { LedgerParametersOption } from '../shared/compose-types';
-import type { TranscriptPojo } from '../v8/execute';
+import type { TranscriptPojo } from '../v8/executable';
 
 /**
  * Everything {@link wrapKeepStateCall} needs to wrap one keep-state call.
@@ -40,12 +40,12 @@ export interface WrapKeepStateCallOptions {
    * is whatever this supplies. Defaulting it would make this function the silent
    * wrong-cost-model path the option exists to close. See {@link LedgerParametersOption}.
    */
-  readonly ledgerParameters: LedgerParametersOption;
+  readonly ledgerParametersBytes: LedgerParametersOption;
 }
 
 /**
- * Wraps a {@link TranscriptPojo} — the output of {@link executeCircuit}
- * (`./execute.ts`) — into a v9-native `ContractCallPrototype`, ready for
+ * Wraps a {@link TranscriptPojo} — the output of {@link runRetainedCircuit}
+ * (`../v8/executable.ts`) — into a v9-native `ContractCallPrototype`, ready for
  * `Intent.new(ttl).addCall(...)`, via {@link assembleCallPrototype}
  * (`./assemble-call.ts`) against the ledger-v9 module.
  *
@@ -64,7 +64,7 @@ export interface WrapKeepStateCallOptions {
  * @see {@link RetainedEraExecution}
  */
 export const wrapKeepStateCall = (options: WrapKeepStateCallOptions): ledgerV9.ContractCallPrototype => {
-  const { transcript, contractAddress, contractState, ledgerParameters } = options;
+  const { transcript, contractAddress, contractState, ledgerParametersBytes } = options;
   const { prototype } = assembleCallPrototype(ledgerV9, {
     circuitId: transcript.circuitId,
     contractAddress,
@@ -72,7 +72,7 @@ export const wrapKeepStateCall = (options: WrapKeepStateCallOptions): ledgerV9.C
     // op sequence as `'unpartitioned'` -- see RetainedEraExecution.
     transcript: {
       kind: 'unpartitioned',
-      preState: transcript.preContractState.data.state.encode(),
+      preState: transcript.preContractState.encode(),
       publicTranscript: transcript.publicTranscript,
       partitionContext: transcript.partitionContext
     },
@@ -80,7 +80,7 @@ export const wrapKeepStateCall = (options: WrapKeepStateCallOptions): ledgerV9.C
     input: transcript.input,
     output: transcript.output,
     operations: contractState,
-    ledgerParameters,
+    ledgerParametersBytes,
     stage: 'wrap-call',
     version: 'v9'
   });

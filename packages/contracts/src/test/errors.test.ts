@@ -36,6 +36,7 @@ import {
   Ledger8DeployNotStoredError,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
+  Ledger8RecipientUnmappableError,
   Ledger8SigningKeyUnusableError,
   TxFailedError
 } from '../errors';
@@ -193,6 +194,15 @@ describe('the incomplete private-state configuration refusals', () => {
       "'initialPrivateState' was defined for contract find while 'privateStateId' was undefined"
     );
     expect(deployRefusal.message).not.toBe(findRefusal.message);
+  });
+
+  it('names which half of the deploy pairing is missing', () => {
+    expect(new IncompleteDeployContractPrivateStateConfig('privateStateId').message).toBe(
+      "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined"
+    );
+    expect(new IncompleteDeployContractPrivateStateConfig('initialPrivateState').message).toBe(
+      "'privateStateId' was defined for contract deploy while 'initialPrivateState' was omitted"
+    );
   });
 
   it('carries its own name, so a handler that discriminates by name can tell the two apart', () => {
@@ -393,5 +403,30 @@ describe('Ledger8SigningKeyUnusableError', () => {
     // copy -- and an error message reaches logs and issue trackers.
     expect(error.message).not.toContain(supplied);
     expect('signingKey' in error).toBe(false);
+  });
+});
+
+describe('Ledger8RecipientUnmappableError', () => {
+  const RECIPIENT = 'be'.repeat(32);
+
+  it('tells a CALL to add the recipient to the mappings on its call options, and says nothing about deploys', () => {
+    const error = new Ledger8RecipientUnmappableError('mintAndSendShielded', RECIPIENT);
+
+    expect(error.circuitId).toBe('mintAndSendShielded');
+    expect(error.recipientCoinPublicKey).toBe(RECIPIENT);
+    expect(error.message).toContain("Circuit 'mintAndSendShielded'");
+    expect(error.message).toContain(RECIPIENT);
+    expect(error.message).toMatch(/to `additionalCoinEncPublicKeyMappings` on the call options/);
+    expect(error.message).not.toMatch(/deploy/);
+  });
+
+  it('tells a DEPLOY its options take no mappings, and does not send it after the call options', () => {
+    const error = new Ledger8RecipientUnmappableError('initialState', RECIPIENT);
+
+    expect(error.circuitId).toBe('initialState');
+    expect(error.message).toContain(RECIPIENT);
+    expect(error.message).toMatch(/constructor/);
+    expect(error.message).toMatch(/retained-era deploy takes no `additionalCoinEncPublicKeyMappings`/);
+    expect(error.message).not.toMatch(/on the call options/);
   });
 });

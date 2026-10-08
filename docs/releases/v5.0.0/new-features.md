@@ -24,7 +24,13 @@ import type { BlockInfo } from '@midnight-ntwrk/midnight-js-types';
 
 const latest: BlockInfo | null = await publicDataProvider.queryBlock();                        // latest block
 const at = await publicDataProvider.queryBlock({ type: 'blockHeight', blockHeight: 12_345 });  // by height
-// or { type: 'blockHash', blockHash }. BlockInfo = { hash: string; height: number }; null if no match.
+// or { type: 'blockHash', blockHash }. Null if no match.
+// BlockInfo = { hash: string; height: number; protocolVersion: number }.
+// `protocolVersion` dates the block to a ledger era; resolve it with
+// `versionOfRecord(block)` from `@midnight-ntwrk/midnight-js-protocol`.
+// It is the era of *that* block, so a block read at an explicit offset from before a hard fork keeps
+// reporting the era it was produced in, unlike `queryLatestProtocolVersion()`, which always reports
+// the head. (For `queryBlock()` with no offset the two agree, by definition.)
 ```
 
 ---

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -7,6 +7,18 @@
 # contracts
 
 ## References
+
+### AnyEraContractState
+
+Re-exports [AnyEraContractState](../../contracts/interfaces/AnyEraContractState.md)
+
+***
+
+### AnyEraContractStateReadSurface
+
+Re-exports [AnyEraContractStateReadSurface](../../contracts/type-aliases/AnyEraContractStateReadSurface.md)
+
+***
 
 ### AnyEraFinalizedCallTxData
 
@@ -437,6 +449,30 @@ Re-exports [FindDeployedContractOptionsStorePrivateState](../../contracts/interf
 ### FoundContract
 
 Re-exports [FoundContract](../../contracts/interfaces/FoundContract.md)
+
+***
+
+### FoundDeployTxData
+
+Re-exports [FoundDeployTxData](../../contracts/interfaces/FoundDeployTxData.md)
+
+***
+
+### FoundDeployTxPublicData
+
+Re-exports [FoundDeployTxPublicData](../../contracts/type-aliases/FoundDeployTxPublicData.md)
+
+***
+
+### FoundDeployTxPublicDataV8
+
+Re-exports [FoundDeployTxPublicDataV8](../../contracts/interfaces/FoundDeployTxPublicDataV8.md)
+
+***
+
+### getAnyEraContractState
+
+Re-exports [getAnyEraContractState](../../contracts/variables/getAnyEraContractState.md)
 
 ***
 

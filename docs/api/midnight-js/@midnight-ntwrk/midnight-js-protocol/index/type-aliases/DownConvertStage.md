@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -11,6 +11,10 @@
 Which step of the down-convert pipeline a [DownConvertFailedError](../classes/DownConvertFailedError.md)
 came from. A closed union, so a consumer can `switch` on `stage`
 exhaustively.
+
+`'state down-convert'` is the structural round trip `lib/v8/executable.ts`
+runs before a circuit executes; the other two are the envelope reads in
+`lib/era/envelope.ts`.
 
 ## See
 

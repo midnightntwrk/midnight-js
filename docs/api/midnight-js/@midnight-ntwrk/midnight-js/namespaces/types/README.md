@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -170,9 +170,9 @@ Re-exports [createMidnightProvider](../../types/variables/createMidnightProvider
 
 ***
 
-### createMidnightProviderFromArms
+### createMidnightProviderFromHandlers
 
-Re-exports [createMidnightProviderFromArms](../../types/variables/createMidnightProviderFromArms.md)
+Re-exports [createMidnightProviderFromHandlers](../../types/variables/createMidnightProviderFromHandlers.md)
 
 ***
 
@@ -182,9 +182,15 @@ Re-exports [createProofProvider](../../types/variables/createProofProvider.md)
 
 ***
 
-### createProofProviderFromArms
+### createProofProviderForEras
 
-Re-exports [createProofProviderFromArms](../../types/variables/createProofProviderFromArms.md)
+Re-exports [createProofProviderForEras](../../types/variables/createProofProviderForEras.md)
+
+***
+
+### createProofProviderFromHandlers
+
+Re-exports [createProofProviderFromHandlers](../../types/variables/createProofProviderFromHandlers.md)
 
 ***
 
@@ -206,9 +212,9 @@ Re-exports [createWalletProvider](../../types/variables/createWalletProvider.md)
 
 ***
 
-### createWalletProviderFromArms
+### createWalletProviderFromHandlers
 
-Re-exports [createWalletProviderFromArms](../../types/variables/createWalletProviderFromArms.md)
+Re-exports [createWalletProviderFromHandlers](../../types/variables/createWalletProviderFromHandlers.md)
 
 ***
 
@@ -404,9 +410,9 @@ Re-exports [MidnightProvider](../../types/interfaces/MidnightProvider.md)
 
 ***
 
-### MidnightProviderArms
+### MidnightProviderHandlers
 
-Re-exports [MidnightProviderArms](../../types/interfaces/MidnightProviderArms.md)
+Re-exports [MidnightProviderHandlers](../../types/interfaces/MidnightProviderHandlers.md)
 
 ***
 
@@ -419,6 +425,18 @@ Re-exports [MidnightProviders](../../types/interfaces/MidnightProviders.md)
 ### narrowToEraArm
 
 Re-exports [narrowToEraArm](../../types/variables/narrowToEraArm.md)
+
+***
+
+### PositionedRecord
+
+Re-exports [PositionedRecord](../../types/type-aliases/PositionedRecord.md)
+
+***
+
+### PRIVATE\_STATE\_ROOT\_PATH
+
+Re-exports [PRIVATE_STATE_ROOT_PATH](../../types/variables/PRIVATE_STATE_ROOT_PATH.md)
 
 ***
 
@@ -458,15 +476,27 @@ Re-exports [PrivateStateProvider](../../types/interfaces/PrivateStateProvider.md
 
 ***
 
+### PrivateStateSerializationError
+
+Re-exports [PrivateStateSerializationError](../../types/classes/PrivateStateSerializationError.md)
+
+***
+
+### PrivateStateSerializationFailure
+
+Re-exports [PrivateStateSerializationFailure](../../types/type-aliases/PrivateStateSerializationFailure.md)
+
+***
+
 ### ProofProvider
 
 Re-exports [ProofProvider](../../types/interfaces/ProofProvider.md)
 
 ***
 
-### ProofProviderArms
+### ProofProviderHandlers
 
-Re-exports [ProofProviderArms](../../types/interfaces/ProofProviderArms.md)
+Re-exports [ProofProviderHandlers](../../types/interfaces/ProofProviderHandlers.md)
 
 ***
 
@@ -497,6 +527,12 @@ Re-exports [ProviderErrorCode](../../types/type-aliases/ProviderErrorCode.md)
 ### ProviderSeam
 
 Re-exports [ProviderSeam](../../types/type-aliases/ProviderSeam.md)
+
+***
+
+### ProvingProvidersByEra
+
+Re-exports [ProvingProvidersByEra](../../types/interfaces/ProvingProvidersByEra.md)
 
 ***
 
@@ -728,9 +764,9 @@ Re-exports [WalletProvider](../../types/interfaces/WalletProvider.md)
 
 ***
 
-### WalletProviderArms
+### WalletProviderHandlers
 
-Re-exports [WalletProviderArms](../../types/interfaces/WalletProviderArms.md)
+Re-exports [WalletProviderHandlers](../../types/interfaces/WalletProviderHandlers.md)
 
 ***
 

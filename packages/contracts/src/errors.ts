@@ -1019,20 +1019,23 @@ export class IncompleteCallTxPrivateStateConfig extends Error {
 }
 
 /**
- * An error indicating that an initial private state was specified for a contract deploy while a
- * private state ID was not. We can't store the initial private state if we don't have a private state ID,
- * and we need to let the user know that.
+ * An error indicating that a contract deploy named only one half of the private-state pairing:
+ * an initial private state with no private state ID to store it under, or a private state ID with
+ * no initial private state to store. The message names the missing half.
  *
- * Raised by the RETAINED-era deploy arm, which is its only throw site today. It stays on the flat
- * surface rather than under the `Ledger8` namespace because it is the deploy member of the
- * three-refusal family `IncompleteCallTxPrivateStateConfig` and
+ * Raised by `deployContract` (both eras) and `submitDeployTx`, before any provider is touched.
+ * It stays on the flat surface rather than under the `Ledger8` namespace because it is the deploy
+ * member of the three-refusal family `IncompleteCallTxPrivateStateConfig` and
  * {@link IncompleteFindContractPrivateStateConfig} belong to — one client-side rule per entry
  * point, and client-side storage is era-independent.
  */
 export class IncompleteDeployContractPrivateStateConfig extends Error {
-  constructor() {
+  constructor(missing: 'privateStateId' | 'initialPrivateState' = 'privateStateId') {
     super('Incorrect deploy contract configuration');
-    this.message = "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined";
+    this.message =
+      missing === 'privateStateId'
+        ? "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined"
+        : "'privateStateId' was defined for contract deploy while 'initialPrivateState' was omitted";
     this.name = 'IncompleteDeployContractPrivateStateConfig';
   }
 }
@@ -1315,35 +1318,45 @@ export class Ledger8AmbiguousEntryPointError extends Error {
 
 /**
  * An error indicating that a retained-era call would pay a shielded coin to a
- * recipient whose encryption public key this arm cannot resolve.
+ * user-owned recipient whose encryption public key it cannot resolve: not the
+ * calling wallet, not the burn address, and not a key in the caller's
+ * `additionalCoinEncPublicKeyMappings`. Raised by a retained-era deploy too,
+ * whose options carry no mappings, with `circuitId` set to `'initialState'`;
+ * the message then names the constructor and gives the deploy-specific advice.
  *
  * Raised BEFORE the offer is built. Without it the condition surfaced from
  * inside `createZswapOutput` as a bare `Error` naming neither the era nor the
- * circuit, and advising a `encryptionPublicKeyResolver` mapping that the
- * retained-era options carry no field for — advice a caller structurally could
- * not follow.
+ * circuit, and advising an `encryptionPublicKeyResolver` mapping the caller
+ * never handles directly.
  *
  * Refusal rather than a best effort is the only answer that cannot lose a coin:
  * encrypting the output to the caller's own key instead would compose, prove,
  * balance and submit, and leave the recipient owning a coin it could never
  * discover.
  *
- * @see {@link KeepStatePipeline} for why the retained arm resolves only the
- *      caller's own key and the burn address.
+ * @see {@link KeepStatePipeline} for how the retained arm resolves each
+ *      recipient's encryption key.
  */
+/** The entry-point name a retained-era deploy reports its constructor under. */
+export const LEDGER8_CONSTRUCTOR_ENTRY_POINT = 'initialState';
+
 export class Ledger8RecipientUnmappableError extends Error {
   constructor(
     readonly circuitId: string,
     readonly recipientCoinPublicKey: string
   ) {
+    const isConstructor = circuitId === LEDGER8_CONSTRUCTOR_ENTRY_POINT;
     super(
-      `Circuit '${circuitId}' pays a shielded coin to recipient '${recipientCoinPublicKey}', whose ` +
-        'encryption public key a retained-era call cannot resolve: this arm resolves the calling ' +
-        "wallet's own key and the burn address, and its options carry no field for additional " +
-        'recipient mappings. Refusing is deliberate - encrypting the coin to the caller\'s own key ' +
-        'would submit successfully and leave the recipient unable to discover it. Run this circuit ' +
-        'against a contract produced by the current toolchain, which accepts ' +
-        '`additionalCoinEncPublicKeyMappings`.'
+      `${isConstructor ? 'The constructor' : `Circuit '${circuitId}'`} pays a shielded coin to recipient ` +
+        `'${recipientCoinPublicKey}', whose encryption public key cannot be resolved: it is not the ` +
+        "calling wallet's own key, the burn address, or a mapped recipient. Refusing is deliberate - " +
+        "encrypting the coin to the caller's own key would submit successfully and leave the " +
+        'recipient unable to discover it. ' +
+        (isConstructor
+          ? 'A retained-era deploy takes no `additionalCoinEncPublicKeyMappings`, so its constructor ' +
+            'cannot pay a shielded coin to a third party.'
+          : "Add the recipient's coin public key and encryption public key to " +
+            '`additionalCoinEncPublicKeyMappings` on the call options.')
     );
     this.name = 'Ledger8RecipientUnmappableError';
   }

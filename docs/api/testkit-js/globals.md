@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v5.0.0-beta.8**](README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-rc.3**](README.md)
 
 ***
 
@@ -80,6 +80,8 @@
 - [getWalletStateFilename](functions/getWalletStateFilename.md)
 - [initializeMidnightProviders](functions/initializeMidnightProviders.md)
 - [inMemoryPrivateStateProvider](functions/inMemoryPrivateStateProvider.md)
+- [redactedJson](functions/redactedJson.md)
+- [redactUrl](functions/redactUrl.md)
 - [setContainersConfiguration](functions/setContainersConfiguration.md)
 - [stateValueEqual](functions/stateValueEqual.md)
 - [syncWallet](functions/syncWallet.md)

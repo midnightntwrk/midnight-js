@@ -32,14 +32,22 @@
  */
 
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type { DownConvertedState, Ledger8SigningKey, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import type {
+  Ledger8SigningKey,
+  LedgerEra
+} from '@midnight-ntwrk/midnight-js-protocol';
 import {
   type LedgerVersion,
   loadLedger8Engine,
   loadLedgerEra,
   UnknownLedgerVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
-import { Transaction, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import {
+  type CoinPublicKey,
+  type EncPublicKey,
+  Transaction,
+  type UnprovenTransaction
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   assertSeamsSupportEra,
   type MidnightProvider,
@@ -67,7 +75,6 @@ import {
   EraInvariantViolationError,
   type EraSeam,
   IncompleteCallTxPrivateStateConfig,
-  IncompleteDeployContractPrivateStateConfig,
   Ledger8CallTxFailedError,
   Ledger8DeployNotStoredError,
   Ledger8DeployTxFailedError,
@@ -75,6 +82,7 @@ import {
   Ledger8SeamFailedError,
   type SubmittedOperation
 } from '../errors';
+import type { Ledger8Contract } from '../ledger8-contract';
 import type {
   AnyLedger8CallTxOptions,
   AnyLedger8FinalizedCallTxData,
@@ -95,10 +103,10 @@ import {
   assertSnapshotVerifierKey,
   type Ledger8CallPipelineResult,
   type Ledger8ConstructedState,
-  type Ledger8ContractSlice,
   type Ledger8DeployPipelineResult,
   type Ledger8ExecutionEngine,
   readLedger8Snapshot,
+  type RetainedStateValue,
   runLedger8CallPipeline,
   runLedger8DeployPipeline
 } from './ledger8-pipeline';
@@ -160,7 +168,7 @@ export interface Ledger8RuntimeProviders extends TransactionSeams {
  */
 export interface Ledger8Runtime {
   readonly resolved: ResolvedOperationEra;
-  readonly engine: Ledger8ExecutionEngine<DownConvertedState>;
+  readonly engine: Ledger8ExecutionEngine<RetainedStateValue>;
   /**
    * The RETAINED era facade, which reads the contract's on-chain state.
    *
@@ -531,17 +539,18 @@ export const submitLedger8Tx = async (
 
 /** What a retained-era call arrived with. */
 export interface Ledger8CallRequest {
-  readonly contract: Ledger8ContractSlice;
+  readonly contract: Ledger8Contract;
   readonly contractAddress: string;
   readonly circuitId: string;
   readonly args: readonly unknown[];
   readonly privateState: unknown;
+  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
 }
 
 /** A composed and submitted retained-era call. */
 export interface Ledger8SubmittedCall {
   readonly txId: string;
-  readonly call: Ledger8CallPipelineResult<DownConvertedState>;
+  readonly call: Ledger8CallPipelineResult<RetainedStateValue>;
   /**
    * The era the network head was on when this call started.
    *
@@ -574,13 +583,15 @@ export interface Ledger8SubmittedCall {
  * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the fetched
  * envelope's era disagrees with the head.
  * @throws StateDecodeFailedError if the envelope will not decode on this era.
+ * @throws StateInconsistentError if the decoded state is internally inconsistent.
  * @throws Ledger8AmbiguousEntryPointError if the state names the circuit twice.
  * @throws BlankVerifierKeySlotError, VerifierKeyMismatchError from the
  * pre-proving key check.
  * @throws Ledger8ShieldedSpendUnsupportedError if the circuit spends a coin the
  * contract already held.
  * @throws Ledger8RecipientUnmappableError if a shielded output pays a recipient
- * this arm cannot resolve.
+ * that is not the calling wallet, the burn address, or a key in
+ * `additionalCoinEncPublicKeyMappings`.
  * @throws V8PayloadUnsupportedError if a provider does not serve the pre-fork arm.
  * @throws EraInvariantViolationError if a provider answers in the other era.
  * @throws Ledger8SeamFailedError if a provider rejects.
@@ -629,7 +640,8 @@ export const runLedger8Call = async (
     ttl: ttlOneHour(),
     encryptionPublicKey: createEncryptionPublicKeyResolver(
       coinPublicKey,
-      providers.walletProvider.getEncryptionPublicKey()
+      providers.walletProvider.getEncryptionPublicKey(),
+      request.additionalCoinEncPublicKeyMappings
     )
   });
 
@@ -645,7 +657,7 @@ export const runLedger8Call = async (
 
 /** What a retained-era deploy arrived with. */
 export interface Ledger8DeployRequest {
-  readonly contract: Ledger8ContractSlice;
+  readonly contract: Ledger8Contract;
   readonly args: readonly unknown[];
   readonly privateState: unknown;
   /**
@@ -715,7 +727,7 @@ export const runLedger8Deploy = async (
   // form rather than relying on the resolver normalizing again internally.
   const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId());
 
-  const deploy = runLedger8DeployPipeline({
+  const deploy = await runLedger8DeployPipeline({
     era: resolved.era,
     engine,
     contract: request.contract,
@@ -753,7 +765,7 @@ export const runLedger8Deploy = async (
 
 /** What attaching to an already-deployed retained-era contract arrived with. */
 export interface Ledger8FindRequest {
-  readonly contract: Ledger8ContractSlice;
+  readonly contract: Ledger8Contract;
   readonly contractAddress: string;
   /** Every entry point whose key is checked against the chain's slot. */
   readonly circuitIds: readonly string[];
@@ -783,6 +795,7 @@ export interface Ledger8FoundState {
  * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the fetched
  * envelope's era disagrees with the head.
  * @throws StateDecodeFailedError if the envelope will not decode on this era.
+ * @throws StateInconsistentError if the decoded state is internally inconsistent.
  * @throws Ledger8AmbiguousEntryPointError if the state names a circuit twice.
  * @throws BlankVerifierKeySlotError, VerifierKeyMismatchError if the chain's
  * slot is empty or holds different bytes.
@@ -993,11 +1006,12 @@ const readLedger8PrivateState = async (
 
 /** The options a retained-era call entry point received, in the shape this layer reads them. */
 export interface Ledger8CallEntryOptions {
-  readonly compiledContract: Ledger8ContractSlice;
+  readonly compiledContract: Ledger8Contract;
   readonly contractAddress: string;
   readonly circuitId: string;
   readonly args?: readonly unknown[];
   readonly privateStateId?: string;
+  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
 }
 
 /**
@@ -1029,7 +1043,8 @@ export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Led
   contractAddress: options.contractAddress,
   circuitId: options.circuitId,
   args: 'args' in options ? options.args : [],
-  privateStateId: 'privateStateId' in options ? options.privateStateId : undefined
+  privateStateId: 'privateStateId' in options ? options.privateStateId : undefined,
+  additionalCoinEncPublicKeyMappings: options.additionalCoinEncPublicKeyMappings
 });
 
 /**
@@ -1039,7 +1054,7 @@ export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Led
  * same call.
  */
 const toLedger8CallTxData = (
-  call: Ledger8CallPipelineResult<DownConvertedState>
+  call: Ledger8CallPipelineResult<RetainedStateValue>
 ): AnyLedger8UnsubmittedCallTxData => ({
   era: RETAINED_PIPELINE_ERA,
   public: {
@@ -1102,7 +1117,7 @@ const runLedger8CallEntry = async (
   // typo in the caller's own call.
   assertIsContractAddress(options.contractAddress);
   assertDefined(
-    Object.hasOwn(options.compiledContract.impureCircuits, options.circuitId) ? options.circuitId : undefined,
+    Object.hasOwn(options.compiledContract.provableCircuits, options.circuitId) ? options.circuitId : undefined,
     `Circuit '${options.circuitId}' is undefined`
   );
 
@@ -1120,7 +1135,8 @@ const runLedger8CallEntry = async (
     contractAddress: options.contractAddress,
     circuitId: options.circuitId,
     args: options.args ?? [],
-    privateState
+    privateState,
+    additionalCoinEncPublicKeyMappings: options.additionalCoinEncPublicKeyMappings
   });
 
   return {
@@ -1210,7 +1226,7 @@ export const submitLedger8CallTx = async (
 
 /** The options a retained-era deploy entry point received, in the shape this layer reads them. */
 export interface Ledger8DeployEntryOptions {
-  readonly compiledContract: Ledger8ContractSlice;
+  readonly compiledContract: Ledger8Contract;
   readonly args?: readonly unknown[];
   readonly privateStateId?: PrivateStateId;
   readonly initialPrivateState?: unknown;
@@ -1235,7 +1251,7 @@ export interface Ledger8DeployedState {
   readonly contractAddress: string;
   readonly deployTxData: VersionedFinalizedTxData;
   readonly signingKey: Ledger8SigningKey;
-  readonly initialState: Uint8Array;
+  readonly initialContractStateBytes: Uint8Array;
   readonly initialContractState: Ledger8ConstructedState['contractState'];
   /** The private state the CONSTRUCTOR produced. */
   readonly initialPrivateState: unknown;
@@ -1256,14 +1272,13 @@ export interface Ledger8DeployedState {
  * The verifier keys are fetched for EVERY entry point the artifact declares,
  * off the artifact rather than off any state.
  *
+ * The private-state pairing is NOT checked here: `deployContract`, the only
+ * caller, checks it before any provider is touched.
+ *
  * @param providers The provider set.
  * @param options The deployment the entry point received.
  * @returns The minted address, the finalized record, the signing key now stored
  * against that address, and everything the constructor produced.
- * @throws IncompleteDeployContractPrivateStateConfig if an `initialPrivateState`
- * is supplied with no `privateStateId` to store it under.
- * @throws Error if `privateStateId` is present with an undefined value, which is
- * a caller that believes it named an id.
  * @throws Ledger8DeployTxFailedError if the node recorded a non-success status.
  * @throws Ledger8DeployUnconfirmedError if the record cannot be read back and
  * attributed to the head at all, the record's era included.
@@ -1278,26 +1293,7 @@ export const submitLedger8DeployTx = async (
   providers: Ledger8DeployEntryProviders,
   options: Ledger8DeployEntryOptions
 ): Promise<Ledger8DeployedState> => {
-  // Before any provider is touched, and read off the KEY rather than the value,
-  // exactly as the attach arm reads it. `undefined` is a legitimate private
-  // state -- a contract that declares none stores exactly that -- but no id is a
-  // usable id: a caller that wrote `privateStateId: cfg.someId` with an
-  // undefined `someId` BELIEVES it named one, and reading that as "no id given"
-  // stores nothing and hands `callTx` an undefined id, so every later call
-  // proves against a state the contract never had and writes nothing back.
-  const namesPrivateStateId = 'privateStateId' in options;
-  const privateStateId = namesPrivateStateId ? options.privateStateId : undefined;
-  if (namesPrivateStateId) {
-    assertDefined(
-      privateStateId,
-      "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
-        'for a contract that stores no private state.'
-    );
-  } else if ('initialPrivateState' in options) {
-    // There is nowhere to put the state, so it would be silently dropped -- and
-    // a caller that supplied one believes it was stored.
-    throw new IncompleteDeployContractPrivateStateConfig();
-  }
+  const { privateStateId } = options;
 
   const { deploy, head } = await runLedger8Deploy(providers, {
     contract: options.compiledContract,
@@ -1306,7 +1302,7 @@ export const submitLedger8DeployTx = async (
     // Handed as a THUNK, so the fetch runs behind the era and seam gates rather
     // than ahead of them.
     resolveVerifierKeys: async () =>
-      new Map(await providers.zkConfigProvider.getVerifierKeys(Object.keys(options.compiledContract.impureCircuits))),
+      new Map(await providers.zkConfigProvider.getVerifierKeys(Object.keys(options.compiledContract.provableCircuits))),
     signingKey: options.signingKey
   });
 
@@ -1384,7 +1380,7 @@ export const submitLedger8DeployTx = async (
     contractAddress: deploy.contractAddress,
     deployTxData,
     signingKey: deploy.signingKey,
-    initialState: deploy.initialState,
+    initialContractStateBytes: deploy.initialContractStateBytes,
     initialContractState: deploy.initialContractState,
     initialPrivateState: deploy.nextPrivateState,
     initialZswapState: deploy.initialZswapState

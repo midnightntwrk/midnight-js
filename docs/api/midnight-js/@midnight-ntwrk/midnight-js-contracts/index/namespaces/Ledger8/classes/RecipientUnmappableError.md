@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
 
 ***
 
@@ -6,24 +6,22 @@
 
 # Class: RecipientUnmappableError
 
-An error indicating that a retained-era call would pay a shielded coin to a
-recipient whose encryption public key this arm cannot resolve.
+Everything the RETAINED era publishes, under one name.
 
-Raised BEFORE the offer is built. Without it the condition surfaced from
-inside `createZswapOutput` as a bare `Error` naming neither the era nor the
-circuit, and advising a `encryptionPublicKeyResolver` mapping that the
-retained-era options carry no field for — advice a caller structurally could
-not follow.
+The barrel re-exports this module as `Ledger8`, so a caller writes
+`Ledger8.FoundContract<C>` and `Ledger8.CallTxFailedError`. The era prefix is
+dropped inside, because the namespace already carries it -- so a declaration
+this reference calls `Ledger8X` is the member published as `Ledger8.X`.
 
-Refusal rather than a best effort is the only answer that cannot lose a coin:
-encrypting the output to the caller's own key instead would compose, prove,
-balance and submit, and leave the recipient owning a coin it could never
-discover.
+Membership is the retained era's own family: its contract and result types,
+its interface factory, and the refusals its pipeline raises. Names that serve
+BOTH eras stay on the flat surface, so a consumer that only receives results
+never imports the transitional half.
 
 ## See
 
-[KeepStatePipeline](../../../../documents/KeepStatePipeline.md) for why the retained arm resolves only the
-     caller's own key and the burn address.
+[RetainedEraNamespace](../../../../documents/RetainedEraNamespace.md) for what qualifies, what stays flat, and
+     how the surface is withdrawn.
 
 ## Extends
 

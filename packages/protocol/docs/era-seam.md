@@ -57,15 +57,15 @@ fork-crossing work:
 
 | Operation | Why it cannot sit on the era facade |
 |---|---|
-| `downConvertForExecution` | Down-converts a post-fork state for pre-fork execution. |
-| `executeCircuit` | Runs a pre-fork circuit. |
-| `executeConstructor` | Runs a pre-fork constructor. |
+| `executeCircuit` | Runs a pre-fork circuit, on a state either era's reader may have decoded. Asynchronous. |
+| `executeConstructor` | Runs a pre-fork constructor. Asynchronous. |
 | `wrapKeepStateCall` | Binds a pre-fork transcript natively onto v9. |
+| `reexpressOperationsForCurrentEra` | Re-expresses a retained contract's entry points as a current-era state. |
 
 `Ledger8Engine` is the public surface `createLedger8Engine` builds: the
-retained pre-fork EXECUTION capabilities, with the 0.16 runtime instance
-already captured in closure — no method there takes a runtime or module
-parameter.
+retained pre-fork EXECUTION capabilities. No method there takes a runtime or
+module parameter — the retained toolchain is reached by the execution layer
+itself rather than captured in closure when the engine is built.
 
 ## Why the engine does not acquire the v8 ledger module
 

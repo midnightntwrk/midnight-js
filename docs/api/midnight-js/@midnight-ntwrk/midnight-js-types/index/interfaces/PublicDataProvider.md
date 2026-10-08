@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -58,7 +58,7 @@ Optional stream start.
 
 ### contractStateObservable()
 
-> **contractStateObservable**(`address`, `config`): `Observable`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
+> **contractStateObservable**(`address`, `config`): `Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>\>
 
 Creates a stream of contract states. The observable emits a value every time a state is either
 created or updated at the given address.
@@ -80,7 +80,12 @@ The configuration for the observable.
 
 #### Returns
 
-`Observable`\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>
+`Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)\>\>
+
+One [PositionedRecord](../type-aliases/PositionedRecord.md) per value, carrying the block that
+  served it. Passing its `blockHeight` or `blockHash` back as the config
+  resumes the stream from that block; values from that block may be
+  delivered again.
 
 ***
 
@@ -329,9 +334,67 @@ The configuration of the query.
 
 ***
 
+### rawContractStateObservable()
+
+> **rawContractStateObservable**(`address`, `config`): `Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`RawContractState`](RawContractState.md)\>\>
+
+Creates a stream of contract states as the raw serialized bytes the network
+returned, without deserializing them, each together with the era its record
+is dated to. The observable emits a value every time a state is either
+created or updated at the given address.
+Waits indefinitely for matching data to appear.
+
+THE STREAMING COUNTERPART OF [queryRawContractState](#queryrawcontractstate), and the reason
+to prefer it over [contractStateObservable](#contractstateobservable) is the same: it is the
+contract-state stream that works across the ledger fork. An implementation
+that deserializes inside the stream can only do so with the eras its own
+runtime has, and a state from any other era then ENDS the subscription
+rather than skipping one emission — a contract deployed before a fork and
+not written to since serves exactly such a state for as long as it stays
+dormant. Here the era travels on the record instead.
+
+[RawContractState.version](RawContractState.md#version) DATES THE RECORD, it does not read the
+bytes — see that field's own documentation. A caller that must know which
+runtime WROTE the bytes reads the envelope off
+[RawContractState.raw](RawContractState.md#raw); the two can disagree, and where they can is
+stated on the field.
+
+[RawContractState.ledgerParameters](RawContractState.md#ledgerparameters) MAY BE ABSENT ON A STREAM even
+where the same implementation serves it on
+[queryRawContractState](#queryrawcontractstate). The parameters are a per-block blob, and a
+stream may have no cheap way to obtain one per emission; an implementation
+is free to refuse that cost. A caller that needs the parameters for a
+streamed state reads [queryRawContractState](#queryrawcontractstate) with
+`{ type: 'blockHash', blockHash }` from the same [PositionedRecord](../type-aliases/PositionedRecord.md).
+
+#### Parameters
+
+##### address
+
+`string`
+
+The address of the contract of interest.
+
+##### config
+
+[`ContractStateObservableConfig`](../type-aliases/ContractStateObservableConfig.md)
+
+The configuration for the observable.
+
+#### Returns
+
+`Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`RawContractState`](RawContractState.md)\>\>
+
+One [PositionedRecord](../type-aliases/PositionedRecord.md) per value, carrying the block that
+  served it. Passing its `blockHeight` or `blockHash` back as the config
+  resumes the stream from that block; values from that block may be
+  delivered again.
+
+***
+
 ### unshieldedBalancesObservable()
 
-> **unshieldedBalancesObservable**(`address`, `config`): `Observable`\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>
+> **unshieldedBalancesObservable**(`address`, `config`): `Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>\>
 
 Retrieves an observable that tracks the unshielded balances for a specific contract address.
 
@@ -351,9 +414,12 @@ The configuration object for observing contract state changes.
 
 #### Returns
 
-`Observable`\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>
+`Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>\>
 
-An observable that emits the unshielded balances for the provided address.
+One [PositionedRecord](../type-aliases/PositionedRecord.md) per balance change, carrying the block
+  that served it. Passing its `blockHeight` or `blockHash` back as the
+  config resumes the stream from that block; values from that block may be
+  delivered again.
 
 ***
 

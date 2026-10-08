@@ -18,6 +18,9 @@ import { resolve } from 'node:path';
 import ts from 'typescript';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import type { ComposeCallResultPojo, DeployResultPojo } from '../index';
+import type { Assert, MutuallyAssignable } from './type-assertions';
+
 const PACKAGE_ROOT = resolve(__dirname, '../..');
 
 const entryPath = (entryName: string): string => resolve(PACKAGE_ROOT, `src/${entryName}.ts`);
@@ -93,6 +96,11 @@ describe('Protocol type ACL', () => {
       // vocabulary does: both name parameters and results of `Ledger8Engine`
       // methods, which the barrel publishes.
       'ConstructorResultPojo',
+      // The balances a contract holds, published because they are a member of
+      // `ContractStatePojo` and a REQUIRED option of the engine's
+      // `executeCircuit`: a consumer driving the retained arm cannot name what
+      // it has to carry without this.
+      'ContractBalance',
       'ContractEntryPointPojo',
       'ContractStatePojo',
       // The current/retained split of `LedgerVersion`, published beside it:
@@ -100,26 +108,18 @@ describe('Protocol type ACL', () => {
       // writing for without these.
       'CurrentLedgerVersion',
       'DeployResultPojo',
-      'DownConvertedState',
       'DownConvertStage',
       'EncodedStateValue',
-      'ExecuteCircuitOptions',
-      'ExecuteConstructorOptions',
-      // Named by the state handles the results carry: `DownConvertedState.data`
-      // is a `Ledger8ChargedState` and `.data.state` a `Ledger8StateValue`, and
-      // neither was nameable outside the package that declares them.
-      'Ledger8ChargedState',
-      // Named by `ConstructorResultPojo.contractState`, which this barrel
-      // publishes: the state a retained constructor built, as the handle it is.
-      'Ledger8DeployableContractState',
+      // The retained era's execution surface: a consumer holding one needs to
+      // name it to annotate a variable or write a helper. Its option and result
+      // types are published beside it for the same reason.
       'Ledger8Engine',
       'Ledger8InstanceAxis',
-      // Named by `ExecuteConstructorOptions.signingKey` and reported back on
-      // `ConstructorResultPojo`. The retained era's signing key is a different
-      // shape from the current era's, so a consumer cannot name it by reusing
-      // the current-era one.
+      // Named by `RunRetainedConstructorOptions.signingKey` and reported back
+      // on `ConstructorResultPojo`. The retained era's signing key is a
+      // different shape from the current era's, so a consumer cannot name it by
+      // reusing the current-era one.
       'Ledger8SigningKey',
-      'Ledger8StateValue',
       'LedgerEra',
       'LedgerParametersOption',
       'LedgerVersion',
@@ -129,9 +129,13 @@ describe('Protocol type ACL', () => {
       'ProtocolV8',
       'ProtocolVersionSource',
       'ProtocolVersionUnknownReason',
+      'RetainedContract',
       'RetainedEraSubpath',
       'RetainedLedgerVersion',
+      'RunRetainedCircuitOptions',
+      'RunRetainedConstructorOptions',
       'TranscriptPojo',
+      'VerifierKeyReader',
       'VersionedRecord',
       'VersionResolutionPath',
       'WrapKeepStateCallOptions',
@@ -147,18 +151,33 @@ describe('Protocol type ACL', () => {
     // callable by a consumer that imports the engine through its own subpath.
     expect(engineTypeNames).toEqual([
       'ConstructorResultPojo',
+      // A contract state's balances, which a consumer reading one off the chain
+      // has to be able to name -- the same argument as `ContractEntryPointPojo`.
+      'ContractBalance',
       'ContractEntryPointPojo',
-      'DownConvertedState',
+      // The decoded contract state a consumer reads off the chain and hands
+      // to `executeCircuit`, primary state and balances together.
+      'ContractStatePojo',
       'EncodedStateValue',
-      'ExecuteCircuitOptions',
-      'ExecuteConstructorOptions',
-      'Ledger8ChargedState',
-      'Ledger8DeployableContractState',
       'Ledger8Engine',
       'Ledger8SigningKey',
-      'Ledger8StateValue',
+      // `RunRetainedCircuitOptions.contract` is one of these, so a consumer
+      // building the container cannot declare it without this name.
+      'RetainedContract',
+      'RunRetainedCircuitOptions',
+      'RunRetainedConstructorOptions',
       'TranscriptPojo',
+      // `runRetainedConstructor` TAKES one: deployment registers verifier keys,
+      // so a consumer has to be able to declare the reader it supplies.
+      'VerifierKeyReader',
       'WrapKeepStateCallOptions'
     ]);
   });
 });
+
+// The compose results are plain data with every serialized member named as bytes (ADR-0010). A member
+// added to either, such as a live handle, fails the build here.
+type _DeployResultMembers = Assert<
+  MutuallyAssignable<keyof DeployResultPojo, 'txBytes' | 'contractAddress' | 'initialContractStateBytes'>
+>;
+type _CallResultMembers = Assert<MutuallyAssignable<keyof ComposeCallResultPojo, 'txBytes' | 'partitions'>>;

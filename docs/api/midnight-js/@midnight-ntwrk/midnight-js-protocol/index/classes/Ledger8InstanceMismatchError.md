@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -6,9 +6,11 @@
 
 # Class: Ledger8InstanceMismatchError
 
-Thrown by `assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`)
-when the same-named WASM package resolved to two physically distinct copies
-in this process (a dual-instantiation).
+Raised when the same-named WASM package resolves to two physically distinct
+copies in this process (a dual-instantiation).
+
+See [Ledger8InstanceAxis](../type-aliases/Ledger8InstanceAxis.md) for why nothing in this package raises it any
+more, and what holds the invariant instead.
 
 Carries no `cause`: this is a direct reference-equality assertion failure,
 not a wrapped lower-level exception.

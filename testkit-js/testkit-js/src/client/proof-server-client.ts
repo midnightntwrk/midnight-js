@@ -16,7 +16,7 @@
 import axios, { type AxiosRequestConfig } from 'axios';
 import type { Logger } from 'pino';
 
-import { buildUrlWithPath } from '../utils';
+import { buildUrlWithPath, redactUrl } from '../utils';
 
 export class ProofServerClient {
   readonly proofServer: string;
@@ -40,7 +40,7 @@ export class ProofServerClient {
   async health() {
     const url = buildUrlWithPath(this.proofServer, '/health');
     const response = await axios.get(url, { timeout: 1000 });
-    this.logger.info(`Connected to proof server ${url}: ${JSON.stringify(response.data)}`);
+    this.logger.info(`Connected to proof server ${redactUrl(url)}: ${JSON.stringify(response.data)}`);
     return response;
   }
 
@@ -57,7 +57,7 @@ export class ProofServerClient {
   ) {
     const url = buildUrlWithPath(this.proofServer, '/prove-tx');
     const response = await axios.post(url, data, config);
-    this.logger.info(`Received data from proof server ${url}`);
+    this.logger.info(`Received data from proof server ${redactUrl(url)}`);
     return response;
   }
 }

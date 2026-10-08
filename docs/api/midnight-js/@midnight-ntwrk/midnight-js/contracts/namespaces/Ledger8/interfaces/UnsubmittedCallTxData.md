@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
 
 ***
 
@@ -26,7 +26,7 @@ for finalization cannot answer with.
 
 ### calls
 
-> `readonly` **calls**: readonly [`ContractCall`](ContractCall.md)\<`DownConvertedState`\>[]
+> `readonly` **calls**: readonly [`ContractCall`](ContractCall.md)\<`StateValue`\>[]
 
 Proof data for every contract call this circuit made, as the current era's
 `CallResult.calls` carries. Always exactly ONE entry, the root call: a

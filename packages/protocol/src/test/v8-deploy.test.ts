@@ -16,24 +16,16 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import type * as CompactContract from '@midnight-ntwrk/compact-js/effect/Contract';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
-import type { EncodedZswapLocalState, ZswapLocalState } from 'compact-runtime-ledger8';
+import type { EncodedZswapLocalState } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
 import { entryPointName } from '../lib/shared/verifier-keys';
-import {
-  type ComposeV8DeployOptions,
-  composeV8DeployTx,
-  executeConstructor,
-  type ExecuteConstructorOptions,
-  type Ledger8ConstructedContractState,
-  type Ledger8ConstructorContractLike,
-  type Ledger8ConstructorResult,
-  type Ledger8ConstructorRuntime,
-  type Ledger8SigningKey
-} from '../lib/v8/deploy';
+import { type ComposeV8DeployOptions, composeV8DeployTx } from '../lib/v8/deploy';
+import { runRetainedConstructor } from '../lib/v8/executable';
 import { V8_UNPROVEN_TX_TAG } from './fixtures';
 
 const NETWORK_ID = 'test-network';
@@ -45,8 +37,16 @@ const TTL = new Date(Date.now() + 3_600_000);
 
 const KEYS_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys');
 const REGISTERED_VERIFIER_KEY = new Uint8Array(readFileSync(resolve(KEYS_DIR, 'increment.verifier')));
+const OTHER_CONTRACT_VERIFIER_KEY = new Uint8Array(
+  readFileSync(
+    resolve(
+      __dirname,
+      '../../../../testkit-js/testkit-js-e2e/src/contract/compiled-retained/block-time/keys/testBlockTimeLt.verifier'
+    )
+  )
+);
 
-// Same redirect precedent as v8-execute.test.ts: the ported artifact's
+// Same redirect precedent as the retired v8-execute.test.ts: the ported artifact's
 // bare `@midnight-ntwrk/compact-runtime` import is scoped to this file's
 // module registry, so it never leaks into other suites. Vitest hoists
 // `vi.mock` out of any nesting, so it is written at top level to read the way
@@ -75,282 +75,6 @@ describe('entryPointName', () => {
   });
 });
 
-describe('executeConstructor (fake runtime — plumbing only, no WASM execution)', () => {
-  // A structural stand-in for the retained runtime's authority class: it
-  // declares no private members, so a plain class satisfies it. Only the
-  // constructor is injected, so the statics that class also declares are out
-  // of scope here.
-  class FakeMaintenanceAuthority {
-    // `counter` is OPTIONAL, defaulting to `0n`, because the retained runtime's own
-    // `ContractMaintenanceAuthority` declares it that way. A required parameter here is not
-    // merely stricter than the real class -- it makes this fake unassignable to the constructor
-    // signature the engine injects, which `yarn typecheck:tests` refuses even though vitest runs
-    // the suite green.
-    constructor(
-      readonly committee: string[],
-      readonly threshold: number,
-      readonly counter = 0n
-    ) {}
-
-    serialize(): Uint8Array {
-      return new Uint8Array();
-    }
-
-    toString(): string {
-      return `${this.threshold}-of-${this.committee.length}`;
-    }
-  }
-
-  const SAMPLED_SIGNING_KEY = 'sampled-by-the-runtime';
-  // A WELL-FORMED retained signing key: 32 bytes of hex, the shape
-  // `executeConstructor` now refuses anything but before it runs a constructor.
-  const CALLER_SIGNING_KEY = 'c5'.repeat(32);
-  const verifyingKeyOf = (signingKey: Ledger8SigningKey): string => `vk:${signingKey}`;
-
-  const encodedZswapLocalState: EncodedZswapLocalState = {
-    coinPublicKey: { bytes: new Uint8Array(32) },
-    currentIndex: 0n,
-    inputs: [],
-    outputs: []
-  };
-  const decodedZswapLocalState: ZswapLocalState = {
-    coinPublicKey: 'ca'.repeat(32),
-    currentIndex: 0n,
-    inputs: [],
-    outputs: []
-  };
-
-  // What the retained constructor itself leaves behind: an EMPTY committee
-  // with a threshold of one. Every fake state starts on it, so an
-  // `executeConstructor` that never assigned would be caught reading this
-  // back rather than reading `undefined`.
-  const unsatisfiableAuthority = (): FakeMaintenanceAuthority => new FakeMaintenanceAuthority([], 1, 0n);
-
-  it('builds the constructor context, invokes initialState with the given args, and packages a ConstructorResultPojo', () => {
-    const finalContractState: Ledger8ConstructedContractState = {
-      serialize: () => new Uint8Array([1, 2, 3]),
-      maintenanceAuthority: unsatisfiableAuthority()
-    };
-    let capturedPrivateState: unknown;
-    let capturedCoinPk: unknown;
-    let capturedArgs: unknown;
-    let capturedContext: unknown;
-    let capturedEncodedZswap: unknown;
-    let capturedVerifyingKeyInput: unknown;
-    let samples = 0;
-
-    const runtime: Ledger8ConstructorRuntime = {
-      createConstructorContext: (privateState, coinPk) => {
-        capturedPrivateState = privateState;
-        capturedCoinPk = coinPk;
-        return { marker: 'constructor-context' };
-      },
-      decodeZswapLocalState: (state) => {
-        capturedEncodedZswap = state;
-        return decodedZswapLocalState;
-      },
-      sampleSigningKey: () => {
-        samples += 1;
-        return SAMPLED_SIGNING_KEY;
-      },
-      signatureVerifyingKey: (signingKey) => {
-        capturedVerifyingKeyInput = signingKey;
-        return verifyingKeyOf(signingKey);
-      },
-      ContractMaintenanceAuthority: FakeMaintenanceAuthority
-    };
-    const contract: Ledger8ConstructorContractLike = {
-      initialState: (constructorContext, ...args): Ledger8ConstructorResult => {
-        capturedContext = constructorContext;
-        capturedArgs = args;
-        return {
-          currentContractState: finalContractState,
-          currentPrivateState: { count: 0 },
-          currentZswapLocalState: encodedZswapLocalState
-        };
-      }
-    };
-
-    const options: ExecuteConstructorOptions = {
-      contract,
-      args: ['seed'],
-      privateState: { initial: true },
-      coinPk: 'ca'.repeat(32),
-      signingKey: CALLER_SIGNING_KEY
-    };
-
-    const result = executeConstructor(options, runtime);
-
-    expect(result.contractState).toBe(finalContractState);
-    expect(result.privateState).toEqual({ count: 0 });
-    // The constructor's own Zswap local state, DECODED. A constructor that mints
-    // a coin puts it here, and the deploy that drops it composes a transaction
-    // the ledger cannot balance.
-    expect(capturedEncodedZswap).toBe(encodedZswapLocalState);
-    expect(result.zswapLocalState).toBe(decodedZswapLocalState);
-    expect(capturedPrivateState).toEqual({ initial: true });
-    expect(capturedCoinPk).toBe('ca'.repeat(32));
-    expect(capturedArgs).toEqual(['seed']);
-    expect(capturedContext).toEqual({ marker: 'constructor-context' });
-
-    // A supplied key is used as given and reported back unchanged, and nothing
-    // is sampled: sampling over a supplied key would put an authority on chain
-    // that the caller holds no key for.
-    expect(result.signingKey).toBe(CALLER_SIGNING_KEY);
-    expect(samples).toBe(0);
-    expect(capturedVerifyingKeyInput).toBe(CALLER_SIGNING_KEY);
-
-    const authority = finalContractState.maintenanceAuthority;
-    expect(authority).toBeInstanceOf(FakeMaintenanceAuthority);
-    expect(authority.committee).toEqual([verifyingKeyOf(CALLER_SIGNING_KEY)]);
-    expect(authority.threshold).toBe(1);
-    expect(authority.counter).toBe(0n);
-  });
-
-  it('samples a signing key when the caller supplies none, and builds the committee from the sampled key', () => {
-    const finalContractState: Ledger8ConstructedContractState = {
-      serialize: () => new Uint8Array([1, 2, 3]),
-      maintenanceAuthority: unsatisfiableAuthority()
-    };
-    let samples = 0;
-
-    const runtime: Ledger8ConstructorRuntime = {
-      createConstructorContext: () => ({ marker: 'constructor-context' }),
-      decodeZswapLocalState: () => decodedZswapLocalState,
-      sampleSigningKey: () => {
-        samples += 1;
-        return SAMPLED_SIGNING_KEY;
-      },
-      signatureVerifyingKey: verifyingKeyOf,
-      ContractMaintenanceAuthority: FakeMaintenanceAuthority
-    };
-    const contract: Ledger8ConstructorContractLike = {
-      initialState: (): Ledger8ConstructorResult => ({
-        currentContractState: finalContractState,
-        currentPrivateState: {},
-        currentZswapLocalState: encodedZswapLocalState
-      })
-    };
-
-    const result = executeConstructor({ contract, args: [], privateState: {}, coinPk: 'ca'.repeat(32) }, runtime);
-
-    expect(samples).toBe(1);
-    expect(result.signingKey).toBe(SAMPLED_SIGNING_KEY);
-    expect(finalContractState.maintenanceAuthority.committee).toEqual([verifyingKeyOf(SAMPLED_SIGNING_KEY)]);
-  });
-
-  // The retained runtime's own refusals name neither the option, the era, nor the caller: a short
-  // key reads back as `failed to fill whole buffer`, a non-hex one as
-  // `Invalid character 'z' at position 0`. Measured against the pinned runtime, a signing key is
-  // 32 bytes written as 64 hex characters.
-  it.each([
-    ['empty', ''],
-    ['not hex', 'z'.repeat(64)],
-    ['too short', 'a1'.repeat(31)],
-    ['too long', 'a1'.repeat(33)],
-    ['odd length', `${'a1'.repeat(31)}a`]
-  ])('refuses a signing key that is %s, by name and before the constructor runs', (_label, signingKey) => {
-    let constructorRuns = 0;
-    const runtime: Ledger8ConstructorRuntime = {
-      createConstructorContext: () => ({ marker: 'constructor-context' }),
-      decodeZswapLocalState: () => decodedZswapLocalState,
-      sampleSigningKey: () => SAMPLED_SIGNING_KEY,
-      signatureVerifyingKey: verifyingKeyOf,
-      ContractMaintenanceAuthority: FakeMaintenanceAuthority
-    };
-    const contract: Ledger8ConstructorContractLike = {
-      initialState: (): Ledger8ConstructorResult => {
-        constructorRuns += 1;
-        return {
-          currentContractState: { serialize: () => new Uint8Array(), maintenanceAuthority: unsatisfiableAuthority() },
-          currentPrivateState: {},
-          currentZswapLocalState: encodedZswapLocalState
-        };
-      }
-    };
-
-    let caught: unknown;
-    try {
-      executeConstructor({ contract, args: [], privateState: {}, coinPk: 'ca'.repeat(32), signingKey }, runtime);
-    } catch (error) {
-      caught = error;
-    }
-
-    expect(caught).toBeInstanceOf(ComposeOptionError);
-    expect((caught as ComposeOptionError).option).toBe('signingKey');
-    expect((caught as ComposeOptionError).version).toBe('v8');
-    expect((caught as ComposeOptionError).message).toContain('signingKey');
-    // Refused before the constructor is run, so nothing is executed on a key the authority could
-    // never have been built from.
-    expect(constructorRuns).toBe(0);
-  });
-
-  it('never renders the refused key, which is a secret', () => {
-    const runtime: Ledger8ConstructorRuntime = {
-      createConstructorContext: () => ({ marker: 'constructor-context' }),
-      decodeZswapLocalState: () => decodedZswapLocalState,
-      sampleSigningKey: () => SAMPLED_SIGNING_KEY,
-      signatureVerifyingKey: verifyingKeyOf,
-      ContractMaintenanceAuthority: FakeMaintenanceAuthority
-    };
-    const contract: Ledger8ConstructorContractLike = {
-      initialState: (): Ledger8ConstructorResult => ({
-        currentContractState: { serialize: () => new Uint8Array(), maintenanceAuthority: unsatisfiableAuthority() },
-        currentPrivateState: {},
-        currentZswapLocalState: encodedZswapLocalState
-      })
-    };
-    // A key that is malformed only by LENGTH, so its characters are the real thing: a message that
-    // echoed its input would put a live secret into whatever log or issue tracker the error
-    // reaches, and on the sampled path that is the only copy in existence.
-    const nearMiss = 'c5'.repeat(31);
-
-    let caught: unknown;
-    try {
-      executeConstructor(
-        { contract, args: [], privateState: {}, coinPk: 'ca'.repeat(32), signingKey: nearMiss },
-        runtime
-      );
-    } catch (error) {
-      caught = error;
-    }
-
-    expect(caught).toBeInstanceOf(ComposeOptionError);
-    expect((caught as ComposeOptionError).message).not.toContain(nearMiss.slice(0, 16));
-  });
-
-  it('accepts an UPPERCASE hex signing key, which the retained runtime accepts too', () => {
-    const finalContractState: Ledger8ConstructedContractState = {
-      serialize: () => new Uint8Array([1, 2, 3]),
-      maintenanceAuthority: unsatisfiableAuthority()
-    };
-    const runtime: Ledger8ConstructorRuntime = {
-      createConstructorContext: () => ({ marker: 'constructor-context' }),
-      decodeZswapLocalState: () => decodedZswapLocalState,
-      sampleSigningKey: () => SAMPLED_SIGNING_KEY,
-      signatureVerifyingKey: verifyingKeyOf,
-      ContractMaintenanceAuthority: FakeMaintenanceAuthority
-    };
-    const contract: Ledger8ConstructorContractLike = {
-      initialState: (): Ledger8ConstructorResult => ({
-        currentContractState: finalContractState,
-        currentPrivateState: {},
-        currentZswapLocalState: encodedZswapLocalState
-      })
-    };
-    const uppercase = 'AB'.repeat(32);
-
-    const result = executeConstructor(
-      { contract, args: [], privateState: {}, coinPk: 'ca'.repeat(32), signingKey: uppercase },
-      runtime
-    );
-
-    // A shape check tighter than the runtime's would refuse keys the chain accepts, which is a
-    // deployment path closed for no reason.
-    expect(result.signingKey).toBe(uppercase);
-  });
-});
-
 describe('executeConstructor against the ported spike counter-016 fixture (real compact-runtime@0.16)', () => {
   const FIXTURE_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/counter-016');
   const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
@@ -359,10 +83,10 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     readonly round: bigint;
   }
 
-  interface CompiledCounterContract extends Ledger8ConstructorContractLike {
+  interface CompiledCounterContract extends CompactContract.Contract<Record<string, never>> {
     initialState(constructorContext: unknown): {
       currentContractState: ocrt3.ContractState;
-      currentPrivateState: unknown;
+      currentPrivateState: Record<string, never>;
       // The real generated artifact returns three members; this declaration
       // named two until the third was read.
       currentZswapLocalState: EncodedZswapLocalState;
@@ -374,48 +98,48 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     readonly ledger: (state: ocrt3.StateValue | ocrt3.ChargedState) => CompiledCounterLedger;
   }
 
-  // The retained glue and `onchain-runtime-v3` resolve to ONE instance here,
-  // the same premise `createLedger8Engine` asserts before mixing them: the
-  // authority written with an `ocrt3` class lands on a state the glue built.
-  const realConstructorRuntime = async (): Promise<Ledger8ConstructorRuntime> => {
-    const ledger8Runtime = await import('compact-runtime-ledger8');
-    return {
-      createConstructorContext: ledger8Runtime.createConstructorContext,
-      decodeZswapLocalState: ledger8Runtime.decodeZswapLocalState,
-      sampleSigningKey: ocrt3.sampleSigningKey,
-      signatureVerifyingKey: ocrt3.signatureVerifyingKey,
-      ContractMaintenanceAuthority: ocrt3.ContractMaintenanceAuthority
-    };
-  };
+  // `initialize` registers a verifier key against every entry point the
+  // constructor declares, so unlike a circuit call it DOES read ZK
+  // configuration. The committed fixture key is served here.
+  const readFixtureVerifierKey = (circuitId: string): Promise<Uint8Array | undefined> =>
+    Promise.resolve(new Uint8Array(readFileSync(resolve(FIXTURE_DIR, 'compiled', 'keys', `${circuitId}.verifier`))));
 
-  it('runs the counter constructor, producing a contract state with round 0 and a blank increment operation slot', async () => {
+  it('runs the counter constructor, producing a contract state with round 0 and the increment key registered', async () => {
     const { Contract, ledger } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
 
     const initialPrivateState: Record<string, never> = {};
-    const contract = new Contract(initialPrivateState);
-    const runtime = await realConstructorRuntime();
+    const result = await runRetainedConstructor({
+      contract: new Contract({}),
+      args: [],
+      privateState: initialPrivateState,
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: readFixtureVerifierKey
+    });
 
-    const result = executeConstructor({ contract, args: [], privateState: initialPrivateState, coinPk: SAMPLE_COIN_PUBLIC_KEY }, runtime);
-
-    // Every assertion reads executeConstructor's OWN result. `ledger()` is the
+    // Every assertion reads runRetainedConstructor's OWN result. `ledger()` is the
     // contract's projector over a native onchain-runtime-v3 state, so the
     // round is read off the pre-fork state directly; crossing a
     // ledger-v8-bridged ChargedState through it would mix two WASM instances.
     const constructed = result.contractState;
     expect(constructed).toBeInstanceOf(ocrt3.ContractState);
     if (!(constructed instanceof ocrt3.ContractState)) {
-      throw new Error('executeConstructor did not return the pre-fork ContractState the fixture built');
+      throw new Error('runRetainedConstructor did not return the pre-fork ContractState the fixture built');
     }
     expect(ledger(constructed.data).round).toBe(0n);
     expect(result.privateState).toEqual(initialPrivateState);
 
-    // The premise the deploy leg is built on: a constructor declares its entry
-    // points but leaves every verifier key blank, which is why composeV8DeployTx
-    // requires a key for each one. If ledger-v8 ever reported a blank slot as
-    // something other than `undefined`, this is the test that would say so.
+    // A BEHAVIOUR CHANGE, recorded deliberately. The hand-written constructor
+    // left every verifier key blank and `composeV8DeployTx` was the only thing
+    // that ever filled one. compact-js's `initialize` registers each key as it
+    // builds the state, which is why this path takes a `verifierKeys` reader at
+    // all. `composeV8DeployTx` still writes the keys it is given -- so it
+    // overwrites rather than fills, and its refusal when a declared entry point
+    // has no key in the map is unaffected. Both are asserted below.
     const ledgerCS = LedgerV8.ContractState.deserialize(result.contractState.serialize());
     expect(ledgerCS.operations()).toEqual(['increment']);
-    expect(ledgerCS.operation('increment')?.verifierKey).toBeUndefined();
+    expect(ledgerCS.operation('increment')?.verifierKey).toEqual(
+      new Uint8Array(readFileSync(resolve(FIXTURE_DIR, 'compiled', 'keys', 'increment.verifier')))
+    );
   });
 
   // MEASURED, and load-bearing well outside this package: a caller of the
@@ -445,14 +169,16 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
   // be offering permanently unmaintainable deployments.
   it('sets the maintenance authority to the supplied signing key, and that authority survives into the composed deploy', async () => {
     const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
-    const contract = new Contract({});
-    const runtime = await realConstructorRuntime();
     const signingKey = ocrt3.sampleSigningKey();
 
-    const result = executeConstructor(
-      { contract, args: [], privateState: {}, coinPk: SAMPLE_COIN_PUBLIC_KEY, signingKey },
-      runtime
-    );
+    const result = await runRetainedConstructor({
+      contract: new Contract({}),
+      args: [],
+      privateState: {},
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      signingKey,
+      verifierKeys: readFixtureVerifierKey
+    });
     const constructedBytes = result.contractState.serialize();
 
     expect(result.signingKey).toBe(signingKey);
@@ -467,17 +193,66 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     // address from.
     const deployed = composeV8DeployTx(
       {
-        contractState: constructedBytes,
+        contractStateBytes: constructedBytes,
         verifierKeys: new Map([['increment', REGISTERED_VERIFIER_KEY]]),
         networkId: NETWORK_ID,
         ttl: TTL
       },
       LedgerV8
     );
-    const initial = LedgerV8.ContractState.deserialize(deployed.initialState).maintenanceAuthority;
+    const initial = LedgerV8.ContractState.deserialize(deployed.initialContractStateBytes).maintenanceAuthority;
     expect(initial.committee).toEqual([ocrt3.signatureVerifyingKey(signingKey)]);
     expect(initial.threshold).toBe(1);
     expect(initial.counter).toBe(0n);
+  });
+
+  it('composes a deploy whose initial state is byte-identical to the state the constructor built, given the same verifier keys', async () => {
+    const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
+    const verifierKey = new Uint8Array(readFileSync(resolve(FIXTURE_DIR, 'compiled', 'keys', 'increment.verifier')));
+    const result = await runRetainedConstructor({
+      contract: new Contract({}),
+      args: [],
+      privateState: {},
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: () => Promise.resolve(verifierKey)
+    });
+    const constructedBytes = result.contractState.serialize();
+
+    const deployed = composeV8DeployTx(
+      {
+        contractStateBytes: constructedBytes,
+        verifierKeys: new Map([['increment', verifierKey]]),
+        networkId: NETWORK_ID,
+        ttl: TTL
+      },
+      LedgerV8
+    );
+
+    expect(Buffer.from(deployed.initialContractStateBytes)).toEqual(Buffer.from(constructedBytes));
+  });
+
+  it('overwrites the key the constructor registered with the one the deploy is given', async () => {
+    const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
+    const result = await runRetainedConstructor({
+      contract: new Contract({}),
+      args: [],
+      privateState: {},
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: readFixtureVerifierKey
+    });
+
+    const deployed = composeV8DeployTx(
+      {
+        contractStateBytes: result.contractState.serialize(),
+        verifierKeys: new Map([['increment', OTHER_CONTRACT_VERIFIER_KEY]]),
+        networkId: NETWORK_ID,
+        ttl: TTL
+      },
+      LedgerV8
+    );
+
+    const registered = LedgerV8.ContractState.deserialize(deployed.initialContractStateBytes).operation('increment');
+    expect(Buffer.from(registered?.verifierKey ?? new Uint8Array())).toEqual(Buffer.from(OTHER_CONTRACT_VERIFIER_KEY));
   });
 
   // The sampled key is random, so only the RELATIONSHIP between the reported
@@ -487,23 +262,47 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
   // authority.
   it('samples a signing key when none is supplied, reports it, and builds the committee from that key', async () => {
     const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
-    const runtime = await realConstructorRuntime();
+    const request = {
+      contract: new Contract({}),
+      args: [],
+      privateState: {},
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      verifierKeys: readFixtureVerifierKey
+    };
 
-    const first = executeConstructor(
-      { contract: new Contract({}), args: [], privateState: {}, coinPk: SAMPLE_COIN_PUBLIC_KEY },
-      runtime
-    );
+    const first = await runRetainedConstructor(request);
     const firstBytes = first.contractState.serialize();
-    const second = executeConstructor(
-      { contract: new Contract({}), args: [], privateState: {}, coinPk: SAMPLE_COIN_PUBLIC_KEY },
-      runtime
-    );
+    const second = await runRetainedConstructor(request);
 
     expect(first.signingKey).not.toBe(second.signingKey);
     const authority = LedgerV8.ContractState.deserialize(firstBytes).maintenanceAuthority;
     expect(authority.committee).toEqual([ocrt3.signatureVerifyingKey(first.signingKey)]);
     expect(authority.threshold).toBe(1);
     expect(authority.counter).toBe(0n);
+  });
+
+  it('accepts an UPPERCASE hex signing key, which the retained runtime accepts too', async () => {
+    const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
+    const uppercase = 'AB'.repeat(32);
+
+    const result = await runRetainedConstructor({
+      contract: new Contract({}),
+      args: [],
+      privateState: {},
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      signingKey: uppercase,
+      verifierKeys: readFixtureVerifierKey
+    });
+
+    // A shape check tighter than the runtime's would refuse keys the chain
+    // accepts, which is a deployment path closed for no reason. Asserted
+    // through the authority rather than through the echoed key alone: an
+    // accepted key that the runtime then failed to build a committee from
+    // would satisfy the echo on its own.
+    expect(result.signingKey).toBe(uppercase);
+    expect(LedgerV8.ContractState.deserialize(result.contractState.serialize()).maintenanceAuthority.committee).toEqual(
+      [ocrt3.signatureVerifyingKey(uppercase)]
+    );
   });
 });
 
@@ -520,7 +319,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
     verifierKeys: ReadonlyMap<string, Uint8Array>,
     circuitIds: readonly string[] = ['increment']
   ): ComposeV8DeployOptions => ({
-    contractState: buildPreForkState(circuitIds).serialize(),
+    contractStateBytes: buildPreForkState(circuitIds).serialize(),
     verifierKeys,
     networkId: NETWORK_ID,
     ttl: TTL
@@ -545,7 +344,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
   };
 
   it('composes and serializes a v8-native deploy transaction, tag-prefixed exactly as ledger-v8 emits it', () => {
-    const { transaction: bytes } = composeV8DeployTx(
+    const { txBytes: bytes } = composeV8DeployTx(
       buildDeployOptions(new Map([['increment', REGISTERED_VERIFIER_KEY]])),
       LedgerV8
     );
@@ -556,7 +355,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
   });
 
   it('round-trips through the real v8 decoder: deserialize then re-serialize yields byte-identical output', () => {
-    const { transaction: bytes } = composeV8DeployTx(
+    const { txBytes: bytes } = composeV8DeployTx(
       buildDeployOptions(new Map([['increment', REGISTERED_VERIFIER_KEY]])),
       LedgerV8
     );
@@ -579,7 +378,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
       ['decrement', REGISTERED_VERIFIER_KEY]
     ]);
 
-    const { transaction: bytes, contractAddress, initialState } = composeV8DeployTx(
+    const { txBytes: bytes, contractAddress, initialContractStateBytes } = composeV8DeployTx(
       buildDeployOptions(verifierKeys, ['increment', 'decrement']),
       LedgerV8
     );
@@ -592,7 +391,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
     // transaction: a deploy mints a fresh nonce, so a caller cannot recompute
     // the address from the state it passed in.
     expect(contractAddress).toBe(deployedAddressOf(bytes));
-    expect(Buffer.from(initialState)).toEqual(Buffer.from(deployed.serialize()));
+    expect(Buffer.from(initialContractStateBytes)).toEqual(Buffer.from(deployed.serialize()));
   });
 
   it('throws ComposeFailedError (stage deploy-verifier-key) naming the declared circuit the key map does not cover', () => {
@@ -658,7 +457,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
 
     let caught: unknown;
     try {
-      composeV8DeployTx({ ...buildDeployOptions(new Map()), contractState: notAContractState }, LedgerV8);
+      composeV8DeployTx({ ...buildDeployOptions(new Map()), contractStateBytes: notAContractState }, LedgerV8);
     } catch (error) {
       caught = error;
     }
@@ -666,7 +465,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
     expect(caught).toBeInstanceOf(ComposeOptionError);
     const error = caught as ComposeOptionError;
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID);
-    expect(error.option).toBe('contractState');
+    expect(error.option).toBe('contractStateBytes');
     expect(error.cause).toBeDefined();
   });
 
@@ -727,7 +526,7 @@ describe('composeV8DeployTx against byte-array entry points', () => {
   };
 
   const deployOptions = (verifierKeys: ReadonlyMap<string, Uint8Array>): ComposeV8DeployOptions => ({
-    contractState: new ocrt3.ContractState().serialize(),
+    contractStateBytes: new ocrt3.ContractState().serialize(),
     verifierKeys,
     networkId: NETWORK_ID,
     ttl: TTL

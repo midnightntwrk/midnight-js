@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
 
 ***
 
@@ -38,6 +38,7 @@
 
 ## Interfaces
 
+- [AnyEraContractState](interfaces/AnyEraContractState.md)
 - [CallOptionsBase](interfaces/CallOptionsBase.md)
 - [CallOptionsProviderDataDependencies](interfaces/CallOptionsProviderDataDependencies.md)
 - [CallResult](interfaces/CallResult.md)
@@ -61,6 +62,8 @@
 - [FindDeployedContractOptionsExistingPrivateState](interfaces/FindDeployedContractOptionsExistingPrivateState.md)
 - [FindDeployedContractOptionsStorePrivateState](interfaces/FindDeployedContractOptionsStorePrivateState.md)
 - [FoundContract](interfaces/FoundContract.md)
+- [FoundDeployTxData](interfaces/FoundDeployTxData.md)
+- [FoundDeployTxPublicDataV8](interfaces/FoundDeployTxPublicDataV8.md)
 - [PublicContractStates](interfaces/PublicContractStates.md)
 - [ScopedTransactionOptions](interfaces/ScopedTransactionOptions.md)
 - [SubmittedCallTx](interfaces/SubmittedCallTx.md)
@@ -78,6 +81,7 @@
 
 ## Type Aliases
 
+- [AnyEraContractStateReadSurface](type-aliases/AnyEraContractStateReadSurface.md)
 - [AnyEraFinalizedCallTxData](type-aliases/AnyEraFinalizedCallTxData.md)
 - [AnyEraSubmittedCallTx](type-aliases/AnyEraSubmittedCallTx.md)
 - [CallOptions](type-aliases/CallOptions.md)
@@ -107,6 +111,7 @@
 - [EraArtifactMismatchReason](type-aliases/EraArtifactMismatchReason.md)
 - [EraSeam](type-aliases/EraSeam.md)
 - [FindDeployedContractOptions](type-aliases/FindDeployedContractOptions.md)
+- [FoundDeployTxPublicData](type-aliases/FoundDeployTxPublicData.md)
 - [PipelineEra](type-aliases/PipelineEra.md)
 - [RetainedPipelineEra](type-aliases/RetainedPipelineEra.md)
 - [StaleHeadOperationKind](type-aliases/StaleHeadOperationKind.md)
@@ -127,6 +132,7 @@
 - [createContractMaintenanceTxInterface](variables/createContractMaintenanceTxInterface.md)
 - [CURRENT\_PIPELINE\_ERA](variables/CURRENT_PIPELINE_ERA.md)
 - [DISPATCH\_BREADCRUMB\_MESSAGE](variables/DISPATCH_BREADCRUMB_MESSAGE.md)
+- [getAnyEraContractState](variables/getAnyEraContractState.md)
 - [getPublicStates](variables/getPublicStates.md)
 - [getStates](variables/getStates.md)
 - [getUnshieldedBalances](variables/getUnshieldedBalances.md)

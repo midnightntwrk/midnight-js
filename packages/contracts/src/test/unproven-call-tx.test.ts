@@ -14,13 +14,21 @@
  */
 
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { type ContractState, StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import {
+  type CircuitContext,
+  type ContractModuleProvider,
+  type ContractState,
+  type ContractStateProvider,
+  StateValue
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { makeCalleeStateResolver } from '../internal/utils';
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import { createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
+  createDefaultCircuit,
   createFailingCircuit,
   createMockCallOptions,
   createMockCallOptionsWithPrivateState,
@@ -49,6 +57,9 @@ vi.mock('../internal/utils', () => ({
     createUnprovenLedgerCallTx: vi.fn().mockReturnValue({ test: 'unproven-tx' }),
     createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
     encryptionPublicKeyResolverForZswapState: vi.fn().mockReturnValue(() => 'encrypted-key'),
+    // Both: the call path uses zswapCallsToNewCoins, and the deploy this file sets up with reaches
+    // zswapStateToNewCoins through unproven-deploy-tx.
+    zswapCallsToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }]),
     zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }]),
     makeCalleeStateResolver: vi.fn()
 }));
@@ -147,6 +158,66 @@ describe('unproven-call-tx', () => {
       // the handle's own encoding is the point: a second, independently
       // derived value could disagree with the state actually published.
       expect(result.public.nextContractStateEncoded).toEqual(result.public.nextContractState.encode());
+    });
+
+    const BLOCK_HASH = 'ab'.repeat(32);
+
+    const createContextRecordingCircuit = (seen: CircuitContext[]) => {
+      const circuit = createDefaultCircuit();
+      return vi.fn().mockImplementation((ctx: CircuitContext) => {
+        seen.push(ctx);
+        return circuit(ctx);
+      });
+    };
+
+    it('pins the call to the block without enabling callees when no module provider is given', async () => {
+      // Arrange
+      const seen: CircuitContext[] = [];
+      const options = createMockCallOptions({
+        compiledContract: createMockCompiledContract({ testCircuit: createContextRecordingCircuit(seen) }),
+        initialContractState: await getInitialContractState()
+      });
+
+      // Act
+      await createUnprovenCallTxFromInitialStates(createMockZKConfigProvider(), options, createMockEncryptionPublicKey(), {
+        publicDataProvider: createMockProviders().publicDataProvider,
+        blockHash: BLOCK_HASH
+      });
+
+      // Assert
+      expect(seen).toHaveLength(1);
+      expect(seen[0]!.callContext.parentBlockHash).toBe(BLOCK_HASH);
+      expect(seen[0]!.stateProvider).toBeUndefined();
+      expect(seen[0]!.moduleProvider).toBeUndefined();
+    });
+
+    it('hands the callee state and module providers to the runtime together when a module provider is given', async () => {
+      // Arrange
+      const seen: CircuitContext[] = [];
+      const stateProvider: ContractStateProvider = { getContractState: vi.fn() };
+      const moduleProvider: ContractModuleProvider = { resolve: vi.fn() };
+      vi.mocked(makeCalleeStateResolver).mockReturnValueOnce({
+        stateProvider,
+        resolvedStates: new Map(),
+        blockHash: BLOCK_HASH
+      });
+      const options = createMockCallOptions({
+        compiledContract: createMockCompiledContract({ testCircuit: createContextRecordingCircuit(seen) }),
+        initialContractState: await getInitialContractState()
+      });
+
+      // Act
+      await createUnprovenCallTxFromInitialStates(createMockZKConfigProvider(), options, createMockEncryptionPublicKey(), {
+        publicDataProvider: createMockProviders().publicDataProvider,
+        blockHash: BLOCK_HASH,
+        moduleProvider
+      });
+
+      // Assert
+      expect(seen).toHaveLength(1);
+      expect(seen[0]!.callContext.parentBlockHash).toBe(BLOCK_HASH);
+      expect(seen[0]!.stateProvider).toBe(stateProvider);
+      expect(seen[0]!.moduleProvider).toBe(moduleProvider);
     });
 
     it('should fail when circuit fails at runtime', async () => {

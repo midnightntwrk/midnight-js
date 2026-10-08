@@ -19,7 +19,7 @@ import type { CoinPublicKey, ContractAddress, EncPublicKey } from '@midnight-ntw
 import { type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type CallResult, type CircuitKey } from './call';
+import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
 import type {
   Ledger8CallTxOptions,
@@ -48,18 +48,8 @@ export type CircuitCallTxInterface<C extends Contract.Any> = {
 /**
  * Creates a {@link CallTxOptions} object from various data.
  *
- * `args` is indexed with {@link CircuitKey}-unbranded `PCK`, matching `call.ts`'s
- * `CallOptionsWithArguments`. This function is part of the published surface (`index.ts`), and a
- * CONSUMER instantiating `PCK` with a branded id -- what `getProvableCircuitIds()` hands back --
- * is who hits the degradation: `Contract.CircuitParameters` resolves a branded key to `unknown[]`
- * rather than the real tuple. Without the unbranding this parameter would accept any argument list
- * while the return type -- `CallTxOptions<C, PCK>`, which is `CallOptionsWithArguments`
- * underneath -- claims the real tuple: an unsound mismatch between what is checked and what is
- * returned.
- *
- * This package's own call site does NOT go through that path: `createCircuitCallTxInterface` below
- * instantiates `PCK` at the unbranded `Contract.ProvableCircuitId<C>` explicitly, as the comment
- * there says.
+ * `args` carries the circuit's real parameter tuple, indexed at `PCK` -- including the branded id
+ * `getProvableCircuitIds()` hands back, which `Contract.CircuitParameters` unbrands itself.
  *
  * `circuitId` is constrained by `PCK extends Contract.ProvableCircuitId<C>`, which is the
  * NAMESPACE member `keyof C['provableCircuits'] & string`. That `keyof` is what rejects a circuit
@@ -72,7 +62,7 @@ export const createCallTxOptions = <C extends Contract.Any, PCK extends Contract
   contractAddress: ContractAddress,
   privateStateId: PrivateStateId | undefined,
   additionalCoinEncPublicKeyMappings: ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined,
-  args: Contract.CircuitParameters<C, CircuitKey<PCK>>
+  args: Contract.CircuitParameters<C, PCK>
 ): CallTxOptions<C, PCK> => {
   const callOptionsBase = {
     additionalCoinEncPublicKeyMappings,
@@ -113,8 +103,6 @@ export const createCircuitCallTxInterface = <C extends Contract.Any>(
           contractAddress,
           privateStateId,
           txCtx?.getAdditionalMappings(),
-          // `Contract.ProvableCircuitId<C>` is already the unbranded `keyof ... & string`, so no
-          // `CircuitKey` here: it would be a no-op that reads as if unbranding were load-bearing.
           callArgs as Contract.CircuitParameters<C, Contract.ProvableCircuitId<C>>
         );
         return txCtx
@@ -174,7 +162,7 @@ export const createLedger8CircuitCallTxInterface = <C extends Ledger8Contract>(
   privateStateId?: PrivateStateId
 ): Ledger8CircuitCallTxInterface<C> => {
   assertIsContractAddress(contractAddress);
-  const circuitIds = Object.keys(compiledContract.impureCircuits) as Ledger8CircuitId<C>[];
+  const circuitIds = Object.keys(compiledContract.provableCircuits) as Ledger8CircuitId<C>[];
   return circuitIds.reduce(
     (acc, circuitId) => ({
       ...acc,

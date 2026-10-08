@@ -89,6 +89,7 @@ protocol errors reach a barrel consumer directly:
 | `ComposeFailedError` | `lib/shared/assemble-call.ts` and the era compose legs | `version`, `stage`, `circuitId` |
 | `ComposeOptionError` | `lib/shared/compose-options.ts` and the era adapt legs | `version`, `option` |
 | `StateDecodeFailedError` | `lib/shared/contract-state.ts` | `version` |
+| `StateInconsistentError` | `lib/shared/contract-state.ts` | `version` |
 | `UnknownLedgerVersionError` | `contracts/src/internal/era.ts`, `lib/era/load-era.ts` | `requestedVersion` |
 | `PayloadNotATransactionError` | `lib/prove`, as a `proveTx` rejection | none; caught, not constructed |
 
@@ -105,12 +106,14 @@ application code as a `proveTx` rejection out of `contracts.deployContract` or
 `submitCallTx`. Its constructor is private and its only public member is
 `code`, so it is published purely so a consumer can `instanceof` it.
 
-The remaining codes in the table have live throwers too, but deeper inside the
-v8 conversion pipeline; their classes stay behind until a consumer has a reason
-to branch on one. Note that the comment in `packages/utils/src/error-codes.ts`
-claiming `LEDGER8_INSTANCE_MISMATCH`, `DOWN_CONVERT_FAILED` and
-`MERKLE_NOT_REHASHED` have no thrower is stale — all three are thrown from
-`lib/v8/instance-guard.ts` and `lib/v8/down-convert.ts`.
+The remaining codes in the table differ. `DOWN_CONVERT_FAILED` has a live
+thrower — `decodeExecutableStateValue` in `lib/v8/executable.ts`, which refuses
+a state that does not decode or does not re-encode to its source.
+`LEDGER8_INSTANCE_MISMATCH` and `MERKLE_NOT_REHASHED` have none: the
+construction-time instance guard and the Merkle-rehash walk were retired with
+the hand-maintained execution layer, and `packages/protocol/src/errors.ts` says
+so on both classes. They stay published because a consumer may still switch on
+the code. `UNKNOWN_LEDGER8_AXIS` is in the same position.
 
 ## Which protocol entry points the barrel may reach for
 

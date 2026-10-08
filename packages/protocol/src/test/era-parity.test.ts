@@ -129,7 +129,7 @@ interface SegmentedOutputs {
 
 // Declared once against ledger-v9 and used on BOTH arms: `Transcript` and
 // `Effects` are structurally identical across the two eras (the drift gate at
-// the bottom of v8-down-convert.test.ts pins that), and `ComposeCallOptions`
+// the bottom of v8-executable.test.ts pins that), and `ComposeCallOptions`
 // declares this shape in the ledger-v9 algebra for exactly that reason.
 const payingTranscript = (payee: Payee, value: bigint): ledgerV9.Transcript<ledgerV9.AlignedValue> => ({
   gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },
@@ -320,9 +320,9 @@ const callOptionsFor = (version: LedgerVersion): ComposeCallOptions => ({
     {
       contractAddress: ocrt3.dummyContractAddress(),
       circuitId: 'increment',
-      contractState: FIXTURES[version].keyedContractState(),
+      contractStateBytes: FIXTURES[version].keyedContractState(),
       // Named explicitly: this test compares the two eras' assembly, not their cost models.
-      ledgerParameters: 'initial',
+      ledgerParametersBytes: 'initial',
       transcript: {
         kind: 'unpartitioned',
         preState: PRE_STATE,
@@ -339,7 +339,7 @@ const callOptionsFor = (version: LedgerVersion): ComposeCallOptions => ({
 });
 
 const deployOptionsFor = (version: LedgerVersion): ComposeDeployOptions => ({
-  contractState: FIXTURES[version].blankContractState(),
+  contractStateBytes: FIXTURES[version].blankContractState(),
   verifierKeys: new Map([['increment', VERIFIER_KEY]]),
   networkId: NETWORK_ID,
   ttl: ttl()
@@ -418,7 +418,7 @@ describe('the two ledger eras run the same scenario', () => {
       ]
     };
 
-    const shape = FIXTURES[version].readTransaction(era.composeCallTx(options).transaction);
+    const shape = FIXTURES[version].readTransaction(era.composeCallTx(options).txBytes);
 
     expect(shape.calls[0].claimedShieldedReceives).toEqual([received]);
   });
@@ -427,7 +427,7 @@ describe('the two ledger eras run the same scenario', () => {
     const era = await loadLedgerEra(version);
     const options = callOptionsFor(version);
 
-    const shape = FIXTURES[version].readTransaction(era.composeCallTx(options).transaction);
+    const shape = FIXTURES[version].readTransaction(era.composeCallTx(options).txBytes);
 
     expect(shape.intents).toBe(1);
     expect(shape.calls).toHaveLength(1);
@@ -448,12 +448,12 @@ describe('the two ledger eras run the same scenario', () => {
     const payee = FIXTURES[version].samplePayee();
     const options = callOptionsFor(version);
 
-    const { transaction } = era.composeCallTx({
+    const { txBytes } = era.composeCallTx({
       ...options,
       calls: [{ ...options.calls[0], transcript: payingTranscriptSource(payee) }]
     });
 
-    const outputs = FIXTURES[version].readUnshieldedOutputs(transaction);
+    const outputs = FIXTURES[version].readUnshieldedOutputs(txBytes);
     expect(outputs.guaranteed).toEqual([{ value: GUARANTEED_PAYOUT, owner: payee.owner, type: payee.token }]);
     expect(outputs.fallible).toEqual([{ value: FALLIBLE_PAYOUT, owner: payee.owner, type: payee.token }]);
   });
@@ -532,7 +532,7 @@ describe('the two ledger eras run the same scenario', () => {
 
     const result = era.composeDeployTx(deployOptionsFor(version));
 
-    const shape = FIXTURES[version].readTransaction(result.transaction);
+    const shape = FIXTURES[version].readTransaction(result.txBytes);
     expect(shape.intents).toBe(1);
     expect(shape.calls).toEqual([]);
     expect(shape.deployAddresses).toEqual([result.contractAddress]);
@@ -588,19 +588,19 @@ describe('the two ledger eras run the same scenario', () => {
     const era = await loadLedgerEra(version);
     const fixture = FIXTURES[version];
 
-    const { transaction } = era.composeCallTx({
+    const { txBytes } = era.composeCallTx({
       ...callOptionsFor(version),
-      zswapOffer: () => ({ guaranteed: fixture.sampleZswapOffer(), fallible: fixture.sampleZswapOffer() })
+      zswapOffer: () => ({ guaranteedBytes: fixture.sampleZswapOffer(), fallibleBytes: fixture.sampleZswapOffer() })
     });
 
-    expect(fixture.readZswapOutputCounts(transaction)).toEqual({ guaranteed: 1, fallible: 1 });
+    expect(fixture.readZswapOutputCounts(txBytes)).toEqual({ guaranteed: 1, fallible: 1 });
   });
 
   it.each(ERAS)('refuses unreadable Zswap offer bytes with the same coded error on %s', async (version) => {
     const era = await loadLedgerEra(version);
 
     expect(() =>
-      era.composeCallTx({ ...callOptionsFor(version), zswapOffer: () => ({ guaranteed: new Uint8Array([1, 2, 3]) }) })
+      era.composeCallTx({ ...callOptionsFor(version), zswapOffer: () => ({ guaranteedBytes: new Uint8Array([1, 2, 3]) }) })
     ).toThrowError(
       expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'zswapOffer', version })
     );
@@ -623,7 +623,7 @@ describe('the two ledger eras run the same scenario', () => {
         calls: [
           { ...options.calls[0], transcript: unpayableTranscriptSource(payee, { tag: 'shielded', raw: payee.token }) }
         ],
-        zswapOffer: () => ({ guaranteed: new Uint8Array([1, 2, 3]) })
+        zswapOffer: () => ({ guaranteedBytes: new Uint8Array([1, 2, 3]) })
       })
     ).toThrowError(
       expect.objectContaining({
@@ -648,7 +648,7 @@ describe('the two ledger eras run the same scenario', () => {
       era.composeCallTx({
         ...callOptionsFor(version),
         networkId: '',
-        zswapOffer: () => ({ guaranteed: new Uint8Array([0xff, 0xff]) })
+        zswapOffer: () => ({ guaranteedBytes: new Uint8Array([0xff, 0xff]) })
       })
     ).toThrowError(
       expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'networkId', version })

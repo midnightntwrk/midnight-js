@@ -22,6 +22,7 @@ import {
   type ContractState,
   emptyZswapLocalState,
   finalizeCallProofData,  type Op,
+  QueryContext,
   sampleSigningKey,
   type SigningKey,
   StateValue,
@@ -57,6 +58,7 @@ import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
   type FinalizedTxData,
+  type FinalizedTxDataV8,
   type PrivateStateId,
   type ProverKey,
   SucceedEntirely,
@@ -273,7 +275,10 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
   publicDataProvider: {
     watchForDeployTxData: vi.fn(),
     queryDeployContractState: vi.fn(),
-    queryBlock: vi.fn().mockResolvedValue({ hash: '00'.repeat(32), height: 0 }),
+    // The mocked chain has not forked, so the block carries the same era as the head.
+    queryBlock: vi
+      .fn()
+      .mockResolvedValue({ hash: '00'.repeat(32), height: 0, protocolVersion: MOCK_HEAD_PROTOCOL_VERSION }),
     queryContractState: vi.fn(),
     queryZSwapAndContractState: vi.fn(),
     queryUnshieldedBalances: vi.fn(),
@@ -288,7 +293,8 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
     // of these mocks assume; the raw-state read reports "no state at this
     // address" until a test overrides it.
     queryLatestProtocolVersion: vi.fn().mockResolvedValue(MOCK_HEAD_PROTOCOL_VERSION),
-    queryRawContractState: vi.fn().mockResolvedValue(null)
+    queryRawContractState: vi.fn().mockResolvedValue(null),
+    rawContractStateObservable: vi.fn()
   },
   privateStateProvider: {
     setContractAddress: vi.fn(),
@@ -309,7 +315,7 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
     // The CURRENT-era value, because this is the current-era provider set. A retained value here
     // would be read by nothing today and would silently route a regression into the retained
     // pipeline instead of failing at the era decision.
-    getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.19.0'),
+    getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.20.0'),
     getVerifierKeys: vi.fn(),
     getZKIR: vi.fn(),
     getProverKey: vi.fn(),
@@ -356,6 +362,14 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
   }
 });
 
+export const createMockFinalizedTxDataV8 = (status: TxStatus = SucceedEntirely): FinalizedTxDataV8 => ({
+  ...createMockFinalizedTxData(status),
+  version: 'v8',
+  tx: {} as FinalizedTxDataV8['tx'],
+  // A node 1.x protocolVersion, which the resolver in `midnight-js-protocol` maps to ledger v8.
+  protocolVersion: 1_000_000
+});
+
 export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDeployTxData<Contract.Any>> = {}): UnsubmittedDeployTxData<Contract.Any> => ({
   era: CURRENT_PIPELINE_ERA,
   public: {
@@ -372,6 +386,24 @@ export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDep
   ...overrides
 });
 
+/**
+ * The four values compact-js publishes alongside a call's partition
+ * (midnightntwrk/midnight-sdk#400).
+ *
+ * Read off a real `QueryContext` rather than restated as a literal: `CallContext`
+ * alone carries eight members, and a hand-written copy would silently stop
+ * matching the runtime's when either changes.
+ */
+const createMockPartitionInputs = (): ContractExecutable.ContractExecutable.CallPartitionInputs => {
+  const queryContext = new QueryContext(new ChargedState(StateValue.newNull()), createMockContractAddress());
+  return {
+    state: queryContext.state.state,
+    block: queryContext.block,
+    effects: queryContext.effects,
+    comIndices: queryContext.comIndices
+  };
+};
+
 export const createMockContractCall = (
   overrides: Partial<ContractExecutable.ContractExecutable.ContractCall> = {}
 ): ContractExecutable.ContractExecutable.ContractCall => ({
@@ -382,12 +414,14 @@ export const createMockContractCall = (
     contractState: StateValue.newNull(),
     publicTranscript: [] as Op<AlignedValue>[],
     partitionedTranscript: [undefined, undefined],
+    partitionInputs: createMockPartitionInputs(),
     ...overrides.public
   },
   private: {
     input: {} as AlignedValue,
     output: {} as AlignedValue,
     privateTranscriptOutputs: [] as AlignedValue[],
+    zswapLocalState: createMockZswapLocalState(),
     ...overrides.private
   },
   communicationCommitment: overrides.communicationCommitment ?? Option.none()

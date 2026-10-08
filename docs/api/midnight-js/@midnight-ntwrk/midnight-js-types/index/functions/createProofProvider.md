@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -12,10 +12,13 @@ Creates a [ProofProvider](../interfaces/ProofProvider.md) from a [ProvingProvide
 The returned provider proves transactions using the initial cost model.
 
 The returned provider serves the v9 arm only — `supportedEras` says so — and
-that is permanent rather than a gap: it lifts a v9-only `ProvingProvider`. It
-rejects a v8 payload with `V8PayloadUnsupportedError`, and an untagged one
-with `UntaggedPayloadError`. To serve a retained era as well, use
-[createProofProviderFromArms](createProofProviderFromArms.md).
+that is permanent rather than a gap: it lifts a single current-era
+`ProvingProvider`. It rejects a v8 payload with `V8PayloadUnsupportedError`,
+and an untagged one with `UntaggedPayloadError`. To serve a retained era as
+well, pass that era's own proving provider to
+[createProofProviderForEras](createProofProviderForEras.md), or, where the proving itself is not a
+`ProvingProvider` call, write the handlers directly with
+[createProofProviderFromHandlers](createProofProviderFromHandlers.md).
 
 ## Parameters
 

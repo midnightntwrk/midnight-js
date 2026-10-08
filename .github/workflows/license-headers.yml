@@ -50,6 +50,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "fix: add missing license headers"
+          signoff: true
           title: "Fix missing license headers"
           body: |
             This PR automatically fixes missing license headers in the codebase.

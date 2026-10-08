@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
 
 ***
 
@@ -18,7 +18,7 @@ pre-call pair, which the current era has no counterpart for.
 
 ### TState
 
-`TState` = `DownConvertedState`
+`TState` = `RetainedStateValue`
 
 See [Ledger8ContractCallPublic](ContractCallPublic.md).
 

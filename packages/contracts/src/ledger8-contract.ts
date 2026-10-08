@@ -17,7 +17,7 @@
  * The retained-era contract type family: the shape of a contract produced by
  * the PREVIOUS Compact toolchain (`compact-runtime@0.16`), which the current
  * entry points accept through an additive overload alongside the current
- * (`compact-runtime@0.19`) `CompiledContract` container.
+ * (`compact-runtime@0.20`) `CompiledContract` container.
  *
  * Every declaration here is hand-written. The retained toolchain DOES emit an
  * `index.d.ts`, but it describes one contract in terms of
@@ -42,16 +42,29 @@
 // changed its own. It reaches here through the protocol barrel, so this package still takes no
 // dependency on the retained runtime, type-only or otherwise.
 import type {
-  DownConvertedState,
+  ConstructorResultPojo,
   EncodedStateValue,
-  Ledger8DeployableContractState,
-  Ledger8SigningKey
+  Ledger8SigningKey,
+  TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
+
+/**
+ * The retained era's contract-state handle, and the state a retained-era
+ * constructor builds.
+ *
+ * Both are DERIVED from the engine's own results rather than restated: they are
+ * compact-js's ledger-8 types, and naming them structurally keeps this package
+ * free of any dependency on the retained runtime.
+ */
+type RetainedStateValue = TranscriptPojo['postContractState'];
+type RetainedConstructedState = Pick<ConstructorResultPojo['contractState'], 'serialize'>;
+
 import type {
   CommunicationCommitmentData,
   ContractAddress,
   ZswapLocalState
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
   CallResultPrivateBase,
   CallResultPublicBase,
@@ -195,8 +208,13 @@ export type Ledger8PrivateState<C extends Ledger8Contract> =
 
 /**
  * The name of a callable circuit on a retained-era contract.
+ *
+ * Keyed off `provableCircuits`, NOT `impureCircuits`: `provableCircuits` is the
+ * map compact-js indexes to run a circuit, and the one the deploy pre-check
+ * demands a verifier key for. Naming the other map lets an artifact whose two
+ * maps differ ask for a key the caller cannot name, which is unsatisfiable.
  */
-export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['impureCircuits'] & string;
+export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['provableCircuits'] & string;
 
 /**
  * The arguments a caller supplies for circuit `K` on a retained-era contract.
@@ -215,7 +233,7 @@ export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['impureCircuit
  *      `Parameters<...>`.
  */
 export type Ledger8CircuitParameters<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
-  Parameters<C['impureCircuits'][K]> extends [Ledger8CircuitContext, ...infer A] ? A : never[];
+  Parameters<C['provableCircuits'][K]> extends [Ledger8CircuitContext, ...infer A] ? A : never[];
 
 /**
  * The providers a retained-era call transaction needs.
@@ -249,6 +267,14 @@ export interface Ledger8CallTxTarget<C extends Ledger8Contract, K extends Ledger
    * The identifier of the circuit to call.
    */
   readonly circuitId: K;
+  /**
+   * An optional mapping of {@link CoinPublicKey} to {@link EncPublicKey} used to
+   * encrypt shielded coins the circuit pays to a recipient other than the
+   * calling wallet. A user-owned recipient that is neither the calling wallet,
+   * the burn address, nor a key in this map is refused with
+   * `Ledger8RecipientUnmappableError` before anything is proven.
+   */
+  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
 }
 
 /**
@@ -309,7 +335,7 @@ export type Ledger8CallTxOptions<C extends Ledger8Contract, K extends Ledger8Cir
  * has to check instead of one it cannot use.
  */
 export type Ledger8CircuitReturnType<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
-  ReturnType<C['impureCircuits'][K]> extends { readonly result: infer R } ? R : unknown;
+  ReturnType<C['provableCircuits'][K]> extends { readonly result: infer R } ? R : unknown;
 
 /**
  * The public, non-sensitive half of a retained-era circuit execution.
@@ -332,7 +358,7 @@ export interface Ledger8CallResultPublic extends CallResultPublicBase {
    * means nothing outside its module. Serialize it yourself if you need to
    * keep it; see ADR-0010.
    */
-  readonly nextContractState: DownConvertedState;
+  readonly nextContractState: RetainedStateValue;
   /**
    * The same state as an {@link EncodedStateValue}: the form that survives this
    * process, a `structuredClone`, a worker transfer and storage.
@@ -418,10 +444,10 @@ export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, K extends
  * the same bytes, and both carry an {@link EncodedStateValue} twin for
  * everything else.
  *
- * @typeParam TState - The down-converted state type; the framework's own
- * retained runtime fills it with {@link DownConvertedState}.
+ * @typeParam TState - The retained-era state type; the framework's own
+ * retained runtime fills it with compact-js's ledger-8 state handle.
  */
-export interface Ledger8ContractCallPublic<TState = DownConvertedState> extends CallResultPublicBase {
+export interface Ledger8ContractCallPublic<TState = RetainedStateValue> extends CallResultPublicBase {
   /**
    * The state this call ENDED on.
    *
@@ -438,17 +464,23 @@ export interface Ledger8ContractCallPublic<TState = DownConvertedState> extends 
    */
   readonly contractStateEncoded: EncodedStateValue;
   /**
-   * The state this call BOUND to: the down-converted handle the pipeline
+   * The state this call BOUND to: the retained-era handle the pipeline
    * executed against, forwarded rather than re-derived.
    *
    * Retained-era only. The current era publishes no pre-call state on a call
    * entry, so era-agnostic code must not reach for this member.
+   *
+   * Indistinguishable from {@link Ledger8ContractCallPublic.postContractState}
+   * BY TYPE: compact-js resolves the pre- and post-execution state to the same
+   * declaration, so swapping the two is not a compile error. Partitioning
+   * against the wrong one rejects a state the transcript's reads do not fit, or
+   * silently mis-charges one that merely differs in value.
    */
   readonly preContractState: TState;
   /**
    * The same pre-call state as an {@link EncodedStateValue} — this one IS the
-   * snapshot's own primary state, the value the handle was down-converted from,
-   * so it is forwarded rather than re-encoded.
+   * snapshot's own primary state, the value the handle was decoded from, so it
+   * is forwarded rather than re-encoded.
    */
   readonly preContractStateEncoded: EncodedStateValue;
 }
@@ -464,7 +496,7 @@ export interface Ledger8ContractCallPublic<TState = DownConvertedState> extends 
  *
  * @typeParam TState - See {@link Ledger8ContractCallPublic}.
  */
-export interface Ledger8ContractCall<TState = DownConvertedState> {
+export interface Ledger8ContractCall<TState = RetainedStateValue> {
   readonly contractAddress: ContractAddress;
   readonly circuitId: string;
   readonly public: Ledger8ContractCallPublic<TState>;
@@ -586,10 +618,10 @@ export interface Ledger8DeployContractOptionsBase<C extends Ledger8Contract>
  *
  * Both members together or neither: a state with no id has nowhere to go, and
  * an id with no state stores `undefined` under a name a later call will read
- * back. `IncompleteDeployContractPrivateStateConfig` reports the first pairing
- * at run time for a caller that reached it through an untyped route; the type
- * refuses both. The current era's `DeployContractOptionsWithPrivateState` is
- * the same shape for the same reason.
+ * back. The type refuses either half alone, and
+ * `IncompleteDeployContractPrivateStateConfig` refuses it at run time for a
+ * caller that reached it through an untyped route. The current era's
+ * `DeployContractOptionsWithPrivateState` is the same shape for the same reason.
  */
 export interface Ledger8DeployContractOptionsWithPrivateState<C extends Ledger8Contract>
   extends Ledger8DeployContractOptionsShared<C> {
@@ -729,8 +761,8 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
    * at the time — narrow it with `switch (deployTxData.version)`.
    *
    * SHAPED DIFFERENTLY from the current era's `FoundContract.deployTxData`,
-   * which is a `FinalizedDeployTxData` whose transaction id sits under
-   * `.public`. Here the record is the read surface's own
+   * which is a `FoundDeployTxData` whose record sits under `.public` and is
+   * tagged on `.public.version`. Here the record is the read surface's own
    * `VersionedFinalizedTxData`, so `txId`, `status` and the rest are top-level
    * members. Code written against one era does not read the other's record
    * unchanged.
@@ -762,13 +794,14 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
    *    under the same address in the same provider, or one whose value is not
    *    the shape a retained-era key has;
    * 3. the entry could not be READ at all, because `getSigningKey` rejected: a
-   *    wrong store password, a rotation-lock timeout, store I/O.
+   *    wrong store password, a rotation-lock timeout, store I/O, or an entry the
+   *    provider refuses as not a signing key.
    *
    * Neither 2 nor 3 fails the attach. Both are reported to the logger provider
    * as a DEBUG-level dispatch breadcrumb, which is the only place the three
    * cases are distinguishable.
    *
-   * The remedy for case 2 is the caller's either way: pass the retained-era key
+   * The remedy for case 2, and for a refused entry in case 3, is the caller's either way: pass the retained-era key
    * on {@link Ledger8FindDeployedContractOptions.signingKey}, which replaces the
    * entry, or remove the entry with
    * `privateStateProvider.removeSigningKey(address)` first.
@@ -783,12 +816,14 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
 /**
  * A retained-era contract deployed by the caller.
  *
- * It differs from {@link Ledger8FoundContract} in ONE thing: its
+ * It differs from {@link Ledger8FoundContract} in two ways. Its
  * {@link Ledger8DeployedContract.signingKey} is REQUIRED where the found
  * handle's may be `undefined`. The key itself is no longer something only a
  * deployer has -- the deploy stores it, and an attach through the same provider
  * reports it back -- so what a deploy guarantees is that there IS one, not that
- * nobody else could hold it.
+ * nobody else could hold it. And it carries what the constructor produced:
+ * the initial contract state, as a handle and as bytes, and the initial private
+ * and Zswap states.
  *
  * Published under the retained-era namespace so a caller that receives one by
  * inference can also NAME it. This is what `deployContract`'s retained-era arm
@@ -817,16 +852,16 @@ export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledg
   /**
    * The state the contract was deployed with, as the LIVE handle the retained
    * constructor built. See ADR-0010 for its lifetime, and prefer
-   * {@link Ledger8DeployedContract.initialState} for anything that has to
+   * {@link Ledger8DeployedContract.initialContractStateBytes} for anything that has to
    * outlive the runtime instance.
    */
-  readonly initialContractState: Ledger8DeployableContractState;
+  readonly initialContractState: RetainedConstructedState;
   /**
    * The same state, serialized — the bytes the contract address was derived
    * from. A deploy mints a fresh nonce, so these bytes and that address belong
    * to each other and to no other deployment.
    */
-  readonly initialState: Uint8Array;
+  readonly initialContractStateBytes: Uint8Array;
   /**
    * The private state the constructor produced.
    *
@@ -889,7 +924,7 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  */
 // WHY NO VERSION NUMBERS. Earlier wordings named the toolchains -- "neither a 0.16- nor a
 // 0.18-generated contract" -- and that text contradicted itself as soon as the current side moved:
-// a consumer on `0.19.0-rc.0`, which this release pins, was told their object matched neither of
+// a consumer on `0.19.0-rc.0`, which that release pinned, was told their object matched neither of
 // two versions, neither of which was theirs. The message is about which ERA an object belongs to,
 // and the eras are named by role everywhere else in this package, so it names them that way here
 // too and no future toolchain release invalidates it.

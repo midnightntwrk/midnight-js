@@ -13,10 +13,17 @@
  * limitations under the License.
  */
 
-import type { Ledger8DeployableContractState, Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
+import type { ConstructorResultPojo, Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
 import type { CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import type { ContractAddress, LogEvent, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type {
+  CoinPublicKey,
+  ContractAddress,
+  ContractState,
+  LogEvent,
+  SigningKey
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
@@ -26,7 +33,7 @@ import { describe, expectTypeOf, it } from 'vitest';
 // the same way, from the declarations `compactc` 0.31.1 emitted beside the module the runtime test
 // loads (see `../ledger8-fixture-types.ts`).
 //
-// The twin is a `0.18.0-rc.1` artifact while the installed runtime is `0.19.0-rc.0` -- it was not
+// The twin is a `0.18.0-rc.1` artifact while the installed runtime is `0.20.0` -- it was not
 // regenerated when the repo bumped. That does not weaken these assertions: the generated
 // `Contract` class declaration is IDENTICAL across the two (same four members, same async
 // `initialState`), so the shape they discriminate on is the current era's. If the twin is ever
@@ -76,7 +83,13 @@ import {
 import { submitCallTx, submitCallTxAsync, type SubmitCallTxProviders } from '../../submit-call-tx';
 import type { SubmitTxProviders } from '../../submit-tx';
 import type { TransactionContext } from '../../transaction';
-import type { FinalizedCallTxData, SubmittedCallTx } from '../../tx-model';
+import type {
+  FinalizedCallTxData,
+  FinalizedDeployTxPublicData,
+  FoundDeployTxPublicData,
+  FoundDeployTxPublicDataV8,
+  SubmittedCallTx
+} from '../../tx-model';
 import type { CallTxOptions, CallTxOptionsBase, CallTxOptionsWithPrivateStateId } from '../../unproven-call-tx';
 import type {
   CoinReceiver016Coin,
@@ -296,6 +309,16 @@ describe('an argument-taking retained-era contract works, not just a zero-argume
     expectTypeOf<Ledger8CallTxOptionsBase<CoinReceiver016Contract, 'receive_coin'>['args']>().toEqualTypeOf<
       [coin: CoinReceiver016Coin]
     >();
+  });
+
+  it('accepts additional recipient mappings on retained call options, typed as the current era types them', () => {
+    expectTypeOf<Ledger8CallTxOptionsBase<CoinReceiver016Contract, 'receive_coin'>>()
+      .toHaveProperty('additionalCoinEncPublicKeyMappings')
+      .toEqualTypeOf<ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined>();
+    expectTypeOf<Ledger8CallTxOptionsBase<Counter016Contract, 'increment'>>().toHaveProperty(
+      'additionalCoinEncPublicKeyMappings'
+    );
+    expectTypeOf<AnyLedger8CallTxOptions>().toHaveProperty('additionalCoinEncPublicKeyMappings');
   });
 
   it('RESOLVES to the retained-era arm, which is the assertion the unknown[] tail failed', () => {
@@ -585,15 +608,18 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
       | 'callTx'
       | 'signingKey'
       | 'initialContractState'
-      | 'initialState'
+      | 'initialContractStateBytes'
       | 'initialPrivateState'
       | 'initialZswapState'
     >();
     // ADR-0010: the handle and the bytes, not one instead of the other.
-    expectTypeOf<Ledger8DeployedContract<Counter016Contract>['initialState']>().toEqualTypeOf<Uint8Array>();
+    expectTypeOf<Ledger8DeployedContract<Counter016Contract>['initialContractStateBytes']>().toEqualTypeOf<Uint8Array>();
     expectTypeOf<
       Ledger8DeployedContract<Counter016Contract>['initialContractState']
-    >().toEqualTypeOf<Ledger8DeployableContractState>();
+      // The published handle stays the narrow `{ serialize }` it always was --
+      // the constructor's own state type widened when compact-js took the
+      // retained era over, and this pins that the PUBLIC surface did not.
+    >().toEqualTypeOf<Pick<ConstructorResultPojo['contractState'], 'serialize'>>();
   });
 });
 
@@ -688,6 +714,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('contractStateEncoded');
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('preContractState');
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('preContractStateEncoded');
+    expectTypeOf<ContractExecutable.ContractExecutable.ContractCall['private']>().toHaveProperty('zswapLocalState');
   });
 
   it('carries the same top-level members in BOTH eras', () => {
@@ -715,17 +742,35 @@ describe('both eras resolve a call to the SAME result structure', () => {
     type CurrentEraCall = ContractExecutable.ContractExecutable.ContractCall;
 
     expectTypeOf<keyof CurrentEraCall>().toEqualTypeOf<keyof Ledger8ContractCall>();
-    // Three additions, nothing dropped. `contractState` means the POST-call
-    // state in both eras -- `compact-js` fills it from the final query context
-    // -- so the state the call BOUND to is published beside it under its own
-    // name rather than under a name that already means something else.
+    // Three additions on the retained side, one on the current side.
+    // `contractState` means the POST-call state in both eras -- `compact-js`
+    // fills it from the final query context -- so the state the call BOUND to is
+    // published beside it under its own name rather than under a name that
+    // already means something else.
     type RetainedEraOnlyCallPublicMembers =
       'contractStateEncoded' | 'preContractState' | 'preContractStateEncoded';
 
-    expectTypeOf<keyof CurrentEraCall['public']>().toEqualTypeOf<
+    // `partitionInputs` is the four values a transcript's partition was built
+    // from, which compact-js publishes as of 3.0.0-rc.2
+    // (midnightntwrk/midnight-sdk#400). The retained arm answers the same
+    // question through `preContractState` plus the `partitionContext` its
+    // transcript carries, so it has no member of this name -- yet. Retiring
+    // `lib/v8/execute.ts` onto `ContractExecutable` puts both eras on this one
+    // member and this exclusion goes away with it.
+    type CurrentEraOnlyCallPublicMembers = 'partitionInputs';
+
+    expectTypeOf<Exclude<keyof CurrentEraCall['public'], CurrentEraOnlyCallPublicMembers>>().toEqualTypeOf<
       Exclude<keyof Ledger8ContractCall['public'], RetainedEraOnlyCallPublicMembers>
     >();
-    expectTypeOf<keyof CurrentEraCall['private']>().toEqualTypeOf<keyof Ledger8ContractCall['private']>();
+
+    // `zswapLocalState` is per call because each cross-contract callee keeps its own, but a retained
+    // contract makes no cross-contract calls, so its one call's state is the execution's
+    // `nextZswapLocalState`.
+    type CurrentEraOnlyCallPrivateMembers = 'zswapLocalState';
+
+    expectTypeOf<Exclude<keyof CurrentEraCall['private'], CurrentEraOnlyCallPrivateMembers>>().toEqualTypeOf<
+      keyof Ledger8ContractCall['private']
+    >();
   });
 
   it('lifts every declared circuit onto `callTx` in BOTH eras', () => {
@@ -852,18 +897,17 @@ describe('both eras answer with the SAME contract-handle structure', () => {
    * Members the retained era's DEPLOYED contract carries at the top level and
    * the current era carries under `deployTxData` instead.
    *
-   * Not a missing member on either side: both eras hold all five facts. They
-   * disagree about the PATH, which no key-set assertion at one level can state
-   * -- the current era nests the first four under `deployTxData.private` and
-   * `initialContractState` under `deployTxData.public`. Excused here so the
-   * rest of the surface is gated, and tracked in #1298 as its own decision
-   * about which shape wins, because moving either side is a breaking change to
-   * a published surface.
+   * Both eras hold the first four facts and disagree only about the PATH,
+   * which no key-set assertion at one level can state: the current era nests
+   * three under `deployTxData.private` and `initialContractState` under
+   * `deployTxData.public`. `initialContractStateBytes` has no current-era
+   * twin. The layout is kept until the retained era is removed; ADR-0010's
+   * 2026-10-07 amendment records why.
    */
   type RetainedEraOnlyDeployedMembers =
     | 'signingKey'
     | 'initialContractState'
-    | 'initialState'
+    | 'initialContractStateBytes'
     | 'initialPrivateState'
     | 'initialZswapState';
 
@@ -894,7 +938,7 @@ describe('both eras answer with the SAME contract-handle structure', () => {
     expectTypeOf<RetainedFound>().toHaveProperty('signingKey');
     expectTypeOf<RetainedDeployed>().toHaveProperty('signingKey');
     expectTypeOf<RetainedDeployed>().toHaveProperty('initialContractState');
-    expectTypeOf<RetainedDeployed>().toHaveProperty('initialState');
+    expectTypeOf<RetainedDeployed>().toHaveProperty('initialContractStateBytes');
     expectTypeOf<RetainedDeployed>().toHaveProperty('initialPrivateState');
     expectTypeOf<RetainedDeployed>().toHaveProperty('initialZswapState');
   });
@@ -1200,5 +1244,32 @@ describe('the retained-era private state flows through the family', () => {
 
     // Guards against the whole block going vacuous if `compact-runtime-ledger8` stops resolving.
     expectTypeOf<Parameters<PrivateCounter016Witness>[0]>().not.toBeAny();
+  });
+});
+
+describe('a found contract may have been deployed in either ledger era', () => {
+  type Found = FoundContract<Twin018>;
+  type FoundPublic = Found['deployTxData']['public'];
+
+  it('tags the deploy record with the ledger era that recorded it', () => {
+    expectTypeOf<FoundPublic>().toEqualTypeOf<FoundDeployTxPublicData>();
+    expectTypeOf<FoundPublic['version']>().toEqualTypeOf<'v8' | 'v9'>();
+  });
+
+  it('exposes the contract address on both arms without narrowing', () => {
+    expectTypeOf<FoundPublic['contractAddress']>().toEqualTypeOf<ContractAddress>();
+  });
+
+  it('requires narrowing on `version` before the deploy-time state is read', () => {
+    expectTypeOf<FoundPublic>().not.toHaveProperty('initialContractState');
+    expectTypeOf<Extract<FoundPublic, { version: 'v9' }>>().toEqualTypeOf<FinalizedDeployTxPublicData>();
+    expectTypeOf<Extract<FoundPublic, { version: 'v9' }>['initialContractState']>().toEqualTypeOf<ContractState>();
+    expectTypeOf<Extract<FoundPublic, { version: 'v8' }>>().toEqualTypeOf<FoundDeployTxPublicDataV8>();
+    expectTypeOf<FoundDeployTxPublicDataV8>().not.toHaveProperty('initialContractState');
+  });
+
+  it('keeps a deployed contract usable wherever a found contract is expected', () => {
+    expectTypeOf<DeployedContract<Twin018>>().toMatchTypeOf<FoundContract<Twin018>>();
+    expectTypeOf<DeployedContract<Twin018>['deployTxData']['public']>().toEqualTypeOf<FinalizedDeployTxPublicData>();
   });
 });

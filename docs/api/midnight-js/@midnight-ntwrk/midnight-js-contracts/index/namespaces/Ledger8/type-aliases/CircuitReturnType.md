@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: CircuitReturnType\<C, K\>
 
-> **CircuitReturnType**\<`C`, `K`\> = `ReturnType`\<`C`\[`"impureCircuits"`\]\[`K`\]\> *extends* `object` ? `R` : `unknown`
+> **CircuitReturnType**\<`C`, `K`\> = `ReturnType`\<`C`\[`"provableCircuits"`\]\[`K`\]\> *extends* `object` ? `R` : `unknown`
 
 What a retained-era circuit's own return value narrows to.
 

@@ -67,8 +67,10 @@ export interface LedgerEra {
    * @param raw The serialized contract-state envelope.
    * @returns The decoded state. A `verifierKey` absent on an entry point means
    * that slot was never deployed, not that the key is empty.
-   * @throws StateDecodeFailedError if this era's decoder rejects `raw`, or if
-   * the state cannot resolve an entry point it declares itself.
+   * @throws StateDecodeFailedError if this era's decoder rejects `raw`.
+   * @throws StateInconsistentError if the decoded state is internally
+   * inconsistent — an entry point it cannot resolve, a verifier key that will
+   * not hash, or no usable balance.
    * @see {@link FailClosedDecoding}
    */
   decodeContractState(raw: Uint8Array): ContractStatePojo;

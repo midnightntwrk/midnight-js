@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
 
 ***
 
@@ -116,7 +116,8 @@ the two carry different remediations.
 Inside the v8-native DEPLOY leg the offer is a v8-native offer HANDLE rather
 than bytes: that leg runs inside the retained era with the module already in
 hand, so the era arm that read the caller's offer bytes hands the decoded offer
-straight over — exactly as it already does for `contractState`. The v8-native
+straight over. The contract state is different: it crosses as
+`contractStateBytes` and that leg decodes it itself. The v8-native
 CALL leg takes the `zswapOffer` factory unchanged and decodes the bytes it
 answers with itself, because the split it must be handed does not exist until
 that leg has assembled the call.
@@ -203,7 +204,9 @@ downstream uses, never the context it started from.
 
 The state crossing is safe, not a lossy re-encode: the `EncodedStateValue`
 algebra is structurally identical between onchain-runtime-v3 and both ledger
-modules (compile-time drift gate in `v8-down-convert.test.ts`). Every member of
+modules. That identity is pinned by the compile-time drift gate at the bottom of
+`v8-executable.test.ts` — see
+[InjectedVendorSlices](InjectedVendorSlices.md). Every member of
 the recorded context is caller data the runtime validates itself, from inside
 wasm, so the caller wraps the bridge in its own coded stage.
 

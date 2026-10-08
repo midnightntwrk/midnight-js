@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -27,9 +27,9 @@ used only to look up the `ContractOperation` for `transcript.circuitId`
 
 ***
 
-### ledgerParameters
+### ledgerParametersBytes
 
-> `readonly` **ledgerParameters**: [`LedgerParametersOption`](../type-aliases/LedgerParametersOption.md)
+> `readonly` **ledgerParametersBytes**: [`LedgerParametersOption`](../type-aliases/LedgerParametersOption.md)
 
 The ledger parameters of the block this call is built against, or
 [INITIAL\_LEDGER\_PARAMETERS](../variables/INITIAL_LEDGER_PARAMETERS.md) to accept the initial cost model.

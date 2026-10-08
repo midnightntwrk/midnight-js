@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.8**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
 
 ***
 
@@ -25,7 +25,7 @@ The ledger eras THIS INSTANCE serves.
 Read before an operation starts, by `assertSeamsSupportEra`, so a set of
 providers that cannot carry a transaction end to end is refused before its
 proof is paid for. A provider built by one of the `create*` factories has
-this computed from the arms it was given; a provider implementing this
+this computed from the handlers it was given; a provider implementing this
 interface directly states it.
 
 Declare every era `proveTx` really serves and no more. Nothing verifies the

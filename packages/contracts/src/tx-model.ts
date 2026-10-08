@@ -18,6 +18,7 @@ import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from 
 import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
   FinalizedTxData,
+  FinalizedTxDataV8,
   SubmittedCallTxBase,
   UnsubmittedTxDataBase
 } from '@midnight-ntwrk/midnight-js-types';
@@ -173,6 +174,52 @@ export interface FinalizedDeployTxDataBase<C extends Contract.Any> extends Unsub
    * The data of this transaction that is visible on the blockchain.
    */
   readonly public: FinalizedDeployTxPublicData;
+}
+
+/**
+ * The public data of a deployment found on chain whose deploy transaction was
+ * recorded by the ledger-8 runtime, i.e. a contract deployed before the ledger fork.
+ *
+ * Carries no `initialContractState`: the deploy-time state of a ledger-8 contract
+ * cannot be decoded by the current runtime. Read the current state with
+ * `PublicDataProvider.queryContractState`.
+ */
+export interface FoundDeployTxPublicDataV8 extends FinalizedTxDataV8 {
+  /**
+   * The ledger address of the contract that was deployed.
+   */
+  readonly contractAddress: ContractAddress;
+}
+
+/**
+ * The public data of a deployment found on chain, discriminated by the ledger
+ * era that recorded the deploy transaction. Narrow on `version` before reading
+ * `tx` or `initialContractState`; `contractAddress` is present on both arms.
+ */
+export type FoundDeployTxPublicData = FoundDeployTxPublicDataV8 | FinalizedDeployTxPublicData;
+
+/**
+ * Data for a deployment found on chain by `findDeployedContract`.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** The `private` field carries the signing key and
+ * the initial private state. When logging, serializing, or transmitting, read
+ * only the `public` field or destructure specific non-sensitive fields.
+ */
+export interface FoundDeployTxData<C extends Contract.Any> {
+  /**
+   * The pipeline this handle runs on: always the current era here. The era that
+   * recorded the deploy transaction is `public.version`.
+   */
+  readonly era: CurrentPipelineEra;
+  /**
+   * The data of the deploy transaction that is visible on the blockchain.
+   */
+  readonly public: FoundDeployTxPublicData;
+  /**
+   * The private data stored for this contract on this device.
+   */
+  readonly private: UnsubmittedDeployTxPrivateData<C>;
 }
 
 /**
