@@ -854,11 +854,10 @@ describe('runOrRethrow', () => {
     }
     const first = new FetchFailure('increment verifier key unavailable');
     const second = new FetchFailure('decrement verifier key unavailable');
+    const incrementFailure = new Error("reading 'increment' failed", { cause: first });
+    const decrementFailure = new Error("reading 'decrement' failed", { cause: second });
     const concurrentlyFailing = Effect.all(
-      [
-        Effect.fail(new Error("reading 'increment' failed", { cause: first })),
-        Effect.fail(new Error("reading 'decrement' failed", { cause: second }))
-      ],
+      [Effect.fail(incrementFailure), Effect.fail(decrementFailure)],
       { concurrency: 'unbounded' }
     );
 
@@ -873,6 +872,10 @@ describe('runOrRethrow', () => {
         "reading 'decrement' failed: decrement verifier key unavailable"
     });
     expect(rejection instanceof ContractExecutionError && rejection.cause).toBe(first);
+    const errors = rejection instanceof ContractExecutionError ? rejection.errors : [];
+    expect(errors).toHaveLength(2);
+    expect(errors[0]).toBe(incrementFailure);
+    expect(errors[1]).toBe(decrementFailure);
   });
 
   it('reports EVERY failure when concurrent work fails, not just the first', async () => {
@@ -896,6 +899,7 @@ describe('runOrRethrow', () => {
     expect(String(rejection)).toContain('increment is missing');
     expect(String(rejection)).toContain('decrement is missing');
     expect(String(rejection)).toContain('reset is missing');
+    expect(rejection instanceof ContractExecutionError && rejection.errors).toHaveLength(3);
   });
 
   it('keeps the code when a CODED failure arrives beside others', async () => {

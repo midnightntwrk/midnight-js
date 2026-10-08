@@ -174,4 +174,12 @@ describe('protocol error classes', () => {
     // Assert
     expect(error.cause).toBe(cause);
   });
+
+  it('carries an empty failure list when built without one', () => {
+    // Act
+    const error = new ContractExecutionError('circuit failed', { cause: new Error('assert failed') });
+
+    // Assert
+    expect(error.errors).toEqual([]);
+  });
 });

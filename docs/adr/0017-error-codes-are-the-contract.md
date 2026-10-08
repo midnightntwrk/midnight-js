@@ -49,8 +49,9 @@ from a dependency, the platform or user code — passes through unchanged and un
   `TypeError`/`RangeError` throws change class. When a level-provider operation fails and closing the
   database fails too, `cause` is the operation's failure and `closeError` the close failure. A lone failure
   carrying a coded error passes through `runOrRethrow` and `exitResultOrError` as that coded error; several
-  concurrent failures are reported together as `ContractExecutionError`. The scoped-transaction wrappers no
-  longer rebuild a failure: every failure leaves unchanged and the root scope logs it, naming the scope. A
+  concurrent failures are reported together as `ContractExecutionError`, which keeps every failure object on
+  `errors`. The scoped-transaction wrappers no longer rebuild a failure: every failure leaves unchanged and
+  the root scope logs it under `err`, naming the scope, so the log keeps its stack and `cause` chain. A
   coded provider error that carries a `cause` is sanitized at the retained-era seams like any external
   failure.
 - **Follow-ups:** wrap ledger WASM exceptions outside the deserialization wrappers; the native `TypeError`

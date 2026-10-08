@@ -591,17 +591,22 @@ const executableStateFrom = (contractState: ContractStatePojo): glue.ContractSta
 export { causeChain } from '../shared/cause-chain';
 
 /**
- * Runs an effect and rethrows its failure with the whole cause chain in the
- * message.
+ * Runs an effect and rethrows its failure without losing the failure's class,
+ * message, stack or `cause`.
  *
  * `Effect.runPromise` alone rejects with a `FiberFailure`, which carries neither
  * the failure's class nor its `cause` — so a caller loses both the error it
  * could have discriminated on and the diagnostic it needed. `runPromiseExit`
- * plus `Cause.squash` recovers the real error, which is then rethrown with the
- * underlying reason spelled out and the original on `cause`.
+ * recovers the real failures, which are then rethrown as follows:
  *
- * A lone failure that is a midnight-js coded error, or carries one within eight
- * links of its `cause` chain, is rethrown as that coded error.
+ * - A midnight-js coded error raised directly is rethrown unchanged, however
+ *   many failures arrived beside it.
+ * - A lone failure carrying a coded error within eight links of its `cause`
+ *   chain is rethrown as that coded error.
+ * - Otherwise a {@link ContractExecutionError} is thrown. Its message spells out
+ *   every failure with its whole cause chain, `cause` is the first coded error
+ *   found or else the first failure, and `errors` holds every failure as the
+ *   original object.
  */
 export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {
   const exit = await Effect.runPromiseExit(effect);

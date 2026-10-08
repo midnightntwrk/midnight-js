@@ -95,7 +95,7 @@ protocol errors reach a barrel consumer directly:
 | `StateDecodeFailedError` | `lib/shared/contract-state.ts` | `version` |
 | `UnknownLedgerVersionError` | `contracts/src/internal/era.ts`, `lib/era/load-era.ts` | `requestedVersion` |
 | `PayloadNotATransactionError` | `lib/prove`, as a `proveTx` rejection | none; caught, not constructed |
-| `ContractExecutionError` | `lib/v8/executable.ts`; `contracts` call and deploy builders on a Compact error; `types` `exitResultOrError` when several failures arrive together | `cause` — the underlying failure |
+| `ContractExecutionError` | `lib/v8/executable.ts`; `contracts` call and deploy builders on a Compact error; `types` `exitResultOrError` when several failures arrive together | `cause` — the underlying failure; `errors` — every failure when several arrived together |
 | `ContractStateInvalidError` | `lib/shared/contract-state.ts` | none; the message names the inconsistency |
 
 `hasErrorCode` narrows only to `Error & { code }`, so without the class a

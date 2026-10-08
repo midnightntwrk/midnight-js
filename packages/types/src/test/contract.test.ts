@@ -107,7 +107,9 @@ describe('exitResultOrError', () => {
     // Arrange
     const first = fetchFailure();
     const second = new Error('second read refused');
-    const exit = Exit.failCause(Cause.parallel(Cause.fail(new Error('plain failure')), Cause.parallel(Cause.fail(wrapped(first)), Cause.fail(second))));
+    const plain = new Error('plain failure');
+    const firstWrapped = wrapped(first);
+    const exit = Exit.failCause(Cause.parallel(Cause.fail(plain), Cause.parallel(Cause.fail(firstWrapped), Cause.fail(second))));
 
     // Act
     let thrown: unknown;
@@ -124,6 +126,11 @@ describe('exitResultOrError', () => {
         "plain failure; Failed to read verifier key for 'increment': ZK artifact request failed: url=https://zk.example/vk; second read refused"
     });
     expect(thrown instanceof ContractExecutionError && thrown.cause).toBe(first);
+    const errors = thrown instanceof ContractExecutionError ? thrown.errors : [];
+    expect(errors).toHaveLength(3);
+    expect(errors[0]).toBe(plain);
+    expect(errors[1]).toBe(firstWrapped);
+    expect(errors[2]).toBe(second);
   });
 
   it('rethrows a defect as the error that caused it, not as a midnight-js bug', () => {

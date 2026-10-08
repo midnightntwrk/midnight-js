@@ -1057,14 +1057,22 @@ export class ContractExecutionError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED;
   readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED];
 
-  constructor(message: string, options?: ErrorOptions) {
+  /**
+   * Every failure the execution reported, as the original objects, in the order they arrived. Filled by
+   * {@link ContractExecutionError.fromFailures}; empty when the error was built without a list.
+   */
+  readonly errors: readonly unknown[];
+
+  constructor(message: string, options?: ErrorOptions & { readonly errors?: readonly unknown[] }) {
     super(message, options);
     this.name = 'ContractExecutionError';
+    this.errors = options?.errors ?? [];
   }
 
   /**
    * Reports every failure of an execution, each with its whole cause chain, separated by `; `.
    * `cause` is the first coded error found on any failure's chain, or the first failure when none is coded.
+   * `errors` holds every failure as the original object, so no stack is lost.
    */
   static fromFailures(failures: readonly unknown[]): ContractExecutionError {
     const describe = (failure: unknown): string => {
@@ -1072,7 +1080,7 @@ export class ContractExecutionError extends MidnightJsError {
       return chain.length > 0 ? chain.join(': ') : String(failure);
     };
     const coded = failures.map(findCodedCause).find((candidate) => candidate !== undefined);
-    return new ContractExecutionError(failures.map(describe).join('; '), { cause: coded ?? failures[0] });
+    return new ContractExecutionError(failures.map(describe).join('; '), { cause: coded ?? failures[0], errors: failures });
   }
 }
 
