@@ -4,8 +4,9 @@ title: ErrorBoundaries
 
 # What `IndexerError` covers, and the two failures that escape it
 
-`IndexerError` is the base class for the errors this provider raises itself, so
-a consumer can catch them with one `instanceof` check.
+`IndexerError` is the base class for the errors this provider raises itself.
+Like every midnight-js error it extends `MidnightJsError` and carries a registered
+`code` and `category` (ADR 0017).
 
 Two failure classes deliberately escape that check. Both report something that is
 NOT an indexer fault, and wrapping them would hide what they are — sending a
@@ -31,7 +32,9 @@ tree, not a bad record and not a bad response. A caller who saw it as an
 
 ## Catching everything a read can raise
 
-Catch broadly and branch, or match on `code` via `hasErrorCode` from
-`@midnight-ntwrk/midnight-js-utils`. Do not treat `instanceof IndexerError` as
-exhaustive over a read — it is exhaustive over this provider's own faults, which
-is a narrower thing.
+Branch on `errorCategory(e)` first, then on `code` via `hasErrorCode`, both from
+`@midnight-ntwrk/midnight-js-utils`. Both escaping errors above are midnight-js
+errors too, so `isMidnightJsError` recognises them. Do not treat
+`instanceof IndexerError` as exhaustive over a read — it is exhaustive over this
+provider's own faults, which is a narrower thing — and do not rely on `instanceof`
+at all where two copies of a package may be installed.

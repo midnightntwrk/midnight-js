@@ -14,6 +14,7 @@
  */
 
 import type { Module, ModuleThunk } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { describe, expect, it, vi } from 'vitest';
 
 import { bundledContractModuleProvider } from '../bundled-contract-module-provider';
@@ -84,6 +85,7 @@ describe('bundledContractModuleProvider', () => {
       [ADDRESS.toUpperCase(), thunkFor('v2')]
     ]);
 
+    expect(() => bundledContractModuleProvider(modules)).toThrow(InvalidArgumentError);
     expect(() => bundledContractModuleProvider(modules)).toThrow(ADDRESS.toLowerCase());
   });
 
@@ -109,7 +111,22 @@ describe('bundledContractModuleProvider', () => {
     );
   });
 
+  it('keeps the address assertion failure on cause and carries the argument code', () => {
+    const error = (() => {
+      try {
+        bundledContractModuleProvider(new Map([['dex', thunkFor('dex')]]));
+      } catch (e: unknown) {
+        return e;
+      }
+      return undefined;
+    })();
+
+    expect(error).toBeInstanceOf(InvalidArgumentError);
+    expect(error).toMatchObject({ code: 'MIDNIGHT_JS_G_INVALID_ARGUMENT' });
+    expect((error as InvalidArgumentError).cause).toBeInstanceOf(Error);
+  });
+
   it('rejects a key of the wrong length even though it is hex', () => {
-    expect(() => bundledContractModuleProvider(new Map([['ab'.repeat(16), thunkFor('dex')]]))).toThrow(TypeError);
+    expect(() => bundledContractModuleProvider(new Map([['ab'.repeat(16), thunkFor('dex')]]))).toThrow(InvalidArgumentError);
   });
 });

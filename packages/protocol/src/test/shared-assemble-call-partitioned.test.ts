@@ -20,7 +20,7 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
+import { ComposeFailedError, ComposeOptionError, InvariantViolationError, PROTOCOL_ERROR_CODES } from '../errors';
 import { assembleCallPrototype } from '../lib/shared/assemble-call';
 import type { CallTranscriptSource, LedgerParametersOption } from '../lib/shared/compose-types';
 import { emptyPartitionContext } from './fixtures';
@@ -490,5 +490,35 @@ describe('the transcript partitioner and the chain\'s own ledger parameters', ()
     expect((caught as ComposeOptionError).option).toBe('ledgerParametersBytes');
     expect((caught as ComposeOptionError).version).toBe('v9');
     expect((caught as ComposeOptionError).cause).toBeDefined();
+  });
+});
+
+describe('assembleCallPrototype when the partitioner answers with nothing', () => {
+  it('refuses with an InvariantViolationError rather than reading the absence as a call', () => {
+    // Arrange
+    const address = ledgerV9.sampleContractAddress();
+    const emptyAnswer = { ...ledgerV9, partitionTranscripts: (): [] => [] };
+    const act = (): unknown =>
+      assembleCallPrototype(emptyAnswer, {
+        circuitId: 'increment',
+        contractAddress: address,
+        transcript: {
+          kind: 'unpartitioned',
+          preState: PRE_STATE,
+          publicTranscript: PUBLIC_TRANSCRIPT,
+          partitionContext: emptyPartitionContext()
+        },
+        privateTranscriptOutputs: [],
+        input: fieldValue(0x10),
+        output: fieldValue(0x20),
+        operations: contractStateWithOperation(),
+        ledgerParametersBytes: 'initial',
+        stage: 'call-operation',
+        version: 'v9'
+      });
+
+    // Act & Assert
+    expect(act).toThrow(InvariantViolationError);
+    expect(act).toThrow('partitionTranscripts returned no result for the call transcript.');
   });
 });

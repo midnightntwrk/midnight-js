@@ -222,7 +222,7 @@ describe('Scoped Transaction Contract Tests', () => {
         await submitCallTx(providers, invalidCallTxOptions, txCtx);
       })
     ).rejects.toThrow(
-      "Unexpected error executing scoped transaction '<unnamed>': Error: type error: increment1 argument 1 (argument 2 as invoked from Typescript) at double-counter.compact line 8 char 1; expected value of type Uint<0..65536> but received 65536n"
+      "type error: increment1 argument 1 (argument 2 as invoked from Typescript) at double-counter.compact line 8 char 1; expected value of type Uint<0..65536> but received 65536n"
     );
 
     const counterValue2 = await api.getCounterLedgerState(providers, contractAddress);

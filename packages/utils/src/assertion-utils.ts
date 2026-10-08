@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
-import { UTILS_ERROR_CODES } from './error-codes';
+import { InvariantViolationError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+
+import { UTILS_ERROR_CATEGORIES, UTILS_ERROR_CODES } from './error-codes';
 
 /**
  * Asserts that the given value is non-nullable.
@@ -21,11 +23,11 @@ import { UTILS_ERROR_CODES } from './error-codes';
  * @param value The value to test for nullability.
  * @param message The error message to use if an error is thrown.
  *
- * @throws Error If the value is nullable.
+ * @throws InvariantViolationError If the value is nullable.
  */
 export function assertDefined<A>(value: A | null | undefined, message?: string): asserts value is NonNullable<A> {
   if (value === null || value === undefined) {
-    throw new Error(message ?? 'Expected value to be defined');
+    throw new InvariantViolationError(message ?? 'Expected value to be defined');
   }
 }
 
@@ -35,11 +37,11 @@ export function assertDefined<A>(value: A | null | undefined, message?: string):
  * @param value The value to test for nullability.
  * @param message The error message to use if an error is thrown.
  *
- * @throws Error If the value is not undefined or null
+ * @throws InvariantViolationError If the value is not undefined or null
  */
 export function assertUndefined<A>(value: A | null | undefined, message?: string): asserts value is undefined | null {
   if (value !== null && value !== undefined) {
-    throw new Error(message ?? 'Expected value to be null or undefined');
+    throw new InvariantViolationError(message ?? 'Expected value to be null or undefined');
   }
 }
 
@@ -47,8 +49,9 @@ export function assertUndefined<A>(value: A | null | undefined, message?: string
  * Raised by {@link assertNever} when a value the compiler ruled out arrives
  * anyway, which happens when a payload is decoded from outside the build.
  */
-export class UnhandledUnionMemberError extends Error {
+export class UnhandledUnionMemberError extends MidnightJsError {
   readonly code = UTILS_ERROR_CODES.UNHANDLED_UNION_MEMBER;
+  readonly category = UTILS_ERROR_CATEGORIES[UTILS_ERROR_CODES.UNHANDLED_UNION_MEMBER];
 
   constructor(readonly context: string) {
     super(`Unhandled union member in ${context}: the union grew and this switch was not updated`);

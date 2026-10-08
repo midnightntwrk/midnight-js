@@ -250,7 +250,7 @@ sends an operator to go and read; without those two the leg would pass on an
 error naming a different operation. The other two read `reason` off the
 `SubmitRejectionUndiagnosedError`. The `head-read-failed` one also asserts that
 the arm carries **both** failures, in order, and that the second of them is the
-injected one, since carrying only one is the defect its `AggregateError` shape
+injected one, since carrying only one is the defect its `errors` list (rejection first)
 exists to rule out; and that the injected reading was consulted exactly once, so
 a framework that took its re-read somewhere else would not pass unnoticed.
 

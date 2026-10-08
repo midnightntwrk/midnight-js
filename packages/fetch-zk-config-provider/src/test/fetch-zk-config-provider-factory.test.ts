@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+import { ZkArtifactFetchError } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, test } from 'vitest';
 
 import { FetchZkConfigProvider, fetchZkConfigProvider } from '../index';
@@ -28,11 +28,15 @@ describe('fetchZkConfigProvider factory', () => {
   });
 
   test('propagates fetchFunc so the provided fetch implementation is used', async () => {
-    const sentinel = 'sentinel-fetch-used';
+    const sentinel = new Error('sentinel-fetch-used');
     const throwingFetch: typeof fetch = () => {
-      throw new Error(sentinel);
+      throw sentinel;
     };
     const provider = fetchZkConfigProvider({ baseURL: 'http://localhost:5000', fetchFunc: throwingFetch });
-    await expect(provider.getProverKey('set_topic')).rejects.toThrow(sentinel);
+    const error = await provider.getProverKey('set_topic').catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ZkArtifactFetchError);
+    expect(error).toMatchObject({ code: 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED' });
+    expect(error instanceof ZkArtifactFetchError && error.cause).toBe(sentinel);
   });
 });

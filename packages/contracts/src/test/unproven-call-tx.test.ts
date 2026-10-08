@@ -20,9 +20,12 @@ import {
   type ContractStateProvider,
   StateValue
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
+import { HeadReadFailedError } from '../errors';
 import { createUnprovenLedgerCallTx, makeCalleeStateResolver } from '../internal/utils';
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import { createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
@@ -228,11 +231,30 @@ describe('unproven-call-tx', () => {
       });
       const walletEncryptionPublicKey = createMockEncryptionPublicKey();
 
-      await expect(createUnprovenCallTxFromInitialStates(
+      const act = () =>
+        createUnprovenCallTxFromInitialStates(createMockZKConfigProvider(), options, walletEncryptionPublicKey);
+
+      await expect(act()).rejects.toThrow(ContractExecutionError);
+      await expect(act()).rejects.toThrow('failed assert: FAIL');
+    });
+
+    it('refuses a circuit id the compiled contract does not declare as InvalidArgumentError', async () => {
+      const options = createMockCallOptions({
+        circuitId: 'notACircuit',
+        initialContractState: await getInitialContractState()
+      });
+
+      const rejection = createUnprovenCallTxFromInitialStates(
         createMockZKConfigProvider(),
         options,
-        walletEncryptionPublicKey
-      )).rejects.toThrow('failed assert: FAIL');
+        createMockEncryptionPublicKey()
+      );
+
+      await expect(rejection).rejects.toBeInstanceOf(InvalidArgumentError);
+      await expect(rejection).rejects.toMatchObject({
+        code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+        message: "Circuit 'notACircuit' is undefined"
+      });
     });
 
     it('rejects an invalid TTL before running the circuit', async () => {
@@ -248,7 +270,7 @@ describe('unproven-call-tx', () => {
         createMockZKConfigProvider(),
         options,
         createMockEncryptionPublicKey()
-      )).rejects.toThrow(RangeError);
+      )).rejects.toThrow(InvalidArgumentError);
     });
   });
 
@@ -319,7 +341,7 @@ describe('unproven-call-tx', () => {
       };
       vi.mocked(getPublicStates).mockClear();
 
-      await expect(createUnprovenCallTx(providers, options)).rejects.toThrow(RangeError);
+      await expect(createUnprovenCallTx(providers, options)).rejects.toThrow(InvalidArgumentError);
       expect(publicDataProvider.queryBlock).not.toHaveBeenCalled();
       expect(getPublicStates).not.toHaveBeenCalled();
     });
@@ -342,9 +364,40 @@ describe('unproven-call-tx', () => {
         args: ['test-arg']
       };
 
-      await expect(createUnprovenCallTx(providers, options)).rejects.toThrow(
-        'Failed to fetch the latest block from the public data provider'
-      );
+      const rejection = createUnprovenCallTx(providers, options);
+
+      await expect(rejection).rejects.toBeInstanceOf(HeadReadFailedError);
+      await expect(rejection).rejects.toMatchObject({
+        code: CONTRACTS_ERROR_CODES.HEAD_READ_FAILED,
+        category: 'TRANSIENT',
+        message: 'Failed to fetch the latest block from the public data provider'
+      });
+    });
+
+    it('refuses a circuit id the compiled contract does not declare before reading chain state', async () => {
+      const publicDataProvider = createMockProviders().publicDataProvider;
+      const providers = {
+        zkConfigProvider: createMockZKConfigProvider(),
+        publicDataProvider,
+        walletProvider: createMockProviders().walletProvider,
+        config: MOCK_CONFIG
+      };
+      const options = {
+        contract: createMockContract(),
+        compiledContract: createMockCompiledContract(),
+        circuitId: 'notACircuit',
+        contractAddress: createMockContractAddress(),
+        args: ['test-arg']
+      };
+
+      const rejection = createUnprovenCallTx(providers, options);
+
+      await expect(rejection).rejects.toBeInstanceOf(InvalidArgumentError);
+      await expect(rejection).rejects.toMatchObject({
+        code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+        message: "Circuit 'notACircuit' is undefined"
+      });
+      expect(publicDataProvider.queryBlock).not.toHaveBeenCalled();
     });
 
     it('should create unproven call tx without private state provider', async () => {

@@ -38,11 +38,10 @@ needs narrowing on `version` before `tx` is touched.
 
 ### Why the shared code sits on the base
 
-`instanceof` is the idiom this hierarchy is built for, but it is identity-based:
-with two copies of this package resolved in one process it returns `false`, and
-a failed transaction walks past a correctly written handler. `AnyEraTxFailedError.code`
-is the branch for a consumer that cannot import these classes, or cannot rely on
-there being one copy of them.
+The code is the contract (ADR 0017); `instanceof` is a convenience. It is
+identity-based: with two copies of this package resolved in one process it
+returns `false`, and a failed transaction walks past a correctly written handler.
+`AnyEraTxFailedError.code` is the branch that always works.
 
 Subclasses inherit that code rather than each declaring their own. What a caller
 needs to distinguish is WHICH transaction failed — which the class and the
@@ -50,16 +49,18 @@ record already answer — not a finer code.
 
 ## Which errors carry a registered code, and which do not
 
-A registered code is a published compatibility commitment. The retained era's
-recorded-failure and post-submission classes — `Ledger8CallTxFailedError`,
-`Ledger8DeployTxFailedError`, `Ledger8DeployUnconfirmedError`,
-`Ledger8DeployNotStoredError` — deliberately carry none of their own. That arm's
-record type is expected to converge with the current era's, and a code promised
-now would outlive the shape it describes.
+Every class here carries a registered code (ADR 0017). The retained era's
+recorded-failure classes — `Ledger8CallTxFailedError` and
+`Ledger8DeployTxFailedError` — carry none of their OWN: they inherit `TX_FAILED`.
+That arm's record type is expected to converge with the current era's, and a
+finer code promised now would outlive the shape it describes. A caller branches
+on `TX_FAILED` and reads the record itself off `txData` rather than parsing a
+message.
 
-This is not an omission to be tidied up later by adding codes. A caller branches
-on the class, or on the inherited `TX_FAILED` where the class is unreachable, and
-reads the record itself off `txData` rather than parsing a message.
+The post-submission classes are different: `Ledger8DeployUnconfirmedError` and
+`Ledger8DeployNotStoredError` describe what the caller must do next, not the
+record, so each has a code of its own. `LEDGER8_DEPLOY_UNCONFIRMED` is
+`UNCERTAIN`, because the deployment may still land.
 
 `SubmitRejectionUndiagnosedError` is the exception that proves the rule: it has
 its own code, and **the code of the rejection it carries must not be copied onto
@@ -194,9 +195,9 @@ maintain.
 `SubmitRejectionUndiagnosedError` reports that a submission was rejected and that
 whether the network crossed the ledger fork under it could not be established.
 
-It is an `AggregateError` because nothing may be dropped: the submission
-rejection is what happened to the transaction, and `reason` is why no diagnosis
-could be made. `cause` names the proximate failure, so a consumer walking only
+It is a `MidnightJsError` that carries an `errors` list because nothing may be
+dropped: the submission rejection is what happened to the transaction, and
+`reason` is why no diagnosis could be made. `cause` names the proximate failure, so a consumer walking only
 cause chains still lands somewhere useful. The rejection is always the FIRST
 entry of `errors`.
 

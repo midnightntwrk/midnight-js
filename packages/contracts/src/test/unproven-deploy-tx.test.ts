@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from '../internal/utils';
@@ -108,15 +109,17 @@ describe('unproven-deploy-tx', () => {
         args: ['deploy-arg']
       };
 
-      await expect(
+      const act = () =>
         createUnprovenDeployTxFromVerifierKeys(
           createMockZKConfigProvider(),
           createMockCoinPublicKey(),
           options,
           encryptionPublicKey,
           MOCK_CONFIG
-        )
-      ).rejects.toThrow('FAIL');
+        );
+
+      await expect(act()).rejects.toThrow(ContractExecutionError);
+      await expect(act()).rejects.toThrow('FAIL');
     });
 
     it('rejects an invalid TTL before running the constructor', async () => {
@@ -136,7 +139,7 @@ describe('unproven-deploy-tx', () => {
           createMockEncryptionPublicKey(),
           { networkId: 'preview', ttlSeconds: 0 }
         )
-      ).rejects.toThrow(RangeError);
+      ).rejects.toThrow(InvalidArgumentError);
     });
   });
 

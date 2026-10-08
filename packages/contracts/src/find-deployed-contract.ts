@@ -21,20 +21,22 @@ import {
   sampleSigningKey,
   type SigningKey
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   type AnyProvableCircuitId,
   type PrivateStateId,
   type PrivateStateProvider,
   type VerifierKey,
   type VersionedFinalizedTxData} from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
 import { CURRENT_PIPELINE_ERA, type CurrentPipelineEra, RETAINED_PIPELINE_ERA } from './era';
 import {
   ContractTypeError,
   IncompleteFindContractPrivateStateConfig,
-  Ledger8SigningKeyUnusableError
+  Ledger8SigningKeyUnusableError,
+  PrivateStateNotFoundError
 } from './errors';
 import {
   type CircuitMaintenanceTxInterfaces,
@@ -46,6 +48,7 @@ import { type BreadcrumbSink, emitRetainedSigningKeyEntry } from './internal/bre
 import { isLedger8Request, requireTaggedRecord, resolveArtifactEra } from './internal/era';
 import { findLedger8Contract } from './internal/ledger8-entry';
 import { fromStoredLedger8SigningKey, toStoredLedger8SigningKey } from './internal/ledger8-signing-key';
+import { requireDeployedContract } from './internal/required-reads';
 import {
   type AnyLedger8FindDeployedContractOptions,
   type AnyLedger8FoundContract,
@@ -89,8 +92,10 @@ const queryFoundDeployTxPublicData = async (
     case 'v8':
       return { ...deployRecord, contractAddress };
     case 'v9': {
-      const initialContractState = await publicDataProvider.queryDeployContractState(contractAddress);
-      assertDefined(initialContractState, `No contract deployed at contract address '${contractAddress}'`);
+      const initialContractState = requireDeployedContract(
+        await publicDataProvider.queryDeployContractState(contractAddress),
+        contractAddress
+      );
       return { ...deployRecord, contractAddress, initialContractState };
     }
     default:
@@ -233,17 +238,20 @@ const setOrGetInitialPrivateState = async <PS>(
     // wrote `privateStateId: cfg.someId` with an undefined `someId` BELIEVES it named one, and
     // reading that as "no id given" would attach against no state at all and leave every later
     // call running on a state the contract never had. Refused instead, at the configuration.
-    assertDefined(
-      privateStateId,
-      "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
-        'for a contract that carries no private state.'
-    );
+    if (privateStateId === undefined || privateStateId === null) {
+      throw new InvalidArgumentError(
+        "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
+          'for a contract that carries no private state.'
+      );
+    }
     if (hasInitialPrivateState(options)) {
       await privateStateProvider.set(privateStateId, options.initialPrivateState);
       return options.initialPrivateState;
     }
     const currentPrivateState = await privateStateProvider.get(privateStateId);
-    assertDefined(currentPrivateState, `No private state found at private state ID '${privateStateId}'`);
+    if (currentPrivateState === undefined || currentPrivateState === null) {
+      throw new PrivateStateNotFoundError(`No private state found at private state ID '${privateStateId}'`);
+    }
     return currentPrivateState;
   }
   if (hasInitialPrivateState(options)) {
@@ -484,13 +492,15 @@ export async function findDeployedContract<C extends Contract.Any>(
  * @param providers The providers used to manage transaction lifecycles.
  * @param options Configuration.
  *
- * @throws Error Improper `privateStateId` and `initialPrivateState` configuration.
- * @throws Error No contract state could be found at `contractAddress`.
- * @throws Error The public data provider cannot decode the current contract state. The indexer
- *               provider throws `IndexerDataError` for a contract deployed before the ledger fork
- *               that has had no state-changing call since; that call can only be made with the
- *               pre-fork artifacts.
- * @throws TypeError Thrown if `contractAddress` is not correctly formatted as a contract address.
+ * @throws InvalidArgumentError `privateStateId` is present with an undefined value.
+ * @throws PrivateStateNotFoundError `privateStateId` is named, no `initialPrivateState` is given, and
+ *                                   nothing is stored under it.
+ * @throws ContractNotFoundError No contract state could be found at `contractAddress`.
+ * @throws IndexerDataError The public data provider cannot decode the current contract state. The
+ *               indexer provider throws it for a contract deployed before the ledger fork that has
+ *               had no state-changing call since; that call can only be made with the pre-fork
+ *               artifacts.
+ * @throws InvalidArgumentError Thrown if `contractAddress` is not correctly formatted as a contract address.
  * @throws ContractTypeError One or more circuits defined on `contract` are undefined on the contract
  *                           state found at `contractAddress`, carry no deployed verifier key, or
  *                           have mis-matched verifier keys.
@@ -587,8 +597,10 @@ export async function findDeployedContract<C extends Contract.Any>(
     contractAddress
   );
 
-  const currentContractState = await providers.publicDataProvider.queryContractState(contractAddress);
-  assertDefined(currentContractState, `No contract deployed at contract address '${contractAddress}'`);
+  const currentContractState = requireDeployedContract(
+    await providers.publicDataProvider.queryContractState(contractAddress),
+    contractAddress
+  );
 
   const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
     ContractExecutable.make(compiledContract).getProvableCircuitIds()

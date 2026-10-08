@@ -20,6 +20,7 @@ import type {
   ComposeOption,
   ComposeStage,
   LedgerVersion,
+  MidnightJsErrorCategory,
   ProtocolVersionSource,
   ProtocolVersionUnknownReason,
   RetainedEraSubpath,
@@ -38,15 +39,23 @@ import * as utils from '../utils';
 // unintended re-export, off the barrel.
 //
 // Runtime names only -- a type-only export never appears in `Object.keys`, so
-// this list cannot gate one. The eight type-only exports are gated instead by
+// this list cannot gate one. The nine type-only exports are gated instead by
 // the `import type` above: dropping any of them from the barrel makes that
 // statement unresolvable, and `typecheck:tests:core` fails. The annotations
 // further down assert assignability on top of that.
 const EXPECTED_BARREL_EXPORTS = [
+  'COMMON_ERROR_CODES',
   'ComposeFailedError',
   'ComposeOptionError',
+  'ConfigurationError',
+  'ContractExecutionError',
+  'EnvironmentUnsupportedError',
+  'InvalidArgumentError',
+  'InvariantViolationError',
   'LEDGER_VERSIONS',
   'Ledger8RuntimeMissingError',
+  'MIDNIGHT_JS_ERROR_CATEGORIES',
+  'MidnightJsError',
   'NO_CIRCUIT',
   'PROTOCOL_ERROR_CODES',
   'PayloadNotATransactionError',
@@ -256,6 +265,14 @@ describe('retained-era error classes', () => {
       'v9',
       'v7'
     ]);
+  });
+});
+
+describe('error base', () => {
+  it('should let a caller read the category of a general error without a cast', () => {
+    const category: MidnightJsErrorCategory = midnightJs.MIDNIGHT_JS_ERROR_CATEGORIES.USAGE;
+
+    expect(category).toBe('USAGE');
   });
 });
 

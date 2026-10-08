@@ -261,8 +261,9 @@ export const decodeContractStateWith = (
       // inconsistent state, not a blank slot -- see FailClosedDecoding.
       const operation = decoded.operation(entryPoint);
       if (operation === undefined) {
-        throw new Error(
-          `contract state declares entry point '${entryPointName(entryPoint)}' but resolves no operation for it.`
+        throw new StateInconsistentError(
+          version,
+          new Error(`contract state declares entry point '${entryPointName(entryPoint)}' but resolves no operation for it.`)
         );
       }
       const { verifierKey } = operation;
@@ -280,15 +281,18 @@ export const decodeContractStateWith = (
     // Not defaulted: `new Map(undefined)` is an empty map, indistinguishable
     // from a contract that holds nothing. @see FailClosedDecoding
     if (!isContractBalance(balance)) {
-      throw new Error(
-        `contract state resolves no usable balance (received ${describeValue(balance)}); a contract that holds ` +
-          'nothing still declares an empty map.'
+      throw new StateInconsistentError(
+        version,
+        new Error(
+          `contract state resolves no usable balance (received ${describeValue(balance)}); a contract that holds ` +
+            'nothing still declares an empty map.'
+        )
       );
     }
 
     // Copied, so the pojo owns a map nothing else holds.
     return { state: decoded.data.state.encode(), balance: new Map(balance), entryPoints };
   } catch (cause) {
-    throw new StateInconsistentError(version, cause);
+    throw cause instanceof StateInconsistentError ? cause : new StateInconsistentError(version, cause);
   }
 };

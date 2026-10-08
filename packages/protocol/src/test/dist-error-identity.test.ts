@@ -31,7 +31,7 @@ import { describe, expect, it } from 'vitest';
 const PKG_ROOT = resolve(__dirname, '..', '..');
 const ERRORS_SUBPATH = './errors';
 const SELF_SPECIFIER = '@midnight-ntwrk/midnight-js-protocol';
-const ERROR_CLASS_DECLARATION = /class\s+\w+\s+extends\s+Error\b/;
+const ERROR_CLASS_DECLARATION = /class\s+\w+\s+extends\s+(?:Error|MidnightJsError)\b/;
 
 // The exports map is the source of truth: it is the contract consumers resolve
 // against, so a subpath added later is covered without editing this file.

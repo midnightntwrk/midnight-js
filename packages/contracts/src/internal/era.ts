@@ -37,6 +37,7 @@ import {
   EraArtifactMismatchError,
   EraInvariantViolationError,
   type EraSeam,
+  HeadReadFailedError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
   Ledger8DeployOnV9Error,
@@ -707,7 +708,7 @@ export const assertEraCompatible = (
  * @returns The era whose decoder owns these bytes: `'v8'` for a retained envelope, `'v9'` for a
  * current-era one.
  * @throws TagParseError if `state.raw` carries no supported contract-state envelope.
- * @throws Error, carrying the transport failure on `cause`, if the fresh head read rejects — so the
+ * @throws HeadReadFailedError, carrying the transport failure on `cause`, if the fresh head read rejects — so the
  * disagreement that was under investigation is not lost behind a bare transport error.
  * @throws HeadStateEraMismatchError if a fresh head read agrees with the state's era.
  * @throws IndexerInconsistencyError if a fresh head read still disagrees with it.
@@ -768,7 +769,7 @@ export const resolveContractStateEra = async (
   } catch (cause) {
     // Nothing is swallowed -- the transport failure propagates on `cause` -- but on its own it
     // carries no trace that an era disagreement was under investigation.
-    throw new Error(
+    throw new HeadReadFailedError(
       `Could not re-read the network head while checking a '${head}'-era head reading against a ` +
         `'${stateEra}'-era contract state envelope. Whether those two disagree is still unresolved, so ` +
         `this operation is refused rather than run against a guess. Retry once the read surface is reachable.`,

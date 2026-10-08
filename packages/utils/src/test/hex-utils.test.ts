@@ -13,7 +13,23 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+
 import { assertIsHex, isHex, parseCoinPublicKeyToHex, parseEncPublicKeyToHex } from '../hex-utils';
+
+describe('assertIsHex failures', () => {
+  it.each([
+    ['empty input', '', undefined, 'Input string must have non-zero length.'],
+    ['non-positive byte length', 'FAB123', 0, 'Expected byte length must be greater than zero.'],
+    ['incomplete last byte', '1A2', undefined, "The last byte of input string '1A2' is incomplete."],
+    ['invalid hex digit', 'HELL01', undefined, "Invalid hex-digit 'H' found in input string at index 0."],
+    ['prefix only', '0x', undefined, "Input string '0x' is not a valid hex-string."],
+    ['wrong byte length', 'FAB123', 5, 'Expected an input string with byte length of 5, got 3.']
+  ])('refuses %s with InvalidArgumentError and the unchanged message', (_name, source, byteLen, message) => {
+    expect(() => assertIsHex(source, byteLen)).toThrow(InvalidArgumentError);
+    expect(() => assertIsHex(source, byteLen)).toThrow(new InvalidArgumentError(message));
+  });
+});
 
 describe('Hex Utils', () => {
   describe('with valid strings', () => {

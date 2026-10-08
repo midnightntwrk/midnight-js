@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+
 export const MAX_SAFE_NAME_LENGTH = 255;
 
 const SAFE_NAME_PATTERN = /^[a-zA-Z0-9._-]+$/;
@@ -28,17 +30,17 @@ const INSECURE_SCHEMES = new Set(['http:', 'ws:']);
  *
  * @param name  The value to validate.
  * @param label Human-readable name of the parameter (for error messages).
- * @throws Error if `name` fails validation.
+ * @throws InvalidArgumentError if `name` fails validation.
  */
 export function assertSafeName(name: string, label: string): void {
   if (typeof name !== 'string' || name.length === 0 || name.length > MAX_SAFE_NAME_LENGTH) {
-    throw new Error(`Invalid ${label}: ${JSON.stringify(name)}`);
+    throw new InvalidArgumentError(`Invalid ${label}: ${JSON.stringify(name)}`);
   }
   if (name === '.' || name === '..') {
-    throw new Error(`Invalid ${label}: ${JSON.stringify(name)}`);
+    throw new InvalidArgumentError(`Invalid ${label}: ${JSON.stringify(name)}`);
   }
   if (!SAFE_NAME_PATTERN.test(name)) {
-    throw new Error(`Invalid ${label}: ${JSON.stringify(name)}`);
+    throw new InvalidArgumentError(`Invalid ${label}: ${JSON.stringify(name)}`);
   }
 }
 
@@ -50,14 +52,14 @@ export function assertSafeName(name: string, label: string): void {
  *
  * @param version The version string to validate.
  * @param label   Human-readable name of the parameter (for error messages).
- * @throws Error if `version` is not SemVer-shaped.
+ * @throws InvalidArgumentError if `version` is not SemVer-shaped.
  */
 export function assertSemVer(version: string, label: string): void {
   if (typeof version !== 'string' || version.length === 0 || version.length > MAX_SAFE_NAME_LENGTH) {
-    throw new Error(`Invalid ${label}: ${JSON.stringify(version)}`);
+    throw new InvalidArgumentError(`Invalid ${label}: ${JSON.stringify(version)}`);
   }
   if (!SEMVER_PATTERN.test(version)) {
-    throw new Error(`Invalid ${label}: ${JSON.stringify(version)}`);
+    throw new InvalidArgumentError(`Invalid ${label}: ${JSON.stringify(version)}`);
   }
 }
 

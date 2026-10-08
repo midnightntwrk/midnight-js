@@ -17,7 +17,9 @@ import { type ContractStatePojo, type LedgerVersion, loadLedgerEra } from '@midn
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PrivateStateId,PrivateStateProvider, PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
+
+import { ContractNotFoundError, PrivateStateNotFoundError } from './errors';
 
 /**
  * Object containing the publicly visible states of a contract.
@@ -65,7 +67,9 @@ export const getPublicStates = async (
     contractAddress,
     blockHash === undefined ? undefined : { type: 'blockHash', blockHash }
   );
-  assertDefined(zswapAndContractState, `No public state found at contract address '${contractAddress}'`);
+  if (zswapAndContractState === undefined || zswapAndContractState === null) {
+    throw new ContractNotFoundError(`No public state found at contract address '${contractAddress}'`);
+  }
   const [zswapChainState, contractState, ledgerParameters] = zswapAndContractState;
   return { contractState, zswapChainState, ledgerParameters };
 };
@@ -89,7 +93,9 @@ export const getStates = async <PS>(
 ): Promise<ContractStates<PS>> => {
   const publicContractStates = await getPublicStates(publicDataProvider, contractAddress, blockHash);
   const privateState = await privateStateProvider.get(privateStateId);
-  assertDefined(privateState, `No private state found at private state ID '${privateStateId}'`);
+  if (privateState === undefined || privateState === null) {
+    throw new PrivateStateNotFoundError(`No private state found at private state ID '${privateStateId}'`);
+  }
   return { ...publicContractStates, privateState };
 };
 
@@ -160,7 +166,7 @@ export interface AnyEraContractState extends ContractStatePojo {
  * @param contractAddress The ledger address of the contract.
  * @returns The decoded state, or `null` when the read surface reports no contract at
  * `contractAddress`.
- * @throws TypeError if `contractAddress` is not a well-formed contract address.
+ * @throws InvalidArgumentError if `contractAddress` is not a well-formed contract address.
  * @throws TagParseError if the served payload carries no supported contract-state envelope.
  * @throws StateDecodeFailedError if the envelope's own era cannot read the state behind it.
  * @throws StateInconsistentError if the decoded state is internally inconsistent.

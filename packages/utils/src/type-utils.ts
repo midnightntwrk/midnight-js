@@ -14,6 +14,7 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 
 import { assertIsHex, parseHex } from './hex-utils';
 
@@ -22,7 +23,7 @@ import { assertIsHex, parseHex } from './hex-utils';
  *
  * @param contractAddress The source string.
  *
- * @throws `TypeError`
+ * @throws `InvalidArgumentError`
  * `contractAddress` is not a correctly formatted {@link ContractAddress}.
  *
  * @internal
@@ -35,6 +36,6 @@ export function assertIsContractAddress(contractAddress: string): asserts contra
   const parsedHex = parseHex(contractAddress);
 
   if (parsedHex.hasPrefix) {
-    throw new TypeError(`Unexpected '0x' prefix in contract address '${contractAddress}'`);
+    throw new InvalidArgumentError(`Unexpected '0x' prefix in contract address '${contractAddress}'`);
   }
 }

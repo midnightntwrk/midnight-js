@@ -50,7 +50,14 @@ import * as glue from 'compact-runtime-ledger8';
 import { Effect } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ComposeFailedError, ComposeOptionError, DownConvertFailedError } from '../errors';
+import {
+  ComposeFailedError,
+  ComposeOptionError,
+  ContractExecutionError,
+  DownConvertFailedError,
+  InvalidArgumentError,
+  InvariantViolationError
+} from '../errors';
 import type { EncodedStateValue } from '../lib/era/envelope';
 import { loadLedgerEra } from '../lib/era/load-era';
 import type { ContractBalance, ContractStatePojo } from '../lib/shared/contract-state';
@@ -544,8 +551,13 @@ describe('refuseVerifierKeyRead', () => {
     // assumed -- so this reader exists to make a future version that DOES read
     // one fail by name rather than silently serve `Option.none()` and compose a
     // call with a blank key slot.
-    expect(rejection).toBeInstanceOf(Error);
-    expect((rejection as Error).message).toContain("'increment'");
+    expect(rejection).toBeInstanceOf(InvariantViolationError);
+    expect(rejection).toMatchObject({
+      code: 'MIDNIGHT_JS_G_INVARIANT_VIOLATED',
+      message:
+        "a retained-era circuit call read the verifier key for 'increment'. Circuit calls are " +
+        'not supposed to read ZK configuration; only deployment and maintenance are.'
+    });
   });
 });
 
@@ -604,7 +616,11 @@ describe('pinnedClock refuses a second it cannot pin to', () => {
     const refusal = (): unknown => pinnedClock(nowSeconds);
 
     // Assert.
-    expect(refusal).toThrow(/nowSeconds/);
+    expect(refusal).toThrow(InvalidArgumentError);
+    expect(refusal).toThrow(
+      `the retained era cannot pin its execution clock to '${String(nowSeconds)}'. ` +
+        '`nowSeconds` must be a finite number of seconds since the epoch.'
+    );
   });
 
   it('still accepts a finite second, so the refusal is not refusing everything', () => {
@@ -623,6 +639,7 @@ describe('soleCall', () => {
     // synthesises exactly one entry. An empty list is a contract this era
     // cannot honour, and is refused rather than read as `undefined` and carried
     // into a composition.
+    expect(() => soleCall([], 'increment')).toThrow(InvariantViolationError);
     expect(() => soleCall([], 'increment')).toThrow("circuit 'increment' produced no contract call");
   });
 });
@@ -699,6 +716,7 @@ describe('runOrRethrow', () => {
     // neither the class nor the cause -- so the reason the circuit actually
     // failed never reaches the caller. This is the assertion an e2e test caught
     // the hard way.
+    expect(rejection).toBeInstanceOf(ContractExecutionError);
     expect((rejection as Error).message).toBe("Error executing circuit 'testBlockTimeGt': Block time is <= time");
     expect((rejection as Error).cause).toBe(wrapped);
   });
@@ -715,6 +733,149 @@ describe('runOrRethrow', () => {
     // Assert.
     expect(rejection).toBe(coded);
     expect((rejection as ComposeFailedError).stage).toBe('deploy-verifier-key-blob');
+  });
+
+  it('rethrows a COMMON-coded error unchanged, so it is not flattened into a circuit refusal', async () => {
+    // Arrange.
+    const common = new InvalidArgumentError('bad argument');
+
+    // Act.
+    const rejection = await runOrRethrow(Effect.fail(common)).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBe(common);
+  });
+
+  it('rethrows, as the same instance, a coded error found on the cause chain of an uncoded one', async () => {
+    // Arrange. A provider's coded failure (shaped like `ZkArtifactFetchError`, which this package
+    // cannot import) wrapped by compact-js in an uncoded error.
+    class FetchFailure extends Error {
+      readonly code = 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED';
+      readonly category = 'TRANSIENT';
+    }
+    const coded = new FetchFailure('fetching the verifier key failed');
+    const wrapped = new Error('reading ZK configuration failed', { cause: new Error('middle', { cause: coded }) });
+
+    // Act.
+    const rejection = await runOrRethrow(Effect.fail(wrapped)).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBe(coded);
+  });
+
+  it('rethrows, as the same instance, a coded error from another package raised directly', async () => {
+    // Arrange.
+    class FetchFailure extends Error {
+      readonly code = 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED';
+      readonly category = 'TRANSIENT';
+    }
+    const coded = new FetchFailure('fetching the verifier key failed');
+
+    // Act.
+    const rejection = await runOrRethrow(Effect.fail(coded)).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBe(coded);
+  });
+
+  it('still finds a coded cause exactly eight levels down', async () => {
+    // Arrange.
+    class FetchFailure extends Error {
+      readonly code = 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED';
+      readonly category = 'TRANSIENT';
+    }
+    const coded = new FetchFailure('deep');
+    let chain: Error = coded;
+    for (let level = 0; level < 8; level++) {
+      chain = new Error(`level ${level}`, { cause: chain });
+    }
+
+    // Act.
+    const rejection = await runOrRethrow(Effect.fail(chain)).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBe(coded);
+  });
+
+  it('stops looking for a coded cause after eight levels and flattens the failure', async () => {
+    // Arrange.
+    class FetchFailure extends Error {
+      readonly code = 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED';
+      readonly category = 'TRANSIENT';
+    }
+    let chain: Error = new FetchFailure('deep');
+    for (let level = 0; level < 9; level++) {
+      chain = new Error(`level ${level}`, { cause: chain });
+    }
+
+    // Act.
+    const rejection = await runOrRethrow(Effect.fail(chain)).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBeInstanceOf(ContractExecutionError);
+    expect(rejection).toMatchObject({ cause: chain });
+  });
+
+  it('still flattens an uncoded cause chain into ContractExecutionError', async () => {
+    // Arrange.
+    const root = new Error('Block time is <= time');
+    const wrapped = new Error("Error executing circuit 'testBlockTimeGt'", { cause: root });
+
+    // Act.
+    const flattened = await runOrRethrow(Effect.fail(wrapped)).catch((error: unknown) => error);
+
+    // Assert.
+    expect(flattened).toBeInstanceOf(ContractExecutionError);
+    expect(flattened).toMatchObject({
+      message: "Error executing circuit 'testBlockTimeGt': Block time is <= time",
+      cause: wrapped
+    });
+  });
+
+  it('flattens a cyclic cause chain carrying only a foreign code into ContractExecutionError', async () => {
+    // Arrange.
+    const foreignCoded = Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' });
+    const cyclic: Error & { cause?: unknown } = new Error('cyclic', { cause: foreignCoded });
+    foreignCoded.cause = cyclic;
+
+    // Act.
+    const flattenedCyclic = await runOrRethrow(Effect.fail(cyclic)).catch((error: unknown) => error);
+
+    // Assert.
+    expect(flattenedCyclic).toBeInstanceOf(ContractExecutionError);
+    expect(flattenedCyclic).toMatchObject({ message: 'cyclic: connection refused', cause: cyclic });
+  });
+
+  it('reports every failure when several concurrent failures each wrap a coded cause, with the first coded one on cause', async () => {
+    // Arrange.
+    class FetchFailure extends Error {
+      readonly code = 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED';
+      readonly category = 'TRANSIENT';
+    }
+    const first = new FetchFailure('increment verifier key unavailable');
+    const second = new FetchFailure('decrement verifier key unavailable');
+    const incrementFailure = new Error("reading 'increment' failed", { cause: first });
+    const decrementFailure = new Error("reading 'decrement' failed", { cause: second });
+    const concurrentlyFailing = Effect.all(
+      [Effect.fail(incrementFailure), Effect.fail(decrementFailure)],
+      { concurrency: 'unbounded' }
+    );
+
+    // Act.
+    const rejection = await runOrRethrow(concurrentlyFailing).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBeInstanceOf(ContractExecutionError);
+    expect(rejection).toMatchObject({
+      message:
+        "reading 'increment' failed: increment verifier key unavailable; " +
+        "reading 'decrement' failed: decrement verifier key unavailable"
+    });
+    expect(rejection instanceof ContractExecutionError && rejection.cause).toBe(first);
+    const errors = rejection instanceof ContractExecutionError ? rejection.errors : [];
+    expect(errors).toHaveLength(2);
+    expect(errors[0]).toBe(incrementFailure);
+    expect(errors[1]).toBe(decrementFailure);
   });
 
   it('reports EVERY failure when concurrent work fails, not just the first', async () => {
@@ -738,6 +899,7 @@ describe('runOrRethrow', () => {
     expect(String(rejection)).toContain('increment is missing');
     expect(String(rejection)).toContain('decrement is missing');
     expect(String(rejection)).toContain('reset is missing');
+    expect(rejection instanceof ContractExecutionError && rejection.errors).toHaveLength(3);
   });
 
   it('keeps the code when a CODED failure arrives beside others', async () => {
@@ -956,9 +1118,10 @@ describe('runRetainedCircuit refuses a circuit the contract does not declare', (
       }).catch((error: unknown) => error);
 
       // Assert.
-      expect(rejection).toBeInstanceOf(Error);
-      expect(String(rejection)).toContain(circuitId);
-      expect(String(rejection)).toContain('increment');
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect((rejection as Error).message).toBe(
+        `No circuit named '${circuitId}' on this retained-era contract instance. Available circuits: increment.`
+      );
     }
   );
 

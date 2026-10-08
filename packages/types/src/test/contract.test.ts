@@ -14,11 +14,13 @@
  */
 
 import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { ContractExecutionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import * as Configuration from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/Configuration';
-import { Effect, Option } from 'effect';
+import { Cause, Effect, Exit, Option } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { makeContractExecutableRuntime } from '../contract';
+import { exitResultOrError, makeContractExecutableRuntime } from '../contract';
+import { ZkArtifactFetchError } from '../errors';
 import { type ProverKey, type VerifierKey, type ZKIR } from '../midnight-types';
 import { ZKConfigProvider } from '../zk-config-provider';
 
@@ -57,5 +59,85 @@ describe('makeContractExecutableRuntime', () => {
     const configured = await readConfiguredSigningKey(signingKey);
 
     expect(Option.getOrNull(configured)).toEqual(signingKey);
+  });
+});
+
+describe('exitResultOrError', () => {
+  const fetchFailure = () => new ZkArtifactFetchError('ZK artifact request failed: url=https://zk.example/vk', 503);
+  const wrapped = (cause: unknown) => new Error("Failed to read verifier key for 'increment'", { cause });
+
+  it('rethrows a lone failure unchanged when nothing on its cause chain is coded', () => {
+    // Arrange
+    const failure = new Error('compact-js refused');
+
+    // Act / Assert
+    expect(() => exitResultOrError(Exit.fail(failure))).toThrow(failure);
+  });
+
+  it('rethrows the coded error found on a lone failure\'s cause chain, so its category survives', () => {
+    // Arrange
+    const coded = fetchFailure();
+
+    // Act
+    const act = () => exitResultOrError(Exit.fail(wrapped(coded)));
+
+    // Assert
+    expect(act).toThrow(coded);
+  });
+
+  it('rethrows the coded cause when one of several concurrent reads fails', () => {
+    // Arrange
+    const coded = fetchFailure();
+    const exit = Effect.runSyncExit(
+      Effect.forEach(
+        ['a', 'b', 'c'],
+        (circuit) => (circuit === 'b' ? Effect.fail(wrapped(coded)) : Effect.succeed(circuit)),
+        { concurrency: 'unbounded' }
+      )
+    );
+
+    // Act
+    const act = () => exitResultOrError(exit);
+
+    // Assert
+    expect(act).toThrow(coded);
+  });
+
+  it('reports every failure when several arrive at once, with the first coded one on cause', () => {
+    // Arrange
+    const first = fetchFailure();
+    const second = new Error('second read refused');
+    const plain = new Error('plain failure');
+    const firstWrapped = wrapped(first);
+    const exit = Exit.failCause(Cause.parallel(Cause.fail(plain), Cause.parallel(Cause.fail(firstWrapped), Cause.fail(second))));
+
+    // Act
+    let thrown: unknown;
+    try {
+      exitResultOrError(exit);
+    } catch (error) {
+      thrown = error;
+    }
+
+    // Assert
+    expect(thrown).toBeInstanceOf(ContractExecutionError);
+    expect(thrown).toMatchObject({
+      message:
+        "plain failure; Failed to read verifier key for 'increment': ZK artifact request failed: url=https://zk.example/vk; second read refused"
+    });
+    expect(thrown instanceof ContractExecutionError && thrown.cause).toBe(first);
+    const errors = thrown instanceof ContractExecutionError ? thrown.errors : [];
+    expect(errors).toHaveLength(3);
+    expect(errors[0]).toBe(plain);
+    expect(errors[1]).toBe(firstWrapped);
+    expect(errors[2]).toBe(second);
+  });
+
+  it('rethrows a defect as the error that caused it, not as a midnight-js bug', () => {
+    // Arrange
+    const defect = new Error('witness threw');
+
+    // Act / Assert
+    expect(() => exitResultOrError(Exit.failCause(Cause.die(defect)))).toThrow(defect);
   });
 });

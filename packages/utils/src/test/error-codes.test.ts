@@ -13,13 +13,21 @@
  * limitations under the License.
  */
 
-import { PROTOCOL_ERROR_CODES, UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import {
+  COMMON_ERROR_CODES,
+  InvalidArgumentError,
+  PROTOCOL_ERROR_CODES,
+  UnknownProtocolVersionError
+} from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { describe, expect, it } from 'vitest';
 
 import {
   CONTRACTS_ERROR_CODES,
+  errorCategory,
   hasErrorCode,
   hasForeignErrorCode,
+  isMidnightJsError,
+  MIDNIGHT_JS_ERROR_CATEGORY_BY_CODE,
   MIDNIGHT_JS_ERROR_CODES,
   PROVIDER_ERROR_CODES,
   UTILS_ERROR_CODES
@@ -162,6 +170,15 @@ describe('hasErrorCode', () => {
   });
 });
 
+describe('hasForeignErrorCode misuse', () => {
+  it('refuses a framework-prefixed code with InvalidArgumentError', () => {
+    const act = () => hasForeignErrorCode(new Error('boom'), 'MIDNIGHT_JS_X');
+
+    expect(act).toThrow(InvalidArgumentError);
+    expect(act).toThrow(/^hasForeignErrorCode was given 'MIDNIGHT_JS_X', which uses this framework's own MIDNIGHT_JS_ prefix\./);
+  });
+});
+
 describe('hasForeignErrorCode', () => {
   const econnrefused = (): unknown => Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
 
@@ -223,8 +240,69 @@ describe('hasForeignErrorCode', () => {
   });
 
   it('names the offending code in the refusal, so the fix does not need a debugger', () => {
-    expect(() => hasForeignErrorCode(econnrefused(), 'MIDNIGHT_JS_C_STALE_HAED')).toThrow(
-      /MIDNIGHT_JS_C_STALE_HAED/
-    );
+    expect(() => hasForeignErrorCode(econnrefused(), 'MIDNIGHT_JS_C_STALE_HAED')).toThrow(/MIDNIGHT_JS_C_STALE_HAED/);
+  });
+});
+
+describe('error categories', () => {
+  it('assigns a category to every registered code and nothing else', () => {
+    expect(Object.keys(MIDNIGHT_JS_ERROR_CATEGORY_BY_CODE).sort()).toEqual([...MIDNIGHT_JS_ERROR_CODES].sort());
+  });
+
+  const codesIn = (category: string): string[] =>
+    Object.entries(MIDNIGHT_JS_ERROR_CATEGORY_BY_CODE)
+      .filter(([, value]) => value === category)
+      .map(([code]) => code)
+      .sort();
+
+  it('marks exactly these codes as safe to retry', () => {
+    expect(codesIn('TRANSIENT')).toEqual([
+      'MIDNIGHT_JS_C_HEAD_READ_FAILED',
+      'MIDNIGHT_JS_C_HEAD_STATE_ERA_MISMATCH',
+      'MIDNIGHT_JS_PR_INDEXER_QUERY_FAILED',
+      'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE',
+      'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED'
+    ]);
+  });
+
+  it('marks every submission whose outcome is unknown as UNCERTAIN, never as TRANSIENT', () => {
+    expect(codesIn('UNCERTAIN')).toEqual([
+      'MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED',
+      'MIDNIGHT_JS_C_STALE_HEAD',
+      'MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED'
+    ]);
+  });
+
+  it('treats an ambiguous on-chain entry point as bad on-chain data, not as a caller mistake', () => {
+    expect(MIDNIGHT_JS_ERROR_CATEGORY_BY_CODE[CONTRACTS_ERROR_CODES.LEDGER8_AMBIGUOUS_ENTRY_POINT]).toBe('INTEGRITY');
+  });
+
+  it('registers the general group', () => {
+    expect(MIDNIGHT_JS_ERROR_CODES).toEqual(expect.arrayContaining(Object.values(COMMON_ERROR_CODES)));
+  });
+
+  it('reads the category of a midnight-js error', () => {
+    // Arrange
+    const error = new InvalidArgumentError('bad');
+
+    // Act / Assert
+    expect([isMidnightJsError(error), errorCategory(error)]).toEqual([true, 'USAGE']);
+  });
+
+  it('recognises an error built by another copy of the package, by code alone', () => {
+    // Arrange: a second copy's class is not our class, but carries the same code.
+    const fromOtherCopy = Object.assign(new Error('bad'), { code: COMMON_ERROR_CODES.INVALID_ARGUMENT });
+
+    // Act / Assert
+    expect([isMidnightJsError(fromOtherCopy), errorCategory(fromOtherCopy)]).toEqual([true, 'USAGE']);
+  });
+
+  it.each([
+    ['a foreign coded error', Object.assign(new Error('refused'), { code: 'ECONNREFUSED' })],
+    ['a plain error', new Error('plain')],
+    ['a non-error value', 'MIDNIGHT_JS_G_INVALID_ARGUMENT'],
+    ['an unregistered framework-looking code', Object.assign(new Error('x'), { code: 'MIDNIGHT_JS_G_NOT_A_CODE' })]
+  ])('answers no for %s', (_label, value) => {
+    expect([isMidnightJsError(value), errorCategory(value)]).toEqual([false, undefined]);
   });
 });

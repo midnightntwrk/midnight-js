@@ -48,7 +48,7 @@ string, and a caller that received one would get a value with no `cause`, no cal
 site and no `instanceof` identity to branch on.
 
 It is sync-only BY CONTRACT, and the contract is enforced: if `fn()` returns a
-thenable the wrapper throws a `TypeError` rather than silently bypassing
+thenable the wrapper throws an `InvalidArgumentError` rather than silently bypassing
 classification. Any rejection from that thenable would otherwise escape the
 `try`/`catch` entirely — the failure this check exists to make impossible.
 

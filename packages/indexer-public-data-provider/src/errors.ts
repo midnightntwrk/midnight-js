@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
+import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { ReadSeam } from '@midnight-ntwrk/midnight-js-types';
-import { PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types/errors';
+import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types/errors';
 import type { GraphQLFormattedError } from 'graphql';
 
 /**
@@ -24,16 +25,18 @@ import type { GraphQLFormattedError } from 'graphql';
  *
  * NOT EXHAUSTIVE OVER A READ. Two failure classes deliberately escape this
  * check: `DeserializationError` (`@midnight-ntwrk/midnight-js-utils`) and
- * `Ledger8RuntimeMissingError` (`@midnight-ntwrk/midnight-js-protocol`).
+ * `Ledger8RuntimeMissingError` (`@midnight-ntwrk/midnight-js-protocol`). Both
+ * are `MidnightJsError`s, so `isMidnightJsError` recognises them as well as
+ * every `IndexerError`. A failure from a dependency can still pass through
+ * uncoded.
  *
- * A consumer that needs to catch everything a read can raise should catch
- * broadly and branch, or match on `code` via `hasErrorCode` from
+ * To branch on one failure, match on `code` via `hasErrorCode` from
  * `@midnight-ntwrk/midnight-js-utils`.
  *
  * @see {@link ErrorBoundaries} for what each escaping class reports, and why
  * wrapping it here would mislead.
  */
-export abstract class IndexerError extends Error {}
+export abstract class IndexerError extends MidnightJsError {}
 
 /**
  * Raised when a GraphQL response includes one or more `GraphQLFormattedError`
@@ -48,6 +51,9 @@ export abstract class IndexerError extends Error {}
  * Transport-level and other Apollo failures are reported via {@link IndexerQueryError}.
  */
 export class IndexerFormattedError extends IndexerError {
+  readonly code = PROVIDER_ERROR_CODES.INDEXER_GRAPHQL_FAILED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.INDEXER_GRAPHQL_FAILED];
+
   /**
    * @param errors The GraphQL errors reported by the server.
    */
@@ -69,6 +75,9 @@ export class IndexerFormattedError extends IndexerError {
  * inspect network details and the original stack.
  */
 export class IndexerQueryError extends IndexerError {
+  readonly code = PROVIDER_ERROR_CODES.INDEXER_QUERY_FAILED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.INDEXER_QUERY_FAILED];
+
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = 'IndexerQueryError';
@@ -125,6 +134,9 @@ export type IndexerDataErrorContext =
  * {@link context} stay in sync.
  */
 export class IndexerDataError extends IndexerError {
+  readonly code = PROVIDER_ERROR_CODES.INDEXER_DATA_INVALID;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.INDEXER_DATA_INVALID];
+
   constructor(public readonly context: IndexerDataErrorContext, options?: ErrorOptions) {
     super(IndexerDataError.formatMessage(context), options);
     this.name = 'IndexerDataError';
@@ -296,6 +308,9 @@ export type IndexerSubscriptionField = 'blocks' | 'contractActions' | 'contractE
  * the provider relies on. Carries the missing field name for diagnostics.
  */
 export class IndexerSubscriptionDataError extends IndexerError {
+  readonly code = PROVIDER_ERROR_CODES.INDEXER_SUBSCRIPTION_DATA_INVALID;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.INDEXER_SUBSCRIPTION_DATA_INVALID];
+
   constructor(public readonly missingField: IndexerSubscriptionField) {
     super(`Expected '${missingField}' in indexer subscription data, got null/undefined`);
     this.name = 'IndexerSubscriptionDataError';
@@ -309,6 +324,9 @@ export class IndexerSubscriptionDataError extends IndexerError {
  * issues — separate semantic category from {@link IndexerDataError}.
  */
 export class IndexerProviderConfigError extends IndexerError {
+  readonly code = PROVIDER_ERROR_CODES.INDEXER_CONFIG_INVALID;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.INDEXER_CONFIG_INVALID];
+
   constructor(message: string) {
     super(message);
     this.name = 'IndexerProviderConfigError';
@@ -326,6 +344,9 @@ export class IndexerProviderConfigError extends IndexerError {
  * the provider's pipeline composition, not in the data.
  */
 export class IndexerInvariantError extends IndexerError {
+  readonly code = PROVIDER_ERROR_CODES.INDEXER_INVARIANT_VIOLATED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.INDEXER_INVARIANT_VIOLATED];
+
   constructor(message: string) {
     super(message);
     this.name = 'IndexerInvariantError';
@@ -347,6 +368,7 @@ export class IndexerInvariantError extends IndexerError {
  */
 export class EraUnsupportedError extends IndexerError {
   readonly code = PROVIDER_ERROR_CODES.ERA_UNSUPPORTED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.ERA_UNSUPPORTED];
 
   /**
    * @param seam The read-surface method that performed the decode.
@@ -393,6 +415,7 @@ export class EraUnsupportedError extends IndexerError {
  */
 export class EraUnresolvableError extends IndexerError {
   readonly code = PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE];
 
   /**
    * @param seam The read-surface method that attempted to resolve the era.
@@ -413,5 +436,16 @@ export class EraUnresolvableError extends IndexerError {
       options
     );
     this.name = 'EraUnresolvableError';
+  }
+}
+
+/** A compressed subscription message inflated beyond the size limit. */
+export class IndexerPayloadTooLargeError extends IndexerError {
+  readonly code = PROVIDER_ERROR_CODES.INDEXER_PAYLOAD_TOO_LARGE;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.INDEXER_PAYLOAD_TOO_LARGE];
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'IndexerPayloadTooLargeError';
   }
 }

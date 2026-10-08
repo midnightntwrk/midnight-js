@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+
 import { classify } from './classify';
 import { type DeserializationCallSite, DeserializationError } from './deserialization-error';
 
@@ -24,12 +26,12 @@ import { type DeserializationCallSite, DeserializationError } from './deserializ
  * A non-`Error` throw is classified on its string form rather than escaping
  * unwrapped.
  *
- * SYNC-ONLY BY CONTRACT: if `fn()` returns a thenable the wrapper throws a
- * `TypeError`. The typed wrappers in `./typed-wrappers.ts` are the primary API;
+ * SYNC-ONLY BY CONTRACT: if `fn()` returns a thenable the wrapper throws an
+ * `InvalidArgumentError`. The typed wrappers in `./typed-wrappers.ts` are the primary API;
  * use this HOF directly only for ad-hoc deserialization sites not covered there.
  *
  * @throws {DeserializationError} When `fn()` throws anything at all.
- * @throws {TypeError} When `fn()` returns a thenable (sync-only violation).
+ * @throws {InvalidArgumentError} When `fn()` returns a thenable (sync-only violation).
  *
  * @see {@link ErrorVocabulary} for why a bare string throw is classified rather
  * than re-thrown, and what the thenable check prevents.
@@ -57,7 +59,7 @@ export const withDeserializationContext = <T>(
     typeof result === 'object' &&
     typeof (result as { then?: unknown }).then === 'function'
   ) {
-    throw new TypeError(
+    throw new InvalidArgumentError(
       `withDeserializationContext is sync-only; received a thenable from ${callSite.caller}.`
     );
   }

@@ -656,9 +656,11 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     const providers = postForkProviders(v6Envelope);
     providers.publicDataProvider.queryRawContractState = vi.fn().mockResolvedValue(null);
 
-    await expect(submitCallTx(providers, callOptions())).rejects.toThrow(
-      `No contract deployed at contract address '${recording.contractAddress}'`
-    );
+    await expect(submitCallTx(providers, callOptions())).rejects.toMatchObject({
+      name: 'ContractNotFoundError',
+      code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND,
+      message: `No contract deployed at contract address '${recording.contractAddress}'`
+    });
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });
 });

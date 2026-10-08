@@ -14,6 +14,7 @@
  */
 
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { ConfigurationError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   ExportDecryptionError,
   type ExportPrivateStatesOptions,
@@ -26,10 +27,13 @@ import {
   InvalidExportFormatError,
   MAX_EXPORT_SIGNING_KEYS,
   MAX_EXPORT_STATES,
+  PrivateStateDecryptionError,
   type PrivateStateExport,
   PrivateStateExportError,
   type PrivateStateId,
+  PrivateStateLimitExceededError,
   type PrivateStateProvider,
+  PrivateStateStorageError,
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
@@ -235,7 +239,7 @@ const openDatabase = async (ctx: StorageContext): Promise<DatabaseLevel> => {
     await level.open();
     return level;
   } catch (error: unknown) {
-    throw new Error(
+    throw new PrivateStateStorageError(
       `Failed to open private state database "${ctx.dbName}": ${describeOpenFailure(error)}. ` +
       `Possible causes: another process holds the database, ` +
       `insufficient file permissions, or a corrupted store.`,
@@ -276,11 +280,10 @@ const withSubLevel = <A>(
         (failure: unknown) => failure
       );
       if (closeError !== undefined) {
-        throw new AggregateError(
-          [error, closeError],
+        throw new PrivateStateStorageError(
           `Operation on private state database "${ctx.dbName}" failed, and the database handle ` +
           `could not be closed afterwards. The database stays locked for the rest of this process.`,
-          { cause: error }
+          { cause: error, closeError }
         );
       }
       throw error;
@@ -381,23 +384,8 @@ interface RotateStorePasswordParams {
   readonly shouldProceed?: (key: string) => boolean;
 }
 
-const isDecryptionError = (error: unknown): boolean => {
-  if (!(error instanceof Error)) return false;
-
-  if ('name' in error && error.name === 'OperationError') {
-    return true;
-  }
-
-  const message = error.message.toLowerCase();
-  return (
-    message.includes('unsupported state') ||
-    message.includes('salt mismatch') ||
-    message.includes('invalid encrypted data') ||
-    message.includes('bad decrypt') ||
-    message.includes('invalid tag') ||
-    message.includes('unable to authenticate')
-  );
-};
+const isWrongKeyError = (error: unknown): boolean =>
+  error instanceof PrivateStateDecryptionError && error.reason === 'wrong-key';
 
 const rotateStorePassword = async (
   params: RotateStorePasswordParams
@@ -424,7 +412,7 @@ const rotateStorePassword = async (
         if (key === METADATA_KEY) continue;
 
         if (entriesToMigrate.length >= maxEntries) {
-          throw new Error(
+          throw new PrivateStateLimitExceededError(
             `Entry count exceeds maximum allowed (${maxEntries}). ` +
             `Use the maxEntries option to increase the limit if needed.`
           );
@@ -438,8 +426,8 @@ const rotateStorePassword = async (
           try {
             await decryptValue(encryptedValue, oldEncryption, oldPassword);
           } catch (error: unknown) {
-            if (isDecryptionError(error)) {
-              throw new Error('Old password is incorrect: failed to decrypt existing data', { cause: error });
+            if (isWrongKeyError(error)) {
+              throw new InvalidArgumentError('Old password is incorrect: failed to decrypt existing data', { cause: error });
             }
             throw error;
           }
@@ -451,9 +439,10 @@ const rotateStorePassword = async (
           entriesToMigrate.push({ key, decryptedValue });
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          throw new Error(
+          throw new PrivateStateDecryptionError(
             `Failed to decrypt entry "${key}": ${errorMessage}. ` +
             `Successfully processed ${entriesToMigrate.length} entries before failure.`,
+            error instanceof PrivateStateDecryptionError ? error.reason : 'malformed',
             { cause: error }
           );
         }
@@ -474,7 +463,7 @@ const rotateStorePassword = async (
           operations.push({ type: 'put', key, value: encryptedValue });
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          throw new Error(
+          throw new PrivateStateStorageError(
             `Failed to re-encrypt entry "${key}": ${errorMessage}. ` +
             `Original data is still encrypted with old password.`,
             { cause: error }
@@ -492,7 +481,7 @@ const rotateStorePassword = async (
         await subLevel.batch(operations);
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        throw new Error(
+        throw new PrivateStateStorageError(
           `Failed to write re-encrypted data: ${errorMessage}. ` +
           `Your data may be in an inconsistent state. ` +
           `Keep both old and new passwords until you can verify data integrity.`,
@@ -754,14 +743,14 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
   const fullConfig = { ...DEFAULT_CONFIG, ...config };
 
   if (!config.privateStoragePasswordProvider) {
-    throw new Error(
+    throw new ConfigurationError(
       'privateStoragePasswordProvider is required.\n' +
       'Provide a function that returns a strong, secret password (minimum 16 characters).'
     );
   }
 
   if (!config.accountId || config.accountId.trim().length === 0) {
-    throw new Error(
+    throw new ConfigurationError(
       'accountId is required.\n' +
       'Provide an account identifier (e.g., wallet address) to scope storage and prevent cross-account data access.'
     );
@@ -785,7 +774,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
   const getScopedKey = (privateStateId: PSI): string => {
     if (contractAddress === null) {
-      throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
+      throw new ConfigurationError('Contract address not set. Call setContractAddress() before accessing private state.');
     }
     return `${contractAddress}:${privateStateId}`;
   };
@@ -834,7 +823,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     /** {@inheritDoc PrivateStateProvider.clear} */
     async clear(): Promise<void> {
       if (contractAddress === null) {
-        throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
+        throw new ConfigurationError('Contract address not set. Call setContractAddress() before accessing private state.');
       }
       const { privateState } = scopedNames;
       return withSubLevel(ctx, privateState, (subLevel) => subLevel.clear());
@@ -876,7 +865,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     /** {@inheritDoc PrivateStateProvider.exportPrivateStates} */
     async exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport> {
       if (contractAddress === null) {
-        throw new Error('Contract address not set. Call setContractAddress() before exporting private states.');
+        throw new ConfigurationError('Contract address not set. Call setContractAddress() before exporting private states.');
       }
 
       const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
@@ -941,7 +930,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       options?: ImportPrivateStatesOptions
     ): Promise<ImportPrivateStatesResult> {
       if (contractAddress === null) {
-        throw new Error('Contract address not set. Call setContractAddress() before importing private states.');
+        throw new ConfigurationError('Contract address not set. Call setContractAddress() before importing private states.');
       }
 
       const conflictStrategy = options?.conflictStrategy ?? 'error';
@@ -1208,7 +1197,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       options?: PasswordRotationOptions
     ): Promise<PasswordRotationResult> {
       if (contractAddress === null) {
-        throw new Error('Contract address not set. Call setContractAddress() before changing password.');
+        throw new ConfigurationError('Contract address not set. Call setContractAddress() before changing password.');
       }
 
       const { privateState, signingKey } = scopedNames;
@@ -1320,7 +1309,7 @@ const migrateSublevel = (
         await oldSubLevel.open();
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        throw new Error(
+        throw new PrivateStateStorageError(
           `Failed to open source sublevel "${oldLevelName}": ${errorMessage}. ` +
           `Ensure no other process is accessing the database.`,
           { cause: error }
@@ -1331,7 +1320,7 @@ const migrateSublevel = (
         await newSubLevel.open();
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        throw new Error(
+        throw new PrivateStateStorageError(
           `Failed to open target sublevel "${newLevelName}": ${errorMessage}. ` +
           `Ensure no other process is accessing the database.`,
           { cause: error }
@@ -1348,7 +1337,7 @@ const migrateSublevel = (
         }
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        throw new Error(
+        throw new PrivateStateStorageError(
           `Failed to read data from source sublevel "${oldLevelName}" after ${count} entries: ${errorMessage}. ` +
           `Migration incomplete. Source data is unchanged.`,
           { cause: error }
@@ -1360,7 +1349,7 @@ const migrateSublevel = (
           await newSubLevel.batch(operations);
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          throw new Error(
+          throw new PrivateStateStorageError(
             `Failed to write ${operations.length} entries to target sublevel "${newLevelName}": ${errorMessage}. ` +
             `Migration incomplete. Target sublevel may contain partial data. ` +
             `Source data at "${oldLevelName}" is unchanged.`,
@@ -1402,7 +1391,7 @@ export const migrateToAccountScoped = async (
   };
 
   if (!config.accountId || config.accountId.trim().length === 0) {
-    throw new Error('accountId is required for migration');
+    throw new ConfigurationError('accountId is required for migration');
   }
 
   const scopedPrivateStateLevelName = getScopedLevelName(
@@ -1420,7 +1409,7 @@ export const migrateToAccountScoped = async (
     privateStatesMigrated = await migrateSublevel(ctx, fullConfig.privateStateStoreName, scopedPrivateStateLevelName);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(
+    throw new PrivateStateStorageError(
       `Migration failed during private states copy: ${errorMessage}. ` +
       `No data has been migrated. Source data is unchanged.`,
       { cause: error }
@@ -1433,7 +1422,7 @@ export const migrateToAccountScoped = async (
     signingKeysMigrated = await migrateSublevel(ctx, fullConfig.signingKeyStoreName, scopedSigningKeyLevelName);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(
+    throw new PrivateStateStorageError(
       `Migration failed during signing keys copy: ${errorMessage}. ` +
       `WARNING: ${privateStatesMigrated} private states were already migrated to scoped location. ` +
       `Signing keys remain at original location. Manual intervention may be required.`,

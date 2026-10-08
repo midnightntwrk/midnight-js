@@ -84,6 +84,8 @@ describe('Protocol type ACL', () => {
   it('publishes exactly this type surface from the barrel', () => {
     expect(barrelTypeNames).toEqual([
       'CallTranscriptSource',
+      'CodedMidnightJsError',
+      'CommonErrorCode',
       'ComposeCallEntry',
       'ComposeCallOptions',
       // Named by `composeCallTx`'s answer, which carries the split each call was
@@ -123,6 +125,8 @@ describe('Protocol type ACL', () => {
       'LedgerEra',
       'LedgerParametersOption',
       'LedgerVersion',
+      'MidnightJsErrorCategory',
+      'MidnightJsErrorCodeFormat',
       'PartitionContext',
       'PartitionedCallTranscript',
       'ProtocolErrorCode',

@@ -16,6 +16,7 @@
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { type Contract, ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { type CoinPublicKey, type ContractModuleProvider, type ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import { exitResultOrError, makeContractExecutableRuntime, type MidnightConfig, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
@@ -29,7 +30,7 @@ import type {
 } from './call';
 import { type ContractProviders } from './contract-providers';
 import { CURRENT_PIPELINE_ERA } from './era';
-import { IncompleteCallTxPrivateStateConfig, isEffectContractError } from './errors';
+import { HeadReadFailedError, IncompleteCallTxPrivateStateConfig, isEffectContractError } from './errors';
 import { type ContractStates, getPublicStates, getStates, type PublicContractStates } from './get-states';
 import * as Transaction from './internal/transaction';
 import {
@@ -82,9 +83,10 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PC
  * @param walletEncryptionPublicKey
  * @param crossContract Enables cross-contract calls; required for circuits that make them.
  * @returns Data produced by the circuit call and an unproven transaction assembled from the call result.
- * @throws TypeError If `options.config` is missing, or its `networkId` is not a non-empty string without
- *         surrounding whitespace.
- * @throws RangeError If `options.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
+ * @throws ConfigurationError If `options.config` is missing.
+ * @throws InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
+ *         whitespace.
+ * @throws InvalidArgumentError If `options.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
  *
  * @remarks
  * The returned {@link UnsubmittedCallTxData} is privacy-sensitive and carries
@@ -102,12 +104,12 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
   assertValidMidnightConfig(config, 'options.config');
   const { networkId } = config;
   assertIsContractAddress(contractAddress);
-  assertDefined(
-    ContractExecutable.make(options.compiledContract)
-      .getProvableCircuitIds()
-      .find((circuitId) => circuitId as unknown as PCK === options.circuitId), // eslint-disable-line no-restricted-syntax
-    `Circuit '${options.circuitId}' is undefined`
-  );
+  const declaredCircuitId = ContractExecutable.make(options.compiledContract)
+    .getProvableCircuitIds()
+    .find((circuitId) => circuitId as unknown as PCK === options.circuitId); // eslint-disable-line no-restricted-syntax
+  if (declaredCircuitId === undefined) {
+    throw new InvalidArgumentError(`Circuit '${options.circuitId}' is undefined`);
+  }
 
   const contractExec = ContractExecutable.make(compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
@@ -225,7 +227,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
     // "Error executing circuit '<id>'". Tested via the inherited `isCompactError` brand so every
     // CompactError subclass qualifies, not just the base class (whose `name` differs per subclass).
     if (!error.cause.isCompactError) throw error;
-    throw new Error(error.cause.message, { cause: error });
+    throw new ContractExecutionError(error.cause.message, { cause: error });
   }
 }
 
@@ -299,7 +301,9 @@ const createCallOptions = <C extends Contract.Any, PCK extends Contract.Provable
  */
 const pinLatestBlockHash = async (publicDataProvider: PublicDataProvider): Promise<string> => {
   const latestBlock = await publicDataProvider.queryBlock();
-  assertDefined(latestBlock, 'Failed to fetch the latest block from the public data provider');
+  if (latestBlock === undefined || latestBlock === null) {
+    throw new HeadReadFailedError('Failed to fetch the latest block from the public data provider');
+  }
   return latestBlock.hash;
 };
 
@@ -408,9 +412,10 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
  * @throws IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privateStateProvider`
  *                                           was not. We assume that when a user gives a `privateStateId`,
  *                                           they want to update the private state store.
- * @throws TypeError If `providers.config` is missing, or its `networkId` is not a non-empty string without
- *         surrounding whitespace.
- * @throws RangeError If `providers.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
+ * @throws ConfigurationError If `providers.config` is missing.
+ * @throws InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
+ *         whitespace.
+ * @throws InvalidArgumentError If `providers.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
  *
  * @remarks
  * The returned {@link UnsubmittedCallTxData} is privacy-sensitive and carries
@@ -425,12 +430,12 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
 ): Promise<UnsubmittedCallTxData<C, PCK>> {
   assertValidMidnightConfig(providers.config);
   assertIsContractAddress(options.contractAddress);
-  assertDefined(
-    ContractExecutable.make(options.compiledContract)
-      .getProvableCircuitIds()
-      .find((a) => a as unknown as PCK === options.circuitId), // eslint-disable-line no-restricted-syntax
-    `Circuit '${options.circuitId}' is undefined`
-  );
+  const declaredCircuitId = ContractExecutable.make(options.compiledContract)
+    .getProvableCircuitIds()
+    .find((a) => a as unknown as PCK === options.circuitId); // eslint-disable-line no-restricted-syntax
+  if (declaredCircuitId === undefined) {
+    throw new InvalidArgumentError(`Circuit '${options.circuitId}' is undefined`);
+  }
 
   const hasPrivateStateProvider = 'privateStateProvider' in providers;
   const hasPrivateStateId = 'privateStateId' in options;

@@ -17,8 +17,10 @@ import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledge
 import { sampleContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 import type { UnshieldedBalances } from '@midnight-ntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ContractNotFoundError } from '../errors';
 import { getUnshieldedBalances } from '../get-unshielded-balances';
 
 describe('getUnshieldedBalances', () => {
@@ -49,9 +51,13 @@ describe('getUnshieldedBalances', () => {
   it('should throw error when no unshielded balances found', async () => {
     const mockPublicDataProvider = providerWith(vi.fn().mockResolvedValue(null));
 
-    await expect(getUnshieldedBalances(mockPublicDataProvider, mockContractAddress))
-      .rejects
-      .toThrow(`No unshielded balances found at contract address '${mockContractAddress}'`);
+    const rejection = getUnshieldedBalances(mockPublicDataProvider, mockContractAddress);
+
+    await expect(rejection).rejects.toBeInstanceOf(ContractNotFoundError);
+    await expect(rejection).rejects.toMatchObject({
+      code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND,
+      message: `No unshielded balances found at contract address '${mockContractAddress}'`
+    });
 
     expect(mockPublicDataProvider.queryUnshieldedBalances).toHaveBeenCalledWith(mockContractAddress);
   });

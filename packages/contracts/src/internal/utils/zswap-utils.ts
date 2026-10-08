@@ -14,6 +14,7 @@
  */
 
 import { type Recipient, type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   type AlignedValue,
   type CoinCommitment,
@@ -42,6 +43,8 @@ import {
   parseCoinPublicKeyToHex,
   parseEncPublicKeyToHex
 } from '@midnight-ntwrk/midnight-js-utils';
+
+import { ZswapOutputResolutionError } from '../../errors';
 
 /**
  * Resolves a CoinPublicKey to the corresponding EncPublicKey for output encryption.
@@ -100,7 +103,7 @@ export const createEncryptionPublicKeyResolver = (
 export const checkKeys = (coinInfo: ShieldedCoinInfo): void =>
   Object.keys(coinInfo).forEach((key) => {
     if (key !== 'value' && key !== 'type' && key !== 'nonce') {
-      throw new TypeError(`Key '${key}' should not be present in output data ${coinInfo}`);
+      throw new InvariantViolationError(`Key '${key}' should not be present in output data ${coinInfo}`);
     }
   });
 
@@ -150,7 +153,7 @@ export const createZswapOutput = (
   }
   const encryptionPublicKey = encryptionPublicKeyResolver(recipient.left);
   if (!encryptionPublicKey) {
-    throw new Error(
+    throw new ZswapOutputResolutionError(
       `Unable to resolve encryption public key for recipient ${recipient.left}. ` +
       `Provide a mapping via the encryptionPublicKeyResolver.`
     );
@@ -206,7 +209,7 @@ export const encryptionPublicKeyResolverForZswapState = (
   const localCpkHex = parseCoinPublicKeyToHex(zswapState.coinPublicKey, networkId);
 
   if (localCpkHex !== walletCpkHex) {
-    throw new Error('Unable to lookup encryption public key (Unsupported coin)');
+    throw new ZswapOutputResolutionError('Unable to lookup encryption public key (Unsupported coin)');
   }
 
   return createEncryptionPublicKeyResolver(
@@ -284,7 +287,7 @@ const segmentForMatch = (
   // Both halves provided but neither matches: surface loudly. Silent fall-through
   // to segment 0 would re-introduce the exact failure mode this helper exists to fix.
   if (partitionedTranscripts.some(([guaranteed, fallible]) => guaranteed !== undefined && fallible !== undefined)) {
-    throw new Error(
+    throw new InvariantViolationError(
       `${errorContext} not present in either segment of the partitioned transcript. ` +
         `Local zswap state does not match the contract's declared effects.`
     );
@@ -499,7 +502,7 @@ const soleCommitmentFor = (
 ): CoinCommitment | undefined => {
   const candidates = commitmentsByCoinInfo.get(serializeCoinInfo(coinInfo)) ?? [];
   if (candidates.length > 1) {
-    throw new Error(
+    throw new ZswapOutputResolutionError(
       `Ambiguous transient: ${candidates.length} outputs carry the coin info of an input whose ` +
         `spending contract is unknown, so the pair cannot be identified. Supply the contract ` +
         `address that spent it.`
@@ -556,7 +559,7 @@ export const zswapCallsToSegmentedOffer = (
         // not, the local states and the transcripts disagree and silently picking one would produce
         // an offer the ledger rejects.
         if (already !== segment) {
-          throw new Error(
+          throw new ZswapOutputResolutionError(
             `Shielded commitment ${commitment} is claimed in segment ${already} by one call and ` +
               `segment ${segment} by another; the calls' transcripts disagree.`
           );
@@ -626,7 +629,7 @@ export const zswapCallsToSegmentedOffer = (
       // contract that owns it (the nullifier binds the spender) and that contract's own view of
       // the tree — the root's view has every other contract's leaves collapsed out of it.
       if (owner.kind !== 'contract') {
-        throw new Error(
+        throw new ZswapOutputResolutionError(
           `A call that spends a settled shielded coin must name the contract that spent it, since ` +
             `the nullifier binds the spender. Only an input that pairs into a transient can be ` +
             `assembled without one.`

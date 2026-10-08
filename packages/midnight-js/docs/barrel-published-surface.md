@@ -41,6 +41,10 @@ A value is published here when a consumer needs it to say which era produced a
 payload or a record, or to handle the failure when that resolution has no
 answer.
 
+The error base qualifies on a wider ground: a consumer must be able to handle
+every midnight-js error from the barrel, whichever package raised it. See
+[The error base and the general errors](#the-error-base-and-the-general-errors).
+
 A **type** is published when it is named in the public shape of a value
 published here — a parameter of an exported function, its return type, or a
 public field of an exported error class. A **constant** a published field is
@@ -92,6 +96,7 @@ protocol errors reach a barrel consumer directly:
 | `StateInconsistentError` | `lib/shared/contract-state.ts` | `version` |
 | `UnknownLedgerVersionError` | `contracts/src/internal/era.ts`, `lib/era/load-era.ts` | `requestedVersion` |
 | `PayloadNotATransactionError` | `lib/prove`, as a `proveTx` rejection | none; caught, not constructed |
+| `ContractExecutionError` | `lib/v8/executable.ts`; `contracts` call and deploy builders on a Compact error; `types` `exitResultOrError` when several failures arrive together | `cause` — the underlying failure; `errors` — every failure when several arrived together |
 
 `hasErrorCode` narrows only to `Error & { code }`, so without the class a
 consumer could detect one of these and then not read the field that decides the
@@ -114,6 +119,29 @@ construction-time instance guard and the Merkle-rehash walk were retired with
 the hand-maintained execution layer, and `packages/protocol/src/errors.ts` says
 so on both classes. They stay published because a consumer may still switch on
 the code. `UNKNOWN_LEDGER8_AXIS` is in the same position.
+
+## The error base and the general errors
+
+`MidnightJsError`, `MIDNIGHT_JS_ERROR_CATEGORIES` and the type
+`MidnightJsErrorCategory` are published so a consumer can handle every
+midnight-js error from the barrel without importing a leaf package.
+`COMMON_ERROR_CODES` and the four general errors travel with them:
+
+| Class | Raised when |
+|---|---|
+| `InvalidArgumentError` | a caller passes a value the API refuses |
+| `ConfigurationError` | required setup is missing or was done in the wrong order |
+| `EnvironmentUnsupportedError` | the runtime cannot do what the call needs |
+| `InvariantViolationError` | the framework reaches a state it should not |
+
+These four can reach a consumer from any package, so they are published next to
+the base rather than with one era's errors.
+
+Recognise an error by its code, not by `instanceof`: two copies of a package
+make `instanceof` fail silently. `utils.hasErrorCode`, `utils.isMidnightJsError`
+and `utils.errorCategory` are already on the barrel under `utils`, which is why
+they are not re-exported by name. See
+[ADR 0017](../../../docs/adr/0017-error-codes-are-the-contract.md).
 
 ## Which protocol entry points the barrel may reach for
 

@@ -41,6 +41,7 @@ import {
   loadLedgerEra,
   UnknownLedgerVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   type CoinPublicKey,
   type EncPublicKey,
@@ -63,7 +64,6 @@ import {
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import {
-  assertDefined,
   assertIsContractAddress,
   assertValidMidnightConfig,
   hasErrorCode,
@@ -81,6 +81,7 @@ import {
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
   Ledger8SeamFailedError,
+  PrivateStateNotFoundError,
   type SubmittedOperation
 } from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
@@ -351,6 +352,7 @@ const redact = (text: string): string => {
  */
 const sanitizeSeamCause = (cause: unknown, depth = 0): Error => {
   const nested = isErrorLike(cause) ? (cause as Error).cause : undefined;
+  // eslint-disable-next-line no-restricted-syntax -- a redacted copy carried as a cause, never thrown
   const rebuilt = new Error(
     `${describeSeamKind(cause)}: ${redact(renderSeamCause(cause))}`,
     depth < MAX_SEAM_CAUSE_DEPTH && nested !== undefined
@@ -378,10 +380,12 @@ const sanitizeSeamCause = (cause: unknown, depth = 0): Error => {
  * Runs one provider seam call, converting a rejection from the provider into
  * {@link Ledger8SeamFailedError} with the failure sanitized onto `cause`.
  *
- * This framework's OWN coded errors pass through UNCHANGED: a caller narrowing
- * on `V8PayloadUnsupportedError` or {@link EraInvariantViolationError} has to
- * keep seeing them. `hasErrorCode` is the registry-backed test, so a foreign
- * coded error is still treated as external and sanitized.
+ * This framework's OWN coded errors pass through UNCHANGED when they carry no
+ * `cause`: a caller narrowing on `V8PayloadUnsupportedError` or
+ * {@link EraInvariantViolationError} has to keep seeing them. One that carries a
+ * `cause` -- a transport failure under `ProofServerError`, say -- holds external
+ * material and is sanitized like any other rejection. `hasErrorCode` is the
+ * registry-backed test, so a foreign coded error is always sanitized.
  *
  * @param seam The provider method being called.
  * @param circuitId The circuit this flow is running.
@@ -393,7 +397,7 @@ const atSeam = async <T>(seam: EraSeam, circuitId: string, call: () => Promise<T
   try {
     return await call();
   } catch (cause) {
-    if (hasErrorCode(cause)) {
+    if (hasErrorCode(cause) && cause.cause === undefined) {
       throw cause;
     }
     throw new Ledger8SeamFailedError(seam, circuitId, sanitizeSeamCause(cause));
@@ -801,8 +805,8 @@ export interface Ledger8FoundState {
  * @param providers The provider set.
  * @param request The contract, its address and the entry points to check.
  * @returns The deploy record as the read surface reported it.
- * @throws Error if the artifact declares no callable circuits, or if the
- * address is malformed.
+ * @throws InvalidArgumentError if the artifact declares no callable circuits,
+ * or if the address is malformed.
  * @throws EraArtifactMismatchError, UnknownLedgerVersionError from era resolution.
  * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the fetched
  * envelope's era disagrees with the head.
@@ -833,11 +837,12 @@ export const findLedger8Contract = async (
   // never. An empty circuit list is refused first of all: it would otherwise
   // make the loop below a no-op and attach to any state at all without
   // checking a single key.
-  assertDefined(
-    request.circuitIds.length > 0 ? request.circuitIds : undefined,
-    `Contract at '${request.contractAddress}' cannot be attached to: the artifact declares no callable ` +
-      'circuits, so there is no verifier key to check it against and nothing to call on it.'
-  );
+  if (request.circuitIds.length === 0) {
+    throw new InvalidArgumentError(
+      `Contract at '${request.contractAddress}' cannot be attached to: the artifact declares no callable ` +
+        'circuits, so there is no verifier key to check it against and nothing to call on it.'
+    );
+  }
 
   // ONE snapshot for every key checked, never one read per circuit: two reads
   // could answer differently and leave half the keys checked against one state
@@ -988,7 +993,7 @@ export type Ledger8DeployPrivateStateSurface = Ledger8PrivateStateSurface &
  * @param privateStateId The id the caller named, or `undefined` for a contract
  * that carries no private state.
  * @returns The stored private state, or `undefined` when no id was named.
- * @throws Error if an id was named and the provider holds nothing under it.
+ * @throws PrivateStateNotFoundError if an id was named and the provider holds nothing under it.
  * @see {@link KeepStatePipeline} for the full failure mode.
  */
 const readLedger8PrivateState = async (
@@ -1005,14 +1010,15 @@ const readLedger8PrivateState = async (
   // must already have been written by an earlier operation, and naming which
   // operations those are is what separates "nothing is stored under this id"
   // from "there is no way to store anything under it".
-  assertDefined(
-    privateState,
-    `No private state found at private state ID '${privateStateId}'. A retained-era call cannot ` +
-      'seed one - only `deployContract` and `findDeployedContract` take an `initialPrivateState`, ' +
-      'each alongside the `privateStateId` it is stored under - so seed it at deploy time or at ' +
-      'attach time, or write it directly with `privateStateProvider.set(privateStateId, state)` ' +
-      'before calling, or omit `privateStateId` for a contract that carries no private state.'
-  );
+  if (privateState === undefined || privateState === null) {
+    throw new PrivateStateNotFoundError(
+      `No private state found at private state ID '${privateStateId}'. A retained-era call cannot ` +
+        'seed one - only `deployContract` and `findDeployedContract` take an `initialPrivateState`, ' +
+        'each alongside the `privateStateId` it is stored under - so seed it at deploy time or at ' +
+        'attach time, or write it directly with `privateStateProvider.set(privateStateId, state)` ' +
+        'before calling, or omit `privateStateId` for a contract that carries no private state.'
+    );
+  }
   return privateState;
 };
 
@@ -1128,10 +1134,9 @@ const runLedger8CallEntry = async (
   // verifier-key slot -- a diagnosis pointing at the chain when the fault is a
   // typo in the caller's own call.
   assertIsContractAddress(options.contractAddress);
-  assertDefined(
-    Object.hasOwn(options.compiledContract.provableCircuits, options.circuitId) ? options.circuitId : undefined,
-    `Circuit '${options.circuitId}' is undefined`
-  );
+  if (!Object.hasOwn(options.compiledContract.provableCircuits, options.circuitId)) {
+    throw new InvalidArgumentError(`Circuit '${options.circuitId}' is undefined`);
+  }
 
   if (options.privateStateId !== undefined && providers.privateStateProvider === undefined) {
     throw new IncompleteCallTxPrivateStateConfig();
@@ -1177,9 +1182,10 @@ const runLedger8CallEntry = async (
  * @returns The transaction id, the circuit, the next private state, and the
  * execution data — everything but a finalized record, which a submission that
  * does not wait for one cannot have.
- * @throws TypeError if the contract address is malformed.
- * @throws Error if the artifact declares no such circuit, or if a named
- * `privateStateId` has nothing stored under it.
+ * @throws InvalidArgumentError if the contract address is malformed, or if the
+ * artifact declares no such circuit.
+ * @throws PrivateStateNotFoundError if a named `privateStateId` has nothing
+ * stored under it.
  * @throws IncompleteCallTxPrivateStateConfig if a `privateStateId` is named
  * with no private-state provider.
  * @throws Every error {@link runLedger8Call} raises.
