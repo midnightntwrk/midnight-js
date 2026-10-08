@@ -470,10 +470,13 @@ import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-pri
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
+import { createMidnightProviders } from '@midnight-ntwrk/midnight-js-utils';
 
 const zkConfigProvider = new FetchZkConfigProvider(zkArtifactsUrl);
 
-const providers: MidnightProviders = {
+// Checks the set and returns it unchanged: a missing provider or a bad config fails here,
+// not at the first operation.
+const providers = createMidnightProviders({
   privateStateProvider: levelPrivateStateProvider({
     privateStoragePasswordProvider: () => password,
     accountId: walletAddress
@@ -484,7 +487,7 @@ const providers: MidnightProviders = {
   walletProvider,    // from @midnight-ntwrk/wallet-sdk-facade
   midnightProvider,  // from @midnight-ntwrk/wallet-sdk-facade
   config: { networkId: 'preview', ttlSeconds: 3600 } // network and transaction TTL, required
-};
+});
 ```
 
 As of 5.0.0 `WalletProvider.balanceTx` and `MidnightProvider.submitTx` carry a
