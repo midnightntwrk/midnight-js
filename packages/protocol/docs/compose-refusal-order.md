@@ -246,11 +246,10 @@ framework's provers resolve artifacts by (see `encodeContractKeyLocation` and
 `parseContractKeyLocation` rejects it, so a call carrying one cannot be proven
 through the registry or the DApp-connector path.
 
-There is exactly one deliberate exception to the coding rule:
+One refusal uses the general invariant code rather than a protocol code:
 `partitionTranscripts` returning nothing for the single call submitted is an
 internal invariant of the ledger module, not a caller error, so that one throws
-`InvariantViolationError` (`MIDNIGHT_JS_G_INVARIANT_VIOLATED`, INTERNAL) and
-deliberately carries no protocol error code.
+`InvariantViolationError` (`MIDNIGHT_JS_G_INVARIANT_VIOLATED`, INTERNAL).
 
 ## One stage union across both eras
 

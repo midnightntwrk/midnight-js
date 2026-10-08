@@ -249,6 +249,34 @@ describe('error categories', () => {
     expect(Object.keys(MIDNIGHT_JS_ERROR_CATEGORY_BY_CODE).sort()).toEqual([...MIDNIGHT_JS_ERROR_CODES].sort());
   });
 
+  const codesIn = (category: string): string[] =>
+    Object.entries(MIDNIGHT_JS_ERROR_CATEGORY_BY_CODE)
+      .filter(([, value]) => value === category)
+      .map(([code]) => code)
+      .sort();
+
+  it('marks exactly these codes as safe to retry', () => {
+    expect(codesIn('TRANSIENT')).toEqual([
+      'MIDNIGHT_JS_C_HEAD_READ_FAILED',
+      'MIDNIGHT_JS_C_HEAD_STATE_ERA_MISMATCH',
+      'MIDNIGHT_JS_PR_INDEXER_QUERY_FAILED',
+      'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE',
+      'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED'
+    ]);
+  });
+
+  it('marks every submission whose outcome is unknown as UNCERTAIN, never as TRANSIENT', () => {
+    expect(codesIn('UNCERTAIN')).toEqual([
+      'MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED',
+      'MIDNIGHT_JS_C_STALE_HEAD',
+      'MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED'
+    ]);
+  });
+
+  it('treats an ambiguous on-chain entry point as bad on-chain data, not as a caller mistake', () => {
+    expect(MIDNIGHT_JS_ERROR_CATEGORY_BY_CODE[CONTRACTS_ERROR_CODES.LEDGER8_AMBIGUOUS_ENTRY_POINT]).toBe('INTEGRITY');
+  });
+
   it('registers the general group', () => {
     expect(MIDNIGHT_JS_ERROR_CODES).toEqual(expect.arrayContaining(Object.values(COMMON_ERROR_CODES)));
   });

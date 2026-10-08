@@ -778,6 +778,25 @@ describe('runOrRethrow', () => {
     expect(rejection).toBe(coded);
   });
 
+  it('still finds a coded cause exactly eight levels down', async () => {
+    // Arrange.
+    class FetchFailure extends Error {
+      readonly code = 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED';
+      readonly category = 'TRANSIENT';
+    }
+    const coded = new FetchFailure('deep');
+    let chain: Error = coded;
+    for (let level = 0; level < 8; level++) {
+      chain = new Error(`level ${level}`, { cause: chain });
+    }
+
+    // Act.
+    const rejection = await runOrRethrow(Effect.fail(chain)).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBe(coded);
+  });
+
   it('stops looking for a coded cause after eight levels and flattens the failure', async () => {
     // Arrange.
     class FetchFailure extends Error {
@@ -797,17 +816,13 @@ describe('runOrRethrow', () => {
     expect(rejection).toMatchObject({ cause: chain });
   });
 
-  it('still flattens an uncoded cause chain, even a cyclic one, into ContractExecutionError', async () => {
+  it('still flattens an uncoded cause chain into ContractExecutionError', async () => {
     // Arrange.
     const root = new Error('Block time is <= time');
     const wrapped = new Error("Error executing circuit 'testBlockTimeGt'", { cause: root });
-    const foreignCoded = Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' });
-    const cyclic: Error & { cause?: unknown } = new Error('cyclic', { cause: foreignCoded });
-    foreignCoded.cause = cyclic;
 
     // Act.
     const flattened = await runOrRethrow(Effect.fail(wrapped)).catch((error: unknown) => error);
-    const flattenedCyclic = await runOrRethrow(Effect.fail(cyclic)).catch((error: unknown) => error);
 
     // Assert.
     expect(flattened).toBeInstanceOf(ContractExecutionError);
@@ -815,8 +830,49 @@ describe('runOrRethrow', () => {
       message: "Error executing circuit 'testBlockTimeGt': Block time is <= time",
       cause: wrapped
     });
+  });
+
+  it('flattens a cyclic cause chain carrying only a foreign code into ContractExecutionError', async () => {
+    // Arrange.
+    const foreignCoded = Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' });
+    const cyclic: Error & { cause?: unknown } = new Error('cyclic', { cause: foreignCoded });
+    foreignCoded.cause = cyclic;
+
+    // Act.
+    const flattenedCyclic = await runOrRethrow(Effect.fail(cyclic)).catch((error: unknown) => error);
+
+    // Assert.
     expect(flattenedCyclic).toBeInstanceOf(ContractExecutionError);
     expect(flattenedCyclic).toMatchObject({ message: 'cyclic: connection refused', cause: cyclic });
+  });
+
+  it('reports every failure when several concurrent failures each wrap a coded cause, with the first coded one on cause', async () => {
+    // Arrange.
+    class FetchFailure extends Error {
+      readonly code = 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED';
+      readonly category = 'TRANSIENT';
+    }
+    const first = new FetchFailure('increment verifier key unavailable');
+    const second = new FetchFailure('decrement verifier key unavailable');
+    const concurrentlyFailing = Effect.all(
+      [
+        Effect.fail(new Error("reading 'increment' failed", { cause: first })),
+        Effect.fail(new Error("reading 'decrement' failed", { cause: second }))
+      ],
+      { concurrency: 'unbounded' }
+    );
+
+    // Act.
+    const rejection = await runOrRethrow(concurrentlyFailing).catch((error: unknown) => error);
+
+    // Assert.
+    expect(rejection).toBeInstanceOf(ContractExecutionError);
+    expect(rejection).toMatchObject({
+      message:
+        "reading 'increment' failed: increment verifier key unavailable; " +
+        "reading 'decrement' failed: decrement verifier key unavailable"
+    });
+    expect(rejection instanceof ContractExecutionError && rejection.cause).toBe(first);
   });
 
   it('reports EVERY failure when concurrent work fails, not just the first', async () => {

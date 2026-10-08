@@ -41,6 +41,7 @@ import {
   UnknownLedgerVersionError,
   UnknownProtocolVersionError
 } from '../errors';
+import * as errors from '../errors';
 
 describe('general errors', () => {
   it.each([
@@ -63,6 +64,14 @@ describe('general errors', () => {
   });
 });
 
+describe('MIDNIGHT_JS_ERROR_CATEGORIES', () => {
+  it('names exactly the seven things a caller can do about an error', () => {
+    expect(Object.values(MIDNIGHT_JS_ERROR_CATEGORIES).sort()).toEqual(
+      ['ENVIRONMENT', 'INTEGRITY', 'INTERNAL', 'REJECTED', 'TRANSIENT', 'UNCERTAIN', 'USAGE']
+    );
+  });
+});
+
 describe('category tables', () => {
   it('cover every code of their group exactly', () => {
     expect(Object.keys(COMMON_ERROR_CATEGORIES).sort()).toEqual(Object.values(COMMON_ERROR_CODES).sort());
@@ -81,20 +90,55 @@ describe('category tables', () => {
 });
 
 describe('protocol error classes', () => {
-  it('every exported error class extends MidnightJsError', () => {
-    // Arrange
-    const classes = [
-      ComposeFailedError, ComposeOptionError, ContractExecutionError, ContractStateInvalidError,
-      DownConvertFailedError, Ledger8InstanceMismatchError, Ledger8RuntimeInvalidError, Ledger8RuntimeMissingError,
-      MerkleNotRehashedError, PayloadNotATransactionError, StateDecodeFailedError, UnknownLedger8AxisError,
-      UnknownLedgerVersionError, UnknownProtocolVersionError
-    ];
+  const exported: unknown[] = Object.values(errors);
+  const exportedClasses = exported.filter(
+    (value): value is abstract new (...args: never[]) => Error => typeof value === 'function' && value.prototype instanceof Error
+  );
+  const categoryOf = (code: string): string | undefined =>
+    Object.entries({ ...COMMON_ERROR_CATEGORIES, ...PROTOCOL_ERROR_CATEGORIES }).find(([key]) => key === code)?.[1];
+  const underlying = new Error('underlying');
+  const instances: readonly [string, MidnightJsError][] = [
+    ['InvalidArgumentError', new InvalidArgumentError('x')],
+    ['ConfigurationError', new ConfigurationError('x')],
+    ['EnvironmentUnsupportedError', new EnvironmentUnsupportedError('x')],
+    ['InvariantViolationError', new InvariantViolationError('x')],
+    ['UnknownProtocolVersionError', new UnknownProtocolVersionError(99, 'read', 'unknown')],
+    ['Ledger8RuntimeMissingError', new Ledger8RuntimeMissingError('/v8', underlying)],
+    ['Ledger8InstanceMismatchError', new Ledger8InstanceMismatchError('onchain-runtime-v3')],
+    ['DownConvertFailedError', new DownConvertFailedError('state down-convert', underlying)],
+    ['MerkleNotRehashedError', new MerkleNotRehashedError(underlying)],
+    ['ComposeFailedError', new ComposeFailedError('v8', 'deploy-verifier-key-blob', 'increment', underlying)],
+    ['ComposeOptionError', new ComposeOptionError('v8', 'networkId', underlying)],
+    ['StateDecodeFailedError', new StateDecodeFailedError('v8', underlying)],
+    ['Ledger8RuntimeInvalidError', new Ledger8RuntimeInvalidError('ledger')],
+    ['UnknownLedger8AxisError', new UnknownLedger8AxisError('x')],
+    ['UnknownLedgerVersionError', new UnknownLedgerVersionError('v7')],
+    ['PayloadNotATransactionError', PayloadNotATransactionError.notBytes(1)],
+    ['ContractExecutionError', new ContractExecutionError('x')],
+    ['ContractStateInvalidError', new ContractStateInvalidError('x')]
+  ];
 
+  it('every exported error class extends MidnightJsError', () => {
     // Act
-    const outsiders = classes.filter((c) => !(c.prototype instanceof MidnightJsError)).map((c) => c.name);
+    const outsiders = exportedClasses
+      .filter((c) => c !== MidnightJsError && !(c.prototype instanceof MidnightJsError))
+      .map((c) => c.name);
 
     // Assert
+    expect(exportedClasses.length).toBeGreaterThan(15);
     expect(outsiders).toEqual([]);
+  });
+
+  it('builds an instance of every concrete exported error class below', () => {
+    // Act
+    const concrete = exportedClasses.map((c) => c.name).filter((name) => name !== 'MidnightJsError');
+
+    // Assert
+    expect(concrete.sort()).toEqual(instances.map(([name]) => name).sort());
+  });
+
+  it.each(instances)('%s carries a registered code and the category the table gives that code', (_name, error) => {
+    expect(error.category).toBe(categoryOf(error.code));
   });
 
   it('reads the category of a dynamically coded error from the table', () => {

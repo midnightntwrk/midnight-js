@@ -52,7 +52,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
-import { ZswapOutputResolutionError } from '../../errors';
+import { BlankVerifierKeySlotError, ZswapOutputResolutionError } from '../../errors';
 import { type EncryptionPublicKeyResolver, zswapCallsToSegmentedOffer, zswapStateToOffer } from './zswap-utils';
 
 const PKG = '@midnight-ntwrk/midnight-js-contracts';
@@ -221,15 +221,10 @@ export const createUnprovenLedgerCallTx = (
     if (op === undefined || op === null) {
       throw new InvalidArgumentError(`Operation '${call.circuitId}' is undefined for contract '${call.contractAddress}'`);
     }
-    // The key location hashes the operation's deployed verifier key; a state whose operation carries
-    // no key (e.g. a bare `ContractOperation`) is a caller error, surfaced here rather than as an
-    // opaque "expected Uint8Array" throw from the hasher.
+    // The key location hashes the operation's deployed verifier key, so a blank slot is refused here
+    // rather than as an opaque "expected Uint8Array" throw from the hasher.
     if (op.verifierKey === undefined || op.verifierKey === null) {
-      throw new InvalidArgumentError(
-        `Operation '${call.circuitId}' on contract '${call.contractAddress}' has no verifier key. Each ` +
-          'invoked operation must carry its deployed verifier key (present in states read from chain, or ' +
-          "produced by a real deploy), which the call's key location hashes."
-      );
+      throw new BlankVerifierKeySlotError(call.circuitId);
     }
     intent = intent.addCall(
       new ContractCallPrototype(

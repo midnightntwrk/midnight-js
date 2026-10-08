@@ -26,8 +26,9 @@ import type { GraphQLFormattedError } from 'graphql';
  * NOT EXHAUSTIVE OVER A READ. Two failure classes deliberately escape this
  * check: `DeserializationError` (`@midnight-ntwrk/midnight-js-utils`) and
  * `Ledger8RuntimeMissingError` (`@midnight-ntwrk/midnight-js-protocol`). Both
- * are `MidnightJsError`s, so `isMidnightJsError` catches everything a read
- * raises.
+ * are `MidnightJsError`s, so `isMidnightJsError` recognises them as well as
+ * every `IndexerError`. A failure from a dependency can still pass through
+ * uncoded.
  *
  * To branch on one failure, match on `code` via `hasErrorCode` from
  * `@midnight-ntwrk/midnight-js-utils`.

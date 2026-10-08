@@ -50,12 +50,12 @@ interface EncryptedComponents {
 
 const extractEncryptedComponents = (data: Buffer): EncryptedComponents => {
   if (data.length < HEADER_LENGTH) {
-    throw new PrivateStateDecryptionError('Invalid encrypted data: too short');
+    throw new PrivateStateDecryptionError('Invalid encrypted data: too short', 'malformed');
   }
 
   const version = data[0];
   if (version !== ENCRYPTION_VERSION_V1 && version !== ENCRYPTION_VERSION_V2) {
-    throw new PrivateStateDecryptionError(`Unsupported encryption version: ${version}`);
+    throw new PrivateStateDecryptionError(`Unsupported encryption version: ${version}`, 'malformed');
   }
 
   return {
@@ -77,7 +77,7 @@ const getIterationsForVersion = (version: number): number => {
     case ENCRYPTION_VERSION_V2:
       return PBKDF2_ITERATIONS_V2;
     default:
-      throw new PrivateStateDecryptionError(`Unsupported encryption version: ${version}`);
+      throw new PrivateStateDecryptionError(`Unsupported encryption version: ${version}`, 'malformed');
   }
 };
 
@@ -166,11 +166,10 @@ export class StorageEncryption {
     }
 
     if (!timingSafeEqual(Buffer.from(this.salt), salt)) {
-      throw new PrivateStateDecryptionError('Salt mismatch: data was encrypted with a different password');
+      throw new PrivateStateDecryptionError('Salt mismatch: data was encrypted with a different password', 'wrong-key');
     }
 
-    const decrypted = await this.backend.aesGcmDecrypt(this.encryptionKey, iv, encrypted, authTag);
-    return Buffer.from(decrypted).toString('utf-8');
+    return this.authenticatedDecrypt(this.encryptionKey, iv, encrypted, authTag);
   }
 
   async decryptWithPassword(encryptedData: string, password: string): Promise<string> {
@@ -178,7 +177,7 @@ export class StorageEncryption {
     const { version, salt, iv, authTag, encrypted } = extractEncryptedComponents(data);
 
     if (!timingSafeEqual(Buffer.from(this.salt), salt)) {
-      throw new PrivateStateDecryptionError('Salt mismatch: data was encrypted with a different password');
+      throw new PrivateStateDecryptionError('Salt mismatch: data was encrypted with a different password', 'wrong-key');
     }
 
     const iterations = getIterationsForVersion(version);
@@ -186,8 +185,20 @@ export class StorageEncryption {
       ? this.encryptionKey
       : await deriveEncryptionKey(this.backend, password, salt, iterations);
 
-    const decrypted = await this.backend.aesGcmDecrypt(decryptionKey, iv, encrypted, authTag);
-    return Buffer.from(decrypted).toString('utf-8');
+    return this.authenticatedDecrypt(decryptionKey, iv, encrypted, authTag);
+  }
+
+  private async authenticatedDecrypt(key: Uint8Array, iv: Uint8Array, encrypted: Uint8Array, authTag: Uint8Array): Promise<string> {
+    try {
+      const decrypted = await this.backend.aesGcmDecrypt(key, iv, encrypted, authTag);
+      return Buffer.from(decrypted).toString('utf-8');
+    } catch (cause) {
+      throw new PrivateStateDecryptionError(
+        'Decryption failed: the data was encrypted with a different key or was modified',
+        'wrong-key',
+        { cause }
+      );
+    }
   }
 
   static isEncrypted(data: string): boolean {
@@ -200,7 +211,7 @@ export class StorageEncryption {
   static getVersion(encryptedData: string): number {
     const buffer = Buffer.from(encryptedData, 'base64');
     if (buffer.length < 1) {
-      throw new PrivateStateDecryptionError('Invalid encrypted data: too short');
+      throw new PrivateStateDecryptionError('Invalid encrypted data: too short', 'malformed');
     }
     return buffer[0];
   }
@@ -223,7 +234,8 @@ export const decryptValue = async (
 ): Promise<string> => {
   if (!StorageEncryption.isEncrypted(encryptedValue)) {
     throw new PrivateStateDecryptionError(
-      'Unrecognized or unencrypted data encountered during decryption'
+      'Unrecognized or unencrypted data encountered during decryption',
+      'malformed'
     );
   }
 

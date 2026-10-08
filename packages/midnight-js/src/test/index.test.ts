@@ -48,6 +48,8 @@ const EXPECTED_BARREL_EXPORTS = [
   'ComposeFailedError',
   'ComposeOptionError',
   'ConfigurationError',
+  'ContractExecutionError',
+  'ContractStateInvalidError',
   'EnvironmentUnsupportedError',
   'InvalidArgumentError',
   'InvariantViolationError',

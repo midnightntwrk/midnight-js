@@ -17,8 +17,7 @@ import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/e
 import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type AnyProvableCircuitId, type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import { type AnyProvableCircuitId, type LoggerProvider, type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';
@@ -349,6 +348,26 @@ export const assertScopeAdmitsRetainedEraCall = (circuitId: string, transactionC
 };
 
 /**
+ * Logs a failure of the root scope, naming the scope, and returns it unchanged for the caller to
+ * rethrow. A nested scope logs nothing: its failure reaches the root, which logs it once.
+ */
+const logScopeFailure = (
+  providers: { readonly loggerProvider?: LoggerProvider } | undefined,
+  outerTxCtx: unknown,
+  txOptions: Transaction.ScopedTransactionOptions | undefined,
+  phase: 'executing' | 'submitting',
+  err: unknown
+): unknown => {
+  if (outerTxCtx === undefined) {
+    providers?.loggerProvider?.error?.call(
+      providers.loggerProvider,
+      `Scoped transaction '${txOptions?.scopeName ?? '<unnamed>'}' failed while ${phase}: ${String(err)}`
+    );
+  }
+  return err;
+};
+
+/**
  * The body every scope runs, with its inputs already separated: the outer
  * context if this is a nested call, the scope options, and the era reading if
  * this scope has one.
@@ -372,23 +391,7 @@ const runScope = async <
   try {
     await fn(innerTxCtx);
   } catch (err: unknown) {
-    // A coded refusal passes through UNCHANGED. A caller branching on `code`
-    // has to read the same code whether the call was scoped or standalone, and
-    // `MixedEraScopeError` can only ever be raised from inside a scope -- so
-    // rebuilding it here as a bare Error is not a loss of detail, it is the
-    // whole of that error's reachable surface.
-    if (outerTxCtx || hasErrorCode(err)) {
-      throw err;
-    }
-    const execErr = new Error(
-      `Unexpected error executing scoped transaction '${txOptions?.scopeName ?? '<unnamed>'}': ${String(err)}`,
-      { cause: err }
-    );
-    providers?.loggerProvider?.error?.call(
-      providers.loggerProvider,
-      execErr.message
-    );
-    throw execErr;
+    throw logScopeFailure(providers, outerTxCtx, txOptions, 'executing', err);
   }
   try {
     // Only submit when there is no outer transaction context (i.e., no parent transaction context, meaning
@@ -427,20 +430,7 @@ const runScope = async <
     };
     return nestedCallResult;
   } catch (err: unknown) {
-    // Rethrow coded errors (call transaction failures included) and errors occurring within an outer transaction context...
-    if (outerTxCtx || hasErrorCode(err)) {
-      throw err;
-    }
-    // ...otherwise, wrap and rethrow errors occurring during submission at the root transaction context.
-    const submitErr = new Error(
-      `Unexpected error submitting scoped transaction '${txOptions?.scopeName ?? '<unnamed>'}': ${String(err)}`,
-      { cause: err }
-    );
-    providers?.loggerProvider?.error?.call(
-      providers.loggerProvider,
-      submitErr.message
-    );
-    throw submitErr;
+    throw logScopeFailure(providers, outerTxCtx, txOptions, 'submitting', err);
   }
 };
 

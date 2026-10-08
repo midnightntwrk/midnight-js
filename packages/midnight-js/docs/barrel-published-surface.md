@@ -95,6 +95,8 @@ protocol errors reach a barrel consumer directly:
 | `StateDecodeFailedError` | `lib/shared/contract-state.ts` | `version` |
 | `UnknownLedgerVersionError` | `contracts/src/internal/era.ts`, `lib/era/load-era.ts` | `requestedVersion` |
 | `PayloadNotATransactionError` | `lib/prove`, as a `proveTx` rejection | none; caught, not constructed |
+| `ContractExecutionError` | `lib/v8/executable.ts`; `contracts` call and deploy builders on a Compact error; `types` `exitResultOrError` when several failures arrive together | `cause` — the underlying failure |
+| `ContractStateInvalidError` | `lib/shared/contract-state.ts` | none; the message names the inconsistency |
 
 `hasErrorCode` narrows only to `Error & { code }`, so without the class a
 consumer could detect one of these and then not read the field that decides the
@@ -128,7 +130,7 @@ midnight-js error from the barrel without importing a leaf package.
 | Class | Raised when |
 |---|---|
 | `InvalidArgumentError` | a caller passes a value the API refuses |
-| `ConfigurationError` | a provider or option set is wired wrongly |
+| `ConfigurationError` | required setup is missing or was done in the wrong order |
 | `EnvironmentUnsupportedError` | the runtime cannot do what the call needs |
 | `InvariantViolationError` | the framework reaches a state it should not |
 

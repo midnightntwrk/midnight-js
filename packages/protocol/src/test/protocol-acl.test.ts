@@ -79,6 +79,7 @@ describe('Protocol ACL package', () => {
         'CURRENT_LEDGER_VERSION',
         'DownConvertFailedError',
         'EnvironmentUnsupportedError',
+        'findCodedCause',
         'INITIAL_LEDGER_PARAMETERS',
         'InvalidArgumentError',
         'InvariantViolationError',

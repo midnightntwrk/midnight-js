@@ -46,14 +46,13 @@ import * as glue from 'compact-runtime-ledger8';
 import { Cause, Clock, Effect, Exit, Layer, Option, type Types } from 'effect';
 
 import {
-  COMMON_ERROR_CODES,
   ComposeFailedError,
   ComposeOptionError,
   ContractExecutionError,
   DownConvertFailedError,
+  findCodedCause,
   InvalidArgumentError,
-  InvariantViolationError,
-  PROTOCOL_ERROR_CODES
+  InvariantViolationError
 } from '../../errors';
 import type { EncodedStateValue } from '../era/envelope';
 import type { PartitionContext } from '../shared/compose-types';
@@ -589,79 +588,7 @@ const executableStateFrom = (contractState: ContractStatePojo): glue.ContractSta
   }
 };
 
-/**
- * Every message in a failure's cause chain, outermost first.
- *
- * compact-js reports an execution failure as `Error executing circuit 'x'` and
- * hangs the runtime's own diagnostic -- `Block time is <= time`, an out-of-gas,
- * a failed assertion -- on `cause`. Only the outer message reaches a caller who
- * reads `error.message`, so the reason the circuit ACTUALLY failed is lost at
- * exactly the moment someone needs it.
- */
-export const causeChain = (error: unknown, seen: Set<unknown> = new Set()): readonly string[] => {
-  if (typeof error !== 'object' || error === null || seen.has(error)) {
-    return typeof error === 'string' ? [error] : [];
-  }
-  seen.add(error);
-  const message = 'message' in error && typeof error.message === 'string' ? [error.message] : [];
-  return 'cause' in error ? [...message, ...causeChain(error.cause, seen)] : message;
-};
-
-const PASSTHROUGH_ERROR_CODE_VALUES: ReadonlySet<string> = new Set([
-  ...Object.values(PROTOCOL_ERROR_CODES),
-  ...Object.values(COMMON_ERROR_CODES)
-]);
-
-/**
- * Whether a value is one of this package's own coded errors.
- *
- * The registries are the test rather than `instanceof` against a list: every class
- * in `errors.ts` carries a `code` drawn from {@link PROTOCOL_ERROR_CODES} or
- * {@link COMMON_ERROR_CODES}, so a class added later is recognised without this
- * predicate being touched.
- *
- * @param error The value to test.
- * @returns `true` when the value carries a registered protocol or common error code.
- */
-const isCodedProtocolError = (error: unknown): error is Error & { readonly code: string } => {
-  if (!(error instanceof Error) || !('code' in error)) {
-    return false;
-  }
-  const { code } = error;
-  return typeof code === 'string' && PASSTHROUGH_ERROR_CODE_VALUES.has(code);
-};
-
-const MAX_CAUSE_DEPTH = 8;
-
-const isMidnightJsCoded = (value: unknown): value is Error & { readonly code: string; readonly category: string } =>
-  value instanceof Error &&
-  'code' in value &&
-  typeof value.code === 'string' &&
-  value.code.startsWith('MIDNIGHT_JS_') &&
-  'category' in value &&
-  typeof value.category === 'string';
-
-const findCodedCause = (failure: unknown): Error | undefined => {
-  if (isMidnightJsCoded(failure)) {
-    return failure;
-  }
-  const seen = new Set<unknown>([failure]);
-  let current: unknown = failure;
-  for (let depth = 0; depth < MAX_CAUSE_DEPTH; depth++) {
-    if (typeof current !== 'object' || current === null || !('cause' in current)) {
-      return undefined;
-    }
-    current = current.cause;
-    if (seen.has(current)) {
-      return undefined;
-    }
-    seen.add(current);
-    if (isMidnightJsCoded(current)) {
-      return current;
-    }
-  }
-  return undefined;
-};
+export { causeChain } from '../shared/cause-chain';
 
 /**
  * Runs an effect and rethrows its failure with the whole cause chain in the
@@ -673,8 +600,8 @@ const findCodedCause = (failure: unknown): Error | undefined => {
  * plus `Cause.squash` recovers the real error, which is then rethrown with the
  * underlying reason spelled out and the original on `cause`.
  *
- * A midnight-js coded error is never flattened: one raised directly is rethrown
- * as is, and so is the first one found on a failure's `cause` chain.
+ * A lone failure that is a midnight-js coded error, or carries one within eight
+ * links of its `cause` chain, is rethrown as that coded error.
  */
 export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {
   const exit = await Effect.runPromiseExit(effect);
@@ -686,31 +613,20 @@ export const runOrRethrow = async <A, E>(effect: Effect.Effect<A, E>): Promise<A
   // fails three times at once and `Cause.squash` answers with one -- sending the
   // caller round the fix-and-rerun loop once per missing key.
   const failures = Array.from(Cause.failures(exit.cause));
-  const error: unknown = failures.length > 0 ? failures[0] : Cause.squash(exit.cause);
-  // A coded error leaves with its CLASS intact, however many failures arrived
-  // beside it. Flattening one erases the `code` and `stage` a caller
-  // discriminates on, and this boundary sees errors this package raised itself
-  // on the way through, not only compact-js's. When several fail at once the
-  // coded one wins: a caller can branch on a code but not on a joined message,
-  // and the rest stay readable on the cause chain.
-  const coded = failures.find(isCodedProtocolError);
-  if (coded !== undefined) {
-    throw coded;
+  const all = failures.length > 0 ? failures : [Cause.squash(exit.cause)];
+  // A coded error raised directly leaves with its class intact, however many
+  // failures arrived beside it: the `@throws` of the entry points promise it.
+  // One found only on a cause chain leaves alone just when it is the only
+  // failure; otherwise every failure is reported, the first coded one on `cause`.
+  const direct = all.find((failure) => findCodedCause(failure) === failure);
+  if (direct !== undefined) {
+    throw direct;
   }
-  for (const failure of failures.length > 0 ? failures : [error]) {
-    const codedCause = findCodedCause(failure);
-    if (codedCause !== undefined) {
-      throw codedCause;
-    }
+  const carried = all.length === 1 ? findCodedCause(all[0]) : undefined;
+  if (carried !== undefined) {
+    throw carried;
   }
-  const describe = (failure: unknown): string => {
-    const chain = causeChain(failure);
-    return chain.length > 0 ? chain.join(': ') : String(failure);
-  };
-  throw new ContractExecutionError(
-    failures.length > 1 ? failures.map(describe).join('; ') : describe(error),
-    { cause: error }
-  );
+  throw ContractExecutionError.fromFailures(all);
 };
 
 /**

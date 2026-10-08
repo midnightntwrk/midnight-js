@@ -39,7 +39,7 @@ import type { AnyProvableCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { MixedEraScopeError, ScopedTxEraUnsupportedError } from '../errors';
+import { HeadReadFailedError, MixedEraScopeError, ScopedTxEraUnsupportedError } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
 import { assertScopeAdmitsRetainedEraCall, scopedTransaction, TransactionContextImpl } from '../internal/transaction';
 import { submitCallTx } from '../submit-call-tx';
@@ -139,24 +139,88 @@ describe('per-scope era resolution', () => {
     expect(error).toHaveProperty('message', 'No calls were submitted.');
   });
 
-  it('still wraps an uncoded failure of the submit step, naming the scope', async () => {
+  const withErrorLog = () => {
+    const error = vi.fn();
+    return { logged: { ...providers, loggerProvider: { error, isLevelEnabled: () => true } }, error };
+  };
+
+  it('passes an uncoded failure of the submit step through unchanged and logs it with the scope name', async () => {
+    // Arrange
     onPostForkHead();
     const failure = new Error('node unreachable');
     vi.mocked(submitTx).mockRejectedValue(failure);
+    const { logged, error: logError } = withErrorLog();
 
+    // Act
     const error = await withContractScopedTransaction(
-      providers,
+      logged,
       async (txCtx) => {
-        await submitCallTx(providers, callOptions(), txCtx);
+        await submitCallTx(logged, callOptions(), txCtx);
       },
       { scopeName: 'myScope' }
     ).catch((e: unknown) => e);
 
-    expect(error).toHaveProperty(
-      'message',
-      "Unexpected error submitting scoped transaction 'myScope': Error: node unreachable"
+    // Assert
+    expect(error).toBe(failure);
+    expect(logError).toHaveBeenCalledWith("Scoped transaction 'myScope' failed while submitting: Error: node unreachable");
+  });
+
+  it('logs a coded failure of the submit step too, and passes it through unchanged', async () => {
+    // Arrange
+    onPostForkHead();
+    const failure = new HeadReadFailedError('head read failed');
+    vi.mocked(submitTx).mockRejectedValue(failure);
+    const { logged, error: logError } = withErrorLog();
+
+    // Act
+    const error = await withContractScopedTransaction(
+      logged,
+      async (txCtx) => {
+        await submitCallTx(logged, callOptions(), txCtx);
+      },
+      { scopeName: 'myScope' }
+    ).catch((e: unknown) => e);
+
+    // Assert
+    expect(error).toBe(failure);
+    expect(logError).toHaveBeenCalledWith(
+      "Scoped transaction 'myScope' failed while submitting: HeadReadFailedError: head read failed"
     );
-    expect(error).toHaveProperty('cause', failure);
+  });
+
+  it('passes a foreign coded failure of the submit step through unchanged', async () => {
+    // Arrange
+    onPostForkHead();
+    const failure = Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
+    vi.mocked(submitTx).mockRejectedValue(failure);
+
+    // Act
+    const error = await withContractScopedTransaction(providers, async (txCtx) => {
+      await submitCallTx(providers, callOptions(), txCtx);
+    }).catch((e: unknown) => e);
+
+    // Assert
+    expect(error).toBe(failure);
+  });
+
+  it('passes a failure raised inside the scope through unchanged and logs it with the scope name', async () => {
+    // Arrange
+    onPostForkHead();
+    const failure = new Error('witness refused');
+    const { logged, error: logError } = withErrorLog();
+
+    // Act
+    const error = await withContractScopedTransaction(
+      logged,
+      async () => {
+        throw failure;
+      },
+      { scopeName: 'myScope' }
+    ).catch((e: unknown) => e);
+
+    // Assert
+    expect(error).toBe(failure);
+    expect(logError).toHaveBeenCalledWith("Scoped transaction 'myScope' failed while executing: Error: witness refused");
   });
 
   it('resolves the head era ONCE per scope, however many calls are merged into it', async () => {

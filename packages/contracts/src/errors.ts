@@ -661,7 +661,7 @@ const undiagnosedErrors = (rejection: unknown, undiagnosed: SubmitRejectionUndia
  * network crossed the ledger fork under it could not be established.
  *
  * The submission rejection is what happened to the transaction and is always
- * the FIRST entry of `errors` (kept from the time this was an `AggregateError`), {@link reason} is why
+ * the FIRST entry of `errors`, {@link reason} is why
  * no diagnosis could be made, and `cause` names the proximate failure.
  *
  * DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own.
@@ -709,8 +709,9 @@ interface EffectContractError {
 }
 
 /**
- * The network head could not be re-read while checking an era disagreement. Retry when the read
- * surface is reachable; the transport failure is on `cause`.
+ * The network head could not be read: either re-reading it while checking an era disagreement failed,
+ * or the public data provider returned no latest block to pin a call to. Retry when the read surface is
+ * reachable; a transport failure, when there is one, is on `cause`.
  */
 export class HeadReadFailedError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.HEAD_READ_FAILED;
@@ -1339,8 +1340,6 @@ const DEPLOY_KEY_STRANDED_REMEDIATION =
  * Reachable only AFTER submission. Every refusal ahead of it is raised with no
  * key having been sampled.
  *
- * Carries the registered code `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED`.
- *
  * @see {@link ErrorTaxonomy} for why one class covers the whole window.
  */
 export class Ledger8DeployUnconfirmedError extends MidnightJsError {
@@ -1384,8 +1383,8 @@ export class Ledger8DeployUnconfirmedError extends MidnightJsError {
  * dispatches the proof on another, which is a paid-for proof rejected at
  * submission — the exact late failure that check exists to prevent.
  *
- * Carries the registered code `MIDNIGHT_JS_C_LEDGER8_AMBIGUOUS_ENTRY_POINT`. It reports a chain state
- * this package cannot act on, and there is no remediation a caller can apply beyond reporting it.
+ * It reports a chain state this package cannot act on, and there is no remediation a caller can apply
+ * beyond reporting it.
  */
 export class Ledger8AmbiguousEntryPointError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.LEDGER8_AMBIGUOUS_ENTRY_POINT;
@@ -1470,8 +1469,6 @@ export class Ledger8RecipientUnmappableError extends MidnightJsError {
  * {@link Ledger8DeployNotStoredError.signingKey} is NAMED but never rendered
  * into the message.
  *
- * Carries the registered code `MIDNIGHT_JS_C_LEDGER8_DEPLOY_NOT_STORED`.
- *
  * @see {@link ErrorTaxonomy} for the after-submission region this closes and
  * why the key rides along even where only one write can strand it.
  */
@@ -1531,8 +1528,6 @@ export class Ledger8DeployNotStoredError extends MidnightJsError {
  *
  * The key is not rendered, and is not carried as a member either: the caller
  * already holds it.
- *
- * Carries the registered code `MIDNIGHT_JS_C_LEDGER8_SIGNING_KEY_UNUSABLE`.
  */
 export class Ledger8SigningKeyUnusableError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNUSABLE;

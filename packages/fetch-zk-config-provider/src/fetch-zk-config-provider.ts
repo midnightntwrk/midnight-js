@@ -19,12 +19,14 @@ import {
   createVerifierKey,
   createZKIR,
   InvalidProtocolSchemeError,
+  PROVIDER_ERROR_CODES,
   ZkArtifactFetchError,
   ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import {
   assertManifestHash,
   assertSafeName,
+  hasErrorCode,
   parseZkArtifactManifest,
   parseZkArtifactRuntimeVersion,
   verifyZkArtifactIntegrity,
@@ -92,20 +94,39 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     }
   }
 
-  private async sendRequest<T extends 'text' | 'arraybuffer'>(
+  private static async readBody<T>(url: string, read: () => Promise<T>): Promise<T> {
+    try {
+      return await read();
+    } catch (cause) {
+      throw new ZkArtifactFetchError(`Failed to read ZK artifact from ${url}`, undefined, { cause });
+    }
+  }
+
+  private static httpFailure(url: string, response: Response): ZkArtifactFetchError {
+    return new ZkArtifactFetchError(
+      `Failed to fetch ZK artifact from ${url}: ${response.status} ${response.statusText}`,
+      response.status
+    );
+  }
+
+  // An absent file may be legitimate; a source that is down says nothing about absence.
+  private static throwIfUnavailable(url: string, response: Response): void {
+    const failure = FetchZkConfigProvider.httpFailure(url, response);
+    if (hasErrorCode(failure, PROVIDER_ERROR_CODES.ZK_ARTIFACT_FETCH_FAILED)) {
+      throw failure;
+    }
+  }
+
+  private async sendRequest(
     url: typeof KEY_PATH | typeof ZKIR_PATH,
     circuitId: K,
-    ext: typeof ZKIR_EXT | typeof PROVER_EXT | typeof VERIFIER_EXT,
-    responseType: T
-  ): Promise<T extends 'text' ? string : Uint8Array> {
+    ext: typeof ZKIR_EXT | typeof PROVER_EXT | typeof VERIFIER_EXT
+  ): Promise<Uint8Array> {
     assertSafeName(circuitId, 'circuitId');
     const fullUrl = new URL(`${url}/${encodeURIComponent(circuitId)}${ext}`, this.base).toString();
     const response = await this.fetchArtifact(fullUrl);
     if (!response.ok) {
-      throw new ZkArtifactFetchError(
-        `Failed to fetch ZK artifact from ${fullUrl}: ${response.status} ${response.statusText}`,
-        response.status
-      );
+      throw FetchZkConfigProvider.httpFailure(fullUrl, response);
     }
     if (FetchZkConfigProvider.isHtmlFallback(response)) {
       throw new ZkArtifactFetchError(
@@ -114,11 +135,7 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
         { notServed: true }
       );
     }
-    /* eslint-disable @typescript-eslint/no-explicit-any, no-restricted-syntax */
-    return responseType === 'text'
-      ? ((await response.text()) as any)
-      : ((await response.arrayBuffer().then((arrayBuffer) => new Uint8Array(arrayBuffer))) as any);
-    /* eslint-enable @typescript-eslint/no-explicit-any, no-restricted-syntax */
+    return new Uint8Array(await FetchZkConfigProvider.readBody(fullUrl, () => response.arrayBuffer()));
   }
 
   private loadManifest(): Promise<ZkArtifactManifest | undefined> {
@@ -140,6 +157,9 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     const url = new URL(`${ZK_MANIFEST_DIR}/${ZK_MANIFEST_FILE_NAME}`, this.base).toString();
     const { expectedManifestHash } = this.integrityOptions;
     const response = await this.fetchArtifact(url);
+    if (!response.ok) {
+      FetchZkConfigProvider.throwIfUnavailable(url, response);
+    }
     if (!response.ok || FetchZkConfigProvider.isHtmlFallback(response)) {
       if (expectedManifestHash !== undefined) {
         throw new ZkArtifactIntegrityError(
@@ -148,7 +168,7 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
       }
       return undefined;
     }
-    const bytes = new Uint8Array(await response.arrayBuffer());
+    const bytes = new Uint8Array(await FetchZkConfigProvider.readBody(url, () => response.arrayBuffer()));
     if (expectedManifestHash !== undefined) {
       assertManifestHash(bytes, expectedManifestHash);
     }
@@ -195,6 +215,7 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     const url = new URL(`${ZK_MANIFEST_DIR}/${ZK_CONTRACT_INFO_FILE_NAME}`, this.base).toString();
     const response = await this.fetchArtifact(url);
     if (!response.ok) {
+      FetchZkConfigProvider.throwIfUnavailable(url, response);
       throw new ZkArtifactContractInfoError(
         `No ${ZK_CONTRACT_INFO_FILE_NAME} was available at ${url} (status ${response.status}), so the ` +
           `era of these artifacts cannot be established. Serve the compiler output directory that ` +
@@ -211,7 +232,7 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
           `not exist and the server returned an SPA fallback page.`
       );
     }
-    const bytes = new Uint8Array(await response.arrayBuffer());
+    const bytes = new Uint8Array(await FetchZkConfigProvider.readBody(url, () => response.arrayBuffer()));
     verifyZkArtifactIntegrity({
       manifest,
       relativePath: `${ZK_MANIFEST_DIR}/${ZK_CONTRACT_INFO_FILE_NAME}`,
@@ -235,19 +256,19 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
   }
 
   async getProverKey(circuitId: K): Promise<ProverKey> {
-    const bytes = await this.sendRequest(KEY_PATH, circuitId, PROVER_EXT, 'arraybuffer');
+    const bytes = await this.sendRequest(KEY_PATH, circuitId, PROVER_EXT);
     await this.verifyArtifact(KEY_PATH, `${circuitId}${PROVER_EXT}`, bytes);
     return createProverKey(bytes);
   }
 
   async getVerifierKey(circuitId: K): Promise<VerifierKey> {
-    const bytes = await this.sendRequest(KEY_PATH, circuitId, VERIFIER_EXT, 'arraybuffer');
+    const bytes = await this.sendRequest(KEY_PATH, circuitId, VERIFIER_EXT);
     await this.verifyArtifact(KEY_PATH, `${circuitId}${VERIFIER_EXT}`, bytes);
     return createVerifierKey(bytes);
   }
 
   async getZKIR(circuitId: K): Promise<ZKIR> {
-    const bytes = await this.sendRequest(ZKIR_PATH, circuitId, ZKIR_EXT, 'arraybuffer');
+    const bytes = await this.sendRequest(ZKIR_PATH, circuitId, ZKIR_EXT);
     await this.verifyArtifact(ZKIR_PATH, `${circuitId}${ZKIR_EXT}`, bytes);
     return createZKIR(bytes);
   }

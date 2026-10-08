@@ -333,8 +333,9 @@ try {
   await submitCallTx(providers, options);
 } catch (e) {
   switch (errorCategory(e)) {
-    case 'TRANSIENT': /* may retry; on submit paths follow the code's row first (check whether the transaction finalized) */ break;
-    case 'REJECTED': /* show the refusal to the user */ break;
+    case 'TRANSIENT': /* safe to retry the operation; rethrow if you do not */ throw e;
+    case 'UNCERTAIN': /* a submitted transaction may be on chain: check before anything else (see the code's row) */ throw e;
+    case 'REJECTED': /* show the refusal to the user, then rethrow or stop */ throw e;
     case 'USAGE': case 'ENVIRONMENT': /* fix code or setup; do not retry */ throw e;
     case 'INTEGRITY': case 'INTERNAL': /* alert or report */ throw e;
     case undefined: /* not a midnight-js error */ throw e;
@@ -342,7 +343,7 @@ try {
 }
 ```
 
-`MIDNIGHT_JS_C_STALE_HEAD`, `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED` and `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED` are TRANSIENT but must not be blindly re-submitted: the transaction may already be on chain, so follow the code's row first.
+`UNCERTAIN` (`MIDNIGHT_JS_C_STALE_HEAD`, `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED`, `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED`) means a submitted transaction may already be on chain. Never retry these blindly: follow the code's row first.
 
 Use `hasErrorCode`, `isMidnightJsError` and `errorCategory` rather than `instanceof`: two installed copies
 of a package make `instanceof` answer `false`.
@@ -382,7 +383,7 @@ new coded error cannot ship without an entry here and an entry cannot outlive it
 | `MIDNIGHT_JS_P_STATE_DECODE_FAILED` | Serialized contract state failed to decode on the era it was dated to. | Read the cause. If the era and the envelope disagree, this is the fork window — see `MIDNIGHT_JS_C_HEAD_STATE_ERA_MISMATCH`. |
 | `MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION` | An era was requested by name that is not a `LedgerVersion`. | `requestedVersion` carries it. Usually a hand-built value; use `LEDGER_VERSIONS`. |
 | `MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION` | Bytes handed to the retained-era proving seam do not carry a transaction tag. | The payload came from somewhere other than a sanctioned serialization seam. Do not re-wrap bytes by hand. |
-| `MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED` | A retained-era circuit or constructor execution failed. A Compact `assert` refusal is the usual cause, but an uncoded key or config read failure or a runtime fault can also arrive this way. A coded midnight-js error (for example a ZK artifact fetch failure) surfaces directly with its own code instead. | Read `cause`: it is the source of truth. If it is an `assert`, check the inputs and the contract's rules. |
+| `MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED` | A circuit or constructor execution failed. A Compact `assert` refusal is the usual cause, but an uncoded key or config read failure or a runtime fault can also arrive this way. A lone failure that carries a coded midnight-js error (for example a ZK artifact fetch failure) surfaces as that error instead. When several failures arrive at once, this error lists them all and `cause` is the first coded one. | Read `cause`: it is the source of truth. If it is an `assert`, check the inputs and the contract's rules. |
 | `MIDNIGHT_JS_P_CONTRACT_STATE_INVALID` | A contract state read from the chain is not internally consistent (an entry point with no operation, or no usable balance). | Do not retry. Report the contract address and indexer version. |
 
 ### Era dispatch and the fork window (`MIDNIGHT_JS_C_*`)
@@ -411,12 +412,12 @@ new coded error cannot ship without an entry here and an entry cannot outlive it
 | `MIDNIGHT_JS_C_INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG` | A deploy was given a partial private-state configuration. | Pass `privateStateId` together with `initialPrivateState`. |
 | `MIDNIGHT_JS_C_INCOMPLETE_FIND_PRIVATE_STATE_CONFIG` | `findDeployedContract` was given a partial private-state configuration. | Pass `privateStateId` together with the private-state value to store. |
 | `MIDNIGHT_JS_C_SCOPED_TX_IDENTITY_MISMATCH` | A call in a scoped transaction targets a different contract identity than the scope. | Keep every call in one scope on the same contract and providers. |
-| `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED` | A retained-era deploy was submitted but its outcome is unknown. | Look the contract up before deploying again; retry the confirmation, not the deploy. |
-| `MIDNIGHT_JS_C_LEDGER8_AMBIGUOUS_ENTRY_POINT` | A retained-era circuit name matches more than one entry point. | Name the circuit unambiguously. |
+| `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED` | A retained-era deploy was submitted but its outcome is unknown. | Save `signingKey` from the error first: it is the only copy of the contract's maintenance key. Then look up `contractAddress` before deploying again; a second deploy lands at a new address. |
+| `MIDNIGHT_JS_C_LEDGER8_AMBIGUOUS_ENTRY_POINT` | The on-chain state of a retained-era contract declares the same entry-point name more than once, so a call cannot tell which slot it would run on. | Nothing in the call can fix this: report the contract address. |
 | `MIDNIGHT_JS_C_LEDGER8_RECIPIENT_UNMAPPABLE` | A retained-era recipient cannot be expressed in the current era. | Provide the recipient mapping the message names. |
 | `MIDNIGHT_JS_C_LEDGER8_DEPLOY_NOT_STORED` | A retained-era deploy succeeded on chain but its local record was refused. | Do NOT deploy again. Store the key carried on the error with the private-state provider. |
-| `MIDNIGHT_JS_C_LEDGER8_SIGNING_KEY_UNUSABLE` | The stored signing key cannot be used for a retained-era operation. | Check the key belongs to this contract and era. |
-| `MIDNIGHT_JS_C_HEAD_READ_FAILED` | The network head could not be re-read while checking an era disagreement. | Retry once the indexer is reachable; the transport error is on `cause`. |
+| `MIDNIGHT_JS_C_LEDGER8_SIGNING_KEY_UNUSABLE` | The `signingKey` passed to a retained-era attach is not a 32-byte key (64 hex characters), so it could not be stored and read back. | Pass a key of the form that era's `sampleSigningKey` produces. |
+| `MIDNIGHT_JS_C_HEAD_READ_FAILED` | The network head could not be read: a re-read while checking an era disagreement failed, or the public data provider returned no latest block to pin a call to. | Retry once the indexer is reachable; a transport error, when there is one, is on `cause`. |
 | `MIDNIGHT_JS_C_ZSWAP_OUTPUT_UNRESOLVED` | A Zswap output or its recipient's encryption key could not be resolved. | Check the recipient is a supported address and the coin type is supported. |
 | `MIDNIGHT_JS_C_CONTRACT_NOT_FOUND` | No contract is deployed at the given address on the network the providers point to. | Check the address and that the providers target the network the contract was deployed on. |
 | `MIDNIGHT_JS_C_PRIVATE_STATE_NOT_FOUND` | No private state is stored under the given private state id. | Check the id, or store the initial private state first (deploy or find with an initial state). |
@@ -433,9 +434,9 @@ new coded error cannot ship without an entry here and an entry cannot outlive it
 | `MIDNIGHT_JS_PR_PRIVATE_STATE_NOT_SERIALIZABLE` | A private state was handed to `set` holding something storage cannot preserve: a function, a symbol, a class instance, an `ArrayBuffer`/`DataView`, an invalid `Date`, a sparse array, or a property storage would not write back. Nothing was written. | `path` names where it sits inside the state, `reason` says what storage would have done to it, and `privateStateId` names the state. Private state must be plain data: convert the member (`Buffer.from(buffer)`, `{ ...instance }`) or keep it outside the stored state. |
 | `MIDNIGHT_JS_PR_INVALID_PROTOCOL_SCHEME` | A provider URL uses a scheme other than the ones it supports. | Use `http://`/`https://` (or `ws://`/`wss://` for subscriptions) as the message lists. |
 | `MIDNIGHT_JS_PR_ARTIFACT_RUNTIME_VERSION_UNAVAILABLE` | The ZK config provider cannot report the compact-runtime version of its artifacts. | Use a provider shipped with midnight-js, or implement the version accessor in yours. |
-| `MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_FOUND` | No artifact source holds a bundle whose verifier key matches the deployed one for the named contract and circuit: the local artifacts are missing, or stale against the deployed contract. | Use the compiled artifacts of the deployed contract version. Read `cause`: an integrity or I/O failure from a source is attached there. |
-| `MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED` | Fetching a ZK artifact failed at the network or with HTTP 408, 429 or 5xx. | Retry; if it persists, check the artifact server. Status is on `status`, the network error on `cause`. |
-| `MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED` | The artifact server answered with another HTTP 4xx, or an HTML page instead of the artifact. | Fix the base URL or deploy the artifacts; an HTML answer usually means an SPA fallback for a missing file. |
+| `MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_FOUND` | No artifact source holds a bundle whose verifier key matches the deployed one for the named contract and circuit: the local artifacts are missing, or stale against the deployed contract. A source that failed an integrity check or was temporarily unavailable is reported with that error instead. | Use the compiled artifacts of the deployed contract version. Read `cause`: the other source failures are attached there. |
+| `MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED` | Fetching or reading a ZK artifact, manifest or contract description failed at the network or with HTTP 408, 429 or 5xx. | Retry; if it persists, check the artifact server. Status is on `status`, the network error on `cause`. |
+| `MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED` | The artifact server answered with an HTTP status below 500 other than 408 or 429, or an HTML page instead of the artifact. | Fix the base URL or deploy the artifacts; an HTML answer usually means an SPA fallback for a missing file. |
 | `MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE` | The proof server could not be reached or answered HTTP 408, 429 or 5xx. | Retry; check the proof server is running and reachable. |
 | `MIDNIGHT_JS_PR_PROOF_SERVER_REFUSED` | The proof server answered another HTTP 4xx. | Check the proof server version matches this midnight-js release. |
 | `MIDNIGHT_JS_PR_PRIVATE_STATE_EXPORT_FAILED` | Exporting private states was refused; the message names why. | Fix the condition the message names (e.g. nothing to export, limit) and export again. |
@@ -444,9 +445,9 @@ new coded error cannot ship without an entry here and an entry cannot outlive it
 | `MIDNIGHT_JS_PR_EXPORT_DECRYPTION_FAILED` | An export could not be decrypted. | Use the password the export was created with; the file may be corrupt. |
 | `MIDNIGHT_JS_PR_INVALID_EXPORT_FORMAT` | An import file is not a valid midnight-js export. | Use a file produced by the export function of a compatible version. |
 | `MIDNIGHT_JS_PR_IMPORT_CONFLICT` | An import would overwrite existing private state. | Choose the conflict strategy explicitly, or remove the existing entries first. |
-| `MIDNIGHT_JS_PR_PRIVATE_STATE_DECRYPTION_FAILED` | Stored private state could not be decrypted (wrong password, other salt, unknown format or corrupt data). | Use the right password. If it is right, the store is corrupt: restore from an export. |
-| `MIDNIGHT_JS_PR_PRIVATE_STATE_STORAGE_FAILED` | Reading or writing the private-state store failed (open, read, write, migration). | Check disk space and permissions; the underlying error is on `cause`. |
-| `MIDNIGHT_JS_PR_PRIVATE_STATE_LIMIT_EXCEEDED` | More entries than the configured maximum were processed. | Raise the `maxEntries` option if the volume is expected. |
+| `MIDNIGHT_JS_PR_PRIVATE_STATE_DECRYPTION_FAILED` | Stored private state could not be decrypted. `reason` is `wrong-key` (wrong password, other salt, or the data was modified; these cannot be told apart) or `malformed` (unknown format or corrupt data). | Use the right password. If it is right, the store is corrupt or was tampered with: restore from an export. |
+| `MIDNIGHT_JS_PR_PRIVATE_STATE_STORAGE_FAILED` | Reading or writing the private-state store failed (open, read, write, migration). | Check disk space and permissions; the underlying error is on `cause`. If closing the database failed too, that failure is on `closeError` and the database stays locked until the process exits. |
+| `MIDNIGHT_JS_PR_PRIVATE_STATE_LIMIT_EXCEEDED` | A migration or password rotation processed more entries than `maxEntries` allows. Export and import limits (`maxStates`, `maxKeys`) raise the export and import errors instead. | Raise the `maxEntries` option if the volume is expected. |
 | `MIDNIGHT_JS_PR_STORED_SIGNING_KEY_INVALID` | A stored signing key is not in a format this version can read. | Restore the key from a backup or an export; report it if the store was written by a supported version. |
 | `MIDNIGHT_JS_PR_INDEXER_GRAPHQL_FAILED` | The indexer answered a query with GraphQL errors; they are listed on `errors`. | Check the indexer version is supported by this midnight-js release. |
 | `MIDNIGHT_JS_PR_INDEXER_QUERY_FAILED` | A request to the indexer failed at the transport level. | Retry; check the indexer URL and network. The Apollo error is on `cause`. |

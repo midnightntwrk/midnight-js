@@ -114,6 +114,64 @@ describe('StorageEncryption', () => {
 
       await expect(encryption.decrypt(tampered)).rejects.toThrow();
     });
+
+    test('reports a failed authentication check as a wrong-key decryption error, keeping the backend error on cause', async () => {
+      // Arrange
+      const encryption = await StorageEncryption.create(testPassword);
+      const buffer = Buffer.from(await encryption.encrypt(testData), 'base64');
+      buffer[buffer.length - 1] ^= 0xff;
+
+      // Act
+      const error = await encryption.decrypt(buffer.toString('base64')).catch((e: unknown) => e);
+
+      // Assert
+      expect(error).toBeInstanceOf(PrivateStateDecryptionError);
+      expect(error).toMatchObject({
+        reason: 'wrong-key',
+        message: 'Decryption failed: the data was encrypted with a different key or was modified'
+      });
+      expect(error instanceof PrivateStateDecryptionError && error.cause).toBeInstanceOf(Error);
+    });
+
+    test('reports a wrong password as a wrong-key decryption error', async () => {
+      // Arrange
+      const encryption1 = await StorageEncryption.create('Correct-Pass-123!');
+      const encrypted = await encryption1.encrypt(testData);
+      const encryption2 = await StorageEncryption.create('Wrong-Password-1!', { existingSalt: encryption1.getSalt() });
+
+      // Act
+      const error = await encryption2.decrypt(encrypted).catch((e: unknown) => e);
+
+      // Assert
+      expect(error).toBeInstanceOf(PrivateStateDecryptionError);
+      expect(error).toMatchObject({ reason: 'wrong-key' });
+    });
+
+    test('reports a salt mismatch as a wrong-key decryption error', async () => {
+      // Arrange
+      const encrypted = await (await StorageEncryption.create(testPassword)).encrypt(testData);
+      const other = await StorageEncryption.create(testPassword);
+
+      // Act
+      const error = await other.decrypt(encrypted).catch((e: unknown) => e);
+
+      // Assert
+      expect(error).toBeInstanceOf(PrivateStateDecryptionError);
+      expect(error).toMatchObject({ reason: 'wrong-key' });
+    });
+
+    test('reports truncated data as a malformed decryption error', async () => {
+      // Arrange
+      const encryption = await StorageEncryption.create(testPassword);
+      const truncated = Buffer.from([2, 1, 2, 3]).toString('base64');
+
+      // Act
+      const error = await encryption.decrypt(truncated).catch((e: unknown) => e);
+
+      // Assert
+      expect(error).toBeInstanceOf(PrivateStateDecryptionError);
+      expect(error).toMatchObject({ reason: 'malformed', message: 'Invalid encrypted data: too short' });
+    });
   });
 
   describe('create with Uint8Array salt', () => {
@@ -248,9 +306,10 @@ describe('StorageEncryption', () => {
       const salt = Buffer.from(V1_FIXTURES.salt, 'hex');
       const encryption = await StorageEncryption.create(V1_FIXTURES.password, { existingSalt: salt });
 
-      await expect(
-        encryption.decryptWithPassword(V1_FIXTURES.encrypted, 'Wrong-Password-1!')
-      ).rejects.toThrow();
+      const error = await encryption.decryptWithPassword(V1_FIXTURES.encrypted, 'Wrong-Password-1!').catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(PrivateStateDecryptionError);
+      expect(error).toMatchObject({ reason: 'wrong-key' });
     });
   });
 
@@ -521,7 +580,7 @@ describe('StorageEncryption error classes', () => {
     return undefined;
   };
 
-  const expectError = (error: unknown, errorClass: new (message: string) => Error, message: string): void => {
+  const expectError = (error: unknown, errorClass: abstract new (...args: never[]) => Error, message: string): void => {
     expect(error).toBeInstanceOf(errorClass);
     if (!(error instanceof Error)) {
       throw error;

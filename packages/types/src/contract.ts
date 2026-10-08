@@ -16,7 +16,7 @@
 import { type CompiledContract, Contract, type ContractExecutable, ContractExecutableRuntime,
   ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect';
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { ContractExecutionError, findCodedCause } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js';
 import * as Configuration from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/Configuration';
 import { Cause, type ConfigError, ConfigProvider, Effect, Exit,Layer, Option } from 'effect';
@@ -107,6 +107,11 @@ export const makeContractExecutableRuntime:
  * Unwraps an Effect `Exit` instance, returning its value if it is successful, or throwing the error contained
  * within it.
  *
+ * A lone failure is thrown as the midnight-js error it is or carries on its `cause` chain, so that error's
+ * `category` reaches the caller; a failure carrying none is thrown unchanged, and so is a defect. A coded
+ * failure raised directly among several is thrown as is; otherwise several failures are reported together
+ * as a `ContractExecutionError`.
+ *
  * @param exit The source Effect `Exit` instance.
  * @returns The value from `exit` if it is successful, otherwise throws the error contained within it.
  */
@@ -114,8 +119,16 @@ export const exitResultOrError: <A, E>(exit: Exit.Exit<A, E>) => A =
   (exit) => Exit.match(exit, {
     onSuccess: (a) => a,
     onFailure: (cause) => {
-      if (Cause.isFailType(cause)) throw cause.error;
-      throw new InvariantViolationError(`Unexpected error: ${Cause.pretty(cause)}`);
+      const failures: readonly unknown[] = Array.from(Cause.failures(cause));
+      const direct = failures.find((failure) => findCodedCause(failure) === failure);
+      if (direct !== undefined) {
+        throw direct;
+      }
+      if (failures.length > 1) {
+        throw ContractExecutionError.fromFailures(failures);
+      }
+      const failure = failures.length === 1 ? failures[0] : Cause.squash(cause);
+      throw findCodedCause(failure) ?? failure;
     }
   });
 

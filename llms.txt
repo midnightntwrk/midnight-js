@@ -475,8 +475,9 @@ try {
   await submitCallTx(providers, options);
 } catch (e) {
   switch (errorCategory(e)) {
-    case 'TRANSIENT': /* may retry; on submit paths follow the code's row first (check whether the transaction finalized) */ break;
-    case 'REJECTED': /* show the refusal to the user */ break;
+    case 'TRANSIENT': /* safe to retry the operation; rethrow if you do not */ throw e;
+    case 'UNCERTAIN': /* a submitted transaction may be on chain: check before anything else (see the code's row) */ throw e;
+    case 'REJECTED': /* show the refusal to the user, then rethrow or stop */ throw e;
     case 'USAGE': case 'ENVIRONMENT': /* fix code or setup; do not retry */ throw e;
     case 'INTEGRITY': case 'INTERNAL': /* alert or report */ throw e;
     case undefined: /* not a midnight-js error */ throw e;
@@ -484,7 +485,7 @@ try {
 }
 ```
 
-`MIDNIGHT_JS_C_STALE_HEAD`, `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED` and `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED` are TRANSIENT but must not be blindly re-submitted: the transaction may already be on chain, so follow the code's row first.
+`UNCERTAIN` (`MIDNIGHT_JS_C_STALE_HEAD`, `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED`, `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED`) means a submitted transaction may already be on chain. Never retry these blindly: follow the code's row first.
 
 Use `hasErrorCode`, `isMidnightJsError` and `errorCategory` rather than `instanceof`: two installed copies
 of a package make `instanceof` answer `false`. All codes: [TROUBLESHOOTING.md](TROUBLESHOOTING.md#midnightjs-error-codes).

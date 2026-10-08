@@ -30,15 +30,36 @@ const unsafeCastSelectors = [
 const PLAIN_THROW_MESSAGE =
   'Throw a MidnightJsError subclass with a registered code (see docs/adr/0017-error-codes-are-the-contract.md). ' +
   'General cases: InvalidArgumentError, ConfigurationError, EnvironmentUnsupportedError, InvariantViolationError.';
+const PLAIN_ERROR = '/^(Error|TypeError|RangeError|AggregateError)$/';
 const plainThrowSelectors = [
   {
-    selector: 'ThrowStatement > NewExpression[callee.name=/^(Error|TypeError|RangeError|AggregateError)$/]',
+    selector: `ThrowStatement > NewExpression[callee.name=${PLAIN_ERROR}]`,
+    message: PLAIN_THROW_MESSAGE
+  },
+  {
+    selector: `ThrowStatement > CallExpression[callee.name=${PLAIN_ERROR}]`,
+    message: PLAIN_THROW_MESSAGE
+  },
+  {
+    selector: `VariableDeclarator > NewExpression[callee.name=${PLAIN_ERROR}]`,
     message: PLAIN_THROW_MESSAGE
   },
   {
     selector:
       "CallExpression[callee.object.name='Promise'][callee.property.name='reject'] > " +
-      'NewExpression[callee.name=/^(Error|TypeError|RangeError|AggregateError)$/]',
+      `NewExpression[callee.name=${PLAIN_ERROR}]`,
+    message: PLAIN_THROW_MESSAGE
+  },
+  {
+    selector: `CallExpression[callee.name='reject'] > NewExpression[callee.name=${PLAIN_ERROR}]`,
+    message: PLAIN_THROW_MESSAGE
+  },
+  {
+    selector: `CallExpression[callee.property.name='fail'] > NewExpression[callee.name=${PLAIN_ERROR}]`,
+    message: PLAIN_THROW_MESSAGE
+  },
+  {
+    selector: `ClassDeclaration[superClass.name=${PLAIN_ERROR}]`,
     message: PLAIN_THROW_MESSAGE
   }
 ];

@@ -54,6 +54,7 @@ import {
   createWalletProvider,
   FailEntirely,
   FailFallible,
+  ProofServerError,
   type RawContractState,
   SeamEraUnsupportedError,
   type TxStatus,
@@ -1782,6 +1783,26 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     providers.proofProvider.proveTx = vi.fn().mockRejectedValue(new V8PayloadUnsupportedError('proveTx', 42));
 
     await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(V8PayloadUnsupportedError);
+  });
+
+  it('sanitizes a coded provider error that carries an external failure on cause', async () => {
+    // Arrange
+    const providers = preForkProviders(v6Envelope);
+    const leakedStateHex = Buffer.from(v6Envelope).toString('hex');
+    const transport = Object.assign(new Error(`socket closed while sending ${leakedStateHex}`), {
+      response: { data: { tx: leakedStateHex } }
+    });
+    providers.proofProvider.proveTx = vi
+      .fn()
+      .mockRejectedValue(new ProofServerError('Proof Server request failed: url="http://prover/prove"', undefined, { cause: transport }));
+
+    // Act
+    const caught = await submitCallTx(providers, callOptions()).catch((error: unknown) => error);
+
+    // Assert
+    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    expect(inspect(caught, { depth: null, showHidden: true })).not.toContain(leakedStateHex);
+    expect(inspect(caught, { depth: null, showHidden: true })).toContain('Proof Server request failed');
   });
 
   it('re-reads the head on a SUBMIT rejection and, finding the same era, re-throws the seam failure', async () => {

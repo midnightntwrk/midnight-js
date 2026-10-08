@@ -17,33 +17,44 @@ is, under two npm scopes).
 
 We will make every error thrown through a public API extend the abstract `MidnightJsError` from
 `@midnight-ntwrk/midnight-js-protocol/errors`, carrying a registered `code` and a `category`
-(`USAGE`, `ENVIRONMENT`, `TRANSIENT`, `REJECTED`, `INTEGRITY`, `INTERNAL`).
+(`USAGE`, `ENVIRONMENT`, `TRANSIENT`, `REJECTED`, `UNCERTAIN`, `INTEGRITY`, `INTERNAL`).
 
 The code is the contract. Consumers recognise errors with `hasErrorCode`, `isMidnightJsError` and
 `errorCategory` from `@midnight-ntwrk/midnight-js-utils`, which read `e.code` and so work across package
 copies. `instanceof` is a convenience, not a guarantee.
 
 Each code group owner keeps a total `code → category` table next to its code table; a class reads its
-category from that table. Inheritance below the base is at most two levels, and a sub-family exists only
-when callers handle the whole family the same way.
+category from that table. A new sub-family below the base exists only when callers handle the whole family
+the same way. The `TxFailedError` families predate this rule and sit three levels down.
 
-Plain `throw new Error/TypeError/RangeError/AggregateError`, and the same classes passed to
-`Promise.reject`, are forbidden in `packages/*/src` (tests, the `compact` CLI and `network-id` exempt;
-`network-id` is deprecated and being removed). Failures of `fetch` at provider I/O seams are wrapped with the original on `cause`.
+A submission whose outcome is unknown is `UNCERTAIN`, never `TRANSIENT`: the transaction may already be on
+chain, and a generic retry would submit it twice (a second deploy lands at a new address and strands the
+first deploy's signing key).
+
+Building a plain `Error`/`TypeError`/`RangeError`/`AggregateError` to throw or reject with, and declaring a
+class that extends one of them directly, are forbidden in `packages/*/src` (tests, the `compact` CLI and
+`network-id` exempt; `network-id` is deprecated and being removed). The lint gate matches the usual shapes
+(`throw new`, `throw Error(...)`, a variable later thrown, `Promise.reject`, `reject(...)`, `Effect.fail`);
+a plain error built only as a `cause` stays allowed. Failures of `fetch` at provider I/O seams, including
+reading the response body, are wrapped with the original on `cause`. An error midnight-js did not raise —
+from a dependency, the platform or user code — passes through unchanged and uncoded.
 
 ## Consequences
 
-- **Positive:** one way to handle every error; the compiler refuses a class without a code; the category
-  tells the caller what to do.
+- **Positive:** one way to handle every error; the compiler refuses a subclass that declares no `code` or
+  `category` (it does not check that the code is registered or that the category matches it — the
+  per-package class tests do); the category tells the caller what to do.
 - **Negative:** `ContractTypeError` is no longer a `TypeError`; `SubmitRejectionUndiagnosedError` is no
   longer an `AggregateError` (keeps `errors`, now an own enumerable field); 14 former
-  `TypeError`/`RangeError` throws change class. The level-provider close-failure `cause` is now an
-  `AggregateError` of both failures. Coded errors pass through `runOrRethrow` and the scoped-transaction
-  wrappers unchanged, so the wrapper message no longer appears for them and they are not logged at the
-  root scope.
-- **Follow-ups:** wrap ledger WASM exceptions outside the deserialization wrappers; a scoped-transaction
-  wrapper for uncoded foreign failures; the native `TypeError` from `inflate` on malformed input; foreign
-  errors from `exitResultOrError` and bech32 parsing.
+  `TypeError`/`RangeError` throws change class. When a level-provider operation fails and closing the
+  database fails too, `cause` is the operation's failure and `closeError` the close failure. A lone failure
+  carrying a coded error passes through `runOrRethrow` and `exitResultOrError` as that coded error; several
+  concurrent failures are reported together as `ContractExecutionError`. The scoped-transaction wrappers no
+  longer rebuild a failure: every failure leaves unchanged and the root scope logs it, naming the scope. A
+  coded provider error that carries a `cause` is sanitized at the retained-era seams like any external
+  failure.
+- **Follow-ups:** wrap ledger WASM exceptions outside the deserialization wrappers; the native `TypeError`
+  from `inflate` on malformed input; compact-js errors from `exitResultOrError`; bech32 parsing.
 
 ## Alternatives considered
 
@@ -55,7 +66,9 @@ Plain `throw new Error/TypeError/RangeError/AggregateError`, and the same classe
 
 ## Category assignments
 
-Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fix installation, versions or infrastructure · `TRANSIENT` may retry · `REJECTED` the operation was refused by contract or network rules · `INTEGRITY` corrupt or mismatched data, stop and alert · `INTERNAL` a midnight-js bug, report it.
+Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fix installation, versions or infrastructure · `TRANSIENT` may retry · `REJECTED` the operation was refused by contract or network rules · `UNCERTAIN` a submitted transaction may or may not be on chain; check before doing anything else · `INTEGRITY` corrupt or mismatched data, stop and alert · `INTERNAL` a midnight-js bug, report it.
+
+`src/test/adr-category-coverage.test.ts` in `utils` checks these tables against the code tables in both directions.
 
 **New codes** (`*` = new class):
 
@@ -96,8 +109,8 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | C | `INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteDeployContractPrivateStateConfig` |
 | C | `INCOMPLETE_FIND_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteFindContractPrivateStateConfig` |
 | C | `SCOPED_TX_IDENTITY_MISMATCH` | USAGE | `ScopedTransactionIdentityMismatchError` |
-| C | `LEDGER8_DEPLOY_UNCONFIRMED` | TRANSIENT | `Ledger8DeployUnconfirmedError` |
-| C | `LEDGER8_AMBIGUOUS_ENTRY_POINT` | USAGE | `Ledger8AmbiguousEntryPointError` |
+| C | `LEDGER8_DEPLOY_UNCONFIRMED` | UNCERTAIN | `Ledger8DeployUnconfirmedError` |
+| C | `LEDGER8_AMBIGUOUS_ENTRY_POINT` | INTEGRITY | `Ledger8AmbiguousEntryPointError` |
 | C | `LEDGER8_RECIPIENT_UNMAPPABLE` | USAGE | `Ledger8RecipientUnmappableError` |
 | C | `LEDGER8_DEPLOY_NOT_STORED` | ENVIRONMENT | `Ledger8DeployNotStoredError` |
 | C | `LEDGER8_SIGNING_KEY_UNUSABLE` | USAGE | `Ledger8SigningKeyUnusableError` |
@@ -116,5 +129,5 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 |---|---|
 | P | `UNKNOWN_PROTOCOL_VERSION_READ`, `UNKNOWN_PROTOCOL_VERSION_CONSTRUCT`, `LEDGER8_INSTANCE_MISMATCH`, `LEDGER8_RUNTIME_MISSING`, `UNKNOWN_LEDGER_VERSION`, `LEDGER8_RUNTIME_INVALID` → ENVIRONMENT · `DOWN_CONVERT_FAILED`, `STATE_DECODE_FAILED` → INTEGRITY · `COMPOSE_FAILED`, `COMPOSE_OPTION_INVALID`, `PAYLOAD_NOT_A_TRANSACTION` → USAGE · `MERKLE_NOT_REHASHED`, `UNKNOWN_LEDGER8_AXIS` → INTERNAL |
 | PR | `V8_PAYLOAD_UNSUPPORTED`, `UNTAGGED_PAYLOAD`, `SEAM_ERA_UNSUPPORTED`, `PRIVATE_STATE_NOT_SERIALIZABLE` → USAGE · `ERA_UNSUPPORTED`, `ERA_UNRESOLVABLE` → ENVIRONMENT |
-| C | `TX_FAILED` → REJECTED · `HEAD_STATE_ERA_MISMATCH`, `STALE_HEAD`, `SUBMIT_REJECTION_UNDIAGNOSED` → TRANSIENT · `INDEXER_INCONSISTENCY`, `BLANK_VERIFIER_KEY_SLOT`, `VERIFIER_KEY_MISMATCH` → INTEGRITY · `LEDGER8_SEAM_FAILED`, `LEDGER_PARAMETERS_UNSERVED` → ENVIRONMENT · `ERA_ARTIFACT_MISMATCH`, `UNRECOGNISED_RESULT_ERA`, `LEDGER8_DEPLOY_ON_V9`, `RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE`, `LEDGER8_SHIELDED_SPEND_UNSUPPORTED`, `SCOPED_TX_ERA_UNSUPPORTED`, `MIXED_ERA_SCOPE` → USAGE · `ERA_INVARIANT_VIOLATION` → INTERNAL |
+| C | `TX_FAILED` → REJECTED · `HEAD_STATE_ERA_MISMATCH` → TRANSIENT · `STALE_HEAD`, `SUBMIT_REJECTION_UNDIAGNOSED` → UNCERTAIN · `INDEXER_INCONSISTENCY`, `BLANK_VERIFIER_KEY_SLOT`, `VERIFIER_KEY_MISMATCH` → INTEGRITY · `LEDGER8_SEAM_FAILED`, `LEDGER_PARAMETERS_UNSERVED` → ENVIRONMENT · `ERA_ARTIFACT_MISMATCH`, `UNRECOGNISED_RESULT_ERA`, `LEDGER8_DEPLOY_ON_V9`, `RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE`, `LEDGER8_SHIELDED_SPEND_UNSUPPORTED`, `SCOPED_TX_ERA_UNSUPPORTED`, `MIXED_ERA_SCOPE` → USAGE · `ERA_INVARIANT_VIOLATION` → INTERNAL |
 | U | `TAG_PARSE_FAILED` → INTEGRITY · `UNHANDLED_UNION_MEMBER` → INTERNAL |

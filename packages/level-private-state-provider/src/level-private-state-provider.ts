@@ -283,7 +283,7 @@ const withSubLevel = <A>(
         throw new PrivateStateStorageError(
           `Operation on private state database "${ctx.dbName}" failed, and the database handle ` +
           `could not be closed afterwards. The database stays locked for the rest of this process.`,
-          { cause: new AggregateError([error, closeError]) }
+          { cause: error, closeError }
         );
       }
       throw error;
@@ -384,23 +384,8 @@ interface RotateStorePasswordParams {
   readonly shouldProceed?: (key: string) => boolean;
 }
 
-const isDecryptionError = (error: unknown): boolean => {
-  if (!(error instanceof Error)) return false;
-
-  if ('name' in error && error.name === 'OperationError') {
-    return true;
-  }
-
-  const message = error.message.toLowerCase();
-  return (
-    message.includes('unsupported state') ||
-    message.includes('salt mismatch') ||
-    message.includes('invalid encrypted data') ||
-    message.includes('bad decrypt') ||
-    message.includes('invalid tag') ||
-    message.includes('unable to authenticate')
-  );
-};
+const isWrongKeyError = (error: unknown): boolean =>
+  error instanceof PrivateStateDecryptionError && error.reason === 'wrong-key';
 
 const rotateStorePassword = async (
   params: RotateStorePasswordParams
@@ -441,7 +426,7 @@ const rotateStorePassword = async (
           try {
             await decryptValue(encryptedValue, oldEncryption, oldPassword);
           } catch (error: unknown) {
-            if (isDecryptionError(error)) {
+            if (isWrongKeyError(error)) {
               throw new InvalidArgumentError('Old password is incorrect: failed to decrypt existing data', { cause: error });
             }
             throw error;
@@ -457,6 +442,7 @@ const rotateStorePassword = async (
           throw new PrivateStateDecryptionError(
             `Failed to decrypt entry "${key}": ${errorMessage}. ` +
             `Successfully processed ${entriesToMigrate.length} entries before failure.`,
+            error instanceof PrivateStateDecryptionError ? error.reason : 'malformed',
             { cause: error }
           );
         }

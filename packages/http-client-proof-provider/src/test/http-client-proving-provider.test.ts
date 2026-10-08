@@ -21,12 +21,12 @@ import {
   ProofServerError,
   type ProverKey,
   type VerifierKey,
+  ZkArtifactFetchError,
   ZKArtifactNotFoundError,
   type ZKConfig,
   type ZKConfigProvider,
   ZKConfigRegistry,
-  type ZKIR
-} from '@midnight-ntwrk/midnight-js-types';
+  type ZKIR} from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { httpClientProvingProvider } from '../http-client-proving-provider';
@@ -375,6 +375,58 @@ describe('httpClientProvingProvider', () => {
         code,
         message: `Failed Proof Server response: url="${mockUrl}", code="${status}", status="${statusText}"`
       });
+    });
+
+    it('wraps a failure while reading the response body and keeps it on cause', async () => {
+      // Arrange
+      const bodyFailure = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+      mockFetchRetry.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        url: mockUrl,
+        arrayBuffer: vi.fn().mockRejectedValue(bodyFailure)
+      });
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30]));
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
+
+      // Act
+      const error = await provider.prove(new Uint8Array([1]), 'test-circuit').catch((e: unknown) => e);
+
+      // Assert
+      expect(error).toBeInstanceOf(ProofServerError);
+      expect(error).toMatchObject({
+        code: 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE',
+        message: `Proof Server response could not be read: url="${mockUrl}/prove"`
+      });
+      expect(error instanceof ProofServerError && error.cause).toBe(bodyFailure);
+    });
+
+    it('surfaces a transient key-material fetch failure instead of proving without keys', async () => {
+      // Arrange
+      const unavailable = new ZkArtifactFetchError('ZK artifact request failed', 503);
+      mockZkConfigProvider.get = vi.fn().mockRejectedValue(unavailable);
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
+
+      // Act
+      const error = await provider.prove(new Uint8Array([1]), 'test-circuit').catch((e: unknown) => e);
+
+      // Assert
+      expect(error).toBe(unavailable);
+      expect(mockFetchRetry).not.toHaveBeenCalled();
+    });
+
+    it('still proves without keys when the flat provider does not serve the circuit', async () => {
+      // Arrange
+      mockZkConfigProvider.get = vi.fn().mockRejectedValue(new ZkArtifactFetchError('not found', 404));
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30]));
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
+
+      // Act
+      await provider.prove(new Uint8Array([1]), 'test-circuit');
+
+      // Assert
+      expect(ledger.createProvingPayload).toHaveBeenCalledWith(new Uint8Array([1]), undefined, undefined);
     });
 
     it('wraps a transport failure and keeps it on cause', async () => {

@@ -52,6 +52,8 @@ export {
   ComposeOptionError,
   type ComposeStage,
   ConfigurationError,
+  ContractExecutionError,
+  ContractStateInvalidError,
   EnvironmentUnsupportedError,
   InvalidArgumentError,
   InvariantViolationError,

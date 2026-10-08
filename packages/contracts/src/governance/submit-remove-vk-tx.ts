@@ -18,10 +18,10 @@ import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/e
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type FinalizedTxData,SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from '../contract-providers';
-import { ContractNotFoundError } from '../errors';
+import { BlankVerifierKeySlotError, ContractNotFoundError } from '../errors';
 import { submitTx } from '../submit-tx';
 import { RemoveVerifierKeyTxFailedError } from './errors';
 import { createUnprovenRemoveVerifierKeyTx } from './unproven-tx';
@@ -85,11 +85,9 @@ export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
     throw new InvalidArgumentError(`Circuit '${circuitId}' not found for contract at address '${contractAddress}'`);
   }
   const verifierKey: Uint8Array | undefined = operation.verifierKey;
-  assertDefined(
-    verifierKey,
-    `Circuit '${circuitId}' is registered on the contract at '${contractAddress}' but carries no verifier key, ` +
-      'so there is nothing to remove. The deployed state is incomplete or corrupt.'
-  );
+  if (verifierKey === undefined || verifierKey === null) {
+    throw new BlankVerifierKeySlotError(circuitId);
+  }
   const signingKey = await providers.privateStateProvider.getSigningKey(contractAddress);
   if (signingKey === undefined || signingKey === null) {
     throw new InvalidArgumentError(`Signing key for contract address '${contractAddress}' not found`);

@@ -399,7 +399,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     if (!(error instanceof SubmitRejectionUndiagnosedError)) throw error;
     expect(error.errors).toEqual([rejection, headReadFailure]);
     expect(error.cause).toBe(headReadFailure);
-    expect([error.code, error.category]).toEqual(['MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED', 'TRANSIENT']);
+    expect([error.code, error.category]).toEqual(['MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED', 'UNCERTAIN']);
   });
 
   it('CARRIES A REGISTERED CODE when it cannot diagnose, so a retry handler does not intermittently escalate', async () => {

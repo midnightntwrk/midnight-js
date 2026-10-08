@@ -352,6 +352,7 @@ const redact = (text: string): string => {
  */
 const sanitizeSeamCause = (cause: unknown, depth = 0): Error => {
   const nested = isErrorLike(cause) ? (cause as Error).cause : undefined;
+  // eslint-disable-next-line no-restricted-syntax -- a redacted copy carried as a cause, never thrown
   const rebuilt = new Error(
     `${describeSeamKind(cause)}: ${redact(renderSeamCause(cause))}`,
     depth < MAX_SEAM_CAUSE_DEPTH && nested !== undefined
@@ -379,10 +380,12 @@ const sanitizeSeamCause = (cause: unknown, depth = 0): Error => {
  * Runs one provider seam call, converting a rejection from the provider into
  * {@link Ledger8SeamFailedError} with the failure sanitized onto `cause`.
  *
- * This framework's OWN coded errors pass through UNCHANGED: a caller narrowing
- * on `V8PayloadUnsupportedError` or {@link EraInvariantViolationError} has to
- * keep seeing them. `hasErrorCode` is the registry-backed test, so a foreign
- * coded error is still treated as external and sanitized.
+ * This framework's OWN coded errors pass through UNCHANGED when they carry no
+ * `cause`: a caller narrowing on `V8PayloadUnsupportedError` or
+ * {@link EraInvariantViolationError} has to keep seeing them. One that carries a
+ * `cause` -- a transport failure under `ProofServerError`, say -- holds external
+ * material and is sanitized like any other rejection. `hasErrorCode` is the
+ * registry-backed test, so a foreign coded error is always sanitized.
  *
  * @param seam The provider method being called.
  * @param circuitId The circuit this flow is running.
@@ -394,7 +397,7 @@ const atSeam = async <T>(seam: EraSeam, circuitId: string, call: () => Promise<T
   try {
     return await call();
   } catch (cause) {
-    if (hasErrorCode(cause)) {
+    if (hasErrorCode(cause) && cause.cause === undefined) {
       throw cause;
     }
     throw new Ledger8SeamFailedError(seam, circuitId, sanitizeSeamCause(cause));

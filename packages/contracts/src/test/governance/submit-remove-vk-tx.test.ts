@@ -159,9 +159,7 @@ describe('submitRemoveVerifierKeyTx', () => {
 
       await expect(
         submitRemoveVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId)
-      ).rejects.toThrow(
-        `Circuit '${circuitId}' is registered on the contract at '${mockContractAddress}' but carries no verifier key`
-      );
+      ).rejects.toThrow(expect.objectContaining({ name: 'BlankVerifierKeySlotError', category: 'INTEGRITY', circuitId }));
       expect(mockProviders.privateStateProvider.getSigningKey).not.toHaveBeenCalled();
       expect(createUnprovenRemoveVerifierKeyTx).not.toHaveBeenCalled();
       expect(submitTx).not.toHaveBeenCalled();

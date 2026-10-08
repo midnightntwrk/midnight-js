@@ -78,8 +78,8 @@ export const CONTRACTS_ERROR_CODES = Object.freeze({
 } as const);
 export type ContractsErrorCode = (typeof CONTRACTS_ERROR_CODES)[keyof typeof CONTRACTS_ERROR_CODES];
 
-// Re-exported, not re-declared: the group is owned by `@midnight-ntwrk/midnight-js-types`.
-// Kept on this module so the published surface of this package is unchanged.
+// Re-exported, not re-declared: the categories are owned by `@midnight-ntwrk/midnight-js-protocol`,
+// the provider group by `@midnight-ntwrk/midnight-js-types`.
 export {
   MIDNIGHT_JS_ERROR_CATEGORIES,
   type MidnightJsErrorCategory,
@@ -98,7 +98,7 @@ export const UTILS_ERROR_CODES = Object.freeze({
 } as const);
 export type UtilsErrorCode = (typeof UTILS_ERROR_CODES)[keyof typeof UTILS_ERROR_CODES];
 
-const { USAGE, ENVIRONMENT, TRANSIENT, REJECTED, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
+const { USAGE, ENVIRONMENT, TRANSIENT, REJECTED, UNCERTAIN, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
 
 export const CONTRACTS_ERROR_CATEGORIES: Readonly<Record<ContractsErrorCode, MidnightJsErrorCategory>> = Object.freeze({
   [CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION]: INTERNAL,
@@ -113,8 +113,8 @@ export const CONTRACTS_ERROR_CATEGORIES: Readonly<Record<ContractsErrorCode, Mid
   [CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH]: INTEGRITY,
   [CONTRACTS_ERROR_CODES.LEDGER8_SHIELDED_SPEND_UNSUPPORTED]: USAGE,
   [CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED]: ENVIRONMENT,
-  [CONTRACTS_ERROR_CODES.STALE_HEAD]: TRANSIENT,
-  [CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED]: TRANSIENT,
+  [CONTRACTS_ERROR_CODES.STALE_HEAD]: UNCERTAIN,
+  [CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED]: UNCERTAIN,
   [CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED]: USAGE,
   [CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE]: USAGE,
   [CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED]: ENVIRONMENT,
@@ -123,8 +123,8 @@ export const CONTRACTS_ERROR_CATEGORIES: Readonly<Record<ContractsErrorCode, Mid
   [CONTRACTS_ERROR_CODES.INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG]: USAGE,
   [CONTRACTS_ERROR_CODES.INCOMPLETE_FIND_PRIVATE_STATE_CONFIG]: USAGE,
   [CONTRACTS_ERROR_CODES.SCOPED_TX_IDENTITY_MISMATCH]: USAGE,
-  [CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_UNCONFIRMED]: TRANSIENT,
-  [CONTRACTS_ERROR_CODES.LEDGER8_AMBIGUOUS_ENTRY_POINT]: USAGE,
+  [CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_UNCONFIRMED]: UNCERTAIN,
+  [CONTRACTS_ERROR_CODES.LEDGER8_AMBIGUOUS_ENTRY_POINT]: INTEGRITY,
   [CONTRACTS_ERROR_CODES.LEDGER8_RECIPIENT_UNMAPPABLE]: USAGE,
   [CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_NOT_STORED]: ENVIRONMENT,
   [CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNUSABLE]: USAGE,
@@ -146,8 +146,9 @@ export const UTILS_ERROR_CATEGORIES: Readonly<Record<UtilsErrorCode, MidnightJsE
 /**
  * Union of every error code carried by a *coded* midnight-js error.
  *
- * Every error midnight-js raises itself carries a code, so `hasErrorCode(e) === false`
- * means the error came from a dependency or from user code.
+ * Every error midnight-js raises itself carries a code. `hasErrorCode(e) === false` means the error
+ * came from a dependency, the platform or user code and was passed through unchanged, or from another
+ * installed midnight-js copy using a code this copy does not know.
  */
 export type MidnightJsErrorCode =
   CommonErrorCode | ProtocolErrorCode | ContractsErrorCode | ProviderErrorCode | UtilsErrorCode;
@@ -222,6 +223,9 @@ export function hasErrorCode<C extends MidnightJsErrorCode>(e: unknown, code?: C
 /**
  * True when `e` is an error midnight-js threw. Reads `e.code`, so it also recognises an error built by
  * another installed copy of a midnight-js package, which `instanceof MidnightJsError` would not.
+ *
+ * Narrows to `Error & { code }`, not to `MidnightJsError`: an error from another copy may lack the
+ * class's other members. Read the category with {@link errorCategory}, not `e.category`.
  */
 export const isMidnightJsError = (e: unknown): e is Error & { code: MidnightJsErrorCode } => hasErrorCode(e);
 

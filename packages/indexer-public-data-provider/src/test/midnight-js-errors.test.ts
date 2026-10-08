@@ -14,6 +14,7 @@
  */
 
 import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { PROVIDER_ERROR_CATEGORIES } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -28,23 +29,42 @@ import {
   IndexerQueryError,
   IndexerSubscriptionDataError
 } from '../errors';
+import * as errors from '../errors';
 
 describe('indexer error classes', () => {
-  it('IndexerError extends MidnightJsError, and so does every subclass', () => {
-    const classes = [
-      EraUnresolvableError,
-      EraUnsupportedError,
-      IndexerDataError,
-      IndexerFormattedError,
-      IndexerInvariantError,
-      IndexerPayloadTooLargeError,
-      IndexerProviderConfigError,
-      IndexerQueryError,
-      IndexerSubscriptionDataError
-    ];
+  const exported: unknown[] = Object.values(errors);
+  const exportedClasses = exported.filter(
+    (value): value is abstract new (...args: never[]) => Error => typeof value === 'function' && value.prototype instanceof Error
+  );
+  const instances: readonly [string, IndexerError][] = [
+    ['IndexerFormattedError', new IndexerFormattedError([{ message: 'bad' }])],
+    ['IndexerQueryError', new IndexerQueryError('down')],
+    ['IndexerDataError', IndexerDataError.missingHeadBlock()],
+    ['IndexerSubscriptionDataError', new IndexerSubscriptionDataError('blocks')],
+    ['IndexerProviderConfigError', new IndexerProviderConfigError('bad')],
+    ['IndexerInvariantError', new IndexerInvariantError('bad')],
+    ['IndexerPayloadTooLargeError', new IndexerPayloadTooLargeError('big')],
+    ['EraUnsupportedError', new EraUnsupportedError('watchForTxData', 'v9', 3)],
+    ['EraUnresolvableError', new EraUnresolvableError('watchForTxData', 99, { cause: new Error('x') })]
+  ];
 
+  it('IndexerError extends MidnightJsError, and so does every exported subclass', () => {
     expect(IndexerError.prototype instanceof MidnightJsError).toBe(true);
-    expect(classes.filter((c) => !(c.prototype instanceof IndexerError)).map((c) => c.name)).toEqual([]);
+    expect(
+      exportedClasses.filter((c) => c !== IndexerError && !(c.prototype instanceof IndexerError)).map((c) => c.name)
+    ).toEqual([]);
+  });
+
+  it('builds an instance of every concrete exported error class below', () => {
+    const concrete = exportedClasses.map((c) => c.name).filter((name) => name !== 'IndexerError');
+
+    expect(concrete.sort()).toEqual(instances.map(([name]) => name).sort());
+  });
+
+  it.each(instances)('%s carries the category the table gives its code', (_name, error) => {
+    const category = Object.entries(PROVIDER_ERROR_CATEGORIES).find(([code]) => code === error.code)?.[1];
+
+    expect(error.category).toBe(category);
   });
 
   it.each([

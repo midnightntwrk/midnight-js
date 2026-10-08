@@ -31,7 +31,7 @@ import { vi } from 'vitest';
 import { type DatabaseLevel, levelPrivateStateProvider, migrateToAccountScoped } from '../index';
 import { StorageEncryption } from '../storage-encryption';
 
-type ErrorClass = new (message: string, options?: ErrorOptions) => Error;
+type ErrorClass = abstract new (...args: never[]) => Error;
 type SubLevel = ReturnType<DatabaseLevel['sublevel']>;
 
 const captureError = async (action: () => unknown): Promise<unknown> => {
@@ -94,6 +94,21 @@ const putDirectly = async (sublevelName: string, entries: Record<string, string>
     for (const [key, value] of Object.entries(entries)) {
       await sublevel.put(key, value);
     }
+  } finally {
+    await sublevel.close();
+    await level.close();
+  }
+};
+
+const tamperDirectly = async (sublevelName: string, key: string): Promise<void> => {
+  const level = new Level(DB_NAME, { createIfMissing: true });
+  const sublevel = level.sublevel<string, string>(sublevelName, { valueEncoding: 'utf-8' });
+  await level.open();
+  await sublevel.open();
+  try {
+    const stored = Buffer.from(await sublevel.get(key) ?? '', 'base64');
+    stored[stored.length - 1] ^= 0xff;
+    await sublevel.put(key, stored.toString('base64'));
   } finally {
     await sublevel.close();
     await level.close();
@@ -457,6 +472,42 @@ describe('level-private-state-provider error classes', () => {
   });
 
   describe('PrivateStateDecryptionError', () => {
+    test('reports a stored value that fails its authentication check', async () => {
+      // Arrange
+      const db = levelPrivateStateProvider<string, string>(config);
+      db.setContractAddress(CONTRACT_ADDRESS);
+      await db.set('key1', 'value1');
+      await tamperDirectly(scopedName('private-states'), `${CONTRACT_ADDRESS}:key1`);
+
+      // Act
+      const error = await captureError(() => db.get('key1'));
+
+      // Assert
+      const thrown = expectThrownAs(
+        error,
+        PrivateStateDecryptionError,
+        'Decryption failed: the data was encrypted with a different key or was modified'
+      );
+      expect(thrown).toMatchObject({ reason: 'wrong-key', category: 'INTEGRITY' });
+    });
+
+    test('reports a corrupt first entry during rotation as corrupt data, not as a wrong old password', async () => {
+      // Arrange
+      const db = levelPrivateStateProvider<string, string>(config);
+      db.setContractAddress(CONTRACT_ADDRESS);
+      await db.set('key1', 'value1');
+      await putDirectly(scopedName('private-states'), {
+        [`${CONTRACT_ADDRESS}:key1`]: Buffer.concat([Buffer.from([2]), Buffer.alloc(40)]).toString('base64')
+      });
+
+      // Act
+      const error = await captureError(() => db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD));
+
+      // Assert
+      expect(error).toBeInstanceOf(PrivateStateDecryptionError);
+      expect(error).not.toBeInstanceOf(InvalidArgumentError);
+    });
+
     test('reports an entry that cannot be decrypted after the first one', async () => {
       const db = levelPrivateStateProvider<string, string>(config);
       db.setContractAddress(CONTRACT_ADDRESS);

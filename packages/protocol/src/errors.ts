@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { causeChain } from './lib/shared/cause-chain';
 import type { LedgerVersion } from './lib/shared/ledger-version';
 
 /**
@@ -47,23 +48,27 @@ export const MIDNIGHT_JS_ERROR_CATEGORIES = Object.freeze({
   ENVIRONMENT: 'ENVIRONMENT',
   TRANSIENT: 'TRANSIENT',
   REJECTED: 'REJECTED',
+  UNCERTAIN: 'UNCERTAIN',
   INTEGRITY: 'INTEGRITY',
   INTERNAL: 'INTERNAL'
 } as const);
 /**
  * What the caller should do about an error: fix its own code (`USAGE`), fix the installation or
  * infrastructure (`ENVIRONMENT`), retry (`TRANSIENT`), handle a refusal by contract or network rules
- * (`REJECTED`), stop and alert on bad data (`INTEGRITY`), or report a midnight-js bug (`INTERNAL`).
+ * (`REJECTED`), check on chain whether a submitted transaction landed before doing anything else
+ * (`UNCERTAIN`), stop and alert on bad data (`INTEGRITY`), or report a midnight-js bug (`INTERNAL`).
  */
 export type MidnightJsErrorCategory = (typeof MIDNIGHT_JS_ERROR_CATEGORIES)[keyof typeof MIDNIGHT_JS_ERROR_CATEGORIES];
 
 export type MidnightJsErrorCodeFormat = `MIDNIGHT_JS_${string}`;
 
 /**
- * Base class of every error midnight-js throws. Recognise one with `hasErrorCode`, `isMidnightJsError`
- * or `errorCategory` from the `midnight-js-utils` package: they read `code`, so they also work when
- * two copies of a package are installed, where `instanceof` does not.
+ * Base class of every error midnight-js raises itself. An error without a registered code came from a
+ * dependency, the platform or user code, and midnight-js passed it through unchanged. Recognise one with
+ * `hasErrorCode`, `isMidnightJsError` or `errorCategory` from the `midnight-js-utils` package: they read
+ * `code`, so they also work when two copies of a package are installed, where `instanceof` does not.
  */
+// eslint-disable-next-line no-restricted-syntax -- the one class allowed to extend Error directly
 export abstract class MidnightJsError extends Error {
   abstract readonly code: MidnightJsErrorCodeFormat;
   abstract readonly category: MidnightJsErrorCategory;
@@ -1002,6 +1007,46 @@ export class PayloadNotATransactionError extends MidnightJsError {
   }
 }
 
+const MAX_CAUSE_DEPTH = 8;
+
+const CATEGORY_VALUES: ReadonlySet<string> = new Set(Object.values(MIDNIGHT_JS_ERROR_CATEGORIES));
+
+/** A midnight-js error recognised by its fields, which also matches one built by another installed copy. */
+export type CodedMidnightJsError = Error & {
+  readonly code: MidnightJsErrorCodeFormat;
+  readonly category: MidnightJsErrorCategory;
+};
+
+const isCodedMidnightJsError = (value: unknown): value is CodedMidnightJsError =>
+  value instanceof Error &&
+  'code' in value &&
+  typeof value.code === 'string' &&
+  value.code.startsWith('MIDNIGHT_JS_') &&
+  'category' in value &&
+  typeof value.category === 'string' &&
+  CATEGORY_VALUES.has(value.category);
+
+/**
+ * The midnight-js error a failure is or carries: the failure itself when it is one, otherwise the first
+ * one on its `cause` chain, at most eight links down. Use it when a dependency wraps a midnight-js error
+ * and hides its `code` and `category`.
+ */
+export const findCodedCause = (failure: unknown): CodedMidnightJsError | undefined => {
+  const seen = new Set<unknown>();
+  let current: unknown = failure;
+  for (let depth = 0; depth <= MAX_CAUSE_DEPTH; depth++) {
+    if (isCodedMidnightJsError(current)) {
+      return current;
+    }
+    if (typeof current !== 'object' || current === null || seen.has(current) || !('cause' in current)) {
+      return undefined;
+    }
+    seen.add(current);
+    current = current.cause;
+  }
+  return undefined;
+};
+
 /**
  * What a retained-era circuit or constructor execution fails with. A Compact `assert` refusal is the usual
  * cause, but a key or config read failure or a runtime fault can also arrive this way, so `cause` is the
@@ -1015,6 +1060,19 @@ export class ContractExecutionError extends MidnightJsError {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = 'ContractExecutionError';
+  }
+
+  /**
+   * Reports every failure of an execution, each with its whole cause chain, separated by `; `.
+   * `cause` is the first coded error found on any failure's chain, or the first failure when none is coded.
+   */
+  static fromFailures(failures: readonly unknown[]): ContractExecutionError {
+    const describe = (failure: unknown): string => {
+      const chain = causeChain(failure);
+      return chain.length > 0 ? chain.join(': ') : String(failure);
+    };
+    const coded = failures.map(findCodedCause).find((candidate) => candidate !== undefined);
+    return new ContractExecutionError(failures.map(describe).join('; '), { cause: coded ?? failures[0] });
   }
 }
 

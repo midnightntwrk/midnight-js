@@ -84,6 +84,7 @@ describe('Protocol type ACL', () => {
   it('publishes exactly this type surface from the barrel', () => {
     expect(barrelTypeNames).toEqual([
       'CallTranscriptSource',
+      'CodedMidnightJsError',
       'CommonErrorCode',
       'ComposeCallEntry',
       'ComposeCallOptions',

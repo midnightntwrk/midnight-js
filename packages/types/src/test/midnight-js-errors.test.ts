@@ -37,32 +37,49 @@ import {
   V8PayloadUnsupportedError,
   ZkArtifactFetchError
 } from '../errors';
+import * as errors from '../errors';
 import { ZKArtifactNotFoundError } from '../zk-config-registry';
 
 describe('types error classes', () => {
-  it('every exported error class extends MidnightJsError', () => {
-    const classes = [
-      ArtifactRuntimeVersionUnavailableError,
-      ExportDecryptionError,
-      ImportConflictError,
-      InvalidExportFormatError,
-      InvalidProtocolSchemeError,
-      PrivateStateDecryptionError,
-      PrivateStateExportError,
-      PrivateStateImportError,
-      PrivateStateLimitExceededError,
-          PrivateStateSerializationError,
-      PrivateStateStorageError,
-      ProofServerError,
-      SeamEraUnsupportedError,
-      SigningKeyExportError,
-      UntaggedPayloadError,
-      V8PayloadUnsupportedError,
-      ZkArtifactFetchError,
-      ZKArtifactNotFoundError
-    ];
+  const exported: unknown[] = [...Object.values(errors), ZKArtifactNotFoundError];
+  const exportedClasses = exported.filter(
+    (value): value is abstract new (...args: never[]) => Error => typeof value === 'function' && value.prototype instanceof Error
+  );
+  const keyLocation = { contractAddress: 'aa'.repeat(32), circuitId: 'increment', verifierKeyHash: 'bb'.repeat(32) };
+  const instances: readonly [string, MidnightJsError][] = [
+    ['V8PayloadUnsupportedError', new V8PayloadUnsupportedError('proveTx', 3)],
+    ['UntaggedPayloadError', new UntaggedPayloadError('proveTx', undefined)],
+    ['SeamEraUnsupportedError', new SeamEraUnsupportedError('proveTx', 'v8', ['v9'])],
+    ['InvalidProtocolSchemeError', new InvalidProtocolSchemeError('ftp', ['http', 'https'])],
+    ['ArtifactRuntimeVersionUnavailableError', new ArtifactRuntimeVersionUnavailableError('provider')],
+    ['PrivateStateExportError', new PrivateStateExportError('msg')],
+    ['PrivateStateSerializationError', new PrivateStateSerializationError('$', 'function')],
+    ['SigningKeyExportError', new SigningKeyExportError('msg')],
+    ['PrivateStateImportError', new PrivateStateImportError('msg')],
+    ['ExportDecryptionError', new ExportDecryptionError()],
+    ['InvalidExportFormatError', new InvalidExportFormatError()],
+    ['ImportConflictError', new ImportConflictError(2)],
+    ['ZkArtifactFetchError', new ZkArtifactFetchError('msg', 503)],
+    ['ProofServerError', new ProofServerError('msg', 503)],
+    ['PrivateStateDecryptionError', new PrivateStateDecryptionError('msg', 'malformed')],
+    ['PrivateStateStorageError', new PrivateStateStorageError('msg')],
+    ['PrivateStateLimitExceededError', new PrivateStateLimitExceededError('msg')],
+    ['ZKArtifactNotFoundError', new ZKArtifactNotFoundError(keyLocation)]
+  ];
 
-    expect(classes.filter((c) => !(c.prototype instanceof MidnightJsError)).map((c) => c.name)).toEqual([]);
+  it('every exported error class extends MidnightJsError', () => {
+    expect(exportedClasses.length).toBeGreaterThan(15);
+    expect(exportedClasses.filter((c) => !(c.prototype instanceof MidnightJsError)).map((c) => c.name)).toEqual([]);
+  });
+
+  it('builds an instance of every exported error class below', () => {
+    expect(exportedClasses.map((c) => c.name).sort()).toEqual(instances.map(([name]) => name).sort());
+  });
+
+  it.each(instances)('%s carries a registered code and the category the table gives that code', (_name, error) => {
+    const category = Object.entries(PROVIDER_ERROR_CATEGORIES).find(([code]) => code === error.code)?.[1];
+
+    expect(error.category).toBe(category);
   });
 
   it('category table covers every provider code exactly', () => {
@@ -85,7 +102,7 @@ describe('types error classes', () => {
   });
 
   it.each([
-    ['PrivateStateDecryptionError', new PrivateStateDecryptionError('msg'), 'MIDNIGHT_JS_PR_PRIVATE_STATE_DECRYPTION_FAILED', 'INTEGRITY'],
+    ['PrivateStateDecryptionError', new PrivateStateDecryptionError('msg', 'malformed'), 'MIDNIGHT_JS_PR_PRIVATE_STATE_DECRYPTION_FAILED', 'INTEGRITY'],
     ['PrivateStateStorageError', new PrivateStateStorageError('msg'), 'MIDNIGHT_JS_PR_PRIVATE_STATE_STORAGE_FAILED', 'ENVIRONMENT'],
     ['PrivateStateLimitExceededError', new PrivateStateLimitExceededError('msg'), 'MIDNIGHT_JS_PR_PRIVATE_STATE_LIMIT_EXCEEDED', 'USAGE'],
     ['PrivateStateExportError', new PrivateStateExportError('msg'), 'MIDNIGHT_JS_PR_PRIVATE_STATE_EXPORT_FAILED', 'USAGE'],
@@ -105,7 +122,11 @@ describe('types error classes', () => {
     [503, 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED', 'TRANSIENT'],
     [408, 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED', 'TRANSIENT'],
     [429, 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED', 'TRANSIENT'],
-    [404, 'MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED', 'ENVIRONMENT']
+    [404, 'MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED', 'ENVIRONMENT'],
+    [500, 'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED', 'TRANSIENT'],
+    [499, 'MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED', 'ENVIRONMENT'],
+    [409, 'MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED', 'ENVIRONMENT'],
+    [430, 'MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED', 'ENVIRONMENT']
   ] as const)('ZkArtifactFetchError for HTTP %i is %s', (status, code, category) => {
     const error = new ZkArtifactFetchError('msg', status);
 
@@ -135,11 +156,27 @@ describe('types error classes', () => {
     [408, 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE', 'TRANSIENT'],
     [429, 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE', 'TRANSIENT'],
     [400, 'MIDNIGHT_JS_PR_PROOF_SERVER_REFUSED', 'ENVIRONMENT'],
+    [500, 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE', 'TRANSIENT'],
+    [499, 'MIDNIGHT_JS_PR_PROOF_SERVER_REFUSED', 'ENVIRONMENT'],
+    [409, 'MIDNIGHT_JS_PR_PROOF_SERVER_REFUSED', 'ENVIRONMENT'],
     [undefined, 'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE', 'TRANSIENT']
   ] as const)('ProofServerError for status %s is %s', (status, code, category) => {
     const error = new ProofServerError('msg', status);
 
     expect([error.code, error.category]).toEqual([code, category]);
+  });
+
+  it('PrivateStateStorageError keeps the failure on cause and a failed cleanup beside it', () => {
+    // Arrange
+    const operationFailure = new Error('write failed');
+    const closeFailure = new Error('close failed');
+
+    // Act
+    const error = new PrivateStateStorageError('msg', { cause: operationFailure, closeError: closeFailure });
+
+    // Assert
+    expect(error.cause).toBe(operationFailure);
+    expect(error.closeError).toBe(closeFailure);
   });
 
   it('ZKArtifactNotFoundError is an environment error', () => {

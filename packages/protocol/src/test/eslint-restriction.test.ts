@@ -313,6 +313,20 @@ describe('plain-throw gate', () => {
     expect((await lintMessagesFor(code, CONSUMER_PATH, SYNTAX_RULE_ID)).length).toBe(1);
   });
 
+  it.each([
+    ['throw new Error', 'export const f = () => { throw new Error("x"); };\n'],
+    ['throw new TypeError', 'export const f = () => { throw new TypeError("x"); };\n'],
+    ['throw new RangeError', 'export const f = () => { throw new RangeError("x"); };\n'],
+    ['throw new AggregateError', 'export const f = () => { throw new AggregateError([], "x"); };\n'],
+    ['throw Error without new', 'export const f = () => { throw Error("x"); };\n'],
+    ['a plain error built into a variable', 'export const f = () => { const e = new Error("x"); throw e; };\n'],
+    ['reject(new Error) inside new Promise', 'export const f = () => new Promise((_, reject) => reject(new Error("x")));\n'],
+    ['Effect.fail(new Error)', 'declare const Effect: { fail: (e: unknown) => unknown };\nexport const f = () => Effect.fail(new Error("x"));\n'],
+    ['a class extending Error directly', 'export class Oops extends Error {}\n']
+  ])('flags %s', async (_label, code) => {
+    expect((await lintMessagesFor(code, CONSUMER_PATH, SYNTAX_RULE_ID)).length).toBe(1);
+  });
+
   it('allows a coded error rejected through Promise.reject', async () => {
     const code = 'export const f = () => Promise.reject(new CodedError("x"));\n';
 
@@ -326,8 +340,29 @@ describe('plain-throw gate', () => {
     expect(messages).toEqual([]);
   });
 
-  it('still gates unsafe casts in the compact CLI', async () => {
-    const cast = 'export const f = (x: number) => x as unknown as string;\n';
-    expect((await lintMessagesFor(cast, 'packages/compact/src/some-cli.ts', SYNTAX_RULE_ID)).length).toBeGreaterThan(0);
-  });
+  it.each(['packages/compact/src/some-cli.ts', 'packages/network-id/src/some-module.ts'])(
+    'still gates unsafe casts in %s',
+    async (filePath) => {
+      const cast = 'export const f = (x: number) => x as unknown;\n';
+      expect((await lintMessagesFor(cast, filePath, SYNTAX_RULE_ID)).length).toBe(1);
+    }
+  );
+
+  it.each(['packages/compact/src/some-cli.ts', 'packages/network-id/src/some-module.ts'])(
+    'still bans dynamic imports of protocol/v8 and protocol/engine in %s',
+    async (filePath) => {
+      expect((await lintMessagesFor(dynamicImportStatement(V8_SUBPATH), filePath, SYNTAX_RULE_ID)).length).toBe(1);
+      expect((await lintMessagesFor(dynamicImportStatement(ENGINE_SUBPATH), filePath, SYNTAX_RULE_ID)).length).toBe(1);
+    }
+  );
+
+  it.each(['packages/compact/src/some-cli.ts', 'packages/network-id/src/some-module.ts'])(
+    'never disables %s outright in the exempt folders',
+    async (filePath) => {
+      const { rules } = await eslint.calculateConfigForFile(filePath);
+      const entry = rules?.[SYNTAX_RULE_ID];
+
+      expect(Array.isArray(entry) ? entry[0] : entry).toBe(2);
+    }
+  );
 });

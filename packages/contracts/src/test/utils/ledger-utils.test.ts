@@ -59,7 +59,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import type { MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, isDeserializationError, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined, CONTRACTS_ERROR_CODES, isDeserializationError, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 import { Option } from 'effect';
 import { readFileSync } from 'fs';
@@ -273,7 +273,7 @@ describe('ledger-utils', () => {
     );
   });
 
-  it('createUnprovenLedgerCallTx refuses an operation that carries no verifier key as InvalidArgumentError', () => {
+  it('createUnprovenLedgerCallTx refuses an operation that carries no verifier key as a blank verifier-key slot', () => {
     const circuitId = 'keylessCircuit';
     const contractState = new CompactContractState();
     contractState.setOperation(circuitId, new ContractOperation());
@@ -302,9 +302,10 @@ describe('ledger-utils', () => {
       )
     ).toThrow(
       expect.objectContaining({
-        name: 'InvalidArgumentError',
-        code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
-        message: expect.stringContaining(`Operation '${circuitId}' on contract '${dummyContractAddress}' has no verifier key.`)
+        name: 'BlankVerifierKeySlotError',
+        code: CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT,
+        category: 'INTEGRITY',
+        circuitId
       })
     );
   });

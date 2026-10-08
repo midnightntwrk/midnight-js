@@ -604,25 +604,42 @@ export class ProofServerError extends MidnightJsError {
   }
 }
 
+/**
+ * Why stored private state could not be decrypted: `wrong-key` when it was encrypted with a different key
+ * or modified (the two cannot be told apart), `malformed` when it is not readable encrypted data at all.
+ */
+export type PrivateStateDecryptionReason = 'wrong-key' | 'malformed';
+
 /** Stored private state could not be decrypted. */
 export class PrivateStateDecryptionError extends MidnightJsError {
   readonly code = PRIVATE_STATE_DECRYPTION_FAILED;
   readonly category = PROVIDER_ERROR_CATEGORIES[PRIVATE_STATE_DECRYPTION_FAILED];
 
-  constructor(message: string, options?: ErrorOptions) {
+  constructor(
+    message: string,
+    readonly reason: PrivateStateDecryptionReason,
+    options?: ErrorOptions
+  ) {
     super(message, options);
     this.name = 'PrivateStateDecryptionError';
   }
 }
 
-/** Reading or writing the private-state store failed. */
+/**
+ * Reading or writing the private-state store failed. `cause` is the failure; `closeError` is set when
+ * closing the database afterwards failed too.
+ */
 export class PrivateStateStorageError extends MidnightJsError {
   readonly code = PRIVATE_STATE_STORAGE_FAILED;
   readonly category = PROVIDER_ERROR_CATEGORIES[PRIVATE_STATE_STORAGE_FAILED];
+  readonly closeError?: unknown;
 
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, options);
+  constructor(message: string, options?: ErrorOptions & { readonly closeError?: unknown }) {
+    super(message, options?.cause === undefined ? undefined : { cause: options.cause });
     this.name = 'PrivateStateStorageError';
+    if (options?.closeError !== undefined) {
+      this.closeError = options.closeError;
+    }
   }
 }
 
