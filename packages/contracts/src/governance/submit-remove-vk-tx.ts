@@ -17,7 +17,7 @@ import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/comp
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type FinalizedTxData,SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined, assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from '../contract-providers';
 import { submitTx } from '../submit-tx';
@@ -72,6 +72,7 @@ export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
   contractAddress: ContractAddress,
   circuitId: Contract.ProvableCircuitId<C>
 ): Promise<FinalizedTxData> => {
+  assertValidMidnightConfig(providers.config);
   assertIsContractAddress(contractAddress);
   const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
   assertDefined(contractState, `No contract state found on chain for contract address '${contractAddress}'`);
@@ -92,7 +93,8 @@ export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
     circuitId,
     contractState,
     signingKey,
-    providers.walletProvider.getCoinPublicKey()
+    providers.walletProvider.getCoinPublicKey(),
+    providers.config
   );
   const submitTxResult = await submitTx(providers, { unprovenTx });
   if (submitTxResult.status !== SucceedEntirely) {

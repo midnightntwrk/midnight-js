@@ -13,14 +13,13 @@
  * limitations under the License.
  */
 
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { type Contract, ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { type CoinPublicKey, type ContractModuleProvider, type ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
-import { exitResultOrError, makeContractExecutableRuntime, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import { exitResultOrError, makeContractExecutableRuntime, type MidnightConfig, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import { assertDefined, assertIsContractAddress, assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type {
   CallOptions,
@@ -83,6 +82,9 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PC
  * @param walletEncryptionPublicKey
  * @param crossContract Enables cross-contract calls; required for circuits that make them.
  * @returns Data produced by the circuit call and an unproven transaction assembled from the call result.
+ * @throws TypeError If `options.config` is missing, or its `networkId` is not a non-empty string without
+ *         surrounding whitespace.
+ * @throws RangeError If `options.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
  *
  * @remarks
  * The returned {@link UnsubmittedCallTxData} is privacy-sensitive and carries
@@ -96,7 +98,9 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
   walletEncryptionPublicKey: EncPublicKey,
   crossContract?: CrossContractConfig
 ): Promise<UnsubmittedCallTxData<C, PCK>> {
-  const { compiledContract, contractAddress, coinPublicKey, initialContractState, initialZswapChainState, ledgerParameters } = options;
+  const { compiledContract, contractAddress, coinPublicKey, initialContractState, initialZswapChainState, ledgerParameters, config } = options;
+  assertValidMidnightConfig(config, 'options.config');
+  const { networkId } = config;
   assertIsContractAddress(contractAddress);
   assertDefined(
     ContractExecutable.make(options.compiledContract)
@@ -196,17 +200,19 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
           contractStateFor,
           chainStateFor,
           encryptionPublicKeyResolverForZswapState(
+            networkId,
             zswapLocalState,
             options.coinPublicKey,
             walletEncryptionPublicKey,
             options.additionalCoinEncPublicKeyMappings
-          )
+          ),
+          config
         ),
         // Every call, not just the root: the offers are assembled from the whole tree, so a coin a
         // callee addresses to this wallet is genuinely created and belongs in what the caller is
         // handed. `calls` carries the root as its last entry.
         newCoins: zswapCallsToNewCoins(
-          parseCoinPublicKeyToHex(coinPublicKey, getNetworkId()),
+          parseCoinPublicKeyToHex(coinPublicKey, networkId),
           calls.map((call) => call.private.zswapLocalState)
         )
       },
@@ -257,6 +263,7 @@ const createCallOptions = <C extends Contract.Any, PCK extends Contract.Provable
   ledgerParameters: LedgerParameters,
   initialContractState: ContractState,
   initialZswapChainState: ZswapChainState,
+  config: MidnightConfig,
   initialPrivateState?: Contract.PrivateState<C>
 ): CallOptions<C, PCK> => {
   const callOptionsBase = {
@@ -274,10 +281,11 @@ const createCallOptions = <C extends Contract.Any, PCK extends Contract.Provable
       : callOptionsBase;
   const callOptionsBaseWithProviderDataDependencies = {
     ...callOptionsWithArguments,
-    coinPublicKey: parseCoinPublicKeyToHex(coinPublicKey, getNetworkId()),
+    coinPublicKey: parseCoinPublicKeyToHex(coinPublicKey, config.networkId),
     initialContractState,
     initialZswapChainState,
-    ledgerParameters
+    ledgerParameters,
+    config
   };
   const callOptions = initialPrivateState
     ? { ...callOptionsBaseWithProviderDataDependencies, initialPrivateState }
@@ -355,7 +363,7 @@ const getContractPublicStates = async <C extends Contract.Any, PCK extends Contr
  */
 export type UnprovenCallTxProvidersBase = Pick<
   ContractProviders,
-  'zkConfigProvider' | 'publicDataProvider' | 'walletProvider' | 'contractModuleProvider'
+  'zkConfigProvider' | 'publicDataProvider' | 'walletProvider' | 'contractModuleProvider' | 'config'
 >;
 
 /**
@@ -400,6 +408,9 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
  * @throws IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privateStateProvider`
  *                                           was not. We assume that when a user gives a `privateStateId`,
  *                                           they want to update the private state store.
+ * @throws TypeError If `providers.config` is missing, or its `networkId` is not a non-empty string without
+ *         surrounding whitespace.
+ * @throws RangeError If `providers.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
  *
  * @remarks
  * The returned {@link UnsubmittedCallTxData} is privacy-sensitive and carries
@@ -412,6 +423,7 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
   options: CallTxOptions<C, PCK>,
   transactionContext?: TransactionContext<C, PCK>
 ): Promise<UnsubmittedCallTxData<C, PCK>> {
+  assertValidMidnightConfig(providers.config);
   assertIsContractAddress(options.contractAddress);
   assertDefined(
     ContractExecutable.make(options.compiledContract)
@@ -439,10 +451,11 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
       providers.zkConfigProvider,
       createCallOptions(
         options,
-        parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()),
+        parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId),
         ledgerParameters,
         contractState,
         zswapChainState,
+        providers.config,
         privateState
       ),
       providers.walletProvider.getEncryptionPublicKey(),
@@ -458,10 +471,11 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
     providers.zkConfigProvider,
     createCallOptions(
       options,
-      parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()),
+      parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId),
       ledgerParameters,
       contractState,
-      zswapChainState
+      zswapChainState,
+      providers.config
     ),
     providers.walletProvider.getEncryptionPublicKey(),
     { publicDataProvider: providers.publicDataProvider, blockHash, moduleProvider: providers.contractModuleProvider }

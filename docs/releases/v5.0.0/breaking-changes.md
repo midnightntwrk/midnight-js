@@ -497,6 +497,55 @@ block, so values from it may arrive again but none after it is skipped.
 
 ---
 
+## 11. `MidnightConfig` on `MidnightProviders` replaces the global network id and the fixed TTL (#982)
+
+`MidnightProviders` has a new **required** member:
+
+```ts
+interface MidnightConfig {
+  readonly networkId: NetworkId; // e.g. 'preview', 'undeployed'
+  readonly ttlSeconds: number;   // positive whole number of seconds
+}
+
+interface MidnightProviders {
+  // ... existing providers ...
+  readonly config: MidnightConfig;
+}
+```
+
+- **Network id:** every transaction the framework builds (deploy, call, governance,
+  both ledger eras) uses `config.networkId`. The framework no longer reads
+  `getNetworkId()`, and there is no fallback to it. A leftover `setNetworkId()`
+  call has no effect.
+- **TTL:** every intent the framework builds expires `config.ttlSeconds` after it
+  is built. 4.x used a fixed one hour; `ttlSeconds: 3600` keeps that. The framework
+  also passes the TTL to `walletProvider.balanceTx` (its existing `ttl?: Date`
+  argument, which it did not pass before), so a wallet that honours it gives the
+  balancing intent the same lifetime. A wallet behind the DApp Connector cannot
+  receive a TTL, so its balancing intent keeps the wallet's own lifetime.
+  `submitTx` reads `providers.config` too.
+- **Validation:** a missing (`undefined` or `null`) config, or a `networkId` that is
+  not a non-empty string without surrounding whitespace, throws a `TypeError`; a
+  `ttlSeconds` that is not a positive whole number (or that overflows a `Date`)
+  throws a `RangeError`. Every entry point that builds a transaction checks this
+  before chain state is read and before the circuit or constructor runs.
+  The same check is public as `assertValidMidnightConfig` in
+  `@midnight-ntwrk/midnight-js-utils`.
+- **Low-level functions:** `createUnprovenCallTxFromInitialStates` reads
+  `options.config` (a new required member of `CallOptionsProviderDataDependencies`);
+  `createUnprovenDeployTxFromVerifierKeys` takes `config` as a new last argument.
+  `UnprovenCallTxProvidersBase` and `UnprovenDeployTxProviders` now include `config`.
+- **`NetworkId`** moved to `@midnight-ntwrk/midnight-js-types`.
+- **`@midnight-ntwrk/midnight-js-network-id` is deprecated.** `setNetworkId`,
+  `getNetworkId` and `NetworkId` still compile and run, but the framework ignores
+  them. The package is removed in 6.0.
+- **testkit-js:** `NodeClient` takes the network id as a third constructor
+  argument and rejects an empty one. `initializeMidnightProviders` sets
+  `config.networkId` from the environment configuration and `config.ttlSeconds`
+  to 3600. The test environments no longer call `setNetworkId`.
+
+---
+
 ## Non-breaking additions worth noting
 
 - **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).

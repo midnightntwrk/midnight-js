@@ -89,7 +89,7 @@ export abstract class RemoteTestEnvironment extends TestEnvironment {
    */
   healthCheck = async () => {
     this.logger.info('Performing env health check');
-    await new NodeClient(this.environmentConfiguration.node, this.logger).health();
+    await new NodeClient(this.environmentConfiguration.node, this.logger, this.environmentConfiguration.networkId).health();
     await new IndexerClient(this.environmentConfiguration.indexer, this.logger).health();
     await new ProofServerClient(this.environmentConfiguration.proofServer, this.logger).health();
     if (this.environmentConfiguration.faucet) {

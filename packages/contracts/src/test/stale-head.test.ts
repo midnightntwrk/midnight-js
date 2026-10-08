@@ -38,7 +38,6 @@
 import { readFileSync } from 'node:fs';
 import { inspect } from 'node:util';
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import { type LedgerVersion, loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
 import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
@@ -95,7 +94,6 @@ vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
 });
 
 const CIRCUIT_ID = 'receive_coin';
-const NETWORK_ID = 'undeployed';
 // The era timeline's own scheme, `node-major * 1_000_000 + node-minor * 1_000`.
 const PRE_FORK_PROTOCOL_VERSION = 1_000_000;
 const POST_FORK_PROTOCOL_VERSION = 2_000_000;
@@ -440,7 +438,6 @@ describe('the fork-crossing failure through the retained-era entry points', () =
   });
 
   beforeEach(() => {
-    setNetworkId(NETWORK_ID);
     engineSlot.engine = createReplayEngine(loadCoinReceiverRecording(), [], v6Envelope);
   });
 

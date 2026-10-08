@@ -72,7 +72,7 @@ describe('submit-tx', () => {
         const result = await submitTx(mockProviders, options);
 
         expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith({ version: 'v9', tx: mockUnprovenTx });
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith({ version: 'v9', tx: mockProvenTx });
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith({ version: 'v9', tx: mockProvenTx }, expect.any(Date));
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith('test-tx-id');
         expect(result).toBe(mockFinalizedTxData);
@@ -95,7 +95,7 @@ describe('submit-tx', () => {
         const result = await submitTx(mockProviders, options);
 
         expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith({ version: 'v9', tx: mockUnprovenTx });
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith({ version: 'v9', tx: mockProvenTx });
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith({ version: 'v9', tx: mockProvenTx }, expect.any(Date));
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith('test-tx-id');
         expect(result).toBe(mockFinalizedTxData);
@@ -164,7 +164,7 @@ describe('submit-tx', () => {
         const result = await submitTxAsync(mockProviders, options);
 
         expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith({ version: 'v9', tx: mockUnprovenTx });
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith({ version: 'v9', tx: mockProvenTx });
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith({ version: 'v9', tx: mockProvenTx }, expect.any(Date));
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).not.toHaveBeenCalled();
         expect(result).toBe(expectedTxId);
@@ -186,10 +186,34 @@ describe('submit-tx', () => {
         const result = await submitTxAsync(mockProviders, options);
 
         expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith({ version: 'v9', tx: mockUnprovenTx });
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith({ version: 'v9', tx: mockProvenTx });
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith({ version: 'v9', tx: mockProvenTx }, expect.any(Date));
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).not.toHaveBeenCalled();
         expect(result).toBe(expectedTxId);
+      });
+    });
+
+    describe('config', () => {
+      it('passes the configured TTL to the wallet', async () => {
+        const providers = { ...mockProviders, config: { networkId: 'preview', ttlSeconds: 45 } };
+        providers.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        providers.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        providers.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
+        const before = Date.now();
+
+        await submitTxAsync(providers, { unprovenTx: mockUnprovenTx });
+
+        const ttl = vi.mocked(providers.walletProvider.balanceTx).mock.calls[0]?.[1];
+        expect(ttl?.getTime()).toBeGreaterThanOrEqual(before + 45_000);
+        expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 45_000);
+      });
+
+      it('rejects an invalid TTL before proving', async () => {
+        const providers = { ...mockProviders, config: { networkId: 'preview', ttlSeconds: 0 } };
+        providers.proofProvider.proveTx = vi.fn();
+
+        await expect(submitTxAsync(providers, { unprovenTx: mockUnprovenTx })).rejects.toThrow(RangeError);
+        expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
       });
     });
 

@@ -35,7 +35,6 @@
 
 import { readFileSync } from 'node:fs';
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import {
   type ComposeCallOptions,
@@ -174,7 +173,6 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
   });
 
   beforeEach(() => {
-    setNetworkId(NETWORK_ID);
     engineSlot.engine = createReplayEngine(loadCoinReceiverRecording(), []);
   });
 
@@ -246,6 +244,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -317,6 +316,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -371,6 +371,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -417,6 +418,17 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('keep-state-tx-id');
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
     expect(providers.publicDataProvider.queryRawContractState).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes the providers.config TTL to the wallet on the current-era arm', async () => {
+    const providers = { ...postForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 30 } };
+    const before = Date.now();
+
+    await submitCallTx(providers, callOptions());
+
+    const ttl = vi.mocked(providers.walletProvider.balanceTx).mock.calls[0]?.[1];
+    expect(ttl?.getTime()).toBeGreaterThanOrEqual(before + 30_000);
+    expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 30_000);
   });
 
   it('hands every provider seam the CURRENT-era arm, as a live ledger transaction', async () => {
@@ -562,6 +574,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000),
         encryptionPublicKey: createEncryptionPublicKeyResolver(
+          NETWORK_ID,
           recording.coinPublicKey,
           providers.walletProvider.getEncryptionPublicKey()
         )

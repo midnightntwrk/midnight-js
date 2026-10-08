@@ -20,6 +20,8 @@ export * from './deserialization';
 export * from './error-codes';
 export * from './hex-utils';
 export * from './ledger-parameters-envelope';
+export * from './midnight-config';
+export * from './midnight-providers';
 export * from './password-validation';
 export * from './security-utils';
 export * from './serialized-tag';

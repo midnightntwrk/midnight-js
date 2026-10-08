@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type CircuitContext,
   type ContractModuleProvider,
@@ -21,10 +20,10 @@ import {
   type ContractStateProvider,
   StateValue
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { describe, expect, it, vi } from 'vitest';
 
-import { makeCalleeStateResolver } from '../internal/utils';
+import { createUnprovenLedgerCallTx, makeCalleeStateResolver } from '../internal/utils';
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import { createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
@@ -40,7 +39,8 @@ import {
   createMockPrivateStateId,
   createMockProviders,
   createMockSigningKey,
-  createMockZKConfigProvider
+  createMockZKConfigProvider,
+  MOCK_CONFIG
 } from './test-mocks';
 
 vi.mock('../get-states', () => ({
@@ -64,11 +64,9 @@ vi.mock('../internal/utils', () => ({
     makeCalleeStateResolver: vi.fn()
 }));
 
-describe('unproven-call-tx', () => {
-  beforeAll(() => {
-    setNetworkId('testnet');
-  });
+const BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY = 'mn_shield-cpk_undeployed1mjngjmnlutcq50trhcsk3hugvt9wyjnhq3c7prryd5nqmvtzva0sn7kq7h';
 
+describe('unproven-call-tx', () => {
   let initialContractState: Promise<ContractState> | null = null;
   const getInitialContractState = async () => {
     const _ = async () => {
@@ -79,7 +77,8 @@ describe('unproven-call-tx', () => {
           compiledContract: createMockCompiledContract(),
           signingKey: createMockSigningKey(),
         },
-        createMockEncryptionPublicKey()
+        createMockEncryptionPublicKey(),
+        MOCK_CONFIG
       );
 
       return deploy.public.initialContractState;
@@ -235,9 +234,96 @@ describe('unproven-call-tx', () => {
         walletEncryptionPublicKey
       )).rejects.toThrow('failed assert: FAIL');
     });
+
+    it('rejects an invalid TTL before running the circuit', async () => {
+      const options = createMockCallOptions({
+        compiledContract: createMockCompiledContract({
+          testCircuit: createFailingCircuit('FAIL')
+        }),
+        initialContractState: await getInitialContractState(),
+        config: { networkId: 'preview', ttlSeconds: 0 }
+      });
+
+      await expect(createUnprovenCallTxFromInitialStates(
+        createMockZKConfigProvider(),
+        options,
+        createMockEncryptionPublicKey()
+      )).rejects.toThrow(RangeError);
+    });
   });
 
   describe('createUnprovenCallTx', () => {
+    it('decodes a Bech32m wallet key with providers.config.networkId', async () => {
+      const { getPublicStates } = await import('../get-states');
+      vi.mocked(getPublicStates, { partial: true }).mockResolvedValue({
+        zswapChainState: new ZswapChainState(),
+        contractState: await getInitialContractState(),
+        ledgerParameters: LedgerParameters.initialParameters()
+      });
+      const walletProvider = { ...createMockProviders().walletProvider, getCoinPublicKey: () => BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY };
+      const providers = {
+        zkConfigProvider: createMockZKConfigProvider(),
+        publicDataProvider: createMockProviders().publicDataProvider,
+        walletProvider,
+        config: { networkId: 'preview', ttlSeconds: 60 }
+      };
+      const options = {
+        contract: createMockContract(),
+        compiledContract: createMockCompiledContract(),
+        circuitId: 'testCircuit',
+        contractAddress: createMockContractAddress(),
+        args: ['test-arg']
+      };
+
+      await expect(createUnprovenCallTx(providers, options)).rejects.toThrow('Expected preview address, got undeployed one');
+    });
+
+    it('refuses a missing providers.config before reading chain state', async () => {
+      const publicDataProvider = createMockProviders().publicDataProvider;
+      const providers = Object.assign(
+        {
+          zkConfigProvider: createMockZKConfigProvider(),
+          publicDataProvider,
+          walletProvider: createMockProviders().walletProvider,
+          config: MOCK_CONFIG
+        },
+        { config: undefined }
+      );
+      const options = {
+        contract: createMockContract(),
+        compiledContract: createMockCompiledContract(),
+        circuitId: 'testCircuit',
+        contractAddress: createMockContractAddress(),
+        args: ['test-arg']
+      };
+
+      await expect(createUnprovenCallTx(providers, options)).rejects.toThrow(/^providers\.config is missing/);
+      expect(publicDataProvider.queryBlock).not.toHaveBeenCalled();
+    });
+
+    it('rejects an invalid TTL before reading chain state', async () => {
+      const { getPublicStates } = await import('../get-states');
+      const publicDataProvider = createMockProviders().publicDataProvider;
+      const providers = {
+        zkConfigProvider: createMockZKConfigProvider(),
+        publicDataProvider,
+        walletProvider: createMockProviders().walletProvider,
+        config: { networkId: 'preview', ttlSeconds: 0 }
+      };
+      const options = {
+        contract: createMockContract(),
+        compiledContract: createMockCompiledContract(),
+        circuitId: 'testCircuit',
+        contractAddress: createMockContractAddress(),
+        args: ['test-arg']
+      };
+      vi.mocked(getPublicStates).mockClear();
+
+      await expect(createUnprovenCallTx(providers, options)).rejects.toThrow(RangeError);
+      expect(publicDataProvider.queryBlock).not.toHaveBeenCalled();
+      expect(getPublicStates).not.toHaveBeenCalled();
+    });
+
     it('throws when the latest block cannot be fetched from the public data provider', async () => {
       const publicDataProvider = createMockProviders().publicDataProvider;
       publicDataProvider.queryBlock = vi.fn().mockResolvedValue(null);
@@ -245,7 +331,8 @@ describe('unproven-call-tx', () => {
       const providers = {
         zkConfigProvider: createMockZKConfigProvider(),
         publicDataProvider,
-        walletProvider: createMockProviders().walletProvider
+        walletProvider: createMockProviders().walletProvider,
+        config: MOCK_CONFIG
       };
       const options = {
         contract: createMockContract(),
@@ -273,7 +360,8 @@ describe('unproven-call-tx', () => {
       const providers = {
         zkConfigProvider: createMockZKConfigProvider(),
         publicDataProvider: createMockProviders().publicDataProvider,
-        walletProvider: createMockProviders().walletProvider
+        walletProvider: createMockProviders().walletProvider,
+        config: MOCK_CONFIG
       };
 
       const options = {
@@ -309,7 +397,8 @@ describe('unproven-call-tx', () => {
         zkConfigProvider: createMockZKConfigProvider(),
         publicDataProvider: createMockProviders().publicDataProvider,
         walletProvider: createMockProviders().walletProvider,
-        privateStateProvider: createMockProviders().privateStateProvider
+        privateStateProvider: createMockProviders().privateStateProvider,
+        config: MOCK_CONFIG
       };
 
       const options = {
@@ -330,6 +419,40 @@ describe('unproven-call-tx', () => {
         options.contractAddress,
         options.privateStateId,
         '00'.repeat(32)
+      );
+    });
+
+    it('forwards providers.config to the ledger builder', async () => {
+      const { getPublicStates } = await import('../get-states');
+      vi.mocked(getPublicStates, { partial: true }).mockResolvedValue({
+        zswapChainState: new ZswapChainState(),
+        contractState: await getInitialContractState(),
+        ledgerParameters: LedgerParameters.initialParameters()
+      });
+      const config = { networkId: 'preview', ttlSeconds: 45 };
+      const providers = {
+        zkConfigProvider: createMockZKConfigProvider(),
+        publicDataProvider: createMockProviders().publicDataProvider,
+        walletProvider: createMockProviders().walletProvider,
+        config
+      };
+
+      const options = {
+        contract: createMockContract(),
+        compiledContract: createMockCompiledContract(),
+        circuitId: 'testCircuit',
+        contractAddress: createMockContractAddress(),
+        args: ['test-arg']
+      };
+
+      await createUnprovenCallTx(providers, options);
+
+      expect(vi.mocked(createUnprovenLedgerCallTx)).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        config
       );
     });
   });

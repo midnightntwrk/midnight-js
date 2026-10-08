@@ -1,0 +1,102 @@
+# 0016. Carry the network id and the transaction TTL on the provider set
+
+- Status: Accepted
+- Date: 2026-10-07
+- Deciders: Szymon Paluchowski
+- Related: #982, #809 (superseded)
+
+## Context
+
+Up to 4.x the framework took two transaction settings from places a dApp could
+not see or control well:
+
+- **Network id.** `setNetworkId()` from `@midnight-ntwrk/midnight-js-network-id`
+  stored the value in module-level state, and every transaction builder read it
+  with `getNetworkId()`. A dApp had to call `setNetworkId()` before any other
+  framework call. Forgetting it, or calling it too late, failed only at runtime.
+  One process could not serve two networks, and tests had to reset the global.
+- **TTL.** Every deploy, call and governance intent expired one hour after it
+  was built (`ttlOneHour()`). A dApp could not change it.
+
+5.0.0 already breaks the public API, so a dApp migrates anyway in this release.
+
+## Decision
+
+We will carry both settings on the provider set, as one required object:
+
+```ts
+interface MidnightConfig {
+  readonly networkId: NetworkId; // NetworkId = string, declared in types
+  readonly ttlSeconds: number;
+}
+
+interface MidnightProviders {
+  readonly config: MidnightConfig; // required
+}
+```
+
+- `config`, `config.networkId` and `config.ttlSeconds` are required. There are no
+  defaults, so an un-migrated dApp fails to compile.
+- The framework does not read the global network id anywhere, and does not fall
+  back to it. A silent fallback would hide an incomplete migration.
+- `ttlSeconds` is a duration, not a date or a date factory. The framework adds it
+  to the current time when it starts building a transaction, and again when balancing starts,
+  passing that expiry to `walletProvider.balanceTx` as its `ttl` argument. The
+  intent the wallet adds therefore lives as long as the framework's own, counted
+  from a slightly later moment.
+- The values are checked by `assertValidMidnightConfig` from `utils` at the start
+  of every entry point that builds a transaction, before chain state is read and
+  before the circuit or constructor runs: a missing (`undefined` or `null`) config,
+  or a `networkId` that is not a non-empty string without surrounding whitespace,
+  is a `TypeError`; a `ttlSeconds` that is not a positive whole number, or that
+  overflows a `Date`, is a `RangeError`. The check is public so a dApp can run it
+  on its own config early. There is no upper bound: the node enforces the
+  network's own TTL limit.
+- Low-level functions that do not receive `providers` take the config explicitly
+  (`CallOptionsProviderDataDependencies.config`, the last argument of
+  `createUnprovenDeployTxFromVerifierKeys`).
+- `NetworkId` moves to `types`. `network-id` keeps its own deprecated
+  `NetworkId = string`, so neither package depends on the other and the
+  deprecated package does not pull in the framework.
+- `@midnight-ntwrk/midnight-js-network-id` is deprecated, not removed. Its
+  functions keep working so dApp code still compiles, and their docs say the
+  framework ignores them. An ESLint `no-restricted-imports` rule keeps the
+  package out of every package's source and the testkit source. Test files, the
+  `protocol` source (which has its own import rules), `network-id` itself and the
+  `midnight-js` barrel are exempt.
+
+## Consequences
+
+- **Positive:** the settings are typed and discoverable in one place. Each
+  provider set carries its own network, so one process can serve several. A
+  missing network id is a compile error for TypeScript callers, and a `TypeError`
+  before any work otherwise. The TTL is configurable.
+- **Negative:** every provider literal and every caller of the two low-level
+  builders must change in 5.0.0. Code that still calls `setNetworkId()` compiles
+  but no longer affects the framework.
+- **Negative:** a `WalletProvider` that ignores the `ttl` argument still gives its
+  balancing intent its own TTL; the framework cannot enforce it.
+- **Follow-ups:** remove `@midnight-ntwrk/midnight-js-network-id` in 6.0.
+
+The Zswap Merkle-root retention window (`ZSWAP_MERKLE_ROOT_RETENTION_SECONDS`)
+stays an internal constant. It controls how many past roots are kept when the
+framework rehashes a chain state; it does not change the transaction that is
+built, so there is no user need to configure it.
+
+## Alternatives considered
+
+- **Split the change: TTL in 5.0.0, network id in 6.0.** Rejected: dApps would
+  migrate twice for one concern.
+- **A root object `{ providers, config }` passed to every entry point.**
+  Rejected: it keeps services and settings apart, but it changes the first
+  argument of every call (`deployContract`, `findDeployedContract`,
+  `submitCallTx`, ...) instead of one provider literal, and every
+  `Pick<MidnightProviders, ...>` subset the API is built on would have to
+  become a nested `{ providers: Pick<...>; config }`. It fixes no bug the flat
+  field allows.
+- **Optional `config` with a fallback to the global network id.** Rejected: an
+  incomplete migration would keep working on the wrong value without any signal.
+- **`ttl: () => Date`.** Rejected: harder to use, and a caller can return a fixed
+  date that has already expired.
+- **Per-call TTL on `CallOptions` / `DeployOptions`.** Not needed yet; the
+  provider-level value covers the known use.

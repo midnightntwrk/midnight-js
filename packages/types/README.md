@@ -35,7 +35,13 @@ interface MidnightProviders<PCK, PSI, PS> {
   proofProvider: ProofProvider;                         // ZK proof generation
   walletProvider: WalletProvider;                       // Transaction balancing
   midnightProvider: MidnightProvider;                   // Transaction submission
+  config: MidnightConfig;                               // Network id and transaction TTL
   loggerProvider?: LoggerProvider;                      // Optional logging
+}
+
+interface MidnightConfig {
+  networkId: NetworkId;   // e.g. 'preview' or 'undeployed'
+  ttlSeconds: number;     // how long a built transaction stays valid, positive whole seconds
 }
 ```
 

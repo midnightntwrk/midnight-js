@@ -32,7 +32,6 @@
 import { readFileSync } from 'node:fs';
 import { inspect } from 'node:util';
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import {
   type ComposeCallOptions,
@@ -187,6 +186,15 @@ interface SeenPayloads {
   balanceTx?: VersionedTx<unknown>;
   submitTx?: VersionedFinalizedTransaction;
 }
+
+/** The network id and intent TTL of the retained-era transaction a seam was handed. */
+const retainedTxFacts = async (tx: VersionedTx<unknown> | undefined): Promise<{ networkId?: string; ttl?: Date }> => {
+  if (tx?.version !== 'v8') throw new Error(`Expected a v8 transaction, got ${String(tx?.version)}`);
+  const decoded = (await loadLedger8()).Transaction.deserialize('signature', 'pre-proof', 'pre-binding', tx.txBytes);
+  const [intent, ...others] = decoded.intents?.values() ?? [];
+  expect(others).toEqual([]);
+  return { networkId: /network_id: "([^"]*)"/.exec(decoded.toString(false))?.[1], ttl: intent?.ttl };
+};
 
 /** The retained overload's provider set, plus what its seams were handed. */
 type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeof CIRCUIT_ID> & {
@@ -434,7 +442,6 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
   });
 
   beforeEach(() => {
-    setNetworkId(NETWORK_ID);
     engineSlot.engine = undefined;
   });
 
@@ -470,6 +477,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -539,6 +547,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -573,6 +582,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -625,6 +635,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -666,6 +677,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -748,6 +760,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -802,6 +815,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000),
         encryptionPublicKey: createEncryptionPublicKeyResolver(
+          NETWORK_ID,
           recording.coinPublicKey,
           providers.walletProvider.getEncryptionPublicKey()
         )
@@ -835,6 +849,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -867,6 +882,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     // answers are the real helper's own.
     const resolver: EncryptionPublicKeyResolver = vi.fn(
       createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         walletEncryptionPublicKey,
         new Map([[thirdPartyCoinPublicKey, thirdPartyEncryptionPublicKey]])
@@ -988,6 +1004,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       networkId: NETWORK_ID,
       ttl: new Date(Date.now() + 3_600_000),
       encryptionPublicKey: createEncryptionPublicKeyResolver(
+        NETWORK_ID,
         recording.coinPublicKey,
         providers.walletProvider.getEncryptionPublicKey()
       )
@@ -1036,7 +1053,6 @@ describe('the retained-native pipeline through the unchanged entry points', () =
   });
 
   beforeEach(() => {
-    setNetworkId(NETWORK_ID);
     engineSlot.engine = createReplayEngine(loadCoinReceiverRecording(), [], v6Envelope);
   });
 
@@ -1048,6 +1064,57 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     contractAddress: recording.contractAddress,
     circuitId: CIRCUIT_ID,
     args: [recording.receivedCoin]
+  });
+
+  it('composes the retained-era call for providers.config', async () => {
+    const providers = { ...preForkProviders(v6Envelope), config: { networkId: 'preview', ttlSeconds: 30 } };
+    const before = Date.now();
+
+    await submitCallTx(providers, callOptions());
+
+    const { networkId, ttl } = await retainedTxFacts(providers.seen.proveTx);
+    expect(networkId).toBe('preview');
+    expect(ttl?.getTime()).toBeGreaterThanOrEqual(Math.floor((before + 30_000) / 1000) * 1000);
+    expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 30_000);
+  });
+
+  it('submitCallTx refuses an invalid config before resolving the artifact or proving', async () => {
+    const providers = { ...preForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 0 } };
+
+    await expect(submitCallTx(providers, callOptions())).rejects.toThrow(RangeError);
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+  });
+
+  it('submitCallTxAsync refuses an invalid config before resolving the artifact or proving', async () => {
+    const providers = { ...preForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 0 } };
+
+    await expect(submitCallTxAsync(providers, callOptions())).rejects.toThrow(RangeError);
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+  });
+
+  it('serves two provider sets with different networks in one process', async () => {
+    const preview = { ...preForkProviders(v6Envelope), config: { networkId: 'preview', ttlSeconds: 60 } };
+    const undeployed = { ...preForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 60 } };
+
+    await submitCallTx(preview, callOptions());
+    engineSlot.engine = createReplayEngine(loadCoinReceiverRecording(), [], v6Envelope);
+    await submitCallTx(undeployed, callOptions());
+
+    expect((await retainedTxFacts(preview.seen.proveTx)).networkId).toBe('preview');
+    expect((await retainedTxFacts(undeployed.seen.proveTx)).networkId).toBe('undeployed');
+  });
+
+  it('passes the providers.config TTL to the wallet on the retained-era arm', async () => {
+    const providers = { ...preForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 30 } };
+    const before = Date.now();
+
+    await submitCallTx(providers, callOptions());
+
+    const ttl = vi.mocked(providers.walletProvider.balanceTx).mock.calls[0]?.[1];
+    expect(ttl?.getTime()).toBeGreaterThanOrEqual(before + 30_000);
+    expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 30_000);
   });
 
   it('completes a call through submitCallTx, reading the head ONCE and the state ONCE', async () => {
@@ -2330,7 +2397,6 @@ describe('deploying a retained-era contract through deployContract', () => {
   });
 
   beforeEach(() => {
-    setNetworkId(NETWORK_ID);
     engineSlot.engine = createReplayEngine(loadCoinReceiverRecording(), [], v6Envelope);
   });
 
@@ -2377,6 +2443,26 @@ describe('deploying a retained-era contract through deployContract', () => {
     providers.zkConfigProvider.getVerifierKeys = vi.fn().mockResolvedValue([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]);
     return providers;
   };
+
+  it('refuses an invalid config before resolving the artifact or running the constructor', async () => {
+    const providers = { ...deployProviders(), config: { networkId: 'undeployed', ttlSeconds: 0 } };
+
+    await expect(deployContract(providers, { compiledContract: contract })).rejects.toThrow(RangeError);
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+  });
+
+  it('composes the retained-era deploy for providers.config', async () => {
+    const providers = { ...deployProviders(), config: { networkId: 'preview', ttlSeconds: 30 } };
+    const before = Date.now();
+
+    await deployContract(providers, { compiledContract: contract });
+
+    const { networkId, ttl } = await retainedTxFacts(providers.seen.proveTx);
+    expect(networkId).toBe('preview');
+    expect(ttl?.getTime()).toBeGreaterThanOrEqual(Math.floor((before + 30_000) / 1000) * 1000);
+    expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 30_000);
+  });
 
   it('composes, submits and hands back a handle carrying everything the constructor produced', async () => {
     const providers = deployProviders();
@@ -3105,7 +3191,6 @@ describe('attaching to a retained-era contract already on chain', () => {
   });
 
   beforeEach(() => {
-    setNetworkId(NETWORK_ID);
     // Attaching touches no engine at all — no down-convert, no execution, no
     // composition — so leaving the slot empty is itself part of the claim: any
     // engine acquisition on this path would reject.

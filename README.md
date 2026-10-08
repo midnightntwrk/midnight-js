@@ -23,16 +23,12 @@ import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-pri
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+import { createMidnightProviders } from '@midnight-ntwrk/midnight-js-utils';
 
-// Set network
-setNetworkId('testnet');
-
-// Configure providers
+// Configure providers; createMidnightProviders checks the set at start-up
 const zkConfigProvider = new FetchZkConfigProvider('https://artifacts.example.com');
 
-const providers: MidnightProviders = {
+const providers = createMidnightProviders({
   privateStateProvider: levelPrivateStateProvider({
     privateStoragePasswordProvider: () => 'your-secure-password',
     accountId: 'user-wallet-address'
@@ -45,7 +41,8 @@ const providers: MidnightProviders = {
   proofProvider: httpClientProofProvider('https://proof-server.example.com', zkConfigProvider),
   walletProvider,    // from @midnight-ntwrk/wallet-sdk
   midnightProvider,  // from @midnight-ntwrk/wallet-sdk
-};
+  config: { networkId: 'preview', ttlSeconds: 3600 }, // network and transaction TTL
+});
 
 // Deploy a contract
 const deployed = await deployContract(providers, {
@@ -87,7 +84,7 @@ const result = await deployed.callTx.increment();
 | [@midnight-ntwrk/midnight-js-http-client-proof-provider](packages/http-client-proof-provider) | HTTP client for proof server |
 | [@midnight-ntwrk/midnight-js-fetch-zk-config-provider](packages/fetch-zk-config-provider) | Browser-based ZK artifact retrieval |
 | [@midnight-ntwrk/midnight-js-node-zk-config-provider](packages/node-zk-config-provider) | Node.js filesystem-based ZK artifact retrieval |
-| [@midnight-ntwrk/midnight-js-network-id](packages/network-id) | Network identifier management |
+| [@midnight-ntwrk/midnight-js-network-id](packages/network-id) | Deprecated global network id (use `MidnightProviders.config`) |
 | [@midnight-ntwrk/midnight-js-logger-provider](packages/logger-provider) | Pino logger wrapper for diagnostics |
 | [@midnight-ntwrk/midnight-js-compact](packages/compact) | Compact compiler manager |
 | [@midnight-ntwrk/midnight-js-protocol](packages/protocol) | Version-agnostic re-exports of Midnight protocol packages |

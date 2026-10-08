@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type Recipient, type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type AlignedValue,
@@ -36,6 +35,7 @@ import {
   ZswapOffer,
   ZswapOutput,
   ZswapTransient} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { NetworkId } from '@midnight-ntwrk/midnight-js-types';
 import {
   assertDefined,
   assertIsContractAddress,
@@ -64,11 +64,11 @@ export const BURN_ENCRYPTION_PUBLIC_KEY: EncPublicKey = 'f5b9fa49d3c4f06582dab6b
  * Handles the wallet's own key, the well-known burn address, and optional additional mappings.
  */
 export const createEncryptionPublicKeyResolver = (
+  networkId: NetworkId,
   walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey,
   additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>
 ): EncryptionPublicKeyResolver => {
-  const networkId = getNetworkId();
   const normalizedWalletCpk = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
   const normalizedWalletEpk = parseEncPublicKeyToHex(walletEncryptionPublicKey, networkId);
 
@@ -190,34 +190,18 @@ export const zswapCallsToNewCoins = (
     ).values()
   );
 
-export const encryptionPublicKeyForZswapState = (
-  zswapState: ZswapLocalState,
-  walletCoinPublicKey: CoinPublicKey,
-  walletEncryptionPublicKey: EncPublicKey
-): EncPublicKey => {
-  const networkId = getNetworkId();
-  const walletCoinPublicKeyLocal = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
-  const localCoinPublicKey = parseCoinPublicKeyToHex(zswapState.coinPublicKey, networkId);
-
-  if (localCoinPublicKey !== walletCoinPublicKeyLocal) {
-    throw new Error('Unable to lookup encryption public key (Unsupported coin)');
-  }
-
-  return parseEncPublicKeyToHex(walletEncryptionPublicKey, networkId);
-};
-
 /**
  * Creates an EncryptionPublicKeyResolver for a ZswapLocalState, validating that the
  * state's coin public key matches the wallet's. Handles the burn address and optional
  * additional recipient mappings.
  */
 export const encryptionPublicKeyResolverForZswapState = (
+  networkId: NetworkId,
   zswapState: ZswapLocalState,
   walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey,
   additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>
 ): EncryptionPublicKeyResolver => {
-  const networkId = getNetworkId();
   const walletCpkHex = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
   const localCpkHex = parseCoinPublicKeyToHex(zswapState.coinPublicKey, networkId);
 
@@ -226,6 +210,7 @@ export const encryptionPublicKeyResolverForZswapState = (
   }
 
   return createEncryptionPublicKeyResolver(
+    networkId,
     walletCoinPublicKey,
     walletEncryptionPublicKey,
     additionalCoinEncPublicKeyMappings
@@ -239,8 +224,8 @@ export const FALLIBLE_SEGMENT_NUMBER = 1;
  * Seconds of past Merkle-tree roots to retain when rehashing a `ZswapChainState`
  * via `postBlockUpdate`. ledger-v9 made this argument required (it was implicit
  * in ledger-v8). It governs retention of historical roots only — not the current
- * root used here for nullifier derivation — so a one-hour window mirrors the
- * existing `ttlOneHour` convention.
+ * root used here for nullifier derivation — and is independent of the
+ * transaction TTL (`MidnightConfig.ttlSeconds`).
  */
 export const ZSWAP_MERKLE_ROOT_RETENTION_SECONDS = 3600n;
 

@@ -18,6 +18,7 @@ import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-p
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import { type MidnightProviders, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import { createMidnightProviders } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type EnvironmentConfiguration } from '../test-environment';
 import { type MidnightWalletProvider } from '../wallet';
@@ -40,6 +41,10 @@ import { type ContractConfiguration } from './contract-types';
  *   - proofProvider: For generating and verifying proofs
  *   - walletProvider: For midnightWalletProvider operations
  *   - midnightProvider: For Midnight-specific operations
+ *   - config: The environment's network id and a one-hour TTL
+ *
+ * @throws TypeError If `environmentConfiguration.networkId` is not a non-empty string without surrounding whitespace,
+ *   reported by {@link createMidnightProviders} as `providers.config.networkId`.
  */
 export const initializeMidnightProviders = <PCK extends string, PS>(
   midnightWalletProvider: MidnightWalletProvider,
@@ -54,7 +59,7 @@ export const initializeMidnightProviders = <PCK extends string, PS>(
   const coinPublicKey = midnightWalletProvider.getCoinPublicKey();
   const accountId = Buffer.from(coinPublicKey).toString('hex');
 
-  return {
+  return createMidnightProviders({
     privateStateProvider: levelPrivateStateProvider<PrivateStateId, PS>({
       privateStateStoreName: contractConfiguration.privateStateStoreName,
       signingKeyStoreName: `${contractConfiguration.privateStateStoreName}-signing-keys`,
@@ -65,6 +70,7 @@ export const initializeMidnightProviders = <PCK extends string, PS>(
     zkConfigProvider,
     proofProvider: httpClientProofProvider(environmentConfiguration.proofServer, zkConfigProvider),
     walletProvider: midnightWalletProvider,
-    midnightProvider: midnightWalletProvider
-  };
+    midnightProvider: midnightWalletProvider,
+    config: { networkId: environmentConfiguration.networkId, ttlSeconds: 3600 }
+  });
 };

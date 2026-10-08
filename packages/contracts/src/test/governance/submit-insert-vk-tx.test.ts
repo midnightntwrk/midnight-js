@@ -67,6 +67,15 @@ describe('submitInsertVerifierKeyTx', () => {
     mockVerifierKey = new Uint8Array(32) as VerifierKey;
   });
 
+  it('refuses an invalid config before reading chain state', async () => {
+    const providers = { ...mockProviders, config: { networkId: 'undeployed', ttlSeconds: 0 } };
+
+    await expect(
+      submitInsertVerifierKeyTx(providers, mockCompiledContract, mockContractAddress, 'testCircuit', mockVerifierKey)
+    ).rejects.toThrow(RangeError);
+    expect(providers.publicDataProvider.queryContractState).not.toHaveBeenCalled();
+  });
+
   describe('happy path', () => {
     it('should successfully submit insert verifier key transaction', async () => {
       const circuitId = 'testCircuit';
@@ -99,7 +108,8 @@ describe('submitInsertVerifierKeyTx', () => {
         mockVerifierKey,
         mockContractState,
         mockSigningKey,
-        mockCoinPublicKey
+        mockCoinPublicKey,
+        mockProviders.config
       );
       expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(result).toBe(mockFinalizedTxData);

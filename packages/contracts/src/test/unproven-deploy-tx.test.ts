@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from '../internal/utils';
 import { createUnprovenDeployTx, createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
   createMockCoinPublicKey,
@@ -23,7 +23,8 @@ import {
   createMockEncryptionPublicKey,
   createMockProviders,
   createMockSigningKey,
-  createMockZKConfigProvider
+  createMockZKConfigProvider,
+  MOCK_CONFIG
 } from './test-mocks';
 
 vi.mock('../call-constructor', () => ({
@@ -40,11 +41,10 @@ vi.mock('../internal/utils', () => ({
   zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
 }));
 
-describe('unproven-deploy-tx', () => {
-  beforeAll(() => {
-    setNetworkId('testnet');
-  });
+const BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY = 'mn_shield-cpk_undeployed1mjngjmnlutcq50trhcsk3hugvt9wyjnhq3c7prryd5nqmvtzva0sn7kq7h';
+const BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY_HEX = 'dca6896e7fe2f00a3d63be2168df8862cae24a770471e08c646d260db162675f';
 
+describe('unproven-deploy-tx', () => {
   describe('createUnprovenDeployTxFromVerifierKeys', () => {
     it('should create unproven deploy tx from verifier keys without private state', async () => {
       const encryptionPublicKey = createMockEncryptionPublicKey();
@@ -59,7 +59,8 @@ describe('unproven-deploy-tx', () => {
         createMockZKConfigProvider(),
         createMockCoinPublicKey(),
         options,
-        encryptionPublicKey
+        encryptionPublicKey,
+        MOCK_CONFIG
       );
 
       expect(result).toBeDefined();
@@ -85,7 +86,8 @@ describe('unproven-deploy-tx', () => {
         createMockZKConfigProvider(),
         createMockCoinPublicKey(),
         options,
-        encryptionPublicKey
+        encryptionPublicKey,
+        MOCK_CONFIG
       );
 
       expect(result).toBeDefined();
@@ -111,9 +113,30 @@ describe('unproven-deploy-tx', () => {
           createMockZKConfigProvider(),
           createMockCoinPublicKey(),
           options,
-          encryptionPublicKey
+          encryptionPublicKey,
+          MOCK_CONFIG
         )
       ).rejects.toThrow('FAIL');
+    });
+
+    it('rejects an invalid TTL before running the constructor', async () => {
+      const options = {
+        compiledContract: createMockCompiledContract({
+          initialStateErrorMessage: 'FAIL'
+        }),
+        signingKey: createMockSigningKey(),
+        args: ['deploy-arg']
+      };
+
+      await expect(
+        createUnprovenDeployTxFromVerifierKeys(
+          createMockZKConfigProvider(),
+          createMockCoinPublicKey(),
+          options,
+          createMockEncryptionPublicKey(),
+          { networkId: 'preview', ttlSeconds: 0 }
+        )
+      ).rejects.toThrow(RangeError);
     });
   });
 
@@ -121,7 +144,8 @@ describe('unproven-deploy-tx', () => {
     it('should create unproven deploy tx without private state', async () => {
       const providers = {
         zkConfigProvider: createMockZKConfigProvider(),
-        walletProvider: createMockProviders().walletProvider
+        walletProvider: createMockProviders().walletProvider,
+        config: MOCK_CONFIG
       };
 
       vi.spyOn(providers.zkConfigProvider, 'getVerifierKey');
@@ -141,7 +165,8 @@ describe('unproven-deploy-tx', () => {
     it('should create unproven deploy tx with private state', async () => {
       const providers = {
         zkConfigProvider: createMockZKConfigProvider(),
-        walletProvider: createMockProviders().walletProvider
+        walletProvider: createMockProviders().walletProvider,
+        config: MOCK_CONFIG
       };
 
       vi.spyOn(providers.zkConfigProvider, 'getVerifierKey');
@@ -157,6 +182,75 @@ describe('unproven-deploy-tx', () => {
 
       expect(result).toBeDefined();
       expect(providers.zkConfigProvider.getVerifierKey).toHaveBeenCalledWith('testCircuit');
+    });
+
+    it('refuses a missing providers.config before running the constructor', async () => {
+      const zkConfigProvider = createMockZKConfigProvider();
+      vi.spyOn(zkConfigProvider, 'getVerifierKey');
+      const providers = Object.assign(
+        { zkConfigProvider, walletProvider: createMockProviders().walletProvider, config: MOCK_CONFIG },
+        { config: undefined }
+      );
+      const options = {
+        compiledContract: createMockCompiledContract(),
+        signingKey: createMockSigningKey(),
+        args: ['deploy-arg']
+      };
+
+      await expect(createUnprovenDeployTx(providers, options)).rejects.toThrow(/^providers\.config is missing/);
+      expect(zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['undeployed', true],
+      ['preview', false]
+    ])('decodes a Bech32m wallet key with providers.config.networkId = %s', async (networkId, accepted) => {
+      const walletProvider = { ...createMockProviders().walletProvider, getCoinPublicKey: () => BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY };
+      const providers = { zkConfigProvider: createMockZKConfigProvider(), walletProvider, config: { networkId, ttlSeconds: 60 } };
+      const options = {
+        compiledContract: createMockCompiledContract(),
+        signingKey: createMockSigningKey(),
+        args: ['deploy-arg']
+      };
+
+      const deployed = createUnprovenDeployTx(providers, options);
+
+      if (accepted) {
+        await expect(deployed).resolves.toBeDefined();
+        expect(vi.mocked(createUnprovenLedgerDeployTx)).toHaveBeenLastCalledWith(
+          expect.anything(),
+          expect.anything(),
+          expect.anything(),
+          providers.config
+        );
+        expect(vi.mocked(zswapStateToNewCoins)).toHaveBeenLastCalledWith(BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY_HEX, expect.anything());
+      } else {
+        await expect(deployed).rejects.toThrow('Expected preview address, got undeployed one');
+      }
+    });
+
+    it('forwards providers.config to the ledger builder', async () => {
+      const config = { networkId: 'preview', ttlSeconds: 45 };
+      const providers = {
+        zkConfigProvider: createMockZKConfigProvider(),
+        walletProvider: createMockProviders().walletProvider,
+        config
+      };
+
+      const options = {
+        compiledContract: createMockCompiledContract(),
+        signingKey: createMockSigningKey(),
+        args: ['deploy-arg']
+      };
+
+      await createUnprovenDeployTx(providers, options);
+
+      expect(vi.mocked(createUnprovenLedgerDeployTx)).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        config
+      );
     });
   });
 });

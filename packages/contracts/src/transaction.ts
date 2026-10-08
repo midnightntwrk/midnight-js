@@ -16,6 +16,7 @@
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
 import { type ContractStates,type PublicContractStates } from './get-states';
@@ -131,4 +132,7 @@ export const withContractScopedTransaction: <
   fn: (txCtx: TransactionContext<C, PCK>) => Promise<void>,
   options?: ScopedTransactionOptions
 ) => Promise<FinalizedCallTxData<C, PCK>> =
-  async(providers, fn, options?) =>  Internal.scopedTransaction(providers, fn, options);
+  async (providers, fn, options?) => {
+    assertValidMidnightConfig(providers.config);
+    return Internal.scopedTransaction(providers, fn, options);
+  };
