@@ -28,7 +28,6 @@ import {
   zkConfigToProvingKeyMaterial
 } from '@midnight-ntwrk/midnight-js-types';
 import { hasErrorCode, warnIfInsecureRemoteUrl, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
-import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
 
 const retryOptions = {
@@ -36,7 +35,6 @@ const retryOptions = {
   retryDelay: (attempt: number) => 2 ** attempt * 1_000,
   retryOn: [500, 503]
 };
-const fetchRetry = fetchBuilder(fetch, retryOptions);
 
 const CHECK_PATH = '/check';
 const PROVE_PATH = '/prove';
@@ -87,7 +85,13 @@ const makeKeyMaterialResolver = <K extends string>(
   };
 };
 
-const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, headers: Record<string, string> = {}): Promise<Uint8Array> => {
+const makeHttpRequest = async (
+  fetchRetry: ReturnType<typeof fetchBuilder>,
+  url: URL,
+  payload: Uint8Array,
+  timeout: number,
+  headers: Record<string, string> = {}
+): Promise<Uint8Array> => {
   let response: Awaited<ReturnType<typeof fetchRetry>>;
   try {
     response = await fetchRetry(url, {
@@ -115,8 +119,22 @@ const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, h
 };
 
 export interface ProvingProviderConfig {
+  /**
+   * Request timeout in milliseconds. Defaults to {@link DEFAULT_TIMEOUT} (300,000 ms / 5 minutes).
+   *
+   * Note on Node runtimes: Node's native `fetch` (undici) enforces a default `headersTimeout` of
+   * 300 seconds (300,000 ms). If configuring `timeout` greater than 300,000 ms for slow proofs
+   * on large-state contracts, also supply a custom {@link fetch} configured with an undici `Agent`
+   * having an increased `headersTimeout` (or `{ headersTimeout: 0 }`) to prevent undici from
+   * aborting the socket before the proof completes.
+   */
   readonly timeout?: number;
   readonly headers?: Record<string, string>;
+  /**
+   * Optional custom fetch implementation. Defaults to `globalThis.fetch`.
+   * Can be used to inject an HTTP agent with custom connection/headers timeouts for long-running proofs.
+   */
+  readonly fetch?: typeof globalThis.fetch;
 }
 
 /**
@@ -161,8 +179,9 @@ export const httpClientProvingProvider = <K extends string>(
 
   const timeout = config?.timeout ?? DEFAULT_TIMEOUT;
   const headers = config?.headers ?? {};
+  const fetchRetry = fetchBuilder(config?.fetch ?? globalThis.fetch, retryOptions);
 
-  return  {
+  return {
     async check(
       serializedPreimage: Uint8Array,
       keyLocation: string,
@@ -170,7 +189,7 @@ export const httpClientProvingProvider = <K extends string>(
     ): Promise<(bigint | undefined)[]> {
       const keyMaterial = await getKeyMaterial(keyLocation);
       const payload = createCheckPayload(serializedPreimage, keyMaterial?.ir);
-      const result = await makeHttpRequest(checkUrl, payload, overrideTimeout ?? timeout, headers);
+      const result = await makeHttpRequest(fetchRetry, checkUrl, payload, overrideTimeout ?? timeout, headers);
       return parseCheckResult(result);
     },
 
@@ -182,7 +201,7 @@ export const httpClientProvingProvider = <K extends string>(
     ): Promise<Uint8Array> {
       const keyMaterial = await getKeyMaterial(keyLocation);
       const payload = createProvingPayload(serializedPreimage, overwriteBindingInput, keyMaterial);
-      return makeHttpRequest(proveUrl, payload, overrideTimeout ?? timeout, headers);
+      return makeHttpRequest(fetchRetry, proveUrl, payload, overrideTimeout ?? timeout, headers);
     },
 
     lookupKey: getKeyMaterial

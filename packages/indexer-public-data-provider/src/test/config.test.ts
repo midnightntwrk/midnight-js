@@ -88,6 +88,13 @@ describe('validateConfig — custom values', () => {
 
     expect(validated.pollInterval).toBe(5000);
   });
+
+  test('custom fetch function is preserved in validated config', () => {
+    const customFetch: typeof fetch = async () => new Response();
+    const validated = validateConfig({ queryURL, subscriptionURL, fetch: customFetch });
+
+    expect(validated.fetch).toBe(customFetch);
+  });
 });
 
 describe('validateConfig — pollInterval fail-fast validation', () => {
