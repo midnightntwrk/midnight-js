@@ -55,6 +55,12 @@ verifier key that will not hash, no usable balance — is
 `StateInconsistentError`: the bytes were this era's, so retrying with the other
 era cannot fix it, and a caller that retried on it would loop.
 
+The second code covers every failure after `deserialize`, not only those three.
+A fault in the environment rather than the state — `hashVerifierKey` failing
+because its runtime did not load, for one — also leaves as
+`StateInconsistentError`. That still fails closed and still says not to retry
+with the other era; read `cause` before auditing the state's source.
+
 That is why the per-entry-point lookup inside it does not use `?.`. The entry
 point came from `operations()` on that same object, so a state that cannot
 resolve it is internally inconsistent, not a state with a blank slot. Optional
@@ -94,8 +100,11 @@ all. `version` names the era whose decoder rejected it.
 
 `StateInconsistentError` is distinct from `StateDecodeFailedError` because the
 remediation is opposite: the first says the bytes were this era's to read, the
-second says they may belong to the other era. A caller can tell a retryable
-era mismatch from a non-retryable inconsistent state by `code` alone.
+second says they may belong to the other era. A caller can tell the two apart
+by `code` alone. `STATE_DECODE_FAILED` is worth a retry only when the era was
+chosen from something other than the envelope, such as a reported protocol
+version. `getAnyEraContractState` already reads the era off the envelope, so
+there a retry with the other era cannot help either.
 
 `Ledger8RuntimeInvalidError` is separate from `DownConvertFailedError` because
 the remediation is unrelated: nothing is wrong with the caller's input. Folding
