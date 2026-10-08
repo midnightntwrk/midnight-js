@@ -25,7 +25,6 @@ import {
   type UnsubmittedCallTxData,
   type UnsubmittedDeployTxData
 } from '@midnight-ntwrk/midnight-js-contracts';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type CoinPublicKey,
   decodeZswapLocalState,
@@ -65,7 +64,7 @@ const expectSimpleContractCallResult = (
 ): void => {
   expect(ledger(callResult.public.nextContractState).round).toEqual(round);
   expect(callResult.private.nextZswapLocalState).toEqual(
-    decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getNetworkId())))
+    decodeZswapLocalState(emptyZswapLocalState(coinPublicKey))
   );
   expect(callResult.private.nextPrivateState).toBeUndefined();
   expect(callResult.private.privateTranscriptOutputs).toEqual([]);
@@ -92,7 +91,7 @@ const expectSimpleContractDeployTxData = (
   expect(ledger(deployTxResult.public.initialContractState.data).round).toEqual(round);
   expect(deployTxResult.private.initialPrivateState).toBeUndefined();
   expect(deployTxResult.private.initialZswapState).toEqual(
-    decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getNetworkId())))
+    decodeZswapLocalState(emptyZswapLocalState(coinPublicKey))
   );
   expect(deployTxResult.private.signingKey).toEqual(signingKey);
   expect(deployTxResult.private.newCoins).toEqual([]);
@@ -140,7 +139,7 @@ describe('Contracts API', () => {
   //   expect(ledger(constructorResult.nextContractState.data).round).toEqual(0n);
   //   expect(constructorResult.nextPrivateState).toBeUndefined();
   //   expect(constructorResult.nextZswapLocalState).toEqual(
-  //     decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getNetworkId())))
+  //     decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, providers.config.networkId)))
   //   );
   //   const callResult = call({
   //     contract: api.simpleContractInstance,
@@ -185,7 +184,7 @@ describe('Contracts API', () => {
     const finalizedCallTxData = await foundSimpleContract.callTx.noop();
     await expectSuccessfulCallTx(providers, finalizedCallTxData);
     expectSimpleContractCallTxData(
-      parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()),
+      parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId),
       1n,
       finalizedCallTxData
     );
@@ -214,7 +213,7 @@ describe('Contracts API', () => {
    */
   test('should create unproven call and deploy transactions for contract with no private state', async () => {
     const signingKey = sampleSigningKey();
-    const coinPublicKey = providers.walletProvider.getCoinPublicKey();
+    const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId);
     const unprovenDeployTxResult = await createUnprovenDeployTx(providers, {
       compiledContract: api.CompiledSimpleContract,
       signingKey
@@ -230,7 +229,8 @@ describe('Contracts API', () => {
         coinPublicKey,
         initialContractState: unprovenDeployTxResult.public.initialContractState,
         initialZswapChainState: new ZswapChainState(),
-        ledgerParameters: LedgerParameters.initialParameters()
+        ledgerParameters: LedgerParameters.initialParameters(),
+        config: providers.config
       },
       providers.walletProvider.getEncryptionPublicKey()
     );
@@ -253,7 +253,7 @@ describe('Contracts API', () => {
     } as const;
     const unprovenCallTxData1 = await createUnprovenCallTx(reducedProviders, callTxOptions);
     expectSimpleContractCallTxData(
-      parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()),
+      parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId),
       1n,
       unprovenCallTxData1
     );

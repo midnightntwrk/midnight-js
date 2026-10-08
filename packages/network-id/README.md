@@ -1,6 +1,28 @@
 # Network ID
 
-Global network identifier management for Midnight.js applications. Required by the runtime and ledger WASM APIs to operate on the correct network.
+> **Deprecated since 5.0.0. Removed in 6.0.**
+> The framework no longer reads the value set here. Pass the network id on your
+> provider set as `MidnightProviders.config.networkId` instead, and import the
+> `NetworkId` type from `@midnight-ntwrk/midnight-js-types`.
+
+## Migration
+
+```typescript
+// Before (4.x)
+import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+
+setNetworkId('preview');
+const providers = { privateStateProvider, publicDataProvider, zkConfigProvider, proofProvider, walletProvider, midnightProvider };
+
+// After (5.0.0)
+const providers = {
+  privateStateProvider, publicDataProvider, zkConfigProvider, proofProvider, walletProvider, midnightProvider,
+  config: { networkId: 'preview', ttlSeconds: 3600 }
+};
+```
+
+`ttlSeconds: 3600` keeps the one-hour transaction TTL that 4.x used. See the
+[5.0.0 migration guide](../../docs/releases/v5.0.0/migration-guide.md).
 
 ## Installation
 
@@ -8,103 +30,36 @@ Global network identifier management for Midnight.js applications. Required by t
 yarn add @midnight-ntwrk/midnight-js-network-id
 ```
 
-## Quick Start
-
-```typescript
-import { setNetworkId, getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-
-// Set the network ID at application startup (required before any chain operations)
-setNetworkId('testnet');
-
-// Retrieve current network ID
-const networkId = getNetworkId(); // 'testnet'
-```
-
-## Why Network ID Matters
-
-The network identifier configures:
-
-- **Transaction serialization** - Different networks may use different formats
-- **Address derivation** - Addresses are network-specific
-- **Contract deployment** - Contracts are deployed to specific networks
-- **ZK proof generation** - Proofs are bound to network parameters
-
-Setting the wrong network ID causes transactions to be rejected or addresses to be invalid.
-
 ## API
 
-### setNetworkId
+All three exports still compile and run, so code that calls them keeps working
+until 6.0. None of them affects the framework.
 
-Sets the global network identifier. Should be called once at application startup.
+### setNetworkId
 
 ```typescript
 setNetworkId(id: NetworkId): void
 ```
 
-**Parameters:**
-- `id` - Network identifier string (e.g., `'testnet'`)
+Stores a process-wide network id.
 
 ### getNetworkId
-
-Retrieves the currently set global network identifier.
 
 ```typescript
 getNetworkId(): NetworkId
 ```
 
+Returns the stored network id.
+
 **Throws:** `Error` if `setNetworkId()` has not been called.
 
 ### NetworkId
 
-Type alias for network identifiers.
+Re-exported from `@midnight-ntwrk/midnight-js-types`:
 
 ```typescript
 type NetworkId = string;
 ```
-
-## Important
-
-The network ID **must** be configured before using any framework functionality. Calling `getNetworkId()` before `setNetworkId()` will throw:
-
-```
-Error: Network ID has not been configured. Call setNetworkId() before any wallet or contract operation.
-```
-
-## Exports
-
-```typescript
-import {
-  setNetworkId,
-  getNetworkId,
-  type NetworkId
-} from '@midnight-ntwrk/midnight-js-network-id';
-```
-
-## Implementation Details
-
-### Module-Level State
-
-The network ID is stored as module-level state, preserved by the JavaScript module system:
-
-```typescript
-let currentNetworkId: NetworkId = 'undeployed';
-```
-
-This ensures:
-- Single source of truth across the application
-- Consistent behavior with WASM dependencies
-- No need for dependency injection
-
-### Integration with Other Packages
-
-Within this monorepo, the network ID is consumed by:
-
-| Package | Usage |
-|---------|-------|
-| `@midnight-ntwrk/midnight-js-contracts` | Transaction building and contract deployment |
-| `@midnight-ntwrk/midnight-js-utils` | Type imports |
-
-These packages call `getNetworkId()` internally, so setting it once affects the entire application.
 
 ## Resources
 

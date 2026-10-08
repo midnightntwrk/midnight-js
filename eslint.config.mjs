@@ -81,6 +81,14 @@ const distImportPattern = {
   message: 'Direct imports from dist folders are not allowed. Use source files instead.'
 };
 
+// The framework reads the network id from `MidnightProviders.config` (#982);
+// the deprecated global must not creep back into package or testkit source.
+// Test files, `network-id` itself and the `midnight-js` barrel that re-exports it are exempt.
+const networkIdImportPath = {
+  name: '@midnight-ntwrk/midnight-js-network-id',
+  message: 'Deprecated: the framework reads the network id from MidnightProviders.config (#982).'
+};
+
 // Version-identity gate: `packages/protocol` is the single place that pins a
 // ledger/runtime version, so everything under `packages/` reaches those
 // through it. Scoped to `packages/` only -- testkit-js is deliberately exempt,
@@ -286,6 +294,25 @@ export default tseslint.config(
     ignores: ['packages/protocol/src/**'],
     rules: {
       'no-restricted-imports': ['error', { patterns: [distImportPattern, ...protocolImportPatterns] }]
+    }
+  },
+  {
+    // Re-declares the patterns of the blocks above for these files: flat
+    // config replaces rule options, it does not merge them.
+    files: ['packages/*/src/**/*.ts'],
+    ignores: ['**/test/**', 'packages/network-id/**', 'packages/midnight-js/**', PROTOCOL_SOURCE_DIRS],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [distImportPattern, ...protocolImportPatterns], paths: [networkIdImportPath] }
+      ]
+    }
+  },
+  {
+    files: ['testkit-js/testkit-js/src/**/*.ts'],
+    ignores: ['**/test/**'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [distImportPattern], paths: [networkIdImportPath] }]
     }
   },
   {

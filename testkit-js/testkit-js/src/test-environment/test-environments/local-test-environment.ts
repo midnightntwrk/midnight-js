@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { NetworkId } from '@midnightntwrk/wallet-sdk';
 import type { Logger } from 'pino';
 import { DockerComposeEnvironment, type StartedDockerComposeEnvironment } from 'testcontainers';
@@ -39,6 +38,8 @@ export type ComponentPortsConfiguration = {
 /**
  * Configuration class for local test environment implementing EnvironmentConfiguration
  */
+const LOCAL_NETWORK_ID = 'undeployed';
+
 export class LocalTestConfiguration implements EnvironmentConfiguration {
   readonly walletNetworkId: NetworkId.NetworkId;
   readonly networkId: string;
@@ -55,7 +56,7 @@ export class LocalTestConfiguration implements EnvironmentConfiguration {
    */
   constructor({ indexer, node, proofServer }: ComponentPortsConfiguration) {
     this.walletNetworkId = NetworkId.NetworkId.Undeployed;
-    this.networkId = 'undeployed';
+    this.networkId = LOCAL_NETWORK_ID;
     this.indexer = `http://127.0.0.1:${indexer}/api/v4/graphql`;
     this.indexerWS = `ws://127.0.0.1:${indexer}/api/v4/graphql/ws`;
     this.node = `http://127.0.0.1:${node}`;
@@ -176,7 +177,7 @@ export class LocalTestEnvironment extends TestEnvironment {
       .withWaitStrategy(`${this.config.container.indexer.name}_${this.uid}`, this.config.container.indexer.waitStrategy)
       .withEnvironment({
         TESTCONTAINERS_UID: this.uid,
-        NETWORK_ID: getNetworkId()
+        NETWORK_ID: LOCAL_NETWORK_ID
       })
       .up();
     this.environmentConfiguration = new LocalTestConfiguration(this.getMappedPorts());

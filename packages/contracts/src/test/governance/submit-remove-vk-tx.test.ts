@@ -54,6 +54,15 @@ describe('submitRemoveVerifierKeyTx', () => {
     mockUnprovenTx = Promise.resolve(createMockUnprovenTx());
   });
 
+  it('refuses an invalid config before reading chain state', async () => {
+    const providers = { ...mockProviders, config: { networkId: 'undeployed', ttlSeconds: 0 } };
+
+    await expect(
+      submitRemoveVerifierKeyTx(providers, mockCompiledContract, mockContractAddress, 'testCircuit')
+    ).rejects.toThrow(RangeError);
+    expect(providers.publicDataProvider.queryContractState).not.toHaveBeenCalled();
+  });
+
   describe('happy path', () => {
     it('should successfully submit remove verifier key transaction', async () => {
       const circuitId = 'testCircuit';
@@ -85,7 +94,8 @@ describe('submitRemoveVerifierKeyTx', () => {
         circuitId,
         mockContractState,
         mockSigningKey,
-        mockCoinPublicKey
+        mockCoinPublicKey,
+        mockProviders.config
       );
       expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(result).toBe(mockFinalizedTxData);

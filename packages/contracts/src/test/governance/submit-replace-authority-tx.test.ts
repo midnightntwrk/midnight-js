@@ -55,6 +55,15 @@ describe('submitReplaceAuthorityTx', () => {
     mockUnprovenTx = Promise.resolve(createMockUnprovenTx());
   });
 
+  it('refuses an invalid config before reading chain state', async () => {
+    const providers = { ...mockProviders, config: { networkId: 'undeployed', ttlSeconds: 0 } };
+
+    await expect(
+      submitReplaceAuthorityTx(providers, mockCompiledContract, mockContractAddress)(mockNewAuthority)
+    ).rejects.toThrow(RangeError);
+    expect(providers.publicDataProvider.queryContractState).not.toHaveBeenCalled();
+  });
+
   describe('happy path', () => {
     it('should successfully submit replace authority transaction and update signing key', async () => {
       const mockFinalizedTxData = createMockFinalizedTxData();
@@ -79,7 +88,8 @@ describe('submitReplaceAuthorityTx', () => {
         mockNewAuthority,
         mockContractState,
         mockCurrentAuthority,
-        mockCoinPublicKey
+        mockCoinPublicKey,
+        mockProviders.config
       );
       expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(mockContractAddress, mockNewAuthority);

@@ -33,6 +33,7 @@ v5.0.0 is the major a dApp must be on **before** the ledger v8 to v9 hard fork. 
 6. **ZK artifact integrity verification is fail-closed** — `FetchZkConfigProvider` / `NodeZkConfigProvider` verify artifacts against `compiler/contract-manifest.json` and throw `ZkArtifactIntegrityError` on a missing/stale manifest or digest mismatch by default (#1015).
 7. **The packages are ESM-only** — CommonJS `require()` of any `midnight-js-*` package no longer resolves; consumers need Node >= 22.12 and TypeScript >= 5.8 with `nodenext` or `bundler` resolution (#1180).
 8. **Provider-seam payloads and finalized records are version-tagged** — `proveTx`, `balanceTx` and `submitTx` carry `{ version: 'v9', tx }` / `{ version: 'v8', txBytes }` in both directions, and `watchForTxData` / `watchForDeployTxData` report a `version`-discriminated record. Narrow before reading the payload. External `WalletProvider` / `MidnightProvider` implementations must be updated (#1204).
+9. **`MidnightProviders.config` is required** — `{ networkId, ttlSeconds }` replaces the global `setNetworkId()` and the fixed one-hour TTL. Every provider literal must add it; `@midnight-ntwrk/midnight-js-network-id` is deprecated (#982).
 
 See [breaking-changes.md](./breaking-changes.md) for full rationale and before/after snippets.
 

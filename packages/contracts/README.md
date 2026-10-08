@@ -177,6 +177,7 @@ type ContractProviders = {
   proofProvider: ProofProvider;                // ZK proof generation
   walletProvider: WalletProvider;              // Transaction balancing
   midnightProvider: MidnightProvider;          // Transaction submission
+  config: MidnightConfig;                      // Network id and transaction TTL
   loggerProvider?: LoggerProvider;             // Optional logging
 };
 ```

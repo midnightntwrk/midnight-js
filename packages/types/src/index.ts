@@ -19,6 +19,7 @@ export * from './era-arms';
 export * from './era-support';
 export * from './errors';
 export * from './logger-provider';
+export * from './midnight-config';
 export * from './midnight-provider';
 export * from './midnight-types';
 export * from './private-state-provider';

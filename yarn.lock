@@ -1979,7 +1979,6 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
@@ -2000,7 +1999,6 @@ __metadata:
     "@graphql-codegen/typescript": "npm:^6.0.2"
     "@graphql-codegen/typescript-operations": "npm:^6.0.5"
     "@graphql-typed-document-node/core": "npm:^3.2.0"
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
@@ -2149,7 +2147,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-utils@workspace:packages/utils"
   dependencies:
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnightntwrk/wallet-sdk-address-format": "npm:4.0.0-rc.0"
@@ -2205,7 +2202,6 @@ __metadata:
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-level-private-state-provider": "workspace:*"
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
@@ -2240,7 +2236,6 @@ __metadata:
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-level-private-state-provider": "workspace:*"
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"

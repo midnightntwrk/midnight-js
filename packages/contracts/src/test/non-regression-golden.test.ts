@@ -17,7 +17,6 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import {
   type CircuitContext,
@@ -42,7 +41,7 @@ import {
   ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
-import { Transaction } from '@midnight-ntwrk/midnight-js-types';
+import { type MidnightConfig, Transaction } from '@midnight-ntwrk/midnight-js-types';
 import { Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -147,6 +146,8 @@ type GoldenFixture = {
   };
 };
 
+const GOLDEN_CONFIG: MidnightConfig = { networkId: 'testnet', ttlSeconds: 3600 };
+
 const FIXTURE_PATH = fileURLToPath(new URL('./resources/golden/v9-native-composition.json', import.meta.url));
 
 const readFixture = (): GoldenFixture => {
@@ -238,8 +239,6 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
   let zswapLocalState: ZswapLocalState;
 
   beforeAll(async () => {
-    setNetworkId('testnet');
-
     const { contractAddress, coinPublicKey, circuitId, coin, blockTimeSeconds } = fixture.fixedInputs;
 
     const mod = (await import('./resources/compiled/shielded-map/contract/index.js')) as {
@@ -356,7 +355,8 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
         ],
         () => shieldedInitialState,
         () => new ZswapChainState(),
-        sampleEncryptionPublicKey()
+        sampleEncryptionPublicKey(),
+        GOLDEN_CONFIG
       );
 
       return soleContractCallOf(tx);
@@ -447,7 +447,8 @@ describe('v9-native call-tx composition: non-regression golden fixtures', () => 
         ],
         () => shieldedInitialState,
         () => new ZswapChainState(),
-        sampleEncryptionPublicKey()
+        sampleEncryptionPublicKey(),
+        GOLDEN_CONFIG
       );
 
       // `Transaction` is imported from the module production returns it from, so this checks the

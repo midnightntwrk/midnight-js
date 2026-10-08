@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import {
   type AlignedValue,
@@ -40,6 +39,7 @@ import {
 import {
   encodeContractKeyLocation,
   hashVerifierKey,
+  type MidnightConfig,
   Transaction
 } from '@midnight-ntwrk/midnight-js-types';
 import {
@@ -47,7 +47,7 @@ import {
   decodeLedgerStateValue,
   deserializeCompactContractState,
   deserializeContractState,
-  ttlOneHour
+  intentTtl
 } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
@@ -73,17 +73,20 @@ export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryCon
 export const createUnprovenLedgerDeployTx = (
   contractState: ContractState,
   zswapLocalState: ZswapLocalState,
-  encryptionPublicKey: EncPublicKey | EncryptionPublicKeyResolver
+  encryptionPublicKey: EncPublicKey | EncryptionPublicKeyResolver,
+  config: MidnightConfig
 ): [ContractAddress, ContractState, UnprovenTransaction] => {
+  const ttl = intentTtl(config);
+  const { networkId } = config;
   const contractDeploy = new ContractDeploy(toLedgerContractState(contractState));
   return [
     contractDeploy.address,
     fromLedgerContractState(contractDeploy.initialState),
     Transaction.fromParts(
-      getNetworkId(),
+      networkId,
       zswapStateToOffer(zswapLocalState, encryptionPublicKey),
       undefined,
-      Intent.new(ttlOneHour()).addDeploy(contractDeploy)
+      Intent.new(ttl).addDeploy(contractDeploy)
     )
   ];
 }
@@ -179,6 +182,7 @@ const assertReceivesMatchClaims = (
  * from the input state, and each cross-contract callee's from the state the provider resolved
  * during execution. Only consulted for a call that spends a coin already settled on chain.
  * @param encryptionPublicKey Resolver for output encryption keys.
+ * @param config The network the transaction is built for and how long it stays valid.
  *
  * @remarks Precondition: every operation resolved via `contractStateFor` for an invoked circuit must
  * carry its deployed verifier key — the call's key location embeds the key's hash so provers resolve
@@ -191,8 +195,11 @@ export const createUnprovenLedgerCallTx = (
   chainStateFor: (
     address: ContractExecutable.ContractExecutable.ContractCall['contractAddress']
   ) => ZswapChainState | undefined,
-  encryptionPublicKey: EncPublicKey | EncryptionPublicKeyResolver
+  encryptionPublicKey: EncPublicKey | EncryptionPublicKeyResolver,
+  config: MidnightConfig
 ): UnprovenTransaction => {
+  const ttl = intentTtl(config);
+  const { networkId } = config;
   // Calls are in execution-trace order: cross-contract callees first, the root call last.
   const rootCall = calls[calls.length - 1];
   assertDefined(rootCall, 'Expected at least one contract call');
@@ -204,7 +211,7 @@ export const createUnprovenLedgerCallTx = (
   // contract-qualified form — circuit names alone are ambiguous across contracts — embedding the
   // hash of the deployed verifier key so provers resolve artifacts by content (see
   // `ZKConfigRegistry`).
-  let intent = Intent.new(ttlOneHour());
+  let intent = Intent.new(ttl);
   for (const call of calls) {
     const callContractState = contractStateFor(call.contractAddress);
     assertDefined(callContractState, `Contract state for '${call.contractAddress}' is undefined`);
@@ -275,7 +282,7 @@ export const createUnprovenLedgerCallTx = (
   assertReceivesMatchClaims(calls, segmentedOffers);
 
   return Transaction.fromPartsRandomized(
-    getNetworkId(),
+    networkId,
     segmentedOffers.guaranteed,
     segmentedOffers.fallible,
     intent

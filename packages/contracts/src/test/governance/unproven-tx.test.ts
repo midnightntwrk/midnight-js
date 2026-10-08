@@ -13,29 +13,38 @@
  * limitations under the License.
  */
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { ContractState as CompactContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   MaintenanceUpdate,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleSigningKey,
-  Transaction
+  Transaction,
+  type UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createUnprovenRemoveVerifierKeyTx,
   createUnprovenReplaceAuthorityTx,
   unprovenTxFromContractUpdates
 } from '../../governance/unproven-tx';
-import { createMockCompiledContract, createMockZKConfigProvider } from '../test-mocks';
+import { createMockCompiledContract, createMockZKConfigProvider, MOCK_CONFIG } from '../test-mocks';
+
+const networkIdOfTx = (tx: UnprovenTransaction): string | undefined =>
+  /network_id: "([^"]*)"/.exec(tx.toString(false))?.[1];
+
+const ttlOfTx = (tx: UnprovenTransaction): Date => {
+  const [intent, ...others] = tx.intents?.values() ?? [];
+  assertDefined(intent, 'Expected the transaction to carry an intent');
+  expect(others).toEqual([]);
+  return intent.ttl;
+};
+
+const toWholeSecond = (ms: number): number => Math.floor(ms / 1000) * 1000;
 
 describe('governance/unproven-tx', () => {
-  beforeAll(() => {
-    setNetworkId('undeployed');
-  });
-
   const mockZKProvider = createMockZKConfigProvider();
   const mockCompiledContract = createMockCompiledContract();
   const dummySigningKey = sampleSigningKey();
@@ -46,9 +55,30 @@ describe('governance/unproven-tx', () => {
 
   it('unprovenTxFromContractUpdates returns an UnprovenTransaction', async () => {
     const tx = await unprovenTxFromContractUpdates(
-      () => Promise.resolve(new MaintenanceUpdate(dummyContractAddress, [], 1n))
+      () => Promise.resolve(new MaintenanceUpdate(dummyContractAddress, [], 1n)),
+      MOCK_CONFIG
     );
     expect(tx).toBeInstanceOf(Transaction);
+  });
+
+  it('builds a maintenance update for the configured network with the configured TTL', async () => {
+    const before = Date.now();
+    const tx = await unprovenTxFromContractUpdates(
+      () => Promise.resolve(new MaintenanceUpdate(dummyContractAddress, [], 1n)),
+      { networkId: 'preview', ttlSeconds: 300 }
+    );
+    const after = Date.now();
+
+    expect(networkIdOfTx(tx)).toBe('preview');
+    expect(ttlOfTx(tx).getTime()).toBeGreaterThanOrEqual(toWholeSecond(before + 300_000));
+    expect(ttlOfTx(tx).getTime()).toBeLessThanOrEqual(after + 300_000);
+  });
+
+  it('refuses an invalid TTL before signing the update', async () => {
+    const updateAndSign = vi.fn(() => Promise.resolve(new MaintenanceUpdate(dummyContractAddress, [], 1n)));
+
+    await expect(unprovenTxFromContractUpdates(updateAndSign, { networkId: 'preview', ttlSeconds: -5 })).rejects.toThrow(RangeError);
+    expect(updateAndSign).not.toHaveBeenCalled();
   });
 
   it('createUnprovenReplaceAuthorityTx returns an UnprovenTransaction', async () => {
@@ -59,7 +89,8 @@ describe('governance/unproven-tx', () => {
       dummySigningKey,
       dummyContractState,
       dummySigningKey2,
-      dummyCPK
+      dummyCPK,
+      MOCK_CONFIG
     );
     expect(tx).toBeInstanceOf(Transaction);
   });
@@ -72,7 +103,8 @@ describe('governance/unproven-tx', () => {
       'op',
       dummyContractState,
       dummySigningKey,
-      dummyCPK
+      dummyCPK,
+      MOCK_CONFIG
     );
     expect(tx).toBeInstanceOf(Transaction);
   });

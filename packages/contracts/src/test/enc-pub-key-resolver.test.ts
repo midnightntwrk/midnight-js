@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { sampleCoinPublicKey, sampleEncryptionPublicKey, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { parseCoinPublicKeyToHex,parseEncPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
@@ -97,8 +96,7 @@ describe('EncryptionPublicKeyResolver with additional mappings', () => {
   });
 
   it('createEncryptionPublicKeyResolver and encryptionPublicKeyResolverForZswapState normalize mappings', async () => {
-    setNetworkId('testnet');
-
+    const networkId = 'testnet';
     const walletCpk = sampleCoinPublicKey();
     const walletEpk = sampleEncryptionPublicKey();
     const thirdCpk = sampleCoinPublicKey();
@@ -106,14 +104,14 @@ describe('EncryptionPublicKeyResolver with additional mappings', () => {
 
     const mappings = new Map([[thirdCpk, thirdEpk]]);
 
-    const resolver = createEncryptionPublicKeyResolver(walletCpk, walletEpk, mappings);
-    const queryKeyHex = parseCoinPublicKeyToHex(thirdCpk, getNetworkId());
-    const expected = parseEncPublicKeyToHex(thirdEpk, getNetworkId());
+    const resolver = createEncryptionPublicKeyResolver(networkId, walletCpk, walletEpk, mappings);
+    const queryKeyHex = parseCoinPublicKeyToHex(thirdCpk, networkId);
+    const expected = parseEncPublicKeyToHex(thirdEpk, networkId);
 
     expect(resolver(queryKeyHex)).toBe(expected);
 
     const zswapState = { coinPublicKey: walletCpk } as unknown as ZswapLocalState;
-    const resolver2 = encryptionPublicKeyResolverForZswapState(zswapState, walletCpk, walletEpk, mappings);
+    const resolver2 = encryptionPublicKeyResolverForZswapState(networkId, zswapState, walletCpk, walletEpk, mappings);
     expect(resolver2(queryKeyHex)).toBe(expected);
   });
 });

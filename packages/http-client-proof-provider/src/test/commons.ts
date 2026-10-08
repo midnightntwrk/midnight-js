@@ -17,7 +17,6 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createUnprovenCallTxFromInitialStates, createUnprovenDeployTxFromVerifierKeys } from '@midnight-ntwrk/midnight-js-contracts';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
@@ -43,6 +42,8 @@ import { createProverKey,
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import fs from 'fs/promises';
 
+const TEST_CONFIG = { networkId: 'undeployed', ttlSeconds: 3600 };
+
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
 export const resourceDir = `${currentDir}/resources`;
@@ -67,7 +68,7 @@ const createMockContractClass = (contractModule: any, coinPublicKey: CoinPublicK
         currentContractState: contract.initialState(
           createConstructorContext(
             undefined,
-            parseCoinPublicKeyToHex(coinPublicKey, getNetworkId())
+            parseCoinPublicKeyToHex(coinPublicKey, TEST_CONFIG.networkId)
           )
         ).currentContractState,
         currentPrivateState: { test: 'mock-private-state' },
@@ -124,7 +125,8 @@ export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
       compiledContract: mockCompiledContract,
       signingKey: sampleSigningKey()
     },
-    encryptionPublicKey
+    encryptionPublicKey,
+    TEST_CONFIG
   );
 
 
@@ -136,6 +138,7 @@ export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
     initialContractState: deploy.public.initialContractState,
     initialZswapChainState: new ZswapChainState(),
     ledgerParameters: LedgerParameters.initialParameters(),
+    config: TEST_CONFIG,
     arguments: []
   };
 

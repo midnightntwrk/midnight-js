@@ -18,7 +18,6 @@ import {
   createUnprovenDeployTxFromVerifierKeys
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
@@ -50,6 +49,8 @@ const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `proof_server_${new Date().toISOString()}.log`)
 );
 
+const MIDNIGHT_CONFIG = { networkId: 'undeployed', ttlSeconds: 3600 };
+
 describe('Proof server integration', () => {
   const circuitId = 'increment';
   const privateStateZero = createInitialPrivateState(0);
@@ -74,7 +75,6 @@ describe('Proof server integration', () => {
   });
 
   beforeAll(async () => {
-    setNetworkId('undeployed');
     proofServerContainer = await DynamicProofServerContainer.start(logger);
     zkConfigProvider = new NodeZkConfigProvider<CounterCircuit>(new CounterConfiguration().zkConfigPath);
     proofProvider = httpClientProofProvider(proofServerContainer.getUrl(), zkConfigProvider);
@@ -89,7 +89,8 @@ describe('Proof server integration', () => {
         initialPrivateState: privateStateZero,
         signingKey
       },
-      encryptionPublicKey
+      encryptionPublicKey,
+      MIDNIGHT_CONFIG
     );
     unprovenDeployTx = unprovenDeployTxResult.private.unprovenTx!;
     unprovenCallTx = (await createUnprovenCallTxFromInitialStates(
@@ -102,7 +103,8 @@ describe('Proof server integration', () => {
         initialContractState: unprovenDeployTxResult.public.initialContractState,
         initialZswapChainState: new ZswapChainState(),
         initialPrivateState: unprovenDeployTxResult.private.initialPrivateState,
-        ledgerParameters: LedgerParameters.initialParameters()
+        ledgerParameters: LedgerParameters.initialParameters(),
+        config: MIDNIGHT_CONFIG
       },
       encryptionPublicKey
     )).private.unprovenTx;
@@ -140,7 +142,7 @@ describe('Proof server integration', () => {
 
   test('should create proofs with transactions that has succesfull well-formedness', async () => {
     const zSwapChainState = new ZswapChainState();
-    const ledgerState = new LedgerState(getNetworkId(), zSwapChainState);
+    const ledgerState = new LedgerState(MIDNIGHT_CONFIG.networkId, zSwapChainState);
     const strictness = new WellFormedStrictness();
     strictness.verifyContractProofs = false;
     strictness.enforceBalancing = false;

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { getNetworkId,setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import {
   type AlignedValue,
@@ -57,7 +57,8 @@ import {
   ZswapOutput
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
-import { isDeserializationError, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import type { MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
+import { assertDefined, isDeserializationError, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 import { Option } from 'effect';
 import { readFileSync } from 'fs';
@@ -65,6 +66,7 @@ import { beforeAll } from 'vitest';
 
 import {
   createUnprovenLedgerCallTx,
+  createUnprovenLedgerDeployTx,
   createZswapOutput,
   type EncryptionPublicKeyResolver,
   extractUserAddressedOutputs,
@@ -72,6 +74,8 @@ import {
   toLedgerContractState,
   toLedgerQueryContext,
   ZSWAP_MERKLE_ROOT_RETENTION_SECONDS} from '../../internal/utils';
+import { MOCK_CONFIG } from '../test-mocks';
+
 const emptyTranscript: PartitionedTranscript = [undefined, undefined];
 
 /**
@@ -97,14 +101,28 @@ const callTxWithSingleState = (
   contractStateFor: LedgerCallTxArgs[1],
   zswapChainState: ZswapChainState,
   zswapLocalState: LedgerCall['private']['zswapLocalState'],
-  encryptionPublicKey: LedgerCallTxArgs[3]
+  encryptionPublicKey: LedgerCallTxArgs[3],
+  config: MidnightConfig = MOCK_CONFIG
 ): UnprovenTransaction =>
   createUnprovenLedgerCallTx(
     calls.map((call) => ({ ...call, private: { ...call.private, zswapLocalState } })),
     contractStateFor,
     () => zswapChainState,
-    encryptionPublicKey
+    encryptionPublicKey,
+    config
   );
+
+const networkIdOfTx = (tx: UnprovenTransaction): string | undefined =>
+  /network_id: "([^"]*)"/.exec(tx.toString(false))?.[1];
+
+const ttlOfTx = (tx: UnprovenTransaction): Date => {
+  const [intent, ...others] = tx.intents?.values() ?? [];
+  assertDefined(intent, 'Expected the transaction to carry an intent');
+  expect(others).toEqual([]);
+  return intent.ttl;
+};
+
+const toWholeSecond = (ms: number): number => Math.floor(ms / 1000) * 1000;
 
 /**
  * The four values compact-js publishes alongside a call's partition
@@ -147,17 +165,9 @@ const makeOperation = (): ContractOperation => {
 };
 
 describe('ledger-utils', () => {
-  beforeAll(() => {
-    setNetworkId('testnet');
-  });
-
   const dummyContractState = new CompactContractState();
   const dummyContractAddress = sampleContractAddress();
   const dummyEncPublicKey = sampleEncryptionPublicKey();
-
-  beforeAll(() => {
-    setNetworkId('undeployed');
-  });
 
   it('toLedgerContractState and fromLedgerContractState are inverses', () => {
     const ledgerState = toLedgerContractState(dummyContractState);
@@ -253,6 +263,76 @@ describe('ledger-utils', () => {
         dummyEncPublicKey
       )
     ).toThrow(`Operation '${unregisteredCircuitId}' is undefined`);
+  });
+
+  describe('config', () => {
+    const buildCall = (config: MidnightConfig): UnprovenTransaction => {
+      const circuitId = 'configuredCall';
+      const contractState = new CompactContractState();
+      contractState.setOperation(circuitId, makeOperation());
+      const alignedValue: AlignedValue = { value: [new Uint8Array()], alignment: [{ tag: 'atom', value: { tag: 'field' } }] };
+      return callTxWithSingleState(
+        [
+          {
+            contractAddress: PlatformContractAddress.ContractAddress(sampleContractAddress()),
+            circuitId,
+            public: { contractState: contractState.data.state, publicTranscript: [], partitionedTranscript: emptyTranscript, partitionInputs: makePartitionInputs() },
+            private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] },
+            communicationCommitment: Option.none()
+          }
+        ],
+        () => contractState,
+        new ZswapChainState(),
+        { outputs: [], inputs: [], coinPublicKey: sampleCoinPublicKey(), currentIndex: 0n },
+        dummyEncPublicKey,
+        config
+      );
+    };
+
+    it('builds a deploy for the configured network with the configured TTL', () => {
+      const before = Date.now();
+      const [, , tx] = createUnprovenLedgerDeployTx(
+        new CompactContractState(),
+        { outputs: [], inputs: [], coinPublicKey: sampleCoinPublicKey(), currentIndex: 0n },
+        dummyEncPublicKey,
+        { networkId: 'preview', ttlSeconds: 120 }
+      );
+      const after = Date.now();
+
+      expect(networkIdOfTx(tx)).toBe('preview');
+      expect(ttlOfTx(tx).getTime()).toBeGreaterThanOrEqual(toWholeSecond(before + 120_000));
+      expect(ttlOfTx(tx).getTime()).toBeLessThanOrEqual(after + 120_000);
+    });
+
+    it('builds a call for the configured network with the configured TTL', () => {
+      const before = Date.now();
+      const tx = buildCall({ networkId: 'preview', ttlSeconds: 90 });
+      const after = Date.now();
+
+      expect(networkIdOfTx(tx)).toBe('preview');
+      expect(ttlOfTx(tx).getTime()).toBeGreaterThanOrEqual(toWholeSecond(before + 90_000));
+      expect(ttlOfTx(tx).getTime()).toBeLessThanOrEqual(after + 90_000);
+    });
+
+    it('serves two networks in one process', () => {
+      expect(networkIdOfTx(buildCall({ networkId: 'preview', ttlSeconds: 60 }))).toBe('preview');
+      expect(networkIdOfTx(buildCall({ networkId: 'undeployed', ttlSeconds: 60 }))).toBe('undeployed');
+    });
+
+    it('rejects an invalid TTL', () => {
+      expect(() => buildCall({ networkId: 'preview', ttlSeconds: 0 })).toThrow(RangeError);
+    });
+
+    it('ignores a leftover global network id', () => {
+      setNetworkId('preview');
+
+      try {
+        expect(networkIdOfTx(buildCall({ networkId: 'undeployed', ttlSeconds: 60 }))).toBe('undeployed');
+      } finally {
+        setNetworkId('undeployed');
+      }
+    });
+
   });
 
   describe('createUnprovenLedgerCallTx with receiveShielded (issue #686)', () => {
@@ -365,7 +445,7 @@ describe('ledger-utils', () => {
       const constantResolver: EncryptionPublicKeyResolver = () => sampleEncryptionPublicKey();
       const output = createZswapOutput({ coinInfo, recipient }, constantResolver);
       const seedTx = Transaction.fromParts(
-        getNetworkId(),
+        MOCK_CONFIG.networkId,
         ZswapOffer.fromOutput(output, coinInfo.type, coinInfo.value)
       ).eraseProofs();
       const [chainState, mtIndices] = new ZswapChainState().tryApply(seedTx.guaranteedOffer!);
@@ -1136,10 +1216,6 @@ describe('ledger-utils', () => {
 });
 
 describe('createUnprovenLedgerCallTx multi-call assembly', () => {
-  beforeAll(() => {
-    setNetworkId('testnet');
-  });
-
   const encryptionPublicKey = sampleEncryptionPublicKey();
   const alignedValue: AlignedValue = {
     value: [new Uint8Array()],

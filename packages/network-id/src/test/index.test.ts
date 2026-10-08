@@ -23,7 +23,7 @@ describe('network-id', () => {
       const { getNetworkId } = await import('../index');
 
       expect(() => getNetworkId()).toThrow(
-        'Network ID has not been configured. Call setNetworkId() before any wallet or contract operation.'
+        'Network ID has not been configured. Call setNetworkId() first. Deprecated: the framework reads MidnightProviders.config.networkId instead.'
       );
     });
 

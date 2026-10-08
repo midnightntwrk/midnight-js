@@ -194,6 +194,20 @@ describe('createWalletProviderFromHandlers', () => {
     expect(result).toEqual({ version: 'v8', txBytes: balanced });
   });
 
+  it('hands the retained-era arm the ttl it was given', async () => {
+    const retained = vi.fn(async () => new Uint8Array([3, 4]));
+    const provider = createWalletProviderFromHandlers({
+      currentEra: async () => stubFinalized(),
+      retainedEras: { v8: retained },
+      ...keyReaders
+    });
+    const ttl = new Date(0);
+
+    await provider.balanceTx({ version: 'v8', txBytes: new Uint8Array([1, 2]) }, ttl);
+
+    expect(retained).toHaveBeenCalledWith(new Uint8Array([1, 2]), ttl);
+  });
+
   it('rejects the retained arm it was not given, without balancing anything', async () => {
     const currentEra = vi.fn(async () => stubFinalized());
     const provider = createWalletProviderFromHandlers({ currentEra, ...keyReaders });

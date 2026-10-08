@@ -93,6 +93,7 @@ describe('DApp Connector Proving', () => {
       proofProvider,
       walletProvider: wallet,
       midnightProvider: wallet,
+      config: { networkId: environmentConfiguration.networkId, ttlSeconds: 3600 },
     };
 
     const deployedContract = await deployContract(providers, {

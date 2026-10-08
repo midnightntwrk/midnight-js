@@ -185,7 +185,33 @@ change for callers).
 
 ---
 
+### `MidnightConfig` and required `MidnightProviders.config` (#982)
+
+```ts
+export type NetworkId = string; // moved here from midnight-js-network-id
+
+export interface MidnightConfig {
+  readonly networkId: NetworkId;
+  readonly ttlSeconds: number;
+}
+
+interface MidnightProviders {
+  // ... existing providers ...
+  readonly config: MidnightConfig; // required
+}
+```
+
 ## `@midnight-ntwrk/midnight-js-contracts`
+
+### Transaction builders take `MidnightConfig` (#982)
+
+| Symbol | Change |
+|--------|--------|
+| `CallOptionsProviderDataDependencies` | new required `config: MidnightConfig` (so `createUnprovenCallTxFromInitialStates` options carry it) |
+| `createUnprovenDeployTxFromVerifierKeys` | new last parameter `config: MidnightConfig` |
+| `UnprovenCallTxProvidersBase`, `UnprovenDeployTxProviders` | now include `config` |
+| `submitTx` / `submitTxAsync` and every entry point that submits | read `providers.config` and pass its TTL to `walletProvider.balanceTx(tx, ttl)` |
+
 
 ### `CallResultPublic.events` + `ContractLog` re-export (#1083)
 
@@ -311,6 +337,9 @@ Internally the provider was split into 7 layered files (#960): `config.ts`, `tra
 
 ### New exports
 
+- `assertValidMidnightConfig(config, source?)` — checks a `MidnightConfig` and throws `TypeError` / `RangeError` naming the bad field; every framework entry point that builds a transaction calls it before reading chain state or running the circuit (#982).
+- `intentTtl(config)` — the expiry `Date` for an intent built now: the current time plus `config.ttlSeconds` (#982).
+
 ```ts
 // Coded-error registry and guard (#1204). Prefer hasErrorCode over instanceof
 // across a package boundary.
@@ -434,3 +463,18 @@ Thin factory functions are added alongside the existing classes (the classes sta
 export function nodeZkConfigProvider(options: /* ... */): NodeZkConfigProvider<string>;
 export function fetchZkConfigProvider(options: /* ... */): FetchZkConfigProvider<string>;
 ```
+
+## `@midnight-ntwrk/midnight-js-network-id` (deprecated, #982)
+
+`setNetworkId`, `getNetworkId` and `NetworkId` are `@deprecated`. They still work,
+but the framework no longer reads the value. Use `MidnightProviders.config.networkId`
+and import `NetworkId` from `@midnight-ntwrk/midnight-js-types`. The package is
+removed in 6.0.
+
+## `@midnight-ntwrk/testkit-js`
+
+### `NodeClient` takes the network id (#982)
+
+`new NodeClient(url, logger, networkId)` — the third argument addresses contract
+state in `contractState()`, replacing the global network id.
+
