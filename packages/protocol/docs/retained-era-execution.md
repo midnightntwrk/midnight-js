@@ -26,7 +26,8 @@ ran against — is gone. Why, and what the move cost, is in
 
 The error classes named here are described in [FailClosedDecoding](./fail-closed-decoding.md), which owns
 the division of labour between `DownConvertFailedError`,
-`StateDecodeFailedError` and `Ledger8RuntimeInvalidError`; the refusal ordering
+`StateDecodeFailedError`, `StateInconsistentError` and
+`Ledger8RuntimeInvalidError`; the refusal ordering
 on the composition legs is in [ComposeRefusalOrder](./compose-refusal-order.md).
 
 ## The state a circuit executes against

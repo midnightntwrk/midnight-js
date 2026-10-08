@@ -163,6 +163,7 @@ export interface AnyEraContractState extends ContractStatePojo {
  * @throws TypeError if `contractAddress` is not a well-formed contract address.
  * @throws TagParseError if the served payload carries no supported contract-state envelope.
  * @throws StateDecodeFailedError if the envelope's own era cannot read the state behind it.
+ * @throws StateInconsistentError if the decoded state is internally inconsistent.
  * @throws Ledger8RuntimeMissingError if the state carries a retained-era envelope and that runtime
  * cannot be acquired — the everyday case being a build that does not ship it.
  * @throws whatever `queryRawContractState` throws, unchanged.

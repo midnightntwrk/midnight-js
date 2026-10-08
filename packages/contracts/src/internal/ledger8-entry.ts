@@ -587,6 +587,7 @@ export interface Ledger8SubmittedCall {
  * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the fetched
  * envelope's era disagrees with the head.
  * @throws StateDecodeFailedError if the envelope will not decode on this era.
+ * @throws StateInconsistentError if the decoded state is internally inconsistent.
  * @throws Ledger8AmbiguousEntryPointError if the state names the circuit twice.
  * @throws BlankVerifierKeySlotError, VerifierKeyMismatchError from the
  * pre-proving key check.
@@ -806,6 +807,7 @@ export interface Ledger8FoundState {
  * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the fetched
  * envelope's era disagrees with the head.
  * @throws StateDecodeFailedError if the envelope will not decode on this era.
+ * @throws StateInconsistentError if the decoded state is internally inconsistent.
  * @throws Ledger8AmbiguousEntryPointError if the state names a circuit twice.
  * @throws BlankVerifierKeySlotError, VerifierKeyMismatchError if the chain's
  * slot is empty or holds different bytes.
