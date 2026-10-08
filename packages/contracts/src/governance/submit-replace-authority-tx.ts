@@ -15,13 +15,12 @@
 
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type FinalizedTxData, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from '../contract-providers';
-import { ContractNotFoundError } from '../errors';
+import { getExistingSigningKey, queryExistingContractState } from '../internal/required-reads';
 import { submitTx } from '../submit-tx';
 import { ReplaceMaintenanceAuthorityTxFailedError } from './errors';
 import { createUnprovenReplaceAuthorityTx } from './unproven-tx';
@@ -82,14 +81,8 @@ export const submitReplaceAuthorityTx =
   async (newAuthority: SigningKey): Promise<FinalizedTxData> => {
     assertValidMidnightConfig(providers.config);
     assertIsContractAddress(contractAddress);
-    const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
-    if (contractState === undefined || contractState === null) {
-      throw new ContractNotFoundError(`No contract state found on chain for contract address '${contractAddress}'`);
-    }
-    const currentAuthority = await providers.privateStateProvider.getSigningKey(contractAddress);
-    if (currentAuthority === undefined || currentAuthority === null) {
-      throw new InvalidArgumentError(`Signing key for contract address '${contractAddress}' not found`);
-    }
+    const contractState = await queryExistingContractState(providers.publicDataProvider, contractAddress);
+    const currentAuthority = await getExistingSigningKey(providers.privateStateProvider, contractAddress);
     const unprovenTx = await createUnprovenReplaceAuthorityTx(
       providers.zkConfigProvider,
       compiledContract,

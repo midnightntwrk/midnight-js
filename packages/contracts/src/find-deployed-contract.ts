@@ -33,7 +33,6 @@ import { assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/mid
 import { type ContractProviders } from './contract-providers';
 import { CURRENT_PIPELINE_ERA, type CurrentPipelineEra, RETAINED_PIPELINE_ERA } from './era';
 import {
-  ContractNotFoundError,
   ContractTypeError,
   IncompleteFindContractPrivateStateConfig,
   Ledger8SigningKeyUnusableError,
@@ -49,6 +48,7 @@ import { type BreadcrumbSink, emitRetainedSigningKeyEntry } from './internal/bre
 import { isLedger8Request, requireTaggedRecord, resolveArtifactEra } from './internal/era';
 import { findLedger8Contract } from './internal/ledger8-entry';
 import { fromStoredLedger8SigningKey, toStoredLedger8SigningKey } from './internal/ledger8-signing-key';
+import { requireDeployedContract } from './internal/required-reads';
 import {
   type AnyLedger8FindDeployedContractOptions,
   type AnyLedger8FoundContract,
@@ -92,10 +92,10 @@ const queryFoundDeployTxPublicData = async (
     case 'v8':
       return { ...deployRecord, contractAddress };
     case 'v9': {
-      const initialContractState = await publicDataProvider.queryDeployContractState(contractAddress);
-      if (initialContractState === undefined || initialContractState === null) {
-        throw new ContractNotFoundError(`No contract deployed at contract address '${contractAddress}'`);
-      }
+      const initialContractState = requireDeployedContract(
+        await publicDataProvider.queryDeployContractState(contractAddress),
+        contractAddress
+      );
       return { ...deployRecord, contractAddress, initialContractState };
     }
     default:
@@ -597,10 +597,10 @@ export async function findDeployedContract<C extends Contract.Any>(
     contractAddress
   );
 
-  const currentContractState = await providers.publicDataProvider.queryContractState(contractAddress);
-  if (currentContractState === undefined || currentContractState === null) {
-    throw new ContractNotFoundError(`No contract deployed at contract address '${contractAddress}'`);
-  }
+  const currentContractState = requireDeployedContract(
+    await providers.publicDataProvider.queryContractState(contractAddress),
+    contractAddress
+  );
 
   const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
     ContractExecutable.make(compiledContract).getProvableCircuitIds()

@@ -21,7 +21,8 @@ import { type FinalizedTxData,SucceedEntirely } from '@midnight-ntwrk/midnight-j
 import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from '../contract-providers';
-import { BlankVerifierKeySlotError, ContractNotFoundError } from '../errors';
+import { BlankVerifierKeySlotError } from '../errors';
+import { getExistingSigningKey, queryExistingContractState } from '../internal/required-reads';
 import { submitTx } from '../submit-tx';
 import { RemoveVerifierKeyTxFailedError } from './errors';
 import { createUnprovenRemoveVerifierKeyTx } from './unproven-tx';
@@ -76,10 +77,7 @@ export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
 ): Promise<FinalizedTxData> => {
   assertValidMidnightConfig(providers.config);
   assertIsContractAddress(contractAddress);
-  const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
-  if (contractState === undefined || contractState === null) {
-    throw new ContractNotFoundError(`No contract state found on chain for contract address '${contractAddress}'`);
-  }
+  const contractState = await queryExistingContractState(providers.publicDataProvider, contractAddress);
   const operation = contractState.operation(circuitId);
   if (operation === undefined || operation === null) {
     throw new InvalidArgumentError(`Circuit '${circuitId}' not found for contract at address '${contractAddress}'`);
@@ -88,10 +86,7 @@ export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
   if (verifierKey === undefined || verifierKey === null) {
     throw new BlankVerifierKeySlotError(circuitId);
   }
-  const signingKey = await providers.privateStateProvider.getSigningKey(contractAddress);
-  if (signingKey === undefined || signingKey === null) {
-    throw new InvalidArgumentError(`Signing key for contract address '${contractAddress}' not found`);
-  }
+  const signingKey = await getExistingSigningKey(providers.privateStateProvider, contractAddress);
   const unprovenTx = await createUnprovenRemoveVerifierKeyTx(
     providers.zkConfigProvider,
     compiledContract,

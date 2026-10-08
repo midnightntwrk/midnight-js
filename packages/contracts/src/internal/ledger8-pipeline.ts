@@ -44,7 +44,6 @@ import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
 import {
-  ContractNotFoundError,
   LEDGER8_CONSTRUCTOR_ENTRY_POINT,
   Ledger8AmbiguousEntryPointError,
   Ledger8RecipientUnmappableError,
@@ -57,6 +56,7 @@ import type { Ledger8Contract } from '../ledger8-contract';
 import type { Ledger8ContractCall } from '../ledger8-contract';
 import type { BreadcrumbSink } from './breadcrumbs';
 import { resolveContractStateEra } from './era';
+import { requireDeployedContract } from './required-reads';
 import {
   type EncryptionPublicKeyResolver,
   serializeCoinInfo,
@@ -284,10 +284,7 @@ export const readLedger8Snapshot = async (
   contractAddress: string,
   logger?: BreadcrumbSink
 ): Promise<Ledger8Snapshot> => {
-  const state = await pdp.queryRawContractState(contractAddress);
-  if (state === undefined || state === null) {
-    throw new ContractNotFoundError(`No contract deployed at contract address '${contractAddress}'`);
-  }
+  const state = requireDeployedContract(await pdp.queryRawContractState(contractAddress), contractAddress);
 
   const stateEra = await resolveContractStateEra(head, state, pdp, logger);
 
