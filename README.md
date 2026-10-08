@@ -23,12 +23,12 @@ import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-pri
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
-import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+import { createMidnightProviders } from '@midnight-ntwrk/midnight-js-utils';
 
-// Configure providers
+// Configure providers; createMidnightProviders checks the set at start-up
 const zkConfigProvider = new FetchZkConfigProvider('https://artifacts.example.com');
 
-const providers: MidnightProviders = {
+const providers = createMidnightProviders({
   privateStateProvider: levelPrivateStateProvider({
     privateStoragePasswordProvider: () => 'your-secure-password',
     accountId: 'user-wallet-address'
@@ -42,7 +42,7 @@ const providers: MidnightProviders = {
   walletProvider,    // from @midnight-ntwrk/wallet-sdk
   midnightProvider,  // from @midnight-ntwrk/wallet-sdk
   config: { networkId: 'preview', ttlSeconds: 3600 }, // network and transaction TTL
-};
+});
 
 // Deploy a contract
 const deployed = await deployContract(providers, {
