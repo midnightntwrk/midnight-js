@@ -296,9 +296,6 @@ const METADATA_KEY = '__midnight_encryption_metadata__';
 
 const DEFAULT_MAX_ROTATION_ENTRIES = 10000;
 
-// Per-process key for password fingerprinting — random at startup, never persisted.
-// Cache hits are validated with HMAC-SHA256(PROCESS_KEY, password + ":" + saltHex)
-// instead of re-running PBKDF2 (600 000 iterations) on every access.
 const PROCESS_KEY = randomBytes(32);
 
 const computePasswordFingerprint = (password: string, saltHex: string): Uint8Array =>

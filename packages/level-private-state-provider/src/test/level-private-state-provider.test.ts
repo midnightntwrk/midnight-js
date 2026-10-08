@@ -1996,12 +1996,10 @@ describe('Level Private State Provider', (): void => {
       const db = levelPrivateStateProvider<string, string>(config);
       db.setContractAddress(CACHE_CONTRACT_ADDRESS);
 
-      // Cold path: StorageEncryption.create called once, verifyPassword never called
       await db.set('key-0', 'value-0');
       expect(createSpy).toHaveBeenCalledTimes(1);
       expect(verifyPasswordSpy).not.toHaveBeenCalled();
 
-      // Warm path: HMAC fingerprint used — no verifyPassword, no additional create
       await db.set('key-1', 'value-1');
       expect(createSpy).toHaveBeenCalledTimes(1);
       expect(verifyPasswordSpy).not.toHaveBeenCalled();
