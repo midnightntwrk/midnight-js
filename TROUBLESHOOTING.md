@@ -385,7 +385,6 @@ new coded error cannot ship without an entry here and an entry cannot outlive it
 | `MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION` | An era was requested by name that is not a `LedgerVersion`. | `requestedVersion` carries it. Usually a hand-built value; use `LEDGER_VERSIONS`. |
 | `MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION` | Bytes handed to the retained-era proving seam do not carry a transaction tag. | The payload came from somewhere other than a sanctioned serialization seam. Do not re-wrap bytes by hand. |
 | `MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED` | A circuit or constructor execution failed. A Compact `assert` refusal is the usual cause, but an uncoded key or config read failure or a runtime fault can also arrive this way. A lone failure that carries a coded midnight-js error (for example a ZK artifact fetch failure) surfaces as that error instead. When several failures arrive at once, this error lists them all and `cause` is the first coded one. | Read `cause`: it is the source of truth. If it is an `assert`, check the inputs and the contract's rules. |
-| `MIDNIGHT_JS_P_CONTRACT_STATE_INVALID` | A contract state read from the chain is not internally consistent (an entry point with no operation, or no usable balance). | Do not retry. Report the contract address and indexer version. |
 
 ### Era dispatch and the fork window (`MIDNIGHT_JS_C_*`)
 

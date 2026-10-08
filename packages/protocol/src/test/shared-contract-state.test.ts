@@ -20,7 +20,7 @@ import * as ledgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import { ContractStateInvalidError, PROTOCOL_ERROR_CODES, StateDecodeFailedError, StateInconsistentError } from '../errors';
+import { PROTOCOL_ERROR_CODES, StateDecodeFailedError, StateInconsistentError } from '../errors';
 import { extractV9EncodedStateValue } from '../lib/era/envelope';
 import {
   type ContractBalance,
@@ -150,8 +150,9 @@ describe('decodeContractStateWith', () => {
     expect(caught).toBeInstanceOf(StateInconsistentError);
     expect(caught).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_INCONSISTENT, version: 'v9' });
     const cause = (caught as StateInconsistentError).cause;
-    expect(cause).toBeInstanceOf(ContractStateInvalidError);
-    expect((cause as ContractStateInvalidError).message).toBe(
+    expect(cause).toBeInstanceOf(Error);
+    expect(cause).not.toHaveProperty('code');
+    expect((cause as Error).message).toBe(
       "contract state declares entry point 'increment' but resolves no operation for it."
     );
   });
@@ -354,12 +355,13 @@ describe('decodeContractStateWith refuses a state that resolves no balance', () 
     expect(((caught as StateInconsistentError).cause as Error).message).toMatch(/resolves no usable balance/);
   });
 
-  it('reports the absent balance as a ContractStateInvalidError on the cause', () => {
+  it('carries the absent-balance diagnosis on cause without a second code', () => {
     const caught = decodeFailure(undefined);
 
     const cause = (caught as StateInconsistentError).cause;
-    expect(cause).toBeInstanceOf(ContractStateInvalidError);
-    expect((cause as ContractStateInvalidError).message).toBe(
+    expect(cause).toBeInstanceOf(Error);
+    expect(cause).not.toHaveProperty('code');
+    expect((cause as Error).message).toBe(
       'contract state resolves no usable balance (received undefined); a contract that holds nothing still declares an empty map.'
     );
   });

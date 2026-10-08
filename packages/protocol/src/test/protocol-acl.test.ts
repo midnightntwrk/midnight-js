@@ -75,7 +75,6 @@ describe('Protocol ACL package', () => {
         'ComposeOptionError',
         'ConfigurationError',
         'ContractExecutionError',
-        'ContractStateInvalidError',
         'CURRENT_LEDGER_VERSION',
         'DownConvertFailedError',
         'EnvironmentUnsupportedError',

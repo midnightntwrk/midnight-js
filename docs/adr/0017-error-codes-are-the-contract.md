@@ -80,7 +80,6 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | G | `ENVIRONMENT_UNSUPPORTED` | ENVIRONMENT | `EnvironmentUnsupportedError`* |
 | G | `INVARIANT_VIOLATED` | INTERNAL | `InvariantViolationError`* |
 | P | `CONTRACT_EXECUTION_FAILED` | REJECTED | `ContractExecutionError`* |
-| P | `CONTRACT_STATE_INVALID` | INTEGRITY | `ContractStateInvalidError`* |
 | PR | `INVALID_PROTOCOL_SCHEME` | USAGE | `InvalidProtocolSchemeError` |
 | PR | `ARTIFACT_RUNTIME_VERSION_UNAVAILABLE` | ENVIRONMENT | `ArtifactRuntimeVersionUnavailableError` |
 | PR | `ZK_ARTIFACT_NOT_FOUND` | ENVIRONMENT | `ZKArtifactNotFoundError` |

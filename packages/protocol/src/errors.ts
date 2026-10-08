@@ -38,8 +38,7 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
   UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS',
   PAYLOAD_NOT_A_TRANSACTION: 'MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION',
-  CONTRACT_EXECUTION_FAILED: 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED',
-  CONTRACT_STATE_INVALID: 'MIDNIGHT_JS_P_CONTRACT_STATE_INVALID'
+  CONTRACT_EXECUTION_FAILED: 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED'
 } as const);
 /** The union of every value in {@link PROTOCOL_ERROR_CODES}; the type of every error class's `code` field. */
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[keyof typeof PROTOCOL_ERROR_CODES];
@@ -92,8 +91,7 @@ export const PROTOCOL_ERROR_CATEGORIES: Readonly<Record<ProtocolErrorCode, Midni
   [PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID]: ENVIRONMENT,
   [PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS]: INTERNAL,
   [PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION]: USAGE,
-  [PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED]: REJECTED,
-  [PROTOCOL_ERROR_CODES.CONTRACT_STATE_INVALID]: INTEGRITY
+  [PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED]: REJECTED
 });
 
 export const COMMON_ERROR_CODES = Object.freeze({
@@ -1118,16 +1116,5 @@ export class ContractExecutionError extends MidnightJsError {
     };
     const coded = failures.map(findCodedCause).find((candidate) => candidate !== undefined);
     return new ContractExecutionError(failures.map(describe).join('; '), { cause: coded ?? failures[0], errors: failures });
-  }
-}
-
-/** A contract state read from the chain is not internally consistent. */
-export class ContractStateInvalidError extends MidnightJsError {
-  readonly code = PROTOCOL_ERROR_CODES.CONTRACT_STATE_INVALID;
-  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.CONTRACT_STATE_INVALID];
-
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, options);
-    this.name = 'ContractStateInvalidError';
   }
 }

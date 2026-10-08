@@ -53,7 +53,6 @@ export {
   type ComposeStage,
   ConfigurationError,
   ContractExecutionError,
-  ContractStateInvalidError,
   EnvironmentUnsupportedError,
   InvalidArgumentError,
   InvariantViolationError,

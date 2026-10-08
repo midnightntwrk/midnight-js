@@ -22,7 +22,6 @@ import {
   ComposeOptionError,
   ConfigurationError,
   ContractExecutionError,
-  ContractStateInvalidError,
   DownConvertFailedError,
   EnvironmentUnsupportedError,
   InvalidArgumentError,
@@ -116,8 +115,7 @@ describe('protocol error classes', () => {
     ['UnknownLedger8AxisError', new UnknownLedger8AxisError('x')],
     ['UnknownLedgerVersionError', new UnknownLedgerVersionError('v7')],
     ['PayloadNotATransactionError', PayloadNotATransactionError.notBytes(1)],
-    ['ContractExecutionError', new ContractExecutionError('x')],
-    ['ContractStateInvalidError', new ContractStateInvalidError('x')]
+    ['ContractExecutionError', new ContractExecutionError('x')]
   ];
 
   it('every exported error class extends MidnightJsError', () => {
@@ -161,7 +159,7 @@ describe('protocol error classes', () => {
 
   it.each([
     [new ContractExecutionError('circuit failed', { cause: new Error('assert') }), 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED', 'REJECTED'],
-    [new ContractStateInvalidError('no operation'), 'MIDNIGHT_JS_P_CONTRACT_STATE_INVALID', 'INTEGRITY']
+    [new StateInconsistentError('v8', new Error('no operation')), 'MIDNIGHT_JS_P_STATE_INCONSISTENT', 'INTEGRITY']
   ] as const)('new protocol class %# carries code and category', (error, code, category) => {
     expect([error.code, error.category, error.message.length > 0]).toEqual([code, category, true]);
   });
