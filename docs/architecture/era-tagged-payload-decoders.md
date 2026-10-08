@@ -86,7 +86,8 @@ the same way, and one does not classify it at all:
   wrap in `ComposeOptionError`
 - `packages/protocol/src/lib/shared/assemble-call.ts` — wraps in `ComposeOptionError`; reads the
   block's parameters with the era that composes the transaction (see the open items below)
-- `packages/protocol/src/lib/shared/contract-state.ts` — wraps in `StateDecodeFailedError`, not
+- `packages/protocol/src/lib/shared/contract-state.ts` — wraps a `deserialize` failure in
+  `StateDecodeFailedError` and any later failure in `StateInconsistentError`, not
   `ComposeOptionError`; takes the era's module slice as an argument
 - `packages/protocol/src/lib/v8/prove.ts` — **no wrapper.** `proveV8Transaction` runs
   `assertSerializedTransaction` on the bytes and then calls `v8.Transaction.deserialize` with

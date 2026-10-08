@@ -30,6 +30,7 @@ import {
   MerkleNotRehashedError,
   PROTOCOL_ERROR_CODES,
   StateDecodeFailedError,
+  StateInconsistentError,
   UnknownLedger8AxisError,
   UnknownLedgerVersionError,
   UnknownProtocolVersionError
@@ -60,6 +61,7 @@ describe('PROTOCOL_ERROR_CODES', () => {
       COMPOSE_FAILED: 'MIDNIGHT_JS_P_COMPOSE_FAILED',
       COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID',
       STATE_DECODE_FAILED: 'MIDNIGHT_JS_P_STATE_DECODE_FAILED',
+      STATE_INCONSISTENT: 'MIDNIGHT_JS_P_STATE_INCONSISTENT',
       UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
       LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
       UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS',
@@ -605,6 +607,36 @@ describe('StateDecodeFailedError', () => {
   });
 });
 
+describe('StateInconsistentError', () => {
+  // The bytes were readable, so the remediation StateDecodeFailedError gives --
+  // decode them as the other era -- cannot help. A caller that retried on it
+  // would loop.
+  it('carries its own code, the requested era, and the diagnosis on cause', () => {
+    const cause = new Error("contract state declares entry point 'increment' but resolves no operation for it.");
+    const error = new StateInconsistentError('v8', cause);
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe('StateInconsistentError');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.STATE_INCONSISTENT);
+    expect(error.version).toBe('v8');
+    expect(error.cause).toBe(cause);
+    expect(error.message).toContain('v8');
+  });
+
+  it('does not send the caller to retry with the other era', () => {
+    const error = new StateInconsistentError('v9', new Error('boom'));
+
+    expect(error.message).not.toMatch(/protocolVersionToLedger/);
+    expect(error.message).toMatch(/not fix/);
+  });
+
+  it('never includes a hex or byte dump in its own message', () => {
+    const error = new StateInconsistentError('v9', new Error('boom'));
+
+    expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
+  });
+});
+
 describe('Ledger8RuntimeInvalidError', () => {
   // A caller that never passed the pre-fork runtime, or passed one missing the
   // binding, is a distinct fault from bad envelope bytes and has a distinct
@@ -663,11 +695,16 @@ describe('the code every published class carries', () => {
       'v8',
       new Error('boom')
     ).code;
+    const stateInconsistent: typeof PROTOCOL_ERROR_CODES.STATE_INCONSISTENT = new StateInconsistentError(
+      'v8',
+      new Error('boom')
+    ).code;
 
-    expect([composeFailed, composeOption, stateDecode]).toEqual([
+    expect([composeFailed, composeOption, stateDecode, stateInconsistent]).toEqual([
       PROTOCOL_ERROR_CODES.COMPOSE_FAILED,
       PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID,
-      PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED
+      PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED,
+      PROTOCOL_ERROR_CODES.STATE_INCONSISTENT
     ]);
   });
 });

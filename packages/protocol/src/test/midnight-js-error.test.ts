@@ -37,6 +37,7 @@ import {
   PROTOCOL_ERROR_CATEGORIES,
   PROTOCOL_ERROR_CODES,
   StateDecodeFailedError,
+  StateInconsistentError,
   UnknownLedger8AxisError,
   UnknownLedgerVersionError,
   UnknownProtocolVersionError
@@ -110,6 +111,7 @@ describe('protocol error classes', () => {
     ['ComposeFailedError', new ComposeFailedError('v8', 'deploy-verifier-key-blob', 'increment', underlying)],
     ['ComposeOptionError', new ComposeOptionError('v8', 'networkId', underlying)],
     ['StateDecodeFailedError', new StateDecodeFailedError('v8', underlying)],
+    ['StateInconsistentError', new StateInconsistentError('v8', underlying)],
     ['Ledger8RuntimeInvalidError', new Ledger8RuntimeInvalidError('ledger')],
     ['UnknownLedger8AxisError', new UnknownLedger8AxisError('x')],
     ['UnknownLedgerVersionError', new UnknownLedgerVersionError('v7')],

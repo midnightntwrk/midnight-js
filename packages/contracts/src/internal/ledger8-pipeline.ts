@@ -273,6 +273,7 @@ export interface Ledger8Snapshot {
  * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the head and
  * the state's envelope belong to different eras.
  * @throws StateDecodeFailedError if this era's decoder rejects the envelope.
+ * @throws StateInconsistentError if the decoded state is internally inconsistent.
  * @see {@link KeepStatePipeline} for why the two reads stay separate.
  */
 export const readLedger8Snapshot = async (

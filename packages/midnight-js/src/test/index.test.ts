@@ -61,6 +61,7 @@ const EXPECTED_BARREL_EXPORTS = [
   'PROTOCOL_ERROR_CODES',
   'PayloadNotATransactionError',
   'StateDecodeFailedError',
+  'StateInconsistentError',
   'UnknownLedgerVersionError',
   'UnknownProtocolVersionError',
   'contracts',
@@ -229,6 +230,12 @@ describe('retained-era error classes', () => {
     ).toBe(true);
     expect(
       midnightJs.utils.hasErrorCode(
+        new midnightJs.StateInconsistentError('v8', new Error('boom')),
+        midnightJs.PROTOCOL_ERROR_CODES.STATE_INCONSISTENT
+      )
+    ).toBe(true);
+    expect(
+      midnightJs.utils.hasErrorCode(
         new midnightJs.UnknownLedgerVersionError('v7'),
         midnightJs.PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION
       )
@@ -248,9 +255,17 @@ describe('retained-era error classes', () => {
     const stage: ComposeStage = new midnightJs.ComposeFailedError('v9', 'call-empty', 'increment').stage;
     const option: ComposeOption = new midnightJs.ComposeOptionError('v8', 'ttl').option;
     const decodedEra: LedgerVersion = new midnightJs.StateDecodeFailedError('v8', new Error('boom')).version;
+    const inconsistentEra: LedgerVersion = new midnightJs.StateInconsistentError('v9', new Error('boom')).version;
     const requested: string = new midnightJs.UnknownLedgerVersionError('v7').requestedVersion;
 
-    expect([subpath, stage, option, decodedEra, requested]).toEqual(['/v8', 'call-empty', 'ttl', 'v8', 'v7']);
+    expect([subpath, stage, option, decodedEra, inconsistentEra, requested]).toEqual([
+      '/v8',
+      'call-empty',
+      'ttl',
+      'v8',
+      'v9',
+      'v7'
+    ]);
   });
 });
 

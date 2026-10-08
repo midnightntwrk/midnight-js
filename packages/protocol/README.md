@@ -212,18 +212,18 @@ What is *not* asymmetric: a call's user-addressed unshielded payouts are aggrega
 | Error | Code | Raised when |
 | ----- | ---- | ----------- |
 | `StateDecodeFailedError` | `MIDNIGHT_JS_P_STATE_DECODE_FAILED` | A contract-state envelope could not be read by the era it was requested for — most often a state written by the other era |
+| `StateInconsistentError` | `MIDNIGHT_JS_P_STATE_INCONSISTENT` | A contract-state envelope was read, but the state is internally inconsistent: an entry point it cannot resolve, a verifier key that will not hash, or no usable balance. Retrying with the other era will not fix it |
 | `ComposeFailedError` | `MIDNIGHT_JS_P_COMPOSE_FAILED` | Something about a CALL or a DEPLOY could not be composed: an operation that is missing, unkeyed, or names a circuit the contract does not declare; an empty call list; a pre-call state or a recorded query context the era cannot bridge; a supplied transcript with neither half; a public transcript or a set of call inputs the ledger itself rejected; or a claimed payout the transaction cannot settle (dust, or a shielded token type). `stage` is a closed union naming which of those it was — see its own docs for the full list; `version` names the era |
 | `ComposeOptionError` | `MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID` | A transaction-wide OPTION cannot be used at all — an empty network id, an invalid ttl, a contract state whose envelope the era rejected, an offer the era's decoder rejected, a missing verifier-key map, or a call list longer than the era can compose. `option` names the field, `version` names the era |
 | `UnknownLedgerVersionError` | `MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION` | The requested era is not `'v8'` or `'v9'` |
 
-Each names the era it was raised for — `version` on the first three, `requestedVersion` on `UnknownLedgerVersionError`, which also takes no `cause`. None renders hex or a byte dump of its own, and the first three preserve the underlying runtime failure on `cause` where there was one.
+Each names the era it was raised for — `version` on the first four, `requestedVersion` on `UnknownLedgerVersionError`, which also takes no `cause`. None renders hex or a byte dump of its own, and the first four preserve the underlying runtime failure on `cause` where there was one.
 
 ### Planned follow-ups
 
 Recorded here so the reasoning is not lost, and deliberately NOT done in the change that introduced this facade:
 
 - **Collapse the version dispatch in `lib/era/envelope.ts`.** `extractEncodedStateValue` has one production caller, which passes the literal `'v8'`; the v9 arm calls `extractV9EncodedStateValue` directly. The decoder table, the unknown-version guard and the null-prototype defence are therefore only reachable from tests, and the per-file 100% floor keeps the tests that reach them alive. Collapsing it to a `extractV8EncodedStateValue` beside the v9 one deletes real tests, which belongs in its own change.
-- **Give `StateDecodeFailedError` a `stage`.** `decodeContractStateWith` wraps the whole read, so a state that decoded fine but declares an entry point resolving to no operation is reported with the same code and the same "resolve the era and check the bytes" remediation as an envelope written by the other era. A discriminator would separate them; it is a public error-shape change.
 - **Give `ComposeOptionError` a `circuitId`.** The v9 blank-key refusal knows which entry point was blank and cannot say so, because the field does not exist. Adding it would let that refusal name the slot without breaking the class parity the two arms currently have.
 
 ## Version Module

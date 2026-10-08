@@ -67,6 +67,7 @@ export {
   type ProtocolVersionUnknownReason,
   type RetainedEraSubpath,
   StateDecodeFailedError,
+  StateInconsistentError,
   UnknownLedgerVersionError,
   UnknownProtocolVersionError,
   type VersionResolutionPath

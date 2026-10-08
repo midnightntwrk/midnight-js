@@ -104,6 +104,7 @@ describe('Protocol ACL package', () => {
         'protocolVersionToLedger',
         'RETAINED_LEDGER_VERSIONS',
         'StateDecodeFailedError',
+        'StateInconsistentError',
         'TRANSACTION_TAG_PREFIX',
         'UnknownLedger8AxisError',
         'UnknownLedgerVersionError',
