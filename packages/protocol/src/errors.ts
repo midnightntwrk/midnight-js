@@ -32,6 +32,7 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   COMPOSE_FAILED: 'MIDNIGHT_JS_P_COMPOSE_FAILED',
   COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID',
   STATE_DECODE_FAILED: 'MIDNIGHT_JS_P_STATE_DECODE_FAILED',
+  STATE_INCONSISTENT: 'MIDNIGHT_JS_P_STATE_INCONSISTENT',
   UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
   LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
   UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS',
@@ -681,6 +682,40 @@ export class StateDecodeFailedError extends Error {
       { cause }
     );
     this.name = 'StateDecodeFailedError';
+  }
+}
+
+/**
+ * Thrown by `decodeContractState` (`lib/shared/contract-state.ts`) when the
+ * era's decoder read the envelope but the state it produced is internally
+ * inconsistent: it declares an entry point it resolves no operation for, holds
+ * a verifier key that will not hash, or resolves no usable balance.
+ *
+ * Distinct from {@link StateDecodeFailedError}: the bytes were readable by the
+ * requested era, so decoding them as the other era cannot help. A caller that
+ * retries on `STATE_DECODE_FAILED` must not retry on this one.
+ *
+ * Renders no hex and no decoded state contents of its own.
+ *
+ * @param version The era whose decoder produced the state.
+ * @param cause The diagnosis of what was inconsistent, preserved unchanged.
+ * @see {@link FailClosedDecoding}
+ */
+export class StateInconsistentError extends Error {
+  readonly code = PROTOCOL_ERROR_CODES.STATE_INCONSISTENT;
+
+  constructor(
+    readonly version: LedgerVersion,
+    cause: unknown
+  ) {
+    super(
+      `Decoded a contract state for the ${version} ledger era, but the state is internally inconsistent. ` +
+        'Read the wrapped cause for what was inconsistent. The bytes were readable by this era, so decoding ' +
+        'them as another era will not fix it; check the decoder the era was loaded with and the source of ' +
+        'the state.',
+      { cause }
+    );
+    this.name = 'StateInconsistentError';
   }
 }
 

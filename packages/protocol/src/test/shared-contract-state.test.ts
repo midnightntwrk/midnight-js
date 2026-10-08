@@ -20,7 +20,7 @@ import * as ledgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import { PROTOCOL_ERROR_CODES, StateDecodeFailedError } from '../errors';
+import { PROTOCOL_ERROR_CODES, StateDecodeFailedError, StateInconsistentError } from '../errors';
 import { extractV9EncodedStateValue } from '../lib/era/envelope';
 import {
   type ContractBalance,
@@ -147,9 +147,40 @@ describe('decodeContractStateWith', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(StateDecodeFailedError);
-    expect(caught).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED, version: 'v9' });
-    expect((caught as StateDecodeFailedError).cause).toBeInstanceOf(Error);
+    expect(caught).toBeInstanceOf(StateInconsistentError);
+    expect(caught).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_INCONSISTENT, version: 'v9' });
+    expect(((caught as StateInconsistentError).cause as Error).message).toMatch(
+      /declares entry point 'increment' but resolves no operation/
+    );
+  });
+
+  it('reports a verifier key that will not hash as an inconsistent state, not as unreadable bytes', () => {
+    class UnhashableKeyContractState extends ledgerV9.ContractState {
+      static override deserialize(): UnhashableKeyContractState {
+        return new UnhashableKeyContractState();
+      }
+
+      override operations(): (string | Uint8Array)[] {
+        return ['increment'];
+      }
+
+      override operation(): ledgerV9.ContractOperation {
+        const operation = new ledgerV9.ContractOperation();
+        Object.defineProperty(operation, 'verifierKey', { value: 'not bytes' });
+        return operation;
+      }
+    }
+
+    let caught: unknown;
+    try {
+      decodeContractStateWith(new Uint8Array(), 'v9', { ContractState: UnhashableKeyContractState });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(StateInconsistentError);
+    expect(caught).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_INCONSISTENT, version: 'v9' });
+    expect(((caught as StateInconsistentError).cause as Error).message).toMatch(/expected Uint8Array/);
   });
 
   // The facade's boundary rule, mechanised by two assertions that check
@@ -315,10 +346,10 @@ describe('decodeContractStateWith refuses a state that resolves no balance', () 
   it('refuses an absent balance rather than reading it as an empty one', () => {
     const caught = decodeFailure(undefined);
 
-    expect(caught).toBeInstanceOf(StateDecodeFailedError);
-    expect(caught).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED, version: 'v9' });
-    expect((caught as StateDecodeFailedError).cause).toBeInstanceOf(Error);
-    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
+    expect(caught).toBeInstanceOf(StateInconsistentError);
+    expect(caught).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_INCONSISTENT, version: 'v9' });
+    expect((caught as StateInconsistentError).cause).toBeInstanceOf(Error);
+    expect(((caught as StateInconsistentError).cause as Error).message).toMatch(/resolves no usable balance/);
   });
 
   // A separate case, not a restatement: `new Map(null)` is an empty map too, so
@@ -326,8 +357,8 @@ describe('decodeContractStateWith refuses a state that resolves no balance', () 
   it('refuses a null balance for the same reason', () => {
     const caught = decodeFailure(null);
 
-    expect(caught).toBeInstanceOf(StateDecodeFailedError);
-    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
+    expect(caught).toBeInstanceOf(StateInconsistentError);
+    expect(((caught as StateInconsistentError).cause as Error).message).toMatch(/resolves no usable balance/);
   });
 
   // Nullish is not the whole substitution. `new Map(...)` turns each of these
@@ -343,8 +374,8 @@ describe('decodeContractStateWith refuses a state that resolves no balance', () 
   it.each(emptyButNotAMap)('refuses %s rather than reading it as an empty balance', (_label, balance) => {
     const caught = decodeFailure(balance);
 
-    expect(caught).toBeInstanceOf(StateDecodeFailedError);
-    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
+    expect(caught).toBeInstanceOf(StateInconsistentError);
+    expect(((caught as StateInconsistentError).cause as Error).message).toMatch(/resolves no usable balance/);
   });
 
   // Every case above dies on the FIRST structural clause, so the remaining
@@ -368,8 +399,8 @@ describe('decodeContractStateWith refuses a state that resolves no balance', () 
   it.each(partialMapSurface)('refuses %s, which answers only part of the map surface', (_label, balance) => {
     const caught = decodeFailure(balance);
 
-    expect(caught).toBeInstanceOf(StateDecodeFailedError);
-    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
+    expect(caught).toBeInstanceOf(StateInconsistentError);
+    expect(((caught as StateInconsistentError).cause as Error).message).toMatch(/resolves no usable balance/);
   });
 
   // `Map.prototype`'s members throw rather than answer when invoked with a
@@ -386,9 +417,9 @@ describe('decodeContractStateWith refuses a state that resolves no balance', () 
   it.each(throwsOnTheMapSurface)('refuses %s rather than propagating its TypeError', (_label, balance) => {
     const caught = decodeFailure(balance);
 
-    expect(caught).toBeInstanceOf(StateDecodeFailedError);
-    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
-    expect(((caught as StateDecodeFailedError).cause as Error).message).not.toMatch(/incompatible receiver/);
+    expect(caught).toBeInstanceOf(StateInconsistentError);
+    expect(((caught as StateInconsistentError).cause as Error).message).toMatch(/resolves no usable balance/);
+    expect(((caught as StateInconsistentError).cause as Error).message).not.toMatch(/incompatible receiver/);
   });
 
   // The container alone is not the balance. A map carrying the wrong entry
@@ -421,8 +452,8 @@ describe('decodeContractStateWith refuses a state that resolves no balance', () 
   it.each(mapWithUnusableEntries)('refuses a map with %s', (_label, balance) => {
     const caught = decodeFailure(balance);
 
-    expect(caught).toBeInstanceOf(StateDecodeFailedError);
-    expect(((caught as StateDecodeFailedError).cause as Error).message).toMatch(/resolves no usable balance/);
+    expect(caught).toBeInstanceOf(StateInconsistentError);
+    expect(((caught as StateInconsistentError).cause as Error).message).toMatch(/resolves no usable balance/);
   });
 
   // `describeValue` exists for one distinction -- `typeof null` is `'object'`,
@@ -436,7 +467,7 @@ describe('decodeContractStateWith refuses a state that resolves no balance', () 
   ] as const)('names what arrived when it refuses %s', (_label, balance, described) => {
     const caught = decodeFailure(balance);
 
-    expect(((caught as StateDecodeFailedError).cause as Error).message).toContain(`received ${described}`);
+    expect(((caught as StateInconsistentError).cause as Error).message).toContain(`received ${described}`);
   });
 
   // The guard and the copy must read the SAME object. A decoder is injectable,

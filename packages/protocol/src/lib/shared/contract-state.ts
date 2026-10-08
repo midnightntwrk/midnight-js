@@ -16,7 +16,7 @@
 import { hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import type { EncodedStateValue, TokenType } from '@midnightntwrk/ledger-v9';
 
-import { StateDecodeFailedError } from '../../errors';
+import { StateDecodeFailedError, StateInconsistentError } from '../../errors';
 import type { LedgerVersion } from './ledger-version';
 import { entryPointName } from './verifier-keys';
 
@@ -237,9 +237,9 @@ export const extractStateWith = (
  * here names.
  * @param ledger The era module slice carrying its own `ContractState`.
  * @returns The state and the entry points it declares, as plain data.
- * @throws StateDecodeFailedError for every failure — the whole read is
- * covered, not just the deserialization — with the decoder's own diagnosis on
- * `cause`.
+ * @throws StateDecodeFailedError if this era's decoder rejects `raw`.
+ * @throws StateInconsistentError if the decoded state is internally
+ * inconsistent. Every failure carries its own diagnosis on `cause`.
  * @see {@link FailClosedDecoding}
  * @see {@link EraSeam}
  */
@@ -248,8 +248,14 @@ export const decodeContractStateWith = (
   version: LedgerVersion,
   ledger: ContractStateDecoder
 ): ContractStatePojo => {
+  let decoded: DecodableContractState;
   try {
-    const decoded = ledger.ContractState.deserialize(raw);
+    decoded = ledger.ContractState.deserialize(raw);
+  } catch (cause) {
+    throw new StateDecodeFailedError(version, cause);
+  }
+
+  try {
     const entryPoints = decoded.operations().map((entryPoint): ContractEntryPointPojo => {
       // Deliberately not optional-chained: an unresolvable entry point is an
       // inconsistent state, not a blank slot -- see FailClosedDecoding.
@@ -283,6 +289,6 @@ export const decodeContractStateWith = (
     // Copied, so the pojo owns a map nothing else holds.
     return { state: decoded.data.state.encode(), balance: new Map(balance), entryPoints };
   } catch (cause) {
-    throw new StateDecodeFailedError(version, cause);
+    throw new StateInconsistentError(version, cause);
   }
 };
