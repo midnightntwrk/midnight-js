@@ -62,11 +62,15 @@
  *
  * #### Proving is only the first seam
  * Read this before wiring a retained-era flow. `createWalletProvider` and
- * `createMidnightProvider` both refuse the retained arm, so a retained-era transaction wired
- * through them **proves successfully and is then refused at `balanceTx`** — after a full proving
- * cycle, not at the first seam. To run one end to end, implement `WalletProvider` and
- * `MidnightProvider` against the version-tagged interfaces directly. Why the adapters refuse
- * permanently is recorded in `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`.
+ * `createMidnightProvider` both refuse the retained arm. Through the framework's own
+ * entry points (`submitCallTx` and `deployContract`), `assertSeamsSupportEra` detects this
+ * upfront and raises `SeamEraUnsupportedError` (naming `balanceTx`) before any proving work
+ * is done. However, for a flow that calls the three seams by hand, the transaction
+ * **proves successfully and is then refused at `balanceTx` with `V8PayloadUnsupportedError`** —
+ * after a full proving cycle, not at the first seam. To run one end to end, implement
+ * `WalletProvider` and `MidnightProvider` against the version-tagged interfaces directly.
+ * Why the adapters refuse permanently is recorded in
+ * `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`.
  *
  * ## Low-Level: Circuit Proving (ProvingProvider)
  * Use `httpClientProvingProvider` for advanced scenarios where you need fine-grained
