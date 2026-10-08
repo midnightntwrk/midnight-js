@@ -14,7 +14,12 @@
  */
 
 import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
-import { PayloadNotATransactionError, PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import {
+  COMMON_ERROR_CODES,
+  InvalidArgumentError,
+  PayloadNotATransactionError,
+  PROTOCOL_ERROR_CODES
+} from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CostModel, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type KeyMaterialProvider,
@@ -124,6 +129,40 @@ describe('dappConnectorProofProvider', () => {
     expect(result.version === 'v9' && result.tx).toBe(mockUnboundTx);
   });
 
+  // The wallet's proving provider takes no timeout, so a timeout the caller
+  // relies on must be refused rather than silently dropped.
+  describe('proveTxConfig.timeout', () => {
+    it('refuses a v9 proof with a timeout before the wallet is asked to prove', async () => {
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      const rejection = await proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx }, { timeout: 5_000 }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect(hasErrorCode(rejection, COMMON_ERROR_CODES.INVALID_ARGUMENT)).toBe(true);
+      expect(mockUnprovenTx.prove).not.toHaveBeenCalled();
+    });
+
+    it('refuses a zero timeout as well, since any timeout would be ignored', async () => {
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      await expect(proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx }, { timeout: 0 })).rejects.toBeInstanceOf(
+        InvalidArgumentError
+      );
+      expect(mockUnprovenTx.prove).not.toHaveBeenCalled();
+    });
+
+    it('proves a v9 transaction when the config carries no timeout', async () => {
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      const result = await proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx }, {});
+
+      expect(result.version === 'v9' && result.tx).toBe(mockUnboundTx);
+    });
+  });
+
   // This package delegates the current era to `createProofProvider` but owns
   // the retained arm itself, so these cases cover a body the types package's
   // tests do not reach.
@@ -204,6 +243,21 @@ describe('dappConnectorProofProvider', () => {
       await proofProvider.proveTx({ version: 'v8', txBytes: circuitDrivingTxBytes }).catch(() => undefined);
 
       expect(keyLocations).toEqual(['midnight/zswap/output']);
+    });
+
+    it('refuses a v8 proof with a timeout before the wallet is asked to prove', async () => {
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      const rejection = await proofProvider
+        .proveTx({ version: 'v8', txBytes: circuitDrivingTxBytes }, { timeout: 5_000 })
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect(hasErrorCode(rejection, COMMON_ERROR_CODES.INVALID_ARGUMENT)).toBe(true);
+      expect(mockProvingProvider.prove).not.toHaveBeenCalled();
     });
   });
 

@@ -13,16 +13,40 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 import {
   createProofProviderFromHandlers,
   type ProofProvider,
+  type ProveTxConfig,
   type ZKConfigProvider,
   type ZKConfigRegistry
 } from '@midnight-ntwrk/midnight-js-types';
+import type { KeyMaterialProvider, ProvingProvider } from '@midnightntwrk/dapp-connector-api';
 
 import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from './dapp-connector-proving-provider';
+
+// These fail the build once the wallet API can carry a timeout; forward it then and drop the
+// rejection below. Tracked in midnightntwrk/midnight-dapp-connector-api#97.
+type Assert<T extends true> = T;
+type Exactly<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+type _WalletCheckTakesNoTimeout = Assert<Exactly<Parameters<ProvingProvider['check']>, [Uint8Array, string]>>;
+type _WalletProveTakesNoTimeout = Assert<
+  Exactly<Parameters<ProvingProvider['prove']>, [Uint8Array, string, bigint?]>
+>;
+type _GetProvingProviderTakesNoTimeout = Assert<
+  Exactly<Parameters<DAppConnectorProvingAPI['getProvingProvider']>, [KeyMaterialProvider]>
+>;
+
+const refuseTimeout = (config: ProveTxConfig | undefined): void => {
+  if (config?.timeout !== undefined) {
+    throw new InvalidArgumentError(
+      'proveTxConfig.timeout is not supported by dappConnectorProofProvider: the wallet proving API takes no timeout. ' +
+        'See https://github.com/midnightntwrk/midnight-dapp-connector-api/issues/97'
+    );
+  }
+};
 
 /**
  * Creates a {@link ProofProvider} that delegates proving to a DApp Connector wallet.
@@ -47,6 +71,8 @@ import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from './da
  * only correct pairing, so an override is not offered at all rather than offered and quietly
  * ignored.
  * @returns A {@link ProofProvider} whose `proveTx` method delegates to the wallet.
+ * @throws InvalidArgumentError from `proveTx` when `proveTxConfig.timeout` is set. The wallet
+ * proving API takes no timeout, so the request is refused before any proving starts.
  */
 export const dappConnectorProofProvider = async <K extends string>(
   api: DAppConnectorProvingAPI,
@@ -55,9 +81,17 @@ export const dappConnectorProofProvider = async <K extends string>(
 ): Promise<ProofProvider> => {
   const provingProvider = await dappConnectorProvingProvider(api, zkConfigProvider);
   return createProofProviderFromHandlers({
-    currentEra: (tx) => tx.prove(provingProvider, costModel),
+    currentEra: (tx, config) => {
+      refuseTimeout(config);
+      return tx.prove(provingProvider, costModel);
+    },
     // Bytes in, bytes out: a retained-era transaction cannot cross this seam as a live object. See
     // the `costModel` parameter above for why this arm does not take one.
-    retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
+    retainedEras: {
+      v8: (txBytes, config) => {
+        refuseTimeout(config);
+        return proveV8Transaction(txBytes, provingProvider);
+      }
+    }
   });
 };
