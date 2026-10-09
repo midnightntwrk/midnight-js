@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-contracts",
-  "version": "5.0.0-rc.3",
+  "version": "5.0.0-rc.4",
   "type": "module",
   "description": "MidnightJS module for interacting with contracts",
   "types": "dist/index.d.ts",
