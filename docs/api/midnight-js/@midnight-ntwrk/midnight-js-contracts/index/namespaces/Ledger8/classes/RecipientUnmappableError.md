@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
 
 ***
 
@@ -25,7 +25,7 @@ never imports the transitional half.
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -49,13 +49,33 @@ never imports the transitional half.
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../../../midnight-js/classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../../../midnight-js/classes/MidnightJsError.md#category)
+
+***
 
 ### circuitId
 
 > `readonly` **circuitId**: `string`
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_C_LEDGER8_RECIPIENT_UNMAPPABLE"` = `CONTRACTS_ERROR_CODES.LEDGER8_RECIPIENT_UNMAPPABLE`
+
+#### Overrides
+
+[`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../../../midnight-js/classes/MidnightJsError.md#code)
 
 ***
 

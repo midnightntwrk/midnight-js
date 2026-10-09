@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -28,7 +28,7 @@ The offending value that was passed. Carried for
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](MidnightJsError.md)
 
 ## Constructors
 
@@ -48,13 +48,27 @@ The offending value that was passed. Carried for
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](MidnightJsError.md).[`constructor`](MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](MidnightJsError.md).[`category`](MidnightJsError.md#category)
+
+***
 
 ### code
 
 > `readonly` **code**: `"MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS"` = `PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS`
+
+#### Overrides
+
+[`MidnightJsError`](MidnightJsError.md).[`code`](MidnightJsError.md#code)
 
 ***
 

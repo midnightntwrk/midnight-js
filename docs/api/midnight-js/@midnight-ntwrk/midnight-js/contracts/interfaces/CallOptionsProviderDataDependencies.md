@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -15,6 +15,14 @@ Data retrieved via providers that should be included in the call options.
 > `readonly` **coinPublicKey**: `string`
 
 The Zswap public key of the current user.
+
+***
+
+### config
+
+> `readonly` **config**: [`MidnightConfig`](../../types/interfaces/MidnightConfig.md)
+
+Network and transaction settings, normally `providers.config`.
 
 ***
 

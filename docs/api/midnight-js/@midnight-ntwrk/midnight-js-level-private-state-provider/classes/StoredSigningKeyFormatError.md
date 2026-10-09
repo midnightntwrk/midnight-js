@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
 
 ***
 
@@ -11,7 +11,7 @@ Thrown when a signing key read from the store is neither a structured
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../midnight-js/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -31,9 +31,29 @@ Thrown when a signing key read from the store is neither a structured
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../midnight-js/classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../midnight-js/classes/MidnightJsError.md).[`category`](../../midnight-js/classes/MidnightJsError.md#category)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_PR_STORED_SIGNING_KEY_INVALID"` = `PROVIDER_ERROR_CODES.STORED_SIGNING_KEY_INVALID`
+
+#### Overrides
+
+[`MidnightJsError`](../../midnight-js/classes/MidnightJsError.md).[`code`](../../midnight-js/classes/MidnightJsError.md#code)
+
+***
 
 ### contractAddress
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
 
 ***
 
@@ -276,12 +276,14 @@ is the point of leaving that guard in `types` rather than lifting it here.
 `atSeam` runs one provider seam call and converts a rejection into
 `Ledger8SeamFailedError` with the failure sanitized onto `cause`.
 
-This framework's OWN coded errors pass through UNCHANGED. They carry no external
-payload, and a caller narrowing on `V8PayloadUnsupportedError` — the refusal a
-current-era-only provider raises on the way in — or on
-`EraInvariantViolationError` has to keep seeing them. `hasErrorCode` is the
-registry-backed test for that, so a foreign coded error (a Node `ECONNREFUSED`,
-say) is still treated as external and sanitized.
+This framework's OWN coded errors pass through UNCHANGED when they carry no
+`cause`. They then hold no external payload, and a caller narrowing on
+`V8PayloadUnsupportedError` — the refusal a current-era-only provider raises on
+the way in — or on `EraInvariantViolationError` has to keep seeing them. A coded
+error that carries a `cause` — `ProofServerError` wrapping a transport failure,
+say — holds external material on that cause, so it is sanitized like any other
+rejection. `hasErrorCode` is the registry-backed test, so a foreign coded error
+(a Node `ECONNREFUSED`, say) is always treated as external and sanitized.
 
 `sanitizeSeamCause` rebuilds an external failure as a plain `Error`. Exactly one
 thing is DROPPED and the rest is kept REDACTED, and the split is deliberate.

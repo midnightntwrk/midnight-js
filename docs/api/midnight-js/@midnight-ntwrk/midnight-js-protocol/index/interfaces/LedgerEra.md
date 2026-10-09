@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -157,8 +157,13 @@ that slot was never deployed, not that the key is empty.
 
 #### Throws
 
-StateDecodeFailedError if this era's decoder rejects `raw`, or if
-the state cannot resolve an entry point it declares itself.
+StateDecodeFailedError if this era's decoder rejects `raw`.
+
+#### Throws
+
+StateInconsistentError if the decoded state is internally
+inconsistent — an entry point it cannot resolve, a verifier key that will
+not hash, or no usable balance.
 
 #### See
 

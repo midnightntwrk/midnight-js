@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -44,7 +44,7 @@ The decoded state, or `null` when the read surface reports no contract at
 
 ## Throws
 
-TypeError if `contractAddress` is not a well-formed contract address.
+InvalidArgumentError if `contractAddress` is not a well-formed contract address.
 
 ## Throws
 
@@ -53,6 +53,10 @@ TagParseError if the served payload carries no supported contract-state envelope
 ## Throws
 
 StateDecodeFailedError if the envelope's own era cannot read the state behind it.
+
+## Throws
+
+StateInconsistentError if the decoded state is internally inconsistent.
 
 ## Throws
 

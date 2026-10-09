@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
 
 ***
 
@@ -26,15 +26,13 @@ registered code all stay reachable.
 Reachable only AFTER submission. Every refusal ahead of it is raised with no
 key having been sampled.
 
-Carries no registered error code of its own.
-
 ## See
 
 [ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for why one class covers the whole window.
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -71,9 +69,29 @@ refused by.
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../../../midnight-js/classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../../../midnight-js/classes/MidnightJsError.md#category)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED"` = `CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_UNCONFIRMED`
+
+#### Overrides
+
+[`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../../../midnight-js/classes/MidnightJsError.md#code)
+
+***
 
 ### contractAddress
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -42,3 +42,23 @@ inspect network details and the original stack.
 #### Overrides
 
 [`IndexerError`](IndexerError.md).[`constructor`](IndexerError.md#constructor)
+
+## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`IndexerError`](IndexerError.md).[`category`](IndexerError.md#category)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_PR_INDEXER_QUERY_FAILED"` = `PROVIDER_ERROR_CODES.INDEXER_QUERY_FAILED`
+
+#### Overrides
+
+[`IndexerError`](IndexerError.md).[`code`](IndexerError.md#code)

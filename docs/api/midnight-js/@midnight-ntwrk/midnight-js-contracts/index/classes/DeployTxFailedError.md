@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -35,6 +35,16 @@ The finalization data of the deployment transaction that failed.
 [`TxFailedError`](TxFailedError.md).[`constructor`](TxFailedError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Inherited from
+
+[`TxFailedError`](TxFailedError.md).[`category`](TxFailedError.md#category)
+
+***
 
 ### circuitId?
 

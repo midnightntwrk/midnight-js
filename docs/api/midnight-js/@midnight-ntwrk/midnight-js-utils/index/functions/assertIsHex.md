@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -31,12 +31,12 @@ then any number of bytes can be represented by `source`.
 
 ## Throws
 
-`Error`
+`InvalidArgumentError`
 `byteLen` is \<= zero. Valid hex-strings will be required to have at least one byte.
 
 ## Throws
 
-`TypeError`
+`InvalidArgumentError`
 `source` is not a hex-encoded string because it:
 - is empty,
 - contains invalid or incomplete characters, or

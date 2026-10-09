@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -54,6 +54,16 @@ The name of the circuit that was called to create the call
 [`AnyEraTxFailedError`](AnyEraTxFailedError.md).[`constructor`](AnyEraTxFailedError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)
+
+#### Inherited from
+
+[`AnyEraTxFailedError`](AnyEraTxFailedError.md).[`category`](AnyEraTxFailedError.md#category)
+
+***
 
 ### circuitId?
 

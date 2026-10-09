@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -12,7 +12,7 @@ never compiled for) the deployed contract.
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -33,9 +33,8 @@ The location that could not be resolved.
 readonly `unknown`[]
 
 Errors raised by individual sources while probing their verifier key
-(integrity violations, permission/IO failures, or a genuine absence of the circuit). They are
-attached as this error's `cause` so a real failure — for example a `ZkArtifactIntegrityError` —
-is not hidden behind the "missing or stale" message.
+(permission/IO failures, or a genuine absence of the circuit). They are attached as this error's
+`cause` so none is lost. An integrity or transient failure is thrown instead of this error.
 
 #### Returns
 
@@ -43,9 +42,29 @@ is not hidden behind the "missing or stale" message.
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`constructor`](../../classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`category`](../../classes/MidnightJsError.md#category)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_FOUND"`
+
+#### Overrides
+
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`code`](../../classes/MidnightJsError.md#code)
+
+***
 
 ### keyLocation
 

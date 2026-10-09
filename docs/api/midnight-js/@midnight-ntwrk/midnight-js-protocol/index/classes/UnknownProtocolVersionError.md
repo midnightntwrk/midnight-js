@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -40,7 +40,7 @@ A malformed input (wrong shape or type, not a
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](MidnightJsError.md)
 
 ## Constructors
 
@@ -68,13 +68,27 @@ A malformed input (wrong shape or type, not a
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](MidnightJsError.md).[`constructor`](MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](MidnightJsError.md).[`category`](MidnightJsError.md#category)
+
+***
 
 ### code
 
 > `readonly` **code**: `"MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_READ"` \| `"MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_CONSTRUCT"`
+
+#### Overrides
+
+[`MidnightJsError`](MidnightJsError.md).[`code`](MidnightJsError.md#code)
 
 ***
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -6,25 +6,31 @@
 
 # Class: IncompleteDeployContractPrivateStateConfig
 
-An error indicating that an initial private state was specified for a contract deploy while a
-private state ID was not. We can't store the initial private state if we don't have a private state ID,
-and we need to let the user know that.
+An error indicating that a contract deploy named only one half of the private-state pairing:
+an initial private state with no private state ID to store it under, or a private state ID with
+no initial private state to store. The message names the missing half.
 
-Raised by the RETAINED-era deploy arm, which is its only throw site today. It stays on the flat
-surface rather than under the `Ledger8` namespace because it is the deploy member of the
-three-refusal family `IncompleteCallTxPrivateStateConfig` and
+Raised by `deployContract` (both eras) and `submitDeployTx`, before any provider is touched.
+It stays on the flat surface rather than under the `Ledger8` namespace because it is the deploy
+member of the three-refusal family `IncompleteCallTxPrivateStateConfig` and
 [IncompleteFindContractPrivateStateConfig](IncompleteFindContractPrivateStateConfig.md) belong to — one client-side rule per entry
 point, and client-side storage is era-independent.
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../classes/MidnightJsError.md)
 
 ## Constructors
 
 ### Constructor
 
-> **new IncompleteDeployContractPrivateStateConfig**(): `IncompleteDeployContractPrivateStateConfig`
+> **new IncompleteDeployContractPrivateStateConfig**(`missing?`): `IncompleteDeployContractPrivateStateConfig`
+
+#### Parameters
+
+##### missing?
+
+`"privateStateId"` \| `"initialPrivateState"`
 
 #### Returns
 
@@ -32,4 +38,24 @@ point, and client-side storage is era-independent.
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`constructor`](../../classes/MidnightJsError.md#constructor)
+
+## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`category`](../../classes/MidnightJsError.md#category)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_C_INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG"`
+
+#### Overrides
+
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`code`](../../classes/MidnightJsError.md#code)

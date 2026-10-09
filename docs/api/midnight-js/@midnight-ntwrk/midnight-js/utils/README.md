@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
 
 ***
 
@@ -44,21 +44,27 @@
 
 - [classify](variables/classify.md)
 - [computeSha256Hex](variables/computeSha256Hex.md)
+- [CONTRACTS\_ERROR\_CATEGORIES](variables/CONTRACTS_ERROR_CATEGORIES.md)
 - [CONTRACTS\_ERROR\_CODES](variables/CONTRACTS_ERROR_CODES.md)
 - [contractStateEnvelopeVersion](variables/contractStateEnvelopeVersion.md)
+- [createMidnightProviders](variables/createMidnightProviders.md)
 - [decodeLedgerStateValue](variables/decodeLedgerStateValue.md)
 - [deserializeCompactContractState](variables/deserializeCompactContractState.md)
 - [deserializeContractState](variables/deserializeContractState.md)
 - [deserializeLedgerParameters](variables/deserializeLedgerParameters.md)
 - [deserializeLedgerTransaction](variables/deserializeLedgerTransaction.md)
 - [deserializeZswapChainState](variables/deserializeZswapChainState.md)
+- [errorCategory](variables/errorCategory.md)
 - [fromHex](variables/fromHex.md)
+- [intentTtl](variables/intentTtl.md)
 - [isDeserializationError](variables/isDeserializationError.md)
 - [isHex](variables/isHex.md)
+- [isMidnightJsError](variables/isMidnightJsError.md)
 - [isValidSigningKey](variables/isValidSigningKey.md)
 - [ledgerParametersEnvelopeVersion](variables/ledgerParametersEnvelopeVersion.md)
 - [MAX\_CONSECUTIVE\_REPEATED](variables/MAX_CONSECUTIVE_REPEATED.md)
 - [MAX\_SAFE\_NAME\_LENGTH](variables/MAX_SAFE_NAME_LENGTH.md)
+- [MIDNIGHT\_JS\_ERROR\_CATEGORY\_BY\_CODE](variables/MIDNIGHT_JS_ERROR_CATEGORY_BY_CODE.md)
 - [MIDNIGHT\_JS\_ERROR\_CODES](variables/MIDNIGHT_JS_ERROR_CODES.md)
 - [MIN\_CHARACTER\_CLASSES](variables/MIN_CHARACTER_CLASSES.md)
 - [MIN\_PASSWORD\_LENGTH](variables/MIN_PASSWORD_LENGTH.md)
@@ -68,10 +74,12 @@
 - [parseHex](variables/parseHex.md)
 - [parseSerializedTag](variables/parseSerializedTag.md)
 - [PATTERNS](variables/PATTERNS.md)
+- [PROVIDER\_ERROR\_CATEGORIES](variables/PROVIDER_ERROR_CATEGORIES.md)
 - [PROVIDER\_ERROR\_CODES](variables/PROVIDER_ERROR_CODES.md)
 - [SOURCE\_PACKAGES](variables/SOURCE_PACKAGES.md)
 - [toHex](variables/toHex.md)
 - [ttlOneHour](variables/ttlOneHour.md)
+- [UTILS\_ERROR\_CATEGORIES](variables/UTILS_ERROR_CATEGORIES.md)
 - [UTILS\_ERROR\_CODES](variables/UTILS_ERROR_CODES.md)
 - [validatePassword](variables/validatePassword.md)
 - [withDeserializationContext](variables/withDeserializationContext.md)
@@ -89,9 +97,22 @@
 - [assertSafeName](functions/assertSafeName.md)
 - [assertSemVer](functions/assertSemVer.md)
 - [assertUndefined](functions/assertUndefined.md)
+- [assertValidMidnightConfig](functions/assertValidMidnightConfig.md)
 - [hasErrorCode](functions/hasErrorCode.md)
 - [hasForeignErrorCode](functions/hasForeignErrorCode.md)
 - [parseZkArtifactManifest](functions/parseZkArtifactManifest.md)
 - [parseZkArtifactRuntimeVersion](functions/parseZkArtifactRuntimeVersion.md)
 - [verifyZkArtifactIntegrity](functions/verifyZkArtifactIntegrity.md)
 - [warnIfInsecureRemoteUrl](functions/warnIfInsecureRemoteUrl.md)
+
+## References
+
+### MIDNIGHT\_JS\_ERROR\_CATEGORIES
+
+Re-exports [MIDNIGHT_JS_ERROR_CATEGORIES](../variables/MIDNIGHT_JS_ERROR_CATEGORIES.md)
+
+***
+
+### MidnightJsErrorCategory
+
+Re-exports [MidnightJsErrorCategory](../type-aliases/MidnightJsErrorCategory.md)

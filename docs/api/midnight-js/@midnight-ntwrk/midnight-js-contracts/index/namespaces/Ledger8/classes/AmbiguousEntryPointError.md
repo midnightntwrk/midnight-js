@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
 
 ***
 
@@ -15,13 +15,12 @@ would let the pre-proving key check pass against one slot while the chain
 dispatches the proof on another, which is a paid-for proof rejected at
 submission — the exact late failure that check exists to prevent.
 
-Carries no registered error code: it reports a chain state this package
-cannot act on, and there is no remediation a caller can apply beyond
-reporting it.
+It reports a chain state this package cannot act on, and there is no remediation a caller can apply
+beyond reporting it.
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -45,13 +44,33 @@ reporting it.
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../../../midnight-js/classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../../../midnight-js/classes/MidnightJsError.md#category)
+
+***
 
 ### circuitId
 
 > `readonly` **circuitId**: `string`
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_C_LEDGER8_AMBIGUOUS_ENTRY_POINT"` = `CONTRACTS_ERROR_CODES.LEDGER8_AMBIGUOUS_ENTRY_POINT`
+
+#### Overrides
+
+[`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../../../midnight-js/classes/MidnightJsError.md#code)
 
 ***
 

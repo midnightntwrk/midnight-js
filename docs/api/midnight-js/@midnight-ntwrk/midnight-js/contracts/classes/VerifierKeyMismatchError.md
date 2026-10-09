@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -21,7 +21,7 @@ address — because either one shows up here as a key that does not match the sl
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -43,9 +43,19 @@ The entry point whose key did not match.
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`constructor`](../../classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`category`](../../classes/MidnightJsError.md#category)
+
+***
 
 ### circuitId
 
@@ -56,3 +66,7 @@ The entry point whose key did not match.
 ### code
 
 > `readonly` **code**: `"MIDNIGHT_JS_C_VERIFIER_KEY_MISMATCH"`
+
+#### Overrides
+
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`code`](../../classes/MidnightJsError.md#code)

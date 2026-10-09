@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
 
 ***
 
@@ -20,8 +20,6 @@ the store refused.
 [Ledger8DeployNotStoredError.signingKey](#signingkey) is NAMED but never rendered
 into the message.
 
-Carries no registered error code of its own.
-
 ## See
 
 [ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for the after-submission region this closes and
@@ -29,7 +27,7 @@ why the key rides along even where only one write can strand it.
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -72,9 +70,29 @@ What the private-state provider rejected with.
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../../../midnight-js/classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../../../midnight-js/classes/MidnightJsError.md#category)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_C_LEDGER8_DEPLOY_NOT_STORED"` = `CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_NOT_STORED`
+
+#### Overrides
+
+[`MidnightJsError`](../../../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../../../midnight-js/classes/MidnightJsError.md#code)
+
+***
 
 ### contractAddress
 

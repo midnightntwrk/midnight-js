@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
 
 ***
 
@@ -15,19 +15,24 @@
 - [AnyEraTxFailedError](classes/AnyEraTxFailedError.md)
 - [BlankVerifierKeySlotError](classes/BlankVerifierKeySlotError.md)
 - [CallTxFailedError](classes/CallTxFailedError.md)
+- [ContractNotFoundError](classes/ContractNotFoundError.md)
 - [ContractTypeError](classes/ContractTypeError.md)
 - [DeployTxFailedError](classes/DeployTxFailedError.md)
 - [EraArtifactMismatchError](classes/EraArtifactMismatchError.md)
 - [EraInvariantViolationError](classes/EraInvariantViolationError.md)
+- [HeadReadFailedError](classes/HeadReadFailedError.md)
 - [HeadStateEraMismatchError](classes/HeadStateEraMismatchError.md)
 - [IncompleteCallTxPrivateStateConfig](classes/IncompleteCallTxPrivateStateConfig.md)
 - [IncompleteDeployContractPrivateStateConfig](classes/IncompleteDeployContractPrivateStateConfig.md)
 - [IncompleteFindContractPrivateStateConfig](classes/IncompleteFindContractPrivateStateConfig.md)
 - [IndexerInconsistencyError](classes/IndexerInconsistencyError.md)
 - [InsertVerifierKeyTxFailedError](classes/InsertVerifierKeyTxFailedError.md)
+- [LedgerParametersUnservedError](classes/LedgerParametersUnservedError.md)
 - [MixedEraScopeError](classes/MixedEraScopeError.md)
+- [PrivateStateNotFoundError](classes/PrivateStateNotFoundError.md)
 - [RemoveVerifierKeyTxFailedError](classes/RemoveVerifierKeyTxFailedError.md)
 - [ReplaceMaintenanceAuthorityTxFailedError](classes/ReplaceMaintenanceAuthorityTxFailedError.md)
+- [RetainedArtifactOnCurrentEraStateError](classes/RetainedArtifactOnCurrentEraStateError.md)
 - [ScopedTransactionIdentityMismatchError](classes/ScopedTransactionIdentityMismatchError.md)
 - [ScopedTxEraUnsupportedError](classes/ScopedTxEraUnsupportedError.md)
 - [StaleHeadError](classes/StaleHeadError.md)
@@ -35,6 +40,7 @@
 - [TxFailedError](classes/TxFailedError.md)
 - [UnrecognisedResultEraError](classes/UnrecognisedResultEraError.md)
 - [VerifierKeyMismatchError](classes/VerifierKeyMismatchError.md)
+- [ZswapOutputResolutionError](classes/ZswapOutputResolutionError.md)
 
 ## Interfaces
 

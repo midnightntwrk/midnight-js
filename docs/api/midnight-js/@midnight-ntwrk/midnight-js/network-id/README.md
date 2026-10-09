@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
 
 ***
 
@@ -8,9 +8,9 @@
 
 ## Type Aliases
 
-- [NetworkId](type-aliases/NetworkId.md)
+- [~~NetworkId~~](type-aliases/NetworkId.md)
 
 ## Variables
 
-- [getNetworkId](variables/getNetworkId.md)
-- [setNetworkId](variables/setNetworkId.md)
+- [~~getNetworkId~~](variables/getNetworkId.md)
+- [~~setNetworkId~~](variables/setNetworkId.md)

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
 
 ***
 
@@ -10,8 +10,8 @@ Reading a contract state is the one place in `@midnightntwrk/midnight-js-protoco
 where bytes of unknown provenance meet a WASM codec that will happily answer a
 question it was never asked. This document records the discipline that keeps
 that seam honest: what the decoders treat as authoritative, why no read is
-allowed to return a plausible-looking empty answer, and why the three failures
-this seam can raise are three distinct classes rather than one.
+allowed to return a plausible-looking empty answer, and why the four failures
+this seam can raise are four distinct classes rather than one.
 
 ## The envelope is the only authority over the bytes
 
@@ -49,7 +49,19 @@ empty bytes.
 `decodeContractStateWith`
 (`packages/protocol/src/lib/shared/contract-state.ts`) holds the same line one
 level up: the whole read is covered, not just the deserialization, so no raw
-runtime error escapes this seam uncoded.
+runtime error escapes this seam uncoded. It is covered by two codes, not one.
+A failure inside the era's `deserialize` is `StateDecodeFailedError`: the bytes
+are not this era's to read, and resolving the right era may fix it. A failure
+after `deserialize` succeeded — an entry point the state cannot resolve, a
+verifier key that will not hash, no usable balance — is
+`StateInconsistentError`: the bytes were this era's, so retrying with the other
+era cannot fix it, and a caller that retried on it would loop.
+
+The second code covers every failure after `deserialize`, not only those three.
+A fault in the environment rather than the state — `hashVerifierKey` failing
+because its runtime did not load, for one — also leaves as
+`StateInconsistentError`. That still fails closed and still says not to retry
+with the other era; read `cause` before auditing the state's source.
 
 That is why the per-entry-point lookup inside it does not use `?.`. The entry
 point came from `operations()` on that same object, so a state that cannot
@@ -57,8 +69,8 @@ resolve it is internally inconsistent, not a state with a blank slot. Optional
 chaining collapsed the two into the same answer, and `verifierKey: undefined`
 has a specific documented meaning — never deployed. A whole contract reading as
 never-deployed would send a caller comparing key hashes hunting a deployment
-bug that does not exist, so this leaves as `StateDecodeFailedError` like every
-other read failure here.
+bug that does not exist, so this leaves as `StateInconsistentError`, like
+every other failure after the bytes decoded.
 
 The same refusal to accept quietly governs the structural round trip further
 down the pipeline. `decodeExecutableStateValue` (`lib/v8/executable.ts`)
@@ -71,14 +83,15 @@ envelope crosses between two physical copies of that runtime either way. A
 shape one side writes and the other merely tolerates would decode without
 complaint and execute against a state that is not the chain's.
 
-## Three failures, three remediations
+## Four failures, four remediations
 
-The seam raises three coded failures, and folding any two of them together
+The seam raises four coded failures, and folding any two of them together
 would misdescribe the fix.
 
 | Error | Reports |
 |---|---|
 | `StateDecodeFailedError` | the envelope was never readable at all by the era it was requested for |
+| `StateInconsistentError` | the envelope was readable, but the state it decoded to is internally inconsistent |
 | `DownConvertFailedError` | a raw envelope, or an already-extracted `EncodedStateValue`, could not be turned into an executable pre-fork state |
 | `Ledger8RuntimeInvalidError` | the injected pre-fork runtime cannot be used — nothing is wrong with the input |
 
@@ -86,6 +99,14 @@ would misdescribe the fix.
 reports a failure to bridge an already-extracted state into the pre-fork
 execution algebra: the first reports the envelope never having been readable at
 all. `version` names the era whose decoder rejected it.
+
+`StateInconsistentError` is distinct from `StateDecodeFailedError` because the
+remediation is opposite: the first says the bytes were this era's to read, the
+second says they may belong to the other era. A caller can tell the two apart
+by `code` alone. `STATE_DECODE_FAILED` is worth a retry only when the era was
+chosen from something other than the envelope, such as a reported protocol
+version. `getAnyEraContractState` already reads the era off the envelope, so
+there a retry with the other era cannot help either.
 
 `Ledger8RuntimeInvalidError` is separate from `DownConvertFailedError` because
 the remediation is unrelated: nothing is wrong with the caller's input. Folding
@@ -187,7 +208,8 @@ truncated, trailing-bytes and empty input in its own message; that detail is
 preserved on `cause`. `StateDecodeFailedError` likewise renders no hex and no
 byte dump of its own, and preserves the decoder's own diagnosis — which
 distinguishes a tag mismatch from truncated, trailing or empty input — on
-`cause`.
+`cause`. `StateInconsistentError` renders no hex and no decoded state contents
+either; what was inconsistent is on `cause`.
 
 The property has to hold on the two errors that carry an offending value, or it
 is not worth having:

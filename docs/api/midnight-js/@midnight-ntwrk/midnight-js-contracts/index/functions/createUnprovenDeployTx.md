@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -20,6 +20,19 @@ The providers to use to create the deploy transaction.
 **options**
 
 Configuration.
+
+## Throws
+
+ConfigurationError If `providers.config` is missing.
+
+## Throws
+
+InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
+        whitespace.
+
+## Throws
+
+InvalidArgumentError If `providers.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
 
 ## Remarks
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -25,7 +25,7 @@ anything that could carry transaction or witness material — see
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -62,9 +62,19 @@ The submit rejection, already sanitized.
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../midnight-js/classes/MidnightJsError.md#category)
+
+***
 
 ### circuitId
 
@@ -77,6 +87,10 @@ The entry point that was run, so a caller with several in flight knows which.
 ### code
 
 > `readonly` **code**: `"MIDNIGHT_JS_C_STALE_HEAD"` = `CONTRACTS_ERROR_CODES.STALE_HEAD`
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../midnight-js/classes/MidnightJsError.md#code)
 
 ***
 
