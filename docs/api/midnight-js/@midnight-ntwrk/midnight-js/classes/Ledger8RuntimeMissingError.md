@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
 
 ***
 
@@ -35,7 +35,7 @@ The underlying module-resolution or initialisation failure,
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](MidnightJsError.md)
 
 ## Constructors
 
@@ -59,13 +59,27 @@ The underlying module-resolution or initialisation failure,
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](MidnightJsError.md).[`constructor`](MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](MidnightJsError.md).[`category`](MidnightJsError.md#category)
+
+***
 
 ### code
 
 > `readonly` **code**: `"MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING"`
+
+#### Overrides
+
+[`MidnightJsError`](MidnightJsError.md).[`code`](MidnightJsError.md#code)
 
 ***
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -56,6 +56,12 @@ Re-exports [assertUndefined](../../utils/functions/assertUndefined.md)
 
 ***
 
+### assertValidMidnightConfig
+
+Re-exports [assertValidMidnightConfig](../../utils/functions/assertValidMidnightConfig.md)
+
+***
+
 ### CallSiteContext
 
 Re-exports [CallSiteContext](../../utils/interfaces/CallSiteContext.md)
@@ -80,6 +86,12 @@ Re-exports [computeSha256Hex](../../utils/variables/computeSha256Hex.md)
 
 ***
 
+### CONTRACTS\_ERROR\_CATEGORIES
+
+Re-exports [CONTRACTS_ERROR_CATEGORIES](../../utils/variables/CONTRACTS_ERROR_CATEGORIES.md)
+
+***
+
 ### CONTRACTS\_ERROR\_CODES
 
 Re-exports [CONTRACTS_ERROR_CODES](../../utils/variables/CONTRACTS_ERROR_CODES.md)
@@ -95,6 +107,12 @@ Re-exports [ContractsErrorCode](../../utils/type-aliases/ContractsErrorCode.md)
 ### contractStateEnvelopeVersion
 
 Re-exports [contractStateEnvelopeVersion](../../utils/variables/contractStateEnvelopeVersion.md)
+
+***
+
+### createMidnightProviders
+
+Re-exports [createMidnightProviders](../../utils/variables/createMidnightProviders.md)
 
 ***
 
@@ -158,6 +176,12 @@ Re-exports [Direction](../../utils/type-aliases/Direction.md)
 
 ***
 
+### errorCategory
+
+Re-exports [errorCategory](../../utils/variables/errorCategory.md)
+
+***
+
 ### ExtractedInfo
 
 Re-exports [ExtractedInfo](../../utils/interfaces/ExtractedInfo.md)
@@ -182,6 +206,12 @@ Re-exports [hasForeignErrorCode](../../utils/functions/hasForeignErrorCode.md)
 
 ***
 
+### intentTtl
+
+Re-exports [intentTtl](../../utils/variables/intentTtl.md)
+
+***
+
 ### isDeserializationError
 
 Re-exports [isDeserializationError](../../utils/variables/isDeserializationError.md)
@@ -191,6 +221,12 @@ Re-exports [isDeserializationError](../../utils/variables/isDeserializationError
 ### isHex
 
 Re-exports [isHex](../../utils/variables/isHex.md)
+
+***
+
+### isMidnightJsError
+
+Re-exports [isMidnightJsError](../../utils/variables/isMidnightJsError.md)
 
 ***
 
@@ -218,9 +254,27 @@ Re-exports [MAX_SAFE_NAME_LENGTH](../../utils/variables/MAX_SAFE_NAME_LENGTH.md)
 
 ***
 
+### MIDNIGHT\_JS\_ERROR\_CATEGORIES
+
+Re-exports [MIDNIGHT_JS_ERROR_CATEGORIES](../../variables/MIDNIGHT_JS_ERROR_CATEGORIES.md)
+
+***
+
+### MIDNIGHT\_JS\_ERROR\_CATEGORY\_BY\_CODE
+
+Re-exports [MIDNIGHT_JS_ERROR_CATEGORY_BY_CODE](../../utils/variables/MIDNIGHT_JS_ERROR_CATEGORY_BY_CODE.md)
+
+***
+
 ### MIDNIGHT\_JS\_ERROR\_CODES
 
 Re-exports [MIDNIGHT_JS_ERROR_CODES](../../utils/variables/MIDNIGHT_JS_ERROR_CODES.md)
+
+***
+
+### MidnightJsErrorCategory
+
+Re-exports [MidnightJsErrorCategory](../../type-aliases/MidnightJsErrorCategory.md)
 
 ***
 
@@ -320,6 +374,12 @@ Re-exports [PATTERNS](../../utils/variables/PATTERNS.md)
 
 ***
 
+### PROVIDER\_ERROR\_CATEGORIES
+
+Re-exports [PROVIDER_ERROR_CATEGORIES](../../utils/variables/PROVIDER_ERROR_CATEGORIES.md)
+
+***
+
 ### PROVIDER\_ERROR\_CODES
 
 Re-exports [PROVIDER_ERROR_CODES](../../utils/variables/PROVIDER_ERROR_CODES.md)
@@ -365,6 +425,12 @@ Re-exports [ttlOneHour](../../utils/variables/ttlOneHour.md)
 ### UnhandledUnionMemberError
 
 Re-exports [UnhandledUnionMemberError](../../utils/classes/UnhandledUnionMemberError.md)
+
+***
+
+### UTILS\_ERROR\_CATEGORIES
+
+Re-exports [UTILS_ERROR_CATEGORIES](../../utils/variables/UTILS_ERROR_CATEGORIES.md)
 
 ***
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -29,7 +29,7 @@ Which physical-copy axis the check ran on — see
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](MidnightJsError.md)
 
 ## Constructors
 
@@ -49,7 +49,7 @@ Which physical-copy axis the check ran on — see
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](MidnightJsError.md).[`constructor`](MidnightJsError.md#constructor)
 
 ## Properties
 
@@ -59,6 +59,20 @@ Which physical-copy axis the check ran on — see
 
 ***
 
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](MidnightJsError.md).[`category`](MidnightJsError.md#category)
+
+***
+
 ### code
 
 > `readonly` **code**: `"MIDNIGHT_JS_P_LEDGER8_INSTANCE_MISMATCH"` = `PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH`
+
+#### Overrides
+
+[`MidnightJsError`](MidnightJsError.md).[`code`](MidnightJsError.md#code)

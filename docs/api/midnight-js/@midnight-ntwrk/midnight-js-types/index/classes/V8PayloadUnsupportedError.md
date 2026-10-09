@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -24,7 +24,7 @@ how it differs from [SeamEraUnsupportedError](SeamEraUnsupportedError.md).
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -56,7 +56,7 @@ Size of the rejected payload, recorded so a report of
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`constructor`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#constructor)
 
 ## Properties
 
@@ -72,9 +72,23 @@ Size of the rejected payload, recorded so a report of
 
 ***
 
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js-protocol/index/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`category`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#category)
+
+***
+
 ### code
 
 > `readonly` **code**: `"MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED"` = `V8_PAYLOAD_UNSUPPORTED`
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`code`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#code)
 
 ***
 

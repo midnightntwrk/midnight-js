@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -38,7 +38,7 @@ twice: by the compiler via ForeignErrorCode, and at run time by prefix.
 
 ## Throws
 
-Error if `code` carries this framework's own `MIDNIGHT_JS_` prefix.
+InvalidArgumentError if `code` carries this framework's own `MIDNIGHT_JS_` prefix.
   That is a mistake at the call site, not a property of `e`, so it is raised
   rather than reported as a non-match.
 

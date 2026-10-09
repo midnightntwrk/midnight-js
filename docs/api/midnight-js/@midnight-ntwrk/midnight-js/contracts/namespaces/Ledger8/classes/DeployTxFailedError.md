@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
 
 ***
 
@@ -18,12 +18,12 @@ maintenance authority built from
 into the message: it is the only copy of the authority over a deployment that
 may have landed.
 
-Carries no registered error code of its own.
+Carries no registered error code of its own; it inherits [AnyEraTxFailedError.code](../../../classes/AnyEraTxFailedError.md#code).
 
 ## See
 
 [ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for why a failed deploy is a separate class from a
-failed call, why no code is registered, and why the key is never rendered.
+failed call, why no code of its own is registered, and why the key is never rendered.
 
 ## Extends
 
@@ -65,6 +65,16 @@ from — sampled when the caller named none, and then this is its only copy.
 [`AnyEraTxFailedError`](../../../classes/AnyEraTxFailedError.md).[`constructor`](../../../classes/AnyEraTxFailedError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../../type-aliases/MidnightJsErrorCategory.md)
+
+#### Inherited from
+
+[`AnyEraTxFailedError`](../../../classes/AnyEraTxFailedError.md).[`category`](../../../classes/AnyEraTxFailedError.md#category)
+
+***
 
 ### code
 

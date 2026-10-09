@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -9,8 +9,8 @@
 An error indicating that a submission was rejected and that whether the
 network crossed the ledger fork under it could not be established.
 
-An `AggregateError`: the submission rejection is what happened to the
-transaction and is always the FIRST entry of `errors`, [reason](#reason) is why
+The submission rejection is what happened to the transaction and is always
+the FIRST entry of `errors`, [reason](#reason) is why
 no diagnosis could be made, and `cause` names the proximate failure.
 
 DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own.
@@ -22,7 +22,7 @@ DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own.
 
 ## Extends
 
-- `AggregateError`
+- [`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -57,9 +57,19 @@ Why no diagnosis could be made.
 
 #### Overrides
 
-`AggregateError.constructor`
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../midnight-js/classes/MidnightJsError.md#category)
+
+***
 
 ### circuitId
 
@@ -71,11 +81,23 @@ Why no diagnosis could be made.
 
 > `readonly` **code**: `"MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED"` = `CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED`
 
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../midnight-js/classes/MidnightJsError.md#code)
+
 ***
 
 ### contractAddress
 
 > `readonly` **contractAddress**: `string`
+
+***
+
+### errors
+
+> `readonly` **errors**: readonly `unknown`[]
+
+The submission rejection first, then the head-read failure when there was one.
 
 ***
 

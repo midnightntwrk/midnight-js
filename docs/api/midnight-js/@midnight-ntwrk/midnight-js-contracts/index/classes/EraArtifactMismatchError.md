@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -18,7 +18,7 @@ happens on a request that cannot succeed.
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -49,13 +49,27 @@ Carries the originating failure on `cause` -- a provider that could not serve th
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../midnight-js/classes/MidnightJsError.md#category)
+
+***
 
 ### code
 
 > `readonly` **code**: `"MIDNIGHT_JS_C_ERA_ARTIFACT_MISMATCH"` = `CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH`
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../midnight-js/classes/MidnightJsError.md#code)
 
 ***
 

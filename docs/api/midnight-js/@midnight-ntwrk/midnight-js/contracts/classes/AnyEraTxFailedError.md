@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -20,7 +20,7 @@ against, and it needs narrowing on `version` before `tx` is touched.
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../classes/MidnightJsError.md)
 
 ## Extended by
 
@@ -46,7 +46,7 @@ against, and it needs narrowing on `version` before `tx` is touched.
 
 #### Inherited from
 
-`Error.constructor`
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`constructor`](../../classes/MidnightJsError.md#constructor)
 
 ### Constructor
 
@@ -68,9 +68,19 @@ against, and it needs narrowing on `version` before `tx` is touched.
 
 #### Inherited from
 
-`Error.constructor`
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`constructor`](../../classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`category`](../../classes/MidnightJsError.md#category)
+
+***
 
 ### code
 
@@ -85,6 +95,10 @@ process. Subclasses inherit it rather than each declaring their own.
 #### See
 
 [ErrorTaxonomy](../../documents/ErrorTaxonomy.md) for why the code sits on the base.
+
+#### Overrides
+
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`code`](../../classes/MidnightJsError.md#code)
 
 ***
 

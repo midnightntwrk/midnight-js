@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -34,7 +34,7 @@ The runtime's own failure, preserved unchanged. It is what
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](MidnightJsError.md)
 
 ## Constructors
 
@@ -58,13 +58,27 @@ The runtime's own failure, preserved unchanged. It is what
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](MidnightJsError.md).[`constructor`](MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](MidnightJsError.md).[`category`](MidnightJsError.md#category)
+
+***
 
 ### code
 
 > `readonly` **code**: `"MIDNIGHT_JS_P_DOWN_CONVERT_FAILED"` = `PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED`
+
+#### Overrides
+
+[`MidnightJsError`](MidnightJsError.md).[`code`](MidnightJsError.md#code)
 
 ***
 

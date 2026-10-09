@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -11,7 +11,7 @@ private storage and export/import operations.
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -35,9 +35,29 @@ private storage and export/import operations.
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`constructor`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`category`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#category)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_U_PASSWORD_INVALID"` = `UTILS_ERROR_CODES.PASSWORD_INVALID`
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`code`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#code)
+
+***
 
 ### reason
 

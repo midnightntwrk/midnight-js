@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
 
 ***
 
@@ -109,7 +109,7 @@ The second step differs by operation kind:
 
 ## Why `SubmitRejectionUndiagnosedError` carries a code of its own
 
-Without one it would arrive as a bare `AggregateError`, and a caller branching
+Without one it would arrive as an uncoded error, and a caller branching
 on `hasErrorCode(e, LEDGER8_SEAM_FAILED)` to decide retry-or-escalate would
 escalate INTERMITTENTLY for one and the same node rejection — depending on
 whether the read surface happened to answer. Both failures here are the same
@@ -120,9 +120,10 @@ The code is its OWN rather than copied from the rejection it carries, because
 copying would make one error report two different codes depending on which of
 the two failures came first.
 
-It is an `AggregateError` because nothing may be dropped: the submission
-rejection is what happened to the transaction, and the reason on `.reason` is
-why no diagnosis could be made. `cause` names the proximate failure so a
+It is a `MidnightJsError` that carries an `errors` list (the submission
+rejection first, then the failed head read when there was one) because nothing
+may be dropped: the submission rejection is what happened to the transaction,
+and the reason on `.reason` is why no diagnosis could be made. `cause` names the proximate failure so a
 consumer walking only cause chains still lands somewhere useful.
 
 A head integer that cannot be placed on the era timeline arrives on the
@@ -183,9 +184,10 @@ The three outcomes are kept apart on purpose:
 - **No third argument** is the normal case.
 - **A real scope** is the mixed-era refusal, `MixedEraScopeError`.
 - **Anything else** — `null`, or a stray value a JavaScript caller passed by
-  mistake — is a malformed argument and gets a bare `TypeError`. Reporting it as
+  mistake — is a malformed argument and gets an `InvalidArgumentError`
+  (`MIDNIGHT_JS_G_INVALID_ARGUMENT`, category `USAGE`). Reporting it as
   "this circuit cannot join a scope" would name a scope the caller never had and
-  send it looking for batching it never asked for. A bare `TypeError` rather
-  than a registered code, because a registered code is a published consumer
-  surface for a condition worth branching on, and "you passed the wrong thing"
-  is a mistake to fix, not a state to handle.
+  send it looking for batching it never asked for. It is coded because every
+  midnight-js error is: a caller recognises it with `hasErrorCode` or
+  `errorCategory`, and `USAGE` says it is a mistake to fix rather than a state to
+  handle. See [ADR 0017](../../../_media/0017-error-codes-are-the-contract.md).

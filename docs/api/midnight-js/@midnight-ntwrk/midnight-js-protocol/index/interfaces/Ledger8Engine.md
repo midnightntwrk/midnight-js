@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -61,7 +61,7 @@ DownConvertFailedError At stage `'state down-convert'` when the
 
 #### Throws
 
-Error When the contract declares no circuit of that name.
+InvalidArgumentError When the contract declares no circuit of that name.
 
 ***
 

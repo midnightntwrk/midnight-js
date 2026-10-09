@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -25,22 +25,27 @@ Configuration.
 
 ## Throws
 
-Error Improper `privateStateId` and `initialPrivateState` configuration.
+InvalidArgumentError `privateStateId` is present with an undefined value.
 
 ## Throws
 
-Error No contract state could be found at `contractAddress`.
+PrivateStateNotFoundError `privateStateId` is named, no `initialPrivateState` is given, and
+                                  nothing is stored under it.
 
 ## Throws
 
-Error The public data provider cannot decode the current contract state. The indexer
-              provider throws `IndexerDataError` for a contract deployed before the ledger fork
-              that has had no state-changing call since; that call can only be made with the
-              pre-fork artifacts.
+ContractNotFoundError No contract state could be found at `contractAddress`.
 
 ## Throws
 
-TypeError Thrown if `contractAddress` is not correctly formatted as a contract address.
+IndexerDataError The public data provider cannot decode the current contract state. The
+              indexer provider throws it for a contract deployed before the ledger fork that has
+              had no state-changing call since; that call can only be made with the pre-fork
+              artifacts.
+
+## Throws
+
+InvalidArgumentError Thrown if `contractAddress` is not correctly formatted as a contract address.
 
 ## Throws
 

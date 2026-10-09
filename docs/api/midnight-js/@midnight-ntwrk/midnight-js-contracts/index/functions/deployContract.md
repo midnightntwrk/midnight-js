@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -60,17 +60,19 @@ Ledger8DeployUnconfirmedError If what the chain did with a submitted retained-er
 
 ## Throws
 
-IncompleteDeployContractPrivateStateConfig If an `initialPrivateState` reaches the
-                                                   retained arm with no `privateStateId` to store
-                                                   it under.
+IncompleteDeployContractPrivateStateConfig If `privateStateId` is present without
+                                                   `initialPrivateState`, or `initialPrivateState`
+                                                   holds a value without `privateStateId`. The
+                                                   option types refuse both shapes, so only a
+                                                   caller the compiler never checked can reach it.
+                                                   Raised on both eras, before any provider is
+                                                   touched.
 
 ## Throws
 
-Error If `privateStateId` is present with an undefined value, which is a caller that
-              believes it named an id. Raised on both eras, before any transaction is built.
-              NOT raised for a `privateStateId` present with a usable value and no
-              `initialPrivateState` beside it: the option types refuse that pairing, so only a
-              caller the compiler never checked can reach it, and it deploys as it always did.
+InvalidArgumentError If `privateStateId` is present with an undefined value, which is a caller that
+              believes it named an id. Raised on both eras, before any provider is touched, and
+              ahead of the pairing refusal.
 
 ## Call Signature
 

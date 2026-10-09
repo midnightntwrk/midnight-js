@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v5.0.0-rc.3**](../README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-rc.4**](../README.md)
 
 ***
 
@@ -51,3 +51,9 @@ An object containing all configured providers:
   - proofProvider: For generating and verifying proofs
   - walletProvider: For midnightWalletProvider operations
   - midnightProvider: For Midnight-specific operations
+  - config: The environment's network id and a one-hour TTL
+
+## Throws
+
+InvalidArgumentError If `environmentConfiguration.networkId` is not a non-empty string without surrounding whitespace,
+  reported by createMidnightProviders as `providers.config.networkId`.

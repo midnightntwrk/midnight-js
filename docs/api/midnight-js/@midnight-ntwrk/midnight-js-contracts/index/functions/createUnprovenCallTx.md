@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -33,6 +33,19 @@ Optional scoped transaction context to participate in an
 IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privateStateProvider`
                                           was not. We assume that when a user gives a `privateStateId`,
                                           they want to update the private state store.
+
+## Throws
+
+ConfigurationError If `providers.config` is missing.
+
+## Throws
+
+InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
+        whitespace.
+
+## Throws
+
+InvalidArgumentError If `providers.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
 
 ## Remarks
 

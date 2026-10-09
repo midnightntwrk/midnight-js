@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -107,3 +107,8 @@ location (for example, a `midnight/` protocol builtin, which provers resolve els
 
 ZKArtifactNotFoundError If `keyLocation` is a contract key location but no source's
 verifier key for the circuit matches the embedded hash.
+
+#### Throws
+
+The INTEGRITY error, or else the TRANSIENT error, a source raised while probing, when no
+source matches and one of them failed that way.

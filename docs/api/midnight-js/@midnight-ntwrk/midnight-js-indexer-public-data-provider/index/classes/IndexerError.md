@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -11,10 +11,12 @@ them with a single `instanceof IndexerError` check.
 
 NOT EXHAUSTIVE OVER A READ. Two failure classes deliberately escape this
 check: `DeserializationError` (`@midnight-ntwrk/midnight-js-utils`) and
-`Ledger8RuntimeMissingError` (`@midnight-ntwrk/midnight-js-protocol`).
+`Ledger8RuntimeMissingError` (`@midnight-ntwrk/midnight-js-protocol`). Both
+are `MidnightJsError`s, so `isMidnightJsError` recognises them as well as
+every `IndexerError`. A failure from a dependency can still pass through
+uncoded.
 
-A consumer that needs to catch everything a read can raise should catch
-broadly and branch, or match on `code` via `hasErrorCode` from
+To branch on one failure, match on `code` via `hasErrorCode` from
 `@midnight-ntwrk/midnight-js-utils`.
 
 ## See
@@ -24,7 +26,7 @@ wrapping it here would mislead.
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md)
 
 ## Extended by
 
@@ -36,6 +38,7 @@ wrapping it here would mislead.
 - [`IndexerInvariantError`](IndexerInvariantError.md)
 - [`EraUnsupportedError`](EraUnsupportedError.md)
 - [`EraUnresolvableError`](EraUnresolvableError.md)
+- [`IndexerPayloadTooLargeError`](IndexerPayloadTooLargeError.md)
 
 ## Constructors
 
@@ -55,7 +58,7 @@ wrapping it here would mislead.
 
 #### Inherited from
 
-`Error.constructor`
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
 
 ### Constructor
 
@@ -77,4 +80,24 @@ wrapping it here would mislead.
 
 #### Inherited from
 
-`Error.constructor`
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
+
+## Properties
+
+### category
+
+> `abstract` `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Inherited from
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../midnight-js/classes/MidnightJsError.md#category)
+
+***
+
+### code
+
+> `abstract` `readonly` **code**: `` `MIDNIGHT_JS_${string}` ``
+
+#### Inherited from
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../midnight-js/classes/MidnightJsError.md#code)

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -34,3 +34,23 @@ issues — separate semantic category from [IndexerDataError](IndexerDataError.m
 #### Overrides
 
 [`IndexerError`](IndexerError.md).[`constructor`](IndexerError.md#constructor)
+
+## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`IndexerError`](IndexerError.md).[`category`](IndexerError.md#category)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_PR_INDEXER_CONFIG_INVALID"` = `PROVIDER_ERROR_CODES.INDEXER_CONFIG_INVALID`
+
+#### Overrides
+
+[`IndexerError`](IndexerError.md).[`code`](IndexerError.md#code)

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
 
 ***
 
@@ -51,6 +51,16 @@ local-versus-chain consequence the message states per status.
 [`AnyEraTxFailedError`](../../../classes/AnyEraTxFailedError.md).[`constructor`](../../../classes/AnyEraTxFailedError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../../type-aliases/MidnightJsErrorCategory.md)
+
+#### Inherited from
+
+[`AnyEraTxFailedError`](../../../classes/AnyEraTxFailedError.md).[`category`](../../../classes/AnyEraTxFailedError.md#category)
+
+***
 
 ### circuitId
 
