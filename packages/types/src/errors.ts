@@ -47,6 +47,16 @@ export type ReadSeam = 'watchForTxData' | 'watchForDeployTxData';
 export type Seam = ProviderSeam | ReadSeam;
 
 /**
+ * The {@link PublicDataProvider} methods that wait for data to appear and accept
+ * a bound on that wait.
+ */
+export type WatchOperation =
+  | 'watchForContractState'
+  | 'watchForUnshieldedBalances'
+  | 'watchForDeployTxData'
+  | 'watchForTxData';
+
+/**
  * Stable error-code strings for the providers.
  *
  * Most of the group belongs to the provider seams. `PRIVATE_STATE_NOT_SERIALIZABLE`
@@ -94,12 +104,13 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   INDEXER_SUBSCRIPTION_DATA_INVALID: 'MIDNIGHT_JS_PR_INDEXER_SUBSCRIPTION_DATA_INVALID',
   INDEXER_CONFIG_INVALID: 'MIDNIGHT_JS_PR_INDEXER_CONFIG_INVALID',
   INDEXER_INVARIANT_VIOLATED: 'MIDNIGHT_JS_PR_INDEXER_INVARIANT_VIOLATED',
-  INDEXER_PAYLOAD_TOO_LARGE: 'MIDNIGHT_JS_PR_INDEXER_PAYLOAD_TOO_LARGE'
+  INDEXER_PAYLOAD_TOO_LARGE: 'MIDNIGHT_JS_PR_INDEXER_PAYLOAD_TOO_LARGE',
+  WATCH_TIMED_OUT: 'MIDNIGHT_JS_PR_WATCH_TIMED_OUT'
 } as const);
 /** The union of every value in {@link PROVIDER_ERROR_CODES}. */
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
 
-const { USAGE, ENVIRONMENT, TRANSIENT, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
+const { USAGE, ENVIRONMENT, TRANSIENT, UNCERTAIN, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
 
 export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, MidnightJsErrorCategory>> = Object.freeze({
   [PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED]: USAGE,
@@ -131,7 +142,8 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
   [PROVIDER_ERROR_CODES.INDEXER_SUBSCRIPTION_DATA_INVALID]: INTEGRITY,
   [PROVIDER_ERROR_CODES.INDEXER_CONFIG_INVALID]: USAGE,
   [PROVIDER_ERROR_CODES.INDEXER_INVARIANT_VIOLATED]: INTERNAL,
-  [PROVIDER_ERROR_CODES.INDEXER_PAYLOAD_TOO_LARGE]: INTEGRITY
+  [PROVIDER_ERROR_CODES.INDEXER_PAYLOAD_TOO_LARGE]: INTEGRITY,
+  [PROVIDER_ERROR_CODES.WATCH_TIMED_OUT]: UNCERTAIN
 });
 
 const {
@@ -153,7 +165,8 @@ const {
   ZK_ARTIFACT_FETCH_FAILED,
   ZK_ARTIFACT_NOT_SERVED,
   PROOF_SERVER_UNAVAILABLE,
-  PROOF_SERVER_REFUSED
+  PROOF_SERVER_REFUSED,
+  WATCH_TIMED_OUT
 } = PROVIDER_ERROR_CODES;
 
 /**
@@ -651,5 +664,34 @@ export class PrivateStateLimitExceededError extends MidnightJsError {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = 'PrivateStateLimitExceededError';
+  }
+}
+
+/**
+ * Raised when a `watchFor*` call given `maxWaitMs` finds nothing within that
+ * bound. The wait is abandoned and polling stops.
+ *
+ * `UNCERTAIN`, not `TRANSIENT`: a transaction that was not seen in time may
+ * still land. Check the chain before submitting anything again.
+ */
+export class WatchTimeoutError extends MidnightJsError {
+  readonly code = WATCH_TIMED_OUT;
+  readonly category = PROVIDER_ERROR_CATEGORIES[WATCH_TIMED_OUT];
+
+  /**
+   * @param operation The method that gave up waiting.
+   * @param subject What it was waiting for, e.g. `txId <id>`.
+   * @param maxWaitMs The bound that elapsed.
+   */
+  constructor(
+    readonly operation: WatchOperation,
+    readonly subject: string,
+    readonly maxWaitMs: number
+  ) {
+    super(
+      `${operation} found nothing for ${subject} within ${maxWaitMs} ms. ` +
+        `It may still appear: check the chain before submitting again.`
+    );
+    this.name = 'WatchTimeoutError';
   }
 }
