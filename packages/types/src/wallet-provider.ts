@@ -21,6 +21,7 @@ import {
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
+import { assertValidRetainedEras } from './internal/validate-retained-eras';
 import { type UnboundTransaction,type VersionedUnboundTransaction } from './proof-provider';
 import { type VersionedTx } from './versioned';
 
@@ -105,20 +106,23 @@ export interface WalletProviderHandlers {
  * @param handlers The current-era handler, any retained-era handlers, and the two key readers.
  * @returns A {@link WalletProvider} routing each request to its era's arm.
  */
-export const createWalletProviderFromHandlers = (handlers: WalletProviderHandlers): WalletProvider => ({
-  supportedEras: erasServedBy(handlers.retainedEras),
+export const createWalletProviderFromHandlers = (handlers: WalletProviderHandlers): WalletProvider => {
+  assertValidRetainedEras('balanceTx', handlers.retainedEras);
+  return {
+    supportedEras: erasServedBy(handlers.retainedEras),
 
-  async balanceTx(tx: VersionedUnboundTransaction, ttl?: Date): Promise<VersionedFinalizedTransaction> {
-    const request = narrowToEraArm(tx, 'balanceTx', handlers.retainedEras);
-    if (request.era === CURRENT_LEDGER_VERSION) {
-      return { version: CURRENT_LEDGER_VERSION, tx: await handlers.currentEra(request.tx, ttl) };
-    }
-    return { version: request.era, txBytes: await request.handler(request.txBytes, ttl) };
-  },
+    async balanceTx(tx: VersionedUnboundTransaction, ttl?: Date): Promise<VersionedFinalizedTransaction> {
+      const request = narrowToEraArm(tx, 'balanceTx', handlers.retainedEras);
+      if (request.era === CURRENT_LEDGER_VERSION) {
+        return { version: CURRENT_LEDGER_VERSION, tx: await handlers.currentEra(request.tx, ttl) };
+      }
+      return { version: request.era, txBytes: await request.handler(request.txBytes, ttl) };
+    },
 
-  getCoinPublicKey: () => handlers.getCoinPublicKey(),
-  getEncryptionPublicKey: () => handlers.getEncryptionPublicKey()
-});
+    getCoinPublicKey: () => handlers.getCoinPublicKey(),
+    getEncryptionPublicKey: () => handlers.getEncryptionPublicKey()
+  };
+};
 
 /**
  * A {@link WalletProvider} written against the v9 ledger runtime only — the
