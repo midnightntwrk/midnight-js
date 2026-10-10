@@ -11,7 +11,7 @@ that result are two rather than one.
 
 The payloads these seams carry are
 [VersionTaggedPayloads](./version-tagged-payloads.md). The multi-era construction
-is `docs/adr/0014-build-provider-seams-from-per-era-arms.md`.
+is `docs/adr/0014-build-provider-seams-from-per-era-handlers.md`.
 
 ## The pre-flight check is about WHERE it runs
 
