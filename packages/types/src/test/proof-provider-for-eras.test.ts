@@ -14,6 +14,7 @@
  */
 
 import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
@@ -156,9 +157,55 @@ describe('createProofProviderForEras', () => {
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
       expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
       expect((rejection as V8PayloadUnsupportedError).seam).toBe('proveTx');
+    });
+
+    describe('proveTxConfig.timeout', () => {
+      it('refuses a v9 proof with a timeout before proving starts', async () => {
+        const unprovenTx = createStubUnprovenTx(createStubUnboundTx());
+        const provider = createProofProviderForEras({ currentEra: inertCurrentEraProvider });
+
+        const rejection = await provider
+          .proveTx({ version: 'v9', tx: unprovenTx }, { timeout: 5_000 })
+          .then(
+            () => undefined,
+            (error: unknown) => error
+          );
+
+        expect(rejection).toBeInstanceOf(InvalidArgumentError);
+        expect(unprovenTx.prove).not.toHaveBeenCalled();
+      });
+
+      it('refuses a zero timeout as well, since any timeout would be ignored', async () => {
+        const unprovenTx = createStubUnprovenTx(createStubUnboundTx());
+        const provider = createProofProviderForEras({ currentEra: inertCurrentEraProvider });
+
+        await expect(
+          provider.proveTx({ version: 'v9', tx: unprovenTx }, { timeout: 0 })
+        ).rejects.toBeInstanceOf(InvalidArgumentError);
+        expect(unprovenTx.prove).not.toHaveBeenCalled();
+      });
+
+      it('proves a v9 transaction when the config carries no timeout', async () => {
+        const unboundTx = createStubUnboundTx();
+        const unprovenTx = createStubUnprovenTx(unboundTx);
+        const provider = createProofProviderForEras({ currentEra: inertCurrentEraProvider });
+
+        const result = await provider.proveTx({ version: 'v9', tx: unprovenTx }, {});
+
+        expect(result.version === 'v9' && result.tx).toBe(unboundTx);
+      });
+
+      it('proves a v9 transaction when the timeout key is present but undefined', async () => {
+        const unboundTx = createStubUnboundTx();
+        const unprovenTx = createStubUnprovenTx(unboundTx);
+        const provider = createProofProviderForEras({ currentEra: inertCurrentEraProvider });
+
+        const result = await provider.proveTx({ version: 'v9', tx: unprovenTx }, { timeout: undefined });
+
+        expect(result.version === 'v9' && result.tx).toBe(unboundTx);
+      });
     });
   });
 
@@ -281,6 +328,37 @@ describe('createProofProviderForEras', () => {
       await expect(provider.proveTx({ version: 'v9', tx: partial as UnprovenTransaction })).rejects.toThrow(
         PROVING_REFUSED
       );
+    });
+
+    it('refuses a v8 proof with a timeout before proving starts', async () => {
+      const consulted: string[] = [];
+      const provider = createProofProviderForEras({
+        currentEra: inertCurrentEraProvider,
+        retainedEras: { v8: recordingRetainedEraProvider(consulted, 'v8') }
+      });
+
+      const rejection = await provider
+        .proveTx({ version: 'v8', txBytes: circuitDrivingTxBytes }, { timeout: 5_000 })
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect(consulted).toEqual([]);
+    });
+
+    it('refuses a v8 proof with a zero timeout before proving starts', async () => {
+      const consulted: string[] = [];
+      const provider = createProofProviderForEras({
+        currentEra: inertCurrentEraProvider,
+        retainedEras: { v8: recordingRetainedEraProvider(consulted, 'v8') }
+      });
+
+      await expect(
+        provider.proveTx({ version: 'v8', txBytes: circuitDrivingTxBytes }, { timeout: 0 })
+      ).rejects.toBeInstanceOf(InvalidArgumentError);
+      expect(consulted).toEqual([]);
     });
   });
 });

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CostModel, ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -61,6 +62,55 @@ describe('createProofProvider', () => {
       // suite: two structurally-equal ledger objects can come from different
       // WASM instances, and conflating them is what this seam exists to stop.
       expect(result.version).toBe('v9');
+      expect(result.version === 'v9' && result.tx).toBe(unboundTx);
+    });
+  });
+
+  describe('proveTxConfig.timeout', () => {
+    it('refuses a proof with a timeout before proving starts', async () => {
+      const unboundTx = createStubUnboundTx();
+      const unprovenTx = createStubUnprovenTx(unboundTx);
+      const provider = createProofProvider(stubProvingProvider, stubCostModel);
+
+      const rejection = await provider
+        .proveTx({ version: 'v9', tx: unprovenTx }, { timeout: 5_000 })
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect(unprovenTx.prove).not.toHaveBeenCalled();
+    });
+
+    it('refuses a zero timeout as well, since any timeout would be ignored', async () => {
+      const unboundTx = createStubUnboundTx();
+      const unprovenTx = createStubUnprovenTx(unboundTx);
+      const provider = createProofProvider(stubProvingProvider, stubCostModel);
+
+      await expect(
+        provider.proveTx({ version: 'v9', tx: unprovenTx }, { timeout: 0 })
+      ).rejects.toBeInstanceOf(InvalidArgumentError);
+      expect(unprovenTx.prove).not.toHaveBeenCalled();
+    });
+
+    it('proves a transaction when the config carries no timeout', async () => {
+      const unboundTx = createStubUnboundTx();
+      const unprovenTx = createStubUnprovenTx(unboundTx);
+      const provider = createProofProvider(stubProvingProvider, stubCostModel);
+
+      const result = await provider.proveTx({ version: 'v9', tx: unprovenTx }, {});
+
+      expect(result.version === 'v9' && result.tx).toBe(unboundTx);
+    });
+
+    it('proves a transaction when the timeout key is present but undefined', async () => {
+      const unboundTx = createStubUnboundTx();
+      const unprovenTx = createStubUnprovenTx(unboundTx);
+      const provider = createProofProvider(stubProvingProvider, stubCostModel);
+
+      const result = await provider.proveTx({ version: 'v9', tx: unprovenTx }, { timeout: undefined });
+
       expect(result.version === 'v9' && result.tx).toBe(unboundTx);
     });
   });
