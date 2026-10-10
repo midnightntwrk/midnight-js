@@ -44,6 +44,8 @@ export type IndexerProviderConfig = {
   readonly webSocket?: typeof WebSocket;
   /** Defaults to {@link DEFAULT_POLL_INTERVAL}. Must be a positive integer. */
   readonly pollInterval?: number;
+  /** Optional custom fetch implementation. Defaults to `globalThis.fetch`. */
+  readonly fetch?: typeof globalThis.fetch;
 };
 
 /**
@@ -60,6 +62,7 @@ export type ValidatedConfig = {
   readonly subscriptionURLString: string;
   readonly webSocket: typeof WebSocket;
   readonly pollInterval: number;
+  readonly fetch?: typeof globalThis.fetch;
 };
 
 const resolvePollInterval = (value: number | undefined): number => {
@@ -108,6 +111,7 @@ export const validateConfig = (config: IndexerProviderConfig): ValidatedConfig =
     queryURLString: config.queryURL,
     subscriptionURLString: config.subscriptionURL,
     webSocket: config.webSocket ?? WebSocket,
-    pollInterval
+    pollInterval,
+    fetch: config.fetch
   };
 };
