@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -20,7 +20,7 @@ itself is incomplete and rebuilding locally cannot help.
 
 ## Extends
 
-- `TypeError`
+- [`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -56,9 +56,19 @@ The address the state was read from, when known.
 
 #### Overrides
 
-`TypeError.constructor`
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../midnight-js/classes/MidnightJsError.md#category)
+
+***
 
 ### circuitIds
 
@@ -66,6 +76,16 @@ The address the state was read from, when known.
 
 Every circuit that failed to match, whatever the reason, grouped by condition: missing first,
 then keyless, then mismatched.
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_C_CONTRACT_TYPE_MISMATCH"` = `CONTRACTS_ERROR_CODES.CONTRACT_TYPE_MISMATCH`
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../midnight-js/classes/MidnightJsError.md#code)
 
 ***
 

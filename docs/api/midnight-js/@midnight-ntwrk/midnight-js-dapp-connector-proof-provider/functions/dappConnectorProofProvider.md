@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
 
 ***
 
@@ -52,7 +52,9 @@ ignored.
 
 `Promise`\<[`ProofProvider`](../../midnight-js/types/interfaces/ProofProvider.md)\>
 
-A [ProofProvider](../../midnight-js/types/interfaces/ProofProvider.md) whose `proveTx` method delegates to the wallet.
+A [ProofProvider](../../midnight-js/types/interfaces/ProofProvider.md) whose `proveTx` method delegates to the wallet. Its `proveTx`
+rejects with `InvalidArgumentError` when `proveTxConfig.timeout` is set, before any proving
+starts, because the wallet proving API takes no timeout.
 
 ## Remarks
 

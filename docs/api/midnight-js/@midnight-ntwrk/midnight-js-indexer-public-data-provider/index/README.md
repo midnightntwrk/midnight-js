@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
 
 ***
 
@@ -14,6 +14,7 @@
 - [IndexerError](classes/IndexerError.md)
 - [IndexerFormattedError](classes/IndexerFormattedError.md)
 - [IndexerInvariantError](classes/IndexerInvariantError.md)
+- [IndexerPayloadTooLargeError](classes/IndexerPayloadTooLargeError.md)
 - [IndexerProviderConfigError](classes/IndexerProviderConfigError.md)
 - [IndexerPublicDataProvider](classes/IndexerPublicDataProvider.md)
 - [IndexerQueryError](classes/IndexerQueryError.md)

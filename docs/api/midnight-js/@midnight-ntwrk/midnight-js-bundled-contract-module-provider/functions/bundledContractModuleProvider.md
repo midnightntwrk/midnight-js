@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
 
 ***
 
@@ -33,9 +33,9 @@ entry for it — which the runtime reports as an unsupported implementation.
 
 ## Throws
 
-TypeError If a key is not a contract address.
+InvalidArgumentError If a key is not a contract address.
 
 ## Throws
 
-Error If two keys differ only in case and name different modules, since one of them would
+InvalidArgumentError If two keys differ only in case and name different modules, since one of them would
 otherwise be dropped silently.

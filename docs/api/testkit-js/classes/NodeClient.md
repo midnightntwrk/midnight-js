@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v5.0.0-rc.3**](../README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-rc.4**](../README.md)
 
 ***
 
@@ -8,7 +8,7 @@ Client for interacting with a Midnight node's JSON-RPC API
 
 ### Constructor
 
-> **new NodeClient**(`nodeURL`, `logger`): `NodeClient`
+> **new NodeClient**(`nodeURL`, `logger`, `networkId`): `NodeClient`
 
 Creates a new NodeClient instance
 
@@ -25,6 +25,12 @@ URL of the Midnight node
 `Logger`
 
 Logger instance for recording operations
+
+##### networkId
+
+`string`
+
+Network the node serves, used to address contract state
 
 #### Returns
 

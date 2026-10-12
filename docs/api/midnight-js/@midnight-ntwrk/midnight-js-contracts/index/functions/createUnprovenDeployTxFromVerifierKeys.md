@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -11,9 +11,9 @@ from the constructor results.
 
 ## Param
 
-**verifierKeys**
+**zkConfigProvider**
 
-The verifier keys for the contract being deployed.
+Supplies the verifier keys for the contract being deployed.
 
 ## Param
 
@@ -31,6 +31,27 @@ Configuration.
 
 **encryptionPublicKey**
 
+The Zswap encryption public key of the current user.
+
+## Param
+
+**config**
+
+The network the transaction is built for and how long it stays valid, normally `providers.config`.
+
+## Throws
+
+ConfigurationError If `config` is missing.
+
+## Throws
+
+InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
+        whitespace.
+
+## Throws
+
+InvalidArgumentError If `config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
+
 ## Remarks
 
 The returned [UnsubmittedDeployTxData](../interfaces/UnsubmittedDeployTxData.md) is privacy-sensitive and
@@ -40,7 +61,7 @@ serializing, or transmitting the result.
 
 ## Call Signature
 
-> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
+> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`, `config`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -66,13 +87,17 @@ serializing, or transmitting the result.
 
 `string`
 
+#### config
+
+[`MidnightConfig`](../../../midnight-js/types/interfaces/MidnightConfig.md)
+
 ### Returns
 
 `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
 
 ## Call Signature
 
-> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
+> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`, `config`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -97,6 +122,10 @@ serializing, or transmitting the result.
 #### encryptionPublicKey
 
 `string`
+
+#### config
+
+[`MidnightConfig`](../../../midnight-js/types/interfaces/MidnightConfig.md)
 
 ### Returns
 

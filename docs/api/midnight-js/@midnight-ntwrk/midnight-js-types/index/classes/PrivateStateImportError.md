@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -10,7 +10,7 @@ Base error thrown when importing private states fails.
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md)
 
 ## Extended by
 
@@ -40,9 +40,19 @@ Base error thrown when importing private states fails.
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`constructor`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js-protocol/index/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`category`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#category)
+
+***
 
 ### cause?
 
@@ -50,4 +60,14 @@ Base error thrown when importing private states fails.
 
 #### Inherited from
 
-`Error.cause`
+`MidnightJsError.cause`
+
+***
+
+### code
+
+> `readonly` **code**: `PrivateStateImportErrorCode` = `PRIVATE_STATE_IMPORT_FAILED`
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`code`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#code)

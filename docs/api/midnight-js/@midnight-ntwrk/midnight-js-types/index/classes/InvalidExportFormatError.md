@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -34,6 +34,16 @@ Error thrown when the export data format is invalid.
 
 ## Properties
 
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js-protocol/index/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`PrivateStateImportError`](PrivateStateImportError.md).[`category`](PrivateStateImportError.md#category)
+
+***
+
 ### cause?
 
 > `readonly` `optional` **cause?**: [`PrivateStateImportErrorCause`](../type-aliases/PrivateStateImportErrorCause.md)
@@ -41,3 +51,13 @@ Error thrown when the export data format is invalid.
 #### Inherited from
 
 [`PrivateStateImportError`](PrivateStateImportError.md).[`cause`](PrivateStateImportError.md#cause)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_PR_INVALID_EXPORT_FORMAT"` = `INVALID_EXPORT_FORMAT`
+
+#### Overrides
+
+[`PrivateStateImportError`](PrivateStateImportError.md).[`code`](PrivateStateImportError.md#code)

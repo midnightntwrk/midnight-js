@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: UnprovenCallTxProvidersBase
 
-> **UnprovenCallTxProvidersBase** = `Pick`\<[`ContractProviders`](ContractProviders.md), `"zkConfigProvider"` \| `"publicDataProvider"` \| `"walletProvider"` \| `"contractModuleProvider"`\>
+> **UnprovenCallTxProvidersBase** = `Pick`\<[`ContractProviders`](ContractProviders.md), `"zkConfigProvider"` \| `"publicDataProvider"` \| `"walletProvider"` \| `"contractModuleProvider"` \| `"config"`\>
 
 The minimum set of providers needed to create a call transaction, the ZK
 artifact provider and a wallet. By defining this type, users can choose to

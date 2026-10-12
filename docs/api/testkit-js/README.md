@@ -1,4 +1,4 @@
-**@midnight-ntwrk/testkit-js v5.0.0-rc.3**
+**@midnight-ntwrk/testkit-js v5.0.0-rc.4**
 
 ***
 

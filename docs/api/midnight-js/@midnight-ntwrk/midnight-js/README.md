@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../README.md)
 
 ***
 
@@ -17,10 +17,9 @@ yarn add @midnight-ntwrk/midnight-js
 ## Quick Start
 
 ```typescript
-import { contracts, networkId, types, utils } from '@midnight-ntwrk/midnight-js';
+import { contracts, types, utils } from '@midnight-ntwrk/midnight-js';
 
-networkId.setNetworkId('testnet');
-
+// providers.config carries the network id: { networkId: 'preview', ttlSeconds: 3600 }
 const deployed = await contracts.deployContract(providers, {
   compiledContract: myContract,
   privateStateId: 'my-state',
@@ -33,7 +32,7 @@ const deployed = await contracts.deployContract(providers, {
 | Module       | Package                                  | Description                                    |
 | ------------ | ---------------------------------------- | ---------------------------------------------- |
 | `contracts`  | `@midnight-ntwrk/midnight-js-contracts`  | Contract deployment and interaction utilities   |
-| `networkId`  | `@midnight-ntwrk/midnight-js-network-id` | Network identifier management                  |
+| `networkId`  | `@midnight-ntwrk/midnight-js-network-id` | Deprecated global network id (ignored by the framework since 5.0.0) |
 | `types`      | `@midnight-ntwrk/midnight-js-types`      | Shared types, interfaces, and provider contracts|
 | `utils`      | `@midnight-ntwrk/midnight-js-utils`      | Hex encoding, address validation, and utilities |
 
@@ -125,6 +124,7 @@ too, so you can catch them and read their payload without a cast:
 | `ComposeFailedError` | `version`, `stage`, `circuitId` | a circuit operation is missing or under-registered |
 | `ComposeOptionError` | `version`, `option` | one composition option cannot be used |
 | `StateDecodeFailedError` | `version` | a contract-state envelope could not be read as that era |
+| `StateInconsistentError` | `version` | a contract-state envelope was read as that era, but the state is internally inconsistent |
 | `UnknownLedgerVersionError` | `requestedVersion` | an era outside `LEDGER_VERSIONS` was requested |
 | `PayloadNotATransactionError` | none | a `v8` payload sent for proving was not a transaction |
 
@@ -144,7 +144,6 @@ Each module is also available as a sub-path import for tree-shaking:
 
 ```typescript
 import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js/contracts';
-import { setNetworkId, getNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
 import { type ProofProvider, type WalletProvider } from '@midnight-ntwrk/midnight-js/types';
 import { toHex, fromHex } from '@midnight-ntwrk/midnight-js/utils';
 ```
@@ -152,7 +151,7 @@ import { toHex, fromHex } from '@midnight-ntwrk/midnight-js/utils';
 ## Exports
 
 ```typescript
-// Namespace imports (all modules)
+// Namespace imports (all modules); `networkId` is deprecated and ignored by the framework since 5.0.0
 import { contracts, networkId, types, utils } from '@midnight-ntwrk/midnight-js';
 
 // Ledger era vocabulary (named, not namespaced)
@@ -160,7 +159,7 @@ import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js
 
 // Sub-path imports (individual modules)
 import { ... } from '@midnight-ntwrk/midnight-js/contracts';
-import { ... } from '@midnight-ntwrk/midnight-js/network-id';
+import { ... } from '@midnight-ntwrk/midnight-js/network-id'; // deprecated
 import { ... } from '@midnight-ntwrk/midnight-js/types';
 import { ... } from '@midnight-ntwrk/midnight-js/utils';
 ```

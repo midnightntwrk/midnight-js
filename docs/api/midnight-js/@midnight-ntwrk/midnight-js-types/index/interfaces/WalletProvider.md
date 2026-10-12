@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -41,8 +41,10 @@ The version-tagged transaction to balance: `{ version: 'v9', tx }` for a live v9
 
 `Date`
 
-Time-to-live for the balanced transaction. Implementation-defined when omitted;
-           the testkit's `MidnightWalletProvider` defaults to one hour.
+Expiry for the intent the wallet adds while balancing. The framework always passes
+           a `Date` `providers.config.ttlSeconds` after balancing starts; honour it rather than a
+           TTL of your own. Implementation-defined when omitted; the testkit's
+           `MidnightWalletProvider` defaults to one hour.
 
 #### Returns
 

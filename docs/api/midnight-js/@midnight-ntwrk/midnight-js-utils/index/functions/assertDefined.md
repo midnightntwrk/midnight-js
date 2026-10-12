@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -36,4 +36,4 @@ The error message to use if an error is thrown.
 
 ## Throws
 
-Error If the value is nullable.
+InvariantViolationError If the value is nullable.
