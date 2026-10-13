@@ -34,7 +34,7 @@ export default defineConfig({
     reporters: [
       'default',
       ['junit', { outputFile: './reports/test-report.xml' }],
-      ['html', { outputFile: './reports/html/index.html' }],
+      ['html', { outputDir: './reports/html' }],
       ['@d2t/vitest-ctrf-json-reporter', { outputDir: './reports/', outputFile: 'ctrf-report.json' }]
     ],
     setupFiles: []
