@@ -54,6 +54,18 @@ const keyReaders = {
   getEncryptionPublicKey: () => encryptionPublicKey
 };
 
+const revokedProxy = (): object => {
+  const { proxy, revoke } = Proxy.revocable({}, {});
+  revoke();
+  return proxy;
+};
+
+const revokedFunctionProxy = (): object => {
+  const { proxy, revoke } = Proxy.revocable(() => undefined, {});
+  revoke();
+  return proxy;
+};
+
 describe('createProofProviderFromHandlers', () => {
   it('declares exactly the current era when no retained arm is supplied', () => {
     const provider = createProofProviderFromHandlers({ currentEra: async () => stubUnbound() });
@@ -278,8 +290,12 @@ describe('createWalletProviderFromHandlers', () => {
     const provider = createWalletProviderFromHandlers(handlers);
 
     handlers.getCoinPublicKey = () => 'other-coin-pk' as CoinPublicKey;
+    handlers.getEncryptionPublicKey = () => 'other-enc-pk' as EncPublicKey;
 
-    expect(provider.getCoinPublicKey()).toBe(coinPublicKey);
+    expect([provider.getCoinPublicKey(), provider.getEncryptionPublicKey()]).toEqual([
+      coinPublicKey,
+      encryptionPublicKey
+    ]);
   });
 
   it('calls the key readers with the handlers object as `this`', () => {
@@ -461,7 +477,10 @@ describe('era arm validation at construction', () => {
       ['an object', {}, 'an object'],
       ['a string', 'not-a-function', 'a string'],
       ['a number', 42, 'a number'],
-      ['an array', [() => undefined], 'an array']
+      ['an array', [() => undefined], 'an array'],
+      ['a class', class {}, 'a class'],
+      ['a revoked function proxy', revokedFunctionProxy(), 'a function that cannot be called'],
+      ['a revoked proxy', revokedProxy(), 'an object']
     ])('refuses %s registered as a retained era arm', (_desc, value, received) => {
       const act = () => build({ currentEra, retainedEras: { v8: value } });
 
@@ -503,8 +522,21 @@ describe('era arm validation at construction', () => {
       ['a bare handler', () => retainedArm(), 'got a function'],
       ['an array', () => [retainedArm()], 'got an array'],
       ['a string', () => 'v8', 'got a string'],
-      ['a Map', () => new Map([['v8', retainedArm()]]), 'got a Map'],
-      ['a class instance', () => new (class RetainedEras {})(), 'got a RetainedEras']
+      ['a Map', () => new Map([['v8', retainedArm()]]), 'got an instance of Map'],
+      ['a class instance', () => new (class RetainedEras {})(), 'got an instance of RetainedEras'],
+      ['a non-enumerable unknown key', () => Object.defineProperty({}, 'v9', { value: retainedArm() }), 'not retained eras: v9'],
+      ['a symbol key', () => ({ [Symbol('v8')]: retainedArm() }), 'not retained eras: Symbol(v8)'],
+      [
+        'a class instance whose name getter throws',
+        () =>
+          new (class {
+            static get name(): string {
+              throw new Error('name getter');
+            }
+          })(),
+        'got an object'
+      ],
+      ['a revoked proxy', () => revokedProxy(), 'got an object']
     ])('refuses %s as the retained era map', (_desc, retainedEras, detail) => {
       const act = () => build({ currentEra, retainedEras: retainedEras() });
 
@@ -527,6 +559,55 @@ describe('era arm validation at construction', () => {
       expect(act).toThrow(
         expect.objectContaining({ name: 'InvalidArgumentError', code: COMMON_ERROR_CODES.INVALID_ARGUMENT })
       );
+    });
+
+    it('accepts a retained era map from another realm', () => {
+      const foreignPrototype: object = Object.create(null) as object;
+      const retainedEras: unknown = Object.assign(Object.create(foreignPrototype) as object, { v8: retainedArm() });
+
+      const provider = build({ currentEra, retainedEras });
+
+      expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
+    });
+
+    it('keeps the current-era arm it was built with when the caller replaces it afterwards', async () => {
+      const arm = vi.fn(async () => stubUnbound());
+      const handlers: { currentEra: unknown } = { ...otherHandlers, currentEra: arm };
+      const provider = create(handlers);
+
+      handlers.currentEra = vi.fn();
+      await provider.sendV9();
+
+      expect(arm).toHaveBeenCalledTimes(1);
+    });
+
+    it('calls a current-era arm that carries its own `call` property', async () => {
+      const arm = Object.assign(
+        vi.fn(async () => stubUnbound()),
+        { call: () => Promise.reject(new Error('own call property used')) }
+      );
+      const provider = build({ currentEra: arm });
+
+      await provider.sendV9();
+
+      expect(arm).toHaveBeenCalledTimes(1);
+    });
+
+    it('calls a retained-era arm with no `this`', async () => {
+      const receivers: unknown[] = [];
+      const provider = build({
+        currentEra,
+        retainedEras: {
+          v8: function (this: unknown) {
+            receivers.push(this);
+            return Promise.resolve(servedBytes);
+          }
+        }
+      });
+
+      await provider.sendV8();
+
+      expect(receivers).toEqual([undefined]);
     });
 
     it('keeps serving the arms it was built with when the caller mutates the map afterwards', async () => {
@@ -554,7 +635,8 @@ describe('era arm validation at construction', () => {
 
       await provider.sendV9();
 
-      expect(receivers).toEqual([handlers]);
+      expect(receivers).toHaveLength(1);
+      expect(receivers[0]).toBe(handlers);
     });
 
     it('serves no era inherited from Object.prototype', () => {

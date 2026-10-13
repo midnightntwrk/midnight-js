@@ -54,7 +54,8 @@ function — or, for `createProofProviderForEras`, not an object with callable
 that is not a plain object keyed only by retained eras is refused with
 `InvalidArgumentError`. This checks shape only: `supportedEras` never names an
 era with no arm, but a well-formed arm paired with the wrong era still passes
-(see below).
+(see
+[Why an in-process prover needs one proving provider per era](#why-an-in-process-prover-needs-one-proving-provider-per-era)).
 
 ## Which providers refuse the retained arm, and why
 

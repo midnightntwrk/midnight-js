@@ -79,6 +79,9 @@ export interface MidnightProviderHandlers {
  * `supportedEras` is computed from the handlers supplied, and the tag never appears
  * in implementation code.
  *
+ * `currentEra` is called with `handlers` as `this`; a retained-era handler is
+ * called with no `this`.
+ *
  * @param handlers The current-era handler, and one for each retained era served.
  * @returns A {@link MidnightProvider} routing each submission to its era's arm.
  * @throws UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
@@ -94,8 +97,8 @@ export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHan
     async submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId> {
       const request = narrowToEraArm(tx, 'submitTx', retainedEras);
       return request.era === CURRENT_LEDGER_VERSION
-        ? currentEra.call(handlers, request.tx)
-        : request.handler(request.txBytes);
+        ? Reflect.apply(currentEra, handlers, [request.tx])
+        : Reflect.apply(request.handler, undefined, [request.txBytes]);
     }
   };
 };

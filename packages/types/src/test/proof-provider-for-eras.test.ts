@@ -52,6 +52,12 @@ const recordingCurrentEraProvider = (consulted: string[], label: string): Provin
  * returns bytes that are NOT a proof, so a case that unexpectedly reached it
  * fails rather than passes quietly.
  */
+const revokedProxy = (): object => {
+  const { proxy, revoke } = Proxy.revocable({}, {});
+  revoke();
+  return proxy;
+};
+
 const inertRetainedEraProvider: RetainedEraProvingProvider = {
   check: () => Promise.resolve([]),
   prove: () => Promise.resolve(new Uint8Array())
@@ -196,11 +202,13 @@ describe('createProofProviderForEras', () => {
 
     it.each([
       ['null', null, 'null'],
-      ['an empty object', {}, 'an object'],
-      ['an object missing prove', { check: () => Promise.resolve([]) }, 'an object'],
-      ['an object missing check', { prove: () => Promise.resolve(new Uint8Array()) }, 'an object'],
-      ['an object with non-callable prove', { check: () => Promise.resolve([]), prove: 'not-a-function' }, 'an object'],
-      ['an object with non-callable check', { check: 'not-a-function', prove: () => Promise.resolve(new Uint8Array()) }, 'an object'],
+      ['an empty object', {}, "an object without callable 'check' and 'prove'"],
+      ['an object missing prove', { check: () => Promise.resolve([]) }, "an object without callable 'prove'"],
+      ['an object missing check', { prove: () => Promise.resolve(new Uint8Array()) }, "an object without callable 'check'"],
+      ['an object with non-callable prove', { check: () => Promise.resolve([]), prove: 'not-a-function' }, "an object without callable 'prove'"],
+      ['an object with non-callable check', { check: 'not-a-function', prove: () => Promise.resolve(new Uint8Array()) }, "an object without callable 'check'"],
+      ['a class instance missing prove', new (class Prover { check(): Promise<never[]> { return Promise.resolve([]); } })(), "an instance of Prover without callable 'prove'"],
+      ['a revoked proxy', revokedProxy(), 'an object'],
       ['a function', () => inertRetainedEraProvider, 'a function'],
       ['a string', 'not-a-provider', 'a string'],
       ['a number', 42, 'a number'],
@@ -248,7 +256,7 @@ describe('createProofProviderForEras', () => {
       ['null', null, 'got null'],
       ['an array', [inertRetainedEraProvider], 'got an array'],
       ['a bare proving provider', inertRetainedEraProvider, 'not retained eras: check, prove'],
-      ['a Map', new Map([['v8', inertRetainedEraProvider]]), 'got a Map']
+      ['a Map', new Map([['v8', inertRetainedEraProvider]]), 'got an instance of Map']
     ])('refuses %s as the retained era map at construction', (_desc, retainedEras: unknown, detail) => {
       const act = () =>
         createProofProviderForEras({
@@ -276,9 +284,10 @@ describe('createProofProviderForEras', () => {
       );
     });
 
-    it('refuses a null cost model at construction', () => {
-      const costModel: unknown = null;
-
+    it.each([
+      ['null', null, 'got null'],
+      ['a string', 'initial', 'got a string']
+    ])('refuses %s as the cost model at construction', (_desc, costModel: unknown, detail) => {
       const act = () =>
         createProofProviderForEras({ currentEra: inertCurrentEraProvider, costModel: costModel as CostModel });
 
@@ -286,13 +295,11 @@ describe('createProofProviderForEras', () => {
         expect.objectContaining({
           name: 'InvalidArgumentError',
           code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
-          message: expect.stringContaining('costModel')
+          message: expect.stringContaining(`costModel must be a CostModel object, ${detail}`)
         })
       );
     });
 
-    // A ProvingProvider written as a class keeps `check` and `prove` on its
-    // prototype, not as own properties.
     it('accepts a retained proving provider whose methods live on its prototype, and drives it', async () => {
       const consulted: string[] = [];
       class PrototypeProvingProvider implements RetainedEraProvingProvider {

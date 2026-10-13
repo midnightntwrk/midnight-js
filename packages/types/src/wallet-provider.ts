@@ -103,6 +103,9 @@ export interface WalletProviderHandlers {
  * implementation code, and an answer is always tagged as the era the request
  * carried.
  *
+ * `currentEra` and the key readers are called with `handlers` as `this`; a
+ * retained-era handler is called with no `this`.
+ *
  * @param handlers The current-era handler, any retained-era handlers, and the two key readers.
  * @returns A {@link WalletProvider} routing each request to its era's arm.
  * @throws UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
@@ -122,13 +125,13 @@ export const createWalletProviderFromHandlers = (handlers: WalletProviderHandler
     async balanceTx(tx: VersionedUnboundTransaction, ttl?: Date): Promise<VersionedFinalizedTransaction> {
       const request = narrowToEraArm(tx, 'balanceTx', retainedEras);
       if (request.era === CURRENT_LEDGER_VERSION) {
-        return { version: CURRENT_LEDGER_VERSION, tx: await currentEra.call(handlers, request.tx, ttl) };
+        return { version: CURRENT_LEDGER_VERSION, tx: await Reflect.apply(currentEra, handlers, [request.tx, ttl]) };
       }
-      return { version: request.era, txBytes: await request.handler(request.txBytes, ttl) };
+      return { version: request.era, txBytes: await Reflect.apply(request.handler, undefined, [request.txBytes, ttl]) };
     },
 
-    getCoinPublicKey: () => getCoinPublicKey.call(handlers),
-    getEncryptionPublicKey: () => getEncryptionPublicKey.call(handlers)
+    getCoinPublicKey: () => Reflect.apply(getCoinPublicKey, handlers, []),
+    getEncryptionPublicKey: () => Reflect.apply(getEncryptionPublicKey, handlers, [])
   };
 };
 

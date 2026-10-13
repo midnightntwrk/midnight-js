@@ -171,9 +171,11 @@ there is a compile error.
 The factory checks the same things when the provider is built, for JavaScript
 callers the types do not reach: an arm that is not a function is refused with
 `UnusableEraArmError` (`MIDNIGHT_JS_PR_UNUSABLE_ERA_ARM`), and a `retainedEras`
-that is not a plain object keyed only by retained eras — the current era
-included — with `InvalidArgumentError`. The provider serves from a copy of the
-arms taken then, so changing the object you passed in afterwards has no effect.
+that is not a plain object keyed only by retained eras (a key for the current
+era is refused too) with `InvalidArgumentError`. The check is shape only: an arm
+built for the wrong era still passes. The provider serves from a copy of the
+arms taken then, so replacing an arm on the object you passed in afterwards has
+no effect.
 
 `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers` are the same
 shape for the other two seams. Implementing a tagged interface directly is also

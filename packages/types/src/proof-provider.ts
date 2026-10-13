@@ -33,7 +33,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
-import { describeValue, isObject, readEraArms } from './internal/read-era-arms';
+import { describeArgument, isObject, readEraArms } from './internal/read-era-arms';
 import type { VersionedTx } from './versioned';
 
 export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
@@ -148,6 +148,9 @@ export interface ProofProviderHandlers {
  * The `supportedEras` declaration is computed from the handlers supplied, so it
  * cannot disagree with what the provider actually does.
  *
+ * `currentEra` is called with `handlers` as `this`; a retained-era handler is
+ * called with no `this`.
+ *
  * @param handlers The current-era handler, and one for each retained era served.
  * @returns A {@link ProofProvider} routing each request to its era's arm and
  *          answering in the era the request arrived in.
@@ -176,12 +179,12 @@ export const createProofProviderFromHandlers = (handlers: ProofProviderHandlers)
     ): Promise<VersionedUnboundTransaction> {
       const request = narrowToEraArm(unprovenTx, 'proveTx', retainedEras);
       if (request.era === CURRENT_LEDGER_VERSION) {
-        return { version: CURRENT_LEDGER_VERSION, tx: await currentEra.call(handlers, request.tx, proveTxConfig) };
+        return { version: CURRENT_LEDGER_VERSION, tx: await Reflect.apply(currentEra, handlers, [request.tx, proveTxConfig]) };
       }
       // Answered in the arm it arrived in: a caller narrows the response and
       // rejects the other era, so replying in the wrong one strands a submit
       // mid-flight.
-      return { version: request.era, txBytes: await request.handler(request.txBytes, proveTxConfig) };
+      return { version: request.era, txBytes: await Reflect.apply(request.handler, undefined, [request.txBytes, proveTxConfig]) };
     }
   };
 };
@@ -274,8 +277,11 @@ const toRetainedEraHandlers = (
  * @throws PayloadNotATransactionError raised by `proveTx` if a retained arm's
  *         `txBytes` is not a serialized transaction.
  * @throws Ledger8RuntimeMissingError raised by `proveTx` if a retained arm is
- *         reached and that era's runtime cannot be loaded. Both are defined in
- *         `@midnight-ntwrk/midnight-js-protocol/errors`.
+ *         reached and that era's runtime cannot be loaded.
+ *
+ * `InvalidArgumentError`, `PayloadNotATransactionError` and
+ * `Ledger8RuntimeMissingError` are defined in
+ * `@midnight-ntwrk/midnight-js-protocol/errors`.
  *
  * @example
  * ```typescript
@@ -292,7 +298,7 @@ export const createProofProviderForEras = (provingProviders: ProvingProvidersByE
   const { currentEra, retainedEras } = readEraArms('proveTx', provingProviders, 'proving-provider');
   const { costModel = CostModel.initialCostModel() } = provingProviders;
   if (!isObject(costModel)) {
-    throw new InvalidArgumentError(`proveTx: costModel must be a CostModel, got ${describeValue(costModel)}.`);
+    throw new InvalidArgumentError(`proveTx: costModel must be a CostModel object, got ${describeArgument(costModel)}.`);
   }
   return createProofProviderFromHandlers({
     currentEra: (tx) => tx.prove(currentEra, costModel),

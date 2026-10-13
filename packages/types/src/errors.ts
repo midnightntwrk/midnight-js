@@ -349,8 +349,9 @@ const ERA_ARM_SHAPE_DESCRIPTIONS: Readonly<Record<EraArmShape, string>> = {
  * `supportedEras` never claims an era no arm can serve.
  *
  * The types rule these arms out, so it is reachable only from JavaScript or
- * across an untyped boundary. It checks shape only: a `ProvingProvider` built
- * for the wrong era still passes.
+ * across an untyped boundary. The factory checks shape only: an arm built for
+ * the wrong era, such as a `ProvingProvider` with the other era's key
+ * material, still passes.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from
  * `@midnight-ntwrk/midnight-js-utils`.
@@ -363,9 +364,9 @@ export class UnusableEraArmError extends MidnightJsError {
    * @param seam The provider method the rejected arm would have served.
    * @param era The ledger era whose arm was rejected.
    * @param expected The shape the factory needs for that arm.
-   * @param received What was passed instead: `'null'`, `'undefined'`, `'an array'`,
-   *                 `'an object'`, or the `typeof` or class name with an article
-   *                 (`'a function'`, `'a Map'`).
+   * @param received What was passed instead, for the message only: for example
+   *                 `'null'`, `'a class'`, `'an instance of Map'`, or
+   *                 `"an object without callable 'prove'"`.
    */
   constructor(
     readonly seam: ProviderSeam,
