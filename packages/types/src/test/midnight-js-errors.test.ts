@@ -34,6 +34,7 @@ import {
   SeamEraUnsupportedError,
   SigningKeyExportError,
   UntaggedPayloadError,
+  UnusableEraArmError,
   V8PayloadUnsupportedError,
   ZkArtifactFetchError
 } from '../errors';
@@ -50,6 +51,7 @@ describe('types error classes', () => {
     ['V8PayloadUnsupportedError', new V8PayloadUnsupportedError('proveTx', 3)],
     ['UntaggedPayloadError', new UntaggedPayloadError('proveTx', undefined)],
     ['SeamEraUnsupportedError', new SeamEraUnsupportedError('proveTx', 'v8', ['v9'])],
+    ['UnusableEraArmError', new UnusableEraArmError('proveTx', 'v8', 'expected a function, got null')],
     ['InvalidProtocolSchemeError', new InvalidProtocolSchemeError('ftp', ['http', 'https'])],
     ['ArtifactRuntimeVersionUnavailableError', new ArtifactRuntimeVersionUnavailableError('provider')],
     ['PrivateStateExportError', new PrivateStateExportError('msg')],
