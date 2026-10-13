@@ -51,6 +51,9 @@ import {
   createMockZswapLocalState
 } from './test-mocks';
 
+vi.mock('../unproven-call-tx');
+vi.mock('../submit-tx');
+
 describe('submit-call-tx', () => {
   let mockCompiledContract: CompiledContract.CompiledContract<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
@@ -69,9 +72,6 @@ describe('submit-call-tx', () => {
     mockProviders = createMockProviders();
     mockUnprovenTx = createMockUnprovenTx();
     mockCoinInfo = createMockCoinInfo();
-
-    vi.mock('../unproven-call-tx');
-    vi.mock('../submit-tx');
   });
 
   const createBasicCallOptions = (overrides: Partial<CallTxOptions<Contract.Any, AnyProvableCircuitId>> = {}) => ({
