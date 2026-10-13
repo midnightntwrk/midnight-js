@@ -32,7 +32,8 @@
   "devDependencies": {
     "@types/node": "^24.0.0",
     "rollup": "^4.60.4",
-    "vitest": "^4.1.11"
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
   },
   "engines": {
     "node": ">=22.12"

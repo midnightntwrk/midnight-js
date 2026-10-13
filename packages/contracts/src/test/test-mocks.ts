@@ -70,6 +70,7 @@ import {
   type ZKIR
 } from '@midnight-ntwrk/midnight-js-types';
 import { Option } from 'effect';
+import type { Mock } from 'vitest';
 
 import { type CallOptions, type CallOptionsWithPrivateState } from '../call';
 import { type ContractConstructorResult } from '../call-constructor';
@@ -126,7 +127,7 @@ export const createMockZswapLocalState = (): ZswapLocalState => ({
   inputs: []
 });
 
-export const createDefaultCircuit = () => vi.fn().mockImplementation((ctx) => {
+export const createDefaultCircuit = (): Mock => vi.fn().mockImplementation((ctx) => {
   finalizeCallProofData(ctx, {
     input: { value: [], alignment: [] },
     output: { value: [], alignment: [] },
@@ -141,7 +142,7 @@ export const createDefaultCircuit = () => vi.fn().mockImplementation((ctx) => {
   };
 });
 
-export const createFailingCircuit = (failMessage: string) => vi.fn().mockImplementation((() => {
+export const createFailingCircuit = (failMessage: string): Mock => vi.fn().mockImplementation((() => {
   compactAssert(false, failMessage);
 }));
 
