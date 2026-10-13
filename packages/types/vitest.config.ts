@@ -43,7 +43,7 @@ export default defineConfig({
     reporters: [
       'default',
       ['junit', { outputFile: `reports/report/test-report.xml` }],
-      ['html', { outputFile: `reports/report/test-report.html` }]
+      ['html', { outputDir: 'reports/report' }]
     ],
     // Compile-level assertions (`expectTypeOf`, `@ts-expect-error`) assert
     // nothing at plain runtime — vitest's typecheck pass is what turns tsc
