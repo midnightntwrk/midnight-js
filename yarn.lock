@@ -36,19 +36,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ardatan/relay-compiler@npm:^13.0.0":
-  version: 13.0.0
-  resolution: "@ardatan/relay-compiler@npm:13.0.0"
-  dependencies:
-    "@babel/runtime": "npm:^7.26.10"
-    immutable: "npm:^5.1.5"
-    invariant: "npm:^2.2.4"
-  peerDependencies:
-    graphql: "*"
-  checksum: 10/3f990307ba8a788491d4b422561e0ed0fd9f0aac7bddde3511ea512424dd721f5b5725d4104e847eee63ca3718ab4395e7866437863471cb8eadd500422ae65d
-  languageName: node
-  linkType: hard
-
 "@ardatan/relay-compiler@npm:^13.0.2":
   version: 13.0.2
   resolution: "@ardatan/relay-compiler@npm:13.0.2"
@@ -289,13 +276,6 @@ __metadata:
   bin:
     parser: ./bin/babel-parser.js
   checksum: 10/da40c5928c95997b01aabe84fc3440881b8f20b866714fefa142961d37e82ffc03fbb9afed706f15f8a688278f95286ca0cea0d87ad6c77600f8c6c45d9824ee
-  languageName: node
-  linkType: hard
-
-"@babel/runtime@npm:^7.26.10":
-  version: 7.29.2
-  resolution: "@babel/runtime@npm:7.29.2"
-  checksum: 10/f55ba4052aa0255055b34371a145fbe69c29b37b49eaea14805b095bfb4153701486416e89392fd27ec8abafa53868be86e960b9f8f959fff91f2c8ac2a14b02
   languageName: node
   linkType: hard
 
@@ -881,18 +861,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@graphql-codegen/add@npm:^7.1.0":
-  version: 7.1.0
-  resolution: "@graphql-codegen/add@npm:7.1.0"
-  dependencies:
-    "@graphql-codegen/plugin-helpers": "npm:^7.1.0"
-    tslib: "npm:^2.8.0"
-  peerDependencies:
-    graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
-  checksum: 10/2afb2db21554ccc18772f598901685bc54ecf0f35dded305f0a5b4952ddb02e2abbf7d20fbf542f692eb6f5ef0c64a97395774e0fd08ae8009563ea633db6946
-  languageName: node
-  linkType: hard
-
 "@graphql-codegen/add@npm:^7.1.1":
   version: 7.1.1
   resolution: "@graphql-codegen/add@npm:7.1.1"
@@ -960,34 +928,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@graphql-codegen/client-preset@npm:^6.0.1":
-  version: 6.1.0
-  resolution: "@graphql-codegen/client-preset@npm:6.1.0"
-  dependencies:
-    "@babel/helper-plugin-utils": "npm:^7.20.2"
-    "@babel/template": "npm:^7.20.7"
-    "@graphql-codegen/add": "npm:^7.1.0"
-    "@graphql-codegen/gql-tag-operations": "npm:^6.1.0"
-    "@graphql-codegen/plugin-helpers": "npm:^7.1.0"
-    "@graphql-codegen/typed-document-node": "npm:^7.1.0"
-    "@graphql-codegen/typescript": "npm:^6.1.0"
-    "@graphql-codegen/typescript-operations": "npm:^6.1.0"
-    "@graphql-codegen/visitor-plugin-common": "npm:^7.2.0"
-    "@graphql-tools/documents": "npm:^1.0.0"
-    "@graphql-tools/utils": "npm:^11.2.0"
-    "@graphql-typed-document-node/core": "npm:3.2.0"
-    tslib: "npm:^2.8.0"
-  peerDependencies:
-    graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
-    graphql-sock: ^1.0.0
-  peerDependenciesMeta:
-    graphql-sock:
-      optional: true
-  checksum: 10/dc487c700b692c6def3a35bb0e39e5d8ba272ebc68747fd4b1c14ac58816b97ac362a6832065d29f15e23b8534a3d71a6ad7fe710c16cdad0783ea2475724b46
-  languageName: node
-  linkType: hard
-
-"@graphql-codegen/client-preset@npm:^6.2.3":
+"@graphql-codegen/client-preset@npm:^6.2.0, @graphql-codegen/client-preset@npm:^6.2.3":
   version: 6.2.3
   resolution: "@graphql-codegen/client-preset@npm:6.2.3"
   dependencies:
@@ -1025,21 +966,6 @@ __metadata:
   peerDependencies:
     graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
   checksum: 10/35974da3b3ec57dd34105614d25e3ba1d8af0ac8114b628d055b93987d3febf2b85d18c8736d091efddbab75ee4c7c5091da63a779d61e0a93fa7cbb3ca3968b
-  languageName: node
-  linkType: hard
-
-"@graphql-codegen/gql-tag-operations@npm:^6.1.0":
-  version: 6.1.0
-  resolution: "@graphql-codegen/gql-tag-operations@npm:6.1.0"
-  dependencies:
-    "@graphql-codegen/plugin-helpers": "npm:^7.1.0"
-    "@graphql-codegen/visitor-plugin-common": "npm:^7.2.0"
-    "@graphql-tools/utils": "npm:^11.2.0"
-    auto-bind: "npm:^5.0.0"
-    tslib: "npm:^2.8.0"
-  peerDependencies:
-    graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
-  checksum: 10/f9bb58c19e68fd544bab9edd4cf83dbdb173e5110dcd7fe935a4568b02fc125cb493d3bb5efc8b95e70f634bf2b8c908f7754f646c576427207463cf3687862b
   languageName: node
   linkType: hard
 
@@ -1114,21 +1040,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@graphql-codegen/typed-document-node@npm:^7.1.0":
-  version: 7.1.0
-  resolution: "@graphql-codegen/typed-document-node@npm:7.1.0"
-  dependencies:
-    "@graphql-codegen/plugin-helpers": "npm:^7.1.0"
-    "@graphql-codegen/visitor-plugin-common": "npm:^7.2.0"
-    auto-bind: "npm:^5.0.0"
-    change-case-all: "npm:^2.1.0"
-    tslib: "npm:^2.8.0"
-  peerDependencies:
-    graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
-  checksum: 10/c175abc132d4dcf0de56bb0465593cc43509c941eafabe95eae0107f0ed64fe3dda61cd87dfc258bccd2289c7743dd0a63908f5cd67cc191eed81c82d5afea89
-  languageName: node
-  linkType: hard
-
 "@graphql-codegen/typed-document-node@npm:^7.1.1":
   version: 7.2.0
   resolution: "@graphql-codegen/typed-document-node@npm:7.2.0"
@@ -1141,25 +1052,6 @@ __metadata:
   peerDependencies:
     graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
   checksum: 10/f2e9ed4c75a957563bdb2ff3f7342d6d39440fb794a0ea4d23735f25ba097442241c84370816581958b3f9df03a55aa0e4746ad13f011a664175836948817c4c
-  languageName: node
-  linkType: hard
-
-"@graphql-codegen/typescript-operations@npm:^6.1.0":
-  version: 6.1.0
-  resolution: "@graphql-codegen/typescript-operations@npm:6.1.0"
-  dependencies:
-    "@graphql-codegen/plugin-helpers": "npm:^7.1.0"
-    "@graphql-codegen/schema-ast": "npm:^6.1.0"
-    "@graphql-codegen/visitor-plugin-common": "npm:^7.2.0"
-    auto-bind: "npm:^5.0.0"
-    tslib: "npm:^2.8.0"
-  peerDependencies:
-    graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
-    graphql-sock: ^1.0.0
-  peerDependenciesMeta:
-    graphql-sock:
-      optional: true
-  checksum: 10/9f9c2f58cc64b88675f629aaa90c7fb5c214ed4e3d02446ceeed2f8a95414707b1a5d1e5660756e31943614068ed97a88da1cf2c02015d5dec6a6fc05e195965
   languageName: node
   linkType: hard
 
@@ -1182,21 +1074,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@graphql-codegen/typescript@npm:^6.1.0":
-  version: 6.1.0
-  resolution: "@graphql-codegen/typescript@npm:6.1.0"
-  dependencies:
-    "@graphql-codegen/plugin-helpers": "npm:^7.1.0"
-    "@graphql-codegen/schema-ast": "npm:^6.1.0"
-    "@graphql-codegen/visitor-plugin-common": "npm:^7.2.0"
-    auto-bind: "npm:^5.0.0"
-    tslib: "npm:~2.8.0"
-  peerDependencies:
-    graphql: ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
-  checksum: 10/c4ad5a2e3534bb2d7b4e6444de97466499bc1cb4ed391fba760b4d36933754c36d79e3b91bca2f8884109e9e348d245fe856f49071dd1fb1557be6ce41ef26f0
-  languageName: node
-  linkType: hard
-
 "@graphql-codegen/typescript@npm:^6.1.2":
   version: 6.1.2
   resolution: "@graphql-codegen/typescript@npm:6.1.2"
@@ -1209,26 +1086,6 @@ __metadata:
   peerDependencies:
     graphql: ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
   checksum: 10/9abd0ac2fe27e8bafcfb5c30c2ea60609de3e9bff902c551fd54087b8421e1e62c3af0c897ec316c8e528cb9620a00bea8ead037e5ef64ff105291910db6a77e
-  languageName: node
-  linkType: hard
-
-"@graphql-codegen/visitor-plugin-common@npm:^7.2.0":
-  version: 7.2.0
-  resolution: "@graphql-codegen/visitor-plugin-common@npm:7.2.0"
-  dependencies:
-    "@graphql-codegen/plugin-helpers": "npm:^7.1.0"
-    "@graphql-tools/optimize": "npm:^2.0.0"
-    "@graphql-tools/relay-operation-optimizer": "npm:^7.1.1"
-    "@graphql-tools/utils": "npm:^11.2.0"
-    auto-bind: "npm:^5.0.0"
-    change-case-all: "npm:^2.1.0"
-    dependency-graph: "npm:^1.0.0"
-    graphql-tag: "npm:^2.11.0"
-    parse-filepath: "npm:^1.0.2"
-    tslib: "npm:^2.8.0"
-  peerDependencies:
-    graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
-  checksum: 10/fcca1388ff6799d9427eba998987095976d6cf54ebf1ba924e3b20f140a42dd7b1ca7333f1e52c60e99a15d2bdf4283ec970fa98fbc0fd98c9535588cce0dbd2
   languageName: node
   linkType: hard
 
@@ -1548,19 +1405,6 @@ __metadata:
   peerDependencies:
     graphql: ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
   checksum: 10/7f79c0e1852abc571308e887d27d613da5b797256c8c6eb6c5fe7ca77f09e61524778ae281cebc0b698c51d4fe1074e2b8e0d0627b8e2dcf505aa6ed09b49a2f
-  languageName: node
-  linkType: hard
-
-"@graphql-tools/relay-operation-optimizer@npm:^7.1.1":
-  version: 7.1.1
-  resolution: "@graphql-tools/relay-operation-optimizer@npm:7.1.1"
-  dependencies:
-    "@ardatan/relay-compiler": "npm:^13.0.0"
-    "@graphql-tools/utils": "npm:^11.0.0"
-    tslib: "npm:^2.4.0"
-  peerDependencies:
-    graphql: ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
-  checksum: 10/d9f5697b2a04a90470f65ce98cf52e2f008d07b5d0a378cdb4a42cd125ce5391a42c1a0a3ac3a8103b843a86c73c139c72bb816e09000495f94a3c3cdbf1ba79
   languageName: node
   linkType: hard
 
@@ -2248,7 +2092,7 @@ __metadata:
   dependencies:
     "@apollo/client": "npm:^4.2.12"
     "@graphql-codegen/cli": "npm:^7.4.6"
-    "@graphql-codegen/client-preset": "npm:^6.0.1"
+    "@graphql-codegen/client-preset": "npm:^6.2.0"
     "@graphql-codegen/typescript": "npm:^6.1.2"
     "@graphql-codegen/typescript-operations": "npm:^6.1.10"
     "@graphql-typed-document-node/core": "npm:^3.2.0"
@@ -2322,7 +2166,7 @@ __metadata:
     eslint-plugin-simple-import-sort: "npm:^12.1.1"
     eslint-plugin-unused-imports: "npm:^4.4.1"
     husky: "npm:^9.1.7"
-    lint-staged: "npm:^17.0.7"
+    lint-staged: "npm:^17.6.0"
     pinst: "npm:^3.0.0"
     pnpm: "npm:10.20.0"
     prettier: "npm:^3.9.10"
@@ -2463,10 +2307,10 @@ __metadata:
     "@midnight-ntwrk/testkit-js": "workspace:*"
     "@types/ws": "npm:^8.18.2"
     "@vitest/runner": "npm:^4.1.11"
-    allure-commandline: "npm:^2.43.0"
+    allure-commandline: "npm:^2.46.1"
     allure-js-commons: "npm:^3.13.0"
     allure-vitest: "npm:^3.13.0"
-    axios: "npm:^1.16.1"
+    axios: "npm:^1.20.0"
     buffer: "npm:^6.0.3"
     compact-runtime-ledger8: "npm:@midnight-ntwrk/compact-runtime@0.16.0"
     cross-fetch: "npm:^4.1.0"
@@ -2503,10 +2347,10 @@ __metadata:
     "@scure/bip39": "npm:^2.3.0"
     "@types/ws": "npm:^8.18.2"
     "@vitest/runner": "npm:^4.1.11"
-    allure-commandline: "npm:^2.43.0"
+    allure-commandline: "npm:^2.46.1"
     allure-js-commons: "npm:^3.13.0"
     allure-vitest: "npm:^3.13.0"
-    axios: "npm:^1.16.1"
+    axios: "npm:^1.20.0"
     buffer: "npm:^6.0.3"
     compact-runtime-ledger8: "npm:@midnight-ntwrk/compact-runtime@0.16.0"
     cross-fetch: "npm:^4.1.0"
@@ -5119,12 +4963,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"allure-commandline@npm:^2.43.0":
-  version: 2.43.0
-  resolution: "allure-commandline@npm:2.43.0"
+"allure-commandline@npm:^2.46.1":
+  version: 2.46.1
+  resolution: "allure-commandline@npm:2.46.1"
   bin:
     allure: bin/allure
-  checksum: 10/6630021c98e4d5a880beb8ef5f4e80ec766f0e7bfb0ceb5202312e3d51d962a0c0e3af2713b9b560997378a7eb9da753cdfca49d11dfa3afad9c6ca901be1b0a
+  checksum: 10/126a63a3d8c93389bedd1cad966133ccd9b82c3b4df4b5dd6a81067eb3a4ad44c2c24fd047b80189b7984a54756c71bb3573d2642908b8455ccae2397789db71
   languageName: node
   linkType: hard
 
@@ -5439,15 +5283,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios@npm:^1.16.1":
-  version: 1.16.1
-  resolution: "axios@npm:1.16.1"
+"axios@npm:^1.20.0":
+  version: 1.20.0
+  resolution: "axios@npm:1.20.0"
   dependencies:
     follow-redirects: "npm:^1.16.0"
-    form-data: "npm:^4.0.5"
+    form-data: "npm:^4.0.6"
     https-proxy-agent: "npm:^5.0.1"
     proxy-from-env: "npm:^2.1.0"
-  checksum: 10/9b6218cf96321cfbbf8f160658d695367114bcf4fb62492bdc1ccd647f184b5c71ae400e5ecaaf41079bc561de2ecbaf1fec63f398b3ec53389beff7694df64c
+  checksum: 10/0376b6178baecbe0f5d36088f5b5f6c21362ce301e0731f77172f9c89be740bdee20d8ae6ab186340d7cb752020c6a4f1381290e5a5cd10f6f9003941615ac77
   languageName: node
   linkType: hard
 
@@ -7690,7 +7534,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"form-data@npm:^4.0.5":
+"form-data@npm:^4.0.6":
   version: 4.0.6
   resolution: "form-data@npm:4.0.6"
   dependencies:
@@ -9242,21 +9086,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lint-staged@npm:^17.0.7":
-  version: 17.0.8
-  resolution: "lint-staged@npm:17.0.8"
+"lint-staged@npm:^17.6.0":
+  version: 17.6.0
+  resolution: "lint-staged@npm:17.6.0"
   dependencies:
-    listr2: "npm:^10.2.1"
-    picomatch: "npm:^4.0.4"
+    picomatch: "npm:^4.0.7"
     string-argv: "npm:^0.3.2"
-    tinyexec: "npm:^1.2.4"
-    yaml: "npm:^2.9.0"
+    tinyexec: "npm:^1.3.1"
+    yaml: "npm:^2.9.1"
   dependenciesMeta:
     yaml:
       optional: true
   bin:
     lint-staged: bin/lint-staged.js
-  checksum: 10/2b574a3107c030e27ff1c34166ef49f2189c256bb423b0deabef0becdf13ed4cfdcc6fb6815a1285ce0daa92fc6c545d8d0245c9d47a8eb3fbccbc4cf3754587
+  checksum: 10/e959c4af383f26db7dc567e4454313f1f94e5450fdd560586b9345331b16916bf8c8176c1f2fd9eec071e6882e37ec9ab76fcb67df7d71c62ad856ea6bcc040e
   languageName: node
   linkType: hard
 
@@ -10491,6 +10334,13 @@ __metadata:
   version: 4.0.4
   resolution: "picomatch@npm:4.0.4"
   checksum: 10/f6ef80a3590827ce20378ae110ac78209cc4f74d39236370f1780f957b7ee41c12acde0e4651b90f39983506fd2f5e449994716f516db2e9752924aff8de93ce
+  languageName: node
+  linkType: hard
+
+"picomatch@npm:^4.0.7":
+  version: 4.0.7
+  resolution: "picomatch@npm:4.0.7"
+  checksum: 10/66e1df34bc39c72fa3756be4069f7887ea3e35e94bba1c3f6167763007698cb04b8a0a365161d186fda6e9571a2d3efb606b2966eb6a7dea6252911224dc2f48
   languageName: node
   linkType: hard
 
@@ -12282,10 +12132,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tinyexec@npm:^1.2.4":
-  version: 1.2.4
-  resolution: "tinyexec@npm:1.2.4"
-  checksum: 10/f20b3e6f56f24c3ebe0129d0b6e657e561d225df2cf93c1a10362996232dd6ad4b8af8c9e81d258a64d09020e723772baf6fe0be26512dba7c61bb366d67b1f9
+"tinyexec@npm:^1.3.1":
+  version: 1.3.1
+  resolution: "tinyexec@npm:1.3.1"
+  checksum: 10/9c7a8ce2633f76c776d9ff663531c7b34d605f41909c2f97a27397e8c12bcaf721dae7680b6683232ffe7a6d465090be9926d5ffd00b5d7be9336a43b45289b1
   languageName: node
   linkType: hard
 
