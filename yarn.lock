@@ -2155,7 +2155,7 @@ __metadata:
     "@tsconfig/node24": "npm:^24.0.5"
     "@types/node": "npm:^24.0.0"
     "@vitest/coverage-v8": "npm:^4.1.11"
-    "@vitest/ui": "npm:^4.1.11"
+    "@vitest/ui": "npm:^5.0.3"
     "@yarnpkg/types": "npm:^4.0.1"
     commit-and-tag-version: "npm:^12.7.3"
     eslint: "npm:^10.12.0"
@@ -4653,6 +4653,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@vitest/pretty-format@npm:5.0.3":
+  version: 5.0.3
+  resolution: "@vitest/pretty-format@npm:5.0.3"
+  dependencies:
+    tinyrainbow: "npm:^3.1.1"
+  checksum: 10/61f8d6ca556f61e7a9616c08b8571a8c81dad05f726babd57f79f3bb21b9b8348bacf2995f3ddf640def0519726e6a8b3f7d53ab91b159be99bb38eea012fa24
+  languageName: node
+  linkType: hard
+
 "@vitest/runner@npm:4.1.11, @vitest/runner@npm:^4.1.11":
   version: 4.1.11
   resolution: "@vitest/runner@npm:4.1.11"
@@ -4682,20 +4691,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitest/ui@npm:^4.1.11":
-  version: 4.1.11
-  resolution: "@vitest/ui@npm:4.1.11"
+"@vitest/ui@npm:^5.0.3":
+  version: 5.0.3
+  resolution: "@vitest/ui@npm:5.0.3"
   dependencies:
-    "@vitest/utils": "npm:4.1.11"
-    fflate: "npm:^0.8.2"
-    flatted: "npm:^3.4.2"
+    "@vitest/utils": "npm:5.0.3"
+    fflate: "npm:^0.8.3"
+    flatted: "npm:^3.4.4"
     pathe: "npm:^2.0.3"
     sirv: "npm:^3.0.2"
-    tinyglobby: "npm:^0.2.15"
-    tinyrainbow: "npm:^3.1.0"
+    tinyrainbow: "npm:^3.1.1"
   peerDependencies:
-    vitest: 4.1.11
-  checksum: 10/638a76a133c6c4f6ab3cc84d5db4bb4b74f1b68c7cd3209b8ec14253878de5f6cc79171207a709614e347f628eb0bc5fe94eb7c025438345ef27a198ef4b7712
+    vitest: 5.0.3
+  checksum: 10/e97e38ce8451bc9ecf6f2f9063218991d87829a7ac00b21239220ce404802a5be6eda87b92b078317a2340cdd8bb0a2505798cb5b0754b8d218c13b0b6cb20f3
   languageName: node
   linkType: hard
 
@@ -4707,6 +4715,17 @@ __metadata:
     convert-source-map: "npm:^2.0.0"
     tinyrainbow: "npm:^3.1.0"
   checksum: 10/f05381e12d0926db7b01bfaae9a577fa664d36b96c23df185e4b0f6dad3a9fb59ac00931613da53b4511ee6ab473a14ac500c72c5ec5e9b3c3042875051f20c4
+  languageName: node
+  linkType: hard
+
+"@vitest/utils@npm:5.0.3":
+  version: 5.0.3
+  resolution: "@vitest/utils@npm:5.0.3"
+  dependencies:
+    "@vitest/pretty-format": "npm:5.0.3"
+    convert-source-map: "npm:^2.0.0"
+    tinyrainbow: "npm:^3.1.1"
+  checksum: 10/897654af10a4511921f843968a5510224af865cda943183defeab9e1bee11e5ef532aa617bc559cfceebb08a1cfb9a3145efaace0686861e621b14d0238dd8e7
   languageName: node
   linkType: hard
 
@@ -7394,10 +7413,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fflate@npm:^0.8.2":
-  version: 0.8.2
-  resolution: "fflate@npm:0.8.2"
-  checksum: 10/2bd26ba6d235d428de793c6a0cd1aaa96a06269ebd4e21b46c8fd1bd136abc631acf27e188d47c3936db090bf3e1ede11d15ce9eae9bffdc4bfe1b9dc66ca9cb
+"fflate@npm:^0.8.3":
+  version: 0.8.3
+  resolution: "fflate@npm:0.8.3"
+  checksum: 10/6ebf528dc9c56e78e715eac615b009b25dc33e15c1920b11ebba44e6d76181c647756a81a23e19247907496b93aa99928514c53090579a65109e026ac2824aa7
   languageName: node
   linkType: hard
 
@@ -7502,6 +7521,13 @@ __metadata:
   version: 3.4.2
   resolution: "flatted@npm:3.4.2"
   checksum: 10/a9e78fe5c2c1fcd98209a015ccee3a6caa953e01729778e83c1fe92e68601a63e1e69cd4e573010ca99eaf585a581b80ccf1018b99283e6cbc2117bcba1e030f
+  languageName: node
+  linkType: hard
+
+"flatted@npm:^3.4.4":
+  version: 3.4.4
+  resolution: "flatted@npm:3.4.4"
+  checksum: 10/5a6682ab87ed15e125419c61352c4bef26f310adceece03eae5f22c119d64ed47bfc0ee1948a77d0122559eaa86395ea06ef45b59bfe3db4fb13fb4cdff876de
   languageName: node
   linkType: hard
 
@@ -12096,6 +12122,13 @@ __metadata:
   version: 3.1.0
   resolution: "tinyrainbow@npm:3.1.0"
   checksum: 10/4c2c01dde1e5bb9a74973daaae141d4d733d246280b2f9a7f6a9e7dd8e940d48b2580a6086125278777897bc44635d6ccec5f9f563c2179dd2129f4542d0ec05
+  languageName: node
+  linkType: hard
+
+"tinyrainbow@npm:^3.1.1":
+  version: 3.2.0
+  resolution: "tinyrainbow@npm:3.2.0"
+  checksum: 10/27089c12ad4b18439fbdd651bf9d076584aad9b2a36da36ba841d6bd31156f5489e15497b2377162478277cb89cf6ea6a323be401fd9d55794a6963b65fe55d4
   languageName: node
   linkType: hard
 
