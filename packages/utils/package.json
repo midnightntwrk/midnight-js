@@ -27,7 +27,7 @@
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnightntwrk/wallet-sdk-address-format": "4.0.0-rc.0",
-    "@noble/hashes": "^2.2.0"
+    "@noble/hashes": "^2.4.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
