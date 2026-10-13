@@ -18,7 +18,7 @@ import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midn
 import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { PROVIDER_ERROR_CODES, V8PayloadUnsupportedError } from '../errors';
+import { PROVIDER_ERROR_CODES, UnusableEraArmError, V8PayloadUnsupportedError } from '../errors';
 import { createProofProviderForEras, type UnboundTransaction } from '../proof-provider';
 
 const PROVING_REFUSED = 'proving refused';
@@ -43,6 +43,15 @@ const recordingCurrentEraProvider = (consulted: string[], label: string): Provin
   ...recordingRetainedEraProvider(consulted, label),
   lookupKey: () => Promise.resolve(undefined)
 });
+
+const captureThrow = (fn: () => unknown): unknown => {
+  try {
+    fn();
+  } catch (error) {
+    return error;
+  }
+  expect.fail('expected function to throw, but it returned normally');
+};
 
 /**
  * Answers, but is never expected to be consulted: the transaction proved with
@@ -190,6 +199,37 @@ describe('createProofProviderForEras', () => {
       );
 
       expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
+    });
+
+    it.each([
+      ['null', null, 'null'],
+      ['an empty object', {}, 'object'],
+      ['an object missing prove', { check: () => Promise.resolve([]) }, 'object'],
+      ['an object missing check', { prove: () => Promise.resolve(new Uint8Array()) }, 'object'],
+      ['an object with non-callable prove', { check: () => Promise.resolve([]), prove: 'not-a-function' }, 'object'],
+      ['an object with non-callable check', { check: 'not-a-function', prove: () => Promise.resolve(new Uint8Array()) }, 'object'],
+      ['a string', 'not-a-provider', 'string'],
+      ['a number', 42, 'number'],
+      ['an array', [inertRetainedEraProvider], 'an array']
+    ])('refuses %s registered as a retained era arm at construction', (_desc, value, gotType) => {
+      const error = captureThrow(() =>
+        createProofProviderForEras({
+          currentEra: inertCurrentEraProvider,
+          retainedEras: { v8: value as never }
+        })
+      );
+      expect(error).toBeInstanceOf(UnusableEraArmError);
+      const unusable = error as UnusableEraArmError;
+      expect(unusable.code).toBe(PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM);
+      expect(unusable.seam).toBe('proveTx');
+      expect(unusable.era).toBe('v8');
+      expect(unusable.reason).toBe(
+        `expected an object with callable 'check' and 'prove' methods, got ${gotType}`
+      );
+      expect(unusable.message).toBe(
+        `Cannot register retained era 'v8' at proveTx: expected an object with callable 'check' and 'prove' methods, got ${gotType}. ` +
+          `Pass a function for v8, or leave the entry out (or set it to undefined) if this era is not served.`
+      );
     });
 
     it('answers the v8 arm with the PROVEN serialization of the transaction', async () => {

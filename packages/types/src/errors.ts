@@ -94,7 +94,8 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   INDEXER_SUBSCRIPTION_DATA_INVALID: 'MIDNIGHT_JS_PR_INDEXER_SUBSCRIPTION_DATA_INVALID',
   INDEXER_CONFIG_INVALID: 'MIDNIGHT_JS_PR_INDEXER_CONFIG_INVALID',
   INDEXER_INVARIANT_VIOLATED: 'MIDNIGHT_JS_PR_INDEXER_INVARIANT_VIOLATED',
-  INDEXER_PAYLOAD_TOO_LARGE: 'MIDNIGHT_JS_PR_INDEXER_PAYLOAD_TOO_LARGE'
+  INDEXER_PAYLOAD_TOO_LARGE: 'MIDNIGHT_JS_PR_INDEXER_PAYLOAD_TOO_LARGE',
+  UNUSABLE_ERA_ARM: 'MIDNIGHT_JS_PR_UNUSABLE_ERA_ARM'
 } as const);
 /** The union of every value in {@link PROVIDER_ERROR_CODES}. */
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
@@ -131,7 +132,8 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
   [PROVIDER_ERROR_CODES.INDEXER_SUBSCRIPTION_DATA_INVALID]: INTEGRITY,
   [PROVIDER_ERROR_CODES.INDEXER_CONFIG_INVALID]: USAGE,
   [PROVIDER_ERROR_CODES.INDEXER_INVARIANT_VIOLATED]: INTERNAL,
-  [PROVIDER_ERROR_CODES.INDEXER_PAYLOAD_TOO_LARGE]: INTEGRITY
+  [PROVIDER_ERROR_CODES.INDEXER_PAYLOAD_TOO_LARGE]: INTEGRITY,
+  [PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM]: USAGE
 });
 
 const {
@@ -153,7 +155,8 @@ const {
   ZK_ARTIFACT_FETCH_FAILED,
   ZK_ARTIFACT_NOT_SERVED,
   PROOF_SERVER_UNAVAILABLE,
-  PROOF_SERVER_REFUSED
+  PROOF_SERVER_REFUSED,
+  UNUSABLE_ERA_ARM
 } = PROVIDER_ERROR_CODES;
 
 /**
@@ -323,6 +326,34 @@ export class SeamEraUnsupportedError extends MidnightJsError {
         `whole set serves.`
     );
     this.name = 'SeamEraUnsupportedError';
+  }
+}
+
+/**
+ * Thrown at provider construction when a retained-era handler or provider entry
+ * is non-callable or unusable.
+ *
+ * Catch it via its stable `code`, using `hasErrorCode` from
+ * `@midnight-ntwrk/midnight-js-utils`.
+ */
+export class UnusableEraArmError extends MidnightJsError {
+  readonly code = UNUSABLE_ERA_ARM;
+  readonly category = PROVIDER_ERROR_CATEGORIES[UNUSABLE_ERA_ARM];
+
+  /**
+   * @param seam The provider method where the retained era was registered.
+   * @param era The retained ledger era whose entry was unusable.
+   * @param reason The specific reason the entry was rejected.
+   */
+  constructor(
+    readonly seam: ProviderSeam,
+    readonly era: string,
+    readonly reason: string
+  ) {
+    super(
+      `Cannot register retained era '${era}' at ${seam}: ${reason}. ` +
+        `Pass a function for ${era}, or leave the entry out (or set it to undefined) if this era is not served.`
+    );
   }
 }
 

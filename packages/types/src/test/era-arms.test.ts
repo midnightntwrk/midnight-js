@@ -22,7 +22,7 @@ import type {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { describe, expect, it, vi } from 'vitest';
 
-import { PROVIDER_ERROR_CODES, UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
+import { PROVIDER_ERROR_CODES, UntaggedPayloadError, UnusableEraArmError, V8PayloadUnsupportedError } from '../errors';
 import { createMidnightProviderFromHandlers } from '../midnight-provider';
 import {
   createProofProviderFromHandlers,
@@ -42,6 +42,15 @@ const stubFinalized = (): FinalizedTransaction => ({}) as FinalizedTransaction;
 const keyReaders = {
   getCoinPublicKey: () => coinPublicKey,
   getEncryptionPublicKey: () => encryptionPublicKey
+};
+
+const captureThrow = (fn: () => unknown): unknown => {
+  try {
+    fn();
+  } catch (error) {
+    return error;
+  }
+  expect.fail('expected function to throw, but it returned normally');
 };
 
 describe('createProofProviderFromHandlers', () => {
@@ -145,6 +154,40 @@ describe('createProofProviderFromHandlers', () => {
     expect((rejection as UntaggedPayloadError).seam).toBe('proveTx');
     expect(currentEra).not.toHaveBeenCalled();
   });
+
+  it('leaves an era unserved when its retained handler is undefined', () => {
+    const provider = createProofProviderFromHandlers({
+      currentEra: async () => stubUnbound(),
+      retainedEras: { v8: undefined }
+    });
+
+    expect([...provider.supportedEras].sort()).toEqual(['v9']);
+  });
+
+  it.each([
+    ['null', null, 'expected a function, got null'],
+    ['an object', {}, 'expected a function, got object'],
+    ['a string', 'not-a-function', 'expected a function, got string'],
+    ['a number', 42, 'expected a function, got number'],
+    ['an array', [() => undefined], 'expected a function, got an array']
+  ])('refuses %s registered as a retained era arm at construction', (_desc, value, expectedReason) => {
+    const error = captureThrow(() =>
+      createProofProviderFromHandlers({
+        currentEra: async () => stubUnbound(),
+        retainedEras: { v8: value as never }
+      })
+    );
+    expect(error).toBeInstanceOf(UnusableEraArmError);
+    const unusable = error as UnusableEraArmError;
+    expect(unusable.code).toBe(PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM);
+    expect(unusable.seam).toBe('proveTx');
+    expect(unusable.era).toBe('v8');
+    expect(unusable.reason).toBe(expectedReason);
+    expect(unusable.message).toBe(
+      `Cannot register retained era 'v8' at proveTx: ${expectedReason}. ` +
+        `Pass a function for v8, or leave the entry out (or set it to undefined) if this era is not served.`
+    );
+  });
 });
 
 describe('createWalletProviderFromHandlers', () => {
@@ -246,6 +289,42 @@ describe('createWalletProviderFromHandlers', () => {
     expect(provider.getCoinPublicKey()).toBe(coinPublicKey);
     expect(provider.getEncryptionPublicKey()).toBe(encryptionPublicKey);
   });
+
+  it('leaves an era unserved when its retained handler is undefined', () => {
+    const provider = createWalletProviderFromHandlers({
+      currentEra: async () => stubFinalized(),
+      retainedEras: { v8: undefined },
+      ...keyReaders
+    });
+
+    expect([...provider.supportedEras].sort()).toEqual(['v9']);
+  });
+
+  it.each([
+    ['null', null, 'expected a function, got null'],
+    ['an object', {}, 'expected a function, got object'],
+    ['a string', 'not-a-function', 'expected a function, got string'],
+    ['a number', 42, 'expected a function, got number'],
+    ['an array', [() => undefined], 'expected a function, got an array']
+  ])('refuses %s registered as a retained era arm at construction', (_desc, value, expectedReason) => {
+    const error = captureThrow(() =>
+      createWalletProviderFromHandlers({
+        currentEra: async () => stubFinalized(),
+        retainedEras: { v8: value as never },
+        ...keyReaders
+      })
+    );
+    expect(error).toBeInstanceOf(UnusableEraArmError);
+    const unusable = error as UnusableEraArmError;
+    expect(unusable.code).toBe(PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM);
+    expect(unusable.seam).toBe('balanceTx');
+    expect(unusable.era).toBe('v8');
+    expect(unusable.reason).toBe(expectedReason);
+    expect(unusable.message).toBe(
+      `Cannot register retained era 'v8' at balanceTx: ${expectedReason}. ` +
+        `Pass a function for v8, or leave the entry out (or set it to undefined) if this era is not served.`
+    );
+  });
 });
 
 describe('createMidnightProviderFromHandlers', () => {
@@ -319,5 +398,39 @@ describe('createMidnightProviderFromHandlers', () => {
 
     expect(rejection).toBeInstanceOf(UntaggedPayloadError);
     expect(currentEra).not.toHaveBeenCalled();
+  });
+
+  it('leaves an era unserved when its retained handler is undefined', () => {
+    const provider = createMidnightProviderFromHandlers({
+      currentEra: async () => 'tx-id' as TransactionId,
+      retainedEras: { v8: undefined }
+    });
+
+    expect([...provider.supportedEras].sort()).toEqual(['v9']);
+  });
+
+  it.each([
+    ['null', null, 'expected a function, got null'],
+    ['an object', {}, 'expected a function, got object'],
+    ['a string', 'not-a-function', 'expected a function, got string'],
+    ['a number', 42, 'expected a function, got number'],
+    ['an array', [() => undefined], 'expected a function, got an array']
+  ])('refuses %s registered as a retained era arm at construction', (_desc, value, expectedReason) => {
+    const error = captureThrow(() =>
+      createMidnightProviderFromHandlers({
+        currentEra: async () => 'tx-id' as TransactionId,
+        retainedEras: { v8: value as never }
+      })
+    );
+    expect(error).toBeInstanceOf(UnusableEraArmError);
+    const unusable = error as UnusableEraArmError;
+    expect(unusable.code).toBe(PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM);
+    expect(unusable.seam).toBe('submitTx');
+    expect(unusable.era).toBe('v8');
+    expect(unusable.reason).toBe(expectedReason);
+    expect(unusable.message).toBe(
+      `Cannot register retained era 'v8' at submitTx: ${expectedReason}. ` +
+        `Pass a function for v8, or leave the entry out (or set it to undefined) if this era is not served.`
+    );
   });
 });
