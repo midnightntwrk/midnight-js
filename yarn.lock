@@ -2355,7 +2355,7 @@ __metadata:
     pino-pretty: "npm:^13.1.3"
     rollup: "npm:^4.60.4"
     rxjs: "npm:^7.8.2"
-    testcontainers: "npm:^12.0.0"
+    testcontainers: "npm:^12.2.0"
     typedoc: "npm:^0.28.20"
     typedoc-plugin-markdown: "npm:4.13.1"
     vite: "npm:^8.3.4"
@@ -6500,12 +6500,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"docker-compose@npm:^1.4.2":
-  version: 1.4.2
-  resolution: "docker-compose@npm:1.4.2"
+"docker-compose@npm:^1.5.0":
+  version: 1.5.0
+  resolution: "docker-compose@npm:1.5.0"
   dependencies:
     yaml: "npm:^2.2.2"
-  checksum: 10/def0c2da93e29a65315525a17e3e7bf47a8fc6918b45cac4468f0b3aa33cc286d5b33c4dd31101ff76d901ac4f2644771fc8b0c2b0c08d4f60791cd83106efb5
+  checksum: 10/8f5ce9127be52f3de1cf3578251459fedca0f6c649a7e979ac791882414e9426c0b7fb7c788ae72fcfb9557e6fe91a5da0014ae2385e9958cd631854676332e4
   languageName: node
   linkType: hard
 
@@ -6521,9 +6521,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dockerode@npm:^5.0.0":
-  version: 5.0.0
-  resolution: "dockerode@npm:5.0.0"
+"dockerode@npm:^5.0.1":
+  version: 5.0.1
+  resolution: "dockerode@npm:5.0.1"
   dependencies:
     "@balena/dockerignore": "npm:^1.0.2"
     "@grpc/grpc-js": "npm:^1.11.1"
@@ -6531,7 +6531,7 @@ __metadata:
     docker-modem: "npm:^5.0.7"
     protobufjs: "npm:^7.3.2"
     tar-fs: "npm:^2.1.4"
-  checksum: 10/1480304e8300745c2606519f74d42ef1c1d804b8289023841e165031e70816909727f95ae7b2ce2cc3789168cb8f57b246c6f339c7f6551e574c1ad1f1307499
+  checksum: 10/8809c7f6b2d5bcec06589cb7f3f677656f96ad1c9b46b2bb6f3487964730b3e9ce59d2809cb356a80c3ff0625c1d01ca25d02586be92104b8b8c3d793b03df13
   languageName: node
   linkType: hard
 
@@ -7683,10 +7683,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"get-port@npm:^7.2.0":
-  version: 7.2.0
-  resolution: "get-port@npm:7.2.0"
-  checksum: 10/f8785ccdcc52b1e03f1b1de3fcd46dbc41fe4079e234f2727c3e154ca76bb94318fb0d341daa28a6c87eff24ad4016eaa8b1b4e26eff0d6a2196dd1c1ffc63a1
+"get-port@npm:^5.1.1":
+  version: 5.1.1
+  resolution: "get-port@npm:5.1.1"
+  checksum: 10/0162663ffe5c09e748cd79d97b74cd70e5a5c84b760a475ce5767b357fb2a57cb821cee412d646aa8a156ed39b78aab88974eddaa9e5ee926173c036c0713787
   languageName: node
   linkType: hard
 
@@ -11844,9 +11844,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tar-fs@npm:^3.1.2":
-  version: 3.1.2
-  resolution: "tar-fs@npm:3.1.2"
+"tar-fs@npm:^3.1.3":
+  version: 3.1.3
+  resolution: "tar-fs@npm:3.1.3"
   dependencies:
     bare-fs: "npm:^4.0.1"
     bare-path: "npm:^3.0.0"
@@ -11857,7 +11857,7 @@ __metadata:
       optional: true
     bare-path:
       optional: true
-  checksum: 10/b358fb7061eebb42bfa6f122cf62d1bdd40dc619117863f3b59eeaa4f880dc03707014905bdb592e77176703d9045956d1ba27adda4458805f9f7cbf62015cbd
+  checksum: 10/858176af2e7c41a302026c6f21940160d50045f567e4276950c921c501e8ddb42edbf5b5437298092fe60d42c7b999a599279d94c3f369b9adb1cfc5b57486fe
   languageName: node
   linkType: hard
 
@@ -11908,9 +11908,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"testcontainers@npm:^12.0.0":
-  version: 12.0.0
-  resolution: "testcontainers@npm:12.0.0"
+"testcontainers@npm:^12.2.0":
+  version: 12.2.0
+  resolution: "testcontainers@npm:12.2.0"
   dependencies:
     "@balena/dockerignore": "npm:^1.0.2"
     "@types/dockerode": "npm:^4.0.1"
@@ -11918,16 +11918,16 @@ __metadata:
     async-lock: "npm:^1.4.1"
     byline: "npm:^5.0.0"
     debug: "npm:^4.4.3"
-    docker-compose: "npm:^1.4.2"
-    dockerode: "npm:^5.0.0"
-    get-port: "npm:^7.2.0"
+    docker-compose: "npm:^1.5.0"
+    dockerode: "npm:^5.0.1"
+    get-port: "npm:^5.1.1"
     proper-lockfile: "npm:^4.1.2"
     properties-reader: "npm:^3.0.1"
     ssh-remote-port-forward: "npm:^1.0.4"
-    tar-fs: "npm:^3.1.2"
-    tmp: "npm:^0.2.5"
-    undici: "npm:^7.24.7"
-  checksum: 10/87be045544ddf672ddfe23349ebd37e7fbd4214bf721b97d2785fb757918156dde241c771b5abf5eb9baf2a903c8293a9bcdc3c7a3c749f67cfe5d1983bc9e1c
+    tar-fs: "npm:^3.1.3"
+    tmp: "npm:^0.2.7"
+    undici: "npm:^8.10.2"
+  checksum: 10/46092f088e3d6ae9ba6b71fe8af3b5964e1f2196aecd812f8968e2096d1e671d8ac71964b1be9bceab39a378797ae0c3f0f3a2a6c20cdbcf35cfba54ee3879e2
   languageName: node
   linkType: hard
 
