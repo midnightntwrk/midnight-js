@@ -1,6 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.v2.json",
   "envMode": "loose",
+  "agentGuidance": false,
   "globalEnv": ["COMPACTC_VERSION"],
   // Repo-root files that decide what a task produces, but live outside any
   // package's own `inputs`. Without them a change here leaves every task hash
