@@ -83,8 +83,8 @@ export interface MidnightProviderHandlers {
  * @returns A {@link MidnightProvider} routing each submission to its era's arm.
  * @throws UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
  *         than `undefined`, is not a function. Raised at construction.
- * @throws InvalidArgumentError if `retainedEras` is not an object keyed only by
- *         retained eras. Raised at construction.
+ * @throws InvalidArgumentError if `handlers` is not an object, or `retainedEras`
+ *         is not a plain object keyed only by retained eras. Raised at construction.
  */
 export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHandlers): MidnightProvider => {
   const { currentEra, retainedEras } = readEraArms('submitTx', handlers, 'handler');
@@ -94,7 +94,7 @@ export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHan
     async submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId> {
       const request = narrowToEraArm(tx, 'submitTx', retainedEras);
       return request.era === CURRENT_LEDGER_VERSION
-        ? currentEra(request.tx)
+        ? currentEra.call(handlers, request.tx)
         : request.handler(request.txBytes);
     }
   };

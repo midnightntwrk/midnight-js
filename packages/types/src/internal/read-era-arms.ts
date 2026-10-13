@@ -35,15 +35,37 @@ const IS_USABLE: Readonly<Record<EraArmShape, (arm: unknown) => boolean>> = {
     typeof arm.prove === 'function'
 };
 
-const describeValue = (value: unknown): string => {
-  if (value === null) {
-    return 'null';
+const withArticle = (noun: string): string => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
+
+const isPlainObject = (value: unknown): boolean => {
+  if (typeof value !== 'object' || value === null) {
+    return false;
   }
-  return Array.isArray(value) ? 'an array' : typeof value;
+  const prototype: unknown = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 };
 
-const isEraKeyedMap = (value: unknown): boolean =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+/**
+ * Names what a value is for an error message: `null`, `undefined`, `an array`,
+ * `an object` for a plain object, `a Map` for a class instance, otherwise its
+ * `typeof` with an article.
+ */
+export const describeValue = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return 'an array';
+  }
+  if (typeof value !== 'object' || isPlainObject(value)) {
+    return withArticle(typeof value);
+  }
+  const constructor: unknown = Reflect.get(value, 'constructor');
+  return typeof constructor === 'function' && constructor.name !== '' ? withArticle(constructor.name) : 'an object';
+};
+
+/** Whether `value` is an object, so its properties can be read. */
+export const isObject = (value: unknown): boolean => typeof value === 'object' && value !== null;
 
 const isRetainedEra = (key: string): boolean => RETAINED_LEDGER_VERSIONS.some((era) => era === key);
 
@@ -52,6 +74,18 @@ const assertUsable = (seam: ProviderSeam, era: LedgerVersion, arm: unknown, shap
     throw new UnusableEraArmError(seam, era, shape, describeValue(arm));
   }
 };
+
+/**
+ * @throws InvalidArgumentError if `value` is not a function.
+ */
+export const assertFunction = (seam: ProviderSeam, name: string, value: unknown): void => {
+  if (typeof value !== 'function') {
+    throw new InvalidArgumentError(`${seam}: ${name} must be a function, got ${describeValue(value)}.`);
+  }
+};
+
+const emptyRetainedEras = <H>(): RetainedEraHandlers<H> =>
+  Object.freeze(Object.create(null) as RetainedEraHandlers<H>);
 
 /** The era arms a provider factory serves from, read once at construction. */
 export interface EraArms<C, H> {
@@ -63,31 +97,35 @@ export interface EraArms<C, H> {
  * Reads and checks the arms handed to a provider factory, once.
  *
  * The provider serves from the returned copy, never from the caller's object,
- * so `supportedEras` and the routing are derived from the same arms and a
- * later change to the caller's map cannot make them disagree.
+ * so `supportedEras` and routing always see the same arms. Only own properties
+ * of `retainedEras` are read, and the copy has no prototype, so an era
+ * inherited from `Object.prototype` is never served.
  *
  * @param seam The provider method the arms serve, used in errors.
  * @param arms The current-era arm and the optional retained-era map.
  * @param shape What every arm must be.
  * @returns The current-era arm and a frozen copy of the retained arms supplied.
+ * @throws InvalidArgumentError if `arms` is not an object, or `retainedEras` is
+ *         given but is not a plain object keyed only by retained eras.
  * @throws UnusableEraArmError if the current-era arm, or a retained-era entry
  *         other than `undefined`, is not `shape`.
- * @throws InvalidArgumentError if `retainedEras` is given but is not an object
- *         keyed only by retained eras.
  */
 export const readEraArms = <C, H>(
   seam: ProviderSeam,
   arms: { readonly currentEra: C; readonly retainedEras?: RetainedEraHandlers<H> },
   shape: EraArmShape
 ): EraArms<C, H> => {
+  if (!isObject(arms)) {
+    throw new InvalidArgumentError(`${seam}: the era arms must be an object, got ${describeValue(arms)}.`);
+  }
   const { currentEra, retainedEras } = arms;
   assertUsable(seam, CURRENT_LEDGER_VERSION, currentEra, shape);
   if (retainedEras === undefined) {
-    return { currentEra, retainedEras: Object.freeze({}) };
+    return { currentEra, retainedEras: emptyRetainedEras() };
   }
-  if (!isEraKeyedMap(retainedEras)) {
+  if (!isPlainObject(retainedEras)) {
     throw new InvalidArgumentError(
-      `${seam}: retainedEras must be an object keyed by retained era (${RETAINED_LEDGER_VERSIONS.join(', ')}), got ${describeValue(retainedEras)}.`
+      `${seam}: retainedEras must be a plain object keyed by retained era (${RETAINED_LEDGER_VERSIONS.join(', ')}), got ${describeValue(retainedEras)}.`
     );
   }
   const unknownKeys = Object.keys(retainedEras).filter((key) => !isRetainedEra(key));
@@ -97,9 +135,9 @@ export const readEraArms = <C, H>(
         `Expected only ${RETAINED_LEDGER_VERSIONS.join(', ')}.`
     );
   }
-  const copy: Partial<Record<RetainedLedgerVersion, H>> = {};
+  const copy = Object.create(null) as Partial<Record<RetainedLedgerVersion, H>>;
   for (const era of RETAINED_LEDGER_VERSIONS) {
-    const arm = retainedEras[era];
+    const arm = Object.hasOwn(retainedEras, era) ? retainedEras[era] : undefined;
     if (arm !== undefined) {
       assertUsable(seam, era, arm, shape);
       copy[era] = arm;

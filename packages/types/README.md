@@ -168,10 +168,11 @@ as serialized bytes, in both directions. That is why the two handler signatures
 differ, and why `retainedEras` cannot name the current era — registering one
 there is a compile error.
 
-A JavaScript caller gets the same guarantee when the provider is built: an arm
-that is not a function is refused with `UnusableEraArmError`
-(`MIDNIGHT_JS_PR_UNUSABLE_ERA_ARM`), and a `retainedEras` key that is not a
-retained era with `InvalidArgumentError`. The provider serves from a copy of the
+The factory checks the same things when the provider is built, for JavaScript
+callers the types do not reach: an arm that is not a function is refused with
+`UnusableEraArmError` (`MIDNIGHT_JS_PR_UNUSABLE_ERA_ARM`), and a `retainedEras`
+that is not a plain object keyed only by retained eras — the current era
+included — with `InvalidArgumentError`. The provider serves from a copy of the
 arms taken then, so changing the object you passed in afterwards has no effect.
 
 `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers` are the same

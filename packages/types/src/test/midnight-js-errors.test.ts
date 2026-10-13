@@ -93,8 +93,8 @@ describe('types error classes', () => {
     ],
     [
       'a retained era proving provider',
-      new UnusableEraArmError('proveTx', 'v8', 'proving-provider', 'function'),
-      "Cannot use the v8 arm registered for proveTx: expected a ProvingProvider with callable 'check' and 'prove', got function. " +
+      new UnusableEraArmError('proveTx', 'v8', 'proving-provider', 'a function'),
+      "Cannot use the v8 arm registered for proveTx: expected a ProvingProvider with callable 'check' and 'prove', got a function. " +
         "Pass a ProvingProvider with callable 'check' and 'prove' for v8, or leave the entry out (or set it to undefined) if this era is not served."
     ],
     [
