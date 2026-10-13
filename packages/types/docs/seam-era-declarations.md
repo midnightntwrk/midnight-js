@@ -46,6 +46,12 @@ They mean different things to whoever is reading them:
 Collapsing them would lose the distinction between "configured wrong, nothing
 spent" and "failed at the seam, possibly after paying to prove".
 
+A third error comes earlier than both. A provider factory refuses an arm it
+cannot use — not a function, or not a `ProvingProvider` for
+`createProofProviderForEras` — with `UnusableEraArmError` when the provider is
+built. A provider holding such an arm never exists, so it cannot declare an era
+it would then fail to serve.
+
 ## Which providers refuse the retained arm, and why
 
 `V8PayloadUnsupportedError` does not mean "the framework cannot do this yet". It

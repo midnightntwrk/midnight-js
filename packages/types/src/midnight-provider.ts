@@ -17,7 +17,7 @@ import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/midnig
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
-import { assertValidRetainedEras } from './internal/validate-retained-eras';
+import { readEraArms } from './internal/read-era-arms';
 import type { VersionedFinalizedTransaction } from './wallet-provider';
 
 /**
@@ -81,16 +81,20 @@ export interface MidnightProviderHandlers {
  *
  * @param handlers The current-era handler, and one for each retained era served.
  * @returns A {@link MidnightProvider} routing each submission to its era's arm.
+ * @throws UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
+ *         than `undefined`, is not a function. Raised at construction.
+ * @throws InvalidArgumentError if `retainedEras` is not an object keyed only by
+ *         retained eras. Raised at construction.
  */
 export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHandlers): MidnightProvider => {
-  assertValidRetainedEras('submitTx', handlers.retainedEras);
+  const { currentEra, retainedEras } = readEraArms('submitTx', handlers, 'handler');
   return {
-    supportedEras: erasServedBy(handlers.retainedEras),
+    supportedEras: erasServedBy(retainedEras),
 
     async submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId> {
-      const request = narrowToEraArm(tx, 'submitTx', handlers.retainedEras);
+      const request = narrowToEraArm(tx, 'submitTx', retainedEras);
       return request.era === CURRENT_LEDGER_VERSION
-        ? handlers.currentEra(request.tx)
+        ? currentEra(request.tx)
         : request.handler(request.txBytes);
     }
   };

@@ -294,6 +294,12 @@ Three things to know before wiring a retained-era flow:
   });
   ```
 
+  All four factories check the arms when the provider is built. An arm of the wrong shape — not a
+  function, or for `createProofProviderForEras` not an object with callable `check` and `prove` —
+  is refused with `UnusableEraArmError` (`MIDNIGHT_JS_PR_UNUSABLE_ERA_ARM`); a `retainedEras` key
+  that is not a retained era is refused with `InvalidArgumentError`. A retained entry set to
+  `undefined` leaves that era unserved.
+
   Implementing a version-tagged interface directly still works — write `supportedEras` yourself.
 
 A payload sent on the `v8` arm that is not a serialized transaction is refused with

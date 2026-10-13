@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type {
   CoinPublicKey,
   EncPublicKey,
@@ -20,17 +21,30 @@ import type {
   TransactionId,
   UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expect, it, vi } from 'vitest';
 
-import { PROVIDER_ERROR_CODES, UntaggedPayloadError, UnusableEraArmError, V8PayloadUnsupportedError } from '../errors';
-import { createMidnightProviderFromHandlers } from '../midnight-provider';
+import type { RetainedEraHandlers } from '../era-arms';
+import { PROVIDER_ERROR_CODES, type ProviderSeam, UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
+import {
+  createMidnightProviderFromHandlers,
+  type CurrentEraSubmitter,
+  type RetainedEraSubmitter
+} from '../midnight-provider';
 import {
   createProofProviderFromHandlers,
+  type CurrentEraProver,
+  type RetainedEraProver,
   type UnboundTransaction,
   type VersionedUnboundTransaction,
   type VersionedUnprovenTransaction
 } from '../proof-provider';
-import { createWalletProviderFromHandlers, type VersionedFinalizedTransaction } from '../wallet-provider';
+import {
+  createWalletProviderFromHandlers,
+  type CurrentEraBalancer,
+  type RetainedEraBalancer,
+  type VersionedFinalizedTransaction
+} from '../wallet-provider';
 
 const coinPublicKey = 'coin-pk' as CoinPublicKey;
 const encryptionPublicKey = 'enc-pk' as EncPublicKey;
@@ -42,15 +56,6 @@ const stubFinalized = (): FinalizedTransaction => ({}) as FinalizedTransaction;
 const keyReaders = {
   getCoinPublicKey: () => coinPublicKey,
   getEncryptionPublicKey: () => encryptionPublicKey
-};
-
-const captureThrow = (fn: () => unknown): unknown => {
-  try {
-    fn();
-  } catch (error) {
-    return error;
-  }
-  expect.fail('expected function to throw, but it returned normally');
 };
 
 describe('createProofProviderFromHandlers', () => {
@@ -154,40 +159,6 @@ describe('createProofProviderFromHandlers', () => {
     expect((rejection as UntaggedPayloadError).seam).toBe('proveTx');
     expect(currentEra).not.toHaveBeenCalled();
   });
-
-  it('leaves an era unserved when its retained handler is undefined', () => {
-    const provider = createProofProviderFromHandlers({
-      currentEra: async () => stubUnbound(),
-      retainedEras: { v8: undefined }
-    });
-
-    expect([...provider.supportedEras].sort()).toEqual(['v9']);
-  });
-
-  it.each([
-    ['null', null, 'expected a function, got null'],
-    ['an object', {}, 'expected a function, got object'],
-    ['a string', 'not-a-function', 'expected a function, got string'],
-    ['a number', 42, 'expected a function, got number'],
-    ['an array', [() => undefined], 'expected a function, got an array']
-  ])('refuses %s registered as a retained era arm at construction', (_desc, value, expectedReason) => {
-    const error = captureThrow(() =>
-      createProofProviderFromHandlers({
-        currentEra: async () => stubUnbound(),
-        retainedEras: { v8: value as never }
-      })
-    );
-    expect(error).toBeInstanceOf(UnusableEraArmError);
-    const unusable = error as UnusableEraArmError;
-    expect(unusable.code).toBe(PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM);
-    expect(unusable.seam).toBe('proveTx');
-    expect(unusable.era).toBe('v8');
-    expect(unusable.reason).toBe(expectedReason);
-    expect(unusable.message).toBe(
-      `Cannot register retained era 'v8' at proveTx: ${expectedReason}. ` +
-        `Pass a function for v8, or leave the entry out (or set it to undefined) if this era is not served.`
-    );
-  });
 });
 
 describe('createWalletProviderFromHandlers', () => {
@@ -289,42 +260,6 @@ describe('createWalletProviderFromHandlers', () => {
     expect(provider.getCoinPublicKey()).toBe(coinPublicKey);
     expect(provider.getEncryptionPublicKey()).toBe(encryptionPublicKey);
   });
-
-  it('leaves an era unserved when its retained handler is undefined', () => {
-    const provider = createWalletProviderFromHandlers({
-      currentEra: async () => stubFinalized(),
-      retainedEras: { v8: undefined },
-      ...keyReaders
-    });
-
-    expect([...provider.supportedEras].sort()).toEqual(['v9']);
-  });
-
-  it.each([
-    ['null', null, 'expected a function, got null'],
-    ['an object', {}, 'expected a function, got object'],
-    ['a string', 'not-a-function', 'expected a function, got string'],
-    ['a number', 42, 'expected a function, got number'],
-    ['an array', [() => undefined], 'expected a function, got an array']
-  ])('refuses %s registered as a retained era arm at construction', (_desc, value, expectedReason) => {
-    const error = captureThrow(() =>
-      createWalletProviderFromHandlers({
-        currentEra: async () => stubFinalized(),
-        retainedEras: { v8: value as never },
-        ...keyReaders
-      })
-    );
-    expect(error).toBeInstanceOf(UnusableEraArmError);
-    const unusable = error as UnusableEraArmError;
-    expect(unusable.code).toBe(PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM);
-    expect(unusable.seam).toBe('balanceTx');
-    expect(unusable.era).toBe('v8');
-    expect(unusable.reason).toBe(expectedReason);
-    expect(unusable.message).toBe(
-      `Cannot register retained era 'v8' at balanceTx: ${expectedReason}. ` +
-        `Pass a function for v8, or leave the entry out (or set it to undefined) if this era is not served.`
-    );
-  });
 });
 
 describe('createMidnightProviderFromHandlers', () => {
@@ -399,38 +334,148 @@ describe('createMidnightProviderFromHandlers', () => {
     expect(rejection).toBeInstanceOf(UntaggedPayloadError);
     expect(currentEra).not.toHaveBeenCalled();
   });
+});
 
-  it('leaves an era unserved when its retained handler is undefined', () => {
-    const provider = createMidnightProviderFromHandlers({
+describe('era arm validation at construction', () => {
+  const v8TxBytes = new Uint8Array([1, 2, 3]);
+  const servedBytes = new Uint8Array([9]);
+
+  interface BuiltProvider {
+    readonly supportedEras: readonly LedgerVersion[];
+    readonly sendV8: () => Promise<unknown>;
+  }
+
+  // Each factory is fed `unknown` arms on purpose: the cases below are the
+  // values a JavaScript caller can pass and the types rule out.
+  const factories: readonly {
+    readonly seam: ProviderSeam;
+    readonly currentEra: unknown;
+    readonly retainedArm: () => unknown;
+    readonly build: (arms: { readonly currentEra: unknown; readonly retainedEras?: unknown }) => BuiltProvider;
+  }[] = [
+    {
+      seam: 'proveTx',
+      currentEra: async () => stubUnbound(),
+      retainedArm: () => vi.fn(async () => servedBytes),
+      build: ({ currentEra, retainedEras }) => {
+        const provider = createProofProviderFromHandlers({
+          currentEra: currentEra as CurrentEraProver,
+          retainedEras: retainedEras as RetainedEraHandlers<RetainedEraProver>
+        });
+        return {
+          supportedEras: provider.supportedEras,
+          sendV8: () => provider.proveTx({ version: 'v8', txBytes: v8TxBytes })
+        };
+      }
+    },
+    {
+      seam: 'balanceTx',
+      currentEra: async () => stubFinalized(),
+      retainedArm: () => vi.fn(async () => servedBytes),
+      build: ({ currentEra, retainedEras }) => {
+        const provider = createWalletProviderFromHandlers({
+          currentEra: currentEra as CurrentEraBalancer,
+          retainedEras: retainedEras as RetainedEraHandlers<RetainedEraBalancer>,
+          ...keyReaders
+        });
+        return {
+          supportedEras: provider.supportedEras,
+          sendV8: () => provider.balanceTx({ version: 'v8', txBytes: v8TxBytes })
+        };
+      }
+    },
+    {
+      seam: 'submitTx',
       currentEra: async () => 'tx-id' as TransactionId,
-      retainedEras: { v8: undefined }
+      retainedArm: () => vi.fn(async () => 'v8-tx-id' as TransactionId),
+      build: ({ currentEra, retainedEras }) => {
+        const provider = createMidnightProviderFromHandlers({
+          currentEra: currentEra as CurrentEraSubmitter,
+          retainedEras: retainedEras as RetainedEraHandlers<RetainedEraSubmitter>
+        });
+        return {
+          supportedEras: provider.supportedEras,
+          sendV8: () => provider.submitTx({ version: 'v8', txBytes: v8TxBytes })
+        };
+      }
+    }
+  ];
+
+  describe.each(factories)('for $seam', ({ seam, currentEra, retainedArm, build }) => {
+    it('leaves an era unserved when its retained handler is undefined, refusing that arm', async () => {
+      const provider = build({ currentEra, retainedEras: { v8: undefined } });
+
+      expect([...provider.supportedEras].sort()).toEqual(['v9']);
+      await expect(provider.sendV8()).rejects.toThrow(
+        expect.objectContaining({ name: 'V8PayloadUnsupportedError', code: PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED })
+      );
     });
 
-    expect([...provider.supportedEras].sort()).toEqual(['v9']);
-  });
+    it.each([
+      ['null', null, 'null'],
+      ['an object', {}, 'object'],
+      ['a string', 'not-a-function', 'string'],
+      ['a number', 42, 'number'],
+      ['an array', [() => undefined], 'an array']
+    ])('refuses %s registered as a retained era arm', (_desc, value, received) => {
+      const act = () => build({ currentEra, retainedEras: { v8: value } });
 
-  it.each([
-    ['null', null, 'expected a function, got null'],
-    ['an object', {}, 'expected a function, got object'],
-    ['a string', 'not-a-function', 'expected a function, got string'],
-    ['a number', 42, 'expected a function, got number'],
-    ['an array', [() => undefined], 'expected a function, got an array']
-  ])('refuses %s registered as a retained era arm at construction', (_desc, value, expectedReason) => {
-    const error = captureThrow(() =>
-      createMidnightProviderFromHandlers({
-        currentEra: async () => 'tx-id' as TransactionId,
-        retainedEras: { v8: value as never }
-      })
-    );
-    expect(error).toBeInstanceOf(UnusableEraArmError);
-    const unusable = error as UnusableEraArmError;
-    expect(unusable.code).toBe(PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM);
-    expect(unusable.seam).toBe('submitTx');
-    expect(unusable.era).toBe('v8');
-    expect(unusable.reason).toBe(expectedReason);
-    expect(unusable.message).toBe(
-      `Cannot register retained era 'v8' at submitTx: ${expectedReason}. ` +
-        `Pass a function for v8, or leave the entry out (or set it to undefined) if this era is not served.`
-    );
+      expect(act).toThrow(
+        expect.objectContaining({
+          name: 'UnusableEraArmError',
+          code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM,
+          seam,
+          era: 'v8',
+          expected: 'handler',
+          received
+        })
+      );
+    });
+
+    it.each([
+      ['undefined', undefined, 'undefined'],
+      ['null', null, 'null'],
+      ['an object', {}, 'object']
+    ])('refuses %s registered as the current era arm', (_desc, value, received) => {
+      const act = () => build({ currentEra: value });
+
+      expect(act).toThrow(
+        expect.objectContaining({
+          name: 'UnusableEraArmError',
+          code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM,
+          seam,
+          era: 'v9',
+          expected: 'handler',
+          received
+        })
+      );
+    });
+
+    it.each([
+      ['a misspelled era key', () => ({ V8: retainedArm() })],
+      ['the current era as a key', () => ({ v9: retainedArm() })],
+      ['null', () => null],
+      ['a bare handler', () => retainedArm()],
+      ['an array', () => [retainedArm()]],
+      ['a string', () => 'v8']
+    ])('refuses %s as the retained era map', (_desc, retainedEras) => {
+      const act = () => build({ currentEra, retainedEras: retainedEras() });
+
+      expect(act).toThrow(
+        expect.objectContaining({ name: 'InvalidArgumentError', code: COMMON_ERROR_CODES.INVALID_ARGUMENT })
+      );
+    });
+
+    it('keeps serving the arms it was built with when the caller mutates the map afterwards', async () => {
+      const handler = retainedArm();
+      const retainedEras: { v8?: unknown } = { v8: handler };
+      const provider = build({ currentEra, retainedEras });
+
+      retainedEras.v8 = null;
+      await provider.sendV8();
+
+      expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
   });
 });

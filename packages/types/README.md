@@ -168,6 +168,12 @@ as serialized bytes, in both directions. That is why the two handler signatures
 differ, and why `retainedEras` cannot name the current era — registering one
 there is a compile error.
 
+A JavaScript caller gets the same guarantee when the provider is built: an arm
+that is not a function is refused with `UnusableEraArmError`
+(`MIDNIGHT_JS_PR_UNUSABLE_ERA_ARM`), and a `retainedEras` key that is not a
+retained era with `InvalidArgumentError`. The provider serves from a copy of the
+arms taken then, so changing the object you passed in afterwards has no effect.
+
 `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers` are the same
 shape for the other two seams. Implementing a tagged interface directly is also
 fine — a class, or a provider that routes internally — in which case you write

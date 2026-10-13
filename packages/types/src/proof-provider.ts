@@ -32,7 +32,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
-import { assertValidRetainedEras } from './internal/validate-retained-eras';
+import { readEraArms } from './internal/read-era-arms';
 import type { VersionedTx } from './versioned';
 
 export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
@@ -150,6 +150,10 @@ export interface ProofProviderHandlers {
  * @param handlers The current-era handler, and one for each retained era served.
  * @returns A {@link ProofProvider} routing each request to its era's arm and
  *          answering in the era the request arrived in.
+ * @throws UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
+ *         than `undefined`, is not a function. Raised at construction.
+ * @throws InvalidArgumentError if `retainedEras` is not an object keyed only by
+ *         retained eras. Raised at construction.
  *
  * @example
  * ```typescript
@@ -161,17 +165,17 @@ export interface ProofProviderHandlers {
  * ```
  */
 export const createProofProviderFromHandlers = (handlers: ProofProviderHandlers): ProofProvider => {
-  assertValidRetainedEras('proveTx', handlers.retainedEras);
+  const { currentEra, retainedEras } = readEraArms('proveTx', handlers, 'handler');
   return {
-    supportedEras: erasServedBy(handlers.retainedEras),
+    supportedEras: erasServedBy(retainedEras),
 
     async proveTx(
       unprovenTx: VersionedUnprovenTransaction,
       proveTxConfig?: ProveTxConfig
     ): Promise<VersionedUnboundTransaction> {
-      const request = narrowToEraArm(unprovenTx, 'proveTx', handlers.retainedEras);
+      const request = narrowToEraArm(unprovenTx, 'proveTx', retainedEras);
       if (request.era === CURRENT_LEDGER_VERSION) {
-        return { version: CURRENT_LEDGER_VERSION, tx: await handlers.currentEra(request.tx, proveTxConfig) };
+        return { version: CURRENT_LEDGER_VERSION, tx: await currentEra(request.tx, proveTxConfig) };
       }
       // Answered in the arm it arrived in: a caller narrows the response and
       // rejects the other era, so replying in the wrong one strands a submit
@@ -256,6 +260,11 @@ const toRetainedEraHandlers = (
  *                         current-era cost model.
  * @returns A {@link ProofProvider} routing each request to its era's proving
  *          provider and answering in the era the request arrived in.
+ * @throws UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
+ *         than `undefined`, is not an object with callable `check` and `prove`.
+ *         Raised at construction.
+ * @throws InvalidArgumentError if `retainedEras` is not an object keyed only by
+ *         retained eras. Raised at construction.
  * @throws V8PayloadUnsupportedError if a payload arrives on a retained arm no
  *         provider was registered for.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
@@ -277,25 +286,13 @@ const toRetainedEraHandlers = (
  * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/seam-era-declarations.md | Seam era declarations}
  */
 export const createProofProviderForEras = ({
-  currentEra,
-  retainedEras,
-  costModel = CostModel.initialCostModel()
+  costModel = CostModel.initialCostModel(),
+  ...provingProviders
 }: ProvingProvidersByEra): ProofProvider => {
-  assertValidRetainedEras(
-    'proveTx',
-    retainedEras,
-    (entry): boolean =>
-      typeof entry === 'object' &&
-      entry !== null &&
-      'check' in entry &&
-      typeof entry.check === 'function' &&
-      'prove' in entry &&
-      typeof entry.prove === 'function',
-    "expected an object with callable 'check' and 'prove' methods"
-  );
+  const { currentEra, retainedEras } = readEraArms('proveTx', provingProviders, 'proving-provider');
   return createProofProviderFromHandlers({
     currentEra: (tx) => tx.prove(currentEra, costModel),
-    retainedEras: retainedEras && toRetainedEraHandlers(retainedEras)
+    retainedEras: toRetainedEraHandlers(retainedEras)
   });
 };
 

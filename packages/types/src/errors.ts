@@ -18,6 +18,7 @@ import {
   MidnightJsError,
   type MidnightJsErrorCategory
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**
  * The provider methods that carry a version-tagged transaction payload.
@@ -330,8 +331,22 @@ export class SeamEraUnsupportedError extends MidnightJsError {
 }
 
 /**
- * Thrown at provider construction when a retained-era handler or provider entry
- * is non-callable or unusable.
+ * The shape a provider factory needs for each era arm: a `handler` function
+ * for the `…FromHandlers` factories, a `proving-provider` with callable
+ * `check` and `prove` for `createProofProviderForEras`.
+ */
+export type EraArmShape = 'handler' | 'proving-provider';
+
+const ERA_ARM_SHAPE_DESCRIPTIONS: Readonly<Record<EraArmShape, string>> = {
+  handler: 'a function',
+  'proving-provider': "a ProvingProvider with callable 'check' and 'prove'"
+};
+
+/**
+ * Thrown by a provider factory given an era arm it cannot use: a current-era
+ * arm that is not the {@link EraArmShape} the factory needs, or a retained-era
+ * entry that is neither `undefined` nor that shape. Raised at construction, so
+ * `supportedEras` never claims an era no arm can serve.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from
  * `@midnight-ntwrk/midnight-js-utils`.
@@ -341,19 +356,25 @@ export class UnusableEraArmError extends MidnightJsError {
   readonly category = PROVIDER_ERROR_CATEGORIES[UNUSABLE_ERA_ARM];
 
   /**
-   * @param seam The provider method where the retained era was registered.
-   * @param era The retained ledger era whose entry was unusable.
-   * @param reason The specific reason the entry was rejected.
+   * @param seam The provider method the rejected arm would have served.
+   * @param era The ledger era whose arm was rejected.
+   * @param expected The shape the factory needs for that arm.
+   * @param received What was passed instead, as `typeof` describes it (`'null'` and `'an array'` are told apart).
    */
   constructor(
     readonly seam: ProviderSeam,
-    readonly era: string,
-    readonly reason: string
+    readonly era: LedgerVersion,
+    readonly expected: EraArmShape,
+    readonly received: string
   ) {
+    const shape = ERA_ARM_SHAPE_DESCRIPTIONS[expected];
     super(
-      `Cannot register retained era '${era}' at ${seam}: ${reason}. ` +
-        `Pass a function for ${era}, or leave the entry out (or set it to undefined) if this era is not served.`
+      `Cannot use the ${era} arm registered for ${seam}: expected ${shape}, got ${received}. ` +
+        (era === CURRENT_LEDGER_VERSION
+          ? `Pass ${shape} for ${era}: every provider serves the current era.`
+          : `Pass ${shape} for ${era}, or leave the entry out (or set it to undefined) if this era is not served.`)
     );
+    this.name = 'UnusableEraArmError';
   }
 }
 
