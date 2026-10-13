@@ -781,14 +781,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@fast-check/vitest@npm:^0.4.1":
-  version: 0.4.1
-  resolution: "@fast-check/vitest@npm:0.4.1"
+"@fast-check/vitest@npm:^0.5.0":
+  version: 0.5.0
+  resolution: "@fast-check/vitest@npm:0.5.0"
   dependencies:
     fast-check: "npm:^3.0.0 || ^4.0.0"
   peerDependencies:
-    vitest: ^4.1.0
-  checksum: 10/83755dd1e1dbd33bcbb032582c65ad9e9b035854a053291b66509b5cedc1313577626db6611e80dcce62d4ce383699f3e57c9715dc9e08201ba4ac50e94746fa
+    vitest: ^4.1.0 || ^5.0.0
+  checksum: 10/4b9c20cfed4e97a7046f2a4ae30bb29ef166400dfdd47cef4c2dc61b80d7131a648ffebaf7f8e8d111f9325483e8724dc0777c09cb9101b195639e29fcbaab45
   languageName: node
   linkType: hard
 
@@ -1914,7 +1914,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-contracts@workspace:packages/contracts"
   dependencies:
-    "@fast-check/vitest": "npm:^0.4.1"
+    "@fast-check/vitest": "npm:^0.5.0"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
