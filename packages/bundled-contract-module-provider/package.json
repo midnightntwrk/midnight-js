@@ -25,7 +25,7 @@
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
   },
   "devDependencies": {
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.11"
   },
   "files": [
     "dist/"
