@@ -60,7 +60,7 @@
     "@midnightntwrk/ledger-v8": "8.1.2",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
     "@types/ws": "^8.18.1",
-    "@vitest/runner": "^4.1.10",
+    "@vitest/runner": "^4.1.11",
     "allure-commandline": "^2.43.0",
     "allure-js-commons": "^3.9.0",
     "allure-vitest": "^3.10.2",
@@ -69,7 +69,7 @@
     "rxjs": "^7.8.2",
     "typedoc": "^0.28.19",
     "typedoc-plugin-markdown": "4.12.0",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.11"
   },
   "files": [
     "dist/"

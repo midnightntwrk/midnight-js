@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "rollup": "^4.60.4",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.11"
   },
   "files": [
     "dist/"
