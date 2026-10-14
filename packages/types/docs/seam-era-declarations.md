@@ -11,7 +11,7 @@ that result are two rather than one.
 
 The payloads these seams carry are
 [VersionTaggedPayloads](./version-tagged-payloads.md). The multi-era construction
-is `docs/adr/0014-build-provider-seams-from-per-era-arms.md`.
+is `docs/adr/0014-build-provider-seams-from-per-era-handlers.md`.
 
 ## The pre-flight check is about WHERE it runs
 
@@ -46,14 +46,15 @@ They mean different things to whoever is reading them:
 Collapsing them would lose the distinction between "configured wrong, nothing
 spent" and "failed at the seam, possibly after paying to prove".
 
-## An unusable arm is refused before the provider exists
+## An unusable handler is refused before the provider exists
 
-The factories check each arm when the provider is built. An arm that is not a
-function — or, for `createProofProviderForEras`, not an object with callable
+The factories check each handler when the provider is built. A handler that is
+not a function — or, for `createProofProviderForEras`, not an object with callable
 `check` and `prove` — is refused with `UnusableEraArmError`; a `retainedEras`
 that is not a plain object keyed only by retained eras is refused with
 `InvalidArgumentError`. This checks shape only: `supportedEras` never names an
-era with no arm, but a well-formed arm paired with the wrong era still passes
+era with no handler, but a well-formed handler paired with the wrong era still
+passes
 (see
 [Why an in-process prover needs one proving provider per era](#why-an-in-process-prover-needs-one-proving-provider-per-era)).
 

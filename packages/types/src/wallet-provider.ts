@@ -96,7 +96,7 @@ export interface WalletProviderHandlers {
 }
 
 /**
- * Assembles a {@link WalletProvider} from one arm per ledger era it serves.
+ * Assembles a {@link WalletProvider} from one handler per ledger era it serves.
  *
  * The counterpart to `createProofProviderFromHandlers`, with the same guarantees:
  * `supportedEras` is computed from the handlers supplied, the tag never appears in

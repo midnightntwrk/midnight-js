@@ -151,7 +151,7 @@ export interface ProofProviderHandlers {
 }
 
 /**
- * Assembles a {@link ProofProvider} from one arm per ledger era it serves.
+ * Assembles a {@link ProofProvider} from one handler per ledger era it serves.
  *
  * The `supportedEras` declaration is computed from the handlers supplied, so it
  * cannot disagree with what the provider actually does.

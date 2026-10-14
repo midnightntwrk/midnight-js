@@ -73,7 +73,7 @@ export interface MidnightProviderHandlers {
 }
 
 /**
- * Assembles a {@link MidnightProvider} from one arm per ledger era it serves.
+ * Assembles a {@link MidnightProvider} from one handler per ledger era it serves.
  *
  * The counterpart to `createProofProviderFromHandlers`, with the same guarantees:
  * `supportedEras` is computed from the handlers supplied, and the tag never appears

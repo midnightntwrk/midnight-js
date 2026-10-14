@@ -78,7 +78,7 @@ What the snippet expects from you:
 
 ### Ledger eras
 
-`httpClientProofProvider` proves transactions for both the current ledger era and the retained one (the era before the last hard fork). `createWalletProvider` and `createMidnightProvider` serve the current era only. To handle retained-era transactions too, build the wallet and midnight providers with `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers`. See [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-arms.md).
+`httpClientProofProvider` proves transactions for both the current ledger era and the retained one (the era before the last hard fork). `createWalletProvider` and `createMidnightProvider` serve the current era only. To handle retained-era transactions too, build the wallet and midnight providers with `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers`. See [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md).
 
 ## Examples
 

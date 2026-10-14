@@ -77,7 +77,7 @@ per era, with the routing, the tagging and the `supportedEras` declaration
 derived from the handlers. All three seams carry a required `supportedEras`, read
 before an operation starts so a set that cannot carry a transaction end to end is
 refused before the proof is paid for. See
-[ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-arms.md).
+[ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md).
 
 ## CI Pipeline & PR Gates
 

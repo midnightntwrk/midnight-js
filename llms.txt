@@ -294,8 +294,8 @@ Three things to know before wiring a retained-era flow:
   });
   ```
 
-  All four factories check the arms when the provider is built. An arm of the wrong shape — not a
-  function, or for `createProofProviderForEras` not an object with callable `check` and `prove` —
+  All four factories check the handlers when the provider is built. A handler of the wrong shape —
+  not a function, or for `createProofProviderForEras` not an object with callable `check` and `prove` —
   is refused with `UnusableEraArmError` (`MIDNIGHT_JS_PR_UNUSABLE_ERA_ARM`); a `retainedEras` that
   is not a plain object keyed only by retained eras is refused with `InvalidArgumentError`. A
   retained entry set to `undefined` leaves that era unserved. The check is shape only: it cannot

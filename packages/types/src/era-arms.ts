@@ -44,18 +44,18 @@ import type { VersionedTx } from './versioned';
 export type RetainedEraHandlers<H> = Partial<Readonly<Record<RetainedLedgerVersion, H>>>;
 
 /**
- * The era list a provider assembled from these arms serves.
+ * The era list a provider assembled from these handlers serves.
  *
- * Derived from the arms actually supplied rather than written out beside them:
+ * Derived from the handlers actually supplied rather than written out beside them:
  * a hand-written list is a second statement of the same fact, and the two drift
- * the first time an arm is added or removed. The current era is always present
+ * the first time a handler is added or removed. The current era is always present
  * because {@link RetainedEraHandlers} is the only optional half — a provider
- * with no current-era arm cannot be constructed.
+ * with no current-era handler cannot be constructed.
  *
- * @param retainedEras The retained arms supplied to the factory, if any.
+ * @param retainedEras The retained handlers supplied to the factory, if any.
  * @returns The eras this provider declares, frozen so a consumer cannot widen
  *          the declaration after construction and make
- *          `assertSeamsSupportEra` pass for an era the arms do not serve.
+ *          `assertSeamsSupportEra` pass for an era the handlers do not serve.
  */
 export const erasServedBy = (retainedEras?: RetainedEraHandlers<unknown>): readonly LedgerVersion[] =>
   Object.freeze<LedgerVersion[]>([
