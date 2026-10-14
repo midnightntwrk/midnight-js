@@ -63,7 +63,7 @@ helper covers those three methods only.
 
 The read surface (`watchForTxData`, `watchForDeployTxData`) reports a
 version-tagged *record*, `VersionedFinalizedTxData`. That is a different union —
-its v8 arm carries `tx`, not `txBytes` — so `unwrapV9` does not apply. Narrow it
+its v8 variant carries `tx`, not `txBytes` — so `unwrapV9` does not apply. Narrow it
 with a `switch (record.version)` closed by `assertNever(record, '<call site>')`
 from `utils`.
 

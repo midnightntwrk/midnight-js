@@ -20,7 +20,7 @@ import { unwrapV9 } from '../unwrap-v9';
 import type { VersionedTx } from '../versioned';
 
 // Covered directly rather than through the `create*Provider` adapters. Those
-// route through `narrowToEraArm` now, so exercising `unwrapV9` only through
+// route through `narrowToEra` now, so exercising `unwrapV9` only through
 // them would leave this published helper — the narrowing every v9-only
 // consumer and third-party provider is told to use — with no test of its own.
 

@@ -254,7 +254,31 @@ step removed.
 
 Issue #1475. Point 3 lists what a factory does with the handlers it is given;
 it now also checks them. All four factories refuse a handler of the wrong shape
-with `UnusableEraArmError`, and a `retainedEras` that is not a plain object keyed
-only by retained eras with `InvalidArgumentError`, before the provider exists.
-The check is shape only: a handler built for the wrong era still passes. See
-[the package document](../../packages/types/docs/seam-era-declarations.md).
+with `UnusableEraEntryError`, and a `retainedEras` that is not a plain object
+keyed only by retained eras with `InvalidArgumentError`, before the provider
+exists. The check is shape only: a handler built for the wrong era still passes.
+See [the package document](../../packages/types/docs/seam-era-declarations.md).
+
+## Amendment — "arm" leaves the public surface (2026-10-14)
+
+Issue #1363. The 2026-09-28 amendment kept "arm" for the branch that serves a
+request. In practice the word named three things: a variant of the
+version-tagged union, the branch a request is routed to, and the value a caller
+passes as `currentEra` or under `retainedEras`. A caller never writes anything
+called an arm, so an error that names one sends them to the documentation to
+find out what it means.
+
+The public names now say what they are:
+
+- `narrowToEraArm` is `narrowToEra`, and `EraArmRequest` is `EraRequest`;
+- `UnusableEraArmError` is `UnusableEraEntryError`, with code
+  `MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY` and shape type `EraEntryShape`. An entry
+  is a handler for the `…FromHandlers` factories and a `ProvingProvider` for
+  `createProofProviderForEras`, so neither word alone covers both;
+- that error's message names the field the caller passed (`currentEra` or
+  `retainedEras.v8`), and `V8PayloadUnsupportedError` says "v8 payload" rather
+  than "v8 arm";
+- `era-arms.ts` is `era-handlers.ts`.
+
+The decision is unchanged. The amendments above keep the names that were current
+when they were written.

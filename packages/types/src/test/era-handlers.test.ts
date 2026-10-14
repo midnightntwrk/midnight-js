@@ -67,7 +67,7 @@ const revokedFunctionProxy = (): object => {
 };
 
 describe('createProofProviderFromHandlers', () => {
-  it('declares exactly the current era when no retained arm is supplied', () => {
+  it('declares exactly the current era when no retained handler is supplied', () => {
     const provider = createProofProviderFromHandlers({ currentEra: async () => stubUnbound() });
 
     // Set equality, not `toContain`: a declaration that leaked an era it
@@ -76,7 +76,7 @@ describe('createProofProviderFromHandlers', () => {
     expect([...provider.supportedEras].sort()).toEqual(['v9']);
   });
 
-  it('declares both eras when a retained arm is supplied', () => {
+  it('declares both eras when a retained handler is supplied', () => {
     const provider = createProofProviderFromHandlers({
       currentEra: async () => stubUnbound(),
       retainedEras: { v8: async (bytes) => bytes }
@@ -87,14 +87,14 @@ describe('createProofProviderFromHandlers', () => {
 
   // The declaration is read by the pre-flight check in `assertSeamsSupportEra`,
   // so a consumer must not be able to widen it after construction and make the
-  // check pass for an era the arms do not serve.
+  // check pass for an era the handlers do not serve.
   it('freezes the declaration', () => {
     const provider = createProofProviderFromHandlers({ currentEra: async () => stubUnbound() });
 
     expect(Object.isFrozen(provider.supportedEras)).toBe(true);
   });
 
-  it('drives the current-era arm with the bare transaction and tags the answer', async () => {
+  it('drives the current-era handler with the bare transaction and tags the answer', async () => {
     const unproven = stubUnproven();
     const unbound = stubUnbound();
     const currentEra = vi.fn(async () => unbound);
@@ -110,7 +110,7 @@ describe('createProofProviderFromHandlers', () => {
     expect(result.version === 'v9' && result.tx).toBe(unbound);
   });
 
-  it('drives the retained-era arm with the bare bytes and answers in the same era', async () => {
+  it('drives the retained-era handler with the bare bytes and answers in the same era', async () => {
     const requested = new Uint8Array([1, 2, 3]);
     const proven = new Uint8Array([4, 5, 6]);
     const retained = vi.fn(async () => proven);
@@ -125,7 +125,7 @@ describe('createProofProviderFromHandlers', () => {
     expect(result).toEqual({ version: 'v8', txBytes: proven });
   });
 
-  it('never crosses the arms: a current-era request does not reach the retained arm', async () => {
+  it('never crosses the eras: a current-era request does not reach the retained handler', async () => {
     const retained = vi.fn(async (bytes: Uint8Array) => bytes);
     const provider = createProofProviderFromHandlers({
       currentEra: async () => stubUnbound(),
@@ -137,7 +137,7 @@ describe('createProofProviderFromHandlers', () => {
     expect(retained).not.toHaveBeenCalled();
   });
 
-  it('rejects the retained arm it was not given, with its stable code', async () => {
+  it('rejects a retained era it was given no handler for, with its stable code', async () => {
     const currentEra = vi.fn(async () => stubUnbound());
     const provider = createProofProviderFromHandlers({ currentEra });
 
@@ -173,11 +173,11 @@ describe('createWalletProviderFromHandlers', () => {
   const currentOnly = () =>
     createWalletProviderFromHandlers({ currentEra: async () => stubFinalized(), ...keyReaders });
 
-  it('declares exactly the current era when no retained arm is supplied', () => {
+  it('declares exactly the current era when no retained handler is supplied', () => {
     expect([...currentOnly().supportedEras].sort()).toEqual(['v9']);
   });
 
-  it('declares both eras when a retained arm is supplied', () => {
+  it('declares both eras when a retained handler is supplied', () => {
     const provider = createWalletProviderFromHandlers({
       currentEra: async () => stubFinalized(),
       retainedEras: { v8: async (bytes) => bytes },
@@ -187,7 +187,7 @@ describe('createWalletProviderFromHandlers', () => {
     expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
   });
 
-  it('drives the current-era arm with the bare transaction and the ttl, and tags the answer', async () => {
+  it('drives the current-era handler with the bare transaction and the ttl, and tags the answer', async () => {
     const ttl = new Date(0);
     const unbound = stubUnbound();
     const finalized = stubFinalized();
@@ -200,7 +200,7 @@ describe('createWalletProviderFromHandlers', () => {
     expect(result.version === 'v9' && result.tx).toBe(finalized);
   });
 
-  it('drives the retained-era arm with the bare bytes and answers in the same era', async () => {
+  it('drives the retained-era handler with the bare bytes and answers in the same era', async () => {
     const requested = new Uint8Array([1, 2]);
     const balanced = new Uint8Array([3, 4]);
     const retained = vi.fn(async () => balanced);
@@ -216,7 +216,7 @@ describe('createWalletProviderFromHandlers', () => {
     expect(result).toEqual({ version: 'v8', txBytes: balanced });
   });
 
-  it('hands the retained-era arm the ttl it was given', async () => {
+  it('hands the retained-era handler the ttl it was given', async () => {
     const retained = vi.fn(async () => new Uint8Array([3, 4]));
     const provider = createWalletProviderFromHandlers({
       currentEra: async () => stubFinalized(),
@@ -230,7 +230,7 @@ describe('createWalletProviderFromHandlers', () => {
     expect(retained).toHaveBeenCalledWith(new Uint8Array([1, 2]), ttl);
   });
 
-  it('rejects the retained arm it was not given, without balancing anything', async () => {
+  it('rejects a retained era it was given no handler for, without balancing anything', async () => {
     const currentEra = vi.fn(async () => stubFinalized());
     const provider = createWalletProviderFromHandlers({ currentEra, ...keyReaders });
 
@@ -261,7 +261,7 @@ describe('createWalletProviderFromHandlers', () => {
   });
 
   // The two key readers answer the same for both eras, so they sit beside the
-  // arms rather than inside one.
+  // handlers rather than inside one.
   it('passes the key readers through unchanged', () => {
     const provider = currentOnly();
 
@@ -323,13 +323,13 @@ describe('createWalletProviderFromHandlers', () => {
 });
 
 describe('createMidnightProviderFromHandlers', () => {
-  it('declares exactly the current era when no retained arm is supplied', () => {
+  it('declares exactly the current era when no retained handler is supplied', () => {
     const provider = createMidnightProviderFromHandlers({ currentEra: async () => 'tx-id' as TransactionId });
 
     expect([...provider.supportedEras].sort()).toEqual(['v9']);
   });
 
-  it('declares both eras when a retained arm is supplied', () => {
+  it('declares both eras when a retained handler is supplied', () => {
     const provider = createMidnightProviderFromHandlers({
       currentEra: async () => 'tx-id' as TransactionId,
       retainedEras: { v8: async () => 'tx-id-v8' as TransactionId }
@@ -338,7 +338,7 @@ describe('createMidnightProviderFromHandlers', () => {
     expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
   });
 
-  it('drives the current-era arm with the bare transaction and returns its id', async () => {
+  it('drives the current-era handler with the bare transaction and returns its id', async () => {
     const finalized = stubFinalized();
     const currentEra = vi.fn(async () => 'tx-id' as TransactionId);
     const provider = createMidnightProviderFromHandlers({ currentEra });
@@ -350,8 +350,8 @@ describe('createMidnightProviderFromHandlers', () => {
   });
 
   // A transaction id is era-independent, so this seam answers untagged in both
-  // arms — the retained arm differs only in what it is handed.
-  it('drives the retained-era arm with the bare bytes and returns its id', async () => {
+  // eras — the retained handler differs only in what it is handed.
+  it('drives the retained-era handler with the bare bytes and returns its id', async () => {
     const requested = new Uint8Array([9]);
     const retained = vi.fn(async () => 'tx-id-v8' as TransactionId);
     const provider = createMidnightProviderFromHandlers({
@@ -365,7 +365,7 @@ describe('createMidnightProviderFromHandlers', () => {
     expect(txId).toBe('tx-id-v8');
   });
 
-  it('rejects the retained arm it was not given, without submitting anything', async () => {
+  it('rejects a retained era it was given no handler for, without submitting anything', async () => {
     const currentEra = vi.fn(async () => 'tx-id' as TransactionId);
     const provider = createMidnightProviderFromHandlers({ currentEra });
 
@@ -396,7 +396,7 @@ describe('createMidnightProviderFromHandlers', () => {
   });
 });
 
-describe('era arm validation at construction', () => {
+describe('era entry validation at construction', () => {
   const v8TxBytes = new Uint8Array([1, 2, 3]);
   const servedBytes = new Uint8Array([9]);
 
@@ -411,14 +411,14 @@ describe('era arm validation at construction', () => {
   const factories: readonly {
     readonly seam: ProviderSeam;
     readonly currentEra: unknown;
-    readonly retainedArm: () => unknown;
+    readonly retainedHandler: () => unknown;
     readonly otherHandlers: object;
     readonly create: (handlers: unknown) => BuiltProvider;
   }[] = [
     {
       seam: 'proveTx',
       currentEra: async () => stubUnbound(),
-      retainedArm: () => vi.fn(async () => servedBytes),
+      retainedHandler: () => vi.fn(async () => servedBytes),
       otherHandlers: {},
       create: (handlers) => {
         const provider = createProofProviderFromHandlers(handlers as ProofProviderHandlers);
@@ -432,7 +432,7 @@ describe('era arm validation at construction', () => {
     {
       seam: 'balanceTx',
       currentEra: async () => stubFinalized(),
-      retainedArm: () => vi.fn(async () => servedBytes),
+      retainedHandler: () => vi.fn(async () => servedBytes),
       otherHandlers: keyReaders,
       create: (handlers) => {
         const provider = createWalletProviderFromHandlers(handlers as WalletProviderHandlers);
@@ -446,7 +446,7 @@ describe('era arm validation at construction', () => {
     {
       seam: 'submitTx',
       currentEra: async () => 'tx-id' as TransactionId,
-      retainedArm: () => vi.fn(async () => 'v8-tx-id' as TransactionId),
+      retainedHandler: () => vi.fn(async () => 'v8-tx-id' as TransactionId),
       otherHandlers: {},
       create: (handlers) => {
         const provider = createMidnightProviderFromHandlers(handlers as MidnightProviderHandlers);
@@ -459,11 +459,11 @@ describe('era arm validation at construction', () => {
     }
   ];
 
-  describe.each(factories)('for $seam', ({ seam, currentEra, retainedArm, otherHandlers, create }) => {
-    const build = (arms: { readonly currentEra: unknown; readonly retainedEras?: unknown }): BuiltProvider =>
-      create({ ...otherHandlers, ...arms });
+  describe.each(factories)('for $seam', ({ seam, currentEra, retainedHandler, otherHandlers, create }) => {
+    const build = (entries: { readonly currentEra: unknown; readonly retainedEras?: unknown }): BuiltProvider =>
+      create({ ...otherHandlers, ...entries });
 
-    it('leaves an era unserved when its retained handler is undefined, refusing that arm', async () => {
+    it('leaves an era unserved when its retained handler is undefined, refusing that era', async () => {
       const provider = build({ currentEra, retainedEras: { v8: undefined } });
 
       expect([...provider.supportedEras].sort()).toEqual(['v9']);
@@ -481,13 +481,13 @@ describe('era arm validation at construction', () => {
       ['a class', class {}, 'a class'],
       ['a revoked function proxy', revokedFunctionProxy(), 'a function that cannot be called'],
       ['a revoked proxy', revokedProxy(), 'an object']
-    ])('refuses %s registered as a retained era arm', (_desc, value, received) => {
+    ])('refuses %s registered as a retained era entry', (_desc, value, received) => {
       const act = () => build({ currentEra, retainedEras: { v8: value } });
 
       expect(act).toThrow(
         expect.objectContaining({
-          name: 'UnusableEraArmError',
-          code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM,
+          name: 'UnusableEraEntryError',
+          code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY,
           seam,
           era: 'v8',
           expected: 'handler',
@@ -500,13 +500,13 @@ describe('era arm validation at construction', () => {
       ['undefined', undefined, 'undefined'],
       ['null', null, 'null'],
       ['an object', {}, 'an object']
-    ])('refuses %s registered as the current era arm', (_desc, value, received) => {
+    ])('refuses %s registered as the current era entry', (_desc, value, received) => {
       const act = () => build({ currentEra: value });
 
       expect(act).toThrow(
         expect.objectContaining({
-          name: 'UnusableEraArmError',
-          code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM,
+          name: 'UnusableEraEntryError',
+          code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY,
           seam,
           era: 'v9',
           expected: 'handler',
@@ -516,16 +516,16 @@ describe('era arm validation at construction', () => {
     });
 
     it.each([
-      ['a misspelled era key', () => ({ V8: retainedArm() }), 'not retained eras: V8'],
-      ['the current era as a key', () => ({ v9: retainedArm() }), 'not retained eras: v9'],
+      ['a misspelled era key', () => ({ V8: retainedHandler() }), 'not retained eras: V8'],
+      ['the current era as a key', () => ({ v9: retainedHandler() }), 'not retained eras: v9'],
       ['null', () => null, 'got null'],
-      ['a bare handler', () => retainedArm(), 'got a function'],
-      ['an array', () => [retainedArm()], 'got an array'],
+      ['a bare handler', () => retainedHandler(), 'got a function'],
+      ['an array', () => [retainedHandler()], 'got an array'],
       ['a string', () => 'v8', 'got a string'],
-      ['a Map', () => new Map([['v8', retainedArm()]]), 'got an instance of Map'],
+      ['a Map', () => new Map([['v8', retainedHandler()]]), 'got an instance of Map'],
       ['a class instance', () => new (class RetainedEras {})(), 'got an instance of RetainedEras'],
-      ['a non-enumerable unknown key', () => Object.defineProperty({}, 'v9', { value: retainedArm() }), 'not retained eras: v9'],
-      ['a symbol key', () => ({ [Symbol('v8')]: retainedArm() }), 'not retained eras: Symbol(v8)'],
+      ['a non-enumerable unknown key', () => Object.defineProperty({}, 'v9', { value: retainedHandler() }), 'not retained eras: v9'],
+      ['a symbol key', () => ({ [Symbol('v8')]: retainedHandler() }), 'not retained eras: Symbol(v8)'],
       [
         'a class instance whose name getter throws',
         () =>
@@ -563,37 +563,37 @@ describe('era arm validation at construction', () => {
 
     it('accepts a retained era map from another realm', () => {
       const foreignPrototype: object = Object.create(null) as object;
-      const retainedEras: unknown = Object.assign(Object.create(foreignPrototype) as object, { v8: retainedArm() });
+      const retainedEras: unknown = Object.assign(Object.create(foreignPrototype) as object, { v8: retainedHandler() });
 
       const provider = build({ currentEra, retainedEras });
 
       expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
     });
 
-    it('keeps the current-era arm it was built with when the caller replaces it afterwards', async () => {
-      const arm = vi.fn(async () => stubUnbound());
-      const handlers: { currentEra: unknown } = { ...otherHandlers, currentEra: arm };
+    it('keeps the current-era handler it was built with when the caller replaces it afterwards', async () => {
+      const handler = vi.fn(async () => stubUnbound());
+      const handlers: { currentEra: unknown } = { ...otherHandlers, currentEra: handler };
       const provider = create(handlers);
 
       handlers.currentEra = vi.fn();
       await provider.sendV9();
 
-      expect(arm).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledTimes(1);
     });
 
-    it('calls a current-era arm that carries its own `call` property', async () => {
-      const arm = Object.assign(
+    it('calls a current-era handler that carries its own `call` property', async () => {
+      const handler = Object.assign(
         vi.fn(async () => stubUnbound()),
         { call: () => Promise.reject(new Error('own call property used')) }
       );
-      const provider = build({ currentEra: arm });
+      const provider = build({ currentEra: handler });
 
       await provider.sendV9();
 
-      expect(arm).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledTimes(1);
     });
 
-    it('calls a retained-era arm with no `this`', async () => {
+    it('calls a retained-era handler with no `this`', async () => {
       const receivers: unknown[] = [];
       const provider = build({
         currentEra,
@@ -610,8 +610,8 @@ describe('era arm validation at construction', () => {
       expect(receivers).toEqual([undefined]);
     });
 
-    it('keeps serving the arms it was built with when the caller mutates the map afterwards', async () => {
-      const handler = retainedArm();
+    it('keeps serving the handlers it was built with when the caller mutates the map afterwards', async () => {
+      const handler = retainedHandler();
       const retainedEras: { v8?: unknown } = { v8: handler };
       const provider = build({ currentEra, retainedEras });
 
@@ -622,7 +622,7 @@ describe('era arm validation at construction', () => {
       expect(handler).toHaveBeenCalledTimes(1);
     });
 
-    it('calls the current-era arm with the handlers object as `this`', async () => {
+    it('calls the current-era handler with the handlers object as `this`', async () => {
       const receivers: unknown[] = [];
       class Handlers {
         currentEra(this: unknown): Promise<unknown> {
@@ -642,7 +642,7 @@ describe('era arm validation at construction', () => {
     it('serves no era inherited from Object.prototype', () => {
       const declared: (readonly LedgerVersion[])[] = [];
       Object.defineProperty(Object.prototype, 'v8', {
-        value: retainedArm(),
+        value: retainedHandler(),
         configurable: true,
         enumerable: true,
         writable: true

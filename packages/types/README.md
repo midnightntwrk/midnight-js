@@ -98,7 +98,7 @@ interface V9Tx<T>   { readonly version: 'v9'; readonly tx: T; }
 type VersionedTx<T> = V8TxBytes | V9Tx<T>;
 ```
 
-There is deliberately no untagged arm, so a bare `Uint8Array` — bytes whose era
+There is deliberately no untagged variant, so a bare `Uint8Array` — bytes whose era
 nobody can tell — is never assignable. `proveTx`, `balanceTx` and `submitTx`
 carry these in both directions.
 
@@ -113,7 +113,7 @@ const provenTx = unwrapV9(await proofProvider.proveTx({ version: 'v9', tx: unpro
 
 Its `seam` parameter is a `ProviderSeam`, so it covers those three methods only.
 The read surface reports a *different* union, `VersionedFinalizedTxData`, whose
-v8 arm carries `tx` rather than `txBytes` — narrow that one with
+v8 variant carries `tx` rather than `txBytes` — narrow that one with
 `switch (record.version)`.
 
 **Implementing `WalletProvider` or `MidnightProvider`?** Wrap a v9-only
@@ -170,7 +170,7 @@ there is a compile error.
 
 The factory checks the same things when the provider is built, for JavaScript
 callers the types do not reach: a handler that is not a function is refused with
-`UnusableEraArmError` (`MIDNIGHT_JS_PR_UNUSABLE_ERA_ARM`), and a `retainedEras`
+`UnusableEraEntryError` (`MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY`), and a `retainedEras`
 that is not a plain object keyed only by retained eras (a key for the current
 era is refused too) with `InvalidArgumentError`. The check is shape only: a
 handler built for the wrong era still passes. The provider serves from a copy of
@@ -183,7 +183,7 @@ fine — a class, or a provider that routes internally — in which case you wri
 `supportedEras` yourself.
 
 Nothing verifies the declaration. A seam still narrows its own payload and still
-reports `V8PayloadUnsupportedError` for an arm it cannot serve, so declaring an
+reports `V8PayloadUnsupportedError` for an era it cannot serve, so declaring an
 era you do not serve makes a failure later, not absent.
 
 ### TxStatus
@@ -324,11 +324,11 @@ import {
   type Seam,
   unwrapV9,
 
-  // Per-era handlers, arm selection, and the declaration built from them
+  // Per-era handlers, era routing, and the declaration built from them
   type RetainedEraHandlers,
-  type EraArmRequest,
+  type EraRequest,
   erasServedBy,
-  narrowToEraArm,
+  narrowToEra,
   type EraDeclaringProvider,
   type TransactionSeams,
   assertSeamsSupportEra,

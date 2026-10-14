@@ -140,7 +140,7 @@ describe('createProofProvider', () => {
       expect((rejection as V8PayloadUnsupportedError).seam).toBe('proveTx');
     });
 
-    it('says the refusal is by design and names what does serve the v8 arm', async () => {
+    it('says the refusal is by design and names what does serve a v8 payload', async () => {
       const provider = createProofProvider(stubProvingProvider, stubCostModel);
 
       const rejection = await provider.proveTx({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) }).then(
@@ -158,6 +158,7 @@ describe('createProofProvider', () => {
       expect(message).not.toContain('not yet supported');
       expect(message).toContain('httpClientProofProvider');
       expect(message).toContain("{ version: 'v9', tx }");
+      expect(message).not.toMatch(/\barm\b/);
     });
 
     it('records the payload size so a report of the rejection says what arrived', async () => {
