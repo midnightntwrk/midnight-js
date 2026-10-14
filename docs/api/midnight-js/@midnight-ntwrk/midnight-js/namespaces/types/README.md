@@ -248,6 +248,12 @@ Re-exports [EraArmRequest](../../types/type-aliases/EraArmRequest.md)
 
 ***
 
+### EraArmShape
+
+Re-exports [EraArmShape](../../types/type-aliases/EraArmShape.md)
+
+***
+
 ### EraDeclaringProvider
 
 Re-exports [EraDeclaringProvider](../../types/interfaces/EraDeclaringProvider.md)
@@ -737,6 +743,12 @@ Re-exports [UnsubmittedTxDataBase](../../types/interfaces/UnsubmittedTxDataBase.
 ### UntaggedPayloadError
 
 Re-exports [UntaggedPayloadError](../../types/classes/UntaggedPayloadError.md)
+
+***
+
+### UnusableEraArmError
+
+Re-exports [UnusableEraArmError](../../types/classes/UnusableEraArmError.md)
 
 ***
 

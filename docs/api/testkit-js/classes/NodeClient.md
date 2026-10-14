@@ -68,14 +68,14 @@ Contract state or null if not found
 
 ### health()
 
-> **health**(): `Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}\>\>
+> **health**(): `Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}, `any`\>\>
 
 Checks the health status of the node.
 Makes a GET request to the health endpoint of the node.
 
 #### Returns
 
-`Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}\>\>
+`Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}, `any`\>\>
 
 A promise that resolves to the response of the health check or logs an error if the request fails.
 

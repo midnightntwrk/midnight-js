@@ -6,7 +6,7 @@
 
 # Function: erasServedBy()
 
-> **erasServedBy**(`retainedEras?`): readonly (`"v9"` \| `"v8"`)[]
+> **erasServedBy**(`retainedEras?`): readonly (`"v8"` \| `"v9"`)[]
 
 The era list a provider assembled from these arms serves.
 
@@ -26,7 +26,7 @@ The retained arms supplied to the factory, if any.
 
 ## Returns
 
-readonly (`"v9"` \| `"v8"`)[]
+readonly (`"v8"` \| `"v9"`)[]
 
 The eras this provider declares, frozen so a consumer cannot widen
          the declaration after construction and make
