@@ -16,6 +16,7 @@
 import axios, { type AxiosRequestConfig } from 'axios';
 import type { Logger } from 'pino';
 
+import { HEALTH_CHECK_TIMEOUT_MS } from '../configuration';
 import { buildUrlWithPath, redactUrl } from '../utils';
 
 export class ProofServerClient {
@@ -39,7 +40,7 @@ export class ProofServerClient {
    */
   async health() {
     const url = buildUrlWithPath(this.proofServer, '/health');
-    const response = await axios.get(url, { timeout: 1000 });
+    const response = await axios.get(url, { timeout: HEALTH_CHECK_TIMEOUT_MS });
     this.logger.info(`Connected to proof server ${redactUrl(url)}: ${JSON.stringify(response.data)}`);
     return response;
   }
