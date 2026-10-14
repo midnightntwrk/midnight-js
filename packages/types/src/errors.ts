@@ -18,6 +18,7 @@ import {
   MidnightJsError,
   type MidnightJsErrorCategory
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 
 /**
  * The provider methods that carry a version-tagged transaction payload.
@@ -55,6 +56,14 @@ export type WatchOperation =
   | 'watchForUnshieldedBalances'
   | 'watchForDeployTxData'
   | 'watchForTxData';
+
+/**
+ * What a `watchFor*` call waited for: the method, and the transaction id or
+ * contract address it was given.
+ */
+export type WatchTarget =
+  | { readonly operation: 'watchForTxData'; readonly txId: TransactionId }
+  | { readonly operation: Exclude<WatchOperation, 'watchForTxData'>; readonly contractAddress: ContractAddress };
 
 /**
  * Stable error-code strings for the providers.
@@ -669,28 +678,26 @@ export class PrivateStateLimitExceededError extends MidnightJsError {
 
 /**
  * Raised when a `watchFor*` call given `maxWaitMs` finds nothing within that
- * bound. The wait is abandoned and polling stops.
- *
- * `UNCERTAIN`, not `TRANSIENT`: a transaction that was not seen in time may
- * still land. Check the chain before submitting anything again.
+ * bound. The wait is abandoned and polling stops. The data may still appear:
+ * if it depends on a transaction you submitted, check the chain before
+ * submitting again.
  */
 export class WatchTimeoutError extends MidnightJsError {
   readonly code = WATCH_TIMED_OUT;
   readonly category = PROVIDER_ERROR_CATEGORIES[WATCH_TIMED_OUT];
 
   /**
-   * @param operation The method that gave up waiting.
-   * @param subject What it was waiting for, e.g. `txId <id>`.
+   * @param target The method that gave up waiting, and what it waited for.
    * @param maxWaitMs The bound that elapsed.
    */
   constructor(
-    readonly operation: WatchOperation,
-    readonly subject: string,
+    readonly target: WatchTarget,
     readonly maxWaitMs: number
   ) {
+    const key = target.operation === 'watchForTxData' ? `txId ${target.txId}` : `contractAddress ${target.contractAddress}`;
     super(
-      `${operation} found nothing for ${subject} within ${maxWaitMs} ms. ` +
-        `It may still appear: check the chain before submitting again.`
+      `${target.operation} found nothing for ${key} within ${maxWaitMs} ms. It may still appear: ` +
+        `if it depends on a transaction you submitted, check the chain before submitting again.`
     );
     this.name = 'WatchTimeoutError';
   }

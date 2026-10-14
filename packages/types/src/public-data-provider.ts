@@ -345,13 +345,20 @@ export interface ContractEventsPage {
  */
 export interface WatchOptions {
   /**
-   * How long to wait for the data to appear, in milliseconds: a positive
-   * integer no larger than 2147483647 (the largest delay a timer can hold).
-   * When it elapses, the call rejects with `WatchTimeoutError` and polling
-   * stops. Omit it to wait indefinitely.
+   * How long to wait for the indexer to report the data, in milliseconds: a
+   * positive integer no larger than 2147483647 (the largest delay a timer can
+   * hold). When it elapses, the call rejects with `WatchTimeoutError` and
+   * polling stops. Omit it to wait indefinitely.
    *
-   * An implementation that ignores this option waits indefinitely instead, so
-   * a custom provider must honour it for the bound to hold.
+   * The bound covers the indexer poll only; building the result afterwards is
+   * not bounded. Indexer requests are retried on network failure, so a bound
+   * shorter than that retry window reports an unreachable indexer as a
+   * timeout.
+   *
+   * Any other value, or any other option key, throws `InvalidArgumentError`
+   * synchronously, before a promise is returned.
+   *
+   * Implementations must honour this option; the bound holds only if they do.
    */
   readonly maxWaitMs?: number;
 }

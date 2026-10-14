@@ -18,13 +18,15 @@ import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledge
 import type { Observable } from 'rxjs';
 import { describe, expectTypeOf, it } from 'vitest';
 
+import type { WatchOperation, WatchTarget } from '../errors';
 import type { UnshieldedBalances } from '../midnight-types';
 import type {
   BlockHashConfig,
   BlockHeightConfig,
   ContractStateObservableConfig,
   PositionedRecord,
-  PublicDataProvider
+  PublicDataProvider,
+  WatchOptions
 } from '../public-data-provider';
 import type { RawContractState } from '../raw-contract-state';
 
@@ -208,6 +210,28 @@ describe('positioned stream members', () => {
   it('pins unshieldedBalancesObservable to positioned balances', () => {
     expectTypeOf<PublicDataProvider['unshieldedBalancesObservable']>().toEqualTypeOf<
       (address: ContractAddress, config: ContractStateObservableConfig) => Observable<PositionedRecordFixture<UnshieldedBalances>>
+    >();
+  });
+});
+
+describe('the watchFor* surface', () => {
+  it('WatchOperation names exactly the watchFor* methods of PublicDataProvider', () => {
+    expectTypeOf<WatchOperation>().toEqualTypeOf<Extract<keyof PublicDataProvider, `watchFor${string}`>>();
+  });
+
+  it('WatchTarget covers every WatchOperation', () => {
+    expectTypeOf<WatchTarget['operation']>().toEqualTypeOf<WatchOperation>();
+  });
+
+  it('watchForContractState takes an optional bound', () => {
+    expectTypeOf<PublicDataProvider['watchForContractState']>().toEqualTypeOf<
+      (contractAddress: ContractAddress, options?: WatchOptions) => Promise<ContractState>
+    >();
+  });
+
+  it('watchForUnshieldedBalances takes an optional bound', () => {
+    expectTypeOf<PublicDataProvider['watchForUnshieldedBalances']>().toEqualTypeOf<
+      (contractAddress: ContractAddress, options?: WatchOptions) => Promise<UnshieldedBalances>
     >();
   });
 });

@@ -65,7 +65,7 @@ describe('types error classes', () => {
     ['PrivateStateDecryptionError', new PrivateStateDecryptionError('msg', 'malformed')],
     ['PrivateStateStorageError', new PrivateStateStorageError('msg')],
     ['PrivateStateLimitExceededError', new PrivateStateLimitExceededError('msg')],
-    ['WatchTimeoutError', new WatchTimeoutError('watchForTxData', 'txId abc', 5000)],
+    ['WatchTimeoutError', new WatchTimeoutError({ operation: 'watchForTxData', txId: 'abc' }, 5000)],
     ['ZKArtifactNotFoundError', new ZKArtifactNotFoundError(keyLocation)]
   ];
 
@@ -182,15 +182,23 @@ describe('types error classes', () => {
   });
 
   it('WatchTimeoutError is uncertain and names what it waited for', () => {
-    const error = new WatchTimeoutError('watchForTxData', 'txId abc', 5000);
+    const error = new WatchTimeoutError({ operation: 'watchForTxData', txId: 'abc' }, 5000);
 
-    expect([error.code, error.category, error.operation, error.subject, error.maxWaitMs]).toEqual([
+    expect([error.code, error.category, error.target, error.maxWaitMs]).toEqual([
       'MIDNIGHT_JS_PR_WATCH_TIMED_OUT',
       'UNCERTAIN',
-      'watchForTxData',
-      'txId abc',
+      { operation: 'watchForTxData', txId: 'abc' },
       5000
     ]);
+  });
+
+  it.each([
+    [{ operation: 'watchForTxData', txId: 'abc' }, 'txId abc'],
+    [{ operation: 'watchForContractState', contractAddress: 'c0ffee' }, 'contractAddress c0ffee']
+  ] as const)('WatchTimeoutError names the operation and the key it waited for', (target, key) => {
+    const error = new WatchTimeoutError(target, 5000);
+
+    expect(error.message).toContain(`${target.operation} found nothing for ${key} within 5000 ms`);
   });
 
   it('ZKArtifactNotFoundError is an environment error', () => {
