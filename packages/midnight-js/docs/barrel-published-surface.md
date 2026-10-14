@@ -31,7 +31,7 @@ So the shape was decided on two other grounds:
 - The cost equality is an accident of `contracts` reaching for the root.
   `export * as protocol` would convert that accident into a load-bearing
   constraint, blocking the very optimisation someone will eventually want.
-- A wholesale namespace would publish `loadLedger8`, `loadLedger8Engine`,
+- A wholesale namespace would publish `loadLedger8Protocol`, `loadLedger8Engine`,
   `ledger` and `onchainRuntime` from the barrel — the opposite of keeping the
   retained-era runtime off the eager path.
 

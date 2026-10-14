@@ -23,13 +23,13 @@ import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midn
 import { erasServedBy, narrowToEra, type RetainedEraEntries } from './era-entries';
 import { assertFunction, readEraEntries } from './internal/read-era-entries';
 import { type UnboundTransaction,type VersionedUnboundTransaction } from './proof-provider';
-import { type VersionedTx } from './versioned';
+import { type VersionedTransaction } from './versioned';
 
 /**
  * A balanced, signed transaction ready for submission: either the live v9
  * ledger object, or the serialized bytes of a v8-era transaction.
  */
-export type VersionedFinalizedTransaction = VersionedTx<FinalizedTransaction>;
+export type VersionedFinalizedTransaction = VersionedTransaction<FinalizedTransaction>;
 
 /**
  * Interface representing a WalletProvider that handles operations such as

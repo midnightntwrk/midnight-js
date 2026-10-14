@@ -287,7 +287,7 @@ fact and cannot disagree.
 
 Consequence: a v8-era network is now **served**, on the `'v8'` variant. What throws
 at the read boundary is a network this client cannot place on the era timeline
-at all — `EraUnresolvableError`, for a node 0.x or otherwise unmapped
+at all — `UnknownRecordEraError`, for a node 0.x or otherwise unmapped
 `protocolVersion` — where before it returned a record that failed later inside
 the codec, with nothing in the message naming the era.
 
@@ -302,7 +302,7 @@ network's produce the same diagnosis from here, and that error's own mitigation
 addresses both. A `raw` field that is not a whole hex byte string is still
 refused as `IndexerDataError` before any decoder sees it.
 
-`EraUnresolvableError` and `EraUnsupportedError`
+`UnknownRecordEraError` and `DecoderEraUnsupportedError`
 are both `IndexerError` subclasses, and each carries the raw `protocolVersion`
 plus the transaction id or contract address being read. Two failures a read can
 raise are deliberately **not** `IndexerError`s, so "catch any indexer error with
@@ -319,7 +319,7 @@ branch, or match on `code` with `hasErrorCode`.
 Return types are covariant, so an implementation still resolving a bare
 `FinalizedTransaction` no longer satisfies `WalletProvider`. TypeScript reports
 the *parameter* mismatch first, so the error you see names the ledger methods
-`Ledger8TxBytes` lacks rather than the missing tag — it is still this change.
+`Ledger8TransactionBytes` lacks rather than the missing tag — it is still this change.
 
 Rather than tagging by hand, wrap a v9-only implementation:
 
@@ -394,8 +394,8 @@ See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-handlers.md).
 ### 8g. New and changed exports
 
 **`@midnight-ntwrk/midnight-js-types`** — added: `FinalizedTxRecord`,
-`Ledger8FinalizedTxData`, `VersionedFinalizedTxData`, `Ledger8TxBytes`, `Ledger9Tx`,
-`VersionedTx`, `VersionedUnprovenTransaction`, `VersionedUnboundTransaction`,
+`Ledger8FinalizedTxData`, `VersionedFinalizedTxData`, `Ledger8TransactionBytes`, `Ledger9Transaction`,
+`VersionedTransaction`, `VersionedUnprovenTransaction`, `VersionedUnboundTransaction`,
 `VersionedFinalizedTransaction`, `TransactionMethod`, `ReadMethod`, `ProviderMethod`,
 `unwrapLedger9`, `Ledger8PayloadUnsupportedError`, `UntaggedPayloadError`,
 `Ledger9WalletProvider`, `createWalletProvider`, `createMidnightProvider`,
@@ -438,9 +438,9 @@ carries `method`, typed `ProviderMethod` from `midnight-js-types`, and optional
 `circuitId`).
 
 **`@midnight-ntwrk/midnight-js-indexer-public-data-provider`** — added:
-`EraUnresolvableError` (`MIDNIGHT_JS_PR_ERA_UNRESOLVABLE`) and
-`EraUnsupportedError` (`MIDNIGHT_JS_PR_ERA_UNSUPPORTED`), both `IndexerError`
-subclasses. `EraUnsupportedError` is a guard rather than an era policy: the
+`UnknownRecordEraError` (`MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA`) and
+`DecoderEraUnsupportedError` (`MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED`), both `IndexerError`
+subclasses. `DecoderEraUnsupportedError` is a guard rather than an era policy: the
 per-record decoder table is total over the eras this client ships runtimes for,
 so within one build it cannot be raised. It is reachable across builds — an
 installed `midnight-js-protocol` newer than this provider package resolves an
@@ -568,13 +568,13 @@ names.
 | `contracts` | `Ledger8.SeamFailedError` | `Ledger8.ProviderFailedError` |
 | `contracts` | `CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED` (`MIDNIGHT_JS_C_LEDGER8_SEAM_FAILED`) | `LEDGER8_PROVIDER_FAILED` (`MIDNIGHT_JS_C_LEDGER8_PROVIDER_FAILED`) |
 | `contracts` | the `seam` field on `EraInvariantViolationError` and `Ledger8.ProviderFailedError` | `method` |
-| `indexer-public-data-provider` | the `seam` field on `EraUnsupportedError` and `EraUnresolvableError`, and the `seam` key in a decode failure's `context.details` | `method` |
+| `indexer-public-data-provider` | the `seam` field on `DecoderEraUnsupportedError` and `UnknownRecordEraError`, and the `seam` key in a decode failure's `context.details` | `method` |
 | `contracts` | `result.era` values `'ledger8'` / `'ledger9'` (also the `path` field of the pipeline-selection breadcrumb) | `'v8'` / `'v9'` |
 | `contracts` | `PipelineEra`, `CurrentPipelineEra`, `CURRENT_PIPELINE_ERA` | `LedgerVersion`, `CurrentLedgerVersion`, `CURRENT_LEDGER_VERSION` from `@midnight-ntwrk/midnight-js-protocol` (all three are also on the `@midnight-ntwrk/midnight-js` barrel) |
 | `contracts` | `RetainedPipelineEra`, `RETAINED_PIPELINE_ERA` | the literal `'v8'` (see ADR 0011) |
 | `types` | `V8PayloadUnsupportedError` | `Ledger8PayloadUnsupportedError` |
 | `types` | `PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED` (`MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED`) | `LEDGER8_PAYLOAD_UNSUPPORTED` (`MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTED`) |
-| `types` | `V8TxBytes`, `V9Tx`, `V9WalletProvider` | `Ledger8TxBytes`, `Ledger9Tx`, `Ledger9WalletProvider` |
+| `types` | `V8TxBytes`, `V9Tx`, `V9WalletProvider` | `Ledger8TransactionBytes`, `Ledger9Transaction`, `Ledger9WalletProvider` |
 | `types` | `unwrapV9` | `unwrapLedger9` |
 | `types` | `FinalizedTxDataV8` | `Ledger8FinalizedTxData` |
 | `contracts` | `FoundDeployTxPublicDataV8` | `Ledger8FoundDeployTxPublicData` (flat, not in the `Ledger8` namespace: it is part of the current era's `FoundDeployTxData`) |
@@ -582,6 +582,13 @@ names.
 | `contracts` | `CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9` (`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9`) | `LEDGER8_DEPLOY_ON_LEDGER9` (`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_LEDGER9`) |
 | `protocol` | `ProtocolV8` | `Ledger8Protocol` |
 | `protocol` | `proveV8Transaction` (`./prove`) | `proveLedger8Transaction` |
+| `protocol` | `loadLedger8` | `loadLedger8Protocol` (it returns `Ledger8Protocol`) |
+| `types` | `createProofProviderForEras` | `createProofProviderFromProvingProviders` (it takes `ProvingProvidersByEra`) |
+| `types` | `VersionedTx` | `VersionedTransaction` |
+| `indexer-public-data-provider` | `EraUnsupportedError` (`MIDNIGHT_JS_PR_ERA_UNSUPPORTED`) | `DecoderEraUnsupportedError` (`MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED`) |
+| `indexer-public-data-provider` | `EraUnresolvableError` (`MIDNIGHT_JS_PR_ERA_UNRESOLVABLE`) | `UnknownRecordEraError` (`MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA`) |
+| `contracts` | `UnrecognisedResultEraError` (`MIDNIGHT_JS_C_UNRECOGNISED_RESULT_ERA`) | `UnknownResultEraError` (`MIDNIGHT_JS_C_UNKNOWN_RESULT_ERA`) |
+| `contracts` | `ScopedTxEraUnsupportedError` (`MIDNIGHT_JS_C_SCOPED_TX_ERA_UNSUPPORTED`) | `ScopedTransactionEraUnsupportedError` (`MIDNIGHT_JS_C_SCOPED_TRANSACTION_ERA_UNSUPPORTED`) |
 
 The payload tag values `version: 'v8' | 'v9'` do not change: they mirror the
 `ledger-v8` / `ledger-v9` package names.

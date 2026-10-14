@@ -35,7 +35,7 @@ import { createPlatform } from '@midnight-ntwrk/midnight-js-protocol/platform-js
 | `./errors` | (own) | `PROTOCOL_ERROR_CODES` and every error class and error type this package raises — without pulling in the ledger/compact-js/onchain-runtime/platform namespaces. `protocol-acl.test.ts` pins the exact list |
 | `./version` | (own) | `LEDGER_VERSIONS`, `protocolVersionToLedger`, `versionOfRecord`, `networkHeadVersion` and the types `LedgerVersion`, `ProtocolVersionSource`, `VersionedRecord` — same lightweight guarantee as `./errors` |
 | `./ledger` | `@midnightntwrk/ledger-v9` | Ledger types and transaction primitives |
-| `./v8` | `@midnightntwrk/ledger-v8` | Previous-era (v8) ledger — do not import at runtime; use `loadLedger8()` |
+| `./v8` | `@midnightntwrk/ledger-v8` | Previous-era (v8) ledger — do not import at runtime; use `loadLedger8Protocol()` |
 | `./engine` | (own) | Retained pre-fork execution engine — do not import at runtime; use `loadLedger8Engine()` |
 | `./compact-runtime` | `@midnight-ntwrk/compact-runtime` | Compact contract runtime utilities |
 | `./compact-js` | `@midnight-ntwrk/compact-js` | Compact JS bindings |
@@ -94,9 +94,9 @@ it built this way" belongs in a document above, stated once.
 The `./v8` subpath re-exports the previous-era ledger (`@midnightntwrk/ledger-v8`), which carries its own WASM. To keep that WASM out of eagerly-loaded module graphs, runtime imports of `@midnight-ntwrk/midnight-js-protocol/v8` are blocked by ESLint everywhere outside this package. Use the lazy accessor instead:
 
 ```typescript
-import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 
-const v8 = await loadLedger8();
+const v8 = await loadLedger8Protocol();
 const transaction = v8.Transaction.deserialize(rawTransaction);
 ```
 
@@ -106,7 +106,7 @@ Type-only imports of the subpath are allowed:
 import type { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 ```
 
-If the v8 module cannot be loaded (usually a broken or partial install), `loadLedger8()` rejects with `Ledger8RuntimeMissingError` (code `MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING`) carrying the original error as `cause`. Its `subpath` field is `'/v8'`, naming which chunk failed. The failed load is not memoised — the next call retries.
+If the v8 module cannot be loaded (usually a broken or partial install), `loadLedger8Protocol()` rejects with `Ledger8RuntimeMissingError` (code `MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING`) carrying the original error as `cause`. Its `subpath` field is `'/v8'`, naming which chunk failed. The failed load is not memoised — the next call retries.
 
 ## Running Contracts on the Retained Pre-Fork Engine
 
@@ -261,15 +261,15 @@ Three rules in the repo's `eslint.config.mjs` govern how other packages reach pr
 
 Replace the direct protocol import with the corresponding subpath from this package. For the v8 era specifically, the error
 
-> Runtime v8 access only via loadLedger8() from @midnight-ntwrk/midnight-js-protocol.
+> Runtime v8 access only via loadLedger8Protocol() from @midnight-ntwrk/midnight-js-protocol.
 
-means: replace the direct `./v8` runtime import with `loadLedger8()` (type-only imports stay as they are).
+means: replace the direct `./v8` runtime import with `loadLedger8Protocol()` (type-only imports stay as they are).
 
 **2. The v8 static-import gate** — `@typescript-eslint/no-restricted-imports` blocks runtime imports of `@midnight-ntwrk/midnight-js-protocol/v8` outside `packages/protocol/src/`. Type-only imports (`import type`) are allowed.
 
 **3. The v8 dynamic-import gate** — `no-restricted-syntax` selectors block `import('@midnight-ntwrk/midnight-js-protocol/v8')` in the same scopes. An interpolated template literal cannot be matched statically and is not covered.
 
-Both v8 gates point at `loadLedger8()`, the accessor on the root barrel — the only sanctioned runtime path to the v8 era.
+Both v8 gates point at `loadLedger8Protocol()`, the accessor on the root barrel — the only sanctioned runtime path to the v8 era.
 
 ## Resources
 

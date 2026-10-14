@@ -26,7 +26,7 @@ import {
 
 // Deliberately its own file, and deliberately WITHOUT a v8 fixture. The
 // sibling suite mints one in `beforeAll` and clears the spy in `beforeEach`,
-// which means an eager module-scope `loadLedger8()` in `codec.ts` would be
+// which means an eager module-scope `loadLedger8Protocol()` in `codec.ts` would be
 // recorded at import time and then cleared before any test body ran — so every
 // "never acquires the v8 runtime" assertion there would still pass. Nothing in
 // this file ever needs the v8 runtime, so the spy's call count here is a
@@ -35,8 +35,8 @@ const { loadLedger8Spy } = vi.hoisted(() => ({ loadLedger8Spy: vi.fn<() => Promi
 
 vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
   const original = await importOriginal<typeof protocol>();
-  loadLedger8Spy.mockImplementation(original.loadLedger8);
-  return { ...original, loadLedger8: loadLedger8Spy };
+  loadLedger8Spy.mockImplementation(original.loadLedger8Protocol);
+  return { ...original, loadLedger8Protocol: loadLedger8Spy };
 });
 
 const TX_ID = 'lazy-acquisition-tx';

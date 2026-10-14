@@ -110,7 +110,7 @@ const registerVerifierKey = (
  *
  * @param options The state bytes, the verifier-key map, the envelope options
  *   and an optional Zswap offer.
- * @param v8 The v8 ledger module, as handed over by `loadLedger8`
+ * @param v8 The v8 ledger module, as handed over by `loadLedger8Protocol`
  *   (`./load.ts`).
  * @returns The UNPROVEN, serialized transaction, the address the deployment
  *   will have, and the registered initial state. A deploy mints a fresh nonce,

@@ -15,7 +15,7 @@
 
 import { PayloadNotATransactionError, TRANSACTION_TAG_PREFIX } from '../../errors';
 import type { ProvingProvider } from '../../v8.js';
-import { loadLedger8 } from './load';
+import { loadLedger8Protocol } from './load';
 
 const TRANSACTION_TAG_PREFIX_BYTES = Uint8Array.from(TRANSACTION_TAG_PREFIX, (character) =>
   character.charCodeAt(0)
@@ -52,7 +52,7 @@ const assertSerializedTransaction = (txBytes: Uint8Array): void => {
  * because the runtime that owns it is loaded lazily and its instances are not
  * interchangeable with the current era's.
  *
- * The cost model comes from the same `loadLedger8` result as the transaction
+ * The cost model comes from the same `loadLedger8Protocol` result as the transaction
  * class, and that pairing is load-bearing: the retained ledger ships its own
  * `CostModel` and its `prove()` checks the argument against that class across
  * the WASM boundary, so the current era's cost model is rejected with
@@ -83,7 +83,7 @@ export const proveLedger8Transaction = async (
   provingProvider: ProvingProvider
 ): Promise<Uint8Array> => {
   assertSerializedTransaction(txBytes);
-  const v8 = await loadLedger8();
+  const v8 = await loadLedger8Protocol();
   const unproven = v8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', txBytes);
   const proven = await unproven.prove(provingProvider, v8.CostModel.initialCostModel());
   return proven.serialize();

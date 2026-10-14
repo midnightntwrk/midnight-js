@@ -18,7 +18,7 @@ import { Transaction } from '@midnightntwrk/ledger-v9';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { PayloadNotATransactionError, PROTOCOL_ERROR_CODES, TRANSACTION_TAG_PREFIX } from '../errors';
-import { loadLedger8 } from '../lib/v8/load';
+import { loadLedger8Protocol } from '../lib/v8/load';
 import { proveLedger8Transaction } from '../lib/v8/prove';
 import { LEDGER8_UNPROVEN_TX_TAG } from './fixtures';
 
@@ -57,10 +57,10 @@ const errorChainText = (error: unknown): string => {
 describe('proveLedger8Transaction', () => {
   let retainedEraTxBytes: Uint8Array;
   let circuitDrivingTxBytes: Uint8Array;
-  let ledger8Module: Awaited<ReturnType<typeof loadLedger8>>;
+  let ledger8Module: Awaited<ReturnType<typeof loadLedger8Protocol>>;
 
   beforeAll(async () => {
-    const v8 = await loadLedger8();
+    const v8 = await loadLedger8Protocol();
     ledger8Module = v8;
     retainedEraTxBytes = v8.Transaction.fromParts(NETWORK_ID).serialize();
 

@@ -55,7 +55,7 @@ const cases: readonly Case[] = [
   ['Ledger8ProviderFailedError', new errors.Ledger8ProviderFailedError('submitTx', 'increment', CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED, 'ENVIRONMENT'],
   ['StaleHeadError', new errors.StaleHeadError({ head: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, 'v9', CAUSE), CONTRACTS_ERROR_CODES.STALE_HEAD, 'UNCERTAIN'],
   ['SubmitRejectionUndiagnosedError', new errors.SubmitRejectionUndiagnosedError({ head: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, CAUSE, { reason: 'head-read-failed', headReadFailure: CAUSE }), CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED, 'UNCERTAIN'],
-  ['UnrecognisedResultEraError', new errors.UnrecognisedResultEraError('v7'), CONTRACTS_ERROR_CODES.UNRECOGNISED_RESULT_ERA, 'USAGE'],
+  ['UnknownResultEraError', new errors.UnknownResultEraError('v7'), CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA, 'USAGE'],
   ['TxFailedError', new errors.TxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['DeployTxFailedError', new errors.DeployTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['CallTxFailedError', new errors.CallTxFailedError(finalizedTxData, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
@@ -65,7 +65,7 @@ const cases: readonly Case[] = [
   ['RemoveVerifierKeyTxFailedError', new governance.RemoveVerifierKeyTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['InsertVerifierKeyTxFailedError', new governance.InsertVerifierKeyTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['ContractTypeError', new errors.ContractTypeError(new ContractState(), noMismatch, ADDRESS), CONTRACTS_ERROR_CODES.CONTRACT_TYPE_MISMATCH, 'USAGE'],
-  ['ScopedTxEraUnsupportedError', new errors.ScopedTxEraUnsupportedError('v8'), CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED, 'USAGE'],
+  ['ScopedTransactionEraUnsupportedError', new errors.ScopedTransactionEraUnsupportedError('v8'), CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED, 'USAGE'],
   ['MixedEraScopeError', new errors.MixedEraScopeError('increment'), CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE, 'USAGE'],
   ['IncompleteCallTxPrivateStateConfig', new errors.IncompleteCallTxPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG, 'USAGE'],
   ['IncompleteDeployContractPrivateStateConfig', new errors.IncompleteDeployContractPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG, 'USAGE'],
@@ -128,6 +128,17 @@ describe('contracts error classes', () => {
     const error = new errors.Ledger8DeployOnLedger9Error();
 
     expect([error.name, error.code]).toEqual(['Ledger8DeployOnLedger9Error', 'MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_LEDGER9']);
+  });
+
+  it.each([
+    ['UnknownResultEraError', new errors.UnknownResultEraError('v7'), 'MIDNIGHT_JS_C_UNKNOWN_RESULT_ERA'],
+    [
+      'ScopedTransactionEraUnsupportedError',
+      new errors.ScopedTransactionEraUnsupportedError('v8'),
+      'MIDNIGHT_JS_C_SCOPED_TRANSACTION_ERA_UNSUPPORTED'
+    ]
+  ] as const)('%s carries its name and code', (name, error, code) => {
+    expect([error.name, error.code]).toEqual([name, code]);
   });
 
   it('ContractTypeError is no longer a TypeError (accepted break)', () => {

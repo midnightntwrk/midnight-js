@@ -135,12 +135,12 @@ export type ReadMethod = 'watchForTxData' | 'watchForDeployTxData';
 export type ProviderMethod = TransactionMethod | ReadMethod;
 
 // Transaction payloads. No untagged form: a bare Uint8Array is never assignable.
-export interface Ledger8TxBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
-export interface Ledger9Tx<T>   { readonly version: 'v9'; readonly tx: T; }
-export type VersionedTx<T> = Ledger8TxBytes | Ledger9Tx<T>;
-export type VersionedUnprovenTransaction  = VersionedTx<UnprovenTransaction>;
-export type VersionedUnboundTransaction   = VersionedTx<UnboundTransaction>;
-export type VersionedFinalizedTransaction = VersionedTx<FinalizedTransaction>;
+export interface Ledger8TransactionBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
+export interface Ledger9Transaction<T>   { readonly version: 'v9'; readonly tx: T; }
+export type VersionedTransaction<T> = Ledger8TransactionBytes | Ledger9Transaction<T>;
+export type VersionedUnprovenTransaction  = VersionedTransaction<UnprovenTransaction>;
+export type VersionedUnboundTransaction   = VersionedTransaction<UnboundTransaction>;
+export type VersionedFinalizedTransaction = VersionedTransaction<FinalizedTransaction>;
 
 // Read surface. A *different* union — its v8 variant carries `tx`, not `txBytes`.
 export interface FinalizedTxRecord { /* the 13 era-independent metadata fields */ }
@@ -148,7 +148,7 @@ export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly ver
 export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
 
 // Narrowing. Accepts the three transaction methods only — not the read surface.
-export const unwrapLedger9: <T>(payload: VersionedTx<T>, method: TransactionMethod) => T;
+export const unwrapLedger9: <T>(payload: VersionedTransaction<T>, method: TransactionMethod) => T;
 export class Ledger8PayloadUnsupportedError extends Error { readonly code; readonly method: TransactionMethod; readonly byteLength?: number; }
 export class UntaggedPayloadError extends Error { readonly code; readonly method: ProviderMethod; readonly received: string; }
 
@@ -310,13 +310,13 @@ do produce both variants; the pre-fork runtime is acquired lazily, so a session 
 meets no v8-era record never instantiates it.
 
 ```ts
-export class EraUnresolvableError extends IndexerError {
-  readonly code: 'MIDNIGHT_JS_PR_ERA_UNRESOLVABLE';
+export class UnknownRecordEraError extends IndexerError {
+  readonly code: 'MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA';
   // protocolVersion maps to no era at all. The originating
   // UnknownProtocolVersionError is preserved on `cause`.
 }
-export class EraUnsupportedError extends IndexerError {
-  readonly code: 'MIDNIGHT_JS_PR_ERA_UNSUPPORTED';
+export class DecoderEraUnsupportedError extends IndexerError {
+  readonly code: 'MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED';
   readonly method: ReadMethod;
   readonly era: LedgerVersion;      // an era the decoder table has no entry for
   readonly protocolVersion: number; // the raw integer the indexer reported
@@ -347,7 +347,7 @@ export const CONTRACTS_ERROR_CODES: Readonly<{ ERA_INVARIANT_VIOLATION: string }
 // `./errors` leaf subpath; re-exported here, so either import works.
 export const PROVIDER_ERROR_CODES: Readonly<{
   LEDGER8_PAYLOAD_UNSUPPORTED: string; UNTAGGED_PAYLOAD: string;
-  ERA_UNSUPPORTED: string; ERA_UNRESOLVABLE: string;
+  DECODER_ERA_UNSUPPORTED: string; UNKNOWN_RECORD_ERA: string;
   PROVIDER_ERA_UNSUPPORTED: string;
 }>;
 export type ContractsErrorCode = /* union of the above values */;

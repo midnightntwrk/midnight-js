@@ -25,9 +25,8 @@ import { type ContractProviders } from '../contract-providers';
 import {
   CallTxFailedError,
   MixedEraScopeError,
-  ScopedTransactionIdentityMismatchError,
-  ScopedTxEraUnsupportedError
-} from '../errors';
+  ScopedTransactionEraUnsupportedError,
+  ScopedTransactionIdentityMismatchError} from '../errors';
 import { type ContractStates,type PublicContractStates } from '../get-states';
 import { submitTx, type SubmitTxOptions } from '../submit-tx';
 import type * as Transaction from '../transaction';
@@ -111,7 +110,7 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
  * @param pdp The read surface, for the single head read.
  * @param logger The optional logger the head-resolution breadcrumb is written to.
  * @returns The era facts the scope runs under.
- * @throws ScopedTxEraUnsupportedError if the head era composes only one call
+ * @throws ScopedTransactionEraUnsupportedError if the head era composes only one call
  * per transaction, so has nothing for a scope to batch into.
  * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
  * @see {@link StaleHeadRemediation} for why both properties of this placement
@@ -126,7 +125,7 @@ export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: Breadcrum
   // the caller the lazy pre-fork subpath exists for, would be told to acquire the retained runtime
   // instead of being told what to do about its scope.
   if (reading.head !== 'v9') {
-    throw new ScopedTxEraUnsupportedError(reading.head);
+    throw new ScopedTransactionEraUnsupportedError(reading.head);
   }
 
   return acquireHeadEra(reading);

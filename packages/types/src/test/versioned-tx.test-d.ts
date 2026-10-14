@@ -36,7 +36,7 @@ import type {
   VersionedUnprovenTransaction
 } from '../proof-provider';
 import type { PublicDataProvider } from '../public-data-provider';
-import type { Ledger8TxBytes, VersionedFinalizedTxData } from '../versioned';
+import type { Ledger8TransactionBytes, VersionedFinalizedTxData } from '../versioned';
 import type { VersionedFinalizedTransaction, WalletProvider } from '../wallet-provider';
 
 // These are compile-level tests: the property under test is that the file
@@ -50,17 +50,17 @@ import type { VersionedFinalizedTransaction, WalletProvider } from '../wallet-pr
 // Every fixture below is spelled out by hand rather than derived from the
 // type under test (no `Omit`/`keyof`/`Parameters` off the real type), so the
 // equality checks pin the real shape instead of reflexively restating it.
-type Ledger8TxBytesFixture = {
+type Ledger8TransactionBytesFixture = {
   readonly version: 'v8';
   readonly txBytes: Uint8Array;
 };
 
-type UnprovenFixture = Ledger8TxBytesFixture | { readonly version: 'v9'; readonly tx: UnprovenTransaction };
+type UnprovenFixture = Ledger8TransactionBytesFixture | { readonly version: 'v9'; readonly tx: UnprovenTransaction };
 type UnboundFixture =
-  | Ledger8TxBytesFixture
+  | Ledger8TransactionBytesFixture
   | { readonly version: 'v9'; readonly tx: Transaction<SignatureEnabled, Proof, PreBinding> };
 type FinalizedFixture =
-  | Ledger8TxBytesFixture
+  | Ledger8TransactionBytesFixture
   | { readonly version: 'v9'; readonly tx: Transaction<SignatureEnabled, Proof, Binding> };
 
 type ProveTxFixture = (
@@ -70,9 +70,9 @@ type ProveTxFixture = (
 type BalanceTxFixture = (tx: UnboundFixture, ttl?: Date) => Promise<FinalizedFixture>;
 type SubmitTxFixture = (tx: FinalizedFixture) => Promise<TransactionId>;
 
-describe('Ledger8TxBytes', () => {
+describe('Ledger8TransactionBytes', () => {
   it('carries exactly the version discriminant and the serialized bytes — fails if a field is dropped, added, or retyped', () => {
-    expectTypeOf<Ledger8TxBytesFixture>().toEqualTypeOf<Ledger8TxBytes>();
+    expectTypeOf<Ledger8TransactionBytesFixture>().toEqualTypeOf<Ledger8TransactionBytes>();
   });
 });
 
@@ -121,7 +121,7 @@ describe('VersionedUnprovenTransaction', () => {
     const ledger8Variant: VersionedUnprovenTransaction = { version: 'v8', txBytes: new Uint8Array([1, 2, 3]) };
     const ledger9Variant: VersionedUnprovenTransaction = { version: 'v9', tx: {} as UnprovenTransaction };
 
-    expectTypeOf(ledger8Variant).toEqualTypeOf<Ledger8TxBytesFixture>();
+    expectTypeOf(ledger8Variant).toEqualTypeOf<Ledger8TransactionBytesFixture>();
     expectTypeOf(ledger9Variant).toEqualTypeOf<{ readonly version: 'v9'; readonly tx: UnprovenTransaction }>();
   });
 
@@ -213,7 +213,7 @@ describe('VersionedFinalizedTransaction', () => {
     const ledger8Variant: VersionedFinalizedTransaction = { version: 'v8', txBytes: new Uint8Array([1, 2, 3]) };
     const ledger9Variant: VersionedFinalizedTransaction = { version: 'v9', tx: {} as FinalizedTransaction };
 
-    expectTypeOf(ledger8Variant).toEqualTypeOf<Ledger8TxBytesFixture>();
+    expectTypeOf(ledger8Variant).toEqualTypeOf<Ledger8TransactionBytesFixture>();
     expectTypeOf(ledger9Variant).toEqualTypeOf<{ readonly version: 'v9'; readonly tx: FinalizedTransaction }>();
   });
 

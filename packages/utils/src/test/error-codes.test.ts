@@ -169,7 +169,7 @@ describe('hasErrorCode', () => {
     it('returns false for a real error instance matched against a different registered code', () => {
       const error = new UnknownProtocolVersionError(9_000_000, 'read', 'unknown');
 
-      expect(hasErrorCode(error, PROVIDER_ERROR_CODES.ERA_UNSUPPORTED)).toBe(false);
+      expect(hasErrorCode(error, PROVIDER_ERROR_CODES.DECODER_ERA_UNSUPPORTED)).toBe(false);
     });
   });
 });

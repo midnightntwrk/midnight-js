@@ -39,13 +39,13 @@ import { readFileSync } from 'node:fs';
 import { inspect } from 'node:util';
 
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import { type LedgerVersion, loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { type LedgerVersion, loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   Ledger8PayloadUnsupportedError,
   type RawContractState,
   type VersionedFinalizedTransaction,
-  type VersionedTx,
+  type VersionedTransaction,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
@@ -117,8 +117,8 @@ const headSource = (...protocolVersions: readonly number[]): { queryLatestProtoc
 
 /** What a provider method was handed, captured for assertion. */
 interface SeenPayloads {
-  proveTx?: VersionedTx<unknown>;
-  balanceTx?: VersionedTx<unknown>;
+  proveTx?: VersionedTransaction<unknown>;
+  balanceTx?: VersionedTransaction<unknown>;
   submitTx?: VersionedFinalizedTransaction;
 }
 
@@ -133,7 +133,7 @@ let retainedLedgerParameters: Uint8Array;
 let currentLedgerParameters: Uint8Array;
 
 beforeAll(async () => {
-  retainedLedgerParameters = (await loadLedger8()).LedgerParameters.initialParameters().serialize();
+  retainedLedgerParameters = (await loadLedger8Protocol()).LedgerParameters.initialParameters().serialize();
   currentLedgerParameters = LedgerParameters.initialParameters().serialize();
 });
 
@@ -479,11 +479,11 @@ describe('the fork-crossing failure through the retained-era entry points', () =
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
     providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
     providers.walletProvider.getCoinPublicKey = (): string => recording.coinPublicKey;
-    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
+    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
       seen.proveTx = tx;
       return Promise.resolve(tx);
     });
-    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
+    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
       seen.balanceTx = tx;
       return Promise.resolve(tx);
     });

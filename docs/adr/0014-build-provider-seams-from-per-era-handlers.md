@@ -298,5 +298,8 @@ Issue #1489. The decision is unchanged; only names change.
   `ProviderEraUnsupportedError` (code `MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED` is
   `MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`), and `seam-era-declarations.md` is
   `provider-era-declarations.md`.
+- `createProofProviderForEras` is `createProofProviderFromProvingProviders`.
+  Like the `…FromHandlers` factories, it is named after what it takes:
+  `ProvingProvidersByEra`, one `ProvingProvider` per era.
 
 The amendments above keep the names that were current when they were written.

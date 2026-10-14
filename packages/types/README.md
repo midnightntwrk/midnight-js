@@ -93,9 +93,9 @@ not cross the boundary and duck-typing cannot tell them apart. An explicit tag i
 the only mechanism available.
 
 ```typescript
-interface Ledger8TxBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
-interface Ledger9Tx<T>   { readonly version: 'v9'; readonly tx: T; }
-type VersionedTx<T> = Ledger8TxBytes | Ledger9Tx<T>;
+interface Ledger8TransactionBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
+interface Ledger9Transaction<T>   { readonly version: 'v9'; readonly tx: T; }
+type VersionedTransaction<T> = Ledger8TransactionBytes | Ledger9Transaction<T>;
 ```
 
 There is deliberately no untagged variant, so a bare `Uint8Array` — bytes whose era
@@ -310,9 +310,9 @@ import {
   type BlockHash,
 
   // Version-tagged payloads for the ledger-fork window
-  type Ledger8TxBytes,
-  type Ledger9Tx,
-  type VersionedTx,
+  type Ledger8TransactionBytes,
+  type Ledger9Transaction,
+  type VersionedTransaction,
   type VersionedUnprovenTransaction,
   type VersionedUnboundTransaction,
   type VersionedFinalizedTransaction,
@@ -356,7 +356,7 @@ import {
   createWalletProvider,
   createMidnightProvider,
   createProofProvider,
-  createProofProviderForEras,
+  createProofProviderFromProvingProviders,
   type ProvingProvidersByEra,
   type ProofProviderHandlers,
   type WalletProviderHandlers,

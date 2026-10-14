@@ -35,7 +35,7 @@
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { UnrecognisedResultEraError } from './errors';
+import { UnknownResultEraError } from './errors';
 import type {
   Ledger8CircuitId,
   Ledger8Contract,
@@ -125,7 +125,7 @@ export const isLedger8Result = <T extends { readonly era: LedgerVersion }>(
       return false;
     default: {
       const unhandled: never = result?.era;
-      throw new UnrecognisedResultEraError(unhandled);
+      throw new UnknownResultEraError(unhandled);
     }
   }
 };

@@ -231,7 +231,7 @@ export type RetainedEraSubpath = '/v8' | '/engine';
 
 /**
  * Thrown when a lazily-loaded subpath export carrying the retained pre-fork
- * runtime could not be acquired at all. Raised by `loadLedger8`
+ * runtime could not be acquired at all. Raised by `loadLedger8Protocol`
  * (`lib/v8/load.ts`) and `loadLedger8Engine` (`lib/v8/load-engine.ts`), and
  * surfaced through `createLedger8Engine` and `loadLedgerEra('v8')`.
  *
@@ -870,7 +870,7 @@ export class Ledger8RuntimeInvalidError extends MidnightJsError {
       'The ledger-8 runtime handed to the down-convert engine cannot be used: the binding it needs is missing. ' +
         'Pass the classes of the onchain-runtime-v3 copy your application already loaded, all of them from that ' +
         'one copy, rather than assembling the runtime object by hand. This package exposes no accessor for it — ' +
-        'loadLedger8() resolves the v8 ledger, a different package whose own same-named classes run on a ' +
+        'loadLedger8Protocol() resolves the v8 ledger, a different package whose own same-named classes run on a ' +
         'separate WASM instance. Read `missingMember` on this error for the absent member.'
     );
     this.name = 'Ledger8RuntimeInvalidError';

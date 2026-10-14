@@ -25,7 +25,7 @@ Every module directly under `src/` is a build entry paired with an `exports`
 subpath. `export-surface.test.ts` is the gate: it reads the `exports` map out
 of `package.json` and requires one subpath per top-level module under `src/`.
 
-That is why the accessors do not sit at the top of `src/`. `loadLedger8` lives
+That is why the accessors do not sit at the top of `src/`. `loadLedger8Protocol` lives
 in `lib/v8/load.ts` and `loadLedger8Engine` in `lib/v8/load-engine.ts`: both
 are published through the root barrel instead of through a subpath of their
 own, so neither may be a top-level module. It is also why the dynamic
@@ -68,7 +68,7 @@ retained-era dependencies:
   re-exported by `src/v8.ts`). The relative specifier in `lib/v8/load.ts`
   names this build entry, which rollup emits as its own chunk and links only
   through that dynamic import, so the v8 WASM loads on the first call to
-  `loadLedger8` and not before.
+  `loadLedger8Protocol` and not before.
 - `./engine` — the retained `compact-runtime@0.16` glue (installed under the
   `compact-runtime-ledger8` alias) and the
   `@midnight-ntwrk/onchain-runtime-v3` WASM. The relative specifier in
@@ -85,7 +85,7 @@ recorded in [EraBoundary](./era-boundary.md).
 
 ## The only sanctioned runtime access
 
-`loadLedger8()` is the only sanctioned runtime path to the v8 ledger era, and
+`loadLedger8Protocol()` is the only sanctioned runtime path to the v8 ledger era, and
 `loadLedger8Engine()` is the only sanctioned runtime path to the engine's
 public surface. Every other module in the package reaches the retained era
 through one of those two accessors, which is what keeps the number of physical

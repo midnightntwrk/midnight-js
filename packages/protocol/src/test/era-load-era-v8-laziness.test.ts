@@ -28,7 +28,7 @@ import type * as LoadLedger8Module from '../lib/v8/load';
 // nothing — but a v9 era must never reach for it. Without this gate, a v8
 // acquisition hoisted into the shared dispatch would make every v9-only
 // consumer instantiate multi-megabyte WASM it never calls, and nothing would
-// fail. Asserted against `loadLedger8` itself rather than against the built
+// fail. Asserted against `loadLedger8Protocol` itself rather than against the built
 // bundle, because this is a property of the call graph, not of how rollup
 // happened to chunk it.
 describe('loadLedgerEra — v8 ledger module acquisition', () => {
@@ -41,28 +41,28 @@ describe('loadLedgerEra — v8 ledger module acquisition', () => {
   });
 
   it('never acquires the v8 ledger module for the v9 era', async () => {
-    const loadLedger8 = vi.fn(() => Promise.reject(new Error('acquired the v8 ledger module')));
-    vi.doMock('../lib/v8/load', () => ({ loadLedger8 }));
+    const loadLedger8Protocol = vi.fn(() => Promise.reject(new Error('acquired the v8 ledger module')));
+    vi.doMock('../lib/v8/load', () => ({ loadLedger8Protocol }));
     const { loadLedgerEra } = await import('../lib/era/load-era');
 
     const era = await loadLedgerEra('v9');
 
     expect(era.version).toBe('v9');
-    expect(loadLedger8).not.toHaveBeenCalled();
+    expect(loadLedger8Protocol).not.toHaveBeenCalled();
   });
 
   // Once, not once per method: the era object binds the acquired module in
   // closure, which is what lets every method on it stay synchronous.
   it('acquires the v8 ledger module exactly once for the v8 era', async () => {
     const actual = await vi.importActual<typeof LoadLedger8Module>('../lib/v8/load');
-    const loadLedger8 = vi.fn(actual.loadLedger8);
-    vi.doMock('../lib/v8/load', () => ({ loadLedger8 }));
+    const loadLedger8Protocol = vi.fn(actual.loadLedger8Protocol);
+    vi.doMock('../lib/v8/load', () => ({ loadLedger8Protocol }));
     const { loadLedgerEra } = await import('../lib/era/load-era');
 
     const era = await loadLedgerEra('v8');
     await loadLedgerEra('v8');
 
     expect(era.version).toBe('v8');
-    expect(loadLedger8).toHaveBeenCalledTimes(1);
+    expect(loadLedger8Protocol).toHaveBeenCalledTimes(1);
   });
 });

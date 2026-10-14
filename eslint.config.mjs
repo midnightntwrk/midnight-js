@@ -65,10 +65,10 @@ const plainThrowSelectors = [
 ];
 
 // The `./v8` subpath carries the previous-era ledger and its own WASM. Only
-// `loadLedger8()` may reach it at runtime, so no consumer can grow a direct v8
+// `loadLedger8Protocol()` may reach it at runtime, so no consumer can grow a direct v8
 // dependency that pulls that WASM into an eagerly-loaded module graph.
 const LEDGER8_RUNTIME_MESSAGE =
-  'Runtime v8 access only via loadLedger8() from @midnight-ntwrk/midnight-js-protocol.';
+  'Runtime v8 access only via loadLedger8Protocol() from @midnight-ntwrk/midnight-js-protocol.';
 
 // Blocks dynamic `import(...)` of protocol/v8 (and any subpath under it) in
 // both of its statically matchable forms: a plain string literal, and a

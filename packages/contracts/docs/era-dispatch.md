@@ -245,7 +245,7 @@ and the `current-era` + `v8` refusal — `EraArtifactMismatchError` with reason
 That is a deliberate consequence of a cost decision, not an oversight: the
 current era's single-call path buys no head read, so it has nothing to compare
 an artifact against. The scoped path does pay for one, which is why a scope on a
-pre-fork head is refused (`ScopedTxEraUnsupportedError`) and a single call on the
+pre-fork head is refused (`ScopedTransactionEraUnsupportedError`) and a single call on the
 same head is not. A current-era call against a pre-fork head therefore fails
 LATE — at a provider method or at the node — rather than at this table.
 

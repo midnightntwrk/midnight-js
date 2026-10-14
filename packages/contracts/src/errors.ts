@@ -765,9 +765,9 @@ export const isEffectContractError = (error: unknown): error is EffectContractEr
  * literals; a value that does not has been round-tripped through something
  * that dropped it -- a queue, a JSON boundary, a structured clone.
  */
-export class UnrecognisedResultEraError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.UNRECOGNISED_RESULT_ERA;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.UNRECOGNISED_RESULT_ERA];
+export class UnknownResultEraError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA];
 
   /**
    * @param received What the result's `era` field actually held.
@@ -779,7 +779,7 @@ export class UnrecognisedResultEraError extends MidnightJsError {
         `them. A tag lost in transit -- through a queue, a JSON boundary, a structured clone -- cannot be ` +
         `recovered here: narrow the result before it crosses that boundary, or carry the era beside it.`
     );
-    this.name = 'UnrecognisedResultEraError';
+    this.name = 'UnknownResultEraError';
   }
 }
 
@@ -1015,9 +1015,9 @@ export class ContractTypeError extends MidnightJsError {
  * @see {@link ErrorTaxonomy} for the refuse-before-you-pay placement rule.
  * @see {@link StaleHeadRemediation} for what each placement property prevents.
  */
-export class ScopedTxEraUnsupportedError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED];
+export class ScopedTransactionEraUnsupportedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED];
 
   /**
    * @param head The era the network head is on, as the scope resolved it.
@@ -1030,7 +1030,7 @@ export class ScopedTxEraUnsupportedError extends MidnightJsError {
         `into. Either submit each call as its own transaction with submitCallTx, or run the scope once ` +
         `the network head has crossed the fork.`
     );
-    this.name = 'ScopedTxEraUnsupportedError';
+    this.name = 'ScopedTransactionEraUnsupportedError';
   }
 }
 

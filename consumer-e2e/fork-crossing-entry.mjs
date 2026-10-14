@@ -86,10 +86,10 @@ for (const [label, specifier] of [
 try {
   const protocol = await import('@midnight-ntwrk/midnight-js-protocol');
   observed['framework sees runtime'] = runtimeSeenBy('@midnight-ntwrk/midnight-js-protocol');
-  const ledger8 = await protocol.loadLedger8();
-  observed['loadLedger8'] = typeof ledger8 === 'object' && ledger8 !== null ? 'ok' : String(ledger8);
-  if (observed['loadLedger8'] !== 'ok') {
-    failures.push(`loadLedger8 returned ${observed['loadLedger8']}`);
+  const ledger8 = await protocol.loadLedger8Protocol();
+  observed['loadLedger8Protocol'] = typeof ledger8 === 'object' && ledger8 !== null ? 'ok' : String(ledger8);
+  if (observed['loadLedger8Protocol'] !== 'ok') {
+    failures.push(`loadLedger8Protocol returned ${observed['loadLedger8Protocol']}`);
   }
 } catch (error) {
   failures.push(`framework load: ${error instanceof Error ? error.message : String(error)}`);

@@ -14,7 +14,7 @@
  */
 
 import { Ledger8PayloadUnsupportedError,type TransactionMethod, UntaggedPayloadError } from './errors';
-import type { VersionedTx } from './versioned';
+import type { VersionedTransaction } from './versioned';
 
 /**
  * Narrows a version-tagged transaction payload to its live v9 ledger object,
@@ -44,7 +44,7 @@ import type { VersionedTx } from './versioned';
  * );
  * ```
  */
-export const unwrapLedger9 = <T>(payload: VersionedTx<T>, method: TransactionMethod): T => {
+export const unwrapLedger9 = <T>(payload: VersionedTransaction<T>, method: TransactionMethod): T => {
   // Guards the JavaScript-caller case before the switch, so a null or
   // primitive payload reports the same coded error as a bad tag rather than
   // throwing a bare TypeError on property access.
@@ -65,7 +65,7 @@ export const unwrapLedger9 = <T>(payload: VersionedTx<T>, method: TransactionMet
         payload.txBytes instanceof Uint8Array ? payload.txBytes.byteLength : undefined
       );
     default: {
-      // Keeps the switch exhaustive: if an era is added to `VersionedTx`
+      // Keeps the switch exhaustive: if an era is added to `VersionedTransaction`
       // without a case here, `payload` stops being `never` and this
       // assignment fails to compile.
       const unhandled: never = payload;

@@ -23,11 +23,11 @@ import { readHexFixture } from './fixtures';
 // This suite only makes sense against a real build: it inspects the rollup
 // output to guarantee the v8 ledger WASM is never inlined or statically
 // imported into the eagerly-loaded index bundle — it may load only through
-// the dynamic import inside loadLedger8().
+// the dynamic import inside loadLedger8Protocol().
 const PKG_ROOT = resolve(__dirname, '..', '..');
 const DIST_INDEX_PATH = 'dist/index.js';
 // The `./v8` entry chunk as rollup writes it into whichever eagerly-loaded
-// chunk reaches loadLedger8: the dynamic import of `../../v8.js` in
+// chunk reaches loadLedger8Protocol: the dynamic import of `../../v8.js` in
 // src/lib/v8/load.ts comes out as an output-relative specifier, at whatever
 // depth that chunk sits. Built from parts so the runtime-reference scan in
 // v8-surface.test.ts keeps matching only lib/v8/load.ts.
@@ -58,7 +58,7 @@ const readDistFile = (path: string): string => {
 // Rollup hoists a module that several entries share into its own chunk, so the
 // accessor's dynamic import can sit one static hop away from the index bundle
 // rather than inside it — it does exactly that once more than one entry reaches
-// loadLedger8. The invariant is about everything loading the package root pulls
+// loadLedger8Protocol. The invariant is about everything loading the package root pulls
 // in EAGERLY, so every gate below is asserted over that whole static closure
 // instead of over dist/index.js alone; otherwise a static link hidden in a
 // shared chunk slips through, which is the very thing being gated.

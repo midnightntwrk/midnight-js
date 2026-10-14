@@ -18,7 +18,7 @@ import { dirname, join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { loadLedger8 } from '../lib/v8/load';
+import { loadLedger8Protocol } from '../lib/v8/load';
 // Type-only import: erased at compile time, so it costs nothing at runtime,
 // but a vendor rename or removal of any of these 30 OQ3_SURFACE type-only
 // members breaks the build. This is the only check available for them —
@@ -352,12 +352,12 @@ const filesReachingAtRuntime = (entry: string): string[] => {
     .map((file) => file.slice(SRC_ROOT.length + 1));
 };
 
-// loadLedger8 imports the v8 module by relative specifier, so these run
+// loadLedger8Protocol imports the v8 module by relative specifier, so these run
 // against the sources and need no prior `yarn build` — the built artifacts are
 // gated separately in dist-laziness.test.ts.
-describe('loadLedger8', () => {
+describe('loadLedger8Protocol', () => {
   it('exposes exactly the pinned glue-filtered runtime surface (assertion A: leak/ACL detector)', async () => {
-    const surface = await loadLedger8();
+    const surface = await loadLedger8Protocol();
     const actualRuntimeKeysFiltered = Object.keys(surface)
       .filter((key) => !GLUE_PATTERN.test(key))
       .sort();
@@ -366,7 +366,7 @@ describe('loadLedger8', () => {
   });
 
   it('exposes every runtime-visible OQ3_SURFACE member (assertion B: consumption contract)', async () => {
-    const surface = await loadLedger8();
+    const surface = await loadLedger8Protocol();
     const actualKeys = new Set(Object.keys(surface));
     const missingFromSurface = OQ3_SURFACE_RUNTIME.filter((key) => !actualKeys.has(key));
 
@@ -374,8 +374,8 @@ describe('loadLedger8', () => {
   });
 
   it('memoises the module promise across calls', async () => {
-    const first = loadLedger8();
-    const second = loadLedger8();
+    const first = loadLedger8Protocol();
+    const second = loadLedger8Protocol();
     expect(second).toBe(first);
     await expect(first).resolves.toBeDefined();
   });

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ledger, loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { ledger, loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import {
   DeserializationError,
   ledgerParametersEnvelopeVersion,
@@ -58,7 +58,7 @@ describe('the ledger parameters each runtime writes', () => {
   });
 
   test('neither era can read the other era’s parameters', async () => {
-    const v8 = await loadLedger8();
+    const v8 = await loadLedger8Protocol();
     const ledger8Bytes = await mintLedger8LedgerParametersBytes();
     const ledger9Bytes = mintLedger9LedgerParametersBytes();
 
@@ -93,7 +93,7 @@ describe('the zswap chain state each runtime writes', () => {
   });
 
   test('each era reads the other era’s bytes, so the payload carries no era to date', async () => {
-    const v8 = await loadLedger8();
+    const v8 = await loadLedger8Protocol();
     const ledger8Bytes = await mintLedger8ZswapChainStateBytes(true);
     const ledger9Bytes = mintLedger9ZswapChainStateBytes(true);
 

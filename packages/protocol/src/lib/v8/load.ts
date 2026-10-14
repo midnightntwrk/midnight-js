@@ -35,7 +35,7 @@ let ledger8ModulePromise: Promise<Ledger8Protocol> | undefined;
  * @see {@link ModuleGraphAndLazyLoading}
  * @see {@link EraBoundary}
  */
-export const loadLedger8 = (): Promise<Ledger8Protocol> =>
+export const loadLedger8Protocol = (): Promise<Ledger8Protocol> =>
   (ledger8ModulePromise ??= import('../../v8.js').catch((error: unknown) => {
     ledger8ModulePromise = undefined;
     throw new Ledger8RuntimeMissingError('/v8', error);

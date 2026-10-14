@@ -22,7 +22,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { Ledger8PayloadUnsupportedError,type TransactionMethod, UntaggedPayloadError } from './errors';
-import type { VersionedTx } from './versioned';
+import type { VersionedTransaction } from './versioned';
 
 /**
  * The entries a provider registers for the eras that reach it as
@@ -98,7 +98,7 @@ export type EraRequest<T, H> =
  *         `midnight-js-types`, or across an untyped boundary.
  */
 export const narrowToEra = <T, H>(
-  payload: VersionedTx<T>,
+  payload: VersionedTransaction<T>,
   method: TransactionMethod,
   retainedEras: RetainedEraEntries<H> | undefined
 ): EraRequest<T, H> => {
@@ -129,7 +129,7 @@ export const narrowToEra = <T, H>(
       return { era: payload.version, handler, txBytes: payload.txBytes };
     }
     default: {
-      // Keeps the switch exhaustive: if an era is added to `VersionedTx`
+      // Keeps the switch exhaustive: if an era is added to `VersionedTransaction`
       // without a case here, `payload` stops being `never` and this assignment
       // fails to compile.
       const unhandled: never = payload;

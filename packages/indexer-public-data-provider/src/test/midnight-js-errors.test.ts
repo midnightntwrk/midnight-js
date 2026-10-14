@@ -18,8 +18,7 @@ import { PROVIDER_ERROR_CATEGORIES } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it } from 'vitest';
 
 import {
-  EraUnresolvableError,
-  EraUnsupportedError,
+  DecoderEraUnsupportedError,
   IndexerDataError,
   IndexerError,
   IndexerFormattedError,
@@ -27,8 +26,8 @@ import {
   IndexerPayloadTooLargeError,
   IndexerProviderConfigError,
   IndexerQueryError,
-  IndexerSubscriptionDataError
-} from '../errors';
+  IndexerSubscriptionDataError,
+  UnknownRecordEraError} from '../errors';
 import * as errors from '../errors';
 
 describe('indexer error classes', () => {
@@ -44,8 +43,8 @@ describe('indexer error classes', () => {
     ['IndexerProviderConfigError', new IndexerProviderConfigError('bad')],
     ['IndexerInvariantError', new IndexerInvariantError('bad')],
     ['IndexerPayloadTooLargeError', new IndexerPayloadTooLargeError('big')],
-    ['EraUnsupportedError', new EraUnsupportedError('watchForTxData', 'v9', 3)],
-    ['EraUnresolvableError', new EraUnresolvableError('watchForTxData', 99, { cause: new Error('x') })]
+    ['DecoderEraUnsupportedError', new DecoderEraUnsupportedError('watchForTxData', 'v9', 3)],
+    ['UnknownRecordEraError', new UnknownRecordEraError('watchForTxData', 99, { cause: new Error('x') })]
   ];
 
   it('IndexerError extends MidnightJsError, and so does every exported subclass', () => {
@@ -75,10 +74,10 @@ describe('indexer error classes', () => {
     [new IndexerProviderConfigError('bad'), 'MIDNIGHT_JS_PR_INDEXER_CONFIG_INVALID', 'USAGE'],
     [new IndexerInvariantError('bad'), 'MIDNIGHT_JS_PR_INDEXER_INVARIANT_VIOLATED', 'INTERNAL'],
     [new IndexerPayloadTooLargeError('big'), 'MIDNIGHT_JS_PR_INDEXER_PAYLOAD_TOO_LARGE', 'INTEGRITY'],
-    [new EraUnsupportedError('watchForTxData', 'v9', 3), 'MIDNIGHT_JS_PR_ERA_UNSUPPORTED', 'ENVIRONMENT'],
+    [new DecoderEraUnsupportedError('watchForTxData', 'v9', 3), 'MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED', 'ENVIRONMENT'],
     [
-      new EraUnresolvableError('watchForTxData', 99, { cause: new Error('x') }),
-      'MIDNIGHT_JS_PR_ERA_UNRESOLVABLE',
+      new UnknownRecordEraError('watchForTxData', 99, { cause: new Error('x') }),
+      'MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA',
       'ENVIRONMENT'
     ]
   ] as const)('%s carries its code and category', (error, code, category) => {
@@ -86,8 +85,8 @@ describe('indexer error classes', () => {
   });
 
   it.each([
-    ['EraUnsupportedError', new EraUnsupportedError('watchForDeployTxData', 'v9', 3)],
-    ['EraUnresolvableError', new EraUnresolvableError('watchForDeployTxData', 99, { cause: new Error('x') })]
+    ['DecoderEraUnsupportedError', new DecoderEraUnsupportedError('watchForDeployTxData', 'v9', 3)],
+    ['UnknownRecordEraError', new UnknownRecordEraError('watchForDeployTxData', 99, { cause: new Error('x') })]
   ] as const)('%s reports the read method it was raised for as `method`', (_name, error) => {
     expect([error.method, 'seam' in error]).toEqual(['watchForDeployTxData', false]);
   });

@@ -18,7 +18,7 @@ import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-
 import { describe, expect, it } from 'vitest';
 
 import { resolveReadEra } from '../era';
-import { EraUnresolvableError, IndexerError } from '../errors';
+import { IndexerError,UnknownRecordEraError } from '../errors';
 
 function getThrown(fn: () => unknown): unknown {
   try {
@@ -69,15 +69,15 @@ describe('resolveReadEra', () => {
     ])('reports %s as an unresolvable era rather than guessing one', (_label, protocolVersion) => {
       const error = getThrown(() => resolveReadEra({ protocolVersion }, 'watchForTxData'));
 
-      expect(error).toBeInstanceOf(EraUnresolvableError);
-      expect(hasErrorCode(error, PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE)).toBe(true);
-      expect((error as EraUnresolvableError).method).toBe('watchForTxData');
+      expect(error).toBeInstanceOf(UnknownRecordEraError);
+      expect(hasErrorCode(error, PROVIDER_ERROR_CODES.UNKNOWN_RECORD_ERA)).toBe(true);
+      expect((error as UnknownRecordEraError).method).toBe('watchForTxData');
     });
 
     it('names the record, so one of several concurrent watches can be identified', () => {
       const error = getThrown(() => resolveReadEra({ protocolVersion: 22_001 }, 'watchForTxData', 'txId 0xabc'));
 
-      expect((error as EraUnresolvableError).recordRef).toBe('txId 0xabc');
+      expect((error as UnknownRecordEraError).recordRef).toBe('txId 0xabc');
       expect((error as Error).message).toContain('txId 0xabc');
     });
 

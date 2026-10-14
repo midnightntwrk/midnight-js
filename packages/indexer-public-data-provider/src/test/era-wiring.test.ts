@@ -17,7 +17,7 @@ import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledge
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as codec from '../codec';
-import { EraUnresolvableError } from '../errors';
+import { UnknownRecordEraError } from '../errors';
 import type { RegularTransaction } from '../gen/schema-types';
 import { toFinalizedDeployTxData, toFinalizedTxData } from '../mapping';
 
@@ -119,7 +119,7 @@ describe('finalized-record era wiring', () => {
     ['watchForTxData', () => toFinalizedTxData(TX_ID, transactionAt(UNMAPPED_PROTOCOL_VERSION))],
     ['watchForDeployTxData', () => toFinalizedDeployTxData(CONTRACT_ADDRESS, transactionAt(UNMAPPED_PROTOCOL_VERSION))]
   ])('refuses an unmapped protocolVersion on %s before any decoder runs', async (_method, read) => {
-    await expect(read()).rejects.toThrow(EraUnresolvableError);
+    await expect(read()).rejects.toThrow(UnknownRecordEraError);
 
     expect(decodeVersionedTransaction).not.toHaveBeenCalled();
   });

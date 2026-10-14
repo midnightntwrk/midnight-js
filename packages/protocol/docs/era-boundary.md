@@ -81,7 +81,7 @@ resolving. That property is gated by `v8-load-engine-laziness.test.ts`.
 ## One memo slot per era
 
 `loadLedgerEra` is memoised per era, so the retained pre-fork WASM is
-instantiated at most once per process. `loadLedger8` and `loadLedger8Engine`
+instantiated at most once per process. `loadLedger8Protocol` and `loadLedger8Engine`
 memoise their own imports for the same reason, one slot each.
 
 The memoisation is one slot per era, not one shared slot. A shared slot would
@@ -98,7 +98,7 @@ stay broken for the life of the process.
 
 The same rule holds one level down, at each accessor:
 
-- In `loadLedger8`, a failed load is not memoised: the rejection propagates as
+- In `loadLedger8Protocol`, a failed load is not memoised: the rejection propagates as
   `Ledger8RuntimeMissingError` and the next call retries the import.
 - In `loadLedger8Engine`, a failed load is not memoised either: the next call
   retries the import.
@@ -109,7 +109,7 @@ convert a repairable environment problem into a process-lifetime one.
 
 ## Acquisition is hoisted, so the era methods stay synchronous
 
-`createLedger8Era` acquires the retained pre-fork ledger through `loadLedger8` — the
+`createLedger8Era` acquires the retained pre-fork ledger through `loadLedger8Protocol` — the
 only sanctioned runtime path to it — and binds it into closure, so the era's
 own methods stay synchronous.
 

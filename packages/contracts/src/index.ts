@@ -56,7 +56,7 @@ export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // the other half of that diagnosis, for a head that could not be re-read or that reported an
 // EARLIER era: reported as undiagnosable rather than as a fork, because neither case establishes
 // one, and carrying a registered code of its own so a retry handler branching on `hasErrorCode`
-// behaves the same whichever failure came first. `ScopedTxEraUnsupportedError` and
+// behaves the same whichever failure came first. `ScopedTransactionEraUnsupportedError` and
 // `MixedEraScopeError` are the scoped-transaction era rules -- a scope is refused outright on a
 // head era that composes only one call per transaction, and a retained-toolchain call cannot join
 // a scope at all.
@@ -92,15 +92,15 @@ export {
   MixedEraScopeError,
   PrivateStateNotFoundError,
   RetainedArtifactOnCurrentEraStateError,
+  ScopedTransactionEraUnsupportedError,
   ScopedTransactionIdentityMismatchError,
-  ScopedTxEraUnsupportedError,
   StaleHeadError,
   type StaleHeadOperationKind,
   type SubmitRejectionUndiagnosedCause,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation,
   TxFailedError,
-  UnrecognisedResultEraError,
+  UnknownResultEraError,
   VerifierKeyMismatchError,
   ZswapOutputResolutionError} from './errors';
 export {

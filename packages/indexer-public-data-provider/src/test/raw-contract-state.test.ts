@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ledger, loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { ledger, loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   contractStateEnvelopeVersion,
@@ -197,7 +197,7 @@ describe('queryRawContractState', () => {
 
     test('serves v8 state bytes that deserialize again with the v8 runtime', async () => {
       const stateHex = await mintLedger8ContractStateHex();
-      const v8 = await loadLedger8();
+      const v8 = await loadLedger8Protocol();
 
       const record = await providerServing(stateHex, LEDGER8_ERA_PROTOCOL_VERSION).queryRawContractState(ADDRESS);
 

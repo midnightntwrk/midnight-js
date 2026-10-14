@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ledger, loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { ledger, loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { RegularTransaction } from '../gen/schema-types';
@@ -24,7 +24,7 @@ import type { RegularTransaction } from '../gen/schema-types';
 // and keeps them tiny: a freshly constructed, empty `ContractState` is a few
 // dozen bytes, so no large binary ever enters the unit-test run.
 //
-// The v8 runtime is reached through `loadLedger8()`, the only sanctioned path to
+// The v8 runtime is reached through `loadLedger8Protocol()`, the only sanctioned path to
 // it; nothing here depends on the v8 ledger package directly.
 
 /** A newly constructed, empty contract state serialized by the v9 runtime. */
@@ -32,7 +32,7 @@ export const mintLedger9ContractStateBytes = (): Uint8Array => new ledger.Contra
 
 /** A newly constructed, empty contract state serialized by the v8 runtime. */
 export const mintLedger8ContractStateBytes = async (): Promise<Uint8Array> => {
-  const v8 = await loadLedger8();
+  const v8 = await loadLedger8Protocol();
   return new v8.ContractState().serialize();
 };
 
@@ -51,9 +51,9 @@ export const mintLedger8ContractStateHex = async (): Promise<string> => toHex(aw
  */
 export const mintLedger9LedgerParametersBytes = (): Uint8Array => ledger.LedgerParameters.initialParameters().serialize();
 
-/** The v8-era twin of {@link mintLedger9LedgerParametersBytes}, reached through `loadLedger8()`. */
+/** The v8-era twin of {@link mintLedger9LedgerParametersBytes}, reached through `loadLedger8Protocol()`. */
 export const mintLedger8LedgerParametersBytes = async (): Promise<Uint8Array> => {
-  const v8 = await loadLedger8();
+  const v8 = await loadLedger8Protocol();
   return v8.LedgerParameters.initialParameters().serialize();
 };
 
@@ -80,9 +80,9 @@ export const mintLedger9ZswapChainStateBytes = (populated = false): Uint8Array =
     : new ledger.ZswapChainState()
   ).serialize();
 
-/** The v8-era twin of {@link mintLedger9ZswapChainStateBytes}, reached through `loadLedger8()`. */
+/** The v8-era twin of {@link mintLedger9ZswapChainStateBytes}, reached through `loadLedger8Protocol()`. */
 export const mintLedger8ZswapChainStateBytes = async (populated = false): Promise<Uint8Array> => {
-  const v8 = await loadLedger8();
+  const v8 = await loadLedger8Protocol();
   return (
     populated
       ? new v8.ZswapChainState().postBlockUpdate(ZSWAP_BLOCK_TIME, ZSWAP_ROOT_RETENTION_SECONDS)
@@ -103,7 +103,7 @@ export const mintLedger9TransactionHex = (): string => toHex(ledger.Transaction.
 /**
  * The v8-era twin of {@link mintLedger9TransactionHex}: a minimal, real finalized
  * transaction in the indexer's wire encoding, produced by the v8 runtime
- * itself and reached through `loadLedger8()`, the only sanctioned path to it.
+ * itself and reached through `loadLedger8Protocol()`, the only sanctioned path to it.
  *
  * `mockProve()` already yields the `(SignatureEnabled, Proof, Binding)` shape a
  * finalized transaction has — no separate `bind()` on this era — so the bytes
@@ -112,7 +112,7 @@ export const mintLedger9TransactionHex = (): string => toHex(ledger.Transaction.
  * 'binding', ...)`.
  */
 export const mintLedger8TransactionHex = async (): Promise<string> => {
-  const v8 = await loadLedger8();
+  const v8 = await loadLedger8Protocol();
   return toHex(v8.Transaction.fromParts('local-test').mockProve().serialize());
 };
 

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { ConfigurationError, PayloadNotATransactionError, PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
@@ -176,7 +176,7 @@ describe('httpClientProofProvider', () => {
     let circuitDrivingTxBytes: Uint8Array;
 
     beforeAll(async () => {
-      const v8 = await loadLedger8();
+      const v8 = await loadLedger8Protocol();
       retainedEraTxBytes = v8.Transaction.fromParts('undeployed').serialize();
 
       // Carries one Zswap output, so proving it actually drives the proving

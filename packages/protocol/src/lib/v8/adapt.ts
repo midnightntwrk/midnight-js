@@ -46,7 +46,7 @@ const readContractState = (raw: Uint8Array, v8: Ledger8Protocol): InstanceType<L
  * is refused rather than silently narrowed. A Zswap offer is NOT refused.
  *
  * @param options The era-facade call options.
- * @param v8 The v8 ledger module, as handed over by `loadLedger8`
+ * @param v8 The v8 ledger module, as handed over by `loadLedger8Protocol`
  *   (`./load.ts`).
  * @returns The UNPROVEN, serialized call transaction and the call's partition.
  * @throws ComposeOptionError If an option cannot be used: a malformed envelope
@@ -104,7 +104,7 @@ export const composeEraLedger8CallTx = (options: ComposeCallOptions, v8: Ledger8
  * takes: it deserializes into its own era rather than accepting a handle.
  *
  * @param options The era-facade deploy options.
- * @param v8 The v8 ledger module, as handed over by `loadLedger8`
+ * @param v8 The v8 ledger module, as handed over by `loadLedger8Protocol`
  *   (`./load.ts`).
  * @returns The UNPROVEN, serialized deploy transaction, the address it deploys
  *   at, and the registered initial state.

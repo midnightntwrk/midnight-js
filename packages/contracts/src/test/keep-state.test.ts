@@ -48,7 +48,7 @@ import { ContractState, LedgerParameters, Transaction } from '@midnight-ntwrk/mi
 import {
   type RawContractState,
   type VersionedFinalizedTransaction,
-  type VersionedTx,
+  type VersionedTransaction,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
@@ -123,8 +123,8 @@ const STAND_IN_VERIFIER_KEY = Uint8Array.from(
 );
 
 interface SeenPayloads {
-  proveTx?: VersionedTx<unknown>;
-  balanceTx?: VersionedTx<unknown>;
+  proveTx?: VersionedTransaction<unknown>;
+  balanceTx?: VersionedTransaction<unknown>;
   submitTx?: VersionedFinalizedTransaction;
 }
 
@@ -198,11 +198,11 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       .mockResolvedValue(rawState(envelope, POST_FORK_PROTOCOL_VERSION));
     providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
     providers.walletProvider.getCoinPublicKey = (): string => recording.coinPublicKey;
-    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
+    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
       seen.proveTx = tx;
       return Promise.resolve(tx);
     });
-    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
+    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
       seen.balanceTx = tx;
       return Promise.resolve(tx);
     });

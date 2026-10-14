@@ -24,7 +24,7 @@ const LEDGER8_MODULE_SPECIFIER = ['..', 'v8.js'].join('/');
 
 // Lives in its own file so the mocked, poisoned module registry cannot leak
 // into the happy-path suites (vitest isolates module state per test file).
-describe('loadLedger8 failure path', () => {
+describe('loadLedger8Protocol failure path', () => {
   afterEach(() => {
     vi.doUnmock(LEDGER8_MODULE_SPECIFIER);
   });
@@ -33,12 +33,12 @@ describe('loadLedger8 failure path', () => {
     vi.doMock(LEDGER8_MODULE_SPECIFIER, () => {
       throw new Error('simulated v8 load failure');
     });
-    const { loadLedger8 } = await import('../lib/v8/load');
+    const { loadLedger8Protocol } = await import('../lib/v8/load');
 
-    const first = loadLedger8();
+    const first = loadLedger8Protocol();
     const error = await first.then(
       () => {
-        throw new Error('expected loadLedger8 to reject');
+        throw new Error('expected loadLedger8Protocol to reject');
       },
       (rejection: unknown) => rejection
     );
@@ -50,7 +50,7 @@ describe('loadLedger8 failure path', () => {
     // `cause` is non-enumerable on Error, so it needs a direct assertion.
     expect((error as Ledger8RuntimeMissingError).cause).toBeInstanceOf(Error);
 
-    const second = loadLedger8();
+    const second = loadLedger8Protocol();
     expect(second).not.toBe(first);
     await expect(second).rejects.toBeInstanceOf(Ledger8RuntimeMissingError);
   });

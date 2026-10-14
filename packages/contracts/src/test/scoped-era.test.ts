@@ -39,7 +39,7 @@ import type { AnyProvableCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { HeadReadFailedError, MixedEraScopeError, ScopedTxEraUnsupportedError } from '../errors';
+import { HeadReadFailedError, MixedEraScopeError, ScopedTransactionEraUnsupportedError } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
 import { assertScopeAdmitsRetainedEraCall, scopedTransaction, TransactionContextImpl } from '../internal/transaction';
 import { submitCallTx } from '../submit-call-tx';
@@ -251,11 +251,11 @@ describe('per-scope era resolution', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(ScopedTxEraUnsupportedError);
+    expect(caught).toBeInstanceOf(ScopedTransactionEraUnsupportedError);
     // The CODE, not only the class: a consumer that cannot import this
     // package's classes branches on `code`.
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED)).toBe(true);
-    expect((caught as ScopedTxEraUnsupportedError).head).toBe('v8');
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED)).toBe(true);
+    expect((caught as ScopedTransactionEraUnsupportedError).head).toBe('v8');
     // Refused at CREATION: the body never ran, so no circuit was executed and
     // no private state was touched on a scope that could never be submitted.
     expect(body).not.toHaveBeenCalled();
@@ -281,8 +281,8 @@ describe('per-scope era resolution', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(ScopedTxEraUnsupportedError);
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED)).toBe(true);
+    expect(caught).toBeInstanceOf(ScopedTransactionEraUnsupportedError);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED)).toBe(true);
     // NOTHING was acquired: not the era it refuses, and not any other.
     expect(eraLoadSlot.acquired).toEqual([]);
   });
@@ -522,7 +522,7 @@ describe('where the two fork-window behaviours meet', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(ScopedTxEraUnsupportedError);
+    expect(caught).toBeInstanceOf(ScopedTransactionEraUnsupportedError);
     // The head is read ONCE. Nothing re-reads it looking for a fork, because
     // there is no submission to diagnose -- the scope was refused before one
     // could exist.

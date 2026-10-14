@@ -18,7 +18,7 @@ import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 import { isLedger8Result } from '../era-results';
-import { UnrecognisedResultEraError } from '../errors';
+import { UnknownResultEraError } from '../errors';
 
 // A result is only ever read here through its `era` tag, so the smallest thing
 // carrying one is the whole fixture this needs.
@@ -44,7 +44,7 @@ describe('isLedger8Result', () => {
     ['a tag of the wrong primitive type', { era: 9, txId: 'tx-1' }]
   ])('refuses %s rather than answering false', (_label, result) => {
     expect(() => isLedger8Result(result as unknown as { readonly era: LedgerVersion })).toThrow(
-      UnrecognisedResultEraError
+      UnknownResultEraError
     );
   });
 
@@ -58,10 +58,10 @@ describe('isLedger8Result', () => {
       }
     })();
 
-    expect(caught).toBeInstanceOf(UnrecognisedResultEraError);
-    expect((caught as UnrecognisedResultEraError).received).toBe('v7');
-    expect((caught as UnrecognisedResultEraError).code).toBe(CONTRACTS_ERROR_CODES.UNRECOGNISED_RESULT_ERA);
-    expect((caught as UnrecognisedResultEraError).message).toEqual(
+    expect(caught).toBeInstanceOf(UnknownResultEraError);
+    expect((caught as UnknownResultEraError).received).toBe('v7');
+    expect((caught as UnknownResultEraError).code).toBe(CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA);
+    expect((caught as UnknownResultEraError).message).toEqual(
       'A result carried an era tag naming neither pipeline (got: "v7"). ' +
         "Results are tagged 'v9' or 'v8' by the pipeline that built them. A tag lost in transit -- through a queue, " +
         'a JSON boundary, a structured clone -- cannot be recovered here: narrow the result before it crosses that ' +
@@ -71,10 +71,10 @@ describe('isLedger8Result', () => {
 
   it('refuses a null or undefined result rather than reading a member off it', () => {
     expect(() => isLedger8Result(null as unknown as { readonly era: LedgerVersion })).toThrow(
-      UnrecognisedResultEraError
+      UnknownResultEraError
     );
     expect(() => isLedger8Result(undefined as unknown as { readonly era: LedgerVersion })).toThrow(
-      UnrecognisedResultEraError
+      UnknownResultEraError
     );
   });
 });

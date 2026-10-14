@@ -108,7 +108,7 @@ The fix is to supply the retained-era path with a Zswap chain state, tracked
 separately. Until then this refuses in the caller's own test run rather than in
 production.
 
-### `ScopedTxEraUnsupportedError`
+### `ScopedTransactionEraUnsupportedError`
 
 The pre-fork era composes exactly one call per transaction and refuses a longer
 list, which leaves a pre-fork scope nothing to batch into.

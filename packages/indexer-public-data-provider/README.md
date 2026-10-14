@@ -503,7 +503,7 @@ first use — a session that meets no v8 record never instantiates that WASM.
 
 The discriminant is resolved from the record's own `protocolVersion`, never
 asserted, so it cannot disagree with the `protocolVersion` beside it. Era
-resolution itself can refuse the read one way: `EraUnresolvableError`, an
+resolution itself can refuse the read one way: `UnknownRecordEraError`, an
 `IndexerError` naming the raw `protocolVersion` and the record, when that
 integer maps to no known ledger era. A `raw` that is not a whole hex byte
 string is refused as `IndexerDataError` before any decoder runs.

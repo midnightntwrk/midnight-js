@@ -22,7 +22,7 @@
  * link them. Same discipline as `./errors` and `./version`.
  *
  * The retained runtime itself stays behind the dynamic import inside
- * `loadLedger8`, so importing this entry does not load the v8 WASM. That is
+ * `loadLedger8Protocol`, so importing this entry does not load the v8 WASM. That is
  * gated by `src/test/dist-laziness.test.ts`.
  */
 

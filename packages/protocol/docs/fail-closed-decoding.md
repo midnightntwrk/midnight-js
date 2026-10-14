@@ -160,7 +160,7 @@ no gain.
 `extractEncodedStateValue` takes `ledger8ContractState` for every `version`,
 not just `'v8'`. Requiring it unconditionally costs nobody a runtime they would
 not otherwise hold. This decoder is reached only from `createLedger8Era`
-(`lib/era/load-era.ts`), which has already awaited `loadLedger8()` and hands
+(`lib/era/load-era.ts`), which has already awaited `loadLedger8Protocol()` and hands
 that module's `ContractState` in; the `'v9'` decoder is here so that the
 *bridge* can read a post-fork envelope before down-converting it, not to serve
 a caller who has no pre-fork runtime at all. Such a caller reads ledger-v9

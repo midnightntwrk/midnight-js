@@ -34,7 +34,7 @@ import {
 import { createMockContractAddress } from './test-mocks';
 
 // `loadLedgerEra` is the one door to either era's decoder, so which era it is ASKED for is the
-// whole of this function's dispatch. Spied here rather than deeper: `loadLedger8` is called from
+// whole of this function's dispatch. Spied here rather than deeper: `loadLedger8Protocol` is called from
 // inside protocol's own module and a mocked export cannot observe it, and whether an acquired era
 // is memoised afterwards is `loadLedgerEra`'s documented property, not this function's.
 //

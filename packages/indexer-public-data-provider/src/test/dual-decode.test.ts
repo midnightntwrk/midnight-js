@@ -27,7 +27,7 @@ import * as Rx from 'rxjs';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { decodeVersionedTransaction } from '../codec';
-import { EraUnresolvableError, EraUnsupportedError, IndexerDataError, IndexerError } from '../errors';
+import { DecoderEraUnsupportedError, IndexerDataError, IndexerError,UnknownRecordEraError } from '../errors';
 import type { RegularTransaction } from '../gen/schema-types';
 import { toFinalizedDeployTxData, toFinalizedTxData } from '../mapping';
 import { IndexerPublicDataProvider } from '../provider';
@@ -41,7 +41,7 @@ import {
   regularTransactionRow,
   UNRESOLVABLE_PROTOCOL_VERSION} from './state-fixtures';
 
-// The v8 runtime is reached through `loadLedger8()` and nowhere else, so
+// The v8 runtime is reached through `loadLedger8Protocol()` and nowhere else, so
 // spying on that one accessor is what makes "a v9-only session never touches
 // the v8 WASM" observable. The spy delegates to the real accessor — these
 // tests decode with the genuine runtimes, never with a stand-in — and its
@@ -51,8 +51,8 @@ const { loadLedger8Spy } = vi.hoisted(() => ({ loadLedger8Spy: vi.fn<() => Promi
 
 vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
   const original = await importOriginal<typeof protocol>();
-  loadLedger8Spy.mockImplementation(original.loadLedger8);
-  return { ...original, loadLedger8: loadLedger8Spy };
+  loadLedger8Spy.mockImplementation(original.loadLedger8Protocol);
+  return { ...original, loadLedger8Protocol: loadLedger8Spy };
 });
 
 const CONTRACT_ADDRESS = '12'.repeat(32) as ContractAddress;
@@ -324,14 +324,14 @@ describe('the module graph keeps both retained-era chunks off the eager path', (
   // the one that pulls the retained compact-runtime 0.16 glue and the
   // onchain-runtime-v3 WASM, neither of which a decode-only read path has any
   // use for.
-  const LAZY_ACCESSORS = ['loadLedger8', 'loadLedger8Engine'] as const;
+  const LAZY_ACCESSORS = ['loadLedger8Protocol', 'loadLedger8Engine'] as const;
 
-  it('reaches the v8 era through loadLedger8 and through no other accessor', () => {
+  it('reaches the v8 era through loadLedger8Protocol and through no other accessor', () => {
     const referenced = LAZY_ACCESSORS.filter((accessor) =>
       sources().some(({ text }) => new RegExp(`\\b${accessor}\\b`).test(text))
     );
 
-    expect([...referenced].sort()).toEqual(['loadLedger8']);
+    expect([...referenced].sort()).toEqual(['loadLedger8Protocol']);
   });
 
   // Every way a module specifier can be LINKED at runtime. `[^;]*?` spans the
@@ -551,11 +551,11 @@ describe('an era that resolves to no decoder at all', () => {
       toFinalizedTxData(TX_ID, transactionAt(UNRESOLVABLE_PROTOCOL_VERSION, ledger8TransactionHex))
     );
 
-    expect(error).toBeInstanceOf(EraUnresolvableError);
+    expect(error).toBeInstanceOf(UnknownRecordEraError);
     expect(loadLedger8Spy).not.toHaveBeenCalled();
   });
 
-  // The reachable path to `EraUnsupportedError` is a consumer whose installed
+  // The reachable path to `DecoderEraUnsupportedError` is a consumer whose installed
   // `midnight-js-protocol` is NEWER than this provider package: `versionOfRecord`
   // then answers an era this build's decoder table has no entry for. `era` is
   // typed, so the cast is how a test reproduces that skew inside one build.
@@ -573,15 +573,15 @@ describe('an era that resolves to no decoder at all', () => {
     async (era) => {
       const error = await rejectionOf(decodeWithEra(era));
 
-      expect(error).toBeInstanceOf(EraUnsupportedError);
-      expect(hasErrorCode(error, PROVIDER_ERROR_CODES.ERA_UNSUPPORTED)).toBe(true);
+      expect(error).toBeInstanceOf(DecoderEraUnsupportedError);
+      expect(hasErrorCode(error, PROVIDER_ERROR_CODES.DECODER_ERA_UNSUPPORTED)).toBe(true);
     }
   );
 
   it('carries the era, the raw protocolVersion, the method and the record', async () => {
     const error = await rejectionOf(decodeWithEra('v7', 'watchForDeployTxData', `contractAddress ${CONTRACT_ADDRESS}`));
 
-    const unsupported = error as EraUnsupportedError;
+    const unsupported = error as DecoderEraUnsupportedError;
     expect(unsupported.era).toBe('v7');
     expect(unsupported.protocolVersion).toBe(LEDGER9_ERA_PROTOCOL_VERSION);
     expect(unsupported.method).toBe('watchForDeployTxData');

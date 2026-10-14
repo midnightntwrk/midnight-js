@@ -105,7 +105,7 @@ export interface ComposeLedger8CallOptions {
  * before `.prove()` is ever called.
  *
  * @param options The call's inputs, offers and envelope options.
- * @param v8 The v8 ledger module, as handed over by `loadLedger8`
+ * @param v8 The v8 ledger module, as handed over by `loadLedger8Protocol`
  *   (`./load.ts`).
  * @returns The UNPROVEN, serialized call transaction and the call's partition.
  * @throws ComposeOptionError If `networkId` is empty, `ttl` is not a valid

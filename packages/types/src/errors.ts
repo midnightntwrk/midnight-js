@@ -64,9 +64,9 @@ export type ProviderMethod = TransactionMethod | ReadMethod;
 export const PROVIDER_ERROR_CODES = Object.freeze({
   LEDGER8_PAYLOAD_UNSUPPORTED: 'MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTED',
   UNTAGGED_PAYLOAD: 'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD',
-  ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_ERA_UNSUPPORTED',
-  ERA_UNRESOLVABLE: 'MIDNIGHT_JS_PR_ERA_UNRESOLVABLE',
-  // Distinct from ERA_UNSUPPORTED above, which belongs to the READ surface:
+  DECODER_ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED',
+  UNKNOWN_RECORD_ERA: 'MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA',
+  // Distinct from DECODER_ERA_UNSUPPORTED above, which belongs to the READ surface:
   // that one means "this record cannot be decoded", raised while decoding. This
   // one means "this provider states it does not serve that era", raised from a
   // declaration before any payload exists.
@@ -106,8 +106,8 @@ const { USAGE, ENVIRONMENT, TRANSIENT, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR
 export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, MidnightJsErrorCategory>> = Object.freeze({
   [PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED]: USAGE,
   [PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD]: USAGE,
-  [PROVIDER_ERROR_CODES.ERA_UNSUPPORTED]: ENVIRONMENT,
-  [PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE]: ENVIRONMENT,
+  [PROVIDER_ERROR_CODES.DECODER_ERA_UNSUPPORTED]: ENVIRONMENT,
+  [PROVIDER_ERROR_CODES.UNKNOWN_RECORD_ERA]: ENVIRONMENT,
   [PROVIDER_ERROR_CODES.PROVIDER_ERA_UNSUPPORTED]: USAGE,
   [PROVIDER_ERROR_CODES.PRIVATE_STATE_NOT_SERIALIZABLE]: USAGE,
   [PROVIDER_ERROR_CODES.INVALID_PROTOCOL_SCHEME]: USAGE,
@@ -342,7 +342,7 @@ export class ProviderEraUnsupportedError extends MidnightJsError {
  * The shape a provider factory needs for each era entry — the value passed as
  * `currentEra` or under `retainedEras`: a `handler` function
  * for the `…FromHandlers` factories, a `proving-provider` with callable
- * `check` and `prove` for `createProofProviderForEras`.
+ * `check` and `prove` for `createProofProviderFromProvingProviders`.
  */
 export type EraEntryShape = 'handler' | 'proving-provider';
 

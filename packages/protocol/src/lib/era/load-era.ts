@@ -19,7 +19,7 @@ import { UnknownLedgerVersionError } from '../../errors';
 import { decodeContractStateWith, extractStateWith } from '../shared/contract-state';
 import type { LedgerVersion } from '../shared/ledger-version';
 import { composeEraLedger8CallTx, composeEraLedger8DeployTx } from '../v8/adapt';
-import { loadLedger8 } from '../v8/load';
+import { loadLedger8Protocol } from '../v8/load';
 import { composeLedger9CallTx, composeLedger9DeployTx } from '../v9/compose';
 import { extractEncodedStateValue, extractLedger9EncodedStateValue } from './envelope';
 import type { LedgerEra } from './era';
@@ -70,7 +70,7 @@ const createLedger9Era = (): LedgerEra => {
  * the acquisition is hoisted here.
  */
 const createLedger8Era = async (): Promise<LedgerEra> => {
-  const v8 = await loadLedger8();
+  const v8 = await loadLedger8Protocol();
 
   const era: LedgerEra = {
     version: 'v8',

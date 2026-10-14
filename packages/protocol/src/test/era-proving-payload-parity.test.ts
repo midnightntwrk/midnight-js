@@ -45,7 +45,7 @@ import * as ledgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { loadLedger8 } from '../lib/v8/load';
+import { loadLedger8Protocol } from '../lib/v8/load';
 import { fixturePath } from './fixtures';
 
 const NETWORK_ID = 'undeployed';
@@ -92,7 +92,7 @@ describe('proof-server wire builders are byte-identical across eras', () => {
   let ledger9Preimage: Uint8Array;
 
   beforeAll(async () => {
-    const v8 = await loadLedger8();
+    const v8 = await loadLedger8Protocol();
 
     const ledger8TokenType = v8.sampleRawTokenType();
     const ledger8Tx = v8.Transaction.fromParts(

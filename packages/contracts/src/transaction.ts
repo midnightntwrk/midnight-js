@@ -111,7 +111,7 @@ export const isTransactionContext: (u: unknown) => u is TransactionContext<Contr
    * @returns A `Promise` that resolves with the finalized transaction data of the single transaction
    * created for all circuit calls made within `fn`.
    *
-   * @throws {ScopedTxEraUnsupportedError} When the network head is on a ledger era that composes only
+   * @throws {ScopedTransactionEraUnsupportedError} When the network head is on a ledger era that composes only
    *         one call per transaction, so has nothing for a scope to batch into. Raised before `fn`
    *         runs, so no circuit is executed and no private state is touched.
    *

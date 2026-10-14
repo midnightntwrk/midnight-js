@@ -651,7 +651,7 @@ describe('Ledger8RuntimeInvalidError', () => {
     expect(error.code).not.toBe(PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
   });
 
-  // `loadLedger8()` resolves @midnightntwrk/ledger-v8, which exports its own
+  // `loadLedger8Protocol()` resolves @midnightntwrk/ledger-v8, which exports its own
   // ContractState with a matching `static deserialize` on a second, unrelated
   // WASM instance. A remediation naming it therefore hands the caller a class
   // that satisfies the duck-typed guard and decodes on the wrong copy, so the

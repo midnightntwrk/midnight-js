@@ -34,7 +34,7 @@ import {
 
 import { erasServedBy, narrowToEra, type RetainedEraEntries } from './era-entries';
 import { describeArgument, isObject, readEraEntries } from './internal/read-era-entries';
-import type { VersionedTx } from './versioned';
+import type { VersionedTransaction } from './versioned';
 
 export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
 
@@ -42,14 +42,14 @@ export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding
  * An unproven transaction on its way to a {@link ProofProvider}: either the
  * live v9 ledger object, or the serialized bytes of a v8-era transaction.
  */
-export type VersionedUnprovenTransaction = VersionedTx<UnprovenTransaction>;
+export type VersionedUnprovenTransaction = VersionedTransaction<UnprovenTransaction>;
 
 /**
  * A proven-but-unbalanced transaction coming back from a {@link ProofProvider}:
  * either the live v9 ledger object, or the serialized bytes of a v8-era
  * transaction.
  */
-export type VersionedUnboundTransaction = VersionedTx<UnboundTransaction>;
+export type VersionedUnboundTransaction = VersionedTransaction<UnboundTransaction>;
 
 /**
  * The configuration for the proof request to the proof provider.
@@ -63,7 +63,7 @@ export interface ProveTxConfig {
    *
    * Honoured by `httpClientProofProvider`. Providers that cannot apply it reject `proveTx` with
    * `InvalidArgumentError` instead of ignoring it: {@link createProofProvider},
-   * {@link createProofProviderForEras} and `dappConnectorProofProvider`.
+   * {@link createProofProviderFromProvingProviders} and `dappConnectorProofProvider`.
    */
   readonly timeout?: number;
 }
@@ -111,7 +111,7 @@ export interface ProofProvider {
    *         against `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`.
    * @throws UntaggedPayloadError if `version` is missing or unrecognised.
    * @throws InvalidArgumentError if `proveTxConfig.timeout` is set and the implementation cannot
-   *         apply it. {@link createProofProvider}, {@link createProofProviderForEras} and
+   *         apply it. {@link createProofProvider}, {@link createProofProviderFromProvingProviders} and
    *         `dappConnectorProofProvider` refuse it before any proving starts;
    *         `httpClientProofProvider` honours it.
    */
@@ -199,7 +199,7 @@ export const createProofProviderFromHandlers = (handlers: ProofProviderHandlers)
 
 /**
  * One {@link ProvingProvider} per ledger era, for
- * {@link createProofProviderForEras}.
+ * {@link createProofProviderFromProvingProviders}.
  */
 export interface ProvingProvidersByEra {
   readonly currentEra: ProvingProvider;
@@ -245,7 +245,7 @@ const PROVE_BY_RETAINED_ERA: Readonly<
 const refuseTimeout = (config: ProveTxConfig | undefined): void => {
   if (config?.timeout !== undefined) {
     throw new InvalidArgumentError(
-      'proveTxConfig.timeout is not supported by createProofProvider or createProofProviderForEras: ' +
+      'proveTxConfig.timeout is not supported by createProofProvider or createProofProviderFromProvingProviders: ' +
         'a ProvingProvider takes no per-request configuration, so the timeout could not reach the proving call. ' +
         'Omit it, or use httpClientProofProvider, which honours it.'
     );
@@ -305,7 +305,7 @@ const toRetainedEraHandlers = (
  *
  * @example
  * ```typescript
- * const proofProvider = createProofProviderForEras({
+ * const proofProvider = createProofProviderFromProvingProviders({
  *   currentEra: currentEraProver.asProvingProvider(),
  *   retainedEras: { v8: retainedEraProver.asV8ProvingProvider() }
  * });
@@ -314,7 +314,7 @@ const toRetainedEraHandlers = (
  *
  * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/provider-era-declarations.md | Provider era declarations}
  */
-export const createProofProviderForEras = (provingProviders: ProvingProvidersByEra): ProofProvider => {
+export const createProofProviderFromProvingProviders = (provingProviders: ProvingProvidersByEra): ProofProvider => {
   const { currentEra, retainedEras } = readEraEntries('proveTx', provingProviders, 'proving-provider');
   const { costModel = CostModel.initialCostModel() } = provingProviders;
   if (!isObject(costModel)) {
@@ -341,7 +341,7 @@ export const createProofProviderForEras = (provingProviders: ProvingProvidersByE
  * proving starts: a `ProvingProvider` takes no per-request configuration. To
  * bound proving time, use `httpClientProofProvider`. To serve a retained era as
  * well, pass that era's own proving provider to
- * {@link createProofProviderForEras}, or, where the proving itself is not a
+ * {@link createProofProviderFromProvingProviders}, or, where the proving itself is not a
  * `ProvingProvider` call, write the handlers directly with
  * {@link createProofProviderFromHandlers}.
  *
@@ -352,4 +352,4 @@ export const createProofProviderForEras = (provingProviders: ProvingProvidersByE
 export const createProofProvider = (
   provingProvider: ProvingProvider,
   costModel: CostModel = CostModel.initialCostModel()
-): ProofProvider => createProofProviderForEras({ currentEra: provingProvider, costModel });
+): ProofProvider => createProofProviderFromProvingProviders({ currentEra: provingProvider, costModel });

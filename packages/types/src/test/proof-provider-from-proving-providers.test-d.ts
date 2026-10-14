@@ -17,7 +17,7 @@ import type { ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledge
 import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import { describe, expectTypeOf, it } from 'vitest';
 
-import { createProofProviderForEras, type ProofProvider } from '../proof-provider';
+import { createProofProviderFromProvingProviders, type ProofProvider } from '../proof-provider';
 
 // Compile-level tests: the property under test is that this file type-checks,
 // and for the `@ts-expect-error` case that it does NOT without the suppression.
@@ -34,12 +34,12 @@ const retainedEraProvingProvider: RetainedEraProvingProvider = {
   prove: async () => new Uint8Array()
 };
 
-describe('createProofProviderForEras', () => {
+describe('createProofProviderFromProvingProviders', () => {
   // The point of the retained slot's type: registering the provider an
   // in-process prover hands over for that era must not need a cast.
   it('accepts a retained-era provider, which declares no lookupKey', () => {
     expectTypeOf(
-      createProofProviderForEras({
+      createProofProviderFromProvingProviders({
         currentEra: currentEraProvingProvider,
         retainedEras: { v8: retainedEraProvingProvider }
       })
@@ -51,7 +51,7 @@ describe('createProofProviderForEras', () => {
   // The reverse -- a current-era provider in the retained slot -- type-checks,
   // which is why the pairing is documented rather than enforced.
   it('refuses a retained-era provider for the current era', () => {
-    createProofProviderForEras({
+    createProofProviderFromProvingProviders({
       // @ts-expect-error the current era's ProvingProvider also declares
       // lookupKey, which the retained era's shape does not.
       currentEra: retainedEraProvingProvider
@@ -59,7 +59,7 @@ describe('createProofProviderForEras', () => {
   });
 
   it('refuses a retained slot keyed by the current era', () => {
-    createProofProviderForEras({
+    createProofProviderFromProvingProviders({
       currentEra: currentEraProvingProvider,
       // @ts-expect-error the current era is passed to proveTx as a live ledger
       // object, so it is not registrable as a retained era.

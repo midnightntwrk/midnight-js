@@ -60,7 +60,7 @@ interface CompiledCounterContract extends CompactContract.Contract<Record<string
 // v8-load-failure.test.ts).
 //
 // Ungated: every specifier this suite reaches — the 0.16 glue, ocrt3, and
-// loadLedger8's own `../../v8.js` — resolves out of src/ or node_modules under
+// loadLedger8Protocol's own `../../v8.js` — resolves out of src/ or node_modules under
 // vitest, never through dist/.
 describe('createLedger8Engine', () => {
   // Strict equality, not a per-method `typeof` sweep: a method leaked onto the

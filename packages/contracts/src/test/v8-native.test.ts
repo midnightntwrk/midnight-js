@@ -37,7 +37,7 @@ import {
   ComposeFailedError,
   ComposeOptionError,
   type LedgerEra,
-  loadLedger8,
+  loadLedger8Protocol,
   loadLedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
 import { type Recipient } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
@@ -62,7 +62,7 @@ import {
   UntaggedPayloadError,
   type VersionedFinalizedTransaction,
   type VersionedFinalizedTxData,
-  type VersionedTx,
+  type VersionedTransaction,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
@@ -182,15 +182,15 @@ const STAND_IN_VERIFIER_KEY = Uint8Array.from(
 
 /** What each provider method was handed, captured for assertion. */
 interface SeenPayloads {
-  proveTx?: VersionedTx<unknown>;
-  balanceTx?: VersionedTx<unknown>;
+  proveTx?: VersionedTransaction<unknown>;
+  balanceTx?: VersionedTransaction<unknown>;
   submitTx?: VersionedFinalizedTransaction;
 }
 
 /** The network id and intent TTL of the retained-era transaction a provider method was handed. */
-const retainedTxFacts = async (tx: VersionedTx<unknown> | undefined): Promise<{ networkId?: string; ttl?: Date }> => {
+const retainedTxFacts = async (tx: VersionedTransaction<unknown> | undefined): Promise<{ networkId?: string; ttl?: Date }> => {
   if (tx?.version !== 'v8') throw new Error(`Expected a v8 transaction, got ${String(tx?.version)}`);
-  const decoded = (await loadLedger8()).Transaction.deserialize('signature', 'pre-proof', 'pre-binding', tx.txBytes);
+  const decoded = (await loadLedger8Protocol()).Transaction.deserialize('signature', 'pre-proof', 'pre-binding', tx.txBytes);
   const [intent, ...others] = decoded.intents?.values() ?? [];
   expect(others).toEqual([]);
   return { networkId: /network_id: "([^"]*)"/.exec(decoded.toString(false))?.[1], ttl: intent?.ttl };
@@ -209,7 +209,7 @@ let retainedLedgerParameters: Uint8Array;
 let currentLedgerParameters: Uint8Array;
 
 beforeAll(async () => {
-  retainedLedgerParameters = (await loadLedger8()).LedgerParameters.initialParameters().serialize();
+  retainedLedgerParameters = (await loadLedger8Protocol()).LedgerParameters.initialParameters().serialize();
   currentLedgerParameters = LedgerParameters.initialParameters().serialize();
 });
 
@@ -277,7 +277,7 @@ const BALANCED_MARKER = Uint8Array.from([0xf0, 0x0d, 0x02]);
  * @param marker The marker for the stage that is answering.
  * @returns The same variant, carrying the input bytes plus the marker.
  */
-const withStageMarker = (payload: VersionedTx<unknown>, marker: Uint8Array): VersionedTx<unknown> => {
+const withStageMarker = (payload: VersionedTransaction<unknown>, marker: Uint8Array): VersionedTransaction<unknown> => {
   if (payload.version !== 'v8') {
     return payload;
   }
@@ -293,7 +293,7 @@ const withStageMarker = (payload: VersionedTx<unknown>, marker: Uint8Array): Ver
  * @param payload The payload a method was handed.
  * @returns Its bytes, or `undefined` if it is not the retained variant.
  */
-const retainedBytes = (payload: VersionedTx<unknown> | undefined): Uint8Array | undefined =>
+const retainedBytes = (payload: VersionedTransaction<unknown> | undefined): Uint8Array | undefined =>
   payload?.version === 'v8' ? payload.txBytes : undefined;
 
 /**
@@ -402,11 +402,11 @@ const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
   // UNPROVEN transaction. Appending rather than replacing keeps the retained
   // tag at the head of the bytes, so the tag assertions still mean what they
   // say.
-  providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
+  providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
     seen.proveTx = tx;
     return Promise.resolve(withStageMarker(tx, PROVEN_MARKER));
   });
-  providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
+  providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
     seen.balanceTx = tx;
     return Promise.resolve(withStageMarker(tx, BALANCED_MARKER));
   });

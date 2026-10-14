@@ -100,10 +100,10 @@ try {
 if (personaName === 'retained') {
   try {
     const protocol = await import('@midnight-ntwrk/midnight-js-protocol');
-    const ledger8 = await protocol.loadLedger8();
-    observed['loadLedger8'] = typeof ledger8 === 'object' && ledger8 !== null ? 'ok' : String(ledger8);
-    if (observed['loadLedger8'] !== 'ok') {
-      failures.push(`loadLedger8 returned ${observed['loadLedger8']}`);
+    const ledger8 = await protocol.loadLedger8Protocol();
+    observed['loadLedger8Protocol'] = typeof ledger8 === 'object' && ledger8 !== null ? 'ok' : String(ledger8);
+    if (observed['loadLedger8Protocol'] !== 'ok') {
+      failures.push(`loadLedger8Protocol returned ${observed['loadLedger8Protocol']}`);
     }
     // `protocol` is the one package that may resolve the retained runtime, and it
     // must see exactly one copy of it -- two would make objects minted by one

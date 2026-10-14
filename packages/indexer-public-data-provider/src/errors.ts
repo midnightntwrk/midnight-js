@@ -366,9 +366,9 @@ export class IndexerInvariantError extends IndexerError {
  * `protocolVersion` is the raw integer the indexer reported, kept so a report
  * of this error identifies the network rather than only the era.
  */
-export class EraUnsupportedError extends IndexerError {
-  readonly code = PROVIDER_ERROR_CODES.ERA_UNSUPPORTED;
-  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.ERA_UNSUPPORTED];
+export class DecoderEraUnsupportedError extends IndexerError {
+  readonly code = PROVIDER_ERROR_CODES.DECODER_ERA_UNSUPPORTED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.DECODER_ERA_UNSUPPORTED];
 
   /**
    * @param method The read method that performed the decode.
@@ -393,7 +393,7 @@ export class EraUnsupportedError extends IndexerError {
         `. This client decodes only the ledger eras it ships runtimes for. Pass an era this build supports, or ` +
         `upgrade to a release that knows this one.`
     );
-    this.name = 'EraUnsupportedError';
+    this.name = 'DecoderEraUnsupportedError';
   }
 }
 
@@ -402,7 +402,7 @@ export class EraUnsupportedError extends IndexerError {
  * a network outside the node major range this framework knows about, or a
  * value that is not a non-negative integer.
  *
- * Distinct from {@link EraUnsupportedError}, which reports an era this build
+ * Distinct from {@link DecoderEraUnsupportedError}, which reports an era this build
  * has no decoder for — an era that was named, just not one of ours. Here
  * nothing was named: the integer maps to no era, so there is no era to report.
  * A record whose era resolved but whose bytes then would not decode is neither
@@ -413,9 +413,9 @@ export class EraUnsupportedError extends IndexerError {
  * The underlying `UnknownProtocolVersionError` from
  * `@midnight-ntwrk/midnight-js-protocol` is preserved on `cause`.
  */
-export class EraUnresolvableError extends IndexerError {
-  readonly code = PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE;
-  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE];
+export class UnknownRecordEraError extends IndexerError {
+  readonly code = PROVIDER_ERROR_CODES.UNKNOWN_RECORD_ERA;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.UNKNOWN_RECORD_ERA];
 
   /**
    * @param method The read method that attempted to resolve the era.
@@ -435,7 +435,7 @@ export class EraUnresolvableError extends IndexerError {
         `This framework maps node major versions 1 and 2; point this provider at a network in that range.`,
       options
     );
-    this.name = 'EraUnresolvableError';
+    this.name = 'UnknownRecordEraError';
   }
 }
 

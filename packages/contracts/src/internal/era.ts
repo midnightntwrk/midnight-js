@@ -29,7 +29,7 @@ import {
   type RawContractState,
   UntaggedPayloadError,
   type VersionedFinalizedTxData,
-  type VersionedTx,
+  type VersionedTransaction,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { contractStateEnvelopeVersion, ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
@@ -60,7 +60,7 @@ import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcr
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
  */
 export function requireLedger9<T>(
-  payload: VersionedTx<T>,
+  payload: VersionedTransaction<T>,
   method: ProviderMethod,
   circuitId?: string | readonly string[]
 ): T {
@@ -106,7 +106,7 @@ export function requireLedger9<T>(
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
  */
 export function requireLedger8<T>(
-  payload: VersionedTx<T>,
+  payload: VersionedTransaction<T>,
   method: ProviderMethod,
   circuitId?: string | readonly string[]
 ): Uint8Array {

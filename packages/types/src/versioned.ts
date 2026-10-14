@@ -32,7 +32,7 @@ import type { FinalizedTxData, FinalizedTxRecord } from './midnight-types';
  *
  * @see {@link VersionTaggedPayloads} for why a live object cannot cross.
  */
-export interface Ledger8TxBytes {
+export interface Ledger8TransactionBytes {
   readonly version: 'v8';
   /** Serialized, tag-prefixed byte form. Unvalidated — see the note above. */
   readonly txBytes: Uint8Array;
@@ -46,15 +46,15 @@ export interface Ledger8TxBytes {
  * @typeParam T - The v9 ledger transaction type for the pipeline stage in
  *                question — unproven, unbound, or finalized.
  */
-export interface Ledger9Tx<T> {
+export interface Ledger9Transaction<T> {
   readonly version: 'v9';
   readonly tx: T;
 }
 
 /**
  * A transaction payload passed to a provider method, discriminated by the ledger
- * runtime it belongs to: serialized bytes for the v8 era ({@link Ledger8TxBytes}),
- * or the live ledger object for v9 ({@link Ledger9Tx}).
+ * runtime it belongs to: serialized bytes for the v8 era ({@link Ledger8TransactionBytes}),
+ * or the live ledger object for v9 ({@link Ledger9Transaction}).
  *
  * Consumers must narrow on `version` before touching the payload — there is
  * deliberately no untagged form, so a bare `Uint8Array` (bytes whose era
@@ -77,7 +77,7 @@ export interface Ledger9Tx<T> {
  * }
  * ```
  */
-export type VersionedTx<T> = Ledger8TxBytes | Ledger9Tx<T>;
+export type VersionedTransaction<T> = Ledger8TransactionBytes | Ledger9Transaction<T>;
 
 /**
  * The v8 variant of {@link VersionedFinalizedTxData}. Carries the same
@@ -129,10 +129,10 @@ export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
 // compares the types directly, which is what makes these load-bearing.
 type Assert<T extends true> = T;
 type _EveryEraHasAVariant = Assert<
-  [Exclude<LedgerVersion, VersionedTx<unknown>['version']>] extends [never] ? true : false
+  [Exclude<LedgerVersion, VersionedTransaction<unknown>['version']>] extends [never] ? true : false
 >;
 type _NoVariantOutsideTheEraSet = Assert<
-  [Exclude<VersionedTx<unknown>['version'], LedgerVersion>] extends [never] ? true : false
+  [Exclude<VersionedTransaction<unknown>['version'], LedgerVersion>] extends [never] ? true : false
 >;
 type _EveryEraHasAReadVariant = Assert<
   [Exclude<LedgerVersion, VersionedFinalizedTxData['version']>] extends [never] ? true : false

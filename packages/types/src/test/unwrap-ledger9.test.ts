@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest';
 
 import { Ledger8PayloadUnsupportedError,PROVIDER_ERROR_CODES, UntaggedPayloadError } from '../errors';
 import { unwrapLedger9 } from '../unwrap-ledger9';
-import type { VersionedTx } from '../versioned';
+import type { VersionedTransaction } from '../versioned';
 
 // Covered directly rather than through the `create*Provider` adapters. Those
 // route through `narrowToEra` now, so exercising `unwrapLedger9` only through
@@ -26,7 +26,7 @@ import type { VersionedTx } from '../versioned';
 
 const caught = (payload: unknown): unknown => {
   try {
-    unwrapLedger9(payload as VersionedTx<string>, 'proveTx');
+    unwrapLedger9(payload as VersionedTransaction<string>, 'proveTx');
   } catch (error) {
     return error;
   }

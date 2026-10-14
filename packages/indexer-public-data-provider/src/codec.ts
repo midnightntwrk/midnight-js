@@ -16,7 +16,7 @@
 import {
   LEDGER_VERSIONS,
   type LedgerVersion,
-  loadLedger8,
+  loadLedger8Protocol,
   protocolVersionToLedger,
   UnknownProtocolVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
@@ -33,7 +33,7 @@ import {
   type ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 // Type-only, so nothing here links the v8 chunk: the runtime is acquired
-// through `loadLedger8()` and only when a v8-era record asks for it. Same
+// through `loadLedger8Protocol()` and only when a v8-era record asks for it. Same
 // precedent as `Ledger8FinalizedTxData` in `@midnight-ntwrk/midnight-js-types`.
 import type { FinalizedTransaction as Ledger8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import type { RawContractState, ReadMethod, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
@@ -62,7 +62,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
-import { EraUnsupportedError, IndexerDataError } from './errors';
+import { DecoderEraUnsupportedError, IndexerDataError } from './errors';
 import type { ContractBalance, Segment, TransactionResult } from './gen/schema-types';
 
 /**
@@ -152,7 +152,7 @@ export const parseHexLedgerParameters = (s: string): LedgerParameters => {
 
 /**
  * The v8-era sibling of {@link parseHexTransaction}. Acquires the v8 ledger
- * runtime through `loadLedger8()` — the only sanctioned path to it — and reads
+ * runtime through `loadLedger8Protocol()` — the only sanctioned path to it — and reads
  * the payload with the same marker convention the v9 wrapper uses.
  *
  * Routed through `withDeserializationContext` so a v8 failure arrives
@@ -160,7 +160,7 @@ export const parseHexLedgerParameters = (s: string): LedgerParameters => {
  * bare string rather than an `Error`.
  */
 const parseLedger8HexTransaction = async (s: string, details?: ReadDetails): Promise<Ledger8FinalizedTransaction> => {
-  const v8 = await loadLedger8();
+  const v8 = await loadLedger8Protocol();
   return withDeserializationContext(
     { dataType: 'LedgerTransaction', source: 'ledger', caller: `${PKG}:parseLedger8HexTransaction`, details },
     () => v8.Transaction.deserialize('signature', 'proof', 'binding', toByteArray(s))
@@ -242,7 +242,7 @@ export interface TransactionDecodeContext {
  *            merely type-checked.
  * @param context The record and read method a failure should name.
  * @throws IndexerDataError if `hexTransaction` is not a whole hex byte string.
- * @throws EraUnsupportedError if `era` is not a member of `LEDGER_VERSIONS`.
+ * @throws DecoderEraUnsupportedError if `era` is not a member of `LEDGER_VERSIONS`.
  * @throws Ledger8RuntimeMissingError if a v8-era record needs the pre-fork
  *   runtime and it cannot be acquired. From
  *   `@midnight-ntwrk/midnight-js-protocol`, and deliberately not an
@@ -259,7 +259,7 @@ export const decodeVersionedTransaction = async (
   }
   const decode = TRANSACTION_DECODERS[era];
   if (typeof decode !== 'function') {
-    throw new EraUnsupportedError(context.method, era, context.protocolVersion, context.recordRef);
+    throw new DecoderEraUnsupportedError(context.method, era, context.protocolVersion, context.recordRef);
   }
   return decode(hexTransaction, {
     era,

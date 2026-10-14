@@ -93,7 +93,7 @@ RECEIVES results never imports the transitional half:
 - `AnyEraTxFailedError` -- the base both eras' failure classes extend.
   `Ledger8.CallTxFailedError` still extends it, so a handler written against the
   base keeps catching the retained era without naming it.
-- `UnrecognisedResultEraError` -- raised for a result tagged with neither era,
+- `UnknownResultEraError` -- raised for a result tagged with neither era,
   which is not a retained-era condition.
 
 ## A `Ledger8` name that is NOT in here
@@ -112,7 +112,7 @@ in `@midnight-ntwrk/midnight-js-types`.
 A second group passes clause 1 and fails clause 2, and it is published flat:
 `StaleHeadError`, `SubmitRejectionUndiagnosedError` and their two payload types,
 `HeadStateEraMismatchError`, `EraArtifactMismatchError`,
-`ScopedTxEraUnsupportedError`, `MixedEraScopeError`. These describe the FORK
+`ScopedTransactionEraUnsupportedError`, `MixedEraScopeError`. These describe the FORK
 WINDOW -- a head that moved under an operation, an artifact whose era does not
 pair with the head, a scope the head era cannot compose -- and they will need
 removing too, in their own change.

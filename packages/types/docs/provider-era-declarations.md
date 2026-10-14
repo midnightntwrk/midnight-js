@@ -49,7 +49,7 @@ spent" and "failed in the provider, possibly after paying to prove".
 ## An unusable handler is refused before the provider exists
 
 The factories check each handler when the provider is built. A handler that is
-not a function — or, for `createProofProviderForEras`, not an object with callable
+not a function — or, for `createProofProviderFromProvingProviders`, not an object with callable
 `check` and `prove` — is refused with `UnusableEraEntryError`; a `retainedEras`
 that is not a plain object keyed only by retained eras is refused with
 `InvalidArgumentError`. This checks shape only: `supportedEras` never names an
@@ -70,7 +70,7 @@ implementation into the version-tagged interface. Refusing the retained era is
 the adapter accurately reporting what it wraps, not a gap to be filled. To serve
 both eras, use the `…FromHandlers` constructors, or implement the interface
 directly. For the proof provider there is a shorter route for the common case:
-`createProofProviderForEras` takes one `ProvingProvider` per era and derives the
+`createProofProviderFromProvingProviders` takes one `ProvingProvider` per era and derives the
 handlers and the declaration from them. The section below says when you want it.
 
 ## Why an in-process prover needs one proving provider per era
@@ -91,7 +91,7 @@ generated as separate generations, and a node rejects a proof made with the
 other era's, so one prover instance cannot serve both. The refusal lands at
 `submitTx`, after the proving has been paid for.
 
-`createProofProviderForEras` is where each prover is paired with the era it
+`createProofProviderFromProvingProviders` is where each prover is paired with the era it
 serves. It does not verify the pairing, and cannot:
 
 - the current era's `ProvingProvider` shape is a structural superset of the
@@ -122,7 +122,7 @@ is a compiler diagnostic.
 `balanceTx`'s return type is covariant, so an implementation still resolving a
 bare `FinalizedTransaction` no longer satisfies `WalletProvider`. TypeScript
 reports the PARAMETER mismatch first, so the error names the twenty-odd ledger
-methods `Ledger8TxBytes` lacks — rather than the missing `version` tag, which is the
+methods `Ledger8TransactionBytes` lacks — rather than the missing `version` tag, which is the
 actual problem. An implementer meeting that error has no path from it to the fix.
 
 Tagging through `createWalletProvider` or `createMidnightProvider` means the

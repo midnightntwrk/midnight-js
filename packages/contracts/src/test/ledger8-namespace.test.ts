@@ -73,7 +73,7 @@ const RETAINED_ERA_MEMBERS = [
 const ERA_NEUTRAL_MEMBERS = [
   'AnyEraTxFailedError',
   'isLedger8Result',
-  'UnrecognisedResultEraError'
+  'UnknownResultEraError'
 ];
 
 /**
