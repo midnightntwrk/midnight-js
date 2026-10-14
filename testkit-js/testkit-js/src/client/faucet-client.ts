@@ -16,6 +16,7 @@
 import axios from 'axios';
 import type { Logger } from 'pino';
 
+import { HEALTH_CHECK_TIMEOUT_MS } from '../configuration';
 import { buildUrlWithPath, redactUrl } from '../utils';
 
 /**
@@ -43,7 +44,7 @@ export class FaucetClient {
    */
   async health() {
     const url = buildUrlWithPath(this.faucetUrl, '/api/health');
-    const response = await axios.get(url, { timeout: 1000 });
+    const response = await axios.get(url, { timeout: HEALTH_CHECK_TIMEOUT_MS });
     this.logger.info(`Connected to faucet ${redactUrl(url)}: ${JSON.stringify(response.data)}`);
     return response;
   }
