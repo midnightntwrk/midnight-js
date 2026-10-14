@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CostModel, ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -67,49 +67,47 @@ describe('createProofProvider', () => {
   });
 
   describe('proveTxConfig.timeout', () => {
-    it('refuses a proof with a timeout before proving starts', async () => {
-      const unboundTx = createStubUnboundTx();
-      const unprovenTx = createStubUnprovenTx(unboundTx);
+    const timeoutRefusal = expect.objectContaining({
+      name: 'InvalidArgumentError',
+      code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+      message: expect.stringContaining('proveTxConfig.timeout')
+    });
+
+    it.each([
+      ['a timeout', 5_000],
+      ['a zero timeout', 0]
+    ])('refuses a proof with %s before proving starts', async (_desc, timeout) => {
+      const unprovenTx = createStubUnprovenTx(createStubUnboundTx());
+      const provider = createProofProvider(stubProvingProvider, stubCostModel);
+
+      await expect(provider.proveTx({ version: 'v9', tx: unprovenTx }, { timeout })).rejects.toThrow(timeoutRefusal);
+      expect(unprovenTx.prove).not.toHaveBeenCalled();
+    });
+
+    it('names the refusing factory and the provider that honours a timeout', async () => {
       const provider = createProofProvider(stubProvingProvider, stubCostModel);
 
       const rejection = await provider
-        .proveTx({ version: 'v9', tx: unprovenTx }, { timeout: 5_000 })
+        .proveTx({ version: 'v9', tx: createStubUnprovenTx(createStubUnboundTx()) }, { timeout: 5_000 })
         .then(
           () => undefined,
           (error: unknown) => error
         );
 
-      expect(rejection).toBeInstanceOf(InvalidArgumentError);
-      expect(unprovenTx.prove).not.toHaveBeenCalled();
+      const { message } = rejection as Error;
+      expect(message).toContain('createProofProvider');
+      expect(message).toContain('httpClientProofProvider');
     });
 
-    it('refuses a zero timeout as well, since any timeout would be ignored', async () => {
+    it.each([
+      ['carries no timeout', {}],
+      ['has the timeout key present but undefined', { timeout: undefined }]
+    ])('proves a transaction when the config %s', async (_desc, config) => {
       const unboundTx = createStubUnboundTx();
       const unprovenTx = createStubUnprovenTx(unboundTx);
       const provider = createProofProvider(stubProvingProvider, stubCostModel);
 
-      await expect(
-        provider.proveTx({ version: 'v9', tx: unprovenTx }, { timeout: 0 })
-      ).rejects.toBeInstanceOf(InvalidArgumentError);
-      expect(unprovenTx.prove).not.toHaveBeenCalled();
-    });
-
-    it('proves a transaction when the config carries no timeout', async () => {
-      const unboundTx = createStubUnboundTx();
-      const unprovenTx = createStubUnprovenTx(unboundTx);
-      const provider = createProofProvider(stubProvingProvider, stubCostModel);
-
-      const result = await provider.proveTx({ version: 'v9', tx: unprovenTx }, {});
-
-      expect(result.version === 'v9' && result.tx).toBe(unboundTx);
-    });
-
-    it('proves a transaction when the timeout key is present but undefined', async () => {
-      const unboundTx = createStubUnboundTx();
-      const unprovenTx = createStubUnprovenTx(unboundTx);
-      const provider = createProofProvider(stubProvingProvider, stubCostModel);
-
-      const result = await provider.proveTx({ version: 'v9', tx: unprovenTx }, { timeout: undefined });
+      const result = await provider.proveTx({ version: 'v9', tx: unprovenTx }, config);
 
       expect(result.version === 'v9' && result.tx).toBe(unboundTx);
     });

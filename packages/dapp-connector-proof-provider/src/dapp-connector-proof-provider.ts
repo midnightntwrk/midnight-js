@@ -79,9 +79,9 @@ const refuseTimeout = (config: ProveTxConfig | undefined): void => {
  * passed here would be rejected outright. Pairing the transaction with its own era's model is the
  * only correct pairing, so an override is not offered at all rather than offered and quietly
  * ignored.
- * @returns A {@link ProofProvider} whose `proveTx` method delegates to the wallet. Its `proveTx`
- * rejects with `InvalidArgumentError` when `proveTxConfig.timeout` is set, before any proving
- * starts, because the wallet proving API takes no timeout.
+ * @returns A {@link ProofProvider} whose `proveTx` method delegates to the wallet.
+ * @throws InvalidArgumentError raised by `proveTx`, before any proving starts, if
+ * `proveTxConfig.timeout` is set (including `0`): the wallet proving API takes no timeout.
  */
 export const dappConnectorProofProvider = async <K extends string>(
   api: DAppConnectorProvingAPI,
