@@ -52,12 +52,15 @@ ignored.
 
 `Promise`\<[`ProofProvider`](../../midnight-js/types/interfaces/ProofProvider.md)\>
 
-A [ProofProvider](../../midnight-js/types/interfaces/ProofProvider.md) whose `proveTx` method delegates to the wallet. Its `proveTx`
-rejects with `InvalidArgumentError` when `proveTxConfig.timeout` is set, before any proving
-starts, because the wallet proving API takes no timeout.
+A [ProofProvider](../../midnight-js/types/interfaces/ProofProvider.md) whose `proveTx` method delegates to the wallet.
 
 ## Remarks
 
 Combines a wallet-backed [dappConnectorProvingProvider](dappConnectorProvingProvider.md) with the given `costModel`
 to produce a transaction-level proof provider. The wallet's proving provider is obtained
 once during initialization and reused for all subsequent `proveTx` calls.
+
+## Throws
+
+InvalidArgumentError raised by `proveTx`, before any proving starts, if
+`proveTxConfig.timeout` is set (including `0`): the wallet proving API takes no timeout.

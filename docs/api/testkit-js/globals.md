@@ -51,6 +51,7 @@
 - [DEFAULT\_DUST\_OPTIONS](variables/DEFAULT_DUST_OPTIONS.md)
 - [DEFAULT\_WALLET\_STATE\_DIRECTORY](variables/DEFAULT_WALLET_STATE_DIRECTORY.md)
 - [defaultContainersConfiguration](variables/defaultContainersConfiguration.md)
+- [HEALTH\_CHECK\_TIMEOUT\_MS](variables/HEALTH_CHECK_TIMEOUT_MS.md)
 - [latestContainersConfiguration](variables/latestContainersConfiguration.md)
 - [logger](variables/logger.md)
 - [MINUTE](variables/MINUTE.md)

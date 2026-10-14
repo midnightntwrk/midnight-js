@@ -12,4 +12,4 @@ What every provider on a transaction seam states about the eras it serves.
 
 ### supportedEras
 
-> `readonly` **supportedEras**: readonly (`"v9"` \| `"v8"`)[]
+> `readonly` **supportedEras**: readonly (`"v8"` \| `"v9"`)[]
