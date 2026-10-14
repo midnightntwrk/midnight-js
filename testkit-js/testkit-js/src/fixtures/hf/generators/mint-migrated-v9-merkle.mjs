@@ -40,7 +40,7 @@
 // rehashed at the byte level (matching the committed golden
 // state-migrated-v9.hex, which deserializes cleanly), so this fixture calls
 // `.rehash()` before serializing to stay a realistic, cleanly-deserializable
-// input. The hash loss `downcastLedger9StateForExecution` (downcast.ts:
+// input. The hash loss `downcastV9StateForExecution` (downcast.ts:
 // rehashStateValue) guards against happens one step LATER, in the
 // encode()/decode() POJO bridge it uses to cross the compact-runtime/
 // ledger-v9 package boundary -- decode() drops the cached node hashes even

@@ -83,7 +83,7 @@ discards whichever inner deadline would have named the failure.
 
 Every tag has a default in `compose-fork.yml` and is overridable through a dedicated environment
 variable (`FORK_FROM_NODE_TAG`, `NODE_TAG`, `TOOLKIT_TAG`, `INDEXER_TAG`, `PROOF_SERVER_TAG`,
-`PROOF_SERVER_LEDGER8_TAG`).
+`PROOF_SERVER_V8_TAG`).
 
 These names are deliberately distinct from the `MIDNIGHT_NODE_VERSION` / `INDEXER_VERSION` /
 `PROOF_SERVER_VERSION` trio used by `compose.yml` and `testkit-js/env/*.env`: this stack pins two

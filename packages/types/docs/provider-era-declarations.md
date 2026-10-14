@@ -85,7 +85,7 @@ zkir runtime over bytes and never reads a ledger version. What it proves for is
 fixed when it is built, by the key material it was given.
 
 From `@midnightntwrk/wallet-sdk-prover-client` 2.0.0-rc.0 that key material is
-per era — `makeLedger8KeyMaterialProvider` and `makeLedger9KeyMaterialProvider`, where
+per era — `makeV8KeyMaterialProvider` and `makeV9KeyMaterialProvider`, where
 earlier versions had one line accepted by both. The eras' circuits were
 generated as separate generations, and a node rejects a proof made with the
 other era's, so one prover instance cannot serve both. The refusal lands at
@@ -96,7 +96,7 @@ serves. It does not verify the pairing, and cannot:
 
 - the current era's `ProvingProvider` shape is a structural superset of the
   retained era's, so registering the wrong one type-checks;
-- one prover's `asProvingProvider()` and `asLedger8ProvingProvider()` return
+- one prover's `asProvingProvider()` and `asV8ProvingProvider()` return
   behaviourally identical objects — the era lives in the prover's key material,
   not in the object handed over — so no runtime check can tell them apart
   either.

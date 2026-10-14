@@ -146,7 +146,7 @@ the smoke test): the result deserializes cleanly with `ledger-v9`
 confirmed to differ from `twin-contract/compiled/keys/increment.verifier` —
 genuinely foreign, not just relabeled.
 
-This is deliberate: `downcastLedger9StateForExecution` (`downcast.ts`) reads
+This is deliberate: `downcastV9StateForExecution` (`downcast.ts`) reads
 *only* `.data` (the `StateValue`), never `.operations()` — so this fixture
 cannot and does not fail at down-convert. Nor does the mere presence check
 `assemble.ts` uses (`state.operation(circuitId) === undefined ? throw :

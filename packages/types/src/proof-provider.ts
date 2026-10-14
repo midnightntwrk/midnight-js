@@ -307,7 +307,7 @@ const toRetainedEraHandlers = (
  * ```typescript
  * const proofProvider = createProofProviderForEras({
  *   currentEra: currentEraProver.asProvingProvider(),
- *   retainedEras: { v8: retainedEraProver.asLedger8ProvingProvider() }
+ *   retainedEras: { v8: retainedEraProver.asV8ProvingProvider() }
  * });
  * // supportedEras is ['v9', 'v8']
  * ```

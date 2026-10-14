@@ -19,7 +19,7 @@
 // spike-dapp-hf/island-3/driver/src/assemble.ts:59-60 bridges a compact-runtime
 // ContractState into the ledger-8 native type:
 //
-//   const toLedger8ContractState = (cs) => Ledger8ContractState.deserialize(cs.serialize());
+//   const toLedgerContractStateV8 = (cs) => LedgerContractStateV8.deserialize(cs.serialize());
 //
 // Here the input is already serialized bytes (the golden), so the bridge is
 // just deserialize -> serialize. This is cheap (pure npm path, no compact-
