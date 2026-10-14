@@ -390,7 +390,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // record here is the read surface answering for an era the chain has left.
     //
     // Note what is NOT being asserted: that `era` and `version` must agree.
-    // They legitimately disagree on this arm -- `era: 'ledger8'` with
+    // They legitimately disagree on this arm -- `era: 'v8'` with
     // `version: 'v9'` IS keep-state, and the happy path below relies on it.
     // What must agree is the record and the HEAD the operation resolved.
     providers.publicDataProvider.watchForTxData = vi

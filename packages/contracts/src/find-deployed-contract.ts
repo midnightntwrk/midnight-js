@@ -22,6 +22,7 @@ import {
   type SigningKey
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { CURRENT_LEDGER_VERSION, type CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   type PrivateStateId,
@@ -31,7 +32,6 @@ import {
 import { assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
-import { CURRENT_PIPELINE_ERA, type CurrentPipelineEra, RETAINED_PIPELINE_ERA } from './era';
 import {
   ContractTypeError,
   IncompleteFindContractPrivateStateConfig,
@@ -390,7 +390,7 @@ export interface FoundContract<C extends Contract.Any> {
    * facts disagree after the fork, and only this one says which module the
    * objects in this result came from.
    */
-  readonly era: CurrentPipelineEra;
+  readonly era: CurrentLedgerVersion;
   /**
    * The compiled contract this handle executes circuits from, exactly as the
    * caller supplied it.
@@ -568,7 +568,7 @@ export async function findDeployedContract<C extends Contract.Any>(
       providers.loggerProvider
     );
     return {
-      era: RETAINED_PIPELINE_ERA,
+      era: 'v8',
       compiledContract: options.compiledContract,
       contractAddress: options.contractAddress,
       deployTxData: found.deployTxData,
@@ -611,11 +611,11 @@ export async function findDeployedContract<C extends Contract.Any>(
   const initialPrivateState = await setOrGetInitialPrivateState(providers.privateStateProvider, options);
 
   return {
-    era: CURRENT_PIPELINE_ERA,
+    era: CURRENT_LEDGER_VERSION,
     compiledContract,
     contractAddress,
     deployTxData: {
-      era: CURRENT_PIPELINE_ERA,
+      era: CURRENT_LEDGER_VERSION,
       private: {
         signingKey,
         initialPrivateState

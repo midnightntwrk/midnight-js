@@ -54,6 +54,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
@@ -75,7 +76,6 @@ import type { Mock } from 'vitest';
 import { type CallOptions, type CallOptionsWithPrivateState } from '../call';
 import { type ContractConstructorResult } from '../call-constructor';
 import type { ContractProviders } from '../contract-providers';
-import { CURRENT_PIPELINE_ERA } from '../era';
 import { type UnsubmittedCallTxData, type UnsubmittedDeployTxData } from '../tx-model';
 
 export const createMockContractAddress = () => sampleContractAddress();
@@ -376,7 +376,7 @@ export const createMockFinalizedTxDataV8 = (status: TxStatus = SucceedEntirely):
 });
 
 export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDeployTxData<Contract.Any>> = {}): UnsubmittedDeployTxData<Contract.Any> => ({
-  era: CURRENT_PIPELINE_ERA,
+  era: CURRENT_LEDGER_VERSION,
   public: {
     contractAddress: createMockContractAddress(),
     initialContractState: createMockContractState()
@@ -433,7 +433,7 @@ export const createMockContractCall = (
 });
 
 export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>> = {}): UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
-    era: CURRENT_PIPELINE_ERA,
+    era: CURRENT_LEDGER_VERSION,
     public: {
       nextContractState: StateValue.newNull(),
       nextContractStateEncoded: StateValue.newNull().encode(),
@@ -478,7 +478,7 @@ export const createMockCallOptionsWithPrivateState = (overrides: Partial<CallOpt
 });
 
 export const createMockConstructorResult = (): ContractConstructorResult<Contract.Any> => ({
-  era: CURRENT_PIPELINE_ERA,
+  era: CURRENT_LEDGER_VERSION,
   nextContractState: createMockContractState(),
   nextPrivateState: { test: 'next-private-state' },
   nextZswapLocalState: createMockZswapLocalState(),

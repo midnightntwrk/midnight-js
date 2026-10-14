@@ -17,11 +17,11 @@ import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/e
 import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { type AnyProvableCircuitId, type LoggerProvider, type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';
-import { CURRENT_PIPELINE_ERA } from '../era';
 import {
   CallTxFailedError,
   MixedEraScopeError,
@@ -229,7 +229,7 @@ export class TransactionContextImpl<
       await this.providers.privateStateProvider!.set(privateStateId, unprovenCallTxData.private.nextPrivateState);
     }
     return {
-      era: CURRENT_PIPELINE_ERA,
+      era: CURRENT_LEDGER_VERSION,
       circuitId,
       private: unprovenCallTxData.private,
       public: {
@@ -415,7 +415,7 @@ const runScope = async <
     // returns `any`, which on its own would let a member fall off this rebuild
     // and reach a caller as `undefined` at a non-optional member.
     const nestedCallResult: CallResult<C, PCK> = {
-      era: CURRENT_PIPELINE_ERA,
+      era: CURRENT_LEDGER_VERSION,
       public: {
         nextContractState: unprovenCallTxData.public.nextContractState,
         nextContractStateEncoded: unprovenCallTxData.public.nextContractStateEncoded,

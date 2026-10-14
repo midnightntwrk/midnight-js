@@ -15,10 +15,10 @@
 
 import { type CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CURRENT_PIPELINE_ERA } from '../era';
 import { DeployTxFailedError, IncompleteDeployContractPrivateStateConfig } from '../errors';
 import { submitDeployTx } from '../submit-deploy-tx';
 import { submitTx } from '../submit-tx';
@@ -86,7 +86,7 @@ describe('submit-deploy-tx', () => {
         );
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
         expect(result).toEqual({
-          era: CURRENT_PIPELINE_ERA,
+          era: CURRENT_LEDGER_VERSION,
           private: mockUnprovenDeployTxData.private,
           public: {
             ...mockFinalizedTxData,
@@ -129,7 +129,7 @@ describe('submit-deploy-tx', () => {
           mockSigningKey
         );
         expect(result).toEqual({
-          era: CURRENT_PIPELINE_ERA,
+          era: CURRENT_LEDGER_VERSION,
           private: mockUnprovenDeployTxData.private,
           public: {
             ...mockFinalizedTxData,
@@ -308,7 +308,7 @@ describe('submit-deploy-tx', () => {
           unprovenTx: mockUnprovenTx
         });
         expect(result).toEqual({
-          era: CURRENT_PIPELINE_ERA,
+          era: CURRENT_LEDGER_VERSION,
           private: mockUnprovenDeployTxData.private,
           public: {
             ...mockFinalizedTxData,

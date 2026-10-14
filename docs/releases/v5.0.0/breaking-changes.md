@@ -568,6 +568,9 @@ names.
 | `contracts` | `CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED` (`MIDNIGHT_JS_C_LEDGER8_SEAM_FAILED`) | `LEDGER8_PROVIDER_FAILED` (`MIDNIGHT_JS_C_LEDGER8_PROVIDER_FAILED`) |
 | `contracts` | the `seam` field on `EraInvariantViolationError` and `Ledger8.ProviderFailedError` | `method` |
 | `indexer-public-data-provider` | the `seam` field on `EraUnsupportedError` and `EraUnresolvableError`, and the `seam` key in a decode failure's `context.details` | `method` |
+| `contracts` | `result.era` values `'ledger8'` / `'ledger9'` (also the `path` field of the pipeline-selection breadcrumb) | `'v8'` / `'v9'` |
+| `contracts` | `PipelineEra`, `CurrentPipelineEra`, `CURRENT_PIPELINE_ERA` | `LedgerVersion`, `CurrentLedgerVersion`, `CURRENT_LEDGER_VERSION` from `@midnight-ntwrk/midnight-js-protocol` |
+| `contracts` | `RetainedPipelineEra`, `RETAINED_PIPELINE_ERA` | the literal `'v8'` (see ADR 0011) |
 
 ---
 

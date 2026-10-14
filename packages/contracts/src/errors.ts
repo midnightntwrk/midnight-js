@@ -16,6 +16,7 @@
 import type { Ledger8SigningKey, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvariantViolationError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type {
   AnyProvableCircuitId,
   FinalizedTxData,
@@ -25,7 +26,6 @@ import type {
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 
-import { CURRENT_PIPELINE_ERA, RETAINED_PIPELINE_ERA } from './era';
 import { NEITHER_ERA_CONTRACT_MESSAGE } from './ledger8-contract';
 
 /**
@@ -786,7 +786,7 @@ export class UnrecognisedResultEraError extends MidnightJsError {
   constructor(readonly received: unknown) {
     super(
       `A result carried an era tag naming neither pipeline (got: ${JSON.stringify(received) ?? 'undefined'}). ` +
-        `Results are tagged '${CURRENT_PIPELINE_ERA}' or '${RETAINED_PIPELINE_ERA}' by the pipeline that built ` +
+        `Results are tagged '${CURRENT_LEDGER_VERSION}' or 'v8' by the pipeline that built ` +
         `them. A tag lost in transit -- through a queue, a JSON boundary, a structured clone -- cannot be ` +
         `recovered here: narrow the result before it crosses that boundary, or carry the era beside it.`
     );

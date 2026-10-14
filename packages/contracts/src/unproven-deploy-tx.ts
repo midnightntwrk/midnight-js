@@ -18,6 +18,7 @@ import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/e
 import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { ContractExecutionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   exitResultOrError,
   makeContractExecutableRuntime,
@@ -29,7 +30,6 @@ import { assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnight-nt
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
-import { CURRENT_PIPELINE_ERA } from './era';
 import { isEffectContractError } from './errors';
 import { createEncryptionPublicKeyResolver, createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './internal/utils';
 import type { UnsubmittedDeployTxData } from './tx-model';
@@ -159,7 +159,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
     );
 
     return {
-      era: CURRENT_PIPELINE_ERA,
+      era: CURRENT_LEDGER_VERSION,
       public: {
         contractAddress,
         initialContractState

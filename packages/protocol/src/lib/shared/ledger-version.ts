@@ -35,8 +35,8 @@ export type LedgerVersion = (typeof LEDGER_VERSIONS)[number];
  * downstream restates "which era is now" as a literal of its own.
  *
  * The type is the single literal, not {@link LedgerVersion}, so a value typed
- * by it DISCRIMINATES — the same discipline `CurrentPipelineEra` follows in
- * `midnight-js-contracts`.
+ * by it DISCRIMINATES: `midnight-js-contracts` types a current-era result's
+ * `era` with it, so a union of both eras' results narrows on `era`.
  */
 export const CURRENT_LEDGER_VERSION = 'v9' as const satisfies LedgerVersion;
 export type CurrentLedgerVersion = typeof CURRENT_LEDGER_VERSION;

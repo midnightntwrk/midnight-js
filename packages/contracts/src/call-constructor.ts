@@ -19,8 +19,7 @@ import {
   type ContractState,
   type ZswapLocalState
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-
-import type { CurrentPipelineEra } from './era';
+import type { CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**
  * Describes the target of a circuit invocation.
@@ -105,5 +104,5 @@ export interface ContractConstructorResult<C extends Contract.Any> {
    * facts disagree after the fork, and only this one says which module the
    * objects in this result came from.
    */
-  readonly era: CurrentPipelineEra;
+  readonly era: CurrentLedgerVersion;
 }

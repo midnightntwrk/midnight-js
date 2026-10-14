@@ -77,7 +77,6 @@ import type {
 } from '@midnight-ntwrk/midnight-js-types';
 import type { Option } from 'effect';
 
-import type { RetainedPipelineEra } from './era';
 
 /**
  * The context a retained-era circuit receives as its first argument, as a
@@ -426,7 +425,7 @@ export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, K extends
    * `'v9'`. Those are different facts, and only this one says which module
    * produced the objects below.
    */
-  readonly era: RetainedPipelineEra;
+  readonly era: 'v8';
   readonly circuitId: K;
   readonly public: Ledger8FinalizedCallTxPublicData;
   readonly private: Ledger8CallResultPrivate<C, K>;
@@ -524,7 +523,7 @@ export interface Ledger8UnsubmittedCallTxData<C extends Ledger8Contract, K exten
    * `'v9'`. Those are different facts, and only this one says which module
    * produced the objects below.
    */
-  readonly era: RetainedPipelineEra;
+  readonly era: 'v8';
   readonly public: Ledger8CallResultPublic;
   readonly private: Ledger8CallResultPrivate<C, K>;
   /**
@@ -552,7 +551,7 @@ export interface Ledger8SubmittedCallTx<C extends Ledger8Contract, K extends Led
    * `'v9'`. Those are different facts, and only this one says which module
    * produced the objects below.
    */
-  readonly era: RetainedPipelineEra;
+  readonly era: 'v8';
   readonly circuitId: K;
 }
 
@@ -750,7 +749,7 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
    * `'v9'`. Those are different facts, and only this one says which module
    * produced the objects below.
    */
-  readonly era: RetainedPipelineEra;
+  readonly era: 'v8';
   /** The artifact this handle was built from: the caller's own contract instance, unchanged. */
   readonly compiledContract: C;
   /** The address on chain every call made through {@link Ledger8FoundContract.callTx} targets. */

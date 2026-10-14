@@ -72,8 +72,6 @@ const RETAINED_ERA_MEMBERS = [
  */
 const ERA_NEUTRAL_MEMBERS = [
   'AnyEraTxFailedError',
-  'CURRENT_PIPELINE_ERA',
-  'RETAINED_PIPELINE_ERA',
   'isLedger8Result',
   'UnrecognisedResultEraError'
 ];

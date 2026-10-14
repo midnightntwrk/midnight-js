@@ -92,7 +92,7 @@ Emitted AFTER the era gate, never before: a breadcrumb written before the gate
 would claim a pipeline for an operation that was then refused.
 
 Which ROUTE the pairing runs is the `(path, version)` pair itself and is not
-restated as a third field — `path: 'ledger8'` with `version: 'v9'` is the
+restated as a third field — `path: 'v8'` with `version: 'v9'` is the
 keep-state route, with `version: 'v8'` the retained-native one. A derived route
 name could disagree with the pair it was derived from, which is the same reason
 the era gate itself returns nothing.

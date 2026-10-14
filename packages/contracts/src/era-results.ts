@@ -33,8 +33,8 @@
  */
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { CURRENT_PIPELINE_ERA, type PipelineEra, RETAINED_PIPELINE_ERA, type RetainedPipelineEra } from './era';
 import { UnrecognisedResultEraError } from './errors';
 import type {
   Ledger8CircuitId,
@@ -88,14 +88,14 @@ export type AnyEraSubmittedCallTx =
  * What the guard narrows a result to.
  *
  * `Extract` for a union, an intersection for a value whose `era` is the whole
- * `PipelineEra` union. DO NOT REMOVE THE TUPLE WRAPPER: it is what stops the
+ * `LedgerVersion` union. DO NOT REMOVE THE TUPLE WRAPPER: it is what stops the
  * conditional distributing.
  *
  * @see {@link OverloadTyping} for why the fallback arm has to be there.
  */
-type NarrowedToRetained<T> = [Extract<T, { readonly era: RetainedPipelineEra }>] extends [never]
-  ? T & { readonly era: RetainedPipelineEra }
-  : Extract<T, { readonly era: RetainedPipelineEra }>;
+type NarrowedToRetained<T> = [Extract<T, { readonly era: 'v8' }>] extends [never]
+  ? T & { readonly era: 'v8' }
+  : Extract<T, { readonly era: 'v8' }>;
 
 /**
  * Whether a result came from the RETAINED pipeline, narrowing it to that era's
@@ -115,13 +115,13 @@ type NarrowedToRetained<T> = [Extract<T, { readonly era: RetainedPipelineEra }>]
  * @param result Any result carrying an era tag.
  * @returns `true` when the retained pipeline produced it.
  */
-export const isLedger8Result = <T extends { readonly era: PipelineEra }>(
+export const isLedger8Result = <T extends { readonly era: LedgerVersion }>(
   result: T
 ): result is NarrowedToRetained<T> => {
   switch (result?.era) {
-    case RETAINED_PIPELINE_ERA:
+    case 'v8':
       return true;
-    case CURRENT_PIPELINE_ERA:
+    case CURRENT_LEDGER_VERSION:
       return false;
     default:
       throw new UnrecognisedResultEraError(result?.era);

@@ -17,6 +17,7 @@ import { type CompiledContract, type Contract } from '@midnight-ntwrk/midnight-j
 import { StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type AlignedValue, type ContractAddress, type IntentHash, type PartitionedTranscript, type RawTokenType } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
@@ -29,7 +30,6 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CURRENT_PIPELINE_ERA } from '../era';
 import { isLedger8Result } from '../era-results';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
@@ -93,7 +93,7 @@ describe('submit-call-tx', () => {
   };
 
   const createFailedTxData = (): UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
-    era: CURRENT_PIPELINE_ERA,
+    era: CURRENT_LEDGER_VERSION,
     public: {
       nextContractState: StateValue.newNull(),
       nextContractStateEncoded: StateValue.newNull().encode(),
@@ -130,7 +130,7 @@ describe('submit-call-tx', () => {
       circuitId: 'testCircuit'
     });
     expect(result).toEqual({
-      era: CURRENT_PIPELINE_ERA,
+      era: CURRENT_LEDGER_VERSION,
       circuitId: 'testCircuit',
       calls: mockUnprovenCallTxData.calls,
       private: mockUnprovenCallTxData.private,
@@ -189,7 +189,7 @@ describe('submit-call-tx', () => {
         // The same fact `resolveArtifactEra` resolves from the artifact when the
         // entry point routes the call, published so a caller can read it too.
         expect(result.era).toBe(await resolveArtifactEra(mockCompiledContract, mockProviders.zkConfigProvider));
-        expect(result.era).toBe('ledger9');
+        expect(result.era).toBe('v9');
       });
 
       it('forwards calls through the nested scoped CallResult rebuild', async () => {
@@ -283,7 +283,7 @@ describe('submit-call-tx', () => {
         expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, nextPrivateState_2);
         expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options, expect.anything());
         expect(result).toEqual({
-          era: CURRENT_PIPELINE_ERA,
+          era: CURRENT_LEDGER_VERSION,
           circuitId: 'testCircuit',
           calls: mockUnprovenCallTxData_2.calls,
           private: mockUnprovenCallTxData_2.private,
@@ -523,7 +523,7 @@ describe('submit-call-tx', () => {
           circuitId: 'testCircuit'
         });
         expect(result).toEqual({
-          era: CURRENT_PIPELINE_ERA,
+          era: CURRENT_LEDGER_VERSION,
           circuitId: 'testCircuit',
           calls: mockUnprovenCallTxData.calls,
           private: mockUnprovenCallTxData.private,
@@ -583,7 +583,7 @@ describe('submit-call-tx', () => {
           circuitId: 'testCircuit'
         });
         expect(result).toEqual({
-          era: CURRENT_PIPELINE_ERA,
+          era: CURRENT_LEDGER_VERSION,
           circuitId: 'testCircuit',
           txId: mockTxId,
           callTxData: mockUnprovenCallTxData

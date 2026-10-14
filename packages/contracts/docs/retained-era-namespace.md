@@ -93,8 +93,6 @@ RECEIVES results never imports the transitional half:
 - `AnyEraTxFailedError` -- the base both eras' failure classes extend.
   `Ledger8.CallTxFailedError` still extends it, so a handler written against the
   base keeps catching the retained era without naming it.
-- `CURRENT_PIPELINE_ERA`, `RETAINED_PIPELINE_ERA`, `PipelineEra` and its two
-  literal aliases -- the vocabulary both pipelines are named by.
 - `UnrecognisedResultEraError` -- raised for a result tagged with neither era,
   which is not a retained-era condition.
 

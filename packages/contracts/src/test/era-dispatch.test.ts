@@ -35,7 +35,6 @@ import {
 import {
   assertEraCompatible,
   ERA_PAIRING,
-  type PipelineEra,
   resolveArtifactEra,
   resolveContractStateEra,
   resolveOperationEra
@@ -104,7 +103,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     const container = createMockCompiledContract();
 
     // Act + Assert
-    await expect(resolveArtifactEra(container, RETAINED_BUNDLE)).resolves.toBe('ledger9' satisfies PipelineEra);
+    await expect(resolveArtifactEra(container, RETAINED_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
   });
 
   it('does not consult the artifact bundle for a current-era container', async () => {
@@ -118,7 +117,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     };
 
     await expect(resolveArtifactEra(createMockCompiledContract(), refusingBundle)).resolves.toBe(
-      'ledger9' satisfies PipelineEra
+      'v9' satisfies LedgerVersion
     );
   });
 
@@ -132,7 +131,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
       initialState: (): Record<string, never> => ({})
     };
 
-    await expect(resolveArtifactEra(retained, RETAINED_BUNDLE)).resolves.toBe('ledger8' satisfies PipelineEra);
+    await expect(resolveArtifactEra(retained, RETAINED_BUNDLE)).resolves.toBe('v8' satisfies LedgerVersion);
   });
 
   describe('the near-miss a JavaScript caller actually hits', () => {
@@ -225,7 +224,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     expect('pipe' in container).toBe(false);
     // And the container is still placed correctly, because the `tag` it assigns to ITSELF survives
     // the spread that drops the brand.
-    await expect(resolveArtifactEra(container, RETAINED_BUNDLE)).resolves.toBe('ledger9' satisfies PipelineEra);
+    await expect(resolveArtifactEra(container, RETAINED_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
   });
 });
 
@@ -235,7 +234,7 @@ type OperationKind = Parameters<typeof assertEraCompatible>[2];
 
 interface DispatchCell {
   readonly artifact: string;
-  readonly pipeline: PipelineEra;
+  readonly pipeline: LedgerVersion;
   readonly head: LedgerVersion;
   readonly kind: OperationKind;
 }
@@ -244,11 +243,11 @@ const cellKey = ({ pipeline, head, kind }: DispatchCell): string => `${pipeline}
 
 // Every cell the dispatch accepts, and which pipeline it routes to.
 const ACCEPTED_CELLS: readonly (DispatchCell & { readonly route: string })[] = [
-  { artifact: 'current-era (0.18)', pipeline: 'ledger9', head: 'v9', kind: 'call', route: 'ledger9' },
-  { artifact: 'current-era (0.18)', pipeline: 'ledger9', head: 'v9', kind: 'deploy', route: 'ledger9' },
-  { artifact: 'retained-era (0.16)', pipeline: 'ledger8', head: 'v9', kind: 'call', route: 'keep-state' },
-  { artifact: 'retained-era (0.16)', pipeline: 'ledger8', head: 'v8', kind: 'call', route: 'ledger8' },
-  { artifact: 'retained-era (0.16)', pipeline: 'ledger8', head: 'v8', kind: 'deploy', route: 'ledger8' }
+  { artifact: 'current-era (0.18)', pipeline: 'v9', head: 'v9', kind: 'call', route: 'v9' },
+  { artifact: 'current-era (0.18)', pipeline: 'v9', head: 'v9', kind: 'deploy', route: 'v9' },
+  { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v9', kind: 'call', route: 'keep-state' },
+  { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v8', kind: 'call', route: 'v8' },
+  { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v8', kind: 'deploy', route: 'v8' }
 ];
 
 // Every cell it refuses, with the class and the registered code each refusal must carry.
@@ -258,7 +257,7 @@ const REFUSED_CELLS: readonly (DispatchCell & {
 })[] = [
   {
     artifact: 'current-era (0.18)',
-    pipeline: 'ledger9',
+    pipeline: 'v9',
     head: 'v8',
     kind: 'call',
     errorClass: EraArtifactMismatchError,
@@ -266,7 +265,7 @@ const REFUSED_CELLS: readonly (DispatchCell & {
   },
   {
     artifact: 'current-era (0.18)',
-    pipeline: 'ledger9',
+    pipeline: 'v9',
     head: 'v8',
     kind: 'deploy',
     errorClass: EraArtifactMismatchError,
@@ -274,7 +273,7 @@ const REFUSED_CELLS: readonly (DispatchCell & {
   },
   {
     artifact: 'retained-era (0.16)',
-    pipeline: 'ledger8',
+    pipeline: 'v8',
     head: 'v9',
     kind: 'deploy',
     errorClass: Ledger8DeployOnV9Error,
@@ -285,9 +284,9 @@ const REFUSED_CELLS: readonly (DispatchCell & {
 // Exhaustive maps over the three axes, in the `Record<K, K>` form this repo uses where a test has
 // to enumerate a closed set: a member added to any of the three types stops the literal below
 // compiling, which is what makes the completeness gate further down a real one.
-const ALL_PIPELINES: Record<PipelineEra, PipelineEra> = {
-  ledger8: 'ledger8',
-  ledger9: 'ledger9'
+const ALL_PIPELINES: Record<LedgerVersion, LedgerVersion> = {
+  v8: 'v8',
+  v9: 'v9'
 };
 
 const ALL_HEADS: Record<LedgerVersion, LedgerVersion> = {
@@ -306,7 +305,7 @@ const ALL_KINDS: Record<OperationKind, OperationKind> = {
 // `unknown`, not `string`. Typed as `string` these helpers could not express the case that matters
 // most -- a non-string key, which a member access coerces and a `switch` did not -- so every
 // negative test would have been confined to the inputs that were already safe.
-const asPipelineEra = (value: unknown): PipelineEra => value as PipelineEra;
+const asPipelineEra = (value: unknown): LedgerVersion => value as LedgerVersion;
 const asHeadEra = (value: unknown): LedgerVersion => value as LedgerVersion;
 const asOperationKind = (value: unknown): OperationKind => value as OperationKind;
 
@@ -353,7 +352,7 @@ describe('the era dispatch table: artifact era x network head era x operation ki
 
   it('names the reason on a current-era artifact refused by a pre-fork head', () => {
     try {
-      assertEraCompatible('ledger9', 'v8', 'call');
+      assertEraCompatible('v9', 'v8', 'call');
       expect.unreachable('a current-era artifact was accepted on a pre-fork head');
     } catch (error) {
       expect(error).toBeInstanceOf(EraArtifactMismatchError);
@@ -363,7 +362,7 @@ describe('the era dispatch table: artifact era x network head era x operation ki
 
   it('gives the retained-era deploy refusal actionable remediation', () => {
     try {
-      assertEraCompatible('ledger8', 'v9', 'deploy');
+      assertEraCompatible('v8', 'v9', 'deploy');
       expect.unreachable('a retained-era deploy was accepted on a post-fork head');
     } catch (error) {
       expect(error).toBeInstanceOf(Ledger8DeployOnV9Error);
@@ -386,10 +385,8 @@ describe('the era dispatch table: artifact era x network head era x operation ki
   // whichever axis was refused and whatever value it blamed -- including a value read off
   // `Object.prototype`, which is exactly what these tests exist to rule out.
   //
-  // That one class covers both axes is a known wart, not something asserted here as desirable:
-  // `UnknownLedgerVersionError`'s own message names `v8`/`v9`, which is the wrong vocabulary for a
-  // refused artifact era. These tests pin the VALUE blamed, and deliberately not the message.
-  const refusedEra = (pipeline: PipelineEra, head: LedgerVersion): string => {
+  // These tests pin the VALUE blamed, and deliberately not the message.
+  const refusedEra = (pipeline: LedgerVersion, head: LedgerVersion): string => {
     try {
       assertEraCompatible(pipeline, head, 'call');
       return expect.unreachable(`assertEraCompatible ruled on ${String(pipeline)}/${String(head)}`);
@@ -399,35 +396,29 @@ describe('the era dispatch table: artifact era x network head era x operation ki
     }
   };
 
-  it('refuses an era outside either vocabulary, naming the one it could not place', () => {
+  it('refuses an era this build does not know, on either axis, naming the one it could not place', () => {
     // The build-time gate on the pairing table cannot cover these: a head era arrives as an
     // integer resolved at run time, and a pipeline era as whatever a JavaScript caller's artifact
     // turned out to be. Both reach this function before the table is extended for them.
-    expect(refusedEra(asPipelineEra('ledger10'), 'v9')).toBe('ledger10');
-    expect(refusedEra('ledger8', asHeadEra('v10'))).toBe('v10');
+    expect(refusedEra(asPipelineEra('v10'), 'v9')).toBe('v10');
+    expect(refusedEra('v8', asHeadEra('v10'))).toBe('v10');
   });
 
   it('refuses a key that merely COERCES to an era, on either axis', () => {
-    // A member access runs `ToPropertyKey` on its key, so `{ toString: () => 'ledger9' }` selects a
+    // A member access runs `ToPropertyKey` on its key, so `{ toString: () => 'v9' }` selects a
     // real row. The nested switches this table replaced compared with `===` and refused it. Without
     // the `typeof` guards these six inputs are RULED ON, and four of them are ruled `'run'`.
     const coercing: readonly unknown[] = [
-      { toString: () => 'ledger9' },
-      { [Symbol.toPrimitive]: () => 'ledger9' },
-      new String('ledger9'),
-      Object('ledger9')
+      { toString: () => 'v9' },
+      { [Symbol.toPrimitive]: () => 'v9' },
+      new String('v9'),
+      Object('v9')
     ];
 
     for (const coerces of coercing) {
       expect(refusedEra(asPipelineEra(coerces), 'v9')).toBe(String(coerces));
-      expect(refusedEra('ledger9', asHeadEra(coerces))).toBe(String(coerces));
+      expect(refusedEra('v9', asHeadEra(coerces))).toBe(String(coerces));
     }
-  });
-
-  it('refuses the two era arguments transposed', () => {
-    // Both are era-shaped strings in adjacent positions, so this is the call a caller gets wrong.
-    expect(refusedEra(asPipelineEra('v9'), 'v9')).toBe('v9');
-    expect(refusedEra('ledger9', asHeadEra('ledger9'))).toBe('ledger9');
   });
 
   it('refuses a retained-era operation on a post-fork head unless it is positively a call', () => {
@@ -438,9 +429,9 @@ describe('the era dispatch table: artifact era x network head era x operation ki
     const notCalls: readonly unknown[] = ['Deploy', 'DEPLOY', 'deploy ', '', undefined, null, 0, {}];
 
     for (const notCall of notCalls) {
-      expect(() => assertEraCompatible('ledger8', 'v9', asOperationKind(notCall))).toThrow(Ledger8DeployOnV9Error);
+      expect(() => assertEraCompatible('v8', 'v9', asOperationKind(notCall))).toThrow(Ledger8DeployOnV9Error);
     }
-    expect(() => assertEraCompatible('ledger8', 'v9', 'call')).not.toThrow();
+    expect(() => assertEraCompatible('v8', 'v9', 'call')).not.toThrow();
   });
 
   it('holds the table frozen and off the object prototype, at both levels', () => {
@@ -464,15 +455,15 @@ describe('the era dispatch table: artifact era x network head era x operation ki
     // keys are supplied from outside this package.
     for (const inherited of ['constructor', 'toString', 'hasOwnProperty', 'valueOf', '__proto__']) {
       expect(refusedEra(asPipelineEra(inherited), 'v9')).toBe(inherited);
-      expect(refusedEra('ledger8', asHeadEra(inherited))).toBe(inherited);
+      expect(refusedEra('v8', asHeadEra(inherited))).toBe(inherited);
     }
   });
 
   it('refuses a retained-era deploy but NOT a retained-era call on the same head', () => {
     // The two differ only in `kind`; without this pairing, a refusal that rejected every
     // retained-era operation on a v9 head would satisfy the deploy assertion just as well.
-    expect(() => assertEraCompatible('ledger8', 'v9', 'deploy')).toThrow(Ledger8DeployOnV9Error);
-    expect(() => assertEraCompatible('ledger8', 'v9', 'call')).not.toThrow();
+    expect(() => assertEraCompatible('v8', 'v9', 'deploy')).toThrow(Ledger8DeployOnV9Error);
+    expect(() => assertEraCompatible('v8', 'v9', 'call')).not.toThrow();
   });
 });
 

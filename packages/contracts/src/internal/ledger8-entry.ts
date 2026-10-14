@@ -71,7 +71,6 @@ import {
   parseCoinPublicKeyToHex
 } from '@midnight-ntwrk/midnight-js-utils';
 
-import { RETAINED_PIPELINE_ERA } from '../era';
 import {
   EraInvariantViolationError,
   type EraMethod,
@@ -222,7 +221,7 @@ export const acquireLedger8Runtime = async (
     loadLedger8Engine(),
     loadLedgerEra('v8')
   ]);
-  assertEraCompatible('ledger8', resolved.head, kind);
+  assertEraCompatible('v8', resolved.head, kind);
   // AFTER the era gate, and both before the selection breadcrumb and before any
   // composition: a proof is the expensive step and the first of the three, so a
   // provider that cannot take this operation's payload has to be found now rather
@@ -230,7 +229,7 @@ export const acquireLedger8Runtime = async (
   assertProvidersSupportEra(resolved.head, providers);
   // AFTER the gates: a selection breadcrumb written before them would claim a
   // pipeline for an operation the very next line refuses.
-  emitPipelineSelection(breadcrumbs?.logger, resolved, 'ledger8', breadcrumbs?.contractAddress);
+  emitPipelineSelection(breadcrumbs?.logger, resolved, 'v8', breadcrumbs?.contractAddress);
 
   return { resolved, engine, retainedEra };
 };
@@ -827,8 +826,8 @@ export const findLedger8Contract = async (
     resolveOperationEra(providers.publicDataProvider, providers.loggerProvider),
     loadLedgerEra('v8')
   ]);
-  assertEraCompatible('ledger8', resolved.head, 'call');
-  emitPipelineSelection(providers.loggerProvider, resolved, 'ledger8', request.contractAddress);
+  assertEraCompatible('v8', resolved.head, 'call');
+  emitPipelineSelection(providers.loggerProvider, resolved, 'v8', request.contractAddress);
 
   // EVERY cheap refusal happens before the deploy record is watched for, and
   // that order is the whole value of checking here: `watchForDeployTxData` is
@@ -932,7 +931,7 @@ const assertLedger8DeploySucceeded = (
  *
  * Compares the record against the HEAD, not against a fixed era. It does NOT
  * assert that the result's `era` and the record's `version` agree: those
- * legitimately disagree, since `era: 'ledger8'` with `version: 'v9'` IS a
+ * legitimately disagree, since `era: 'v8'` with `version: 'v9'` IS a
  * keep-state transaction.
  *
  * KEEP THIS AHEAD OF THE STATUS CHECK. `status` is a field of the very record
@@ -1074,7 +1073,7 @@ export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Led
 const toLedger8CallTxData = (
   call: Ledger8CallPipelineResult<RetainedStateValue>
 ): AnyLedger8UnsubmittedCallTxData => ({
-  era: RETAINED_PIPELINE_ERA,
+  era: 'v8',
   public: {
     publicTranscript: call.publicTranscript,
     partitionedTranscript: call.partitionedTranscript,
@@ -1158,7 +1157,7 @@ const runLedger8CallEntry = async (
 
   return {
     submitted: {
-      era: RETAINED_PIPELINE_ERA,
+      era: 'v8',
       txId,
       circuitId: call.circuitId,
       callTxData: toLedger8CallTxData(call)
@@ -1234,7 +1233,7 @@ export const submitLedger8CallTx = async (
   // with the record merged onto its public half. Built from one place so the
   // two surfaces cannot report different executions of the same call.
   return {
-    era: RETAINED_PIPELINE_ERA,
+    era: 'v8',
     circuitId,
     public: { ...txData, ...callTxData.public },
     private: callTxData.private,

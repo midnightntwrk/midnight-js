@@ -20,6 +20,7 @@ import {
   protocolVersionToLedger,
   UnknownLedgerVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   ArtifactRuntimeVersionUnavailableError,
   type FinalizedTxData,
@@ -32,7 +33,6 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { contractStateEnvelopeVersion, ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
 
-import { CURRENT_PIPELINE_ERA, type PipelineEra, RETAINED_PIPELINE_ERA } from '../era';
 import {
   EraArtifactMismatchError,
   EraInvariantViolationError,
@@ -191,12 +191,6 @@ export function requireV9Record(
   }
 }
 
-// Declared on the PUBLIC surface, in `../era`, because results now publish it:
-// `src/internal` is hidden from consumers, and a published member whose type a
-// consumer cannot name is one they cannot write a signature against. Re-exported
-// here so this module's own callers keep importing it from where they always did.
-export type { PipelineEra } from '../era';
-
 /**
  * The era facts one operation resolves ONCE, at its asynchronous start, and then threads down as
  * a plain value.
@@ -265,18 +259,18 @@ const ASYNC_FUNCTION = 'AsyncFunction';
  * conditional through `Assert` makes the failing case violate a constraint, which is a build error.
  */
 const RUNTIME_VERSION_TO_ERA = Object.freeze({
-  '0.16': RETAINED_PIPELINE_ERA,
-  '0.20': CURRENT_PIPELINE_ERA
+  '0.16': 'v8',
+  '0.20': CURRENT_LEDGER_VERSION
 } as const);
 
 // Compile-time gate: every pipeline era must be reachable from some declared runtime version.
-// Without it a third era could be added to `PipelineEra` with no toolchain mapped to it, and every
+// Without it a third era could be added to `LedgerVersion` with no toolchain mapped to it, and every
 // artifact built by that toolchain would be refused at run time instead of failing here.
 type MappedEra = (typeof RUNTIME_VERSION_TO_ERA)[keyof typeof RUNTIME_VERSION_TO_ERA];
 type Assert<T extends true> = T;
 // The tuple wrapping keeps this a whole-union check rather than a distributive one, so a single
 // mapped era could never satisfy it on behalf of the rest.
-type _EveryEraHasARuntimeVersion = Assert<[PipelineEra] extends [MappedEra] ? true : false>;
+type _EveryEraHasARuntimeVersion = Assert<[LedgerVersion] extends [MappedEra] ? true : false>;
 
 const RUNTIME_VERSION = /^(\d+\.\d+)\.\d+/;
 
@@ -311,7 +305,7 @@ export type ArtifactRuntimeVersionSource = Pick<ZKConfigProvider<string>, 'getAr
  * @returns The pipeline era that toolchain builds for, or `undefined` if this framework knows no
  * such toolchain -- which the caller reports rather than resolving to a default.
  */
-const eraOfRuntimeVersion = (runtimeVersion: string): PipelineEra | undefined => {
+const eraOfRuntimeVersion = (runtimeVersion: string): LedgerVersion | undefined => {
   const majorMinor = RUNTIME_VERSION.exec(runtimeVersion)?.[1];
 
   return majorMinor === undefined ? undefined : RUNTIME_VERSION_TO_ERA[majorMinor as keyof typeof RUNTIME_VERSION_TO_ERA];
@@ -397,9 +391,9 @@ const artifactShapeOf = (compiledContract: unknown): ArtifactShape => {
 export const resolveArtifactEra = async (
   compiledContract: unknown,
   source: ArtifactRuntimeVersionSource
-): Promise<PipelineEra> => {
+): Promise<LedgerVersion> => {
   if (artifactShapeOf(compiledContract) === 'current-era-container') {
-    return CURRENT_PIPELINE_ERA;
+    return CURRENT_LEDGER_VERSION;
   }
 
   let runtimeVersion: string;
@@ -428,7 +422,7 @@ export const resolveArtifactEra = async (
   // A retained SHAPE whose artifacts declare the current toolchain is the mistake this dispatch
   // exists to catch: a current-era contract passed raw, with its `async` erased by the caller's
   // build. It reads as retained and is not.
-  if (era === CURRENT_PIPELINE_ERA) {
+  if (era === CURRENT_LEDGER_VERSION) {
     throw new EraArtifactMismatchError('unwrapped-current-era-contract');
   }
 
@@ -454,8 +448,8 @@ export const resolveArtifactEra = async (
  */
 export const isLedger8Request = <L extends { readonly compiledContract: Ledger8Contract }>(
   _options: { readonly compiledContract: unknown } | L,
-  era: PipelineEra
-): _options is L => era === RETAINED_PIPELINE_ERA;
+  era: LedgerVersion
+): _options is L => era === 'v8';
 
 /**
  * Makes the ONE head read and resolves it to an era, acquiring nothing.
@@ -548,7 +542,7 @@ export type EraPairing =
 export type EraRulings = Readonly<Record<LedgerVersion, EraPairing>>;
 
 /**
- * The pairing table {@link assertEraCompatible} rules from: one row per {@link PipelineEra}, one
+ * The pairing table {@link assertEraCompatible} rules from: one row per {@link LedgerVersion}, one
  * column per `LedgerVersion`.
  *
  * The two era vocabularies stay separate types because they answer different questions -- which
@@ -561,7 +555,7 @@ export type EraRulings = Readonly<Record<LedgerVersion, EraPairing>>;
  *
  * @see {@link EraDispatch} for the table in full and why the deploy cell differs.
  */
-export type EraPairingTable = Readonly<Record<PipelineEra, EraRulings>>;
+export type EraPairingTable = Readonly<Record<LedgerVersion, EraRulings>>;
 
 /**
  * Re-homes a table onto a null prototype and freezes it, the construction
@@ -589,8 +583,8 @@ const pairingTable = (byPipeline: EraPairingTable): EraPairingTable => withNullP
  * Nothing outside this module reads it to dispatch.
  */
 export const ERA_PAIRING: EraPairingTable = pairingTable({
-  ledger8: rulings({ v8: 'run', v9: 'call-only' }),
-  ledger9: rulings({ v8: 'artifact-newer-than-head', v9: 'run' })
+  v8: rulings({ v8: 'run', v9: 'call-only' }),
+  v9: rulings({ v8: 'artifact-newer-than-head', v9: 'run' })
 });
 
 /**
@@ -616,7 +610,7 @@ export const ERA_PAIRING: EraPairingTable = pairingTable({
  * read `requestedVersion` for the value that was refused.
  */
 export const assertEraCompatible = (
-  pipeline: PipelineEra,
+  pipeline: LedgerVersion,
   head: LedgerVersion,
   kind: StaleHeadOperationKind
 ): void => {

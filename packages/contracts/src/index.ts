@@ -136,15 +136,6 @@ export {
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from './governance';
-// The era vocabulary, which BOTH pipelines are named by, so a caller that tags or branches on an
-// era never reaches for the retained-era namespace to do it.
-export {
-  CURRENT_PIPELINE_ERA,
-  type CurrentPipelineEra,
-  type PipelineEra,
-  RETAINED_PIPELINE_ERA,
-  type RetainedPipelineEra
-} from './era';
 // The receiving half of the era surface: the overloads hand a caller one era's
 // result by inference, and these let a caller who RECEIVES either one declare a
 // parameter for both and narrow it by name.

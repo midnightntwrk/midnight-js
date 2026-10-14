@@ -16,12 +16,12 @@
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
-import { CURRENT_PIPELINE_ERA, RETAINED_PIPELINE_ERA } from './era';
 import type { FoundContract } from './find-deployed-contract';
 import {
   createCircuitMaintenanceTxInterfaces,
@@ -291,7 +291,7 @@ export async function deployContract<C extends Contract.Any>(
       signingKey: options.signingKey
     });
     return {
-      era: RETAINED_PIPELINE_ERA,
+      era: 'v8',
       compiledContract: options.compiledContract,
       contractAddress: deployed.contractAddress,
       deployTxData: deployed.deployTxData,
@@ -312,7 +312,7 @@ export async function deployContract<C extends Contract.Any>(
   }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
   return {
-    era: CURRENT_PIPELINE_ERA,
+    era: CURRENT_LEDGER_VERSION,
     compiledContract: options.compiledContract,
     contractAddress: deployTxData.public.contractAddress,
     deployTxData,

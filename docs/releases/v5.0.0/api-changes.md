@@ -258,7 +258,7 @@ export interface FoundDeployTxPublicDataV8 extends FinalizedTxDataV8 {
 }
 export type FoundDeployTxPublicData = FoundDeployTxPublicDataV8 | FinalizedDeployTxPublicData;
 export interface FoundDeployTxData<C extends Contract.Any> {
-  readonly era: CurrentPipelineEra;
+  readonly era: CurrentLedgerVersion;
   readonly public: FoundDeployTxPublicData;
   readonly private: UnsubmittedDeployTxPrivateData<C>;
 }

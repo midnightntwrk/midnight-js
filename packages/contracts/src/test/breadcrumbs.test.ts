@@ -68,7 +68,7 @@ import {
   emitPipelineSelection,
   emitRetainedSigningKeyEntry
 } from '../internal/breadcrumbs';
-import { type PipelineEra, resolveContractStateEra, resolveOperationEra } from '../internal/era';
+import { resolveContractStateEra, resolveOperationEra } from '../internal/era';
 import { acquireLedger8Runtime, findLedger8Contract, type Ledger8RuntimeProviders } from '../internal/ledger8-entry';
 import { handleSubmitRejection } from '../internal/stale-head';
 import { resolveScopeEra } from '../internal/transaction';
@@ -130,9 +130,9 @@ const ALL_PROVENANCES: Record<HeadReadingProvenance, HeadReadingProvenance> = {
   'post-rejection-re-read': 'post-rejection-re-read'
 };
 
-const ALL_PIPELINES: Record<PipelineEra, PipelineEra> = {
-  ledger8: 'ledger8',
-  ledger9: 'ledger9'
+const ALL_PIPELINES: Record<LedgerVersion, LedgerVersion> = {
+  v8: 'v8',
+  v9: 'v9'
 };
 
 /** The same exhaustive-by-compilation shape, over why a stored signing-key entry was unusable. */
@@ -279,7 +279,7 @@ describe('the breadcrumb emitters', () => {
   it('carries the pipeline and the contract address when the operation names a contract', () => {
     const sink = createSink();
 
-    emitPipelineSelection(sink, { head: 'v8', headProtocolVersion: V8_HEAD }, 'ledger8', CONTRACT_ADDRESS);
+    emitPipelineSelection(sink, { head: 'v8', headProtocolVersion: V8_HEAD }, 'v8', CONTRACT_ADDRESS);
 
     expect(emitted(sink)).toStrictEqual([
       {
@@ -288,7 +288,7 @@ describe('the breadcrumb emitters', () => {
         protocolVersion: V8_HEAD,
         source: 'artifact-runtime-version-declaration',
         readingProvenance: 'operation-start',
-        path: 'ledger8',
+        path: 'v8',
         contractAddress: CONTRACT_ADDRESS
       }
     ]);
@@ -300,7 +300,7 @@ describe('the breadcrumb emitters', () => {
     // deployment at the zero address.
     const sink = createSink();
 
-    emitPipelineSelection(sink, { head: 'v8', headProtocolVersion: V8_HEAD }, 'ledger8');
+    emitPipelineSelection(sink, { head: 'v8', headProtocolVersion: V8_HEAD }, 'v8');
 
     const [breadcrumb] = emitted(sink);
     expect(breadcrumb).toBeDefined();
@@ -311,7 +311,7 @@ describe('the breadcrumb emitters', () => {
         protocolVersion: V8_HEAD,
         source: 'artifact-runtime-version-declaration',
         readingProvenance: 'operation-start',
-        path: 'ledger8'
+        path: 'v8'
       }
     ]);
     expect('contractAddress' in breadcrumb).toBe(false);
@@ -355,7 +355,7 @@ describe('the breadcrumb emitters', () => {
     // The logger provider is OPTIONAL on every provider set, so this is the
     // ordinary case and must not be a throw.
     expect(() => emitHeadResolution(undefined, { head: 'v9', headProtocolVersion: V9_HEAD }, 'operation-start')).not.toThrow();
-    expect(() => emitPipelineSelection(undefined, { head: 'v9', headProtocolVersion: V9_HEAD }, 'ledger9')).not.toThrow();
+    expect(() => emitPipelineSelection(undefined, { head: 'v9', headProtocolVersion: V9_HEAD }, 'v9')).not.toThrow();
     expect(() => emitEncoding(undefined, 'v9')).not.toThrow();
     expect(() => emitRetainedSigningKeyEntry(undefined, CONTRACT_ADDRESS, 'malformed-value')).not.toThrow();
   });
@@ -494,7 +494,7 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
         protocolVersion: V8_HEAD,
         source: 'artifact-runtime-version-declaration',
         readingProvenance: 'operation-start',
-        path: 'ledger8',
+        path: 'v8',
         contractAddress: CONTRACT_ADDRESS
       }
     ]);
@@ -503,7 +503,7 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
   it('breadcrumbs the SAME pipeline against a post-fork head, which is the keep-state route', async () => {
     // The pipeline and the head era together identify the route, and they are
     // reported as the pair rather than as a derived third value that could
-    // disagree with it: `path: 'ledger8'` with `version: 'v9'` IS keep-state.
+    // disagree with it: `path: 'v8'` with `version: 'v9'` IS keep-state.
     const sink = createSink();
 
     await acquireLedger8Runtime(retainedRuntime(V9_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
@@ -514,7 +514,7 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
       protocolVersion: V9_HEAD,
       source: 'artifact-runtime-version-declaration',
       readingProvenance: 'operation-start',
-      path: 'ledger8',
+      path: 'v8',
       contractAddress: CONTRACT_ADDRESS
     });
   });
@@ -562,7 +562,7 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
       protocolVersion: V8_HEAD,
       source: 'artifact-runtime-version-declaration',
       readingProvenance: 'operation-start',
-      path: 'ledger8',
+      path: 'v8',
       contractAddress: CONTRACT_ADDRESS
     });
   });
@@ -735,7 +735,7 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
 
   it('places every pipeline the type admits on the allow-listed field, so a new one cannot leak', () => {
     // A REAL exhaustiveness gate, via ALL_PIPELINES above. The earlier form
-    // here was `const pipelines: readonly PipelineEra[] = [...]`, which only
+    // here was `const pipelines: readonly LedgerVersion[] = [...]`, which only
     // asserted that each element IS a member and never that all members are
     // listed -- so a third pipeline compiled and tested clean. This test was
     // also the model the provenance gate below was copied from, so the

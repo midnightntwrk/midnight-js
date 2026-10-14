@@ -418,7 +418,7 @@ describe('a retained-era call handed a scope', () => {
     // longer decides the era -- it only says which declaration is consulted.
     const declaringRetained = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
 
-    await expect(resolveArtifactEra(retainedContract, declaringRetained)).resolves.toBe('ledger8');
+    await expect(resolveArtifactEra(retainedContract, declaringRetained)).resolves.toBe('v8');
   });
 
   it('is REFUSED rather than silently run outside the scope it was handed', () => {

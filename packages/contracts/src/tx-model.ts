@@ -16,6 +16,7 @@
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type {
   FinalizedTxData,
   FinalizedTxDataV8,
@@ -24,7 +25,6 @@ import type {
 } from '@midnight-ntwrk/midnight-js-types';
 
 import type { CallResult, CallResultPrivate, CallResultPublic } from './call';
-import type { CurrentPipelineEra } from './era';
 
 /**
  * Data relevant to any unsubmitted transaction.
@@ -107,7 +107,7 @@ export interface UnsubmittedDeployTxDataBase<C extends Contract.Any> {
    * facts disagree after the fork, and only this one says which module the
    * objects in this result came from.
    */
-  readonly era: CurrentPipelineEra;
+  readonly era: CurrentLedgerVersion;
   /**
    * The public data (data that will be revealed upon tx submission) relevant to the deployment transaction.
    */
@@ -211,7 +211,7 @@ export interface FoundDeployTxData<C extends Contract.Any> {
    * The pipeline this handle runs on: always the current era here. The era that
    * recorded the deploy transaction is `public.version`.
    */
-  readonly era: CurrentPipelineEra;
+  readonly era: CurrentLedgerVersion;
   /**
    * The data of the deploy transaction that is visible on the blockchain.
    */
@@ -362,5 +362,5 @@ export interface SubmittedCallTx<C extends Contract.Any, PCK extends Contract.Pr
    * facts disagree after the fork, and only this one says which module the
    * objects in this result came from.
    */
-  readonly era: CurrentPipelineEra;
+  readonly era: CurrentLedgerVersion;
 }

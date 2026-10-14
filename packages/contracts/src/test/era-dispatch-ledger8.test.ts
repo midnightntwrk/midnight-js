@@ -16,9 +16,10 @@
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { type PipelineEra, resolveArtifactEra } from '../internal/era';
+import { resolveArtifactEra } from '../internal/era';
 import type { CoinReceiver016Contract, CoinReceiver016Module, Counter016Contract, Counter016Module } from './ledger8-fixture-types';
 
 // The retained-era half of `resolveArtifactEra`'s coverage, and the reason it is a FILE of its own
@@ -91,13 +92,13 @@ describe('resolveArtifactEra against the REAL retained-era artifacts', () => {
     // bundle declares.
     expect(counter.initialState.constructor.name).toBe('Function');
 
-    await expect(resolveArtifactEra(counter, RETAINED_BUNDLE)).resolves.toBe('ledger8' satisfies PipelineEra);
+    await expect(resolveArtifactEra(counter, RETAINED_BUNDLE)).resolves.toBe('v8' satisfies LedgerVersion);
   });
 
   it('routes the real argument-taking retained artifact the same way', async () => {
     expect(coinReceiver.initialState.constructor.name).toBe('Function');
 
-    await expect(resolveArtifactEra(coinReceiver, RETAINED_BUNDLE)).resolves.toBe('ledger8' satisfies PipelineEra);
+    await expect(resolveArtifactEra(coinReceiver, RETAINED_BUNDLE)).resolves.toBe('v8' satisfies LedgerVersion);
   });
 
   it('places the real artifact without consulting the compact-js brand, which it does not carry', () => {

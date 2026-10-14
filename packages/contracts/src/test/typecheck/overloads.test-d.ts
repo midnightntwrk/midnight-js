@@ -24,6 +24,7 @@ import type {
   SigningKey
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { CurrentLedgerVersion, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
@@ -46,7 +47,6 @@ import {
   type DeployContractOptionsWithPrivateState,
   type DeployedContract
 } from '../../deploy-contract';
-import type { CurrentPipelineEra, PipelineEra, RetainedPipelineEra } from '../../era';
 import { type AnyEraFinalizedCallTxData, type AnyEraSubmittedCallTx, isLedger8Result } from '../../era-results';
 import {
   findDeployedContract,
@@ -348,19 +348,19 @@ describe('every result names the pipeline that produced it', () => {
     | Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>;
 
   it('tags both eras at the same path, with that era own literal', () => {
-    expectTypeOf<FinalizedCallTxData<Twin018, 'increment'>['era']>().toEqualTypeOf<CurrentPipelineEra>();
+    expectTypeOf<FinalizedCallTxData<Twin018, 'increment'>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
     expectTypeOf<
       Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['era']
-    >().toEqualTypeOf<RetainedPipelineEra>();
+    >().toEqualTypeOf<'v8'>();
     // Both literals belong to the ONE vocabulary the dispatch already resolves.
-    expectTypeOf<CurrentPipelineEra | RetainedPipelineEra>().toEqualTypeOf<PipelineEra>();
+    expectTypeOf<CurrentLedgerVersion | 'v8'>().toEqualTypeOf<LedgerVersion>();
   });
 
   it('DISCRIMINATES: a union of the two eras narrows on `era` alone', () => {
-    // The property under test. Declaring `era: PipelineEra` on both arms would
+    // The property under test. Declaring `era: LedgerVersion` on both arms would
     // satisfy every assertion above and narrow nothing.
     const narrow = (result: EitherEraCall): Uint8Array | undefined =>
-      result.era === 'ledger8' ? result.private.txBytes : undefined;
+      result.era === 'v8' ? result.private.txBytes : undefined;
 
     expectTypeOf(narrow).parameter(0).toEqualTypeOf<EitherEraCall>();
     expectTypeOf(narrow).returns.toEqualTypeOf<Uint8Array | undefined>();
@@ -375,10 +375,10 @@ describe('every result names the pipeline that produced it', () => {
     // a four-parameter generic nobody would write.
     // The RETAINED arm is pinned by strict equality: it is published
     // unmodified, so anything that moves it moves this.
-    expectTypeOf<Extract<AnyEraFinalizedCallTxData, { era: RetainedPipelineEra }>>().toEqualTypeOf<
+    expectTypeOf<Extract<AnyEraFinalizedCallTxData, { era: 'v8' }>>().toEqualTypeOf<
       Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>
     >();
-    expectTypeOf<Extract<AnyEraSubmittedCallTx, { era: RetainedPipelineEra }>>().toEqualTypeOf<
+    expectTypeOf<Extract<AnyEraSubmittedCallTx, { era: 'v8' }>>().toEqualTypeOf<
       Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>
     >();
 
@@ -386,8 +386,8 @@ describe('every result names the pipeline that produced it', () => {
     // restated as `unknown` (see below), so strict equality against the raw
     // instantiation would pin the `any` back in. What has to hold instead is
     // that it is the current era's arm and carries that arm's members.
-    type CurrentFinalized = Exclude<AnyEraFinalizedCallTxData, { era: RetainedPipelineEra }>;
-    expectTypeOf<CurrentFinalized['era']>().toEqualTypeOf<CurrentPipelineEra>();
+    type CurrentFinalized = Exclude<AnyEraFinalizedCallTxData, { era: 'v8' }>;
+    expectTypeOf<CurrentFinalized['era']>().toEqualTypeOf<CurrentLedgerVersion>();
     expectTypeOf<CurrentFinalized['public']['logEvents']>().toEqualTypeOf<readonly LogEvent[]>();
     expectTypeOf<CurrentFinalized['circuitId']>().toEqualTypeOf<Contract.ProvableCircuitId<Contract.Any>>();
 
@@ -425,22 +425,22 @@ describe('every result names the pipeline that produced it', () => {
     // A caller whose parameter is tagged with the WIDE union still narrows to
     // something usable. `Extract` alone answers `never` here -- there is no
     // union member to pick -- which rejects every property access in the true
-    // branch with no hint as to why. `PipelineEra` is published, so this is a
+    // branch with no hint as to why. `LedgerVersion` is published, so this is a
     // parameter consumers will write.
-    const wide = (result: { readonly era: PipelineEra; readonly txId: string }): string | undefined =>
+    const wide = (result: { readonly era: LedgerVersion; readonly txId: string }): string | undefined =>
       isLedger8Result(result) ? result.txId : undefined;
     expectTypeOf(wide).returns.toEqualTypeOf<string | undefined>();
   });
 
   it('tags the asynchronous submit and the contract handles too', () => {
-    expectTypeOf<SubmittedCallTx<Twin018, 'increment'>['era']>().toEqualTypeOf<CurrentPipelineEra>();
+    expectTypeOf<SubmittedCallTx<Twin018, 'increment'>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
     expectTypeOf<
       Ledger8SubmittedCallTx<Counter016Contract, 'increment'>['era']
-    >().toEqualTypeOf<RetainedPipelineEra>();
-    expectTypeOf<FoundContract<Twin018>['era']>().toEqualTypeOf<CurrentPipelineEra>();
-    expectTypeOf<Ledger8FoundContract<Counter016Contract>['era']>().toEqualTypeOf<RetainedPipelineEra>();
-    expectTypeOf<DeployedContract<Twin018>['era']>().toEqualTypeOf<CurrentPipelineEra>();
-    expectTypeOf<Ledger8DeployedContract<Counter016Contract>['era']>().toEqualTypeOf<RetainedPipelineEra>();
+    >().toEqualTypeOf<'v8'>();
+    expectTypeOf<FoundContract<Twin018>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
+    expectTypeOf<Ledger8FoundContract<Counter016Contract>['era']>().toEqualTypeOf<'v8'>();
+    expectTypeOf<DeployedContract<Twin018>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
+    expectTypeOf<Ledger8DeployedContract<Counter016Contract>['era']>().toEqualTypeOf<'v8'>();
   });
 });
 
@@ -975,10 +975,10 @@ describe('both eras answer with the SAME contract-handle structure', () => {
   });
 
   it('discriminates a handle on `era` alone, in both directions', () => {
-    expectTypeOf<CurrentFound['era']>().toEqualTypeOf<CurrentPipelineEra>();
-    expectTypeOf<RetainedFound['era']>().toEqualTypeOf<RetainedPipelineEra>();
-    expectTypeOf<CurrentDeployed['era']>().toEqualTypeOf<CurrentPipelineEra>();
-    expectTypeOf<RetainedDeployed['era']>().toEqualTypeOf<RetainedPipelineEra>();
+    expectTypeOf<CurrentFound['era']>().toEqualTypeOf<CurrentLedgerVersion>();
+    expectTypeOf<RetainedFound['era']>().toEqualTypeOf<'v8'>();
+    expectTypeOf<CurrentDeployed['era']>().toEqualTypeOf<CurrentLedgerVersion>();
+    expectTypeOf<RetainedDeployed['era']>().toEqualTypeOf<'v8'>();
   });
 });
 

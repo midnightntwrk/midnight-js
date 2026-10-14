@@ -70,7 +70,6 @@ import { Option } from 'effect';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { deployContract } from '../deploy-contract';
-import { RETAINED_PIPELINE_ERA } from '../era';
 import { isLedger8Result } from '../era-results';
 import {
   AnyEraTxFailedError,
@@ -1146,9 +1145,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // The two facts, side by side. `resolveArtifactEra` reads the artifact; the
     // record says which ledger recorded the transaction. Pre-fork they happen
     // to agree on the era being retained -- post-fork the record reads `'v9'`
-    // for this same call, and the tag must still say `'ledger8'`.
+    // for this same call, and the tag must still say `'v8'`.
     expect(finalized.era).toBe(await resolveArtifactEra(contract, providers.zkConfigProvider));
-    expect(finalized.era).toBe('ledger8');
+    expect(finalized.era).toBe('v8');
   });
 
   it('publishes the POST-call contract state as the retained runtime own handle', async () => {
@@ -1662,7 +1661,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // `era` already discriminates a union on its own. The guard is the NAMED
     // way to do it: it keeps the literal in one place, and it narrows any of
     // the result shapes rather than one, so a caller does not write
-    // `=== 'ledger8'` against a string of its own spelling.
+    // `=== 'v8'` against a string of its own spelling.
     expect(isLedger8Result(finalized)).toBe(true);
     // Narrowing, not just a boolean: `txBytes` is reachable only on this arm.
     if (isLedger8Result(finalized)) {
@@ -2498,7 +2497,7 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     const deployed = await deployContract(providers, { compiledContract: contract });
 
-    expect(deployed.era).toBe(RETAINED_PIPELINE_ERA);
+    expect(deployed.era).toBe('v8');
     expect(deployed.compiledContract).toBe(contract);
     // READ OFF the composition record: a deploy mints a fresh nonce, so the
     // same initial state deploys to a different address every time.

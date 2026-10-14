@@ -16,11 +16,11 @@
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
-import { CURRENT_PIPELINE_ERA } from './era';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
 import { isLedger8Request, resolveArtifactEra } from './internal/era';
 import { submitLedger8CallTx, submitLedger8CallTxAsync, toLedger8CallEntryOptions } from './internal/ledger8-entry';
@@ -376,7 +376,7 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
   });
 
   return {
-    era: CURRENT_PIPELINE_ERA,
+    era: CURRENT_LEDGER_VERSION,
     circuitId: options.circuitId,
     txId,
     callTxData: unprovenCallTxData

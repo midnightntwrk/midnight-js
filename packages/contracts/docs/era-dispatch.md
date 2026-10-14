@@ -16,15 +16,16 @@ half of the same admission path is a separate thread — see
 
 ## The pipeline is named by the ledger era, not the toolchain
 
-`PipelineEra` is `'ledger8' | 'ledger9'`. Each member names the LEDGER ERA the
-pipeline executes against, never a toolchain version, because the toolchain
+A pipeline is named by a `LedgerVersion`, `'v8'` or `'v9'` — the same values a
+payload's `version` and a provider's `supportedEras` use. Each member names the
+LEDGER ERA the pipeline executes against, never a toolchain version, because the toolchain
 moves independently of the ledger and a name pinned to it goes stale on the next
 compiler bump.
 
 A member names its era and nothing else — not which era is native, current, or
 newest. Those are all relative to a fork that moves: the moment ledger 10 lands,
 a name like `'v9native'` describes the era before last. A further era ADDS a
-member (`'ledger10'`) and leaves every existing member meaning exactly what it
+member (`'v10'`) and leaves every existing member meaning exactly what it
 meant before.
 
 A pipeline era is not a statement about the network. It says only which era's
@@ -102,7 +103,7 @@ only which declaration to consult, or refuses outright.
 
 | shape | own `tag` | own `impureCircuits` | `initialState` | verdict |
 | ----- | --------- | -------------------- | -------------- | ------- |
-| current-era container | string | absent | absent | `'ledger9'`, from the container itself |
+| current-era container | string | absent | absent | `'v9'`, from the container itself |
 | retained-era candidate | absent | present | `Function` | ask the bundle |
 | raw current-era instance | absent | present | `AsyncFunction` | refused, by name |
 | anything else | — | — | — | refused as neither era |
@@ -237,7 +238,7 @@ differ: calls against contracts already on chain are what the retained era
 exists to keep working, and a new deployment has no such history to preserve.
 
 Only the two RETAINED rows are enforced in production. Every call site passes
-the literal `'ledger8'`, so the current-era rows are reachable from tests alone,
+the literal `'v8'`, so the current-era rows are reachable from tests alone,
 and the `current-era` + `v8` refusal — `EraArtifactMismatchError` with reason
 `'current-era-artifact-on-pre-fork-head'` — is not raised by any shipped path.
 
@@ -257,7 +258,7 @@ the caller already holds; this decides only whether that pair may run, so it doe
 not restate the pair as a third value that could disagree with it.
 
 The rulings live in a DATA table, `ERA_PAIRING`, rather than in a chain of
-switches: one row per `PipelineEra`, one column per `LedgerVersion`. Each cell
+switches: one row per artifact era, one column per head era, both `LedgerVersion`. Each cell
 holds one `EraPairing` verdict, `'run'`, `'call-only'` or
 `'artifact-newer-than-head'`, and `assertEraCompatible` turns that verdict and
 the operation kind into the refusal. `'call-only'` is where the deploy asymmetry
@@ -278,22 +279,19 @@ before the annotation is ever checked; an empty table would satisfy it. So the
 constructors are not ceremony to be simplified away — delete them and the gate
 goes with them, silently, while every test stays green.
 
-What the gate does and does not say: every pair of the two vocabularies has to
-be ruled, so a member added to either one is a build failure here. It does NOT
-bind the two sets to each other — a further artifact era can be added without a
-further head era, and the reverse. What cannot happen is either one arriving
-unruled.
+What the gate does and does not say: every pair of eras has to be ruled, so a
+member added to `LedgerVersion` is a build failure here until its row and its
+column are both written. What cannot happen is an era arriving unruled.
 
-### Why the vocabularies stay separate
+### Two fields, one set of values
 
-`PipelineEra` and `LedgerVersion` name different facts. One says which era built
-the caller's artifact, the other which era the network head is on, and after the
-fork they DISAGREE: a retained-era call is recorded as a keep-state transaction
-tagged `'v9'` while `era` on its result says `'ledger8'`
-(`docs/adr/0011-tag-every-result-with-the-pipeline-that-produced-it.md`).
-Spelling both with one alphabet would put two identically-typed members holding
-different values on one result, and the disagreement the tag exists to express
-would read as a bug.
+A result's `era` and its record's `version` take the same values but name
+different facts. `era` says which era built the caller's artifact; `version`
+says which era recorded the transaction. After the fork they DISAGREE: a
+retained-era call is recorded as a keep-state transaction tagged `'v9'` while
+`era` on its result says `'v8'`
+(`docs/adr/0011-tag-every-result-with-the-pipeline-that-produced-it.md`). The
+field name carries the difference, not the spelling of the value.
 
 ### Why the lookups are still checked at run time
 
@@ -408,7 +406,7 @@ payload arm. A pre-fork head crosses as `{ version: 'v8', txBytes }`; a post-for
 head is keep-state, which composes on the CURRENT era and crosses as
 `{ version: 'v9', tx }`, because the tag names the runtime that produced the
 bytes and never the toolchain that produced the contract. Checking the artifact's
-era — `'ledger8'`, so `'v8'` — would refuse every keep-state operation whose
+era — `'v8'` — would refuse every keep-state operation whose
 wallet serves only the current era, which is the ordinary post-fork wallet.
 `provider-era-support.test.ts` pins both directions of that: keep-state with
 current-era-only providers is ADMITTED, and the same head with a provider serving
@@ -455,7 +453,7 @@ retained-era call is legitimately recorded by EITHER era — which is why the
 result type keeps `version` a union in the first place.
 
 What it does NOT assert is that the result's `era` and the record's `version`
-agree. They legitimately disagree: `era: 'ledger8'` with `version: 'v9'` IS a
+agree. They legitimately disagree: `era: 'v8'` with `version: 'v9'` IS a
 keep-state transaction. The agreement that has to hold is between the record and
 the head the operation started on.
 

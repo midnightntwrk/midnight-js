@@ -473,8 +473,7 @@ is the result type below, `Ledger8.Contract` the constraint for a helper of
 your own, `Ledger8.CallTxFailedError` the failure class. The era prefix is
 dropped inside, so each member is the retained twin of the flat current-era
 name it mirrors, where one exists. The half that serves BOTH eras --
-`AnyEraFinalizedCallTxData`, `isLedger8Result`, `AnyEraTxFailedError`, the
-`*_PIPELINE_ERA` vocabulary -- stays flat, so a handler that only receives
+`AnyEraFinalizedCallTxData`, `isLedger8Result`, `AnyEraTxFailedError` -- stays flat, so a handler that only receives
 results imports nothing era-specific. When the fork window closes, the whole
 namespace goes in one step; the fork-window refusals (`StaleHeadError` and the
 rest of that group) are published flat and go in a separate one.
@@ -490,13 +489,14 @@ in both eras.
 Six differences are worth knowing before you write a handler that has to accept
 either era.
 
-- **Every result names its era.** `result.era` is `'ledger8'` or `'ledger9'`,
-  read off the compiled artifact. Narrow with `isLedger8Result(result)`, and
+- **Every result names its era.** `result.era` is `'v8'` or `'v9'` (a
+  `LedgerVersion`, the same values as `public.version`), read off the compiled
+  artifact. Narrow with `isLedger8Result(result)`, and
   declare a parameter that accepts both with `AnyEraFinalizedCallTxData` or
   `AnyEraSubmittedCallTx`.
 - **`era` is not `public.version`.** `era` names the pipeline that produced the
   objects; `public.version` names the ledger that recorded the transaction.
-  After the fork they disagree for every retained-era call: `era: 'ledger8'`
+  After the fork they disagree for every retained-era call: `era: 'v8'`
   with `version: 'v9'` is a keep-state transaction, and that is correct. Branch
   on `era` to decide which module an object came from, on `version` before
   touching `public.tx`.
