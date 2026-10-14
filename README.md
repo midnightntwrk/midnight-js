@@ -3,7 +3,7 @@
 [![CI](https://github.com/midnightntwrk/midnight-js/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/midnightntwrk/midnight-js/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.12-green?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![GitHub Release](https://img.shields.io/github/v/release/midnightntwrk/midnight-js?logo=github)](https://github.com/midnightntwrk/midnight-js/releases)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/midnightntwrk/midnight-js/pulls)
 
@@ -15,7 +15,7 @@ TypeScript application development framework for the Midnight blockchain. Simila
 yarn add @midnight-ntwrk/midnight-js
 ```
 
-The barrel package covers contracts, types and utilities. Add the provider packages you use, for example those in the Quick Start below:
+The barrel package covers contracts, types, utilities and the protocol re-exports, through the subpaths `@midnight-ntwrk/midnight-js/contracts`, `/types`, `/utils` and `/protocol`. Providers are separate packages. Add the ones you use, for example those in the Quick Start below:
 
 ```bash
 yarn add @midnight-ntwrk/midnight-js-level-private-state-provider \
@@ -27,28 +27,24 @@ yarn add @midnight-ntwrk/midnight-js-level-private-state-provider \
 ## Quick Start
 
 ```typescript
-import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract } from '@midnight-ntwrk/midnight-js/contracts';
+import { createMidnightProvider, createWalletProvider } from '@midnight-ntwrk/midnight-js/types';
+import { createMidnightProviders } from '@midnight-ntwrk/midnight-js/utils';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
-import { createMidnightProvider, createWalletProvider } from '@midnight-ntwrk/midnight-js-types';
-import { createMidnightProviders } from '@midnight-ntwrk/midnight-js-utils';
+
+const password = process.env.PRIVATE_STATE_PASSWORD;
+if (!password) {
+  throw new Error('Set PRIVATE_STATE_PASSWORD');
+}
 
 const zkConfigProvider = new FetchZkConfigProvider('https://artifacts.example.com');
 
-// `wallet` is your wallet integration, for example one built on @midnight-ntwrk/wallet-sdk
-const walletProvider = createWalletProvider({
-  balanceTx: (tx, ttl) => wallet.balanceAndProveTransaction(tx, ttl),
-  getCoinPublicKey: () => wallet.coinPublicKey,
-  getEncryptionPublicKey: () => wallet.encryptionPublicKey
-});
-const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx));
-
-// createMidnightProviders checks the provider set at start-up
 const providers = createMidnightProviders({
   privateStateProvider: levelPrivateStateProvider({
-    privateStoragePasswordProvider: () => 'your-secure-password',
+    privateStoragePasswordProvider: () => password,
     accountId: 'user-wallet-address'
   }),
   publicDataProvider: indexerPublicDataProvider({
@@ -57,9 +53,9 @@ const providers = createMidnightProviders({
   }),
   zkConfigProvider,
   proofProvider: httpClientProofProvider({ url: 'https://proof-server.example.com', zkConfigProvider }),
-  walletProvider,
-  midnightProvider,
-  config: { networkId: 'preview', ttlSeconds: 3600 } // network and transaction TTL
+  walletProvider: createWalletProvider(myWallet),
+  midnightProvider: createMidnightProvider((tx) => myWallet.submitTx(tx)),
+  config: { networkId: 'preview', ttlSeconds: 3600 }
 });
 
 // Deploy a contract
@@ -73,15 +69,26 @@ const deployed = await deployContract(providers, {
 const result = await deployed.callTx.increment();
 ```
 
-`createWalletProvider` and `createMidnightProvider` serve the current ledger era only. A dApp that must also handle the retained era builds its providers with `createProofProviderFromHandlers`, `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers`. See [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-arms.md).
+What the snippet expects from you:
+
+- `myWallet` is your wallet integration. It implements `balanceTx`, `getCoinPublicKey` and `getEncryptionPublicKey`, and submits finalized transactions. For one built on `@midnightntwrk/wallet-sdk`, see [`MidnightWalletProvider`](testkit-js/testkit-js/src/wallet/midnight-wallet-provider.ts) in testkit-js.
+- `myContract` is your compiled Compact contract. See [Contracts](#contracts).
+- `PRIVATE_STATE_PASSWORD` encrypts private state at rest. It needs at least 16 characters, at least 3 of uppercase, lowercase, digits and special characters, no more than 3 identical characters in a row, and no sequences such as `1234` or `abcd`.
+- `createMidnightProviders` checks at start-up that every required provider and the `config` are present.
+
+### Ledger eras
+
+`httpClientProofProvider` proves transactions for both the current ledger era and the retained one (the era before the last hard fork). `createWalletProvider` and `createMidnightProvider` serve the current era only. To handle retained-era transactions too, build the wallet and midnight providers with `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers`. See [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-arms.md).
 
 ## Examples
 
-Complete, runnable dApps live in separate repositories:
+Complete dApps live in separate repositories:
 
 - [create-mn-app](https://github.com/midnightntwrk/create-mn-app): scaffolds a new Midnight project
 - [midnight-examples](https://github.com/midnightntwrk/midnight-examples)
-- [example-hello-world](https://github.com/midnightntwrk/example-hello-world), [example-bboard](https://github.com/midnightntwrk/example-bboard), [example-battleship](https://github.com/midnightntwrk/example-battleship), [example-dex](https://github.com/midnightntwrk/example-dex) and the other `example-*` repositories in the [midnightntwrk](https://github.com/midnightntwrk) organization
+- [example-hello-world](https://github.com/midnightntwrk/example-hello-world), [example-bboard](https://github.com/midnightntwrk/example-bboard) and [example-battleship](https://github.com/midnightntwrk/example-battleship)
+
+These repositories may track the latest stable release of Midnight.js rather than `main`, so their API calls can differ from the Quick Start above.
 
 ## Features
 
@@ -131,11 +138,11 @@ Complete, runnable dApps live in separate repositories:
 | PrivateStateProvider | @midnight-ntwrk/midnight-js-level-private-state-provider |
 | ProofProvider | @midnight-ntwrk/midnight-js-http-client-proof-provider or @midnight-ntwrk/midnight-js-dapp-connector-proof-provider |
 | ZKConfigProvider | @midnight-ntwrk/midnight-js-fetch-zk-config-provider |
-| DappConnector | @midnight-ntwrk/dapp-connector-api |
-| Wallet | @midnight-ntwrk/wallet |
-| Ledger | @midnight-ntwrk/ledger |
+| DappConnector | @midnightntwrk/dapp-connector-api |
+| Wallet | @midnightntwrk/wallet-sdk |
+| Ledger | @midnightntwrk/ledger-v9 (current era), @midnightntwrk/ledger-v8 (retained era) |
 | Compact Runtime | @midnight-ntwrk/compact-runtime |
-| Impact VM | @midnight-ntwrk/onchain-runtime |
+| Impact VM | @midnightntwrk/onchain-runtime-v4 (current era), @midnight-ntwrk/onchain-runtime-v3 (retained era) |
 
 ### Transaction Flow
 
@@ -147,13 +154,15 @@ Midnight.js uses a provider pattern for modularity. Each provider implements an 
 
 ```typescript
 interface MidnightProviders {
-  privateStateProvider: PrivateStateProvider;  // Private state storage
-  publicDataProvider: PublicDataProvider;      // Blockchain queries
-  zkConfigProvider: ZKConfigProvider;          // ZK artifact retrieval
-  proofProvider: ProofProvider;                // ZK proof generation
-  walletProvider: WalletProvider;              // Transaction balancing
-  midnightProvider: MidnightProvider;          // Transaction submission
-  loggerProvider?: LoggerProvider;             // Optional logging
+  readonly privateStateProvider: PrivateStateProvider;      // Private state storage
+  readonly publicDataProvider: PublicDataProvider;          // Blockchain queries
+  readonly zkConfigProvider: ZKConfigProvider;              // ZK artifact retrieval
+  readonly proofProvider: ProofProvider;                    // ZK proof generation
+  readonly walletProvider: WalletProvider;                  // Transaction balancing
+  readonly midnightProvider: MidnightProvider;              // Transaction submission
+  readonly config: MidnightConfig;                          // Network ID and transaction TTL
+  readonly contractModuleProvider?: ContractModuleProvider; // Cross-contract call modules
+  readonly loggerProvider?: LoggerProvider;                 // Optional logging
 }
 ```
 
