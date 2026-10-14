@@ -96,10 +96,10 @@ MN_TEST_WALLET_SEED="optional-seed-phrase"
 
 # Custom Environment (when env-var-remote)
 MN_TEST_NETWORK_ID="custom-network-id"
-MN_TEST_INDEXER="http://custom-indexer:3085/api/"
-MN_TEST_INDEXER_WS="ws://custom-indexer:3085/ws/"
-MN_TEST_NODE="http://custom-node:3086"
-MN_TEST_FAUCET="http://custom-faucet:3087"
+MN_TEST_INDEXER="https://custom-indexer:3085/api/"
+MN_TEST_INDEXER_WS="wss://custom-indexer:3085/ws/"
+MN_TEST_NODE="https://custom-node:3086"
+MN_TEST_FAUCET="https://custom-faucet:3087"
 ```
 
 ### Docker image versions
