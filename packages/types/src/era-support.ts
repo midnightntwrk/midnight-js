@@ -15,9 +15,9 @@
 
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { type ProviderSeam, SeamEraUnsupportedError } from './errors';
+import { ProviderEraUnsupportedError,type TransactionMethod } from './errors';
 
-/** What every provider on a transaction seam states about the eras it serves. */
+/** What every provider of a transaction method states about the eras it serves. */
 export interface EraDeclaringProvider {
   readonly supportedEras: readonly LedgerVersion[];
 }
@@ -27,10 +27,10 @@ export interface EraDeclaringProvider {
  * through them.
  *
  * Structural rather than the full `MidnightProviders` set, so the check can be
- * applied to any subset that happens to carry the three seams — including the
+ * applied to any subset that happens to carry the three providers — including the
  * reduced sets the contracts package threads through its internal entry points.
  */
-export interface TransactionSeams {
+export interface TransactionProviders {
   readonly proofProvider: EraDeclaringProvider;
   readonly walletProvider: EraDeclaringProvider;
   readonly midnightProvider: EraDeclaringProvider;
@@ -39,7 +39,7 @@ export interface TransactionSeams {
 // Declared and consulted in pipeline order — prove, balance, submit — so a set
 // with several gaps reports the one a caller would reach first rather than
 // whichever the check happened to notice.
-const SEAMS_IN_PIPELINE_ORDER: readonly (readonly [keyof TransactionSeams, ProviderSeam])[] = Object.freeze([
+const PROVIDERS_IN_PIPELINE_ORDER: readonly (readonly [keyof TransactionProviders, TransactionMethod])[] = Object.freeze([
   ['proofProvider', 'proveTx'],
   ['walletProvider', 'balanceTx'],
   ['midnightProvider', 'submitTx']
@@ -58,29 +58,29 @@ const declarationOf = (provider: EraDeclaringProvider): readonly string[] => {
 
 /**
  * Refuses an operation whose ledger era is not served by all three transaction
- * seams, before the operation does any work.
+ * providers, before the operation does any work.
  *
  * CALL THIS AT THE START OF AN OPERATION. The placement is the point: proving is
- * the expensive step and it is the first of the three seams.
+ * the expensive step and it is the first of the three transaction methods.
  *
- * It does not make the seams safe by itself. A declaration is a claim, so each
- * seam still narrows its own payload and still reports
+ * It does not make the providers safe by itself. A declaration is a claim, so each
+ * provider still narrows its own payload and still reports
  * `V8PayloadUnsupportedError` when a declaration turns out to be wrong.
  *
  * Generic in the era, so a further ledger era needs no change here.
  *
  * @param era The ledger era this operation will run on.
- * @param seams The three providers the transaction will pass through.
- * @throws SeamEraUnsupportedError naming the first seam, in pipeline order,
+ * @param providers The three providers the transaction will pass through.
+ * @throws ProviderEraUnsupportedError naming the first method, in pipeline order,
  *         that does not declare `era`.
- * @see {@link SeamEraDeclarations} for why the declaration is not trusted, and
+ * @see {@link ProviderEraDeclarations} for why the declaration is not trusted, and
  * why this refusal stays distinct from `V8PayloadUnsupportedError`.
  */
-export const assertSeamsSupportEra = (era: LedgerVersion, seams: TransactionSeams): void => {
-  for (const [key, seamName] of SEAMS_IN_PIPELINE_ORDER) {
-    const declared = declarationOf(seams[key]);
+export const assertProvidersSupportEra = (era: LedgerVersion, providers: TransactionProviders): void => {
+  for (const [key, methodName] of PROVIDERS_IN_PIPELINE_ORDER) {
+    const declared = declarationOf(providers[key]);
     if (!declared.includes(era)) {
-      throw new SeamEraUnsupportedError(seamName, era, declared);
+      throw new ProviderEraUnsupportedError(methodName, era, declared);
     }
   }
 };

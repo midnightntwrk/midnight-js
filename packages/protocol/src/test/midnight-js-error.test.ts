@@ -141,6 +141,10 @@ describe('protocol error classes', () => {
     expect(error.category).toBe(categoryOf(error.code));
   });
 
+  it.each(instances)('%s message never speaks of seams', (_name, error) => {
+    expect(error.message).not.toMatch(/\bseams?\b/i);
+  });
+
   it('reads the category of a dynamically coded error from the table', () => {
     // Act
     const error = new UnknownProtocolVersionError(99, 'read', 'unknown');

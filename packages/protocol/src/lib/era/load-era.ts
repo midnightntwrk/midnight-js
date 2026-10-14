@@ -47,11 +47,11 @@ export type { ContractBalance, ContractEntryPointPojo, ContractStatePojo } from 
 export type { LedgerEra } from './era';
 
 // One memo slot per era, never one shared slot, and both arms are frozen --
-// see SharedTableDiscipline and EraSeam.
+// see SharedTableDiscipline and EraBoundary.
 let v8EraPromise: Promise<LedgerEra> | undefined;
 let v9EraPromise: Promise<LedgerEra> | undefined;
 
-/** The v9 arm. Wholly synchronous -- see the EraSeam document. */
+/** The v9 arm. Wholly synchronous -- see the EraBoundary document. */
 const createV9Era = (): LedgerEra => {
   const era: LedgerEra = {
     version: 'v9',
@@ -66,7 +66,7 @@ const createV9Era = (): LedgerEra => {
 
 /**
  * The v8 arm. Acquires the retained pre-fork ledger and binds it into closure,
- * so the era's own methods stay synchronous -- see the EraSeam document for why
+ * so the era's own methods stay synchronous -- see the EraBoundary document for why
  * the acquisition is hoisted here.
  */
 const createV8Era = async (): Promise<LedgerEra> => {
@@ -102,7 +102,7 @@ const createV8Era = async (): Promise<LedgerEra> => {
  * @throws Ledger8RuntimeMissingError — as a rejection — if the retained
  * pre-fork runtime cannot be acquired. It propagates unchanged, carrying the
  * underlying cause.
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  * @see {@link SharedTableDiscipline}
  */
 export const loadLedgerEra = (version: LedgerVersion): Promise<LedgerEra> => {

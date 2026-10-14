@@ -22,7 +22,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import type { RetainedEraEntries } from '../era-entries';
-import { type EraEntryShape, type ProviderSeam, UnusableEraEntryError } from '../errors';
+import { type EraEntryShape, type TransactionMethod, UnusableEraEntryError } from '../errors';
 
 const PROVING_PROVIDER_METHODS = ['check', 'prove'] as const;
 
@@ -138,18 +138,18 @@ export const isObject = (value: unknown): boolean => typeof value === 'object' &
 
 const isRetainedEra = (key: string | symbol): boolean => RETAINED_LEDGER_VERSIONS.some((era) => era === key);
 
-const assertUsable = (seam: ProviderSeam, era: LedgerVersion, entry: unknown, shape: EraEntryShape): void => {
+const assertUsable = (method: TransactionMethod, era: LedgerVersion, entry: unknown, shape: EraEntryShape): void => {
   if (!IS_USABLE[shape](entry)) {
-    throw new UnusableEraEntryError(seam, era, shape, describeEntry(entry, shape));
+    throw new UnusableEraEntryError(method, era, shape, describeEntry(entry, shape));
   }
 };
 
 /**
  * @throws InvalidArgumentError if `value` is not a callable function.
  */
-export const assertFunction = (seam: ProviderSeam, name: string, value: unknown): void => {
+export const assertFunction = (method: TransactionMethod, name: string, value: unknown): void => {
   if (!isCallable(value)) {
-    throw new InvalidArgumentError(`${seam}: ${name} must be a function, got ${describeArgument(value)}.`);
+    throw new InvalidArgumentError(`${method}: ${name} must be a function, got ${describeArgument(value)}.`);
   }
 };
 
@@ -167,7 +167,7 @@ export interface EraEntries<C, H> {
  * of `retainedEras` are read, and the copy has no prototype, so an era
  * inherited from `Object.prototype` is never served.
  *
- * @param seam The provider method the entries serve, used in errors.
+ * @param method The provider method the entries serve, used in errors.
  * @param entries The current-era entry and the optional retained-era map.
  * @param shape What every entry must be.
  * @returns The current-era entry and a frozen copy of the retained entries supplied.
@@ -177,24 +177,24 @@ export interface EraEntries<C, H> {
  *         other than `undefined`, is not `shape`.
  */
 export const readEraEntries = <C, H>(
-  seam: ProviderSeam,
+  method: TransactionMethod,
   entries: { readonly currentEra: C; readonly retainedEras?: RetainedEraEntries<H> },
   shape: EraEntryShape
 ): EraEntries<C, H> => {
   if (!isObject(entries)) {
-    throw new InvalidArgumentError(`${seam}: expected an object with currentEra and an optional retainedEras, got ${describeArgument(entries)}.`);
+    throw new InvalidArgumentError(`${method}: expected an object with currentEra and an optional retainedEras, got ${describeArgument(entries)}.`);
   }
   const { currentEra, retainedEras } = entries;
-  assertUsable(seam, CURRENT_LEDGER_VERSION, currentEra, shape);
+  assertUsable(method, CURRENT_LEDGER_VERSION, currentEra, shape);
   if (retainedEras !== undefined && !isPlainObject(retainedEras)) {
     throw new InvalidArgumentError(
-      `${seam}: retainedEras must be a plain object keyed by retained era (${RETAINED_LEDGER_VERSIONS.join(', ')}), got ${describeArgument(retainedEras)}.`
+      `${method}: retainedEras must be a plain object keyed by retained era (${RETAINED_LEDGER_VERSIONS.join(', ')}), got ${describeArgument(retainedEras)}.`
     );
   }
   const unknownKeys = retainedEras === undefined ? [] : Reflect.ownKeys(retainedEras).filter((key) => !isRetainedEra(key));
   if (unknownKeys.length > 0) {
     throw new InvalidArgumentError(
-      `${seam}: retainedEras has keys that are not retained eras: ${unknownKeys.map(String).join(', ')}. ` +
+      `${method}: retainedEras has keys that are not retained eras: ${unknownKeys.map(String).join(', ')}. ` +
         `Expected only ${RETAINED_LEDGER_VERSIONS.join(', ')}.`
     );
   }
@@ -202,7 +202,7 @@ export const readEraEntries = <C, H>(
   for (const era of RETAINED_LEDGER_VERSIONS) {
     const entry = retainedEras !== undefined && Object.hasOwn(retainedEras, era) ? retainedEras[era] : undefined;
     if (entry !== undefined) {
-      assertUsable(seam, era, entry, shape);
+      assertUsable(method, era, entry, shape);
       copy[era] = entry;
     }
   }

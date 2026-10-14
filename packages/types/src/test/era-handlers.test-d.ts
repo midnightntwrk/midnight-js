@@ -58,8 +58,8 @@ describe('createProofProviderFromHandlers', () => {
   it('refuses a retained handler registered for the current era', () => {
     createProofProviderFromHandlers({
       currentEra: async () => stubUnbound(),
-      // @ts-expect-error the current era is not a retained era: it crosses the
-      // seam as a live ledger object, not as bytes.
+      // @ts-expect-error the current era is not a retained era: it is passed
+      // to the provider as a live ledger object, not as bytes.
       retainedEras: { v9: async (bytes: Uint8Array) => bytes }
     });
   });

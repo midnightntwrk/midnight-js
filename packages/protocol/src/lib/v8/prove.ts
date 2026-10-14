@@ -23,13 +23,13 @@ const TRANSACTION_TAG_PREFIX_BYTES = Uint8Array.from(TRANSACTION_TAG_PREFIX, (ch
 
 // Establishes that the bytes are a serialized TRANSACTION, and deliberately not
 // which era wrote them: both eras' tags open identically. The era is carried by
-// the `version` discriminant of the payload the seam received, and the runtime
+// the `version` discriminant of the payload `proveTx` received, and the runtime
 // re-validates the full tag when it deserializes.
 //
 // Compared byte-wise rather than by decoding a prefix to text: the input is
-// attacker-controlled at this seam.
+// attacker-controlled here.
 const assertSerializedTransaction = (txBytes: Uint8Array): void => {
-  // Checked despite the declared type: this is the seam an untyped caller
+  // Checked despite the declared type: this is the function an untyped caller
   // reaches, and reading `.byteLength` off whatever actually arrived would
   // raise a bare `TypeError` carrying no code.
   if (!(txBytes instanceof Uint8Array)) {
@@ -47,7 +47,7 @@ const assertSerializedTransaction = (txBytes: Uint8Array): void => {
  * Proves a retained-era transaction, taking serialized bytes and returning
  * serialized bytes.
  *
- * Bytes on both sides is the seam's contract, not an implementation detail: a
+ * Bytes on both sides is this function's contract, not an implementation detail: a
  * retained-era transaction cannot cross a provider boundary as a live object,
  * because the runtime that owns it is loaded lazily and its instances are not
  * interchangeable with the current era's.

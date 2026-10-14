@@ -165,7 +165,7 @@ const GUARANTEED_PAYOUT = 42n;
 const FALLIBLE_PAYOUT = 7n;
 
 /**
- * A transcript claiming a user-addressed spend in a token type this seam cannot
+ * A transcript claiming a user-addressed spend in a token type the compose path cannot
  * pay out. Built in the ledger's declared algebra like {@link payingTranscript},
  * so it reaches the arms as a caller's transcript does.
  */

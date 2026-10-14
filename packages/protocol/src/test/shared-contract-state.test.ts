@@ -315,7 +315,7 @@ describe('decodeContractStateWith carries the balance off a RETAINED-era state',
 
 // `DecodableContractState.balance` is structural and both vendors declare it
 // non-optional, so only an INJECTED decoder can answer without one. That is
-// exactly the seam worth failing loudly at: `new Map(undefined)` is an empty
+// exactly the place worth failing loudly at: `new Map(undefined)` is an empty
 // map, indistinguishable from a contract that holds nothing, which is the
 // substitution #1345 was made of.
 describe('decodeContractStateWith refuses a state that resolves no balance', () => {

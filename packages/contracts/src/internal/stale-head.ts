@@ -22,7 +22,7 @@
  * node minor release apart are the same era.
  *
  * This module does NOT sanitize. The rejection arrives already rebuilt as
- * {@link Ledger8SeamFailedError} by the seam wrapper in `./ledger8-entry.ts`;
+ * {@link Ledger8ProviderFailedError} by the provider-call wrapper in `./ledger8-entry.ts`;
  * do not add a second sanitizer here that could redact differently.
  *
  * @see {@link StaleHeadRemediation} for why a rejection is diagnosed at all,
@@ -75,7 +75,7 @@ const eraPosition = (era: LedgerVersion): number => LEDGER_VERSIONS.indexOf(era)
  * @param operation Which operation was rejected: the era it started against,
  * whether it is a call or a deploy, and the identifiers its remediation has to
  * name so a caller with several operations in flight can act on it.
- * @param rejection Whatever the submit seam rejected with — `unknown`, because
+ * @param rejection Whatever `submitTx` rejected with — `unknown`, because
  * a rejection is not obliged to be an `Error`.
  * @param logger The optional logger the post-rejection head reading is written to.
  * @returns Never; the returned promise always rejects.
@@ -100,7 +100,7 @@ export const handleSubmitRejection = async (
   // an uncoded rejection would then be diagnosed, and during a fork window,
   // the only time the head moves, it would come back as a confident fork
   // claim about a failure that never reached the network.
-  if (!hasErrorCode(rejection, CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED)) {
+  if (!hasErrorCode(rejection, CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED)) {
     throw rejection;
   }
 
@@ -127,7 +127,7 @@ export const handleSubmitRejection = async (
   const freshEra = freshReading.head;
   const movement = eraPosition(freshEra) - eraPosition(operation.head);
   if (movement === 0) {
-    // Not a fork. Re-thrown exactly as the seam wrapper built it.
+    // Not a fork. Re-thrown exactly as the provider-call wrapper built it.
     throw rejection;
   }
   if (movement < 0) {

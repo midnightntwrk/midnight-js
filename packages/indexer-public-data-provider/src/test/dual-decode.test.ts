@@ -21,7 +21,7 @@ import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
 import type { ProtocolV8 } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type LedgerVersion, protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { type ReadSeam, SucceedEntirely, type VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import { type ReadMethod, SucceedEntirely, type VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import { DeserializationError, hasErrorCode, PROVIDER_ERROR_CODES, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -157,7 +157,7 @@ describe('per-record dual decode on the finalized-transaction read path', () => 
     expect(toHex(record.tx.serialize())).toBe(v8TransactionHex);
   });
 
-  it('decodes a v8 deploy record on the deploy seam too', async () => {
+  it('decodes a v8 deploy record on watchForDeployTxData too', async () => {
     const record = await toFinalizedDeployTxData(
       CONTRACT_ADDRESS,
       transactionAt(V8_ERA_PROTOCOL_VERSION, v8TransactionHex)
@@ -182,12 +182,12 @@ describe('per-record dual decode on the finalized-transaction read path', () => 
   });
 });
 
-describe('the read surface returns the decoded record, on both seams and both eras', () => {
+describe('the read surface returns the decoded record, on both read methods and both eras', () => {
   it.each([
     ['v9', V9_ERA_PROTOCOL_VERSION, (): string => v9TransactionHex],
     ['v8', V8_ERA_PROTOCOL_VERSION, (): string => v8TransactionHex]
   ])('watchForDeployTxData serves a %s record end to end', async (era, protocolVersion, raw) => {
-    // The only end-to-end coverage of the deploy seam. `watchForDeployTxData`
+    // The only end-to-end coverage of watchForDeployTxData. `watchForDeployTxData`
     // builds its record in a trailing `.then` after the poll, so a dropped or
     // mis-wired continuation there would otherwise surface no test at all.
     const provider = deployProviderReturning(transactionAt(protocolVersion, raw()));
@@ -235,7 +235,7 @@ describe('the read surface returns the decoded record, on both seams and both er
       'watchForDeployTxData',
       (raw: string) => toFinalizedDeployTxData(CONTRACT_ADDRESS, distinctRecord(V9_ERA_PROTOCOL_VERSION, raw))
     ]
-  ])('%s carries every metadata field through, and none of them transposed', async (_seam, build) => {
+  ])('%s carries every metadata field through, and none of them transposed', async (_method, build) => {
     const record = await build(v9TransactionHex);
 
     expect({ ...record, tx: 'omitted' }).toEqual({
@@ -408,7 +408,7 @@ describe('a decode that fails is reported by the layer that diagnosed it', () =>
   it.each([
     ['the era it dispatched to', 'era', 'v8'],
     ['the raw protocolVersion', 'protocolVersion', V8_ERA_PROTOCOL_VERSION],
-    ['the seam', 'seam', 'watchForTxData'],
+    ['the read method', 'method', 'watchForTxData'],
     ['the record', 'recordRef', `txId ${TX_ID}`]
   ])('names %s on the failure, so one of several concurrent watches is identifiable', async (_label, key, value) => {
     const error = await rejectionOf(
@@ -418,13 +418,13 @@ describe('a decode that fails is reported by the layer that diagnosed it', () =>
     expect((error as DeserializationError).context.details?.[key]).toBe(value);
   });
 
-  it('names the contract address on the deploy seam, not just the transaction id', async () => {
+  it('names the contract address on watchForDeployTxData, not just the transaction id', async () => {
     const error = await rejectionOf(
       toFinalizedDeployTxData(CONTRACT_ADDRESS, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
     );
 
     const details = (error as DeserializationError).context.details;
-    expect(details?.seam).toBe('watchForDeployTxData');
+    expect(details?.method).toBe('watchForDeployTxData');
     expect(details?.recordRef).toBe(`contractAddress ${CONTRACT_ADDRESS}`);
   });
 
@@ -562,9 +562,9 @@ describe('an era that resolves to no decoder at all', () => {
   // typed, so the cast is how a test reproduces that skew inside one build.
   // Without the guard the era-keyed lookup on a null prototype would answer
   // `undefined` and the read would fail somewhere further down instead of here.
-  const decodeWithEra = (era: string, seam: ReadSeam = 'watchForTxData', recordRef = `txId ${TX_ID}`): Promise<unknown> =>
+  const decodeWithEra = (era: string, method: ReadMethod = 'watchForTxData', recordRef = `txId ${TX_ID}`): Promise<unknown> =>
     decodeVersionedTransaction(v9TransactionHex, era as LedgerVersion, {
-      seam,
+      method,
       protocolVersion: V9_ERA_PROTOCOL_VERSION,
       recordRef
     });
@@ -579,13 +579,13 @@ describe('an era that resolves to no decoder at all', () => {
     }
   );
 
-  it('carries the era, the raw protocolVersion, the seam and the record', async () => {
+  it('carries the era, the raw protocolVersion, the method and the record', async () => {
     const error = await rejectionOf(decodeWithEra('v7', 'watchForDeployTxData', `contractAddress ${CONTRACT_ADDRESS}`));
 
     const unsupported = error as EraUnsupportedError;
     expect(unsupported.era).toBe('v7');
     expect(unsupported.protocolVersion).toBe(V9_ERA_PROTOCOL_VERSION);
-    expect(unsupported.seam).toBe('watchForDeployTxData');
+    expect(unsupported.method).toBe('watchForDeployTxData');
     expect(unsupported.recordRef).toBe(`contractAddress ${CONTRACT_ADDRESS}`);
   });
 

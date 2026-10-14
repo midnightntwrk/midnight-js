@@ -71,7 +71,7 @@ describe('resolveReadEra', () => {
 
       expect(error).toBeInstanceOf(EraUnresolvableError);
       expect(hasErrorCode(error, PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE)).toBe(true);
-      expect((error as EraUnresolvableError).seam).toBe('watchForTxData');
+      expect((error as EraUnresolvableError).method).toBe('watchForTxData');
     });
 
     it('names the record, so one of several concurrent watches can be identified', () => {

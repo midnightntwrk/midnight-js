@@ -84,7 +84,7 @@ describe('createWalletProvider', () => {
 
     expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
     expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
-    expect((rejection as V8PayloadUnsupportedError).seam).toBe('balanceTx');
+    expect((rejection as V8PayloadUnsupportedError).method).toBe('balanceTx');
     expect(impl.balanceTx).not.toHaveBeenCalled();
   });
 
@@ -100,7 +100,7 @@ describe('createWalletProvider', () => {
       );
 
     expect(rejection).toBeInstanceOf(UntaggedPayloadError);
-    expect((rejection as UntaggedPayloadError).seam).toBe('balanceTx');
+    expect((rejection as UntaggedPayloadError).method).toBe('balanceTx');
     expect(impl.balanceTx).not.toHaveBeenCalled();
   });
 
@@ -142,7 +142,7 @@ describe('createMidnightProvider', () => {
 
     expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
     expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
-    expect((rejection as V8PayloadUnsupportedError).seam).toBe('submitTx');
+    expect((rejection as V8PayloadUnsupportedError).method).toBe('submitTx');
     expect(submit).not.toHaveBeenCalled();
   });
 

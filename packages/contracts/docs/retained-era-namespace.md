@@ -82,7 +82,7 @@ A name belongs in the namespace when BOTH hold:
 
 The second clause is what the namespace's name commits to: it is `Ledger8`, the
 ERA, not the fork window. The error classes pass both clauses and are inside: a
-consumer catching `Ledger8.SeamFailedError` has written code that only means
+consumer catching `Ledger8.ProviderFailedError` has written code that only means
 anything while that pipeline runs.
 
 A name that serves BOTH eras stays on the flat surface, so a consumer that only

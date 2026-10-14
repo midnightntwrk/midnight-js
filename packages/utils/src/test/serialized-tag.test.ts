@@ -70,7 +70,7 @@ describe('parseSerializedTag', () => {
     ['no colon at all', utf8('justbytes')],
     ['invalid UTF-8 in the prefix', new Uint8Array([0xff, 0xfe, COLON_BYTE, 0x76, COLON_BYTE])]
   ])('states a concrete remediation next step on %s', (_name, bytes) => {
-    expect(() => parseSerializedTag(bytes)).toThrow(/verify the payload came from a sanctioned serialization seam/);
+    expect(() => parseSerializedTag(bytes)).toThrow(/verify the payload came from a sanctioned serialization source/);
   });
 
   it('surfaces the original TextDecoder failure as the typed error cause on invalid UTF-8', () => {
@@ -85,7 +85,7 @@ describe('parseSerializedTag', () => {
   it('parses the bracketed version segment the ledger runtimes actually emit', () => {
     // Minted here rather than hardcoded: the tag is whatever the pinned
     // runtime writes, and a runtime that changed its tag shape should fail
-    // this test rather than quietly go unparsed at a provider seam.
+    // this test rather than quietly go unparsed in a provider method.
     const serialized = new ContractState().serialize();
 
     const parsed = parseSerializedTag(serialized);

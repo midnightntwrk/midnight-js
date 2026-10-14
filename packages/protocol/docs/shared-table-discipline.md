@@ -223,4 +223,4 @@ would cost.
   selected, and how the failure classes divide the work between them.
 - [ModuleGraphAndLazyLoading](./module-graph-and-lazy-loading.md) — why `LEDGER_VERSIONS` lives in a leaf module,
   and which modules are build entries.
-- [EraSeam](./era-seam.md) — why the era arms are memoised per era and what crosses the seam.
+- [EraBoundary](./era-boundary.md) — why the era arms are memoised per era and what crosses the boundary.

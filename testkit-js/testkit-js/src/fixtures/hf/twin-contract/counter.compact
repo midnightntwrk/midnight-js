@@ -1,4 +1,4 @@
-// Minimal SECOND contract for the Stage-3 engine/plug-in seam acceptance test.
+// Minimal SECOND contract for the Stage-3 engine/plug-in boundary acceptance test.
 // A single public counter with one impure circuit `increment()`. Authored ONLY
 // against the engine interfaces (this contract has NO shared code with bboard):
 // it exercises a DIFFERENT ledger shape (a Counter), a DIFFERENT op set (a single

@@ -199,7 +199,7 @@ facade all come from the same reading.
 
 The facade is acquired at the operation's asynchronous start so every era
 operation downstream is synchronous and nothing deeper in the pipeline has to
-await a runtime; see `packages/protocol/docs/era-seam.md`.
+await a runtime; see `packages/protocol/docs/era-boundary.md`.
 
 Nothing is cached across calls. Two operations read the head twice,
 deliberately, because an era reading that has fallen behind cannot be recognised
@@ -246,7 +246,7 @@ current era's single-call path buys no head read, so it has nothing to compare
 an artifact against. The scoped path does pay for one, which is why a scope on a
 pre-fork head is refused (`ScopedTxEraUnsupportedError`) and a single call on the
 same head is not. A current-era call against a pre-fork head therefore fails
-LATE — at a provider seam or at the node — rather than at this table.
+LATE — at a provider method or at the node — rather than at this table.
 
 Do not read the table as a guarantee that all four cells fail fast. Lifting that
 means buying a head read on the current era's single-call path, and the cost is
@@ -377,7 +377,7 @@ guards the INBOUND direction of a v9-only provider. These guard the outbound
 direction: a v8 answer here is a broken provider, not an unsupported request, so
 it reports `EraInvariantViolationError` rather than `V8PayloadUnsupportedError`.
 
-The seam types do not tie a provider's output era to its input era, so this
+The provider method types do not tie a provider's output era to its input era, so this
 runtime check is what upholds that invariant for these flows. `PublicDataProvider`
 reports both eras, and the v9-only flows reject a v8-era record here rather than
 widening their own public return types.
@@ -386,11 +386,11 @@ widening their own public return types.
 
 The table above pairs the ARTIFACT's era with the NETWORK's. A third pairing
 exists and is checked separately: the era an operation runs on against the eras
-the three write seams say they serve.
+the three transaction providers say they serve.
 
-`assertSeamsSupportEra(era, providers)` from `@midnight-ntwrk/midnight-js-types`
+`assertProvidersSupportEra(era, providers)` from `@midnight-ntwrk/midnight-js-types`
 reads `supportedEras` off `proofProvider`, `walletProvider` and
-`midnightProvider`, in that order, and refuses with `SeamEraUnsupportedError`
+`midnightProvider`, in that order, and refuses with `ProviderEraUnsupportedError`
 naming the first that does not list `era`.
 
 This package calls it in exactly two places, one per pipeline:
@@ -398,20 +398,20 @@ This package calls it in exactly two places, one per pipeline:
 | pipeline | call site | era checked |
 | -------- | --------- | ----------- |
 | retained | `acquireLedger8Runtime`, immediately after `assertEraCompatible` | `resolved.head` |
-| current | `submitTxCore`, before the first seam call | `CURRENT_LEDGER_VERSION` |
+| current | `submitTxCore`, before the first provider call | `CURRENT_LEDGER_VERSION` |
 
 Two things about that table are easy to get wrong.
 
 The era checked on the retained pipeline is the HEAD era, not the artifact's.
 That is not a shortcut — it is what `submitLedger8Tx` switches on to pick the
-seam arm. A pre-fork head crosses as `{ version: 'v8', txBytes }`; a post-fork
+payload arm. A pre-fork head crosses as `{ version: 'v8', txBytes }`; a post-fork
 head is keep-state, which composes on the CURRENT era and crosses as
 `{ version: 'v9', tx }`, because the tag names the runtime that produced the
 bytes and never the toolchain that produced the contract. Checking the artifact's
 era — `'ledger8'`, so `'v8'` — would refuse every keep-state operation whose
 wallet serves only the current era, which is the ordinary post-fork wallet.
-`seam-era-support.test.ts` pins both directions of that: keep-state with
-current-era-only seams is ADMITTED, and the same head with a seam serving
+`provider-era-support.test.ts` pins both directions of that: keep-state with
+current-era-only providers is ADMITTED, and the same head with a provider serving
 neither is refused naming `'v9'`.
 
 One call site per pipeline, not one per entry point. `acquireLedger8Runtime` is
@@ -423,18 +423,18 @@ just the read surface. That type is deliberately narrow: the head source plus th
 three declarations, and nothing else, so a reader can see that acquisition reads
 no more than it says.
 
-### Why the pre-flight check does not replace the per-seam narrowing
+### Why the pre-flight check does not replace the per-method narrowing
 
 `supportedEras` is a CLAIM by an implementation, and nothing verifies it. A
-provider that lists an era it cannot serve still fails at the seam, with
-`V8PayloadUnsupportedError` — the narrowing at each seam is unchanged and is what
+provider that lists an era it cannot serve still fails in the method, with
+`V8PayloadUnsupportedError` — the narrowing in each method is unchanged and is what
 actually upholds the arm. The two errors stay distinct because their remedies
-differ: `SeamEraUnsupportedError` means wire a different provider,
+differ: `ProviderEraUnsupportedError` means wire a different provider,
 `V8PayloadUnsupportedError` means the provider you wired does not do what it
 said.
 
 What the check buys is WHERE the refusal lands. Proving is the expensive step
-and the first of the three seams, so a wallet that cannot balance a retained-era
+and the first of the three transaction methods, so a wallet that cannot balance a retained-era
 transaction otherwise costs a full proving cycle before anything notices. Read up
 front, the same gap costs one comparison. `v8-native.test.ts` pins that
 directly: the wallet-gap and submitter-gap cases assert `proveTx` was never

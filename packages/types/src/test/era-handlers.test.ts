@@ -24,7 +24,7 @@ import type {
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expect, it, vi } from 'vitest';
 
-import { PROVIDER_ERROR_CODES, type ProviderSeam, UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
+import { PROVIDER_ERROR_CODES, type TransactionMethod, UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
 import {
   createMidnightProviderFromHandlers,
   type MidnightProviderHandlers
@@ -85,7 +85,7 @@ describe('createProofProviderFromHandlers', () => {
     expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
   });
 
-  // The declaration is read by the pre-flight check in `assertSeamsSupportEra`,
+  // The declaration is read by the pre-flight check in `assertProvidersSupportEra`,
   // so a consumer must not be able to widen it after construction and make the
   // check pass for an era the handlers do not serve.
   it('freezes the declaration', () => {
@@ -105,7 +105,7 @@ describe('createProofProviderFromHandlers', () => {
     expect(currentEra).toHaveBeenCalledWith(unproven, { timeout: 5 });
     expect(result.version).toBe('v9');
     // Identity, not structural equality: two structurally-equal ledger objects
-    // can come from different WASM instances, which is what these seams exist
+    // can come from different WASM instances, which is what these provider methods exist
     // to keep apart.
     expect(result.version === 'v9' && result.tx).toBe(unbound);
   });
@@ -148,7 +148,7 @@ describe('createProofProviderFromHandlers', () => {
 
     expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
     expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
-    expect((rejection as V8PayloadUnsupportedError).seam).toBe('proveTx');
+    expect((rejection as V8PayloadUnsupportedError).method).toBe('proveTx');
     expect(currentEra).not.toHaveBeenCalled();
   });
 
@@ -164,7 +164,7 @@ describe('createProofProviderFromHandlers', () => {
       );
 
     expect(rejection).toBeInstanceOf(UntaggedPayloadError);
-    expect((rejection as UntaggedPayloadError).seam).toBe('proveTx');
+    expect((rejection as UntaggedPayloadError).method).toBe('proveTx');
     expect(currentEra).not.toHaveBeenCalled();
   });
 });
@@ -241,7 +241,7 @@ describe('createWalletProviderFromHandlers', () => {
 
     expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
     expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
-    expect((rejection as V8PayloadUnsupportedError).seam).toBe('balanceTx');
+    expect((rejection as V8PayloadUnsupportedError).method).toBe('balanceTx');
     expect(currentEra).not.toHaveBeenCalled();
   });
 
@@ -349,7 +349,7 @@ describe('createMidnightProviderFromHandlers', () => {
     expect(txId).toBe('tx-id');
   });
 
-  // A transaction id is era-independent, so this seam answers untagged in both
+  // A transaction id is era-independent, so submitTx answers untagged in both
   // eras — the retained handler differs only in what it is handed.
   it('drives the retained-era handler with the bare bytes and returns its id', async () => {
     const requested = new Uint8Array([9]);
@@ -376,7 +376,7 @@ describe('createMidnightProviderFromHandlers', () => {
 
     expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
     expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
-    expect((rejection as V8PayloadUnsupportedError).seam).toBe('submitTx');
+    expect((rejection as V8PayloadUnsupportedError).method).toBe('submitTx');
     expect(currentEra).not.toHaveBeenCalled();
   });
 
@@ -409,14 +409,14 @@ describe('era entry validation at construction', () => {
   // Each factory is fed `unknown` handlers on purpose: the cases below are the
   // values a JavaScript caller can pass but the types rule out.
   const factories: readonly {
-    readonly seam: ProviderSeam;
+    readonly method: TransactionMethod;
     readonly currentEra: unknown;
     readonly retainedHandler: () => unknown;
     readonly otherHandlers: object;
     readonly create: (handlers: unknown) => BuiltProvider;
   }[] = [
     {
-      seam: 'proveTx',
+      method: 'proveTx',
       currentEra: async () => stubUnbound(),
       retainedHandler: () => vi.fn(async () => servedBytes),
       otherHandlers: {},
@@ -430,7 +430,7 @@ describe('era entry validation at construction', () => {
       }
     },
     {
-      seam: 'balanceTx',
+      method: 'balanceTx',
       currentEra: async () => stubFinalized(),
       retainedHandler: () => vi.fn(async () => servedBytes),
       otherHandlers: keyReaders,
@@ -444,7 +444,7 @@ describe('era entry validation at construction', () => {
       }
     },
     {
-      seam: 'submitTx',
+      method: 'submitTx',
       currentEra: async () => 'tx-id' as TransactionId,
       retainedHandler: () => vi.fn(async () => 'v8-tx-id' as TransactionId),
       otherHandlers: {},
@@ -459,7 +459,7 @@ describe('era entry validation at construction', () => {
     }
   ];
 
-  describe.each(factories)('for $seam', ({ seam, currentEra, retainedHandler, otherHandlers, create }) => {
+  describe.each(factories)('for $method', ({ method, currentEra, retainedHandler, otherHandlers, create }) => {
     const build = (entries: { readonly currentEra: unknown; readonly retainedEras?: unknown }): BuiltProvider =>
       create({ ...otherHandlers, ...entries });
 
@@ -488,7 +488,7 @@ describe('era entry validation at construction', () => {
         expect.objectContaining({
           name: 'UnusableEraEntryError',
           code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY,
-          seam,
+          method,
           era: 'v8',
           expected: 'handler',
           received
@@ -507,7 +507,7 @@ describe('era entry validation at construction', () => {
         expect.objectContaining({
           name: 'UnusableEraEntryError',
           code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY,
-          seam,
+          method,
           era: 'v9',
           expected: 'handler',
           received

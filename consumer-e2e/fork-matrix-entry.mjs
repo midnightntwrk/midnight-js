@@ -114,7 +114,7 @@ for (const event of ['uncaughtException', 'unhandledRejection']) {
 /**
  * An error, its stack, and every `cause` beneath it.
  *
- * The chain is the point. `Ledger8SeamFailedError` says only that a seam
+ * The chain is the point. `Ledger8ProviderFailedError` says only that a provider
  * rejected and puts the provider's own failure -- class name intact, message
  * redacted -- on `cause`, so a report that prints `error.message` alone says a
  * transaction was refused and never says by what. That is what happened on the
@@ -178,7 +178,7 @@ const leg = async (name, run, ms = LEG_TIMEOUT) => {
   } catch (error) {
     // The stack and the cause chain, not just the message: a WASM class-identity
     // failure says only "expected instance of X" and is undiagnosable without the
-    // frame it came from, and a seam refusal names the provider only on `cause`.
+    // frame it came from, and a provider refusal names the provider only on `cause`.
     const message = describeError(error);
     observed[name] = `FAILED: ${message}`;
     failures.push(`${name}: ${message}`);
@@ -1673,7 +1673,7 @@ await probe('pre-fork deploy of a current-era contract', async () => {
 // them is re-measured.
 //
 // What someone editing these lines has to know, and no more: the call is
-// composed, proven and balanced against a real pre-fork head, and the only seam
+// composed, proven and balanced against a real pre-fork head, and the only method
 // wrapped is `midnightProvider.submitTx`. The framework code under test is
 // `handleSubmitRejection`, in `packages/contracts/src/internal/stale-head.ts`.
 
@@ -1681,7 +1681,7 @@ await probe('pre-fork deploy of a current-era contract', async () => {
 const DRIVES_STALE_HEAD = covers(SELECTED.retained, 'simple');
 
 /**
- * A provider set whose submission is HELD at the seam until it is let go.
+ * A provider set whose submission is HELD at `submitTx` until it is let go.
  *
  * Two exits, and the difference is not cosmetic. `release()` SUBMITS: the bytes
  * reach the real node, and what comes back is the answer a verdict leg reads.
@@ -1697,21 +1697,21 @@ const DRIVES_STALE_HEAD = covers(SELECTED.retained, 'simple');
  *
  * @param providers The provider set to wrap.
  * @returns The wrapped set, a promise that settles when the submission reaches
- * the seam, and the two ways to let it go.
+ * `submitTx`, and the two ways to let it go.
  */
 const parkSubmission = (providers) => {
-  const seam = providers.midnightProvider;
-  let reachSeam;
+  const midnightProvider = providers.midnightProvider;
+  let reachSubmit;
   let letGo;
-  const reachedSeam = new Promise((resolve) => {
-    reachSeam = resolve;
+  const reachedSubmit = new Promise((resolve) => {
+    reachSubmit = resolve;
   });
   // Resolves with whether the submission is to be ABANDONED rather than sent.
   const letGone = new Promise((resolve) => {
     letGo = resolve;
   });
   return {
-    reachedSeam,
+    reachedSubmit,
     release: () => letGo(false),
     discard: () => letGo(true),
     providers: {
@@ -1720,13 +1720,13 @@ const parkSubmission = (providers) => {
         // Carried over, never restated. The era gate reads this before the
         // operation starts, and a wrapper that narrowed it would refuse the very
         // payload these legs exist to submit.
-        supportedEras: seam.supportedEras,
+        supportedEras: midnightProvider.supportedEras,
         submitTx: async (tx) => {
-          reachSeam(tx.version);
+          reachSubmit(tx.version);
           if (await letGone) {
             throw new Error('the parked submission was discarded rather than sent');
           }
-          return seam.submitTx(tx);
+          return midnightProvider.submitTx(tx);
         }
       }
     }
@@ -1737,7 +1737,7 @@ const parkSubmission = (providers) => {
  * What a parked call is given to compose, prove and balance.
  *
  * A call's FULL round trip measured ~18s -- see `IN_FLIGHT_CALL_TIMEOUT` -- and a
- * parked one stops at the submit seam, so it is shorter than that. Three minutes
+ * parked one stops at `submitTx`, so it is shorter than that. Three minutes
  * is deliberate headroom over a slow prover, not a fitted figure.
  */
 const PARK_TIMEOUT = 3 * 60_000;
@@ -1751,11 +1751,11 @@ const describeParkFailure = (settled) => {
   }
   return settled.outcome === 'admitted'
     ? `it was admitted as ${settled.txId}`
-    : `it failed before the seam: ${describeError(settled.error)}`;
+    : `it failed before submitTx: ${describeError(settled.error)}`;
 };
 
 /**
- * Starts a baseline call and returns once it is parked at the submit seam.
+ * Starts a baseline call and returns once it is parked at `submitTx`.
  *
  * `submitCallTxAsync`, NOT `submitCallTx`. The second waits on `watchForTxData`,
  * which has no timeout and never returns for a transaction the network declines
@@ -1764,7 +1764,7 @@ const describeParkFailure = (settled) => {
  * instead of as itself. These legs assert on a rejection AT SUBMIT and have no
  * use for a finalized record.
  *
- * Bounded on its own and FATALLY so: a call that never reaches the seam is still
+ * Bounded on its own and FATALLY so: a call that never reaches `submitTx` is still
  * proving or balancing, and stepping over it would leave an operation holding
  * the wallet every leg below draws on, to surface later under another contract's
  * name. That is the hazard `withDeadline` is written about. It is discarded
@@ -1776,7 +1776,7 @@ const describeParkFailure = (settled) => {
  * @param providers The provider set the call runs on, already carrying whatever
  * the calling leg injects.
  * @returns The two ways to let the submission go, the promise of what the
- * framework made of it, and the era arm the payload crossed the seam on.
+ * framework made of it, and the era arm the payload was submitted on.
  * @throws LegTimeoutError if the call never parks; the run stops there.
  * @throws Error if the call finished or failed instead of parking.
  */
@@ -1800,7 +1800,7 @@ const parkBaselineCall = async (name, providers) => {
     (error) => ({ outcome: 'refused', txId: undefined, error })
   );
   const first = await Promise.race([
-    parked.reachedSeam.then((version) => ({ payloadVersion: version, settled: undefined })),
+    parked.reachedSubmit.then((version) => ({ payloadVersion: version, settled: undefined })),
     settles.then((settled) => ({ payloadVersion: undefined, settled })),
     delay(PARK_TIMEOUT, undefined, { ref: false }).then(() => ({ payloadVersion: undefined, settled: undefined }))
   ]);
@@ -1809,7 +1809,7 @@ const parkBaselineCall = async (name, providers) => {
     if (first.settled === undefined) {
       throw new LegTimeoutError(name, PARK_TIMEOUT);
     }
-    throw new Error(`the call never reached the submit seam: ${describeParkFailure(first.settled)}`, {
+    throw new Error(`the call never reached submitTx: ${describeParkFailure(first.settled)}`, {
       cause: first.settled.error
     });
   }
@@ -1891,8 +1891,8 @@ const withHeadReadAnswer = (real, answer) =>
  * composition through the keep-state pipeline, a real proof and a real
  * balancing.
  *
- * The injected rejection is uncoded, which is deliberate -- `atSeam` wraps it
- * into the same `Ledger8SeamFailedError` a provider's own failure would arrive
+ * The injected rejection is uncoded, which is deliberate -- `atProviderMethod` wraps it
+ * into the same `Ledger8ProviderFailedError` a provider's own failure would arrive
  * as, so the diagnosis sees exactly the shape it gates on.
  *
  * @param headAnswer What the head re-read should do once the submission has been
@@ -1900,7 +1900,7 @@ const withHeadReadAnswer = (real, answer) =>
  * real one, which is what makes the era the operation starts on real too.
  * @returns The error the entry point rejected with, how many times the injected
  * reading was consulted, and the era arm the payload took.
- * @throws Error if the call was admitted, which would mean the injected seam
+ * @throws Error if the call was admitted, which would mean the injected `submitTx`
  * never ran.
  */
 const callWithRefusedSubmission = async (headAnswer) => {
@@ -1938,7 +1938,7 @@ const callWithRefusedSubmission = async (headAnswer) => {
     (error) => ({ outcome: 'refused', txId: undefined, error })
   );
   if (outcome.outcome === 'admitted') {
-    throw new Error(`the call was admitted as ${outcome.txId} although the submit seam refused it`);
+    throw new Error(`the call was admitted as ${outcome.txId} although submitTx refused it`);
   }
   return { error: outcome.error, injectedHeadReads, submittedVersion };
 };
@@ -1980,7 +1980,7 @@ let parkedStaleHead;
 let preForkProtocolVersion;
 
 if (DRIVES_STALE_HEAD) {
-  await leg('park a retained call at the submit seam', async () => {
+  await leg('park a retained call at submitTx', async () => {
     if (deployment === undefined) {
       throw new Error('the pre-fork baseline deploy did not complete, so there is nothing to call');
     }
@@ -1999,14 +1999,14 @@ if (DRIVES_STALE_HEAD) {
     // literal would make that leg a statement about this environment's version
     // numbering rather than about the diagnosis.
     preForkProtocolVersion = await session.providers.publicDataProvider.queryLatestProtocolVersion();
-    parkedStaleHead = await parkBaselineCall('park a retained call at the submit seam', session.providers);
-    // The arm the payload crossed the seam on is the only direct evidence that
+    parkedStaleHead = await parkBaselineCall('park a retained call at submitTx', session.providers);
+    // The arm the payload was submitted on is the only direct evidence that
     // this call was composed against a pre-fork head. Judged HERE, where the
     // answer is precise, rather than left to surface a leg later as a refusal
     // that reads like a framework regression.
     if (parkedStaleHead.payloadVersion !== 'v8') {
       throw new Error(
-        `the parked call crossed the seam on '${parkedStaleHead.payloadVersion}', not on the retained arm`
+        `the parked call was submitted on '${parkedStaleHead.payloadVersion}', not on the retained arm`
       );
     }
     return { payload: parkedStaleHead.payloadVersion, preForkProtocolVersion };
@@ -2071,8 +2071,8 @@ if (DRIVES_STALE_HEAD && parkedStaleHead !== undefined) {
       'a retained call parked across the fork is refused as STALE',
       parkedStaleHead
     );
-    // The whole chain, and the refusal on `cause`: a `Ledger8SeamFailedError`
-    // says only that a seam rejected and puts the provider's own failure on
+    // The whole chain, and the refusal on `cause`: a `Ledger8ProviderFailedError`
+    // says only that a provider rejected and puts the provider's own failure on
     // `cause`, so a message alone would say a transaction was refused and never
     // say by what -- on the most likely red this leg has.
     if (!(refusal instanceof StaleHeadError)) {
@@ -2372,7 +2372,7 @@ if (covers(SELECTED.retained, 'unshielded')) {
       }, context);
     } catch (error) {
       const described = describeError(error);
-      // Only a SEAM refusal is the pass. An unresolvable import, a provider
+      // Only a PROVIDER refusal is the pass. An unresolvable import, a provider
       // misconfiguration, an indexer 5xx, a `LegTimeoutError` or any harness
       // `TypeError` would otherwise be recorded as the ledger checking the
       // balance -- which would make the surviving-balance row above decorative
@@ -2381,25 +2381,25 @@ if (covers(SELECTED.retained, 'unshielded')) {
       // `balanceTx` and `submitTx` both count, and `proveTx` does not: a
       // balance the contract cannot serve is refused either when the
       // transaction is balanced or when the node re-runs it, but never by the
-      // prover. `Ledger8SeamFailedError` renders `<seam> rejected`, and
+      // prover. `Ledger8ProviderFailedError` renders `<method> rejected`, and
       // `describeError` walks the cause chain, so the shape is readable here.
       //
       // The framework's OWN guards -- `executeCircuit` refusing a balance, the
       // pipeline refusing an envelope -- run inside this `try` too, and they are
-      // not seam refusals, so they land in the branch below rather than being
+      // not provider refusals, so they land in the branch below rather than being
       // read as the ledger doing its job. That is deliberate: a framework that
       // refused to build the transaction at all would prove nothing about what
       // the ledger checks.
       if (!/(?:balanceTx|submitTx) rejected/.test(described)) {
         throw new Error(
-          'the oversized send failed, but not with a seam refusal, so this leg proves nothing about the ' +
+          'the oversized send failed, but not with a provider refusal, so this leg proves nothing about the ' +
             `ledger checking the balance:\n${described}`,
           { cause: error }
         );
       }
       // `submitTx` is the NODE. It re-ran the transcript against the balance the
       // contract really holds and disagreed, which is exactly the finding this
-      // leg is after, and nothing else reaches that seam.
+      // leg is after, and nothing else reaches that method.
       //
       // Recorded rather than swallowed so the run carries which failure shape
       // answered -- a node rejection and a balancing refusal are different

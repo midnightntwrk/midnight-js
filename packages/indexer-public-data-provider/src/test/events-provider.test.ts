@@ -27,7 +27,7 @@ const ADDRESS = '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcde
 
 /**
  * Builds a provider around a real ApolloClient whose `query`/`subscribe` are
- * spy-able instance methods — the cleanest seam without reaching into the
+ * spy-able instance methods — the cleanest place to stub without reaching into the
  * provider's private handle.
  */
 const buildProvider = () => {
@@ -42,7 +42,7 @@ const buildProvider = () => {
 /**
  * `ApolloClient['subscribe']` is typed against Apollo's result envelope; the tests drive it with
  * plain rxjs sources, which are runtime-compatible but not assignable. Confines the one unavoidable
- * cast to a single seam instead of repeating it at every mock site.
+ * cast to a single place instead of repeating it at every mock site.
  */
 const mockSubscribe = (client: ApolloClient, results: Rx.Observable<unknown>) =>
   vi.spyOn(client, 'subscribe').mockReturnValue(results as unknown as ReturnType<ApolloClient['subscribe']>);

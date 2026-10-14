@@ -37,8 +37,8 @@ export {
   Ledger8DeployOnV9Error as DeployOnV9Error,
   Ledger8DeployTxFailedError as DeployTxFailedError,
   Ledger8DeployUnconfirmedError as DeployUnconfirmedError,
+  Ledger8ProviderFailedError as ProviderFailedError,
   Ledger8RecipientUnmappableError as RecipientUnmappableError,
-  Ledger8SeamFailedError as SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError as ShieldedSpendUnsupportedError,
   Ledger8SigningKeyUnusableError as SigningKeyUnusableError
 } from './errors';

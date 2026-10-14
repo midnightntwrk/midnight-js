@@ -291,5 +291,11 @@ Issue #1489. The decision is unchanged; only names change.
   `era-entries.ts`. In `ProvingProvidersByEra.retainedEras` the entries are
   `ProvingProvider`s, not handlers, so the type takes the word the amendment
   above already chose for both.
+- "seam" leaves the public names, as recorded in
+  [ADR-0006](./0006-version-tagged-payloads-at-provider-seams.md):
+  `assertSeamsSupportEra` is `assertProvidersSupportEra`, `TransactionSeams` is
+  `TransactionProviders`, `SeamEraUnsupportedError` is
+  `ProviderEraUnsupportedError`, and `seam-era-declarations.md` is
+  `provider-era-declarations.md`.
 
 The amendments above keep the names that were current when they were written.

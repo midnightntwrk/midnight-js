@@ -74,14 +74,14 @@ docstring resolves to it.
 
 | Document | What it explains |
 |---|---|
-| [Era seam](./docs/era-seam.md) | Why only bytes and plain objects cross between the eras, how the eight operations are split between `LedgerEra` and `Ledger8Engine`, and the memoisation rules |
+| [Era boundary](./docs/era-boundary.md) | Why only bytes and plain objects cross between the eras, how the eight operations are split between `LedgerEra` and `Ledger8Engine`, and the memoisation rules |
 | [Retained-era execution](./docs/retained-era-execution.md) | The down-conversion stages, the Merkle rehash requirement, the era pin, and what a `TranscriptPojo` carries |
 | [Dual-instantiation guard](./docs/dual-instantiation-guard.md) | What a duplicate WASM install does in the argument position versus the receiver position, and why the guard is a correctness requirement rather than a diagnostic |
 | [Fail-closed decoding](./docs/fail-closed-decoding.md) | Why the envelope is the only authority over the bytes, and the division of labour between the three decode failures |
 | [Compose refusal order](./docs/compose-refusal-order.md) | The order in which both era arms refuse compose options, and the one deliberate difference between them |
 | [Verifier keys](./docs/verifier-keys.md) | Registration rules, the refusals that stop a deploy landing at an address the caller's artifacts do not describe, and why the address cannot be recomputed |
 | [Module graph and lazy loading](./docs/module-graph-and-lazy-loading.md) | Build entries, the `./v8` and `./engine` chunks, the import cycle avoided by a leaf module, and why a vendor's types are named with `import type` |
-| [Injected vendor slices](./docs/injected-vendor-slices.md) | How a seam names the vendor class it takes by injection — derived from the vendor's own class, declared structurally, or narrowed — and what each choice buys |
+| [Injected vendor slices](./docs/injected-vendor-slices.md) | How a function names the vendor class it takes by injection — derived from the vendor's own class, declared structurally, or narrowed — and what each choice buys |
 | [Cross-era operation registry](./docs/cross-era-operation-registry.md) | What actually crosses the fork boundary when a dormant retained-era contract is called, why re-expressing its operations is faithful rather than a substitution, and why the primary state is left at its default |
 | [Shared table discipline](./docs/shared-table-discipline.md) | Why the shared tables are frozen and null-prototyped, and why exhaustiveness is enforced at compile time as well as at run time |
 

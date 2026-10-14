@@ -15,7 +15,7 @@
 
 import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { ReadSeam } from '@midnight-ntwrk/midnight-js-types';
+import type { ReadMethod } from '@midnight-ntwrk/midnight-js-types';
 import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types/errors';
 import type { GraphQLFormattedError } from 'graphql';
 
@@ -371,7 +371,7 @@ export class EraUnsupportedError extends IndexerError {
   readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.ERA_UNSUPPORTED];
 
   /**
-   * @param seam The read-surface method that performed the decode.
+   * @param method The read method that performed the decode.
    * @param era The era the decoder table was asked for.
    * @param protocolVersion The raw integer the indexer reported.
    * @param recordRef The record this happened on — a transaction id or a
@@ -379,7 +379,7 @@ export class EraUnsupportedError extends IndexerError {
    *                  concurrently cannot otherwise tell which one rejected.
    */
   constructor(
-    readonly seam: ReadSeam,
+    readonly method: ReadMethod,
     readonly era: LedgerVersion,
     readonly protocolVersion: number,
     readonly recordRef?: string
@@ -388,7 +388,7 @@ export class EraUnsupportedError extends IndexerError {
     // era came from a resolver this build does not know the vocabulary of, so
     // the message reports them as two separate facts.
     super(
-      `${seam} was asked to decode with ledger era '${era}', which this build has no decoder for` +
+      `${method} was asked to decode with ledger era '${era}', which this build has no decoder for` +
         `${recordRef === undefined ? '' : ` (record ${recordRef}, indexer-reported protocolVersion ${protocolVersion})`}` +
         `. This client decodes only the ledger eras it ships runtimes for. Pass an era this build supports, or ` +
         `upgrade to a release that knows this one.`
@@ -418,19 +418,19 @@ export class EraUnresolvableError extends IndexerError {
   readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE];
 
   /**
-   * @param seam The read-surface method that attempted to resolve the era.
+   * @param method The read method that attempted to resolve the era.
    * @param protocolVersion The raw value the indexer reported.
    * @param options Carries the originating error on `cause`.
    * @param recordRef The record this happened on, when known.
    */
   constructor(
-    readonly seam: ReadSeam,
+    readonly method: ReadMethod,
     readonly protocolVersion: number,
     options: { cause: unknown },
     readonly recordRef?: string
   ) {
     super(
-      `${seam} read a record whose protocolVersion (${protocolVersion}) maps to no known ledger era` +
+      `${method} read a record whose protocolVersion (${protocolVersion}) maps to no known ledger era` +
         `${recordRef === undefined ? '' : ` (${recordRef})`}. ` +
         `This framework maps node major versions 1 and 2; point this provider at a network in that range.`,
       options

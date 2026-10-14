@@ -46,7 +46,7 @@ before it builds anything:
 That second check catches loss at every depth — a shortened array, a dropped
 map entry, a changed cell, a substituted subtree — rather than only a wholesale
 collapse to `null`. It costs one extra encode plus a deep comparison per call,
-and that is deliberate: the alternative is a seam that can hand a circuit
+and that is deliberate: the alternative is an execution path that can hand a circuit
 silently wrong data.
 
 It is CROSS-CODEC in production, which is the point. A contract an earlier
@@ -60,7 +60,7 @@ way a shape one side writes and the other merely tolerates would decode without
 complaint.
 
 It is also reachable with the REAL decoder, not only an injected one — which
-matters, because the seam takes a bare `EncodedStateValue` a caller can
+matters, because execution takes a bare `EncodedStateValue` a caller can
 assemble by hand. Measured against the pinned runtime: a map whose entries are
 in non-canonical order decodes and re-encodes canonicalised, and a value
 carrying a member the decoder does not declare loses it. Both are refused.
@@ -108,7 +108,7 @@ layer in. Total, because `Map.prototype`'s members reject a foreign receiver: a
 proxied map and an object that merely inherits the prototype both make `size`
 and iteration throw, and a guard reading them plainly propagates that `TypeError`
 instead of refusing. Neither can serve as a balance — `new Map(...)` throws on
-the same receiver — so both are refused, carrying this seam's diagnosis rather
+the same receiver — so both are refused, carrying this module's diagnosis rather
 than the vendor's.
 
 ## Structural equality over the encoded algebra
@@ -146,7 +146,7 @@ The retired layer carried `assertMerkleTreesRehashed`, which walked a decoded
 `StateValue` and refused any bounded Merkle tree whose node hashes had not been
 computed. It did not come back with the round trip, and the reason is not that
 the condition became unlikely — it is that the condition cannot be expressed in
-what this seam receives.
+what execution receives.
 
 Execution takes an already-encoded `EncodedStateValue`. A tree's rehash state
 does not survive that encoding. Measured against the pinned runtime: a
@@ -158,7 +158,7 @@ The retired suite had already recorded the same fact from the other side —
 "a real `encode()`/`decode()` round trip materializes tree hashes, so the only
 way a never-rehashed tree can reach the walk is an injected decode" — and every
 negative test it had for the walk drove it through a fake decoder. The current
-seam has no injection point, so a guard here would be one that cannot fire.
+execution path has no injection point, so a guard here would be one that cannot fire.
 
 `MerkleNotRehashedError` stays on the published surface with its code, rather
 than disappearing from a consumer's error taxonomy as a side effect of an
@@ -171,8 +171,8 @@ tree encodes as its height and leaves, never its node hashes, so a tree whose
 internal hashes were re-materialized differently across the fork boundary still
 re-encodes byte-identically here — which is the same vendor property the
 section above rests on, read from the other direction. Comparing roots across
-the boundary needs the source-side tree, which this seam never sees; it belongs
-at the envelope seam.
+the boundary needs the source-side tree, which execution never sees; it belongs
+at the envelope.
 
 ## The era pin
 
@@ -208,7 +208,7 @@ A caller still passes the CONSTRUCTED artifact the previous toolchain
 generates, which is not compact-js's `CompiledContract`: that container is a
 recipe, a class plus witnesses instantiated fresh per operation, while this
 era's callers hold an instance whose witnesses are already bound. `containerFor`
-adapts one to the other at this seam, in one place, so the adaptation does not
+adapts one to the other here, in one place, so the adaptation does not
 land on every consumer — and it is the single type assertion the module needs.
 
 The retained era has no cross-contract call, so its execution adapter

@@ -26,7 +26,7 @@
  * `./keep-state.test.ts` is the same contract, the same recording and the same
  * pipeline against a POST-FORK head. Read the two together: the only thing
  * that differs is which era object the pipeline is handed, and which arm of the
- * provider seams the result crosses on.
+ * provider payloads the result is passed as.
  */
 import { readFileSync } from 'node:fs';
 import { inspect } from 'node:util';
@@ -55,8 +55,8 @@ import {
   FailEntirely,
   FailFallible,
   ProofServerError,
+  ProviderEraUnsupportedError,
   type RawContractState,
-  SeamEraUnsupportedError,
   type TxStatus,
   UntaggedPayloadError,
   V8PayloadUnsupportedError,
@@ -84,8 +84,8 @@ import {
   Ledger8DeployOnV9Error,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
+  Ledger8ProviderFailedError,
   Ledger8RecipientUnmappableError,
-  Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
   Ledger8SigningKeyUnusableError,
   VerifierKeyMismatchError
@@ -181,14 +181,14 @@ const STAND_IN_VERIFIER_KEY = Uint8Array.from(
   readFileSync(hfFixturePath('twin-contract', 'compiled', 'keys', 'increment.verifier'))
 );
 
-/** What each provider seam was handed, captured for assertion. */
+/** What each provider method was handed, captured for assertion. */
 interface SeenPayloads {
   proveTx?: VersionedTx<unknown>;
   balanceTx?: VersionedTx<unknown>;
   submitTx?: VersionedFinalizedTransaction;
 }
 
-/** The network id and intent TTL of the retained-era transaction a seam was handed. */
+/** The network id and intent TTL of the retained-era transaction a provider method was handed. */
 const retainedTxFacts = async (tx: VersionedTx<unknown> | undefined): Promise<{ networkId?: string; ttl?: Date }> => {
   if (tx?.version !== 'v8') throw new Error(`Expected a v8 transaction, got ${String(tx?.version)}`);
   const decoded = (await loadLedger8()).Transaction.deserialize('signature', 'pre-proof', 'pre-binding', tx.txBytes);
@@ -197,7 +197,7 @@ const retainedTxFacts = async (tx: VersionedTx<unknown> | undefined): Promise<{ 
   return { networkId: /network_id: "([^"]*)"/.exec(decoded.toString(false))?.[1], ttl: intent?.ttl };
 };
 
-/** The retained overload's provider set, plus what its seams were handed. */
+/** The retained overload's provider set, plus what its methods were handed. */
 type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeof CIRCUIT_ID> & {
   readonly seen: SeenPayloads;
 };
@@ -263,7 +263,7 @@ const recordingPayingUser = (recording: CoinReceiverRecording, coinPublicKey: st
 };
 
 /**
- * The per-stage markers each write seam appends to the bytes it answers with.
+ * The per-stage markers each transaction method appends to the bytes it answers with.
  *
  * Distinct, and distinct from anything the era composes, so "these bytes came
  * out of proveTx" is a checkable claim rather than an assumption.
@@ -274,7 +274,7 @@ const BALANCED_MARKER = Uint8Array.from([0xf0, 0x0d, 0x02]);
 /**
  * The retained-arm payload with a stage marker appended to its bytes.
  *
- * @param payload The payload the seam was handed.
+ * @param payload The payload the method was handed.
  * @param marker The marker for the stage that is answering.
  * @returns The same arm, carrying the input bytes plus the marker.
  */
@@ -291,7 +291,7 @@ const withStageMarker = (payload: VersionedTx<unknown>, marker: Uint8Array): Ver
 /**
  * The bytes a retained-arm payload carries, for a chaining assertion.
  *
- * @param payload The payload a seam was handed.
+ * @param payload The payload a method was handed.
  * @returns Its bytes, or `undefined` if it is not the retained arm.
  */
 const retainedBytes = (payload: VersionedTx<unknown> | undefined): Uint8Array | undefined =>
@@ -300,7 +300,7 @@ const retainedBytes = (payload: VersionedTx<unknown> | undefined): Uint8Array | 
 /**
  * Whether `bytes` ends with every marker in `markers`, in order.
  *
- * @param bytes The bytes a seam received.
+ * @param bytes The bytes a method received.
  * @param markers The stage markers expected at the tail, earliest first.
  * @returns `true` if the tail matches.
  */
@@ -314,7 +314,7 @@ const endsWithMarkers = (bytes: Uint8Array | undefined, markers: readonly Uint8A
 
 /**
  * The provider set both retained-era describes start from: a pre-fork head,
- * the committed envelope, and a recorder on each of the three seams.
+ * the committed envelope, and a recorder on each of the three transaction methods.
  *
  * Module scope rather than a closure inside one `describe`, because the attach
  * suite below needs the same set and a second copy would drift from this one.
@@ -391,12 +391,12 @@ const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
   // The recording was made against this coin public key, and the replay
   // engine refuses to replay for any other one.
   providers.walletProvider.getCoinPublicKey = (): string => recording.coinPublicKey;
-  // The three seams, implemented against the version-tagged interfaces
+  // The three transaction methods, implemented against the version-tagged interfaces
   // directly rather than through `createWalletProvider`/`createMidnightProvider`:
   // those adapters lift a CURRENT-ERA-ONLY implementation and refuse the
   // retained arm by design, which is asserted as its own negative below.
   //
-  // Each write seam answers with DISTINCT bytes -- its input with its own stage
+  // Each transaction method answers with DISTINCT bytes -- its input with its own stage
   // marker appended. Identity mocks (`(tx) => tx`) made every mis-chaining
   // invisible: `balanceTx({ txBytes })` in place of
   // `balanceTx({ txBytes: proven })` passed the whole suite while submitting an
@@ -795,7 +795,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     const offerIgnoringEra: LedgerEra = {
       ...recorded,
       // Drops the factory on the floor, exactly as a third-party era that never
-      // read the seam's contract would.
+      // read the era boundary's contract would.
       composeCallTx: ({ zswapOffer: _ignored, ...rest }) => recorded.composeCallTx(rest)
     };
 
@@ -1201,14 +1201,14 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(finalized.private.newCoins).toEqual([]);
   });
 
-  it('hands every provider seam the RETAINED arm, as serialized bytes carrying the retained tag', async () => {
+  it('hands every provider method the RETAINED arm, as serialized bytes carrying the retained tag', async () => {
     const providers = preForkProviders(v6Envelope);
 
     await submitCallTx(providers, callOptions());
 
     // The WRITE surface's retained arm carries `txBytes`, not `tx` -- these are
     // genuinely different unions, and the read surface's retained arm carries
-    // `tx`. Each is asserted against the shape its own seam declares.
+    // `tx`. Each is asserted against the shape its own method declares.
     for (const payload of [providers.seen.proveTx, providers.seen.balanceTx, providers.seen.submitTx]) {
       expect(payload).toBeDefined();
       expect(payload?.version).toBe('v8');
@@ -1218,7 +1218,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     }
 
     // THE CHAIN, asserted stage by stage. The three assertions above are the
-    // same claim three times over -- each seam got SOMETHING retained-tagged --
+    // same claim three times over -- each method got SOMETHING retained-tagged --
     // and every one of them passes when the stages are wired in the wrong
     // order. These are what fail then: `balanceTx` must receive what `proveTx`
     // answered, and `submitTx` must receive what `balanceTx` answered.
@@ -1510,12 +1510,12 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });
 
-  it('refuses at the FIRST seam, proveTx, when a proof provider serves the current era only', async () => {
+  it('refuses at the FIRST method, proveTx, when a proof provider serves the current era only', async () => {
     // `createProofProvider` lifts a current-era-only proving implementation,
     // which is what a dApp has until its providers are widened. That provider
     // DECLARES the current era only, and the operation reads that declaration
     // before it composes anything -- so the refusal names `proveTx`, the first
-    // of the three seams, and the proving implementation below is never
+    // of the three transaction methods, and the proving implementation below is never
     // reached. That is asserted rather than assumed.
     let provingReached = false;
     const provingProvider: ProvingProvider = {
@@ -1538,18 +1538,18 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(SeamEraUnsupportedError);
-    expect((caught as SeamEraUnsupportedError).seam).toBe('proveTx');
-    expect((caught as SeamEraUnsupportedError).era).toBe('v8');
+    expect(caught).toBeInstanceOf(ProviderEraUnsupportedError);
+    expect((caught as ProviderEraUnsupportedError).method).toBe('proveTx');
+    expect((caught as ProviderEraUnsupportedError).era).toBe('v8');
     expect(provingReached).toBe(false);
     expect(providers.walletProvider.balanceTx).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
   });
 
-  it('refuses at the balanceTx seam when only the wallet serves the current era, WITHOUT proving first', async () => {
-    // Covered separately from the first seam, because reaching it proves
-    // something different. The refusal is PER SEAM, so a partly widened
-    // provider set is refused at whichever seam has not been widened rather
+  it('refuses at balanceTx when only the wallet serves the current era, WITHOUT proving first', async () => {
+    // Covered separately from the first method, because reaching it proves
+    // something different. The refusal is PER PROVIDER, so a partly widened
+    // provider set is refused at whichever provider has not been widened rather
     // than slipping through the ones that have -- and, because the check reads
     // declarations up front, the refusal lands BEFORE the proof this wallet
     // could never have balanced was paid for. `proveTx` not having been called
@@ -1571,13 +1571,13 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(SeamEraUnsupportedError);
-    expect((caught as SeamEraUnsupportedError).seam).toBe('balanceTx');
+    expect(caught).toBeInstanceOf(ProviderEraUnsupportedError);
+    expect((caught as ProviderEraUnsupportedError).method).toBe('balanceTx');
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
   });
 
-  it('refuses at the submitTx seam when only the submission provider serves the current era', async () => {
+  it('refuses at submitTx when only the submission provider serves the current era', async () => {
     const providers: RetainedProviders = {
       ...preForkProviders(v6Envelope),
       midnightProvider: createMidnightProvider(() => Promise.reject(new Error('never reached')))
@@ -1590,8 +1590,8 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(SeamEraUnsupportedError);
-    expect((caught as SeamEraUnsupportedError).seam).toBe('submitTx');
+    expect(caught).toBeInstanceOf(ProviderEraUnsupportedError);
+    expect((caught as ProviderEraUnsupportedError).method).toBe('submitTx');
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
     expect(providers.walletProvider.balanceTx).not.toHaveBeenCalled();
   });
@@ -1632,7 +1632,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // submitted retained-era bytes, so a `'v9'` record describes a transaction
     // this operation cannot have produced.
     //
-    // The current era already refuses the mirror of this at the same seam, via
+    // The current era already refuses the mirror of this in the same read method, via
     // `requireV9Record`. This is the retained arm's half, and it compares the
     // record against the HEAD rather than against a fixed era, because a
     // retained-era call is legitimately recorded by EITHER era.
@@ -1647,7 +1647,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
     expect(rejection).toBeInstanceOf(EraInvariantViolationError);
     expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
-    expect((rejection as EraInvariantViolationError).seam).toBe('watchForTxData');
+    expect((rejection as EraInvariantViolationError).method).toBe('watchForTxData');
     // The era this operation could accept is the HEAD's own, NOT the class's
     // `'v9'` default -- which is the whole difference from `requireV9Record`.
     expect((rejection as EraInvariantViolationError).expected).toBe('v8');
@@ -1714,13 +1714,13 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
     // The CODE, not only the class: a consumer that cannot import this package's
     // classes -- a JavaScript caller, or one narrowing across a bundle boundary
     // -- branches on `code`, so that is the surface the negative has to pin.
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED)).toBe(true);
-    expect((caught as Ledger8SeamFailedError).seam).toBe('proveTx');
-    expect((caught as Ledger8SeamFailedError).circuitId).toBe(CIRCUIT_ID);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED)).toBe(true);
+    expect((caught as Ledger8ProviderFailedError).method).toBe('proveTx');
+    expect((caught as Ledger8ProviderFailedError).circuitId).toBe(CIRCUIT_ID);
 
     // SERIALIZED the way a logger would serialize it -- own properties, cause
     // chain and all -- and then checked for the fixture bytes. This assertion
@@ -1732,7 +1732,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // And the check is not vacuous: those bytes really are in the raw rejection.
     expect(inspect(rejection, { depth: null })).toContain(leakedStateHex);
 
-    // Still diagnostic: the seam survives, and the redaction marker says where
+    // Still diagnostic: the method survives, and the redaction marker says where
     // the material was removed rather than leaving a silently truncated message.
     expect(serialized).toContain('proveTx');
     const cause = (caught as { readonly cause?: unknown }).cause;
@@ -1742,7 +1742,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
   it('refuses a provider that answers this PRE-FORK flow in the current era, naming the era it expected', async () => {
     const providers = preForkProviders(v6Envelope);
-    // The mirror of the keep-state case: nothing in the seam types ties a
+    // The mirror of the keep-state case: nothing in the provider method types ties a
     // provider's output era to its input era, so a provider that accepted
     // retained-era bytes and answered with a current-era handle is checked
     // rather than assumed. `expected` is what says WHICH direction was
@@ -1757,7 +1757,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     }
 
     expect(caught).toBeInstanceOf(EraInvariantViolationError);
-    expect((caught as EraInvariantViolationError).seam).toBe('proveTx');
+    expect((caught as EraInvariantViolationError).method).toBe('proveTx');
     expect((caught as EraInvariantViolationError).circuitId).toBe(CIRCUIT_ID);
     expect((caught as EraInvariantViolationError).expected).toBe('v8');
     // The message has to name the era too, or a caller reading a log rather
@@ -1767,7 +1767,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
   it('refuses an UNTAGGED payload from a provider on the pre-fork flow', async () => {
     const providers = preForkProviders(v6Envelope);
-    // A JavaScript caller's provider, or one built before the seams were
+    // A JavaScript caller's provider, or one built before the provider methods were
     // version-tagged: it answers with no `version` at all. Reported as an
     // untagged payload rather than assumed to be either era.
     providers.proofProvider.proveTx = vi.fn().mockResolvedValue(undefined);
@@ -1779,7 +1779,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     const providers = preForkProviders(v6Envelope);
     // The sanitizing wrapper must not swallow the refusal a current-era-only
     // provider raises: a caller narrowing on it would otherwise see a generic
-    // seam failure and lose the one diagnosis that says "widen your provider".
+    // provider failure and lose the one diagnosis that says "widen your provider".
     providers.proofProvider.proveTx = vi.fn().mockRejectedValue(new V8PayloadUnsupportedError('proveTx', 42));
 
     await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(V8PayloadUnsupportedError);
@@ -1800,12 +1800,12 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     const caught = await submitCallTx(providers, callOptions()).catch((error: unknown) => error);
 
     // Assert
-    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
     expect(inspect(caught, { depth: null, showHidden: true })).not.toContain(leakedStateHex);
     expect(inspect(caught, { depth: null, showHidden: true })).toContain('Proof Server request failed');
   });
 
-  it('re-reads the head on a SUBMIT rejection and, finding the same era, re-throws the seam failure', async () => {
+  it('re-reads the head on a SUBMIT rejection and, finding the same era, re-throws the provider failure', async () => {
     const providers = preForkProviders(v6Envelope);
     providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
 
@@ -1815,9 +1815,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     } catch (error) {
       caught = error;
     }
-    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED)).toBe(true);
-    expect((caught as Ledger8SeamFailedError).seam).toBe('submitTx');
+    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED)).toBe(true);
+    expect((caught as Ledger8ProviderFailedError).method).toBe('submitTx');
 
     // TWO head reads: one for the routing, and one on the rejection to ask
     // whether the network moved under this call. This head has not moved, so
@@ -1827,14 +1827,14 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(2);
   });
 
-  it('does not re-read the head when a rejection comes from a seam OTHER than submit', async () => {
+  it('does not re-read the head when a rejection comes from a method OTHER than submit', async () => {
     const providers = preForkProviders(v6Envelope);
     // A proving failure cannot mean the network moved -- the proof server
     // touches no chain state -- so asking the network about it would be a round
     // trip that could not change the answer.
     providers.proofProvider.proveTx = vi.fn().mockRejectedValue(new Error('proof server refused the request'));
 
-    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(Ledger8SeamFailedError);
+    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(Ledger8ProviderFailedError);
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
   });
 
@@ -2261,7 +2261,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
     const rendered = inspect(caught, { depth: null, showHidden: true });
     expect(rendered).not.toContain(payloadHex);
     // Non-vacuity: the payload IS in the raw rejection, so its absence above is
@@ -2288,7 +2288,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
     const rendered = inspect(caught, { depth: null });
     expect(rendered).toContain('fetch failed');
     expect(rendered).toContain('ECONNREFUSED');
@@ -2315,7 +2315,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
     const rendered = inspect(caught, { depth: null, showHidden: true });
     expect(rendered).toContain('::1:6300');
     expect(rendered).toContain('127.0.0.1:6300');
@@ -2361,7 +2361,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       } catch (error) {
         return inspect(error, { depth: null, showHidden: true });
       }
-      throw new Error('the seam did not reject');
+      throw new Error('the provider did not reject');
     };
 
     it.each(REDACTED_CASES)('redacts %s', async (_label, payload) => {
@@ -2381,8 +2381,8 @@ describe('the retained-native pipeline through the unchanged entry points', () =
   it('cannot be made to throw FROM ITS OWN CATCH BLOCK by an unrenderable rejection', async () => {
     const providers = preForkProviders(v6Envelope);
     // `String(Object.create(null))` throws. Unguarded, that TypeError would
-    // replace the provider's rejection entirely -- no seam, no circuit, and the
-    // original value gone -- so the seam machinery would report its own bug as
+    // replace the provider's rejection entirely -- no method, no circuit, and the
+    // original value gone -- so the provider-call wrapper would report its own bug as
     // the application's.
     providers.proofProvider.proveTx = vi.fn().mockRejectedValue(Object.create(null));
 
@@ -2393,9 +2393,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
-    expect((caught as Ledger8SeamFailedError).seam).toBe('proveTx');
-    expect((caught as Ledger8SeamFailedError).circuitId).toBe(CIRCUIT_ID);
+    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
+    expect((caught as Ledger8ProviderFailedError).method).toBe('proveTx');
+    expect((caught as Ledger8ProviderFailedError).circuitId).toBe(CIRCUIT_ID);
   });
 
 });
@@ -2519,7 +2519,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(deployed.deployTxData.version).toBe('v8');
     expect(deployed.deployTxData.txId).toBe(retainedEraRecord().txId);
     expect(Object.keys(deployed.callTx)).toEqual([CIRCUIT_ID]);
-    // The retained tag on the bytes that crossed the write seams, which is what
+    // The retained tag on the bytes that were passed to the transaction providers, which is what
     // says the RETAINED ledger composed this deployment.
     expect(providers.seen.proveTx?.version).toBe('v8');
   });
@@ -2991,7 +2991,7 @@ describe('deploying a retained-era contract through deployContract', () => {
   it('refuses a wallet that cannot carry the era before the ZK config provider is asked for a single key', async () => {
     const base = deployProviders();
     // A v9-only wallet on a pre-fork head. A proof is the expensive step and the first of the
-    // three, so a seam that cannot take this payload has to be found before one is paid for -- and
+    // three, so a provider that cannot take this payload has to be found before one is paid for -- and
     // before anything is fetched on its behalf.
     const providers: RetainedProviders = {
       ...base,
@@ -3006,7 +3006,7 @@ describe('deploying a retained-era contract through deployContract', () => {
       .mockRejectedValue(new Error('retained-era ZK config is no longer served'));
 
     await expect(deployContract(providers, { compiledContract: contract })).rejects.toBeInstanceOf(
-      SeamEraUnsupportedError
+      ProviderEraUnsupportedError
     );
     expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
   });
@@ -3044,13 +3044,13 @@ describe('deploying a retained-era contract through deployContract', () => {
     }
 
     // One refusal for every way the record fails to arrive usable, with the era violation kept on
-    // `cause` -- so the condition a caller branches on, its seam and its registered code are all
+    // `cause` -- so the condition a caller branches on, its method and its registered code are all
     // still reachable, and the original stack is not thrown away.
     expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
     const cause = (caught as Ledger8DeployUnconfirmedError).cause;
     expect(cause).toBeInstanceOf(EraInvariantViolationError);
     expect(hasErrorCode(cause, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
-    expect((cause as EraInvariantViolationError).seam).toBe('watchForDeployTxData');
+    expect((cause as EraInvariantViolationError).method).toBe('watchForDeployTxData');
     // The transaction is already on the network by the time this is raised, so discarding the key
     // here leaves whatever does finalize permanently unmaintainable.
     expect((caught as Ledger8DeployUnconfirmedError).signingKey).toBe(SAMPLED_SIGNING_KEY);
@@ -3563,7 +3563,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     await expect(findDeployedContract(providers, attachOptions())).rejects.toBeInstanceOf(UntaggedPayloadError);
   });
 
-  it('names the seam and the tag it actually received when it refuses one', async () => {
+  it('names the method and the tag it actually received when it refuses one', async () => {
     const providers = attachProviders(v6Envelope);
     providers.publicDataProvider.watchForDeployTxData = vi
       .fn()
@@ -3572,7 +3572,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     const caught = await findDeployedContract(providers, attachOptions()).catch((error: unknown) => error);
 
     expect(caught).toBeInstanceOf(UntaggedPayloadError);
-    expect((caught as UntaggedPayloadError).seam).toBe('watchForDeployTxData');
+    expect((caught as UntaggedPayloadError).method).toBe('watchForDeployTxData');
     expect((caught as UntaggedPayloadError).received).toContain('v10');
   });
 

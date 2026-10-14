@@ -61,7 +61,7 @@ describe('Proof server integration', () => {
   let unprovenCallTx: UnprovenTransaction;
   let zkConfigProvider: NodeZkConfigProvider<CounterCircuit>;
 
-  // The proof-provider seam carries a version-tagged payload in both
+  // `proveTx` carries a version-tagged payload in both
   // directions. This suite only ever sends v9 transactions, so it wraps the
   // request and unwraps the v9 response once here, keeping every assertion
   // below written against the plain ledger transaction. `unwrapV9` is the

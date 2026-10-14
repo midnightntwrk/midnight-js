@@ -36,7 +36,7 @@ import {
 // through `loadLedger8()` and only when a v8-era record asks for it. Same
 // precedent as `FinalizedTxDataV8` in `@midnight-ntwrk/midnight-js-types`.
 import type { FinalizedTransaction as V8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
-import type { RawContractState, ReadSeam, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import type { RawContractState, ReadMethod, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import {
   FailEntirely,
   FailFallible,
@@ -81,7 +81,7 @@ const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 
 /**
  * Facts identifying one read, carried onto a decode failure so it names the
- * record and the seam rather than only the era.
+ * record and the method rather than only the era.
  */
 type ReadDetails = Readonly<Record<string, string | number>>;
 
@@ -215,7 +215,7 @@ const TRANSACTION_DECODERS: TransactionDecoders = Object.freeze(
  * Which record a decode was for, and where it was read from.
  */
 export interface TransactionDecodeContext {
-  readonly seam: ReadSeam;
+  readonly method: ReadMethod;
   readonly protocolVersion: number;
   readonly recordRef: string;
 }
@@ -230,7 +230,7 @@ export interface TransactionDecodeContext {
  * returned record are the same fact.
  *
  * A payload that will not decode leaves as the `DeserializationError` the
- * runtime produced, carrying the era, the `protocolVersion`, the seam and the
+ * runtime produced, carrying the era, the `protocolVersion`, the method and the
  * record on its context. This layer deliberately does not re-attribute the
  * failure: whether the record disagrees with itself or the consumer's ledger
  * package is a different vintage than the network's are indistinguishable from
@@ -240,7 +240,7 @@ export interface TransactionDecodeContext {
  *                       serves it.
  * @param era The era whose runtime reads the payload. Validated at runtime, not
  *            merely type-checked.
- * @param context The record and seam a failure should name.
+ * @param context The record and read method a failure should name.
  * @throws IndexerDataError if `hexTransaction` is not a whole hex byte string.
  * @throws EraUnsupportedError if `era` is not a member of `LEDGER_VERSIONS`.
  * @throws Ledger8RuntimeMissingError if a v8-era record needs the pre-fork
@@ -259,12 +259,12 @@ export const decodeVersionedTransaction = async (
   }
   const decode = TRANSACTION_DECODERS[era];
   if (typeof decode !== 'function') {
-    throw new EraUnsupportedError(context.seam, era, context.protocolVersion, context.recordRef);
+    throw new EraUnsupportedError(context.method, era, context.protocolVersion, context.recordRef);
   }
   return decode(hexTransaction, {
     era,
     protocolVersion: context.protocolVersion,
-    seam: context.seam,
+    method: context.method,
     recordRef: context.recordRef
   });
 };

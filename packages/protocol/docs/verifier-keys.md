@@ -51,7 +51,7 @@ condition and would name the offending entry point: the v8 arm refuses the same
 omission as `ComposeOptionError('v8', 'verifierKeys')`, and a caller writing one
 handler across both eras matters more than naming which of a contract's slots
 was blank. Naming it as well needs a `circuitId` on `ComposeOptionError`, which
-is a wider change than this seam should make.
+is a wider change than this check should make.
 
 ## Registration rules
 

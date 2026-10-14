@@ -30,11 +30,11 @@
  *   'http://localhost:6300',
  *   zkConfigProvider
  * );
- * // Transaction payloads cross a provider seam version-tagged: tag on the way
+ * // Transaction payloads are passed to a provider version-tagged: tag on the way
  * // in, narrow on `version` on the way out. There is no untagged form.
  * // `unwrapV9` throws V8PayloadUnsupportedError or UntaggedPayloadError, both
  * // carrying a stable `code` you can match with `hasErrorCode`. That applies to
- * // the seam's own refusals — the ones raised before proving starts. A failure
+ * // the provider's own refusals — the ones raised before proving starts. A failure
  * // from inside proof generation is whatever the ledger runtime raises, on
  * // either era, and carries no midnight-js code.
  * const provenTx = unwrapV9(
@@ -45,7 +45,7 @@
  *
  * ### Both ledger eras
  * This provider serves the retained (`v8`) era as well as the current one. A retained-era
- * transaction crosses the seam as serialized bytes in both directions, and comes back in the
+ * transaction is passed as serialized bytes in both directions, and comes back in the
  * same arm it was sent in:
  *
  * ```typescript
@@ -60,14 +60,14 @@
  * adapts a current-era-only `ProvingProvider` — so reach for this provider, not that helper, when
  * you need both eras.
  *
- * #### Proving is only the first seam
+ * #### Proving is only the first step
  * Read this before wiring a retained-era flow. `createWalletProvider` and
  * `createMidnightProvider` both refuse the retained arm. Through the framework's own
- * entry points (`submitCallTx` and `deployContract`), `assertSeamsSupportEra` detects this
- * upfront and raises `SeamEraUnsupportedError` (naming `balanceTx`) before any proving work
- * is done. However, for a flow that calls the three seams by hand, the transaction
+ * entry points (`submitCallTx` and `deployContract`), `assertProvidersSupportEra` detects this
+ * upfront and raises `ProviderEraUnsupportedError` (naming `balanceTx`) before any proving work
+ * is done. However, for a flow that calls the three transaction methods by hand, the transaction
  * **proves successfully and is then refused at `balanceTx` with `V8PayloadUnsupportedError`** —
- * after a full proving cycle, not at the first seam. To run one end to end, implement
+ * after a full proving cycle, not at the first step. To run one end to end, implement
  * `WalletProvider` and `MidnightProvider` against the version-tagged interfaces directly.
  * Why the adapters refuse permanently is recorded in
  * `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`.

@@ -21,7 +21,7 @@ import {
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
-  assertSeamsSupportEra,
+  assertProvidersSupportEra,
   type FinalizedTxData,
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertValidMidnightConfig, intentTtl } from '@midnight-ntwrk/midnight-js-utils';
@@ -87,11 +87,11 @@ async function submitTxCore<C extends Contract.Any, PCK extends Contract.Provabl
   options: SubmitTxOptions<PCK>
 ): Promise<string> {
   const { circuitId } = options;
-  // Before the first seam call, not after it. This flow is current-era only —
+  // Before the first provider call, not after it. This flow is current-era only —
   // every payload below is tagged `'v9'` — so a provider set missing that era
   // cannot carry the transaction, and finding out at `balanceTx` would mean
   // paying for a proof first.
-  assertSeamsSupportEra(CURRENT_LEDGER_VERSION, providers);
+  assertProvidersSupportEra(CURRENT_LEDGER_VERSION, providers);
   assertValidMidnightConfig(providers.config);
   const provenTx = requireV9(
     await providers.proofProvider.proveTx({ version: 'v9', tx: options.unprovenTx }),

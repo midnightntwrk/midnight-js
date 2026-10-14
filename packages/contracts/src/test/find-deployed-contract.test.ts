@@ -120,7 +120,7 @@ describe('findDeployedContract', () => {
 
       expect(rejection).toBeInstanceOf(UntaggedPayloadError);
       expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
-      expect((rejection as UntaggedPayloadError).seam).toBe('watchForDeployTxData');
+      expect((rejection as UntaggedPayloadError).method).toBe('watchForDeployTxData');
     });
   });
 

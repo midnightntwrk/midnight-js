@@ -322,7 +322,7 @@ export type Ledger8CallTxOptions<C extends Ledger8Contract, K extends Ledger8Cir
  * transaction after it, so the record it finalizes as carries the era that
  * produced it.
  *
- * @see {@link OverloadTyping} for the seam that rule follows from.
+ * @see {@link OverloadTyping} for the version-tagged provider methods that rule follows from.
  */
 /**
  * What a retained-era circuit's own return value narrows to.

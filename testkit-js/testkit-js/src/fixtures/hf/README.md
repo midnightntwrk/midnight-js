@@ -602,7 +602,7 @@ rewrite as `counter-016/`'s, for the same reason.
 the test asserts `runtime-version: 0.16.0` and `compiler-version: 0.31.1` on
 it, so a recompile with the repo's own pinned `compactc` (0.35.x → runtime
 0.20, async codegen) fails loudly instead of silently producing an artifact
-that never reaches the seam under test.
+that never reaches the code under test.
 
 The artifact is committed byte-verbatim, including its trailing
 `//# sourceMappingURL=index.js.map` line with no `.js.map` beside it — same as

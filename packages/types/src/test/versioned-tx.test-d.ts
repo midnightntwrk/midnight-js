@@ -246,7 +246,7 @@ describe('tx-flow provider members', () => {
 });
 
 // The read surface changed its return type in the same breaking release as the
-// three seams above, but was the only one of the five with nothing pinning it.
+// three transaction methods above, but was the only one of the five with nothing pinning it.
 // Reverting either signature to `Promise<FinalizedTxData>` still type-checks
 // everywhere — `FinalizedTxData` is assignable to the union that consumes it —
 // so neither the runtime tests nor the other type tests would notice.

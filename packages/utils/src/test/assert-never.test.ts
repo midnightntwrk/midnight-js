@@ -69,7 +69,7 @@ describe('assertNever', () => {
     // Arrange / Act.
     let thrown: unknown;
     try {
-      assertNever('v10' as never, 'proveTx seam');
+      assertNever('v10' as never, 'proveTx method');
     } catch (error) {
       thrown = error;
     }
@@ -77,7 +77,7 @@ describe('assertNever', () => {
     // Assert.
     expect(thrown).toBeInstanceOf(UnhandledUnionMemberError);
     expect(hasErrorCode(thrown, UTILS_ERROR_CODES.UNHANDLED_UNION_MEMBER)).toBe(true);
-    expect((thrown as UnhandledUnionMemberError).context).toBe('proveTx seam');
+    expect((thrown as UnhandledUnionMemberError).context).toBe('proveTx method');
   });
 
   test('never puts the unhandled value in the message', () => {
@@ -88,7 +88,7 @@ describe('assertNever', () => {
     // Act.
     let thrown: unknown;
     try {
-      assertNever(grown as never, 'proveTx seam');
+      assertNever(grown as never, 'proveTx method');
     } catch (error) {
       thrown = error;
     }
@@ -101,7 +101,7 @@ describe('assertNever', () => {
     expect(message).not.toContain('42');
     expect(message).not.toContain('privateState');
     expect(message).not.toContain('txBytes');
-    expect(message).toContain('proveTx seam');
+    expect(message).toContain('proveTx method');
   });
 
   test('rejects calls the type contract forbids', () => {

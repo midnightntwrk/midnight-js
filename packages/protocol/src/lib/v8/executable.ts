@@ -92,7 +92,7 @@ export type Ledger8SigningKey = string;
  * Deliberately not compact-js's `CompiledContract` container. That container is
  * a recipe — a class plus witnesses, instantiated fresh per operation — and the
  * retained era's callers hold an instance whose witnesses are already bound.
- * {@link containerFor} adapts one to the other at this seam, which keeps the
+ * {@link containerFor} adapts one to the other here, which keeps the
  * adaptation in one place instead of on every consumer.
  */
 export interface RetainedContract {
@@ -135,7 +135,7 @@ const containerFor = <PS>(contract: RetainedContract): CompiledContract.Compiled
 > =>
   CompiledContract.make<Contract.Contract<PS>, PS>(
     RETAINED_CONTRACT_TAG,
-    // The single assertion this seam needs, and it is here rather than at any
+    // The single assertion this adapter needs, and it is here rather than at any
     // caller. A retained artifact satisfies compact-js's `Contract` structurally
     // -- same four circuit maps, and a synchronous `initialState` satisfies its
     // `Awaitable` return -- but the two declare their members over different
@@ -233,7 +233,7 @@ export interface ConstructorResultPojo {
  *
  * A plain function rather than compact-js's `ZKConfiguration` service, so no
  * Effect type reaches this package's callers; {@link zkConfigurationLayer}
- * adapts it at the seam.
+ * adapts it where the service is needed.
  */
 export type VerifierKeyReader = (provableCircuitId: string) => Promise<Uint8Array | undefined>;
 
@@ -498,7 +498,7 @@ export const structurallyEqual = (a: unknown, b: unknown): boolean => {
  * merely tolerates would decode without complaint and execute a circuit
  * against a state that is not the chain's, with every guard green.
  *
- * Reachable with the REAL decoder, not only an injected one: the seam takes a
+ * Reachable with the REAL decoder, not only an injected one: `runRetainedCircuit` takes a
  * bare {@link EncodedStateValue} a caller can assemble by hand, and the
  * retained runtime canonicalises map order and drops members it does not
  * declare. Both are refused here rather than executed on.

@@ -31,7 +31,7 @@ import {
   ProofServerError,
   PROVIDER_ERROR_CATEGORIES,
   PROVIDER_ERROR_CODES,
-  SeamEraUnsupportedError,
+  ProviderEraUnsupportedError,
   SigningKeyExportError,
   UntaggedPayloadError,
   UnusableEraEntryError,
@@ -50,7 +50,7 @@ describe('types error classes', () => {
   const instances: readonly [string, MidnightJsError][] = [
     ['V8PayloadUnsupportedError', new V8PayloadUnsupportedError('proveTx', 3)],
     ['UntaggedPayloadError', new UntaggedPayloadError('proveTx', undefined)],
-    ['SeamEraUnsupportedError', new SeamEraUnsupportedError('proveTx', 'v8', ['v9'])],
+    ['ProviderEraUnsupportedError', new ProviderEraUnsupportedError('proveTx', 'v8', ['v9'])],
     ['UnusableEraEntryError', new UnusableEraEntryError('proveTx', 'v8', 'handler', 'null')],
     ['InvalidProtocolSchemeError', new InvalidProtocolSchemeError('ftp', ['http', 'https'])],
     ['ArtifactRuntimeVersionUnavailableError', new ArtifactRuntimeVersionUnavailableError('provider')],
@@ -105,6 +105,29 @@ describe('types error classes', () => {
     ]
   ] as const)('UnusableEraEntryError names its class and the remedy for %s', (_case, error, message) => {
     expect([error.name, error.message]).toEqual(['UnusableEraEntryError', message]);
+  });
+
+  it.each(instances)('%s message speaks of provider methods only', (_name, error) => {
+    expect(error.message).not.toMatch(/\bseams?\b/i);
+  });
+
+  it.each([
+    ['V8PayloadUnsupportedError', new V8PayloadUnsupportedError('balanceTx', 3), 'balanceTx'],
+    ['UntaggedPayloadError', new UntaggedPayloadError('watchForTxData', undefined), 'watchForTxData'],
+    ['ProviderEraUnsupportedError', new ProviderEraUnsupportedError('submitTx', 'v8', ['v9']), 'submitTx'],
+    ['UnusableEraEntryError', new UnusableEraEntryError('proveTx', 'v8', 'handler', 'null'), 'proveTx']
+  ] as const)('%s reports the provider method it was raised for as `method`', (_name, error, method) => {
+    expect([error.method, 'seam' in error]).toEqual([method, false]);
+  });
+
+  it('ProviderEraUnsupportedError carries the provider code', () => {
+    const error = new ProviderEraUnsupportedError('proveTx', 'v8', ['v9']);
+
+    expect([error.name, error.code, error.category]).toEqual([
+      'ProviderEraUnsupportedError',
+      'MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED',
+      'USAGE'
+    ]);
   });
 
   it('category table covers every provider code exactly', () => {

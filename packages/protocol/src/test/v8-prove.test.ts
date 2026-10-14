@@ -109,7 +109,7 @@ describe('proveV8Transaction', () => {
       );
 
       // Our own coded refusal, not a runtime decode failure: the caller gets an
-      // actionable error naming the seam instead of an opaque WASM message.
+      // actionable error instead of an opaque WASM message.
       expect(rejection).toBeInstanceOf(PayloadNotATransactionError);
       expect(rejection).toHaveProperty('code', PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION);
     });
@@ -193,7 +193,7 @@ describe('proveV8Transaction', () => {
     });
 
     it('does not echo the payload back in the refusal', async () => {
-      // The bytes are attacker-controlled at this seam. Reporting the length is
+      // The bytes are attacker-controlled here. Reporting the length is
       // fine and useful; reproducing any of the content is not.
       const marker = 'DEADBEEF';
       const payload = new Uint8Array(Buffer.from(`${marker}${'x'.repeat(64)}`, 'latin1'));
@@ -213,7 +213,7 @@ describe('proveV8Transaction', () => {
       // passes this check and is then refused by the retained runtime itself.
       // That is the intended division of labour: the tag is a defence-in-depth
       // discriminant on the KIND of payload, while the era is carried by the
-      // seam's `version` field.
+      // payload's `version` field.
       const currentEraTxBytes = Transaction.fromParts(NETWORK_ID).serialize();
 
       const rejection = await proveV8Transaction(currentEraTxBytes, inertProvingProvider).then(
@@ -229,10 +229,10 @@ describe('proveV8Transaction', () => {
       expect(errorChainText(rejection)).toContain('expected header tag');
     });
 
-    it('leaves a real tag with a truncated body to the runtime, not the seam', async () => {
+    it('leaves a real tag with a truncated body to the runtime, not the tag check', async () => {
       // The realistic corruption case for bytes that crossed a network or a
       // storage boundary: the tag survives, the body does not. It passes the
-      // seam's check by construction, so what it pins is that the seam does not
+      // tag check by construction, so what it pins is that the check does not
       // over-claim -- a damaged transaction is the runtime's refusal to make.
       const truncated = retainedEraTxBytes.subarray(0, V8_UNPROVEN_TX_TAG.length + 4);
       expect(asLatin1(truncated, V8_UNPROVEN_TX_TAG.length)).toBe(V8_UNPROVEN_TX_TAG);

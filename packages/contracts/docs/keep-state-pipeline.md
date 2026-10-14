@@ -95,7 +95,7 @@ same assembly step — so calling the wrap first and then composing would do the
 binding twice. Its result is a live ledger handle, which the ERA-AGNOSTIC facade
 still may not answer with — that half of the transport rule survives
 ADR-0010 and is DOCUMENTED by the `structuredClone` gate
-(`packages/protocol/docs/era-seam.md`). Documented, not enforced: a
+(`packages/protocol/docs/era-boundary.md`). Documented, not enforced: a
 `wasm-bindgen` instance is a plain object carrying an own `__wbg_ptr` number, so
 it clones without throwing and the gate records a meaningless value rather than
 failing. Treat the gate as a reminder of the rule, not as the thing that holds
@@ -240,7 +240,7 @@ back under that same id — storing a state derived from a phantom starting poin
 or, on a typo, creating a state under an id nobody reads while the real one goes
 untouched. Nothing errors at any stage.
 
-## Crossing the provider seams
+## Passing the transaction to the providers
 
 The `version` tag on a provider payload names the ledger runtime that produced
 the bytes — NOT the toolchain that produced the contract. A retained-era
@@ -253,9 +253,9 @@ two heads hand the providers genuinely different things:
 | `v9` | the current ledger | `{ version: 'v9', tx }` | `requireV9` |
 
 On a post-fork head the transaction is an ORDINARY current-era transaction that
-happens to carry a retained-era call, so it crosses the seams exactly as every
-current-era transaction does — as a live handle, because both sides of the seam
-share the current runtime. Tagging it `'v8'` would say the retained runtime
+happens to carry a retained-era call, so it is passed to the providers exactly as every
+current-era transaction is — as a live handle, because the framework and the
+providers share the current runtime. Tagging it `'v8'` would say the retained runtime
 produced it, which is false, and would send a current-era-only provider looking
 for a runtime it does not need.
 
@@ -266,13 +266,13 @@ reads them. The three deserialization markers — signature-enabled, unproven,
 unbound — are exactly what `composeCallTx` documents its output as.
 
 A provider that does not serve the pre-fork arm refuses it on the way IN, at the
-first seam, with `V8PayloadUnsupportedError` — before anything is proven, which
+first provider method, with `V8PayloadUnsupportedError` — before anything is proven, which
 is the point of leaving that guard in `types` rather than lifting it here.
 
 ### Sanitizing a provider's own failure
 
-`atSeam` runs one provider seam call and converts a rejection into
-`Ledger8SeamFailedError` with the failure sanitized onto `cause`.
+`atProviderMethod` runs one provider method call and converts a rejection into
+`Ledger8ProviderFailedError` with the failure sanitized onto `cause`.
 
 This framework's OWN coded errors pass through UNCHANGED when they carry no
 `cause`. They then hold no external payload, and a caller narrowing on
@@ -283,7 +283,7 @@ say — holds external material on that cause, so it is sanitized like any other
 rejection. `hasErrorCode` is the registry-backed test, so a foreign coded error
 (a Node `ECONNREFUSED`, say) is always treated as external and sanitized.
 
-`sanitizeSeamCause` rebuilds an external failure as a plain `Error`. Exactly one
+`sanitizeProviderCause` rebuilds an external failure as a plain `Error`. Exactly one
 thing is DROPPED and the rest is kept REDACTED, and the split is deliberate.
 
 Dropped: the provider's own ENUMERABLE PROPERTIES. That is where HTTP clients
@@ -318,7 +318,7 @@ format to enumerate. Three alternatives, each deliberately narrow:
 | base64 / base64url | 40 chars, and must mix lower case, upper case and a digit | The mixture is what separates an encoded payload from a URL PATH (no upper case) or a long CLASS NAME (no digit). Both are high-value diagnostics: without the mixture requirement the endpoint a misconfiguration names is exactly what disappears. |
 | decimal byte list | 13 values | `JSON.stringify(new Uint8Array(...))` and Node's own inspection of a typed array. Commas break the other two alternatives, so without this a payload rendered as numbers passes through untouched. |
 
-This is BEST EFFORT, not a guarantee, and `Ledger8SeamFailedError`'s own message
+This is BEST EFFORT, not a guarantee, and `Ledger8ProviderFailedError`'s own message
 says so rather than promising more than it delivers. A secret shorter than 12
 bytes is under the hex floor. A payload rendered in some shape none of the three
 matches is not redacted. The message is also length-capped, so a provider that
@@ -387,7 +387,7 @@ documentation states that `counter` must be `0n` at deployment, and a MUTABLE
 serialization, the bridge into the retained ledger's `ContractState`, and
 `ContractDeploy` — it is readable off the composed `initialContractStateBytes` afterwards,
 which `packages/protocol/src/test/v8-deploy.test.ts` measures at both ends. The
-era seam needed no new field: `ComposeDeployOptions` already carries the
+era boundary needed no new field: `ComposeDeployOptions` already carries the
 serialized `contractStateBytes`, which is where the authority lives.
 
 The key is the caller's own when one is supplied, and a freshly sampled one

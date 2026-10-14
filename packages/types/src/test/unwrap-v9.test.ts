@@ -38,12 +38,12 @@ describe('unwrapV9', () => {
     expect(unwrapV9({ version: 'v9', tx: 'the-transaction' }, 'proveTx')).toBe('the-transaction');
   });
 
-  it('refuses the v8 arm with its stable code, naming the seam and the payload size', () => {
+  it('refuses the v8 arm with its stable code, naming the method and the payload size', () => {
     const refusal = caught({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) });
 
     expect(refusal).toBeInstanceOf(V8PayloadUnsupportedError);
     expect((refusal as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
-    expect((refusal as V8PayloadUnsupportedError).seam).toBe('proveTx');
+    expect((refusal as V8PayloadUnsupportedError).method).toBe('proveTx');
     expect((refusal as V8PayloadUnsupportedError).byteLength).toBe(3);
   });
 

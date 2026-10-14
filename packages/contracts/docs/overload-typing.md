@@ -255,8 +255,8 @@ blind spot; `resolveArtifactEra` replaced it.
 `Ledger8FinalizedCallTxData.txData` is a `VersionedFinalizedTxData` rather than
 a single-era record: the same retained-era contract is called as a v8
 transaction before the fork and as a v9 keep-state transaction after it, so the
-record it finalizes as carries the era that produced it. Providers sit at that
-same version-tagged seam and serve both eras, which is why
+record it finalizes as carries the era that produced it. Providers take that
+same version-tagged payload and serve both eras, which is why
 `Ledger8ContractProviders` is the ordinary provider set keyed by a retained-era
 circuit id, and why there is no separate retained-era provider surface. Both
 follow from `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`.

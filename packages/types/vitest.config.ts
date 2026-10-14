@@ -30,7 +30,7 @@ export default defineConfig({
       exclude: ['**/test/**'],
       reporter: ['clover', 'json', 'json-summary', 'lcov', 'text'],
       reportsDirectory: './coverage',
-      // Raised to just under the measured figures when the seam tests landed.
+      // Raised to just under the measured figures when the provider method tests landed.
       // Left at the old, much lower values these would not hold the new
       // coverage: deleting the narrowing tests would still pass CI.
       thresholds: {

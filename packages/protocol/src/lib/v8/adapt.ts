@@ -55,7 +55,7 @@ const readContractState = (raw: Uint8Array, v8: ProtocolV8): InstanceType<Protoc
  * @throws ComposeFailedError If `calls` is empty (stage `'call-empty'`), and
  *   for every stage the composition leg this delegates to can raise.
  * @see {@link ComposeRefusalOrder}
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8): ComposeCallResultPojo => {
   const { calls, networkId, ttl, zswapOffer } = options;
@@ -114,7 +114,7 @@ export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8):
  *   can raise.
  * @see {@link VerifierKeys}
  * @see {@link ComposeRefusalOrder}
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export const composeEraV8DeployTx = (options: ComposeDeployOptions, v8: ProtocolV8): DeployResultPojo => {
   const { contractStateBytes, verifierKeys, networkId, ttl, guaranteedZswapOfferBytes } = options;

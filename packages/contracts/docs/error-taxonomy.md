@@ -141,7 +141,7 @@ the deployment is unconfirmed — an unreachable indexer, a timeout, an untagged
 payload, an era violation — is what a caller branches on, and this class adds the
 one fact that failure cannot carry, the key the submitted deployment was built
 with. An era violation reaching `cause` unchanged is what keeps
-`cause instanceof EraInvariantViolationError`, its seam and its registered code
+`cause instanceof EraInvariantViolationError`, its method and its registered code
 reachable.
 
 `Ledger8DeployNotStoredError` is the case where the answer arrived and it was

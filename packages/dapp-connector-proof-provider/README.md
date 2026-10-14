@@ -20,7 +20,7 @@ const proofProvider = await dappConnectorProofProvider(
   costModel
 );
 
-// Transaction payloads cross a provider seam version-tagged: tag on the way
+// Transaction payloads are passed to a provider version-tagged: tag on the way
 // in, narrow on `version` on the way out. There is no untagged form.
 // `unwrapV9` is the framework's narrowing helper — it throws
 // V8PayloadUnsupportedError or UntaggedPayloadError, both carrying a stable

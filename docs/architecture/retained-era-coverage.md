@@ -75,9 +75,9 @@ balance successfully and reads the remainder back. The retained result carries n
 movement summary (a current-era member), so the balance delta is what shows the send reached the
 chain rather than merely being accepted.
 
-The refusal is pinned to the **`submitTx`** seam exactly, not to an alternation. Measured: the wallet
+The refusal is pinned to **`submitTx`** exactly, not to an alternation. Measured: the wallet
 funds the fee and balances an oversized send happily, and the node refuses it at apply time. So every
-wallet-local fault — a failed ledger import, an unfunded wallet, a balancer fault — surfaces one seam
+wallet-local fault — a failed ledger import, an unfunded wallet, a balancer fault — surfaces one method
 earlier and no longer satisfies the assertion. The provider's own reason is not usable for this: it
 reaches `cause` as a generic `SubmissionError: Transaction submission error`, with no balance text to
 match on.
@@ -120,7 +120,7 @@ repository's alias for the retained runtime, and the same one-line rewrite alrea
 committed `counter-016` fixture's declaration file. The twin is then self-contained: no mock, and
 the current runtime keeps resolving normally in the same module graph.
 
-## Which ledger-v8 instance the wallet seam uses
+## Which ledger-v8 instance the wallet provider uses
 
 `ledger-v8` is installed **twice**, under both npm scopes: `@midnightntwrk/ledger-v8`, which
 `packages/protocol` pins, and `@midnight-ntwrk/ledger-v8`, which the wallet SDK reaches for. Same
@@ -139,7 +139,7 @@ the result straight to the wallet SDK. Built with protocol's copy, that object d
 balancer:
 
 ```
-Ledger8SeamFailedError: balanceTx rejected a retained-era transaction (circuit 'initialState')
+Ledger8ProviderFailedError: balanceTx rejected a retained-era transaction (circuit 'initialState')
 Caused by: expected instance of LedgerParameters
   at _assertClass  @midnightntwrk/ledger-v8/midnight_ledger_wasm_bg.js
   at Transaction.feesWithMargin
@@ -153,11 +153,11 @@ counter-example: `consumer-e2e` personas install outside the repository under an
 where the same alias *does* collapse the two names. `consumer-e2e/personas.mjs` documents the alias
 and why it is needed; the isolated linker is what the lane actually runs under.
 
-The rule the fix follows: **an ADR-0006 seam carries bytes so that the receiver inflates them with
-its own module.** Everything these two functions build is for the wallet SDK, so they load the SDK's
+The rule the fix follows: **an ADR-0006 provider method carries bytes so that the receiver inflates them
+with its own module.** Everything these two functions build is for the wallet SDK, so they load the SDK's
 copy, through the SDK's own `./ledger/v8` subpath — by definition whichever copy the installed SDK
 uses, so it cannot drift if the SDK finishes the scope migration. `packages/protocol`'s copy stays
-where it belongs: retained execution, which never hands a handle across this seam.
+where it belongs: retained execution, which never hands a handle to the wallet SDK.
 
 Repointing protocol's `v8` re-export at the SDK's copy took the retained e2e file from every deploy
 refused to fully green, which is what identified the cause; the shipped fix is the narrower one

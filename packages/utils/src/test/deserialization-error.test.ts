@@ -68,11 +68,11 @@ describe('DeserializationError', () => {
 
     it('exposes the details on context, so a consumer need not parse the message', () => {
       const error = new DeserializationError(
-        { ...baseContext, details: { seam: 'watchForTxData', txId: 'abc' } },
+        { ...baseContext, details: { method: 'watchForTxData', txId: 'abc' } },
         new Error('inner')
       );
 
-      expect(error.context.details).toEqual({ seam: 'watchForTxData', txId: 'abc' });
+      expect(error.context.details).toEqual({ method: 'watchForTxData', txId: 'abc' });
     });
   });
 

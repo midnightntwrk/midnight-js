@@ -33,7 +33,7 @@ let v8ModulePromise: Promise<ProtocolV8> | undefined;
  *   The returned promise rejects with it, carrying the underlying failure on
  *   `cause`.
  * @see {@link ModuleGraphAndLazyLoading}
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export const loadLedger8 = (): Promise<ProtocolV8> =>
   (v8ModulePromise ??= import('../../v8.js').catch((error: unknown) => {

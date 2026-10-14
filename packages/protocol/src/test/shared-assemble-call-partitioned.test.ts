@@ -353,7 +353,7 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
   // Everything a caller supplies here is plain data in the ledger's own
   // declared algebra, and nothing type-checks an `Op`'s operand into range. The
   // partitioner rejects such a program with a raw Rust serde message whose
-  // stack starts three frames deep in wasm, so it has to leave this seam coded
+  // stack starts three frames deep in wasm, so it has to leave this module coded
   // like every other caller fault.
   it('reports a public transcript the partitioner rejects as a coded failure', () => {
     const address = ledgerV9.sampleContractAddress();

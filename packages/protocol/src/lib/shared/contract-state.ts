@@ -115,7 +115,7 @@ const everyEntryIsAColouredAmount = (candidate: Iterable<unknown>): boolean => {
  * Not a claim that an empty answer is genuine: a hand-built object declaring an
  * empty iterator is a valid empty balance as far as anything here can tell, and
  * so is a contract holding nothing. That is why the option is required at the
- * seams rather than defaulted.
+ * entry points rather than defaulted.
  *
  * @param value The candidate, from an injected decoder or an untyped caller.
  * @returns Whether it answers the `ReadonlyMap` surface with usable entries.
@@ -241,7 +241,7 @@ export const extractStateWith = (
  * @throws StateInconsistentError if the decoded state is internally
  * inconsistent. Every failure carries its own diagnosis on `cause`.
  * @see {@link FailClosedDecoding}
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export const decodeContractStateWith = (
   raw: Uint8Array,

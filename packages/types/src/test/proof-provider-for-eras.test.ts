@@ -172,7 +172,7 @@ describe('createProofProviderForEras', () => {
 
       expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
       expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
-      expect((rejection as V8PayloadUnsupportedError).seam).toBe('proveTx');
+      expect((rejection as V8PayloadUnsupportedError).method).toBe('proveTx');
     });
 
     it('refuses a v8 payload carrying a timeout as unsupported, not as a bad timeout', async () => {
@@ -272,7 +272,7 @@ describe('createProofProviderForEras', () => {
         expect.objectContaining({
           name: 'UnusableEraEntryError',
           code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY,
-          seam: 'proveTx',
+          method: 'proveTx',
           era: 'v8',
           expected: 'proving-provider',
           received
@@ -291,7 +291,7 @@ describe('createProofProviderForEras', () => {
         expect.objectContaining({
           name: 'UnusableEraEntryError',
           code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY,
-          seam: 'proveTx',
+          method: 'proveTx',
           era: 'v9',
           expected: 'proving-provider',
           received

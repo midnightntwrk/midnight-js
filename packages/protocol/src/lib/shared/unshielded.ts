@@ -106,7 +106,7 @@ export const extractUserAddressedOutputs = (
  * @returns The guaranteed and fallible offers. A segment with nothing to pay
  * out gets no offer at all rather than an empty one.
  * @throws ComposeFailedError from {@link extractUserAddressedOutputs} for a
- * user-addressed spend this seam cannot pay out.
+ * user-addressed spend this module cannot pay out.
  * @see {@link ComposeRefusalOrder}
  */
 export const aggregateUnshieldedOffers = <TOffer>(

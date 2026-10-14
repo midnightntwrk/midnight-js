@@ -123,7 +123,7 @@ describe('dappConnectorProofProvider', () => {
       mockCostModel
     );
     // Identity, not structural equality: the whole premise of the versioned
-    // seam is that ledger objects from different WASM instances must not be
+    // method is that ledger objects from different WASM instances must not be
     // interchanged, so a structurally-equal-but-different object must fail.
     expect(result.version).toBe('v9');
     expect(result.version === 'v9' && result.tx).toBe(mockUnboundTx);
@@ -181,7 +181,7 @@ describe('dappConnectorProofProvider', () => {
 
       // Carries one Zswap output, so proving it drives a real circuit. The
       // empty transaction above has nothing to prove, so it cannot show which
-      // proving provider -- if any -- the seam handed to the runtime.
+      // proving provider -- if any -- the provider handed to the runtime.
       const rawTokenType = v8.sampleRawTokenType();
       const output = v8.ZswapOutput.new(
         v8.createShieldedCoinInfo(rawTokenType, 100n),
@@ -210,7 +210,7 @@ describe('dappConnectorProofProvider', () => {
       expect(returned).toBeInstanceOf(Uint8Array);
 
       // Derived from the input's own tag rather than spelled out -- see the
-      // matching case in `http-client-proof-provider`. The two seams answer the
+      // matching case in `http-client-proof-provider`. The two providers answer the
       // same contract, so they are asserted at the same strictness.
       const expectedTag = txTag(retainedEraTxBytes).replace('proof-preimage', 'proof');
       // Without this, a vendor rename of the stage marker would make `replace`

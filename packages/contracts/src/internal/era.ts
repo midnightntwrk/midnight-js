@@ -36,7 +36,7 @@ import { CURRENT_PIPELINE_ERA, type PipelineEra, RETAINED_PIPELINE_ERA } from '.
 import {
   EraArtifactMismatchError,
   EraInvariantViolationError,
-  type EraSeam,
+  type EraMethod,
   HeadReadFailedError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
@@ -53,7 +53,7 @@ import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcr
  *      than an unsupported request.
  *
  * @param payload The payload a provider returned.
- * @param seam The provider method that returned it.
+ * @param method The provider method that returned it.
  * @param circuitId The circuit, or circuits, this flow is running, for the error message.
  * @returns The live v9 ledger transaction.
  * @throws EraInvariantViolationError if the payload carries the v8 arm.
@@ -61,20 +61,20 @@ import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcr
  */
 export function requireV9<T>(
   payload: VersionedTx<T>,
-  seam: EraSeam,
+  method: EraMethod,
   circuitId?: string | readonly string[]
 ): T {
   if (typeof payload !== 'object' || payload === null) {
-    throw new UntaggedPayloadError(seam, payload);
+    throw new UntaggedPayloadError(method, payload);
   }
   switch (payload.version) {
     case 'v9':
       return payload.tx;
     case 'v8':
-      throw new EraInvariantViolationError(seam, circuitId, 'v9', 'v8');
+      throw new EraInvariantViolationError(method, circuitId, 'v9', 'v8');
     default: {
       const unhandled: never = payload;
-      throw new UntaggedPayloadError(seam, unhandled);
+      throw new UntaggedPayloadError(method, unhandled);
     }
   }
 }
@@ -83,8 +83,8 @@ export function requireV9<T>(
  * Unwraps the RETAINED arm of a versioned payload a provider returned, on a
  * flow that submitted the retained arm.
  *
- * The mirror of {@link requireV9}, and it exists for the same reason: the seam
- * types do not tie a provider's output era to its input era, so a flow that
+ * The mirror of {@link requireV9}, and it exists for the same reason: the provider
+ * method types do not tie a provider's output era to its input era, so a flow that
  * submitted retained-era bytes has to check that retained-era bytes came back.
  *
  * Note which refusal is NOT this function's. A provider that does not handle
@@ -93,13 +93,13 @@ export function requireV9<T>(
  * `@midnight-ntwrk/midnight-js-types` — that is the inbound guard a
  * current-era-only provider implementation runs, and it is deliberately left
  * where it is so a retained-era submit against a provider that has not been
- * widened fails with one coherent typed refusal at the seam it entered, rather
+ * widened fails with one coherent typed refusal in the method it entered, rather
  * than part-way through a submit with a transaction already composed. This
  * function only catches the other case: a provider that ACCEPTED the retained
  * payload and answered in the current era.
  *
  * @param payload The payload a provider returned.
- * @param seam The provider method that returned it.
+ * @param method The provider method that returned it.
  * @param circuitId The circuit, or circuits, this flow is running, for the error message.
  * @returns The serialized retained-era transaction bytes.
  * @throws EraInvariantViolationError if the payload carries the current-era arm.
@@ -107,20 +107,20 @@ export function requireV9<T>(
  */
 export function requireV8<T>(
   payload: VersionedTx<T>,
-  seam: EraSeam,
+  method: EraMethod,
   circuitId?: string | readonly string[]
 ): Uint8Array {
   if (typeof payload !== 'object' || payload === null) {
-    throw new UntaggedPayloadError(seam, payload);
+    throw new UntaggedPayloadError(method, payload);
   }
   switch (payload.version) {
     case 'v8':
       return payload.txBytes;
     case 'v9':
-      throw new EraInvariantViolationError(seam, circuitId, 'v8', 'v9');
+      throw new EraInvariantViolationError(method, circuitId, 'v8', 'v9');
     default: {
       const unhandled: never = payload;
-      throw new UntaggedPayloadError(seam, unhandled);
+      throw new UntaggedPayloadError(method, unhandled);
     }
   }
 }
@@ -139,13 +139,13 @@ export function requireV8<T>(
  * attribute.
  *
  * @param record The record the read surface returned.
- * @param seam The read-surface method that returned it.
+ * @param method The read-surface method that returned it.
  * @returns The record, tagged with a recognised era.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
  */
-export function requireTaggedRecord(record: VersionedFinalizedTxData, seam: EraSeam): VersionedFinalizedTxData {
+export function requireTaggedRecord(record: VersionedFinalizedTxData, method: EraMethod): VersionedFinalizedTxData {
   if (typeof record !== 'object' || record === null) {
-    throw new UntaggedPayloadError(seam, record);
+    throw new UntaggedPayloadError(method, record);
   }
   switch (record.version) {
     case 'v8':
@@ -153,7 +153,7 @@ export function requireTaggedRecord(record: VersionedFinalizedTxData, seam: EraS
       return record;
     default: {
       const unhandled: never = record;
-      throw new UntaggedPayloadError(seam, unhandled);
+      throw new UntaggedPayloadError(method, unhandled);
     }
   }
 }
@@ -165,7 +165,7 @@ export function requireTaggedRecord(record: VersionedFinalizedTxData, seam: EraS
  *      widening their own public return types.
  *
  * @param record The record the read surface returned.
- * @param seam The read-surface method that returned it.
+ * @param method The read-surface method that returned it.
  * @param circuitId The circuit, or circuits, this flow is running, for the error message.
  * @returns The v9 finalized-transaction record.
  * @throws EraInvariantViolationError if the record carries the v8 arm.
@@ -173,20 +173,20 @@ export function requireTaggedRecord(record: VersionedFinalizedTxData, seam: EraS
  */
 export function requireV9Record(
   record: VersionedFinalizedTxData,
-  seam: EraSeam,
+  method: EraMethod,
   circuitId?: string | readonly string[]
 ): FinalizedTxData {
   if (typeof record !== 'object' || record === null) {
-    throw new UntaggedPayloadError(seam, record);
+    throw new UntaggedPayloadError(method, record);
   }
   switch (record.version) {
     case 'v9':
       return record;
     case 'v8':
-      throw new EraInvariantViolationError(seam, circuitId);
+      throw new EraInvariantViolationError(method, circuitId);
     default: {
       const unhandled: never = record;
-      throw new UntaggedPayloadError(seam, unhandled);
+      throw new UntaggedPayloadError(method, unhandled);
     }
   }
 }
@@ -486,7 +486,7 @@ export const readHeadEra = async (pdp: HeadVersionSource): Promise<HeadEraReadin
  *
  * The second half of {@link resolveOperationEra}. Acquired at the operation's asynchronous start, so
  * every era operation downstream is synchronous and nothing deeper in the pipeline has to await a
- * runtime -- see the era-seam document under `packages/protocol/docs/`.
+ * runtime -- see the era-boundary document under `packages/protocol/docs/`.
  *
  * The SINGLE acquisition site for these flows: `readHeadEra` above deliberately does not acquire,
  * and every caller that needs a facade comes through here, so there is exactly one place a lazy

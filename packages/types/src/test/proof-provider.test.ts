@@ -60,7 +60,7 @@ describe('createProofProvider', () => {
       expect(unprovenTx.prove).toHaveBeenCalledWith(stubProvingProvider, stubCostModel);
       // Identity, not structural equality — see the note in the dapp-connector
       // suite: two structurally-equal ledger objects can come from different
-      // WASM instances, and conflating them is what this seam exists to stop.
+      // WASM instances, and conflating them is what this provider method exists to stop.
       expect(result.version).toBe('v9');
       expect(result.version === 'v9' && result.tx).toBe(unboundTx);
     });
@@ -128,7 +128,7 @@ describe('createProofProvider', () => {
       expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
     });
 
-    it('names the seam that received the payload so the caller can tell which call failed', async () => {
+    it('names the method that received the payload so the caller can tell which call failed', async () => {
       const provider = createProofProvider(stubProvingProvider, stubCostModel);
 
       const rejection = await provider.proveTx({ version: 'v8', txBytes: new Uint8Array() }).then(
@@ -137,7 +137,7 @@ describe('createProofProvider', () => {
       );
 
       expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-      expect((rejection as V8PayloadUnsupportedError).seam).toBe('proveTx');
+      expect((rejection as V8PayloadUnsupportedError).method).toBe('proveTx');
     });
 
     it('says the refusal is by design and names what does serve a v8 payload', async () => {
@@ -182,10 +182,10 @@ describe('createProofProvider', () => {
     });
   });
 
-  // The seam types make an untagged payload unrepresentable, so these drive it
+  // The provider method types make an untagged payload unrepresentable, so these drive it
   // the only way a real caller can: from JavaScript, or from a consumer built
   // against a pre-5.0.0 midnight-js-types. This is the most likely runtime
-  // failure the 5.0.0 seam change creates, so it gets a coded error rather
+  // failure the 5.0.0 provider method change creates, so it gets a coded error rather
   // than a bare TypeError three frames away.
   describe('payload with no recognised version discriminant', () => {
     const proveUntagged = (payload: unknown): Promise<unknown> => {
@@ -211,7 +211,7 @@ describe('createProofProvider', () => {
 
       expect(rejection).toBeInstanceOf(UntaggedPayloadError);
       expect((rejection as UntaggedPayloadError).code).toBe(PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD);
-      expect((rejection as UntaggedPayloadError).seam).toBe('proveTx');
+      expect((rejection as UntaggedPayloadError).method).toBe('proveTx');
       expect((rejection as UntaggedPayloadError).received).toBe(received);
     });
 

@@ -31,7 +31,7 @@ import type { ProtocolV8 } from './load';
  *
  * @see {@link DualInstantiationGuard} for why that crossing is the one a
  *      duplicate install cannot affect
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 /**
  * Everything {@link composeV8DeployTx} needs to assemble one v8-native

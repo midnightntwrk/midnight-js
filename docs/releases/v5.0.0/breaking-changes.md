@@ -189,14 +189,14 @@ Deep imports into build output were never part of the published surface and are
 now refused by Node with `ERR_PACKAGE_PATH_NOT_EXPORTED`; import through a
 declared subpath instead.
 
-## 8. Version-tagged payloads at the provider seams and on the read surface (#1204)
+## 8. Version-tagged payloads at the provider methods and on the read surface (#1204)
 
 For the ledger-fork window every version-divergent payload became a closed,
 `version`-discriminated union, so a caller cannot reach the wrong era's payload
 without defeating the type system. See
 [ADR 0006](../../adr/0006-version-tagged-payloads-at-provider-seams.md).
 
-### 8a. The three transaction-flow seams
+### 8a. The three transaction methods
 
 `ProofProvider.proveTx`, `WalletProvider.balanceTx` and
 `MidnightProvider.submitTx` now take a version-tagged payload, and `proveTx`
@@ -255,7 +255,7 @@ switch (record.version) {
 `submitTx` in `midnight-js-contracts` is a v9-only flow: it narrows
 internally, so its return type is unchanged — it still resolves
 `FinalizedTxData`. A record from another era is reported as
-`EraInvariantViolationError`, which carries the `seam` and, where the flow knows
+`EraInvariantViolationError`, which carries the `method` and, where the flow knows
 it, the `circuitId`.
 
 `findDeployedContract` accepts a deploy record from either era, because a
@@ -293,7 +293,7 @@ the codec, with nothing in the message naming the era.
 
 Bytes that will not decode on the era selected for them are **not** re-reported
 as an era disagreement. They surface as the `DeserializationError` the runtime
-produced, now carrying the era, the raw `protocolVersion`, the seam and the
+produced, now carrying the era, the raw `protocolVersion`, the provider method and the
 record on `context.details`. The provider deliberately makes no claim about
 which side is at fault: a self-contradicting record and a
 `@midnightntwrk/ledger`-vN in your dApp of a different vintage than the
@@ -338,7 +338,7 @@ const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction
 Both narrow the inbound payload and tag the outbound one, so the `version`
 discriminant never appears in your code.
 
-### 8f. The three seams gained a required `supportedEras` field (#1004)
+### 8f. The three providers gained a required `supportedEras` field (#1004)
 
 `ProofProvider`, `WalletProvider` and `MidnightProvider` each declare which
 ledger eras that instance serves:
@@ -349,15 +349,15 @@ readonly supportedEras: readonly LedgerVersion[];
 
 It is REQUIRED, so an implementation that does not have it stops compiling. The
 framework reads all three before an operation starts and refuses a set that
-cannot carry the transaction end to end — with `SeamEraUnsupportedError`
-(`MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED`), before any proof is requested, rather
+cannot carry the transaction end to end — with `ProviderEraUnsupportedError`
+(`MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`), before any proof is requested, rather
 than at `balanceTx` after one has been paid for.
 
 **If you use `createProofProvider`, `createWalletProvider` or
 `createMidnightProvider`, you need to change nothing.** Each lifts a v9-only
 implementation and now declares `['v9']` for you.
 
-**If you implement a seam directly**, add the field and list exactly what you
+**If you implement one of these providers directly**, add the field and list exactly what you
 serve:
 
 ```typescript
@@ -382,11 +382,11 @@ const proofProvider = createProofProviderFromHandlers({
 The factory routes each request to its era's handler, tags the answer as the era
 the request carried, and raises `V8PayloadUnsupportedError` for an era you did
 not supply a handler for — the same error the un-widened provider raised before.
-`retainedEras` cannot name the current era: that era crosses the seam as a live
+`retainedEras` cannot name the current era: that era is passed to the provider as a live
 ledger object, not as bytes, so registering a handler for it is a compile error.
 
 Nothing verifies the declaration. Listing an era you do not serve makes the
-failure later, not absent: the seam still narrows its own payload and still
+failure later, not absent: the provider still narrows its own payload and still
 raises `V8PayloadUnsupportedError`.
 
 See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-handlers.md).
@@ -396,10 +396,10 @@ See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-handlers.md).
 **`@midnight-ntwrk/midnight-js-types`** — added: `FinalizedTxRecord`,
 `FinalizedTxDataV8`, `VersionedFinalizedTxData`, `V8TxBytes`, `V9Tx`,
 `VersionedTx`, `VersionedUnprovenTransaction`, `VersionedUnboundTransaction`,
-`VersionedFinalizedTransaction`, `ProviderSeam`, `ReadSeam`, `Seam`,
+`VersionedFinalizedTransaction`, `TransactionMethod`, `ReadMethod`, `ProviderMethod`,
 `unwrapV9`, `V8PayloadUnsupportedError`, `UntaggedPayloadError`,
 `V9WalletProvider`, `createWalletProvider`, `createMidnightProvider`,
-`SeamEraUnsupportedError`, `assertSeamsSupportEra`, `TransactionSeams`,
+`ProviderEraUnsupportedError`, `assertProvidersSupportEra`, `TransactionProviders`,
 `EraDeclaringProvider`, `RetainedEraEntries`, `EraRequest`, `erasServedBy`,
 `narrowToEra`, `createProofProviderFromHandlers`, `createWalletProviderFromHandlers`,
 `createMidnightProviderFromHandlers`, `ProofProviderHandlers`, `WalletProviderHandlers`,
@@ -434,7 +434,7 @@ put the silent guard back.
 
 **`@midnight-ntwrk/midnight-js-contracts`** — added:
 `EraInvariantViolationError` (code `MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION`,
-carries `seam` and optional `circuitId`), `EraSeam`.
+carries `method` and optional `circuitId`), `EraMethod`.
 
 **`@midnight-ntwrk/midnight-js-indexer-public-data-provider`** — added:
 `EraUnresolvableError` (`MIDNIGHT_JS_PR_ERA_UNRESOLVABLE`) and
@@ -555,6 +555,19 @@ names.
 | Package | Before | After |
 |---|---|---|
 | `types` | `RetainedEraHandlers<T>` | `RetainedEraEntries<T>` |
+| `types` | `ProviderSeam` | `TransactionMethod` |
+| `types` | `ReadSeam` | `ReadMethod` |
+| `types` | `Seam` | `ProviderMethod` |
+| `types` | `TransactionSeams` | `TransactionProviders` |
+| `types` | `assertSeamsSupportEra` | `assertProvidersSupportEra` |
+| `types` | `SeamEraUnsupportedError` | `ProviderEraUnsupportedError` |
+| `types` | `PROVIDER_ERROR_CODES.SEAM_ERA_UNSUPPORTED` (`MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED`) | `PROVIDER_ERA_UNSUPPORTED` (`MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`) |
+| `types` | the `seam` field on `V8PayloadUnsupportedError`, `UntaggedPayloadError`, `ProviderEraUnsupportedError`, `UnusableEraEntryError` | `method` |
+| `contracts` | `EraSeam` | `EraMethod` |
+| `contracts` | `Ledger8.SeamFailedError` | `Ledger8.ProviderFailedError` |
+| `contracts` | `CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED` (`MIDNIGHT_JS_C_LEDGER8_SEAM_FAILED`) | `LEDGER8_PROVIDER_FAILED` (`MIDNIGHT_JS_C_LEDGER8_PROVIDER_FAILED`) |
+| `contracts` | the `seam` field on `EraInvariantViolationError` and `Ledger8.ProviderFailedError` | `method` |
+| `indexer-public-data-provider` | the `seam` field on `EraUnsupportedError` and `EraUnresolvableError`, and the `seam` key in a decode failure's `context.details` | `method` |
 
 ---
 

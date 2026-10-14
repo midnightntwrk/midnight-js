@@ -945,7 +945,7 @@ describe('runOrRethrow', () => {
 
 // The two state guards `runRetainedCircuit` runs BEFORE it executes anything.
 // Both used to live in the hand-maintained `lib/v8/down-convert.ts`; both are
-// reachable from the published seam, because `RunRetainedCircuitOptions` takes
+// reachable from the published entry point, because `RunRetainedCircuitOptions` takes
 // a `ContractStatePojo` whose `state` is a bare `EncodedStateValue` a caller
 // can assemble by hand, and whose `balance` is an ordinary interface member.
 describe('runRetainedCircuit refuses a state it cannot execute against', () => {
@@ -986,7 +986,7 @@ describe('runRetainedCircuit refuses a state it cannot execute against', () => {
     const rejection = await runAgainst({ ...fresh, balance: balance as ContractBalance });
 
     // Assert.
-    // CODED, like every other refusal on this seam: a consumer switching on
+    // CODED, like every other refusal from `runRetainedCircuit`: a consumer switching on
     // `stage` must not be handed a classless error for the one refusal that
     // exists to keep #1345 closed.
     expect(rejection).toBeInstanceOf(DownConvertFailedError);

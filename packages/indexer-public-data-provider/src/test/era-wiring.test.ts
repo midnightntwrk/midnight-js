@@ -85,17 +85,17 @@ describe('finalized-record era wiring', () => {
 
     expect(decodeVersionedTransaction).toHaveBeenCalledTimes(1);
     expect(decodeVersionedTransaction).toHaveBeenCalledWith(RAW, era, {
-      seam: 'watchForTxData',
+      method: 'watchForTxData',
       protocolVersion,
       recordRef: `txId ${TX_ID}`
     });
   });
 
-  it('names the deploy seam and the contract address on the deploy path', async () => {
+  it('names the deploy method and the contract address on the deploy path', async () => {
     await toFinalizedDeployTxData(CONTRACT_ADDRESS, transactionAt(V8_PROTOCOL_VERSION));
 
     expect(decodeVersionedTransaction).toHaveBeenCalledWith(RAW, 'v8', {
-      seam: 'watchForDeployTxData',
+      method: 'watchForDeployTxData',
       protocolVersion: V8_PROTOCOL_VERSION,
       recordRef: `contractAddress ${CONTRACT_ADDRESS}`
     });
@@ -118,7 +118,7 @@ describe('finalized-record era wiring', () => {
   it.each([
     ['watchForTxData', () => toFinalizedTxData(TX_ID, transactionAt(UNMAPPED_PROTOCOL_VERSION))],
     ['watchForDeployTxData', () => toFinalizedDeployTxData(CONTRACT_ADDRESS, transactionAt(UNMAPPED_PROTOCOL_VERSION))]
-  ])('refuses an unmapped protocolVersion on %s before any decoder runs', async (_seam, read) => {
+  ])('refuses an unmapped protocolVersion on %s before any decoder runs', async (_method, read) => {
     await expect(read()).rejects.toThrow(EraUnresolvableError);
 
     expect(decodeVersionedTransaction).not.toHaveBeenCalled();

@@ -32,8 +32,8 @@ import {
   Ledger8DeployOnV9Error,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
+  Ledger8ProviderFailedError,
   Ledger8RecipientUnmappableError,
-  Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
   Ledger8SigningKeyUnusableError
 } from '../errors';
@@ -57,7 +57,7 @@ const RETAINED_ERA_MEMBERS = [
   'DeployTxFailedError',
   'DeployUnconfirmedError',
   'RecipientUnmappableError',
-  'SeamFailedError',
+  'ProviderFailedError',
   'ShieldedSpendUnsupportedError',
   'SigningKeyUnusableError',
   'createCircuitCallTxInterface'
@@ -84,7 +84,7 @@ const ERA_NEUTRAL_MEMBERS = [
  * The bundle rather than `../index`, for the reason `contracts-value-acl.test.ts` states: vitest
  * resolves the barrel through its own per-file transform, so a member rollup elides from the frozen
  * namespace object stays invisible to every assertion made against the source -- while a consumer's
- * `instanceof Ledger8.SeamFailedError` throws on an undefined right-hand side.
+ * `instanceof Ledger8.ProviderFailedError` throws on an undefined right-hand side.
  *
  * A missing bundle throws rather than skipping: a skipped test reports as a pass. Turbo's `test`
  * task dependsOn `build`, so `dist/` is present in CI.
@@ -133,7 +133,7 @@ describe('the retained era is published as one namespace', () => {
     expect(Ledger8.DeployTxFailedError).toBe(Ledger8DeployTxFailedError);
     expect(Ledger8.DeployUnconfirmedError).toBe(Ledger8DeployUnconfirmedError);
     expect(Ledger8.RecipientUnmappableError).toBe(Ledger8RecipientUnmappableError);
-    expect(Ledger8.SeamFailedError).toBe(Ledger8SeamFailedError);
+    expect(Ledger8.ProviderFailedError).toBe(Ledger8ProviderFailedError);
     expect(Ledger8.ShieldedSpendUnsupportedError).toBe(Ledger8ShieldedSpendUnsupportedError);
     expect(Ledger8.SigningKeyUnusableError).toBe(Ledger8SigningKeyUnusableError);
     expect(Ledger8.createCircuitCallTxInterface).toBe(createLedger8CircuitCallTxInterface);

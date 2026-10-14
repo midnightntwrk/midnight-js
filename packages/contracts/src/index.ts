@@ -82,7 +82,7 @@ export {
   type EraArtifactMismatchOptions,
   type EraArtifactMismatchReason,
   EraInvariantViolationError,
-  type EraSeam,
+  type EraMethod,
   HeadReadFailedError,
   HeadStateEraMismatchError,
   IncompleteCallTxPrivateStateConfig,

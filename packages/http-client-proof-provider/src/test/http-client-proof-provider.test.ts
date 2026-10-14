@@ -115,8 +115,8 @@ function wireMocks(): {
 }
 
 /**
- * Minimal typed transaction stub, wrapped in the v9 arm of the versioned payload the provider
- * seam takes. `httpClientProofProvider` invokes `prove(provingProvider, ...)` on the carried
+ * Minimal typed transaction stub, wrapped in the v9 arm of the versioned payload
+ * `proveTx` takes. `httpClientProofProvider` invokes `prove(provingProvider, ...)` on the carried
  * transaction, so the stub drives that provider once — exactly as the real
  * `UnprovenTransaction.prove` would — to let the per-call timeout thread through to the
  * underlying provider. `Partial<UnprovenTransaction>` documents that only `prove` is exercised,
@@ -158,7 +158,7 @@ describe('httpClientProofProvider', () => {
     expect(constructionConfigs).toHaveLength(1);
   });
 
-  // The retained era crosses this seam as bytes in and bytes out. These cases
+  // The retained era is passed to proveTx as bytes in and bytes out. These cases
   // drive the real retained runtime rather than a stub, because the two things
   // that can go wrong here -- proving with the wrong era's cost model, and
   // answering in the wrong arm -- are both invisible to a mocked ledger.
@@ -243,7 +243,7 @@ describe('httpClientProofProvider', () => {
       // The mocked circuit prover answers with bytes that are not a proof, so
       // the retained runtime rejects afterwards. That is fine and beside the
       // point: what this measures is which provider it was handed. Swap
-      // `perCallProvingProvider` for `baseProvingProvider` in the seam and the
+      // `perCallProvingProvider` for `baseProvingProvider` in the provider and the
       // recorded override becomes `undefined` -- the per-call timeout silently
       // stops applying to retained-era proving, with nothing else to notice it.
       await provider
@@ -302,7 +302,7 @@ describe('httpClientProofProvider', () => {
 
       const result = await provider.proveTx(stubTxProvingTo(provenTx));
 
-      // Identity, not structural equality: the premise of the versioned seam
+      // Identity, not structural equality: the premise of the versioned method
       // is that ledger objects from different WASM instances must never be
       // conflated, and `toEqual` would pass for any empty object.
       expect(result.version === 'v9' && result.tx).toBe(provenTx);

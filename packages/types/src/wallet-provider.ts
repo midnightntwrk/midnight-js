@@ -39,7 +39,7 @@ export interface WalletProvider {
   /**
    * The ledger eras THIS INSTANCE serves. See
    * {@link ProofProvider.supportedEras} — the field means the same on all three
-   * transaction seams, and all three are read together before an operation
+   * transaction providers, and all three are read together before an operation
    * starts.
    */
   readonly supportedEras: readonly LedgerVersion[];
@@ -66,13 +66,13 @@ export interface WalletProvider {
 }
 
 /**
- * Balances a CURRENT-era transaction, which crosses this seam as a live ledger
+ * Balances a CURRENT-era transaction, which is passed to `balanceTx` as a live ledger
  * object.
  */
 export type CurrentEraBalancer = (tx: UnboundTransaction, ttl?: Date) => Promise<FinalizedTransaction>;
 
 /**
- * Balances a RETAINED-era transaction, which crosses this seam as serialized
+ * Balances a RETAINED-era transaction, which is passed to `balanceTx` as serialized
  * bytes in both directions.
  */
 export type RetainedEraBalancer = (txBytes: Uint8Array, ttl?: Date) => Promise<Uint8Array>;
@@ -137,7 +137,7 @@ export const createWalletProviderFromHandlers = (handlers: WalletProviderHandler
 
 /**
  * A {@link WalletProvider} written against the v9 ledger runtime only — the
- * shape an implementation had before the seams became version-tagged.
+ * shape an implementation had before the transaction methods became version-tagged.
  */
 export interface V9WalletProvider {
   balanceTx(tx: UnboundTransaction, ttl?: Date): Promise<FinalizedTransaction>;
@@ -162,7 +162,7 @@ export interface V9WalletProvider {
  * @param impl The v9-only wallet implementation to wrap.
  * @returns A {@link WalletProvider} that narrows inbound payloads and tags
  *          outbound ones.
- * @see {@link SeamEraDeclarations} for the compiler error this avoids, and for
+ * @see {@link ProviderEraDeclarations} for the compiler error this avoids, and for
  * why serving v9 payloads only is permanent rather than a gap.
  *
  * @example

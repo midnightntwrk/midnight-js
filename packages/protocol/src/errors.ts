@@ -243,7 +243,7 @@ export type RetainedEraSubpath = '/v8' | '/engine';
  * @param cause The underlying module-resolution or initialisation failure,
  *   preserved unchanged. Read it for which module actually failed.
  * @see {@link ModuleGraphAndLazyLoading}
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export class Ledger8RuntimeMissingError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING;
@@ -392,7 +392,7 @@ export class DownConvertFailedError extends MidnightJsError {
  * NOTHING RAISES THIS ANY MORE: the walk it served
  * (`assertMerkleTreesRehashed`, `lib/v8/down-convert.ts`) was removed with the
  * hand-maintained execution layer, and the condition it named cannot reach the
- * seam that replaced it. Execution now takes an already-encoded
+ * code that replaced it. Execution now takes an already-encoded
  * `EncodedStateValue`, and a tree's rehash state does not survive that
  * encoding: a never-rehashed tree and a rehashed one encode IDENTICALLY, and
  * decoding either yields the same root. Being un-rehashed is a property of a
@@ -996,7 +996,7 @@ const describeType = (value: unknown): string => {
 };
 
 /**
- * Thrown when a payload handed to a proving seam is not a serialized
+ * Thrown when a payload handed to a proving function is not a serialized
  * transaction at all.
  *
  * Distinct from a decode failure inside the ledger runtime: this is raised
@@ -1015,7 +1015,7 @@ export class PayloadNotATransactionError extends MidnightJsError {
 
   private constructor(detail: string) {
     super(
-      `${detail} Pass the bytes produced by a sanctioned composition seam; a contract state, a ` +
+      `${detail} Pass the bytes of a transaction produced by a sanctioned composition function; a contract state, a ` +
         'Zswap offer or a proof preimage is not a transaction and cannot be proved.'
     );
     this.name = 'PayloadNotATransactionError';

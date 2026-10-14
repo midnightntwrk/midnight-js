@@ -510,7 +510,7 @@ string is refused as `IndexerDataError` before any decoder runs.
 
 Bytes that will not decode on the era selected for them surface as the
 `DeserializationError` the runtime produced, carrying the era, the
-`protocolVersion`, the seam and the record on `context.details`. This provider
+`protocolVersion`, the method and the record on `context.details`. This provider
 does not re-attribute that failure: a self-contradicting record and a
 `@midnightntwrk/ledger`-vN in your dApp of a different vintage than the
 network's are indistinguishable from here, and the error's own mitigation

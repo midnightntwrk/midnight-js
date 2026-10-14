@@ -1,8 +1,8 @@
 ---
-title: EraSeam
+title: EraBoundary
 ---
 
-# The era seam
+# The era boundary
 
 `@midnightntwrk/midnight-js-protocol` puts one boundary between a caller and
 the two ledger eras it supports. On one side a caller holds a `LedgerEra`
@@ -11,11 +11,11 @@ object, or — for the operations only the retained pre-fork era can perform —
 mixed. This document records why that boundary is shaped the way it is: how the
 surface is split between the two objects, and how each side is acquired.
 
-## What may cross the seam
+## What may cross the boundary
 
 What is allowed across the era boundary is decided in
 `docs/adr/0010-publish-era-handles-alongside-their-plain-data.md`. The half that
-governs THIS seam is the strict one: the era-agnostic facade trades plain data
+governs THIS boundary is the strict one: the era-agnostic facade trades plain data
 only, encoded at the crossing point. The `structuredClone` gate in
 `src/test/era-parity.test.ts` records that rule but does not enforce it — a
 `wasm-bindgen` handle clones without throwing, so the gate would pass one
@@ -157,12 +157,12 @@ would drop the rest without a word. The refusal is raised
 `composeCallTx` answers with the bytes `Transaction.serialize()` produces before
 `.prove()` is ever called, alongside the guaranteed/fallible split each call was
 built from. Proving needs a proving provider and a running proof server, neither
-of which this seam has.
+of which this boundary has.
 
 The split is on the answer because it is also on the way in: a call's Zswap
 offer arrives as a factory the composer calls back with that split, never as
 ready-made bytes. A coin has to be routed into the segment its movement belongs
 to, and until the transcripts are split there is no segment to route by — so
 there is deliberately no shape of this call that builds an offer before one
-exists. Being handed the split is what the seam guarantees; using it remains the
+exists. Being handed the split is what the boundary guarantees; using it remains the
 factory's own responsibility.

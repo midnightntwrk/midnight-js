@@ -496,3 +496,19 @@ can no longer be a devDependency of `types`. Two things follow: their names say
 reaches the registry any more; and each such assertion is paired with
 `toBeInstanceOf`, which the guard used to supply. Without that pairing a
 rejection that stopped being an `Error` at all would have kept the suite green.
+
+## Amendment — "seam" leaves the names (2026-10-14)
+
+Issue #1489. The decision is unchanged; only names change. This ADR says
+"seam" for a provider method that carries a version-tagged payload. A caller
+never writes anything called a seam, so the public names and messages now say
+"method" or "provider":
+
+- `ProviderSeam`, `ReadSeam` and `Seam` are `TransactionMethod`, `ReadMethod`
+  and `ProviderMethod`; the field `seam` on the payload errors is `method`;
+- `SeamEraUnsupportedError` is `ProviderEraUnsupportedError`, with code
+  `MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`; `assertSeamsSupportEra` is
+  `assertProvidersSupportEra`, and `TransactionSeams` is `TransactionProviders`.
+
+The title and file name of this ADR keep the old word, and so do the
+amendments above.

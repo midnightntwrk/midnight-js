@@ -76,7 +76,7 @@ export interface ProofProvider {
   /**
    * The ledger eras THIS INSTANCE serves.
    *
-   * Read before an operation starts, by `assertSeamsSupportEra`, so a set of
+   * Read before an operation starts, by `assertProvidersSupportEra`, so a set of
    * providers that cannot carry a transaction end to end is refused before its
    * proof is paid for. A provider built by one of the `create*` factories has
    * this computed from the handlers it was given; a provider implementing this
@@ -122,13 +122,13 @@ export interface ProofProvider {
 }
 
 /**
- * Proves a CURRENT-era transaction, which crosses this seam as a live ledger
+ * Proves a CURRENT-era transaction, which is passed to `proveTx` as a live ledger
  * object because both sides share the current era's WASM instance.
  */
 export type CurrentEraProver = (tx: UnprovenTransaction, config?: ProveTxConfig) => Promise<UnboundTransaction>;
 
 /**
- * Proves a RETAINED-era transaction, which crosses this seam as serialized
+ * Proves a RETAINED-era transaction, which is passed to `proveTx` as serialized
  * bytes in both directions: the runtime that owns such a transaction is loaded
  * lazily and its instances are not interchangeable with the current era's.
  */
@@ -213,7 +213,7 @@ export interface ProvingProvidersByEra {
    * that — the current era's shape is a structural superset of the retained
    * era's, so the wrong one type-checks.
    *
-   * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/seam-era-declarations.md | Seam era declarations}
+   * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/provider-era-declarations.md | Provider era declarations}
    */
   readonly retainedEras?: RetainedEraEntries<RetainedEraProvingProvider>;
   /**
@@ -221,7 +221,7 @@ export interface ProvingProvidersByEra {
    * retained era always proves with its own era's initial cost model, which
    * this cannot override.
    *
-   * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/seam-era-declarations.md | Seam era declarations}
+   * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/provider-era-declarations.md | Provider era declarations}
    */
   readonly costModel?: CostModel;
 }
@@ -312,7 +312,7 @@ const toRetainedEraHandlers = (
  * // supportedEras is ['v9', 'v8']
  * ```
  *
- * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/seam-era-declarations.md | Seam era declarations}
+ * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/provider-era-declarations.md | Provider era declarations}
  */
 export const createProofProviderForEras = (provingProviders: ProvingProvidersByEra): ProofProvider => {
   const { currentEra, retainedEras } = readEraEntries('proveTx', provingProviders, 'proving-provider');

@@ -19,14 +19,14 @@ import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version
 import type { FinalizedTxData, FinalizedTxRecord } from './midnight-types';
 
 /**
- * The v8 variant of every transaction payload crossing a provider seam
+ * The v8 variant of every transaction payload passed to a provider method
  * (`proveTx`, `balanceTx`, `submitTx`), in both directions.
  *
  * A v8-era transaction crosses as serialized, tag-prefixed bytes rather than as
  * a live ledger object, and `version` says which runtime produced them.
  *
  * NOT VALIDATED: any `Uint8Array` satisfies `txBytes`, and nothing here checks
- * the tag prefix. The variant is identical for all three seams, so it says nothing
+ * the tag prefix. The variant is identical for all three methods, so it says nothing
  * about which pipeline stage the transaction has reached — on this path, stage
  * is the caller's responsibility.
  *
@@ -39,8 +39,8 @@ export interface V8TxBytes {
 }
 
 /**
- * The v9 variant of every transaction payload crossing a provider seam: the live
- * ledger object, carried directly because both sides of the seam share the v9
+ * The v9 variant of every transaction payload passed to a provider method: the live
+ * ledger object, carried directly because the caller and the provider share the v9
  * WASM instance.
  *
  * @typeParam T - The v9 ledger transaction type for the pipeline stage in
@@ -52,7 +52,7 @@ export interface V9Tx<T> {
 }
 
 /**
- * A transaction payload crossing a provider seam, discriminated by the ledger
+ * A transaction payload passed to a provider method, discriminated by the ledger
  * runtime it belongs to: serialized bytes for the v8 era ({@link V8TxBytes}),
  * or the live ledger object for v9 ({@link V9Tx}).
  *
@@ -60,7 +60,7 @@ export interface V9Tx<T> {
  * deliberately no untagged form, so a bare `Uint8Array` (bytes whose era
  * nobody can tell) is never assignable where this type is expected.
  *
- * The seam types do not tie the input era to the output era: nothing here
+ * The provider method types do not tie the input era to the output era: nothing here
  * stops a provider returning a v9 result for a v8 input. A v9-only flow is
  * expected to check that at its own boundary.
  *

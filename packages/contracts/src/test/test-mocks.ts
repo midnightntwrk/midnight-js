@@ -259,13 +259,13 @@ export const createMockCoinInfo = (): ShieldedCoinInfo => ({
 const MOCK_HEAD_PROTOCOL_VERSION = 2_000_000;
 
 /**
- * What the three write seams declare here: BOTH eras, mirroring the testkit's
+ * What the three transaction providers declare here: BOTH eras, mirroring the testkit's
  * real `MidnightWalletProvider`, which serves both.
  *
- * Declared once and shared by the three mocks, because a set where the seams
+ * Declared once and shared by the three mocks, because a set where the providers
  * disagree is the thing a test should have to say out loud. A test that wants a
  * gap replaces one provider's declaration explicitly — see
- * `seam-era-support.test.ts`.
+ * `provider-era-support.test.ts`.
  */
 export const MOCK_CONFIG: MidnightConfig = { networkId: 'undeployed', ttlSeconds: 3600 };
 

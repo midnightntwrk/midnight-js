@@ -146,7 +146,7 @@ yarn compact-retained   # rebuild the twins (committed, so rarely needed)
 ```
 
 Which contracts earn a twin, why the directory is separate, why the emitted
-runtime import is rewritten, and which `ledger-v8` instance the wallet seam uses:
+runtime import is rewritten, and which `ledger-v8` instance the wallet provider uses:
 `docs/architecture/retained-era-coverage.md`.
 
 ---

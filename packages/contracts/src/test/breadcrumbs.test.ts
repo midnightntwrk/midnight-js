@@ -55,7 +55,7 @@ import {
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
   Ledger8DeployOnV9Error,
-  Ledger8SeamFailedError,
+  Ledger8ProviderFailedError,
   StaleHeadError,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation
@@ -165,9 +165,9 @@ const headSource = (...protocolVersions: readonly number[]): { readonly queryLat
 };
 
 // The provider set `acquireLedger8Runtime` consults: the head source under test,
-// plus three write seams that declare both eras so the seam check is never what
+// plus three transaction providers that declare both eras so the provider check is never what
 // a breadcrumb assertion here fails on. The gap case is covered on its own, in
-// `seam-era-support.test.ts`.
+// `provider-era-support.test.ts`.
 const retainedRuntime = (...protocolVersions: readonly number[]): Ledger8RuntimeProviders => {
   const bothEras = { supportedEras: Object.freeze<LedgerVersion[]>(['v8', 'v9']) };
   return {
@@ -752,10 +752,10 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
 });
 
 describe('the post-rejection head read leaves a breadcrumb too', () => {
-  // The rejection in the shape the submit seam actually produces: already
+  // The rejection in the shape `submitTx` actually produces: already
   // sanitized, with the provider's failure on `cause`.
-  const wrappedRejection = (): Ledger8SeamFailedError =>
-    new Ledger8SeamFailedError('submitTx', 'receive_coin', new Error('node refused the transaction'));
+  const wrappedRejection = (): Ledger8ProviderFailedError =>
+    new Ledger8ProviderFailedError('submitTx', 'receive_coin', new Error('node refused the transaction'));
 
   const callOperation = (head: LedgerVersion): SubmittedOperation => ({
     head,

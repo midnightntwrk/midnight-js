@@ -20,7 +20,7 @@
  * This is `./v8-native.test.ts`'s twin. The contract, the committed recording
  * and the pipeline are the same; what differs is which era object the pipeline
  * is handed and, consequently, which ledger tags the transaction and which arm
- * of the provider seams it crosses on. Read the two files together — the
+ * it hands the providers. Read the two files together — the
  * orchestration order assertion is deliberately IDENTICAL in both, because the
  * claim under test is that the two arms differ only in the era object.
  *
@@ -145,7 +145,7 @@ const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState =>
 /**
  * The same record with the block's parameters missing, which is what a `PublicDataProvider` that
  * does not serve them produces. `RawContractState.ledgerParameters` is optional, so such a provider
- * is type-correct and the omission cannot be caught at the seam.
+ * is type-correct and the omission cannot be caught at the provider interface.
  */
 const rawStateWithoutParameters = (raw: Uint8Array, protocolVersion: number): RawContractState => {
   const { ledgerParameters: _omitted, ...withoutParameters } = rawState(raw, protocolVersion);
@@ -343,7 +343,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
   // than taken from `decodeContractState`, because deriving it from the very
   // function the pipeline calls would satisfy the assertion whatever that
   // function returned. What is under test is the PIPELINE's carrying, so the
-  // decoder is the seam to stub; that the real decoder reads a real retained
+  // decoder is the place to stub; that the real decoder reads a real retained
   // balance is `shared-contract-state.test.ts`'s claim, not this one's.
   it('hands the engine the contract balance the chain state declares, not an empty one', async () => {
     const log: OrchestrationLog = [];
@@ -404,7 +404,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
 
     expect(rejection).toBeInstanceOf(EraInvariantViolationError);
     expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
-    expect((rejection as EraInvariantViolationError).seam).toBe('watchForTxData');
+    expect((rejection as EraInvariantViolationError).method).toBe('watchForTxData');
     expect((rejection as EraInvariantViolationError).expected).toBe('v9');
     expect((rejection as EraInvariantViolationError).circuitId).toBe(CIRCUIT_ID);
   });
@@ -431,7 +431,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 30_000);
   });
 
-  it('hands every provider seam the CURRENT-era arm, as a live ledger transaction', async () => {
+  it('hands every provider method the CURRENT-era arm, as a live ledger transaction', async () => {
     const providers = postForkProviders(v6Envelope);
 
     await submitCallTx(providers, callOptions());
@@ -439,8 +439,8 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // The `version` tag names the LEDGER RUNTIME that produced the payload, not
     // the toolchain that produced the contract. A keep-state transaction is an
     // ordinary current-era transaction that happens to carry a retained-era
-    // call, so it crosses as the current era's live handle -- both sides of the
-    // seam share that runtime. Tagging it `'v8'` would claim the retained
+    // call, so it crosses as the current era's live handle -- the framework and the
+    // providers share that runtime. Tagging it `'v8'` would claim the retained
     // runtime built it, which is false, and would send a current-era-only
     // provider looking for a runtime it does not need.
     for (const payload of [providers.seen.proveTx, providers.seen.balanceTx, providers.seen.submitTx]) {
@@ -464,7 +464,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
   it('refuses a provider that answers this current-era flow in the retained era', async () => {
     const providers = postForkProviders(v6Envelope);
     // A broken or mis-pointed provider: it accepted a current-era payload and
-    // answered with retained-era bytes. Nothing in the seam types ties a
+    // answered with retained-era bytes. Nothing in the provider method types ties a
     // provider's output era to its input era, so this is checked rather than
     // assumed.
     providers.proofProvider.proveTx = vi
@@ -479,7 +479,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     }
 
     expect(caught).toBeInstanceOf(EraInvariantViolationError);
-    expect((caught as EraInvariantViolationError).seam).toBe('proveTx');
+    expect((caught as EraInvariantViolationError).method).toBe('proveTx');
     expect((caught as EraInvariantViolationError).circuitId).toBe(CIRCUIT_ID);
     expect((caught as EraInvariantViolationError).expected).toBe('v9');
   });
@@ -700,7 +700,7 @@ type _RequestAgreesOnTheState = Assert<
 // than what the engine accepts, and what has to hold is that the value this
 // package threads SATISFIES the engine -- not that the two are interchangeable.
 //
-// This is the pin the seam did not have. `compiledContract` was `unknown` on the
+// This is the pin the era boundary did not have. `compiledContract` was `unknown` on the
 // request side, so the two packages could and did disagree about what a retained
 // contract is, and the engine failed only at run time with a message naming
 // neither the contract nor the real cause.

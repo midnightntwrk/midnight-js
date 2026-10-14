@@ -213,7 +213,7 @@ not the same size, deliberately.
 
 **One leg carries the whole claim about the network.** It starts a call before
 the fork, on a real pre-fork head, and really composes, proves and balances it
-there. Only the SUBMISSION is held -- at the `midnightProvider.submitTx` seam --
+there. Only the SUBMISSION is held -- at `midnightProvider.submitTx` --
 until the head reports `v9`. Then the bytes go to the real node, and it really
 refuses them. In its own words, from `stack-logs/node.log` on a run where the
 diagnosis had been removed:
@@ -272,7 +272,7 @@ once. Per-arm mutations are the stronger claim and have not been run.
 already forked.** Measured: a composition that has resolved a `v8` head after the
 boundary refuses the v9-tagged ledger parameters the block serves, with
 `ComposeOptionError`, before anything is proven -- so that mechanism never
-reaches the submit seam at all, and a leg built on it would be asserting on the
+reaches `submitTx` at all, and a leg built on it would be asserting on the
 composer. (A retained contract composes perfectly well after the fork; the two
 injected legs do it. The refusal is specific to a composition that believes the
 head is still pre-fork.)

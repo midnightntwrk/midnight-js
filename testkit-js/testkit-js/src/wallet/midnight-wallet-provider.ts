@@ -41,7 +41,7 @@ import { getInitialShieldedState, waitForFunds } from './wallet-utils';
  */
 export class MidnightWalletProvider implements MidnightProvider, WalletProvider {
   /**
-   * Both eras, declared once for both seams this class implements.
+   * Both eras, declared once for both providers this class implements.
    *
    * Written out rather than assembled from per-era arms, which is the escape
    * hatch the tagged interfaces deliberately keep open for a class. The two
@@ -50,7 +50,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
    * through rather than a branch — and splitting them into arms would duplicate
    * the balance/sign/finalize sequence to no end.
    *
-   * Read before an operation starts, by `assertSeamsSupportEra`. Frozen for the
+   * Read before an operation starts, by `assertProvidersSupportEra`. Frozen for the
    * same reason the factories freeze their computed declaration: a widened
    * declaration would let that check pass for an era this wallet cannot serve.
    */

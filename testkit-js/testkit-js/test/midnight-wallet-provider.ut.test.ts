@@ -46,7 +46,7 @@ const RETAINED_VERSION = ProtocolVersion.ProtocolVersion(1_000_000n);
 const CURRENT_VERSION = FORK_SCHEDULE.v9;
 
 // The handle each assertion compares against, sealed here rather than through
-// the seam under test so that the comparison is independent of it.
+// the provider method under test so that the comparison is independent of it.
 const adoptedAtCurrent = <TStage extends WalletTransaction.Stage>(
   stage: TStage,
   transaction: { readonly serialize: () => Uint8Array }
@@ -63,10 +63,10 @@ const createWalletStub = (): WalletFacade => {
   const stub: Partial<WalletFacade> = {
     balanceUnboundTransaction: vi.fn(),
     submitTransaction: vi.fn(),
-    // The seams adopt a transaction AT the chain's active protocol version, so a
+    // The transaction methods adopt a transaction AT the chain's active protocol version, so a
     // stub without this cannot reach either era's path. Pinned below the fork
     // version, i.e. the retained epoch. `activeProtocolVersion` is the only
-    // member of `FacadeState` these seams read, so the narrowing is confined to
+    // member of `FacadeState` these methods read, so the narrowing is confined to
     // this one member rather than spread across the assertions.
     state: walletAt(RETAINED_VERSION).state
   };
@@ -88,8 +88,8 @@ interface BalancingWallet {
 
 // The wallet's balancing path is three calls deep -- balance, sign, finalize --
 // and each stage's output has to reach the next one. The recipes it hands back
-// are opaque markers: this suite asserts the wiring across the seam, not the
-// wallet SDK's own types. The finalized stage is the exception: the seam unwraps
+// are opaque markers: this suite asserts the wiring through the provider, not the
+// wallet SDK's own types. The finalized stage is the exception: the provider unwraps
 // what `finalizeRecipe` returns, so that one has to be a real handle.
 const createBalancingWallet = async (): Promise<BalancingWallet> => {
   const recipe = {} as UnboundTransactionRecipe;
@@ -136,11 +136,11 @@ const createProvider = async (
 
 describe('MidnightWalletProvider', () => {
   // Set equality rather than `toContain`: this wallet serves both eras on both
-  // seams it implements, and an era silently dropped from the declaration would
+  // providers it implements, and an era silently dropped from the declaration would
   // have a retained-era operation refused before it started -- which
   // `toContain` would not catch.
   describe('the eras it declares', () => {
-    it('declares both eras, matching what the two seams below actually carry', async () => {
+    it('declares both eras, matching what the two methods below actually carry', async () => {
       const provider = await createProvider(createWalletStub());
 
       expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
@@ -305,10 +305,10 @@ describe('MidnightWalletProvider', () => {
   });
 
   // The likely 5.0.0 migration failure: a consumer built against the pre-5.0.0
-  // seam passes a bare transaction. It must fail with a coded, actionable error
+  // API passes a bare transaction. It must fail with a coded, actionable error
   // rather than a TypeError inside the wallet SDK.
   describe('a payload with no recognised version discriminant', () => {
-    // These payloads are unrepresentable in the seam types on purpose — that is
+    // These payloads are unrepresentable in the provider method types on purpose — that is
     // the property under test. This helper is the one place the type system is
     // stepped around, rather than an `as unknown as` at each call site.
     const untagged = <T>(payload: object): T => payload as T;
@@ -326,7 +326,7 @@ describe('MidnightWalletProvider', () => {
 
       expect(rejection).toBeInstanceOf(UntaggedPayloadError);
       expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
-      expect((rejection as UntaggedPayloadError).seam).toBe('balanceTx');
+      expect((rejection as UntaggedPayloadError).method).toBe('balanceTx');
       expect(wallet.balanceUnboundTransaction).not.toHaveBeenCalled();
     });
 

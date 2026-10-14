@@ -14,7 +14,7 @@
  */
 
 /**
- * The retained-era half of the `proveTx` seam, published as a LEAF subpath.
+ * The retained-era half of `proveTx`, published as a LEAF subpath.
  *
  * Deliberately not on the package root: the root barrel re-exports the
  * `ledger`, `compactRuntime`, `compactJs`, `platform` and `onchainRuntime`

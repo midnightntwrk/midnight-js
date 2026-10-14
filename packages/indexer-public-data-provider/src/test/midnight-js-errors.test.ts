@@ -84,4 +84,11 @@ describe('indexer error classes', () => {
   ] as const)('%s carries its code and category', (error, code, category) => {
     expect([error.code, error.category]).toEqual([code, category]);
   });
+
+  it.each([
+    ['EraUnsupportedError', new EraUnsupportedError('watchForDeployTxData', 'v9', 3)],
+    ['EraUnresolvableError', new EraUnresolvableError('watchForDeployTxData', 99, { cause: new Error('x') })]
+  ] as const)('%s reports the read method it was raised for as `method`', (_name, error) => {
+    expect([error.method, 'seam' in error]).toEqual(['watchForDeployTxData', false]);
+  });
 });

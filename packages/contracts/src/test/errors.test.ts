@@ -262,7 +262,7 @@ describe('Ledger8DeployUnconfirmedError', () => {
     new EraInvariantViolationError('watchForDeployTxData', undefined, 'v8', 'v9');
 
   it('keeps the era violation on cause, so the condition and its registered code stay reachable', () => {
-    // The class no longer EXTENDS the violation, so `cause` is the only route left to the seam and
+    // The class no longer EXTENDS the violation, so `cause` is the only route left to the method and
     // the code a caller branches on. Dropping it would strand the original stack too.
     const violation = eraViolation();
 

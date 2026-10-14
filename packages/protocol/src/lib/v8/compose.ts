@@ -70,7 +70,7 @@ export const readZswapOffer = (
  * how long the transaction lives); their well-formedness is checked here — see
  * `assertComposeEnvelope` (`../shared/compose-options.ts`).
  *
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  * @see {@link ComposeRefusalOrder}
  */
 export interface ComposeV8CallOptions {

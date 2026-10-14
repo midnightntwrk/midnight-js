@@ -20,7 +20,7 @@ import type {
   AnyProvableCircuitId,
   FinalizedTxData,
   PrivateStateId,
-  Seam,
+  ProviderMethod,
   VersionedFinalizedTxData
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
@@ -29,15 +29,15 @@ import { CURRENT_PIPELINE_ERA, RETAINED_PIPELINE_ERA } from './era';
 import { NEITHER_ERA_CONTRACT_MESSAGE } from './ledger8-contract';
 
 /**
- * The seams this flow narrows an era at: the three transaction-flow provider
- * methods, plus the two read-surface methods that report a finalized record.
+ * The provider methods this flow narrows an era at: the three transaction
+ * methods, plus the two read methods that report a finalized record.
  *
- * An alias for {@link Seam} in `@midnight-ntwrk/midnight-js-types`, which owns
- * the vocabulary because it declares both the provider seams and the read
- * surface. Kept under this name so the error below reads in the era vocabulary
+ * An alias for {@link ProviderMethod} in `@midnight-ntwrk/midnight-js-types`,
+ * which owns the vocabulary because it declares both the transaction methods
+ * and the read methods. Kept under this name so the error below reads in the era vocabulary
  * of this package.
  */
-export type EraSeam = Seam;
+export type EraMethod = ProviderMethod;
 
 // `SubmitTxOptions.circuitId` is a single id or a list — a merged transaction
 // carries several. Each id is quoted individually so a two-circuit list cannot
@@ -62,7 +62,7 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
  * An error indicating that a provider, or the read surface, answered in a
  * different ledger era from the one the flow submitted.
  *
- * The provider seams and the read surface both carry two eras, but any ONE
+ * The transaction methods and the read methods both carry two eras, but any ONE
  * flow through this package tags every outgoing payload with a single era and
  * cannot submit or report anything else. An answer in the other era therefore
  * means the provider re-tagged or converted the payload it was handed, or that
@@ -87,7 +87,7 @@ export class EraInvariantViolationError extends MidnightJsError {
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION];
 
   /**
-   * @param seam The provider method that returned the payload.
+   * @param method The provider method that returned the payload.
    * @param circuitId The circuit, or circuits, whose flow this happened on,
    *                  when known. A dApp firing many circuits needs this to
    *                  tell which call broke.
@@ -100,13 +100,13 @@ export class EraInvariantViolationError extends MidnightJsError {
    *                 got.
    */
   constructor(
-    readonly seam: EraSeam,
+    readonly method: EraMethod,
     readonly circuitId?: string | readonly string[],
     readonly expected: LedgerVersion = 'v9',
     readonly received?: LedgerVersion
   ) {
     super(
-      `${seam} returned a payload from the '${received ?? 'other'}' ledger era, on a flow that can only ` +
+      `${method} returned a payload from the '${received ?? 'other'}' ledger era, on a flow that can only ` +
         `accept '${expected}'${formatCircuitClause(circuitId) ?? ''}. ` +
         `Check that the configured provider matches the network this application targets, and that no custom ` +
         `provider implementation re-tags the payload it was handed.`
@@ -418,7 +418,7 @@ export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
 
 /**
  * An error indicating that a provider rejected a retained-era transaction at
- * one of the three transaction-flow seams, with the provider's own failure
+ * one of the three transaction methods, with the provider's own failure
  * SANITIZED onto `cause`.
  *
  * ## Why the external failure does not travel as-is
@@ -437,27 +437,27 @@ export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
  *
  * @see {@link KeepStatePipeline} for what redaction removes and what is dropped.
  */
-export class Ledger8SeamFailedError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED];
+export class Ledger8ProviderFailedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED];
 
   /**
-   * @param seam The provider method that rejected.
+   * @param method The provider method that rejected.
    * @param circuitId The circuit this flow was running.
    * @param cause The provider's failure, already sanitized by the caller.
    */
   constructor(
-    readonly seam: EraSeam,
+    readonly method: EraMethod,
     readonly circuitId: string,
     cause: Error
   ) {
     super(
-      `${seam} rejected a retained-era transaction (circuit '${circuitId}'). The provider's own failure ` +
+      `${method} rejected a retained-era transaction (circuit '${circuitId}'). The provider's own failure ` +
         'is on `cause`, with its message redacted of anything that could carry transaction or witness ' +
         'material; read the provider\'s own logs for the unredacted detail.',
       { cause }
     );
-    this.name = 'Ledger8SeamFailedError';
+    this.name = 'Ledger8ProviderFailedError';
   }
 }
 
@@ -486,7 +486,7 @@ export interface SubmittedOperation {
    * The era the network head was on when this operation started.
    *
    * One field, two uses, and they are the same fact: it decides which arm of
-   * the provider seams the transaction crossed on, and it is the `startEra` a
+   * the provider methods the transaction crossed on, and it is the `startEra` a
    * fork diagnosis compares a fresh reading against.
    */
   readonly head: LedgerVersion;
@@ -557,7 +557,7 @@ const STALE_HEAD_MESSAGES: Readonly<
  *
  * The provider's own rejection travels on `cause`, already sanitized of
  * anything that could carry transaction or witness material — see
- * {@link Ledger8SeamFailedError}, which is the form it arrives in.
+ * {@link Ledger8ProviderFailedError}, which is the form it arrives in.
  *
  * @see {@link StaleHeadRemediation} for why a submit rejection is diagnosed
  *      rather than propagated, and why a deploy's remediation differs.
@@ -1050,7 +1050,7 @@ export class ScopedTxEraUnsupportedError extends MidnightJsError {
  * Compact toolchain was handed a contract-scoped transaction to join.
  *
  * A scope merges live CURRENT-era transactions, and a retained-era call crosses
- * the provider seams as its own transaction, so there is nothing to merge it
+ * the provider methods as its own transaction, so there is nothing to merge it
  * into at either head.
  *
  * Raised rather than ignored, and that is the change it makes: the retained-era
@@ -1334,7 +1334,7 @@ const DEPLOY_KEY_STRANDED_REMEDIATION =
  *
  * Branch on `cause` for the underlying failure — an unreachable indexer, a
  * timeout, an untagged payload, an era violation. It is wrapped rather than
- * replaced, so `cause instanceof EraInvariantViolationError`, its seam and its
+ * replaced, so `cause instanceof EraInvariantViolationError`, its method and its
  * registered code all stay reachable.
  *
  * Reachable only AFTER submission. Every refusal ahead of it is raised with no

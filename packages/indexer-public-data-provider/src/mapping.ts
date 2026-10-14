@@ -15,7 +15,7 @@
 
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { FinalizedTxRecord, ReadSeam, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import type { FinalizedTxRecord, ReadMethod, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 
 import {
   correlateDeployTxId,
@@ -78,7 +78,7 @@ export const extractRegularDeployTransaction = (
  * Everything a finalized-transaction record carries except the transaction and
  * the era it belongs to — the two the decode produces.
  *
- * Split out so both read seams build the metadata identically and differ only
+ * Split out so both read methods build the metadata identically and differ only
  * where they genuinely do: which identifier the record is keyed by.
  */
 const toFinalizedTxRecord = (
@@ -114,11 +114,11 @@ const toVersionedFinalizedTxData = async (
   transaction: RegularTransaction & { hash: string; identifiers: string[] },
   txId: TransactionId,
   era: LedgerVersion,
-  seam: ReadSeam,
+  method: ReadMethod,
   recordRef: string
 ): Promise<VersionedFinalizedTxData> => {
   const decoded = await decodeVersionedTransaction(transaction.raw, era, {
-    seam,
+    method,
     protocolVersion: transaction.protocolVersion,
     recordRef
   });

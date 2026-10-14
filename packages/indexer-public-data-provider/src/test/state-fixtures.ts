@@ -131,7 +131,7 @@ export const V9_ERA_LATER_PROTOCOL_VERSION = 2_003_000;
 /** A protocol-version integer no release of this client can resolve. */
 export const UNRESOLVABLE_PROTOCOL_VERSION = 0;
 
-/** The regular-transaction row shape the read seams consume. */
+/** The regular-transaction row shape the read methods consume. */
 export type RegularTransactionRow = RegularTransaction & { hash: string; identifiers: string[] };
 
 /** The fields a test varies on a {@link RegularTransactionRow} fixture. */
@@ -154,7 +154,7 @@ export interface RegularTransactionFixture {
  * Builds one regular-transaction row as the indexer's generated types describe
  * it, from the handful of fields a read-path test actually varies.
  *
- * The generated `RegularTransaction` declares two dozen fields no read seam
+ * The generated `RegularTransaction` declares two dozen fields no read method
  * touches (dust indices, zswap offsets, merkle-tree roots), so a fixture cannot
  * be a structurally complete value. THIS is the one place that widens a partial
  * row to it — every test builds fixtures through here rather than casting its

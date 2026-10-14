@@ -297,7 +297,7 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
     );
 
     test(
-      'refuses a send larger than the contract holds, at a provider seam',
+      'refuses a send larger than the contract holds, at a provider method',
       async () => {
         // Act: the recipient is the WALLET. A self-send of more than the contract
         // holds is accepted, so the self-directed form judges no balance.
@@ -312,22 +312,22 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
         );
 
         // Assert: the NODE refused it, at `submitTx`. Measured, and pinned exactly
-        // rather than as an alternation, because the seam is what discriminates
+        // rather than as an alternation, because the method is what discriminates
         // here: the wallet funds the fee and balances this transaction happily, so
         // every wallet-local fault -- a failed ledger import, an unfunded wallet,
-        // a balancer fault -- surfaces one seam earlier, at `balanceTx`, and no
-        // longer satisfies this. The refusal moving seams is itself worth a red.
+        // a balancer fault -- surfaces one method earlier, at `balanceTx`, and no
+        // longer satisfies this. The refusal moving to another method is itself worth a red.
         //
         // The provider's own reason is not usable: it reaches `cause` as a generic
         // `SubmissionError: Transaction submission error`, with no balance text to
-        // match on. The seam plus the successful send below is what separates "the
+        // match on. The method plus the successful send below is what separates "the
         // ledger compared the amount" from "retained sends fail".
-        expect(rejection).toBeInstanceOf(Ledger8.SeamFailedError);
+        expect(rejection).toBeInstanceOf(Ledger8.ProviderFailedError);
         expect(
-          rejection instanceof Ledger8.SeamFailedError
-            ? { circuitId: rejection.circuitId, seam: rejection.seam }
+          rejection instanceof Ledger8.ProviderFailedError
+            ? { circuitId: rejection.circuitId, method: rejection.method }
             : rejection
-        ).toEqual({ circuitId: 'sendUnshieldedToUserTest', seam: 'submitTx' });
+        ).toEqual({ circuitId: 'sendUnshieldedToUserTest', method: 'submitTx' });
       },
       SLOW_TEST_TIMEOUT
     );

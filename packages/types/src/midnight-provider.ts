@@ -28,7 +28,7 @@ export interface MidnightProvider {
   /**
    * The ledger eras THIS INSTANCE serves. See
    * {@link ProofProvider.supportedEras} — the field means the same on all three
-   * transaction seams, and all three are read together before an operation
+   * transaction providers, and all three are read together before an operation
    * starts.
    */
   readonly supportedEras: readonly LedgerVersion[];
@@ -47,16 +47,16 @@ export interface MidnightProvider {
 }
 
 /**
- * Submits a CURRENT-era transaction, which crosses this seam as a live ledger
+ * Submits a CURRENT-era transaction, which is passed to `submitTx` as a live ledger
  * object.
  */
 export type CurrentEraSubmitter = (tx: FinalizedTransaction) => Promise<TransactionId>;
 
 /**
- * Submits a RETAINED-era transaction, which crosses this seam as serialized
+ * Submits a RETAINED-era transaction, which is passed to `submitTx` as serialized
  * bytes.
  *
- * Unlike the other two seams this one answers untagged, because a transaction
+ * Unlike the other two transaction methods this one answers untagged, because a transaction
  * identifier is era-independent — the eras differ only in what they are handed.
  */
 export type RetainedEraSubmitter = (txBytes: Uint8Array) => Promise<TransactionId>;
@@ -118,7 +118,7 @@ export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHan
  *
  * @param submitTx The v9-only submission function to wrap.
  * @returns A {@link MidnightProvider} that narrows inbound payloads.
- * @see {@link SeamEraDeclarations} for the compiler error this avoids.
+ * @see {@link ProviderEraDeclarations} for the compiler error this avoids.
  *
  * @example
  * ```typescript

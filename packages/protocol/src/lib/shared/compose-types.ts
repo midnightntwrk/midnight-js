@@ -35,7 +35,7 @@ import type {
  * once against ledger-v9.
  * @see {@link RetainedEraExecution} for why each member is read off the
  * context it is.
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export interface PartitionContext {
   readonly block: CallContext;
@@ -61,7 +61,7 @@ export interface PartitionContext {
  * shape.
  * @see {@link ComposeRefusalOrder} for why an already-partitioned pair is
  * passed through rather than re-derived.
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export type CallTranscriptSource =
   | {
@@ -100,7 +100,7 @@ export const INITIAL_LEDGER_PARAMETERS = 'initial';
  * A caller that reads the chain must pass the bytes from the SAME read as the contract state: the
  * parameters are era-tagged and dated per block, so a second read could answer for another block.
  *
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export type LedgerParametersOption = Uint8Array | typeof INITIAL_LEDGER_PARAMETERS;
 
@@ -142,7 +142,7 @@ export type ZswapOfferFactory = (partitions: readonly PartitionedCallTranscript[
  * cross-contract callee to its caller with. The root call — being no one's
  * callee — omits it and gets fresh randomness.
  *
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export interface ComposeCallEntry {
   readonly contractAddress: string;
@@ -176,7 +176,7 @@ export interface ComposeCallEntry {
  *
  * @see {@link ZswapOfferFactory}
  * @see {@link ComposeRefusalOrder} for when the envelope options are checked.
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export interface ComposeCallOptions {
   readonly calls: readonly ComposeCallEntry[];
@@ -194,7 +194,7 @@ export interface ComposeCallOptions {
  * have to split the same transcript a second time, and nothing would notice if
  * the two answers stopped agreeing.
  *
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export interface ComposeCallResultPojo {
   readonly txBytes: Uint8Array;
@@ -213,7 +213,7 @@ export interface ComposeCallResultPojo {
  * ALREADY carries its keys.
  *
  * @see {@link VerifierKeys}
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export interface ComposeDeployOptions {
   readonly contractStateBytes: Uint8Array;
@@ -233,7 +233,7 @@ export interface ComposeDeployOptions {
  * All three are plain data.
  *
  * @see {@link VerifierKeys} for why the address cannot be recomputed.
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export interface DeployResultPojo {
   readonly txBytes: Uint8Array;

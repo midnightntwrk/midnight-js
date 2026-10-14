@@ -78,13 +78,13 @@ not asked about them. A provider that does not serve the pre-fork arm refuses on
 the way IN, before anything is submitted, and a caller narrowing on that refusal
 has to keep seeing it.
 
-`Ledger8SeamFailedError` is the one exception: it IS the sanitized external
+`Ledger8ProviderFailedError` is the one exception: it IS the sanitized external
 rejection, so it is the input this diagnosis is written for.
 
 ### The module does not sanitize
 
-The rejection reaches it already rebuilt as `Ledger8SeamFailedError`, with the
-provider's failure redacted onto `cause` by the seam wrapper in
+The rejection reaches it already rebuilt as `Ledger8ProviderFailedError`, with the
+provider's failure redacted onto `cause` by the provider-call wrapper in
 `ledger8-entry.ts` — one sanitizer, at the boundary the external failure
 crosses, rather than a second one here that could redact differently. See
 [KeepStatePipeline](./keep-state-pipeline.md) for what that redaction removes.
@@ -108,7 +108,7 @@ The second step differs by operation kind:
 ## Why `SubmitRejectionUndiagnosedError` carries a code of its own
 
 Without one it would arrive as an uncoded error, and a caller branching
-on `hasErrorCode(e, LEDGER8_SEAM_FAILED)` to decide retry-or-escalate would
+on `hasErrorCode(e, LEDGER8_PROVIDER_FAILED)` to decide retry-or-escalate would
 escalate INTERMITTENTLY for one and the same node rejection — depending on
 whether the read surface happened to answer. Both failures here are the same
 network, so they correlate: they coincide more often than independence would
@@ -166,7 +166,7 @@ network head has crossed the fork.
 
 The scope's merge is `unprovenTx.merge(...)` on live CURRENT-era transactions,
 and a retained-era call never produces one: it is composed against whichever era
-the head is on and crosses the provider seams as its own transaction, in that
+the head is on and is passed to the providers as its own transaction, in that
 era's own form. So there is nothing to merge it into, at either head — the scope
 would have to hold, and MERGE, two transactions built by two different WASM
 modules, which is the cross-module operation no ADR makes safe.

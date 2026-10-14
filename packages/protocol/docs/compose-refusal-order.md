@@ -141,7 +141,7 @@ against the callee's own balance update, under the `real_unshielded_spends`
 superset check, and `UtxoOutput.owner` takes a user address in the first place.
 Emitting an output for one would add a payout the transaction cannot cover.
 
-A user-addressed spend this seam cannot pay out is REFUSED, not skipped. That is
+A user-addressed spend the compose path cannot pay out is REFUSED, not skipped. That is
 a different case from a contract-addressed spend, which is not a UTXO payout at
 all: this one is a payout the transaction has no way to make. Dropping it
 silently composes a transaction that tells the user they were paid and pays them
@@ -150,7 +150,7 @@ types reach that refusal — dust, which carries no raw token type to pay out in
 (`'call-dust-payout'`), and a shielded type, whose value moves through a Zswap
 offer rather than a UTXO (`'call-unsupported-payout'`).
 
-The check is on the ONE type this seam can pay out rather than on a list of the
+The check is on the ONE type the compose path can pay out rather than on a list of the
 ones it cannot. `TokenType` is a vendor union, and a shielded type carries a
 `raw` field exactly as an unshielded one does, so an
 exclude-what-we-know-about test emits a plausible-looking `UtxoOutput` for
@@ -182,7 +182,7 @@ A partitioned source is passed through untouched — the whole point of the shap
 Re-partitioning it would need a query context the caller no longer has, to redo
 work compact-js already did. Only the CALLER-supplied pair is checked for
 emptiness: an empty pair coming back from the module's own partitioner is that
-module's answer for the program it was handed, and this seam does not overrule
+module's answer for the program it was handed, and the compose path does not overrule
 it. A partitioned source carrying neither half is different — it is a caller
 with nothing to compose, and a prototype built from it would claim a circuit ran
 while recording no operations, the same silent no-op `'call-empty'` refuses one
@@ -210,7 +210,7 @@ wasm, so the caller wraps the bridge in its own coded stage.
 
 ## Coded failures, and the one that is not
 
-Every failure a caller can cause on this seam is coded. On the call path an
+Every failure a caller can cause on the compose path is coded. On the call path an
 empty call list is refused with `ComposeFailedError` at stage `'call-empty'`,
 and an unreadable contract state, Zswap offer, network id or ttl with
 `ComposeOptionError`; the shared assembler contributes `'call-operation'`,
@@ -277,14 +277,14 @@ mergeable.
 No leg here proves the transaction it returns: the bytes are an UNPROVEN,
 tag-prefixed serialization, exactly what `Transaction.serialize()` produces
 before `.prove()` is ever called. Proving needs a proving provider and a running
-proof server, neither of which this seam has. That holds for the deploy legs
+proof server, neither of which the compose path has. That holds for the deploy legs
 too, including the constructor execution that feeds them — a constructor
 produces state, never a proof.
 
-## Injected era seams
+## Injected era slices
 
 The slices these legs take by injection — `CallAssemblyLedger`,
 `PartitionableQueryContext`, `CallOperationRegistry`, `UnshieldedOfferLedger`
-and the v8 deploy seam's two — are narrowed, and each narrowing is a different
+and the v8 deploy leg's two — are narrowed, and each narrowing is a different
 trade. How they are typed, and what each trade buys, is in
 [InjectedVendorSlices](./injected-vendor-slices.md).

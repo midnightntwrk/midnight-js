@@ -61,7 +61,7 @@ describe('createProofProviderForEras', () => {
   it('refuses a retained slot keyed by the current era', () => {
     createProofProviderForEras({
       currentEra: currentEraProvingProvider,
-      // @ts-expect-error the current era crosses the seam as a live ledger
+      // @ts-expect-error the current era is passed to proveTx as a live ledger
       // object, so it is not registrable as a retained era.
       retainedEras: { v9: retainedEraProvingProvider }
     });

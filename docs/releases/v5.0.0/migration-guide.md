@@ -240,11 +240,11 @@ Positional provider constructors still work but are `@deprecated` for one releas
 
 ## Step 13 — Narrow the version-tagged provider payloads
 
-The three transaction seams carry a `version` discriminant in both directions,
+The three transaction methods carry a `version` discriminant in both directions,
 and the read surface reports a `version`-discriminated record. This is the half
 of 5.0.0 that type-checking will not let you defer.
 
-Only the first call needs wrapping. Each seam's output is already the tagged
+Only the first call needs wrapping. Each method's output is already the tagged
 input the next one expects, so a straight pipeline changes in one place:
 
 ```diff
@@ -341,7 +341,7 @@ all (`EraUnresolvableError`), where before it would have returned a record that
 failed later inside the codec. Bytes that will not decode on the era selected
 for them — whether the record disagrees with itself or your ledger package is a
 different vintage than the network's — surface as `DeserializationError`,
-carrying the era, the `protocolVersion`, the seam and the record on
+carrying the era, the `protocolVersion`, the provider method and the record on
 `context.details`.
 
 ---
