@@ -140,7 +140,7 @@ these methods sees all of it.
 **`DAppConnectorWalletAdapter`** (`testkit-js/testkit-js/src/wallet/dapp-connector-wallet-adapter.ts`)
 decodes DApp-supplied transaction hex with the current era's `LedgerTransaction` at three points
 (`balanceAndProveTransaction`, and both submit paths). Unlike its sibling
-`wallet/wallet-transaction.ts`, these are not behind a `{ version, txBytes }` payload — the adapter
+`wallet/wallet-transaction.ts`, these do not receive a version-tagged payload — the adapter
 implements the connector API, whose shape is fixed by the connector rather than by us, so the era
 cannot be carried on the payload without changing that API. Testkit only, and the bytes originate
 from a wallet this process just handed a transaction to, so the era is in practice the composing

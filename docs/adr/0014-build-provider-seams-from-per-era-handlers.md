@@ -243,7 +243,7 @@ for. The factory does not verify the pairing — the two provider shapes are
 structurally compatible and one prover's two accessors return equivalent objects
 — so what it buys is one place where the pairing is written down, with
 `supportedEras` still derived. See
-[the package document](../../packages/types/docs/seam-era-declarations.md).
+[the package document](../../packages/types/docs/provider-era-declarations.md).
 
 `createProofProvider` now goes through it: it is one line over
 `createProofProviderForEras`, which builds the handlers and calls
@@ -257,7 +257,7 @@ it now also checks them. All four factories refuse a handler of the wrong shape
 with `UnusableEraEntryError`, and a `retainedEras` that is not a plain object
 keyed only by retained eras with `InvalidArgumentError`, before the provider
 exists. The check is shape only: a handler built for the wrong era still passes.
-See [the package document](../../packages/types/docs/seam-era-declarations.md).
+See [the package document](../../packages/types/docs/provider-era-declarations.md).
 
 ## Amendment — "arm" leaves the public surface (2026-10-14)
 

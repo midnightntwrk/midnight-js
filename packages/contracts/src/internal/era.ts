@@ -542,16 +542,13 @@ export type EraPairing =
 export type EraRulings = Readonly<Record<LedgerVersion, EraPairing>>;
 
 /**
- * The pairing table {@link assertEraCompatible} rules from: one row per {@link LedgerVersion}, one
- * column per `LedgerVersion`.
+ * The pairing table {@link assertEraCompatible} rules from: one row per artifact era, one column
+ * per head era, both {@link LedgerVersion}.
  *
- * The two era vocabularies stay separate types because they answer different questions -- which
- * era built the caller's artifact, and which era the network head is on. What this type adds is
- * that every pair of them has to be ruled: a member added to either set leaves the table short of
- * a row or a column, and that is a build failure.
- *
- * It does NOT bind the two sets to each other. A further artifact era can be added without a
- * further head era, and vice versa; what cannot happen is either one arriving unruled.
+ * The two axes take the same values but answer different questions -- which era built the
+ * caller's artifact, and which era the network head is on. What this type adds is that every pair
+ * has to be ruled: an era added to `LedgerVersion` adds a row and a column at once, and the table
+ * fails the build until both are written.
  *
  * @see {@link EraDispatch} for the table in full and why the deploy cell differs.
  */

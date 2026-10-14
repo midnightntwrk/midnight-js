@@ -126,8 +126,8 @@ era's own family and a SECOND step for the fork-window group.
 ## The deploy overload's own members
 
 `Ledger8DeployedContract` is published, under the rule that a caller who can
-obtain a value must be able to name its type: `deployContract`'s retained overload
-composes, submits and hands one back.
+obtain a value must be able to name its type: `deployContract`, called with a
+retained-era contract, composes, submits and hands one back.
 
 `Ledger8.DeployOnLedger9Error` is the era pairing table's refusal for a retained
 artifact against a post-fork head, and it is reachable: it is what a caller

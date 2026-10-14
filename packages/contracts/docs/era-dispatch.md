@@ -228,9 +228,9 @@ table before relying on that for the system as a whole:
 
 | artifact | head | `'call'` | `'deploy'` |
 | -------- | ---- | -------- | ---------- |
-| current-era | `v9` | ledger9 | ledger9 |
+| current-era | `v9` | `v9` pipeline | `v9` pipeline |
 | retained-era | `v9` | keep-state | refused |
-| retained-era | `v8` | ledger8 | ledger8 |
+| retained-era | `v8` | `v8` pipeline | `v8` pipeline |
 | current-era | `v8` | refused | refused |
 
 A retained-era DEPLOY on a post-fork head is the one cell where the two kinds

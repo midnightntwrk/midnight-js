@@ -382,8 +382,8 @@ const proofProvider = createProofProviderFromHandlers({
 The factory routes each request to its era's handler, tags the answer as the era
 the request carried, and raises `Ledger8PayloadUnsupportedError` for an era you did
 not supply a handler for — the same error the un-widened provider raised before.
-`retainedEras` cannot name the current era: that era is passed to the provider as a live
-ledger object, not as bytes, so registering a handler for it is a compile error.
+`retainedEras` cannot name the current era: a current-era transaction is passed to the
+provider as a live ledger object, not as bytes, so registering a handler for it is a compile error.
 
 Nothing verifies the declaration. Listing an era you do not serve makes the
 failure later, not absent: the provider still narrows its own payload and still
@@ -585,6 +585,12 @@ names.
 
 The payload tag values `version: 'v8' | 'v9'` do not change: they mirror the
 `ledger-v8` / `ledger-v9` package names.
+
+One consequence to check in your own code: `result.era` and `result.public.version`
+now take the same values. Before, comparing the wrong one against a literal of
+the other was a compile error; now it compiles. `era` names the pipeline that
+built the result's objects, `version` the ledger that recorded the transaction,
+and after the fork a retained-era call has `era: 'v8'` with `version: 'v9'`.
 
 ---
 

@@ -520,12 +520,11 @@ either era.
 Two limits to plan around. Both eras now name the circuit on the result, and
 both handles carry `compiledContract` and `contractAddress`, so the contract
 HANDLES differ in only four places: the retained handle has no maintenance
-interfaces (the retained era has no governance path), its `deployTxData` is
+interfaces (the retained era has no governance API), its `deployTxData` is
 the flat record where the current era's is `{ era, public, private }`, its
 `callTx.<circuit>(...)` takes no `TransactionContext`, so it cannot carry
 recipient key mappings (see below), and a deployed handle keeps the deployer's
-data at a different path (table below). And `getStates` / `getPublicStates` have no retained-era
-path: they decode with the current-era deserializer and refuse anything else, so
+data at a different path (table below). And `getStates` / `getPublicStates` do not support the retained era: they decode with the current-era deserializer and refuse anything else, so
 for a contract whose state envelope is still pre-fork, read the state through
 `queryRawContractState` and narrow on its `version`, or read
 `public.nextContractStateEncoded` off a call result.

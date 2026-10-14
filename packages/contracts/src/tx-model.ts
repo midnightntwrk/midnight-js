@@ -183,6 +183,11 @@ export interface FinalizedDeployTxDataBase<C extends Contract.Any> extends Unsub
  * Carries no `initialContractState`: the deploy-time state of a ledger-8 contract
  * cannot be decoded by the current runtime. Read the current state with
  * `PublicDataProvider.queryContractState`.
+ *
+ * @remarks Published flat, not under the `Ledger8` namespace: it is part of the
+ * current era's `FoundDeployTxData`, and outlives the retained pipeline.
+ *
+ * @see {@link RetainedEraNamespace} for which names the namespace holds.
  */
 export interface Ledger8FoundDeployTxPublicData extends Ledger8FinalizedTxData {
   /**

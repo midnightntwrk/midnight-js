@@ -305,7 +305,7 @@ const ALL_KINDS: Record<OperationKind, OperationKind> = {
 // `unknown`, not `string`. Typed as `string` these helpers could not express the case that matters
 // most -- a non-string key, which a member access coerces and a `switch` did not -- so every
 // negative test would have been confined to the inputs that were already safe.
-const asPipelineEra = (value: unknown): LedgerVersion => value as LedgerVersion;
+const asArtifactEra = (value: unknown): LedgerVersion => value as LedgerVersion;
 const asHeadEra = (value: unknown): LedgerVersion => value as LedgerVersion;
 const asOperationKind = (value: unknown): OperationKind => value as OperationKind;
 
@@ -329,12 +329,12 @@ describe('the era dispatch table: artifact era x network head era x operation ki
   it('covers every artifact-era x head-era x kind cell, so no cell is silently unruled', () => {
     // Strictness gate on the table itself. `assertEraCompatible` takes THREE arguments and rules
     // differently on `kind`, so the cross product has to include it -- omitting it left
-    // `ledger9/v9/deploy`, the most common post-fork operation there is, untested while this gate
+    // `v9/v9/deploy`, the most common post-fork operation there is, untested while this gate
     // claimed completeness.
     //
     // The three enumerations are `Record<K, K>` maps, not `readonly K[]` arrays. An array only
     // asserts that each element IS a member and never that all members are listed, so a third
-    // pipeline era or a third ledger version compiled and left this gate claiming completeness
+    // ledger version compiled and left this gate claiming completeness
     // over a cross product two thirds the real size. `breadcrumbs.test.ts` had the same weakness
     // and records the same reason.
     const covered = [...ACCEPTED_CELLS.map(cellKey), ...REFUSED_CELLS.map(cellKey)];
@@ -398,9 +398,9 @@ describe('the era dispatch table: artifact era x network head era x operation ki
 
   it('refuses an era this build does not know, on either axis, naming the one it could not place', () => {
     // The build-time gate on the pairing table cannot cover these: a head era arrives as an
-    // integer resolved at run time, and a pipeline era as whatever a JavaScript caller's artifact
+    // integer resolved at run time, and an artifact era as whatever a JavaScript caller's artifact
     // turned out to be. Both reach this function before the table is extended for them.
-    expect(refusedEra(asPipelineEra('v10'), 'v9')).toBe('v10');
+    expect(refusedEra(asArtifactEra('v10'), 'v9')).toBe('v10');
     expect(refusedEra('v8', asHeadEra('v10'))).toBe('v10');
   });
 
@@ -416,7 +416,7 @@ describe('the era dispatch table: artifact era x network head era x operation ki
     ];
 
     for (const coerces of coercing) {
-      expect(refusedEra(asPipelineEra(coerces), 'v9')).toBe(String(coerces));
+      expect(refusedEra(asArtifactEra(coerces), 'v9')).toBe(String(coerces));
       expect(refusedEra('v9', asHeadEra(coerces))).toBe(String(coerces));
     }
   });
@@ -454,7 +454,7 @@ describe('the era dispatch table: artifact era x network head era x operation ki
     // `Object.prototype.constructor` rendered as a string. Both axes are checked, because both
     // keys are supplied from outside this package.
     for (const inherited of ['constructor', 'toString', 'hasOwnProperty', 'valueOf', '__proto__']) {
-      expect(refusedEra(asPipelineEra(inherited), 'v9')).toBe(inherited);
+      expect(refusedEra(asArtifactEra(inherited), 'v9')).toBe(inherited);
       expect(refusedEra('v8', asHeadEra(inherited))).toBe(inherited);
     }
   });

@@ -505,7 +505,9 @@ never writes anything called a seam, so the public names and messages now say
 "method" or "provider":
 
 - `ProviderSeam`, `ReadSeam` and `Seam` are `TransactionMethod`, `ReadMethod`
-  and `ProviderMethod`; the field `seam` on the payload errors is `method`;
+  and `ProviderMethod`; the field `seam` is `method` on every error that
+  carried it, and so is the `seam` key of a decode failure's `details` (the full
+  list is in `docs/releases/v5.0.0/breaking-changes.md`, section 12);
 - `SeamEraUnsupportedError` is `ProviderEraUnsupportedError`, with code
   `MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`; `assertSeamsSupportEra` is
   `assertProvidersSupportEra`, and `TransactionSeams` is `TransactionProviders`.

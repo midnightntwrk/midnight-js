@@ -5,7 +5,7 @@ title: ProviderEraDeclarations
 # What a provider says it serves, and what happens when it is wrong
 
 Three provider methods carry a transaction: `proveTx`, `balanceTx`, `submitTx`, in
-that order. Each declares a `supportedEras` set. This document records why the
+that order. The provider behind each declares a `supportedEras` set. This document records why the
 declaration is read up front, why it is not trusted, and why the two refusals
 that result are two rather than one.
 

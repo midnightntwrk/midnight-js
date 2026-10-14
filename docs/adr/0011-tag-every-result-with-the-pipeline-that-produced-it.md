@@ -99,5 +99,11 @@ reader to this ADR to learn why. `result.era` is now a `LedgerVersion`,
 - The reason the two spellings existed — a retained-era call after the fork has
   `era: 'v8'` and `version: 'v9'` — is now carried by the field names alone. The
   two fields name different facts; they do not need different alphabets.
+- What the shared alphabet gives up: a value in the wrong field still type-checks.
+  A caller comparing `result.era` where it meant `public.version` is no longer
+  stopped by the compiler, and inside the package `assertEraCompatible(artifact,
+  head, kind)` no longer refuses its two era arguments passed the other way round.
+  Both call sites pass the literal `'v8'` first, and tests of their behaviour on
+  a post-fork head pin the order.
 
 The sections above keep the names that were current when they were written.

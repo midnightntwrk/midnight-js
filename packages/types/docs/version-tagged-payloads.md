@@ -13,7 +13,8 @@ Everything in this package that carries a `version` discriminant follows from
 that one fact. This document records what the tag lets a caller do, and — more
 importantly — the three things it deliberately does not establish.
 
-The providers themselves are [ProviderEraDeclarations](./provider-era-declarations.md). The
+What each provider declares about the eras it serves is covered in
+[ProviderEraDeclarations](./provider-era-declarations.md). The
 decision this implements is
 `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`.
 

@@ -735,7 +735,7 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
 
   it('places every pipeline the type admits on the allow-listed field, so a new one cannot leak', () => {
     // A REAL exhaustiveness gate, via ALL_PIPELINES above. The earlier form
-    // here was `const pipelines: readonly LedgerVersion[] = [...]`, which only
+    // here was a plain array of pipeline eras, which only
     // asserted that each element IS a member and never that all members are
     // listed -- so a third pipeline compiled and tested clean. This test was
     // also the model the provenance gate below was copied from, so the

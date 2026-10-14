@@ -163,8 +163,8 @@ const proofProvider = createProofProviderFromHandlers({
 // proofProvider.supportedEras === ['v9', 'v8']
 ```
 
-The current era is passed to the provider as a live ledger object; a retained era is passed
-as serialized bytes, in both directions. That is why the two handler signatures
+A current-era transaction is passed to the provider as a live ledger object; a retained-era
+transaction is passed as serialized bytes, in both directions. That is why the two handler signatures
 differ, and why `retainedEras` cannot name the current era — registering one
 there is a compile error.
 

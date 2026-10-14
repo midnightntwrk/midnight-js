@@ -31,7 +31,7 @@ import type { VersionedTx } from './versioned';
  * `ProvingProvider` in `ProvingProvidersByEra`.
  *
  * The current era is EXCLUDED from the key set on purpose, and that exclusion
- * is the point of the type: the current era is passed to the provider as a live ledger
+ * is the point of the type: a current-era transaction is passed to the provider as a live ledger
  * object, never as bytes, so an entry registered against it would have the
  * wrong signature and serve a request that can never arrive. Registering one is
  * a build failure rather than a comment asking implementers not to.
@@ -41,7 +41,7 @@ import type { VersionedTx } from './versioned';
  * registrable here on its own — no change to this type, and no change to any
  * provider that already declines to register it.
  *
- * @typeParam H - The entry type for one retained era in this method.
+ * @typeParam H - The entry type for one retained era.
  */
 export type RetainedEraEntries<H> = Partial<Readonly<Record<RetainedLedgerVersion, H>>>;
 
@@ -70,8 +70,8 @@ export const erasServedBy = (retainedEras?: RetainedEraEntries<unknown>): readon
  * current-era object, or a retained era's bytes together with the handler
  * registered for that era.
  *
- * @typeParam T - The current era's ledger transaction type in this method.
- * @typeParam H - The retained-era handler signature in this method.
+ * @typeParam T - The current era's ledger transaction type.
+ * @typeParam H - The retained-era handler signature.
  */
 export type EraRequest<T, H> =
   | { readonly era: CurrentLedgerVersion; readonly tx: T }

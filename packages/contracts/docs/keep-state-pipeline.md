@@ -360,7 +360,7 @@ rather than silently skipped.
 
 ## The retained-era deploy
 
-`deployContract`'s retained-era overload composes, submits and waits, and hands back a
+`deployContract`, called with a retained-era contract, composes, submits and waits, and hands back a
 `Ledger8DeployedContract`. It is reachable only on a PRE-FORK head: the retained
 era has no post-fork deployment, so the era pairing table refuses a retained
 artifact against a post-fork head with `Ledger8DeployOnLedger9Error`, raised before

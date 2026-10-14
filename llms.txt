@@ -263,7 +263,7 @@ Three things to know before wiring a retained-era flow:
   That is permanent and by design: each lifts a v9-only implementation into the version-tagged
   interface, so refusing is the adapter reporting what it wraps. Each declares `supportedEras:
   ['v9']` to say so up front.
-- Every provider carries a required `supportedEras`, and the framework reads all three BEFORE an
+- The proof, wallet and midnight providers each carry a required `supportedEras`, and the framework reads all three BEFORE an
   operation starts. So a retained-era transaction wired through the wallet and midnight adapters is
   now refused with `ProviderEraUnsupportedError` (`MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`) naming
   `balanceTx`, before any proving happens — not, as previously, after a full proving cycle.
