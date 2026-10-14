@@ -109,7 +109,7 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | C | `INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteCallTxPrivateStateConfig` |
 | C | `INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteDeployContractPrivateStateConfig` |
 | C | `INCOMPLETE_FIND_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteFindContractPrivateStateConfig` |
-| C | `SCOPED_TX_IDENTITY_MISMATCH` | USAGE | `ScopedTransactionIdentityMismatchError` |
+| C | `SCOPED_TRANSACTION_IDENTITY_MISMATCH` | USAGE | `ScopedTransactionIdentityMismatchError` |
 | C | `LEDGER8_DEPLOY_UNCONFIRMED` | UNCERTAIN | `Ledger8DeployUnconfirmedError` |
 | C | `LEDGER8_AMBIGUOUS_ENTRY_POINT` | INTEGRITY | `Ledger8AmbiguousEntryPointError` |
 | C | `LEDGER8_RECIPIENT_UNMAPPABLE` | USAGE | `Ledger8RecipientUnmappableError` |

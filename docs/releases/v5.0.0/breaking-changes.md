@@ -589,6 +589,8 @@ names.
 | `indexer-public-data-provider` | `EraUnresolvableError` (`MIDNIGHT_JS_PR_ERA_UNRESOLVABLE`) | `UnknownRecordEraError` (`MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA`) |
 | `contracts` | `UnrecognisedResultEraError` (`MIDNIGHT_JS_C_UNRECOGNISED_RESULT_ERA`) | `UnknownResultEraError` (`MIDNIGHT_JS_C_UNKNOWN_RESULT_ERA`) |
 | `contracts` | `ScopedTxEraUnsupportedError` (`MIDNIGHT_JS_C_SCOPED_TX_ERA_UNSUPPORTED`) | `ScopedTransactionEraUnsupportedError` (`MIDNIGHT_JS_C_SCOPED_TRANSACTION_ERA_UNSUPPORTED`) |
+| `contracts` | `ScopedTransactionIdentityMismatchError`'s code `MIDNIGHT_JS_C_SCOPED_TX_IDENTITY_MISMATCH` (the class is from 4.x; the code is new in 5.0) | `MIDNIGHT_JS_C_SCOPED_TRANSACTION_IDENTITY_MISMATCH` |
+| `indexer-public-data-provider` | `IndexerDataError` kind `'unresolvable-era'` | `'unknown-record-era'` |
 
 The payload tag values `version: 'v8' | 'v9'` do not change: they mirror the
 `ledger-v8` / `ledger-v9` package names.

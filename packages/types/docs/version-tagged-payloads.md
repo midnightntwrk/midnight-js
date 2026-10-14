@@ -13,6 +13,14 @@ Everything in this package that carries a `version` discriminant follows from
 that one fact. This document records what the tag lets a caller do, and — more
 importantly — the three things it deliberately does not establish.
 
+Two families of names, and the word that tells them apart. A name that spells
+out `Transaction` is a transaction itself: the payload a provider method takes or
+returns (`VersionedTransaction`, `Ledger9Transaction`, `Ledger8TransactionBytes`,
+`VersionedFinalizedTransaction`), whose v8 variant carries `txBytes`. A name with
+`Tx` is data about a transaction, kept from 4.x: the record a read method returns
+(`FinalizedTxData`, `Ledger8FinalizedTxData`, `VersionedFinalizedTxData`), whose
+v8 variant carries a live `tx`.
+
 What each provider declares about the eras it serves is covered in
 [ProviderEraDeclarations](./provider-era-declarations.md). The
 decision this implements is

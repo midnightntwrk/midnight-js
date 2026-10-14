@@ -120,3 +120,5 @@ Issue #1489. The decision is unchanged.
   `packages/contracts/docs/retained-era-namespace.md`. A `Ledger8` prefix
   therefore does not by itself mean "inside the namespace": it names the era,
   and here the era that recorded the deployment.
+- `ScopedTxEraUnsupportedError`, one of the fork-window refusals published flat,
+  is `ScopedTransactionEraUnsupportedError`.

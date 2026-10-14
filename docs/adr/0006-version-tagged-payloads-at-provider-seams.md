@@ -513,9 +513,9 @@ never writes anything called a seam, so the public names and messages now say
   `assertProvidersSupportEra`, and `TransactionSeams` is `TransactionProviders`.
 
 The era prefix is now `Ledger8` / `Ledger9` everywhere, never `V8` / `V9`:
-`V8TxBytes`, `V9Tx`, `unwrapV9` and `V8PayloadUnsupportedError` are
-`Ledger8TxBytes`, `Ledger9Tx`, `unwrapLedger9` and
-`Ledger8PayloadUnsupportedError` (code
+`VersionedTx`, `V8TxBytes`, `V9Tx`, `unwrapV9` and `V8PayloadUnsupportedError` are
+`VersionedTransaction`, `Ledger8TransactionBytes`, `Ledger9Transaction`,
+`unwrapLedger9` and `Ledger8PayloadUnsupportedError` (code
 `MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTED`). The tag values `'v8'` / `'v9'`
 stay, because they mirror the `ledger-v8` / `ledger-v9` package names.
 

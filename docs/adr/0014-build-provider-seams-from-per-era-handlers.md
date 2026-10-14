@@ -298,6 +298,9 @@ Issue #1489. The decision is unchanged; only names change.
   `ProviderEraUnsupportedError` (code `MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED` is
   `MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`), and `seam-era-declarations.md` is
   `provider-era-declarations.md`.
+- `PROVIDER_ERROR_CODES.ERA_UNSUPPORTED`, the read-side code this ADR keeps
+  apart from the pre-flight one, is `DECODER_ERA_UNSUPPORTED`
+  (`MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED`), raised by `DecoderEraUnsupportedError`.
 - `createProofProviderForEras` is `createProofProviderFromProvingProviders`.
   Like the `…FromHandlers` factories, it is named after what it takes:
   `ProvingProvidersByEra`, one `ProvingProvider` per era.
