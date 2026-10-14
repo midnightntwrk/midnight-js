@@ -59,7 +59,7 @@ const readContractState = (raw: Uint8Array, v8: Ledger8Protocol): InstanceType<L
  */
 export const composeEraLedger8CallTx = (options: ComposeCallOptions, v8: Ledger8Protocol): ComposeCallResultPojo => {
   const { calls, networkId, ttl, zswapOffer } = options;
-  // Checked here, not left to the inner leg, so both arms refuse in the same
+  // Checked here, not left to the inner leg, so both eras refuse in the same
   // order; the re-check in the leg is idempotent -- see ComposeRefusalOrder.
   assertComposeEnvelope(options, 'v8');
   if (calls.length === 0) {
@@ -80,7 +80,7 @@ export const composeEraLedger8CallTx = (options: ComposeCallOptions, v8: Ledger8
       input: call.input,
       output: call.output,
       communicationCommitmentRandomness: call.communicationCommitmentRandomness,
-      // Carried across the adapter, not dropped. Without this the retained-native arm silently
+      // Carried across the adapter, not dropped. Without this the retained-native path silently
       // partitions against this era's INITIAL parameters while the caller believed it had supplied
       // the chain's -- the same defect this option exists to close, one layer down.
       ledgerParametersBytes: call.ledgerParametersBytes,
@@ -118,7 +118,7 @@ export const composeEraLedger8CallTx = (options: ComposeCallOptions, v8: Ledger8
  */
 export const composeEraLedger8DeployTx = (options: ComposeDeployOptions, v8: Ledger8Protocol): DeployResultPojo => {
   const { contractStateBytes, verifierKeys, networkId, ttl, guaranteedZswapOfferBytes } = options;
-  // See `composeEraLedger8CallTx` — hoisted so both arms refuse the envelope first.
+  // See `composeEraLedger8CallTx` — hoisted so both eras refuse the envelope first.
   assertComposeEnvelope(options, 'v8');
   const guaranteedOffer = readZswapOffer(guaranteedZswapOfferBytes, v8, 'guaranteedZswapOfferBytes');
   if (verifierKeys === undefined) {

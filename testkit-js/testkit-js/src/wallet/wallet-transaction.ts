@@ -103,7 +103,7 @@ const assertTagged = (payload: unknown, method: TransactionMethod): void => {
 /**
  * Adopts either era's unbound payload.
  *
- * The retained arm arrives as serialized bytes rather than a live object (ADR
+ * The retained variant arrives as serialized bytes rather than a live object (ADR
  * 0007), so it is deserialized here. Its markers are `signature`/`proof`/
  * `pre-binding`: proving has already run -- `proveTx` returned `proven.serialize()`
  * -- and binding is precisely what balancing is about to add.

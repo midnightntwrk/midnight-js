@@ -29,7 +29,7 @@ your code.
 
 The discriminant on a read record is *derived* from the record's own
 `protocolVersion`, never asserted, and that same answer picks the ledger runtime
-that decodes the record — so a v8-era record is served on the `'v8'` arm rather
+that decodes the record — so a v8-era record is served as the `'v8'` variant rather
 than refused, with the pre-fork runtime acquired lazily on first use. What fails
 at the read boundary is a `protocolVersion` that maps to no era at all
 (`EraUnresolvableError`, an `IndexerError`), instead of returning a record that

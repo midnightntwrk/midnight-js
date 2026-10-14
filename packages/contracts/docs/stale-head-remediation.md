@@ -74,7 +74,7 @@ out of order fails a test instead of silently inverting the direction test.
 ### One rejection never reaches the head read
 
 This framework's OWN coded refusals are re-thrown untouched, and the network is
-not asked about them. A provider that does not serve the pre-fork arm refuses on
+not asked about them. A provider that does not serve the pre-fork payload variant refuses on
 the way IN, before anything is submitted, and a caller narrowing on that refusal
 has to keep seeing it.
 
@@ -125,7 +125,7 @@ and the reason on `.reason` is why no diagnosis could be made. `cause` names the
 consumer walking only cause chains still lands somewhere useful.
 
 A head integer that cannot be placed on the era timeline arrives on the
-`'head-read-failed'` arm, carried on `headReadFailure`: the read is what failed,
+`'head-read-failed'` case, carried on `headReadFailure`: the read is what failed,
 whether the transport or the mapping refused it.
 
 ## Contract-scoped transactions
@@ -173,7 +173,7 @@ modules, which is the cross-module operation no ADR makes safe.
 
 This is reachable only from JavaScript today, because the retained-era
 `submitCallTx` overload declares no scope parameter. It is still checked,
-because the alternative is what it replaces: the retained arm accepted the scope
+because the alternative is what it replaces: the retained-era path accepted the scope
 context and quietly ran outside it, returning a transaction the caller believed
 had been batched with the rest.
 

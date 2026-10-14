@@ -128,15 +128,15 @@ export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
 // assertion holds no matter what the two sides say. `[D] extends [never]`
 // compares the types directly, which is what makes these load-bearing.
 type Assert<T extends true> = T;
-type _EveryEraHasAnArm = Assert<
+type _EveryEraHasAVariant = Assert<
   [Exclude<LedgerVersion, VersionedTx<unknown>['version']>] extends [never] ? true : false
 >;
-type _NoArmOutsideTheEraSet = Assert<
+type _NoVariantOutsideTheEraSet = Assert<
   [Exclude<VersionedTx<unknown>['version'], LedgerVersion>] extends [never] ? true : false
 >;
-type _EveryEraHasAReadArm = Assert<
+type _EveryEraHasAReadVariant = Assert<
   [Exclude<LedgerVersion, VersionedFinalizedTxData['version']>] extends [never] ? true : false
 >;
-type _NoReadArmOutsideTheEraSet = Assert<
+type _NoReadVariantOutsideTheEraSet = Assert<
   [Exclude<VersionedFinalizedTxData['version'], LedgerVersion>] extends [never] ? true : false
 >;

@@ -7,7 +7,7 @@ title: KeepStatePipeline
 A contract compiled by the previous Compact toolchain keeps working across the
 ledger fork. Before the fork its call is composed as a retained-era transaction;
 after it, the same call is composed as an ordinary current-era transaction that
-carries a retained-era call — the keep-state arm. This document records how that
+carries a retained-era call — the keep-state path. This document records how that
 one operation is ordered, which parts touch the outside world, and the handful
 of places where getting it wrong loses money silently rather than raising an
 error.
@@ -78,14 +78,14 @@ for the same reason, and the caller's own new coins are filtered out of it — s
 the era-neutral result bases in `midnight-js-types` and ADR-0009 for the rule
 that keeps the two eras' surfaces in step.
 
-## The two arms differ only in which era object they are handed
+## The two paths differ only in which era object they are handed
 
-| arm | head | era object | what it produces |
-| --- | ---- | ---------- | ---------------- |
+| path | head | era object | what it produces |
+| ---- | ---- | ---------- | ---------------- |
 | keep-state | `v9` | the current era | a current-era transaction carrying a retained-era call |
 | retained-native | `v8` | the retained era | a retained-era transaction |
 
-There is no second composition branch. Both arms end at
+There is no second composition branch. Both paths end at
 `LedgerEra.composeCallTx`, handing it the transcript as `kind: 'unpartitioned'`,
 and the era object decides which ledger the call is bound onto.
 
@@ -187,7 +187,7 @@ Nothing errors at any stage.
 
 A bare key would also silence `createZswapOutput`'s refusal branch, which is the
 only thing standing between an unresolvable recipient and a successfully
-submitted mis-encryption. So the bare-key arm is not offered here at all.
+submitted mis-encryption. So the bare-key variant is not offered here at all.
 
 Every caller hands a real resolver built by
 `createEncryptionPublicKeyResolver` — the same era-independent helper the
@@ -259,13 +259,13 @@ providers share the current runtime. Tagging it `'v8'` would say the retained ru
 produced it, which is false, and would send a current-era-only provider looking
 for a runtime it does not need.
 
-The composition returns bytes either way, so the post-fork arm reads them back
+The composition returns bytes either way, so the post-fork path reads them back
 into a live transaction. That is not a re-encode across eras: they are this
 package's OWN era's bytes, produced moments earlier by the same runtime that
 reads them. The three deserialization markers — signature-enabled, unproven,
 unbound — are exactly what `composeCallTx` documents its output as.
 
-A provider that does not serve the pre-fork arm refuses it on the way IN, at the
+A provider that does not serve the pre-fork payload variant refuses it on the way IN, at the
 first provider method, with `Ledger8PayloadUnsupportedError` — before anything is proven, which
 is the point of leaving that guard in `types` rather than lifting it here.
 
@@ -335,7 +335,7 @@ at attach time so a mis-dispatch is caught there instead of at the first call.
 
 The deploy record is returned version-tagged rather than narrowed: a retained-era
 contract's deployment record belongs to whichever era was current when it was
-deployed, and refusing the pre-fork arm here would refuse every contract this
+deployed, and refusing the pre-fork variant here would refuse every contract this
 pipeline exists to keep callable.
 
 ### Every circuit is checked, and that has a cost
@@ -352,7 +352,7 @@ never-deployed. That is not a retained-era quirk — the current era refuses the
 same contract for the same reason — so the two eras behave alike, which is what
 makes it the right default here. A caller that must attach to such a contract
 needs a narrower check, and that would be a change to both eras rather than to
-this arm alone.
+this path alone.
 
 The names come off the ARTIFACT rather than off the state, so a circuit the
 caller can call but the chain never registered is reported as a blank slot
@@ -360,7 +360,7 @@ rather than silently skipped.
 
 ## The retained-era deploy
 
-`deployContract`'s retained-era arm composes, submits and waits, and hands back a
+`deployContract`'s retained-era overload composes, submits and waits, and hands back a
 `Ledger8DeployedContract`. It is reachable only on a PRE-FORK head: the retained
 era has no post-fork deployment, so the era pairing table refuses a retained
 artifact against a post-fork head with `Ledger8DeployOnLedger9Error`, raised before
@@ -401,7 +401,7 @@ thing: both runtimes sample a 32-byte Schnorr key written as 64 hex characters,
 and `{ tag: 'schnorr', value: <retained key> }` satisfies `isValidSigningKey`.
 (The retained runtime's `signatureVerifyingKey` also accepts a current-era key's
 `value` verbatim. That was measured by hand once, is asserted nowhere, and
-nothing in this pipeline depends on it -- the retained arm only ever hands the
+nothing in this pipeline depends on it -- the retained-era path only ever hands the
 retained runtime a key the retained era produced.) So
 `internal/ledger8-signing-key.ts` adds the wrapper on the way in and strips it on
 the way out, and nothing in `packages/types`, in the provider interface, or in
@@ -412,8 +412,8 @@ wraps it and puts it through `isValidSigningKey` on every run: a rule that
 tightened would fail there rather than losing keys on a restore.
 
 The wrapper cannot say WHICH era wrote an entry. Both eras sample `schnorr`, and
-both arms write one address-keyed slot, so a current-era attach that sampled a
-fresh key into an empty slot would leave the retained arm reporting that key as
+both paths write one address-keyed slot, so a current-era attach that sampled a
+fresh key into an empty slot would leave the retained-era path reporting that key as
 the chain's authority. What prevents it today is ordering rather than a guard:
 `findDeployedContract` runs `verifyContractState` before it reaches the
 signing-key rule, so a current-era artifact pointed at a retained contract's
@@ -425,7 +425,7 @@ On the way OUT, an entry is used only if it is one this framework could have
 written: `'schnorr'`, and a value `isValidSigningKey` admits. A current-era
 entry at the same address may legitimately be `ecdsa`, and unwrapped blindly
 that value would build an authority whose verifying key nobody holds. Anything
-else reads as ABSENT rather than failing the read — nothing on the retained arm
+else reads as ABSENT rather than failing the read — nothing on the retained-era path
 consumes the key, so a circuit call must not stop working over a value it never
 looks at — and each such case leaves a `retained-signing-key-entry` breadcrumb,
 which is what keeps absent from meaning silent.
@@ -438,7 +438,7 @@ they say so.
 ### The verifier keys
 
 A retained constructor builds every entry-point slot BLANK, and the retained
-deploy registers no keys of its own, so the key map is not optional on this arm:
+deploy registers no keys of its own, so the key map is not optional on this path:
 a deploy composed without it puts a contract on chain that nothing can ever call.
 The map is built from every entry point the ARTIFACT declares —
 `Object.keys(compiledContract.impureCircuits)`, the same source the attach path
@@ -447,13 +447,13 @@ refuses the compose with `option: 'verifierKeys'`.
 
 ### The order after submission
 
-The finalizing step mirrors the call arm's exactly: watch
+The finalizing step mirrors the call path's exactly: watch
 `watchForDeployTxData(contractAddress)` — the ADDRESS, because a deployment is
 recorded against the contract it created — attribute the record against the head
 this deploy composed on, refuse a non-success status, and only then store the
 private state. That order is load-bearing. A deploy the chain refused must leave
-no local private state ahead of it, and on this arm that matters more than on the
-call arm: a deploy mints a fresh nonce, so a second attempt lands at a DIFFERENT
+no local private state ahead of it, and on this path that matters more than on the
+call path: a deploy mints a fresh nonce, so a second attempt lands at a DIFFERENT
 address, and repeating one that in fact finalized leaves two copies of the
 contract on chain. `Ledger8DeployTxFailedError` carries that remediation, which
 is why it is a separate class from `Ledger8CallTxFailedError`.
@@ -474,12 +474,12 @@ balance. `ConstructorResultPojo` now reports it decoded, and
 A deploy also refuses an incomplete verifier-key map BEFORE it runs the
 constructor, as `ComposeFailedError` at stage `'deploy-verifier-key'`. The
 engine's own `initialize` would refuse it too — it registers a key against every
-declared entry point — but its refusal arrives untyped, and this arm's
+declared entry point — but its refusal arrives untyped, and this path's
 documented contract is a coded error a consumer can switch on.
 
 ## Seeding a retained-era private state
 
-Two of the three retained-era arms can CREATE a private state. The third still
+Two of the three retained-era entry points can CREATE a private state. The third still
 only reads one, and that asymmetry is the whole of what a caller has to know.
 
 A DEPLOY seeds through `Ledger8DeployContractOptionsWithPrivateState`, which
@@ -504,7 +504,7 @@ A CALL only reads. `Ledger8CallTxOptions` carries a `privateStateId` and no
 the named id or refuses — it has nothing to create one from, and the failure
 mode recorded above is why passing `undefined` down instead is not an option.
 
-## The signing key on the attach arm
+## The signing key on the attach path
 
 `Ledger8FindDeployedContractOptions.signingKey` is honoured: a key supplied there
 is stored against the contract address, and `Ledger8FoundContract.signingKey`
@@ -516,9 +516,9 @@ two.
 It diverges from the current era in THREE cases, each deliberate.
 
 **1. Nothing is sampled.** Where `setOrGetInitialSigningKey` samples a fresh key
-when the store holds none, the retained arm reports `undefined`. A key sampled at
+when the store holds none, the retained-era path reports `undefined`. A key sampled at
 attach time bears no relation to the authority the chain already holds for a
-contract this caller did not deploy, and the retained era has no governance arm
+contract this caller did not deploy, and the retained era has no governance path
 at all, so there is no maintenance interface on `Ledger8FoundContract` for such a
 key to be used through. Storing one would put a key on record that can maintain
 nothing and report it as though it could.
@@ -562,7 +562,7 @@ caller supplied one.
 
 `undefined` collapses three cases — nothing stored; something stored this
 framework did not write; the entry could not be read at all. Neither of the last
-two fails the attach, because nothing on this arm CONSUMES the key: the retained
+two fails the attach, because nothing on this path CONSUMES the key: the retained
 era exposes no maintenance interface, so a circuit call would otherwise stop
 working over a value it never reads. Both are reported to the logger provider as
 a DEBUG-level dispatch breadcrumb, which is the only place the three are

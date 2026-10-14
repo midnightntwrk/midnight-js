@@ -42,7 +42,7 @@ import {
 } from '../errors';
 import { createMockFinalizedTxData } from './test-mocks';
 
-// The v8 arm of the record union. Its `tx` is a live `Ledger8Transaction` handle
+// The v8 variant of the record union. Its `tx` is a live `Ledger8Transaction` handle
 // from the retained ledger module, which no unit test can construct and none
 // of these read -- every assertion here is about the tag and the members
 // around it. One cast, in one place, rather than one per call site.
@@ -376,7 +376,7 @@ describe('Ledger8DeployNotStoredError', () => {
     expect(error.signingKey).toBe(SIGNING_KEY);
     expect(error.contractAddress).toBe(ADDRESS);
     expect(error.message).toContain('signingKey');
-    // The key is a SECRET, and on the refused-key arm this error holds the only copy of it.
+    // The key is a SECRET, and on the refused-key path this error holds the only copy of it.
     expect(error.message).not.toContain(SIGNING_KEY);
   });
 });

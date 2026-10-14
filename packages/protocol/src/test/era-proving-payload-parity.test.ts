@@ -140,7 +140,7 @@ describe('proof-server wire builders are byte-identical across eras', () => {
   });
 
   // Both directions, because substitutability has to hold both ways: the
-  // retained arm sends a v8 preimage through v9 builders today, and a future
+  // retained-era path sends a v8 preimage through v9 builders today, and a future
   // change could just as easily route the other way.
   const preimages = (): readonly { readonly label: string; readonly preimage: Uint8Array }[] => [
     { label: 'a preimage produced by the retained runtime', preimage: ledger8Preimage },

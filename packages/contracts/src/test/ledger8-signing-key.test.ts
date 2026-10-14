@@ -44,7 +44,7 @@
  * it as well as the length assertion.
  *
  * THE SAMPLER HERE IS A SUBSTITUTE, and that is a measurement rather than an
- * assumption. The deploy arm samples through `onchain-runtime-v3`; this file
+ * assumption. The deploy path samples through `onchain-runtime-v3`; this file
  * samples through `loadLedger8()`, which resolves `@midnightntwrk/ledger-v8` --
  * a different package on its own release train. Eslint bans a direct
  * `onchain-runtime-v3` import outside `packages/protocol`, so the facade is the

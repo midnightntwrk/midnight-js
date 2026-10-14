@@ -34,11 +34,11 @@ const caught = (payload: unknown): unknown => {
 };
 
 describe('unwrapLedger9', () => {
-  it('returns the carried ledger object for the v9 arm', () => {
+  it('returns the carried ledger object for the v9 variant', () => {
     expect(unwrapLedger9({ version: 'v9', tx: 'the-transaction' }, 'proveTx')).toBe('the-transaction');
   });
 
-  it('refuses the v8 arm with its stable code, naming the method and the payload size', () => {
+  it('refuses the v8 variant with its stable code, naming the method and the payload size', () => {
     const refusal = caught({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) });
 
     expect(refusal).toBeInstanceOf(Ledger8PayloadUnsupportedError);
@@ -50,7 +50,7 @@ describe('unwrapLedger9', () => {
   // Reachable only from JavaScript or across an untyped boundary, which is
   // exactly the caller that most needs the size reported honestly rather than
   // silently omitted.
-  it('reports an unknown size when the v8 arm carries no byte array', () => {
+  it('reports an unknown size when the v8 variant carries no byte array', () => {
     expect((caught({ version: 'v8', txBytes: 'not-bytes' }) as Ledger8PayloadUnsupportedError).byteLength).toBeUndefined();
   });
 

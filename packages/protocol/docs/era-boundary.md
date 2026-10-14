@@ -114,7 +114,7 @@ only sanctioned runtime path to it — and binds it into closure, so the era's
 own methods stay synchronous.
 
 Hoisting the acquisition there, rather than deferring it into each method, is
-what makes the two arms symmetrical. It costs a v9-only consumer nothing:
+what makes the two eras symmetrical. It costs a v9-only consumer nothing:
 asking for the v8 era IS the observation of v8, and nothing reaches that
 function until someone does.
 
@@ -124,12 +124,12 @@ acquired, so there is nothing left to await — the acquisition happens once, in
 `createLedger8Engine`, and the runtime instance it obtained is captured in
 closure.
 
-The v9 arm needs no hoisting to reach the same shape. `createLedger9Era` is wholly
+The v9 era needs no hoisting to reach the same shape. `createLedger9Era` is wholly
 synchronous: `@midnightntwrk/ledger-v9` is this package's current era and is
 already linked by the package root, so there is nothing to acquire and nothing
 that can fail there.
 
-The result is that both arms hand back an object whose methods are synchronous,
+The result is that both eras hand back an object whose methods are synchronous,
 for two eras whose acquisition costs are not remotely alike.
 
 ## `loadLedgerEra` is the entry point
@@ -139,7 +139,7 @@ Pass the version resolved from a record or from the network head (see
 `protocolVersionToLedger` in `packages/protocol/src/version.ts`) rather than a
 string chosen by hand.
 
-## The v8 arm composes exactly one call
+## The v8 era composes exactly one call
 
 The two eras are not equivalent in `composeCallTx`, and the difference is
 deliberate rather than hidden: the retained pre-fork era composes exactly one

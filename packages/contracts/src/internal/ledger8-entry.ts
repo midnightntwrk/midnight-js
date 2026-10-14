@@ -26,7 +26,7 @@
  * the ordinary path. EVERY head reading is breadcrumbed with a `HeadReadingProvenance` naming
  * which it is — adding a reading without one is the mistake that list exists to prevent.
  *
- * @see {@link KeepStatePipeline} for the acquisition rules, the payload arms, and
+ * @see {@link KeepStatePipeline} for the acquisition rules, the payload variants, and
  *      how a provider's own failure is sanitized.
  * @see {@link Breadcrumbs} for all four readings and what each provenance means.
  */
@@ -190,8 +190,8 @@ export interface Ledger8Runtime {
  * sets that cannot carry a retained-era transaction.
  *
  * The two acquisitions are independent and are started together; keep them that
- * way. Every retained-era operation funnels through here — the call arm and the
- * deploy arm both — so the provider check belongs here rather than in each of them.
+ * way. Every retained-era operation funnels through here — the call path and the
+ * deploy path both — so the provider check belongs here rather than in each of them.
  * The era checked is `resolved.head`, not the artifact's.
  *
  * @param providers The provider set, for the one head read and for the three
@@ -404,17 +404,17 @@ const atProviderMethod = async <T>(method: EraMethod, circuitId: string, call: (
 };
 
 /**
- * How an era arm reaches `submitTx`.
+ * How an era's submit function reaches `submitTx`.
  *
  * Taken as a parameter rather than called directly, so the fork-crossing
- * diagnosis is applied ONCE, by the caller, around whichever arm runs. Two arms
+ * diagnosis is applied ONCE, by the caller, around whichever one runs. Two functions
  * each calling `atProviderMethod('submitTx', ...)` themselves is exactly how they drift
  * into different failure handling.
  */
 type SubmitRunner = (call: () => Promise<string>) => Promise<string>;
 
 /**
- * Proves, balances and submits on the CURRENT-era payload arm, as a live handle.
+ * Proves, balances and submits on the CURRENT-era payload variant, as a live handle.
  *
  * @param providers The proof, wallet and submission providers.
  * @param txBytes The serialized unproven transaction the era composed.
@@ -445,7 +445,7 @@ const submitLedger8TxOnCurrentEra = async (
 };
 
 /**
- * Proves, balances and submits on the RETAINED-era payload arm, as serialized
+ * Proves, balances and submits on the RETAINED-era payload variant, as serialized
  * bytes.
  *
  * @param providers The proof, wallet and submission providers.
@@ -476,7 +476,7 @@ const submitLedger8TxOnRetainedEra = async (
  * Proves, balances and submits a retained-era-executed transaction, and
  * returns the transaction id.
  *
- * The payload arm is NOT the same on both heads: a pre-fork head crosses as
+ * The payload variant is NOT the same on both heads: a pre-fork head crosses as
  * `{ version: 'v8', txBytes }` and a post-fork head as `{ version: 'v9', tx }`,
  * because the `version` tag names the ledger runtime that produced the bytes,
  * never the toolchain that produced the contract.
@@ -495,10 +495,10 @@ const submitLedger8TxOnRetainedEra = async (
  * the proof, wallet and submission providers.
  * @param txBytes The serialized unproven transaction the era composed.
  * @param operation Which operation this is: the head era it resolved — which
- * also decides the payload arm — whether it is a call or a deploy, and the
+ * also decides the payload variant — whether it is a call or a deploy, and the
  * identifiers a fork-crossing refusal has to name.
  * @returns The transaction id the network assigned.
- * @throws Ledger8PayloadUnsupportedError if a provider does not serve the pre-fork arm.
+ * @throws Ledger8PayloadUnsupportedError if a provider does not serve the pre-fork payload variant.
  * @throws EraInvariantViolationError if a provider answers in the other era.
  * @throws Ledger8ProviderFailedError if a provider rejects, with its own failure
  * sanitized onto `cause` — see {@link atProviderMethod}.
@@ -506,7 +506,7 @@ const submitLedger8TxOnRetainedEra = async (
  * rejected and the head has moved, or cannot be compared — see
  * {@link handleSubmitRejection}.
  * @see {@link KeepStatePipeline} for the payload table and why tagging the
- *      post-fork arm `'v8'` would be false.
+ *      post-fork payload `'v8'` would be false.
  */
 export const submitLedger8Tx = async (
   providers: Pick<
@@ -517,7 +517,7 @@ export const submitLedger8Tx = async (
   operation: SubmittedOperation
 ): Promise<string> => {
   const { circuitId, head } = operation;
-  // Wrapped ONCE, around whichever arm's submit runs, so the two arms cannot end
+  // Wrapped ONCE, around whichever era's submit runs, so the two cannot end
   // up with different failure handling. `atProviderMethod` still does the sanitizing --
   // what this adds is the fork-crossing diagnosis on top of its result.
   const submit: SubmitRunner = async (call) => {
@@ -529,7 +529,7 @@ export const submitLedger8Tx = async (
   };
 
   // A SWITCH closing on `never`, not an `if`: an era added to `LedgerVersion`
-  // must not fall through into the pre-fork arm and submit retained-era bytes
+  // must not fall through into the pre-fork case and submit retained-era bytes
   // to a head that never asked for them. Every other era decision in this
   // package closes the same way -- see `assertEraCompatible`.
   switch (head) {
@@ -563,8 +563,8 @@ export interface Ledger8SubmittedCall {
    *
    * Deliberately NOT on the published `Ledger8SubmittedCallTx`: that type names
    * the era of the PIPELINE, and this is the era of the NETWORK. The two are
-   * different facts and they disagree on this arm every time a retained-era
-   * call is recorded post-fork. The finalizing arm needs this one to attribute
+   * different facts and they disagree on this path every time a retained-era
+   * call is recorded post-fork. The finalizing path needs this one to attribute
    * the record it fetches, so it travels on this internal shape instead.
    */
   readonly head: LedgerVersion;
@@ -599,7 +599,7 @@ export interface Ledger8SubmittedCall {
  * @throws Ledger8RecipientUnmappableError if a shielded output pays a recipient
  * that is not the calling wallet, the burn address, or a key in
  * `additionalCoinEncPublicKeyMappings`.
- * @throws Ledger8PayloadUnsupportedError if a provider does not serve the pre-fork arm.
+ * @throws Ledger8PayloadUnsupportedError if a provider does not serve the pre-fork payload variant.
  * @throws EraInvariantViolationError if a provider answers in the other era.
  * @throws Ledger8ProviderFailedError if a provider rejects.
  * @see {@link KeepStatePipeline} for the per-recipient encryption rule and what
@@ -723,7 +723,7 @@ export const runLedger8Deploy = async (
   assertValidMidnightConfig(providers.config);
   const { networkId } = providers.config;
   const ttl = intentTtl(providers.config);
-  // No contract address on this arm: a deploy has none until the composition
+  // No contract address on this path: a deploy has none until the composition
   // below mints one, so the selection breadcrumb leaves the field out.
   const { resolved, engine } = await acquireLedger8Runtime(providers, 'deploy', {
     logger: providers.loggerProvider
@@ -734,7 +734,7 @@ export const runLedger8Deploy = async (
   // very refusals that exist to be raised first. See the field's own comment.
   const verifierKeys = await request.resolveVerifierKeys();
 
-  // Read ONCE. The call arm forbids the second read for the reason that applies
+  // Read ONCE. The call path forbids the second read for the reason that applies
   // here unchanged: a resolver built against a different key than the one the
   // constructor executed under is exactly the mismatch that mis-encrypts a coin
   // the constructor minted. Normalized once too, so both uses get the same
@@ -752,7 +752,7 @@ export const runLedger8Deploy = async (
     signingKey: request.signingKey,
     networkId,
     ttl,
-    // Built the same way the call arm builds it, so a coin a constructor mints
+    // Built the same way the call path builds it, so a coin a constructor mints
     // is encrypted to the same key a coin a circuit mints would be.
     encryptionPublicKey: createEncryptionPublicKeyResolver(
       networkId,
@@ -764,7 +764,7 @@ export const runLedger8Deploy = async (
   const txId = await submitLedger8Tx(providers, deploy.txBytes, {
     // Only ever a pre-fork head here -- a retained-era deploy against a
     // post-fork head was refused above -- but the era is passed rather than
-    // assumed, so the payload arm is chosen by the same rule everywhere.
+    // assumed, so the payload variant is chosen by the same rule everywhere.
     head: resolved.head,
     kind: 'deploy',
     // The deploy has no circuit of its own to name, so the constructor's own
@@ -866,8 +866,8 @@ export const findLedger8Contract = async (
   }
 
   // Tagged, not attributed to the head: a contract found on chain was deployed
-  // in whichever era was current THEN, so either arm is a legitimate answer
-  // here and there is no era to compare against. The current era's arm narrows
+  // in whichever era was current THEN, so either variant is a legitimate answer
+  // here and there is no era to compare against. The current era's path narrows
   // to v9 at this same read because v9 is its only legitimate answer.
   return {
     deployTxData: requireTaggedRecord(
@@ -881,7 +881,7 @@ export const findLedger8Contract = async (
  * Refuses a retained-era transaction the node recorded with a non-success
  * status.
  *
- * Raises the retained arm's own class rather than {@link CallTxFailedError},
+ * Raises the retained-era path's own class rather than {@link CallTxFailedError},
  * which carries a current-era-only `FinalizedTxData`.
  *
  * @param record The finalized record the read surface reported.
@@ -971,7 +971,7 @@ export type Ledger8PrivateStateSurface = Pick<PrivateStateProvider, 'get' | 'set
 
 /**
  * The private-state members a retained-era DEPLOY reads and writes: the call
- * arm's, plus the signing-key write only a deployer ever makes.
+ * path's, plus the signing-key write only a deployer ever makes.
  *
  * Widened here rather than on {@link Ledger8PrivateStateSurface} so a reader —
  * and a test — can see that a CALL never writes a signing key.
@@ -1065,8 +1065,8 @@ export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Led
 });
 
 /**
- * The retained era's execution data, built in ONE place: the async arm
- * publishes it as it stands, and the finalizing arm merges the record onto its
+ * The retained era's execution data, built in ONE place: the async entry point
+ * publishes it as it stands, and the finalizing entry point merges the record onto its
  * public half. Two construction sites could report different executions of the
  * same call.
  */
@@ -1095,12 +1095,12 @@ const toLedger8CallTxData = (
 
 /**
  * What one retained-era call entry produced: the submitted-call result the
- * public arms answer with, and the era the network head was on.
+ * public entry points answer with, and the era the network head was on.
  *
  * The head is here rather than on `Ledger8SubmittedCallTx` for the reason
  * given on {@link Ledger8SubmittedCall.head}: that type names the era of the
- * PIPELINE, this is the era of the NETWORK, and on this arm they routinely
- * differ. The finalizing arm needs the network's to attribute the record it
+ * PIPELINE, this is the era of the NETWORK, and on this path they routinely
+ * differ. The finalizing entry point needs the network's to attribute the record it
  * fetches, and no caller needs it at all.
  */
 interface Ledger8CallEntryOutcome {
@@ -1110,9 +1110,9 @@ interface Ledger8CallEntryOutcome {
 
 /**
  * Runs one retained-era call: the local refusals, the private-state read, the
- * pipeline, and the submission -- everything both public arms share.
+ * pipeline, and the submission -- everything both public entry points share.
  *
- * Extracted so the finalizing arm can reach the head this call resolved
+ * Extracted so the finalizing entry point can reach the head this call resolved
  * WITHOUT a second head read. Re-reading it would break the single-head-read
  * invariant the entry points are asserted against, and worse, a second reading
  * could answer differently and attribute the record against an era the
@@ -1121,13 +1121,13 @@ interface Ledger8CallEntryOutcome {
  * @param providers The provider set.
  * @param options The call the entry point received.
  * @returns The submitted-call result and the head era it resolved.
- * @throws Every error the public arms document.
+ * @throws Every error the public entry points document.
  */
 const runLedger8CallEntry = async (
   providers: Ledger8CallEntryProviders,
   options: Ledger8CallEntryOptions
 ): Promise<Ledger8CallEntryOutcome> => {
-  // The same two local refusals the current-era arm makes before any provider
+  // The same two local refusals the current-era path makes before any provider
   // is touched. A malformed address would otherwise cost a network round trip
   // to discover, and an unknown circuit id would surface as a blank
   // verifier-key slot -- a diagnosis pointing at the chain when the fault is a
@@ -1200,7 +1200,7 @@ export const submitLedger8CallTxAsync = async (
  *
  * The finalized record is returned VERSION-TAGGED rather than narrowed: a
  * retained-era call is recorded by whichever era the network head is on, and
- * narrowing to one arm here would refuse the very records this pipeline exists
+ * narrowing to one variant here would refuse the very records this pipeline exists
  * to produce.
  *
  * @param providers The provider set.
@@ -1218,7 +1218,7 @@ export const submitLedger8CallTx = async (
   const { submitted, head } = await runLedger8CallEntry(providers, options);
   const { txId, circuitId, callTxData } = submitted;
   // The ONE path to the next private state, the same one the current era
-  // publishes and this arm's own asynchronous surface documents.
+  // publishes and this path's own asynchronous surface documents.
   const nextPrivateState = callTxData.private.nextPrivateState;
   const txData = await providers.publicDataProvider.watchForTxData(txId);
   // Attribute the record BEFORE reading anything off it -- see the helper.
@@ -1229,7 +1229,7 @@ export const submitLedger8CallTx = async (
     await providers.privateStateProvider.set(options.privateStateId, nextPrivateState);
   }
 
-  // The finalized answer is the SAME execution data the async arm published,
+  // The finalized answer is the SAME execution data the async entry point published,
   // with the record merged onto its public half. Built from one place so the
   // two surfaces cannot report different executions of the same call.
   return {
@@ -1253,9 +1253,9 @@ export interface Ledger8DeployEntryOptions {
 /**
  * The providers a retained-era deploy entry point needs.
  *
- * `privateStateProvider` is REQUIRED here where the call arm's is optional, and
+ * `privateStateProvider` is REQUIRED here where the call path's is optional, and
  * that follows the provider set a caller actually holds: `MidnightProviders`
- * declares it, and both this arm and the attach arm write through it without a
+ * declares it, and both this path and the attach path write through it without a
  * guard.
  */
 export interface Ledger8DeployEntryProviders extends Ledger8EntryProviders {
@@ -1283,7 +1283,7 @@ export interface Ledger8DeployedState {
  * {@link runLedger8Deploy}, and it mirrors {@link submitLedger8CallTx}: watch,
  * attribute the record against the head, refuse a non-success status, and only
  * then store. A deploy that the chain refused must leave no local state ahead of
- * it — and on this arm that matters more than on the call arm, because a second
+ * it — and on this path that matters more than on the call path, because a second
  * attempt lands at a different address.
  *
  * The verifier keys are fetched for EVERY entry point the artifact declares,
@@ -1326,12 +1326,12 @@ export const submitLedger8DeployTx = async (
   // PAST THIS POINT the transaction is on the network and may finalize whatever
   // happens here, so every refusal below carries the signing key. A sampled key
   // discarded here leaves a contract on chain that nobody can ever maintain,
-  // which is the harm this arm exists to remove.
+  // which is the harm this path exists to remove.
   let deployTxData: VersionedFinalizedTxData;
   try {
     // The ADDRESS, not the transaction id: a deployment is recorded against the
     // contract it created, and `watchForDeployTxData` is the read surface's own
-    // arm for that.
+    // method for that.
     deployTxData = await providers.publicDataProvider.watchForDeployTxData(deploy.contractAddress);
     // Attribute the record BEFORE reading anything off it -- see the helper.
     assertLedger8RecordEra(deployTxData, head, 'initialState', 'watchForDeployTxData');

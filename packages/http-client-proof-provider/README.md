@@ -98,10 +98,10 @@ proveTx(
 
 Proves all circuits in a transaction and returns the proven transaction.
 
-Both the argument and the result are version-tagged unions: the `'v9'` arm
-carries the live ledger object as `tx`, the `'v8'` arm carries serialized
+Both the argument and the result are version-tagged unions: the `'v9'` variant
+carries the live ledger object as `tx`, the `'v8'` variant carries serialized
 bytes as `txBytes`. Narrow on `version` before touching the payload. This
-provider serves the `'v9'` arm; a `'v8'` payload is rejected.
+provider serves the `'v9'` variant; a `'v8'` payload is rejected.
 
 ### ProvingProvider (Low-Level)
 

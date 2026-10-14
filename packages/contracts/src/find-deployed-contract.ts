@@ -151,7 +151,7 @@ const setOrGetLedger8SigningKey = async (
   try {
     stored = await privateStateProvider.getSigningKey(contractAddress);
   } catch {
-    // SWALLOWS: the READ of a value nothing on this arm consumes, and nothing else.
+    // SWALLOWS: the READ of a value nothing on this path consumes, and nothing else.
     // `getSigningKey` is documented as THROWING -- a wrong store password, a password-policy
     // failure, a rotation-lock timeout, store I/O, an entry the provider refuses as not a signing
     // key -- so propagated, a store whose signing-key
@@ -179,7 +179,7 @@ const setOrGetLedger8SigningKey = async (
  * The private-state half of a find's configuration, as the rule below reads it.
  *
  * Structural rather than either era's own options type, because the rule is ONE rule and the
- * retained arm reaches it holding a `Ledger8FindDeployedContractOptions`.
+ * retained-era path reaches it holding a `Ledger8FindDeployedContractOptions`.
  *
  * DO NOT DROP THE `& object` on any use of this type. Both members are optional, which makes this
  * a weak type, and without the intersection the ordinary current-era find stops compiling.
@@ -424,13 +424,14 @@ export interface FoundContract<C extends Contract.Any> {
 }
 
 /*
- * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
- * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
- * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
- * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
+ * overload that was already LAST stays last. Do not append. Pinned by
+ * `src/test/typecheck/overloads.test-d.ts`. Every overload carries its own TSDoc, because TypeDoc
+ * gives an uncommented signature the comment of the first commented sibling -- which published
+ * this overload's caveat on the current-era overloads.
  */
 /**
- * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
  * Nothing is COMPOSED and nothing is submitted: no transaction leaves this call. It resolves the
@@ -530,10 +531,10 @@ export async function findDeployedContract<C extends Contract.Any>(
     });
     // Seeded HERE rather than inside `findLedger8Contract`, which takes a three-member `Pick` of the
     // providers and is a pure READ path -- widening it to write would put the one storage decision
-    // this arm makes behind the era-specific chain reads. Client-side storage is era-independent,
+    // this path makes behind the era-specific chain reads. Client-side storage is era-independent,
     // so both eras reach the same rule from this file.
     //
-    // AFTER the attach, for the order the current-era arm below uses: a state seeded for a contract
+    // AFTER the attach, for the order the current-era path below uses: a state seeded for a contract
     // whose verifier keys turn out not to match would outlive a find that failed.
     //
     // FIRST the address, for the PRIVATE-STATE write below and for that one only. A provider

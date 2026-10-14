@@ -4,11 +4,11 @@ title: ComposeRefusalOrder
 
 # The composition contract: refusal order
 
-Both era arms of this package compose the same two transaction kinds — a
+Both era paths of this package compose the same two transaction kinds — a
 contract call and a contract deploy — from the same facade options. This
-document records the contract the two arms hold in common: the order in which
+document records the contract the two paths hold in common: the order in which
 they refuse a caller's options, the one ordering difference that survives on
-purpose, what each arm accepts rather than refuses, and why every caller-caused
+purpose, what each path accepts rather than refuses, and why every caller-caused
 failure leaves as a coded error rather than as a raw WASM failure. The
 verifier-key rules a deploy is validated against are a separate thread — see
 [VerifierKeys](./verifier-keys.md).
@@ -25,14 +25,14 @@ call it produces are bound entirely on the ledger-v8 axis, as opposed to
 `wrapKeepStateCall` (`packages/protocol/src/lib/v9/wrap.ts`), which binds a
 retained-execution transcript natively onto the current ledger-v9 axis instead.
 
-## Refusal order on both era arms
+## Refusal order on both era paths
 
-Both arms refuse a caller's options in the SAME order: the envelope, then the
+Both paths refuse a caller's options in the SAME order: the envelope, then the
 call list, then the era's own limits, then the state, and last the offers. A
 caller handing both an empty network id and unreadable offer bytes has one
 defect to fix per era, not a different one per era.
 
-Holding that order is why the v8 era arm checks the envelope and the call list
+Holding that order is why the v8 era path checks the envelope and the call list
 itself rather than leaving either to the inner v8 leg it delegates to. The inner
 leg checks the envelope again; the check is idempotent, and leaving it there is
 what keeps `composeLedger8CallTx` and `composeLedger8DeployTx` safe to call directly.
@@ -65,8 +65,8 @@ moment the offer is built — not that it was used.
 ## The one deliberate ordering difference
 
 Both deploy legs check the envelope first and the offer second, but the v9 leg
-reads the state before it looks at `verifierKeys`, and the v8 era arm cannot:
-the state is read by the leg it delegates to, and reading it in the arm as well
+reads the state before it looks at `verifierKeys`, and the v8 era path cannot:
+the state is read by the leg it delegates to, and reading it in the path as well
 would deserialize the same bytes twice.
 
 So a deploy that is BOTH unreadable and missing its key map reports
@@ -101,8 +101,8 @@ transaction that carries the call.
 An absent offer is the normal shape of a call that moved no shielded coins: a
 call omits the factory, and a factory may answer with either half absent. Bytes
 an era cannot decode are reported as `ComposeOptionError` with option
-`'zswapOffer'` — the same wrapping the other arm applies to the
-identical call. The same symmetry holds for the contract state: both arms wrap a
+`'zswapOffer'` — the same wrapping the other path applies to the
+identical call. The same symmetry holds for the contract state: both paths wrap a
 rejected state as `ComposeOptionError` with option `'contractState'` rather than
 letting a raw decoder failure escape.
 
@@ -113,7 +113,7 @@ the two carry different remediations.
 
 Inside the v8-native DEPLOY leg the offer is a v8-native offer HANDLE rather
 than bytes: that leg runs inside the retained era with the module already in
-hand, so the era arm that read the caller's offer bytes hands the decoded offer
+hand, so the era path that read the caller's offer bytes hands the decoded offer
 straight over. The contract state is different: it crosses as
 `contractStateBytes` and that leg decodes it itself. The v8-native
 CALL leg takes the `zswapOffer` factory unchanged and decodes the bytes it
@@ -254,7 +254,7 @@ internal invariant of the ledger module, not a caller error, so that one throws
 ## One stage union across both eras
 
 `ComposeStage` (`packages/protocol/src/errors.ts`) is a single union covering
-both arms rather than one union per era, and the era a failure happened on is
+both paths rather than one union per era, and the era a failure happened on is
 carried separately, on the error's `version` field. Every stage but
 `'wrap-call'` is reachable on both eras, so folding the era into the stage would
 nearly double the union without adding a distinction any caller wants to

@@ -281,7 +281,7 @@ describe('composeLedger9CallTx', () => {
     expect(intents[0].fallibleUnshieldedOffer?.outputs).toEqual([{ value: 7n, owner: USER, type: TOKEN }]);
   });
 
-  // The cross-contract call TREE, which is the shape this arm exists to
+  // The cross-contract call TREE, which is the shape this path exists to
   // compose and which every other test here exercises with a single entry.
   // A loop that collapsed to calls[0] or calls.at(-1), an aggregation that read
   // only the first ContractCall off the intent, or randomness applied uniformly
@@ -458,8 +458,8 @@ describe('composeLedger9DeployTx', () => {
   // not as a way to skip registration. Omitting it for a constructor-built
   // state used to deploy a contract whose entry points are all blank, at an
   // address derived from that blank state; the first call against it then
-  // failed at 'call-verifier-key', a long way from the cause. The v8 arm
-  // refuses the omission outright, so this is also where the two arms met.
+  // failed at 'call-verifier-key', a long way from the cause. The v8 path
+  // refuses the omission outright, so this is also where the two eras met.
   it('refuses a deploy whose state still declares a blank key and carries no key map', () => {
     const error = caughtDeploy(() => composeLedger9DeployTx(deployOptions({ verifierKeys: undefined })));
 

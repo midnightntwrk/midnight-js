@@ -34,7 +34,7 @@ type IsAny<T> = 0 extends 1 & T ? true : false;
  * True only when `A` and `B` are assignable to each other.
  *
  * Both sides are wrapped in tuples so a union is compared whole rather than
- * distributed over its arms.
+ * distributed over its members.
  *
  * `any` on either side answers FALSE rather than true. A bare assignability
  * test cannot see it -- `[any] extends [B]` holds for every `B` -- so a vendor

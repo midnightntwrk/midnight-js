@@ -103,7 +103,7 @@ describe('dappConnectorProofProvider', () => {
   // Set equality rather than `toContain`: this provider serves both eras, and
   // an era silently dropped from the declaration would have a retained-era
   // operation refused before it started -- which `toContain` would not catch.
-  it('declares both eras, matching the two arms it is built from', async () => {
+  it('declares both eras, matching the two handlers it is built from', async () => {
     const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
 
     expect([...proofProvider.supportedEras].sort()).toEqual(['v8', 'v9']);
@@ -169,7 +169,7 @@ describe('dappConnectorProofProvider', () => {
     });
   });
 
-  // The retained arm's body lives in this package, so these cases cover code the
+  // The retained-era handler's body lives in this package, so these cases cover code the
   // types package's tests do not reach.
   describe('v8 payload', () => {
     let retainedEraTxBytes: Uint8Array;
@@ -195,7 +195,7 @@ describe('dappConnectorProofProvider', () => {
       ).serialize();
     });
 
-    it('answers the v8 arm with the PROVEN serialization, ignoring the caller-supplied cost model', async () => {
+    it('answers the v8 variant with the PROVEN serialization, ignoring the caller-supplied cost model', async () => {
       const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
 
       const result = await proofProvider.proveTx({ version: 'v8', txBytes: retainedEraTxBytes });

@@ -109,7 +109,7 @@ const callEntryFromTranscript = (
   contractAddress,
   circuitId: transcript.circuitId,
   contractStateBytes: serializedLedger8StateWithOperation(),
-  // Named explicitly: these entries exercise the v8 arm's assembly, not the cost model.
+  // Named explicitly: these entries exercise the v8 era's assembly, not the cost model.
   ledgerParametersBytes: 'initial',
   transcript: {
     kind: 'unpartitioned',
@@ -182,7 +182,7 @@ const payingCallEntry = (owner: string, token: string): ComposeCallEntry => ({
   contractAddress: ocrt3.dummyContractAddress(),
   circuitId: 'increment',
   contractStateBytes: serializedLedger8StateWithOperation(),
-  // Named explicitly: these entries exercise the v8 arm's assembly, not the cost model.
+  // Named explicitly: these entries exercise the v8 era's assembly, not the cost model.
   ledgerParametersBytes: 'initial',
   transcript: {
     kind: 'partitioned',
@@ -194,7 +194,7 @@ const payingCallEntry = (owner: string, token: string): ComposeCallEntry => ({
   output: { value: [], alignment: [] }
 });
 
-describe('the v8 era arm', () => {
+describe('the v8 era path', () => {
   it('composes a v8-native call transaction from a real executeCircuit transcript passed as plain data', async () => {
     const era = await loadLedgerEra('v8');
     const { entry, address } = await runIncrement();

@@ -84,7 +84,7 @@ const eraPosition = (era: LedgerVersion): number => LEDGER_VERSIONS.indexOf(era)
  * era, or if the read itself rejects — so neither failure is lost while the
  * question is unresolved, and both arrive carrying a registered code. A head
  * integer that cannot be placed on the era timeline arrives here too, on the
- * `'head-read-failed'` arm, carried on `headReadFailure`.
+ * `'head-read-failed'` case, carried on `headReadFailure`.
  * @throws the rejection unchanged in every other case.
  * @see {@link StaleHeadRemediation} for the four outcomes and the remediation
  *      each one carries.
@@ -121,7 +121,7 @@ export const handleSubmitRejection = async (
   }
 
   // Reported BEFORE the verdict, so the reading is in the log whichever of the
-  // three arms below is taken.
+  // three branches below is taken.
   emitHeadResolution(logger, freshReading, 'post-rejection-re-read');
 
   const freshEra = freshReading.head;

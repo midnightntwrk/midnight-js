@@ -50,9 +50,9 @@ The `tag`'s value is chosen by the caller — `CompiledContract.make(tag, ctor)`
 and carries no era information. What places the object is that nothing else has
 this shape, and that the property survives both a bundler and the object spread
 the container's own combinators perform. The retained era has no such container,
-which is why it is the arm that has to ask the artifact set.
+which is why it is the one that has to ask the artifact set.
 
-So only the retained arm reads the bundle, through
+So only the retained-era path reads the bundle, through
 `ZKConfigProvider.getArtifactRuntimeVersion()`; a current-era caller buys no
 round trip and needs no file it does not already ship. `resolveArtifactEra` in
 `packages/contracts/src/internal/era.ts` holds both halves.
@@ -173,7 +173,7 @@ through.
 
 `resolveArtifactEra` makes the decision; `isLedger8Request` is that same,
 already-resolved answer in the narrowing form each era-dispatching entry point
-needs, so an entry point's body can drop the retained-era arm from its parameter
+needs, so an entry point's body can drop the retained-era variant from its parameter
 union without a cast. It is not a second decision — it takes the era as an
 argument and only gives it a type predicate, because a type predicate cannot be
 asynchronous and the decision now is.
@@ -311,7 +311,7 @@ it sufficient: on a plain object literal `constructor`, `toString`, `valueOf`
 and `__proto__` all come back as truthy non-cells. Note what that would and
 would not cost. No prototype member is a valid verdict, so no such key reaches a
 wrong RULING; the refusal simply moves to the other axis and blames a value that
-was never at fault, or falls to the closing arm and reports a function where an
+was never at fault, or falls to the closing case and reports a function where an
 era should be. The null prototype buys a correct diagnosis, not a correct
 verdict — which is why the test that pins it asserts which era gets blamed
 rather than asserting the prototype.
@@ -367,7 +367,7 @@ window. So it is rethrown wrapped, naming both eras that disagreed.
 ## Refusing a v8 answer on a v9-only flow
 
 `requireLedger9` and `requireLedger9Record` narrow a provider's versioned payload to its
-v9 arm. The flows in this package only ever send v9 payloads, so a v8 response
+v9 variant. The flows in this package only ever send v9 payloads, so a v8 response
 cannot be handled.
 
 Both are distinct from `unwrapLedger9` in `@midnight-ntwrk/midnight-js-types`, which
@@ -402,7 +402,7 @@ Two things about that table are easy to get wrong.
 
 The era checked on the retained pipeline is the HEAD era, not the artifact's.
 That is not a shortcut — it is what `submitLedger8Tx` switches on to pick the
-payload arm. A pre-fork head crosses as `{ version: 'v8', txBytes }`; a post-fork
+payload variant. A pre-fork head crosses as `{ version: 'v8', txBytes }`; a post-fork
 head is keep-state, which composes on the CURRENT era and crosses as
 `{ version: 'v9', tx }`, because the tag names the runtime that produced the
 bytes and never the toolchain that produced the contract. Checking the artifact's
@@ -426,7 +426,7 @@ no more than it says.
 `supportedEras` is a CLAIM by an implementation, and nothing verifies it. A
 provider that lists an era it cannot serve still fails in the method, with
 `Ledger8PayloadUnsupportedError` — the narrowing in each method is unchanged and is what
-actually upholds the arm. The two errors stay distinct because their remedies
+actually upholds the claim. The two errors stay distinct because their remedies
 differ: `ProviderEraUnsupportedError` means wire a different provider,
 `Ledger8PayloadUnsupportedError` means the provider you wired does not do what it
 said.
@@ -447,7 +447,7 @@ wrong value.
 
 The current era refuses the mirror of this on its call paths, through
 `requireLedger9Record`. Its attach accepts either tag, because a contract it finds may
-have been deployed before the fork. `assertLedger8RecordEra` is the retained arm's half, and it
+have been deployed before the fork. `assertLedger8RecordEra` is the retained-era path's half, and it
 compares the record against the HEAD rather than against a fixed era, because a
 retained-era call is legitimately recorded by EITHER era — which is why the
 result type keeps `version` a union in the first place.

@@ -46,12 +46,12 @@ export { INITIAL_LEDGER_PARAMETERS } from '../shared/compose-types';
 export type { ContractBalance, ContractEntryPointPojo, ContractStatePojo } from '../shared/contract-state';
 export type { LedgerEra } from './era';
 
-// One memo slot per era, never one shared slot, and both arms are frozen --
+// One memo slot per era, never one shared slot, and both era objects are frozen --
 // see SharedTableDiscipline and EraBoundary.
 let ledger8EraPromise: Promise<LedgerEra> | undefined;
 let ledger9EraPromise: Promise<LedgerEra> | undefined;
 
-/** The v9 arm. Wholly synchronous -- see the EraBoundary document. */
+/** The v9 era. Wholly synchronous -- see the EraBoundary document. */
 const createLedger9Era = (): LedgerEra => {
   const era: LedgerEra = {
     version: 'v9',
@@ -65,7 +65,7 @@ const createLedger9Era = (): LedgerEra => {
 };
 
 /**
- * The v8 arm. Acquires the retained pre-fork ledger and binds it into closure,
+ * The v8 era. Acquires the retained pre-fork ledger and binds it into closure,
  * so the era's own methods stay synchronous -- see the EraBoundary document for why
  * the acquisition is hoisted here.
  */

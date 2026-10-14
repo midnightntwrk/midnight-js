@@ -19,13 +19,13 @@
  *
  * This is `./v8-native.test.ts`'s twin. The contract, the committed recording
  * and the pipeline are the same; what differs is which era object the pipeline
- * is handed and, consequently, which ledger tags the transaction and which arm
- * it hands the providers. Read the two files together — the
+ * is handed and, consequently, which ledger tags the transaction and which payload
+ * variant it hands the providers. Read the two files together — the
  * orchestration order assertion is deliberately IDENTICAL in both, because the
- * claim under test is that the two arms differ only in the era object.
+ * claim under test is that the two paths differ only in the era object.
  *
  * `wrapKeepStateCall` is absent from that order on purpose, and it is worth
- * saying why here of all places, since the method is named for this arm: the
+ * saying why here of all places, since the method is named for this path: the
  * current era's own `composeCallTx` reaches exactly the same call-assembly step
  * the wrap reaches, so calling both would bind the call twice; and the wrap's
  * result is a live ledger handle, which may not cross this package boundary at
@@ -221,7 +221,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     args: [recording.receivedCoin]
   });
 
-  it('composes the recorded call on the CURRENT ledger, in the same fixed order as the retained arm', async () => {
+  it('composes the recorded call on the CURRENT ledger, in the same fixed order as the retained path', async () => {
     const log: OrchestrationLog = [];
     let composed: ComposeCallOptions | undefined;
     const providers = postForkProviders(v6Envelope);
@@ -250,12 +250,12 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       )
     });
 
-    // IDENTICAL to the retained arm's order, which is the claim: the two arms
+    // IDENTICAL to the retained path's order, which is the claim: the two paths
     // differ only in which era object they are handed. `wrapKeepStateCall` is
     // not in it -- see this file's own header for why. The transcript crosses
     // UNPARTITIONED: the composer draws the split once and hands it back through
     // the offer factory, so there is no second split to disagree with it.
-    // The order is the retained arm's, plus the one step that only keep-state
+    // The order is the retained path's, plus the one step that only keep-state
     // needs. Read the ERAS in it, not just the names: the two reads are the
     // RETAINED era's -- it is the only one that can read these bytes -- and
     // everything after execution is the CURRENT era's. That split IS
@@ -323,8 +323,8 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     });
 
     // GUARANTEED because this recording's ops PARTITION that way, not because
-    // the arm cannot route: this arm resolves the split before it builds the
-    // offer too. See the retained arm's 'routes a coin the partition places in
+    // the path cannot route: this path resolves the split before it builds the
+    // offer too. See the retained path's 'routes a coin the partition places in
     // the fallible half' for the other direction.
     expect(result.guaranteedZswapOfferBytes).toBeInstanceOf(Uint8Array);
     expect(result.fallibleZswapOfferBytes).toBeUndefined();
@@ -390,7 +390,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // record here is the read surface answering for an era the chain has left.
     //
     // Note what is NOT being asserted: that `era` and `version` must agree.
-    // They legitimately disagree on this arm -- `era: 'v8'` with
+    // They legitimately disagree on this path -- `era: 'v8'` with
     // `version: 'v9'` IS keep-state, and the happy path below relies on it.
     // What must agree is the record and the HEAD the operation resolved.
     providers.publicDataProvider.watchForTxData = vi
@@ -420,7 +420,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(providers.publicDataProvider.queryRawContractState).toHaveBeenCalledTimes(1);
   });
 
-  it('passes the providers.config TTL to the wallet on the current-era arm', async () => {
+  it('passes the providers.config TTL to the wallet on the current-era path', async () => {
     const providers = { ...postForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 30 } };
     const before = Date.now();
 
@@ -431,7 +431,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 30_000);
   });
 
-  it('hands every provider method the CURRENT-era arm, as a live ledger transaction', async () => {
+  it('hands every provider method the CURRENT-era variant, as a live ledger transaction', async () => {
     const providers = postForkProviders(v6Envelope);
 
     await submitCallTx(providers, callOptions());
@@ -446,8 +446,8 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     for (const payload of [providers.seen.proveTx, providers.seen.balanceTx, providers.seen.submitTx]) {
       expect(payload).toBeDefined();
       expect(payload?.version).toBe('v9');
-      // The WRITE surface's current-era arm carries `tx`, and carries no
-      // `txBytes` at all -- the two arms are genuinely different shapes.
+      // The WRITE surface's current-era variant carries `tx`, and carries no
+      // `txBytes` at all -- the two variants are genuinely different shapes.
       expect(payload).not.toHaveProperty('txBytes');
     }
 

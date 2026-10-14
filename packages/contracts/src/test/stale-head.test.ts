@@ -126,7 +126,7 @@ type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeo
   readonly seen: SeenPayloads;
 };
 
-// Minted per era, because a block's parameters are era-tagged and the arm that composes reads them
+// Minted per era, because a block's parameters are era-tagged and the path that composes reads them
 // with its OWN era: a pre-fork block's go to the retained composer, a post-fork block's to the
 // current one. Handing either the other's bytes is refused on the header tag.
 let retainedLedgerParameters: Uint8Array;
@@ -338,7 +338,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
   });
 
   it("keeps this framework's own coded refusals unwrapped, and makes no head read for one", async () => {
-    // A provider that does not serve the pre-fork arm refuses on the way IN.
+    // A provider that does not serve the pre-fork variant refuses on the way IN.
     // That is not fork evidence, a caller narrowing on it must keep seeing it,
     // and asking the network about it would be a round trip for nothing.
     const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
@@ -350,7 +350,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
 
   it('makes NO fork claim about a rejection carrying no registered code at all', async () => {
     // Nothing uncoded is evidence of a fork. The sanitizing wrapper normally
-    // guarantees a code, so this arm fires when the sanitizer ITSELF failed --
+    // guarantees a code, so this case fires when the sanitizer ITSELF failed --
     // and it fires during a fork window, the only time the head moves at all.
     // Diagnosing it would attach a confident "the network crossed the fork"
     // verdict, and a two-step on-chain reconciliation, to a failure that has
@@ -635,7 +635,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
 
     // THE RE-RUN. The contract's STORED STATE is untouched -- the fork does not rewrite it, and
     // nothing has called this contract since -- so `raw` is still the very same retained-era
-    // envelope, which is precisely what sends the re-run down the keep-state arm.
+    // envelope, which is precisely what sends the re-run down the keep-state path.
     //
     // What does move is the BLOCK the read is dated by. `queryRawContractState` answers as of the
     // chain tip, so once the head has crossed, the record it returns carries a post-fork
@@ -655,7 +655,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
 
     expect(finalized.circuitId).toBe(CIRCUIT_ID);
     expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('keep-state-tx-id');
-    // The keep-state arm: an ORDINARY current-era transaction carrying a
+    // The keep-state path: an ORDINARY current-era transaction carrying a
     // retained-era call, so it is passed to the providers as a live handle rather than
     // as retained-era bytes.
     expect(providers.seen.submitTx?.version).toBe('v9');

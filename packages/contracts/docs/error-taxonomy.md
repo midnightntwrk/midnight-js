@@ -26,7 +26,7 @@ It exists because the two eras cannot share a record TYPE. The current era
 submits and accepts only v9, so its record is `FinalizedTxData`. A retained-era
 call is recorded by whichever era the network head is on, so its record is the
 version-tagged union `VersionedFinalizedTxData` — which is not assignable to the
-v9 arm. Narrowing the current era's member to the union would change a type
+v9 variant. Narrowing the current era's member to the union would change a type
 consumers already read, so that was not available either. Hence a retained-era
 class of its own rather than an extension of `TxFailedError`, and a base that
 declares the union.
@@ -52,7 +52,7 @@ record already answer — not a finer code.
 Every class here carries a registered code (ADR 0017). The retained era's
 recorded-failure classes — `Ledger8CallTxFailedError` and
 `Ledger8DeployTxFailedError` — carry none of their OWN: they inherit `TX_FAILED`.
-That arm's record type is expected to converge with the current era's, and a
+That era's record type is expected to converge with the current era's, and a
 finer code promised now would outlive the shape it describes. A caller branches
 on `TX_FAILED` and reads the record itself off `txData` rather than parsing a
 message.
@@ -104,7 +104,7 @@ condition surfaced as a bare assertion inside the offer builder, naming neither
 the era nor the circuit, which told a caller nothing about why its call could not
 be composed.
 
-The fix is to supply the retained arm with a Zswap chain state, tracked
+The fix is to supply the retained-era path with a Zswap chain state, tracked
 separately. Until then this refuses in the caller's own test run rather than in
 production.
 

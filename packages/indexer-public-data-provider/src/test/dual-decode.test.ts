@@ -166,10 +166,10 @@ describe('per-record dual decode on the finalized-transaction read path', () => 
     expect(record.txId).toBe(TX_ID);
   });
 
-  // The version-truth invariant, stated on both arms: the discriminant is not
+  // The version-truth invariant, stated on both variants: the discriminant is not
   // merely present, it is the answer the era resolver gives for the
   // `protocolVersion` sitting on the same record. A stamped literal would pass
-  // on one arm and fail on the other.
+  // on one variant and fail on the other.
   it.each([
     ['v9', LEDGER9_ERA_PROTOCOL_VERSION, (): string => ledger9TransactionHex],
     ['v8', LEDGER8_ERA_PROTOCOL_VERSION, (): string => ledger8TransactionHex]

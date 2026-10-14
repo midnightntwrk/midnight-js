@@ -123,7 +123,7 @@ export const composeLedger9CallTx = (options: ComposeCallOptions): ComposeCallRe
   }
 
   // LAST, after the unshielded payout has been aggregated off the assembled
-  // intent, because both steps refuse and the arms must refuse in one order --
+  // intent, because both steps refuse and both eras must refuse in one order --
   // see ComposeRefusalOrder. Built only once every call is split, which is the
   // whole point of taking a factory.
   const offers = zswapOffer?.(partitions);

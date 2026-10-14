@@ -165,7 +165,7 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
   // neither type-checks. Composed rather than refused, it yields a call that
   // claims a circuit ran and records no operations: the transaction serializes,
   // proves, submits and changes nothing. Refused only on the caller-supplied
-  // arm — an empty pair from the module's own partitioner is that module's
+  // path — an empty pair from the module's own partitioner is that module's
   // answer, not a caller error.
   it('refuses a partitioned source carrying neither half rather than composing a call that does nothing', () => {
     const address = ledgerV9.sampleContractAddress();
@@ -388,7 +388,7 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
   // The same argument one step later: the prototype constructor re-reads the
   // transcript pair it is handed, and a partitioned source is caller-built, so
   // an out-of-range gas figure reaches the ledger unchecked. Reached on the
-  // partitioned arm because that is the arm whose pair never passed through
+  // partitioned path because that is the path whose pair never passed through
   // this process's own partitioner.
   it('reports a transcript pair the prototype constructor rejects as a coded failure', () => {
     const address = ledgerV9.sampleContractAddress();

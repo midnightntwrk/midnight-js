@@ -5,7 +5,7 @@ title: InjectedVendorSlices
 # How an injected vendor slice is typed
 
 Several functions in this package take a vendor's class by injection rather than
-importing it: the era arms take the ledger module they compose against, and the
+importing it: the era paths take the ledger module they compose against, and the
 retained-engine functions take the pre-fork runtime they execute through. A
 function that takes a class by injection still has to name the shape it expects, and
 this document records how that shape is written down.
@@ -52,12 +52,12 @@ are two. Naming either era's type on a two-era function would pick a side.
 
 `ContractStateDecoder` (`lib/shared/contract-state.ts`) is declared structurally
 rather than derived from one era's class, because that decoder genuinely serves
-BOTH axes — the v9 arm passes ledger-v9, the v8 leg passes the module
+BOTH axes — the v9 path passes ledger-v9, the v8 leg passes the module
 `loadLedger8` handed it. `Ledger8ContractState` is the single-era counterpart,
 and IS derived from the vendor for that reason.
 
 `UnshieldedOfferLedger` (`lib/shared/unshielded.ts`) stays a hand-written slice
-for the same reason: the function above it runs on both eras, the v9 arm passing
+for the same reason: the function above it runs on both eras, the v9 path passing
 ledger-v9 and the v8 leg passing the module `loadLedger8` handed it, so
 deriving the shape from either era's class would pick a side. Its `inputs` and
 `signatures` are typed `never[]` rather than the ledger's own parameter types,

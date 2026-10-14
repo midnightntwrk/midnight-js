@@ -53,14 +53,14 @@ Nothing under `src/lib/` is a build entry, so this layout is internal and no con
 | Directory | Holds | Ledger reference |
 |---|---|---|
 | `lib/v8/` | the retained pre-fork era: `load.ts`, `engine.ts`, `load-engine.ts`, `executable.ts`, `compose.ts`, `deploy.ts`, `prove.ts`, `adapt.ts` | acquires `ledger-v8`, `onchain-runtime-v3` and the 0.16 glue, always through a dynamic import |
-| `lib/v9/` | the current era's composition arms: `compose.ts`, `wrap.ts` | links `ledger-v9` statically |
-| `lib/shared/` | what both arms run: `ledger-version.ts`, `verifier-keys.ts`, `compose-options.ts`, `assemble-call.ts`, `compose-types.ts`, `unshielded.ts`, `contract-state.ts` | era passed in as a `LedgerVersion` parameter, never chosen here |
+| `lib/v9/` | the current era's composition code: `compose.ts`, `wrap.ts` | links `ledger-v9` statically |
+| `lib/shared/` | what both eras run: `ledger-version.ts`, `verifier-keys.ts`, `compose-options.ts`, `assemble-call.ts`, `compose-types.ts`, `unshielded.ts`, `contract-state.ts` | era passed in as a `LedgerVersion` parameter, never chosen here |
 | `lib/era/` | the facade and the dispatch: `load-era.ts`, `era.ts`, `envelope.ts` | reaches both, which is the point of the layer |
 
 The directory names say what a module is **about**, not what it links. Three consequences a reader should not have to derive:
 
 - **`lib/v8/compose.ts`, `deploy.ts` and `adapt.ts` link no v8 at all.** They take the acquired module as a `Ledger8Protocol` parameter, which is a type. That injection is what keeps the v8 WASM out of the eager graph, and the guarantee is enforced by `dist-laziness.test.ts` and `v8-surface.test.ts` — not by this layout. Read the tests, not the directory, for the bundle boundary.
-- **`lib/shared/` is not free of vendors.** `assemble-call.ts` links `@midnight-ntwrk/compact-js`, a post-fork package, for `hashVerifierKey` and `encodeContractKeyLocation`; `contract-state.ts` links it for `hashVerifierKey`. Both are called by both arms, so their subject is shared even though their linkage is not. This is safe in one direction only: v9 is the eagerly-linked baseline, so a shared module reaching for it never wakes v8, while the reverse would.
+- **`lib/shared/` is not free of vendors.** `assemble-call.ts` links `@midnight-ntwrk/compact-js`, a post-fork package, for `hashVerifierKey` and `encodeContractKeyLocation`; `contract-state.ts` links it for `hashVerifierKey`. Both are called by both eras, so their subject is shared even though their linkage is not. This is safe in one direction only: v9 is the eagerly-linked baseline, so a shared module reaching for it never wakes v8, while the reverse would.
 - **`lib/v9/wrap.ts` type-imports `lib/v8/executable.ts`.** `TranscriptPojo` is the v8 engine's output and `wrapKeepStateCall` binds it onto v9. The cross-era edge is the operation's whole purpose, and it is type-only.
 
 `compose-types.ts` and `era.ts` name their shared types through `@midnightntwrk/ledger-v9` because some vendor has to name them. `EncodedStateValue`, `Op`, `AlignedValue`, `Transcript`, `CallContext` and `Effects` are pinned identical across `onchain-runtime-v3`, `ledger-v8` and `ledger-v9` by the compile-time assertions at the bottom of `v8-executable.test.ts`; the import names one era, the type belongs to neither. Those assertions are evaluated by `yarn typecheck:tests` — run by the pre-push hook AND by CI's `typecheck:tests:core` job. The test run itself does not evaluate them, because vitest transpiles test files without type-checking.
@@ -78,7 +78,7 @@ docstring resolves to it.
 | [Retained-era execution](./docs/retained-era-execution.md) | The down-conversion stages, the Merkle rehash requirement, the era pin, and what a `TranscriptPojo` carries |
 | [Dual-instantiation guard](./docs/dual-instantiation-guard.md) | What a duplicate WASM install does in the argument position versus the receiver position, and why the guard is a correctness requirement rather than a diagnostic |
 | [Fail-closed decoding](./docs/fail-closed-decoding.md) | Why the envelope is the only authority over the bytes, and the division of labour between the three decode failures |
-| [Compose refusal order](./docs/compose-refusal-order.md) | The order in which both era arms refuse compose options, and the one deliberate difference between them |
+| [Compose refusal order](./docs/compose-refusal-order.md) | The order in which both era paths refuse compose options, and the one deliberate difference between them |
 | [Verifier keys](./docs/verifier-keys.md) | Registration rules, the refusals that stop a deploy landing at an address the caller's artifacts do not describe, and why the address cannot be recomputed |
 | [Module graph and lazy loading](./docs/module-graph-and-lazy-loading.md) | Build entries, the `./v8` and `./engine` chunks, the import cycle avoided by a leaf module, and why a vendor's types are named with `import type` |
 | [Injected vendor slices](./docs/injected-vendor-slices.md) | How a function names the vendor class it takes by injection — derived from the vendor's own class, declared structurally, or narrowed — and what each choice buys |
@@ -197,13 +197,13 @@ Because the methods are synchronous, all the awaiting happens once, at `loadLedg
 
 ### Where the two eras differ
 
-The same method names mostly mean the same capabilities. One thing the v8 arm refuses that the v9 arm accepts:
+The same method names mostly mean the same capabilities. One thing the v8 era refuses that the v9 era accepts:
 
-- **A call tree.** The v8 arm composes exactly one call. A cross-contract call is a ledger-9-only feature a pre-fork contract cannot emit, so that era has no call tree to express: a `calls` list longer than one throws `ComposeOptionError` with `option: 'calls'` rather than composing the first entry and dropping the rest.
+- **A call tree.** The v8 era composes exactly one call. A cross-contract call is a ledger-9-only feature a pre-fork contract cannot emit, so that era has no call tree to express: a `calls` list longer than one throws `ComposeOptionError` with `option: 'calls'` rather than composing the first entry and dropping the rest.
 
 **A Zswap offer is not one of them.** Both eras call the `zswapOffer` factory back with the split they resolved and carry the offer it answers with into the transaction; both throw `ComposeOptionError` with `option: 'zswapOffer'` for bytes their own decoder rejects (`option: 'guaranteedZswapOfferBytes'` for the offer a deploy is given), with the decoder's failure on `cause`. Both read that offer LAST, after the call's unshielded payout has been aggregated, so a call with two faults is refused the same way on either era. A coin-moving call composes on either era.
 
-The v8 arm also *requires* `verifierKeys` on `composeDeployTx`, where the v9 arm accepts its omission in one case. The retained deploy leg registers the compiled contract's keys onto the initial state itself, so it always needs the map; omitting it throws `ComposeOptionError` with `option: 'verifierKeys'`. The v9 arm allows the omission only for a state that ALREADY carries its keys, and checks rather than assumes it: a state still declaring a blank-keyed entry point throws the same `ComposeOptionError` with the same `option`. So the two arms agree on every input except one — a pre-keyed state, which deploys as-is on v9 and needs its keys supplied again on v8.
+The v8 era also *requires* `verifierKeys` on `composeDeployTx`, where the v9 era accepts its omission in one case. The retained deploy leg registers the compiled contract's keys onto the initial state itself, so it always needs the map; omitting it throws `ComposeOptionError` with `option: 'verifierKeys'`. The v9 era allows the omission only for a state that ALREADY carries its keys, and checks rather than assumes it: a state still declaring a blank-keyed entry point throws the same `ComposeOptionError` with the same `option`. So the two eras agree on every input except one — a pre-keyed state, which deploys as-is on v9 and needs its keys supplied again on v8.
 
 What is *not* asymmetric: a call's user-addressed unshielded payouts are aggregated onto the transaction's guaranteed and fallible offers on **both** eras. Attaching them on one era only would leave the other composing an unbalanced transaction the node rejects on submission, with nothing having reported a problem at composition time — so `era-parity.test.ts` asserts the payout each segment carries, per era.
 
@@ -223,8 +223,8 @@ Each names the era it was raised for — `version` on the first four, `requested
 
 Recorded here so the reasoning is not lost, and deliberately NOT done in the change that introduced this facade:
 
-- **Collapse the version dispatch in `lib/era/envelope.ts`.** `extractEncodedStateValue` has one production caller, which passes the literal `'v8'`; the v9 arm calls `extractLedger9EncodedStateValue` directly. The decoder table, the unknown-version guard and the null-prototype defence are therefore only reachable from tests, and the per-file 100% floor keeps the tests that reach them alive. Collapsing it to a `extractLedger8EncodedStateValue` beside the v9 one deletes real tests, which belongs in its own change.
-- **Give `ComposeOptionError` a `circuitId`.** The v9 blank-key refusal knows which entry point was blank and cannot say so, because the field does not exist. Adding it would let that refusal name the slot without breaking the class parity the two arms currently have.
+- **Collapse the version dispatch in `lib/era/envelope.ts`.** `extractEncodedStateValue` has one production caller, which passes the literal `'v8'`; the v9 path calls `extractLedger9EncodedStateValue` directly. The decoder table, the unknown-version guard and the null-prototype defence are therefore only reachable from tests, and the per-file 100% floor keeps the tests that reach them alive. Collapsing it to a `extractLedger8EncodedStateValue` beside the v9 one deletes real tests, which belongs in its own change.
+- **Give `ComposeOptionError` a `circuitId`.** The v9 blank-key refusal knows which entry point was blank and cannot say so, because the field does not exist. Adding it would let that refusal name the slot without breaking the class parity the two eras currently have.
 
 ## Version Module
 

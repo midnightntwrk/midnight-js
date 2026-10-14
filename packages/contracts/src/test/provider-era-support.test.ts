@@ -37,8 +37,8 @@ vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
 });
 
 // The era timeline's own scheme. A pre-fork head puts the retained pipeline on
-// the retained payload arm; a post-fork head is keep-state, which composes on the
-// CURRENT era and therefore passes the current arm to the providers.
+// the retained payload variant; a post-fork head is keep-state, which composes on the
+// CURRENT era and therefore passes the current variant to the providers.
 const LEDGER8_HEAD = 1_000_000;
 const LEDGER9_HEAD = 2_000_000;
 
@@ -89,7 +89,7 @@ describe('a retained-era operation checks the transaction providers before it pa
 
     expect(refusal).toBeInstanceOf(ProviderEraUnsupportedError);
     expect((refusal as ProviderEraUnsupportedError).method).toBe('balanceTx');
-    // The HEAD era, which is what picks the payload arm: on a pre-fork head the
+    // The HEAD era, which is what picks the payload variant: on a pre-fork head the
     // payloads cross as retained-era bytes.
     expect((refusal as ProviderEraUnsupportedError).era).toBe('v8');
     // The whole point of moving the check to the front of the operation: a
@@ -179,7 +179,7 @@ describe('a current-era submission checks the transaction providers at its entry
   });
 
   // Defence in depth: the declaration is a claim by the implementation, and the
-  // narrowing in each method is what actually enforces the arm. A provider that
+  // narrowing in each method is what actually enforces the payload variant. A provider that
   // declares an era it does not serve must still fail the way it failed before
   // this check existed, not silently succeed.
   it('does not weaken the runtime narrowing when a provider declares an era it cannot serve', async () => {

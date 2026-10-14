@@ -271,7 +271,7 @@ const buildRecording = (execution: RealExecution): RecordingFile => {
   };
 };
 
-/** The retained-era (`contract-state[v6]`) envelope the v8-native arm dispatches against. */
+/** The retained-era (`contract-state[v6]`) envelope the v8-native path dispatches against. */
 const mintV6Envelope = (execution: RealExecution): Uint8Array => {
   const contractState = new ocrt3.ContractState();
   contractState.data = execution.initialData;
@@ -281,7 +281,7 @@ const mintV6Envelope = (execution: RealExecution): Uint8Array => {
   return contractState.serialize();
 };
 
-/** The current-era (`contract-state[v8]`) envelope the keep-state arm dispatches against. */
+/** The current-era (`contract-state[v8]`) envelope the keep-state path dispatches against. */
 const mintLedger9Envelope = (execution: RealExecution): Uint8Array => {
   const contractState = new ledgerV9.ContractState();
   contractState.data = new ledgerV9.ChargedState(ledgerV9.StateValue.decode(execution.preState));
@@ -295,8 +295,8 @@ const ERAS = ['v8', 'v9'] as const;
 
 // One assembly per era, each against its own module and its own state, because
 // the two `ContractState` types are distinct nominal WASM classes -- the same
-// reason `era-partition-received-coin.test.ts` writes a thunk per arm.
-const ARMS: Readonly<
+// reason `era-partition-received-coin.test.ts` writes a thunk per era.
+const ASSEMBLE_PER_ERA: Readonly<
   Record<LedgerVersion, (transcript: TranscriptPojo, partitionContext: PartitionContext, preState: ledgerV9.EncodedStateValue) => unknown>
 > = {
   v8: (transcript, partitionContext, preState) => {
@@ -304,7 +304,7 @@ const ARMS: Readonly<
     return assembleCallPrototype(LedgerV8, {
       circuitId: CIRCUIT_ID,
       contractAddress: ocrt3.dummyContractAddress(),
-      // Named explicitly: these arms compare era ASSEMBLY, not cost models.
+      // Named explicitly: these thunks compare era ASSEMBLY, not cost models.
       ledgerParametersBytes: 'initial',
       transcript: { kind: 'unpartitioned', preState, publicTranscript: transcript.publicTranscript, partitionContext },
       privateTranscriptOutputs: transcript.privateTranscriptOutputs,
@@ -320,7 +320,7 @@ const ARMS: Readonly<
     return assembleCallPrototype(ledgerV9, {
       circuitId: CIRCUIT_ID,
       contractAddress: ocrt3.dummyContractAddress(),
-      // Named explicitly: these arms compare era ASSEMBLY, not cost models.
+      // Named explicitly: these thunks compare era ASSEMBLY, not cost models.
       ledgerParametersBytes: 'initial',
       transcript: { kind: 'unpartitioned', preState, publicTranscript: transcript.publicTranscript, partitionContext },
       privateTranscriptOutputs: transcript.privateTranscriptOutputs,
@@ -362,6 +362,6 @@ describe('coin-receiver-016 fixtures: minted by real retained-era execution, the
   });
 
   it.each(ERAS)('the recording still composes on %s', (version) => {
-    expect(ARMS[version](execution.transcript, execution.transcript.partitionContext, execution.preState)).toBeDefined();
+    expect(ASSEMBLE_PER_ERA[version](execution.transcript, execution.transcript.partitionContext, execution.preState)).toBeDefined();
   });
 });

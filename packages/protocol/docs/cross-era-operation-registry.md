@@ -40,7 +40,7 @@ holds:
 - The caller has already checked its local artifact against them — see
   [VerifierKeys](./verifier-keys.md).
 - The current ledger models retained-era operations NATIVELY.
-  `ContractOperationVersion` carries a `'v3'` arm precisely for them, so a key
+  `ContractOperationVersion` carries a `'v3'` variant precisely for them, so a key
   preserved across the fork is a value this ledger is built to hold.
 
 That last point is the load-bearing one. This is not a shim that dresses an old

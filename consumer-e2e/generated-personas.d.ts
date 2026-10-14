@@ -28,7 +28,7 @@
  * workspace packages, so a wrong option name or an unnarrowed result fails the
  * lane at every call site here. What these declarations supply is only enough
  * shape for those call sites to select an overload at all — and how much of the
- * options object that leaves checked differs by arm. The current-era one is
+ * options object that leaves checked differs by overload. The current-era one is
  * pinned, so its members are; the retained one is `any`, so `circuitId` and
  * `args` are not. The `declare module` blocks below carry which is which.
  *
@@ -58,8 +58,8 @@
  * TRUE rather than convenient: every contract in the current-era matrix declares
  * no witness, which is why `runMatrixContract` builds each one through
  * `withVacantWitnesses`. `undefined` is how `compact-js` spells that, and it is
- * what selects the no-private-state `deployContract` arm. Left as `any`, `PS`
- * infers as `unknown`, no arm matches, and the leg's whole options object stops
+ * what selects the no-private-state `deployContract` overload. Left as `any`, `PS`
+ * infers as `unknown`, no overload matches, and the leg's whole options object stops
  * being checked — which is how this file was first drafted, and the reason the
  * draft reported two `deployTxData.public` "defects" that were nothing of the
  * kind: the reads are correct, and they only looked wrong because the deploy

@@ -91,7 +91,7 @@ const rejectingHeadSource = (error: Error): { readonly queryLatestProtocolVersio
 const LEDGER8_HEAD = 1_000_000;
 const LEDGER9_HEAD = 2_000_000;
 
-// A bundle declaring the retained toolchain, which is what the retained-era arm of the dispatch
+// A bundle declaring the retained toolchain, which is what the retained-era path of the dispatch
 // reads. Declared here rather than mocked per test: every case below that reaches it wants the same
 // answer, and the cases that must NOT reach it assert that separately.
 const RETAINED_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
@@ -112,7 +112,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     // asked.
     const refusingBundle = {
       getArtifactRuntimeVersion: async (): Promise<string> => {
-        throw new Error('the current-era arm must not read the artifact bundle');
+        throw new Error('the current-era path must not read the artifact bundle');
       }
     };
 

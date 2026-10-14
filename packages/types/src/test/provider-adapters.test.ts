@@ -41,7 +41,7 @@ describe('createWalletProvider', () => {
     getEncryptionPublicKey: () => encryptionPublicKey
   });
 
-  it('tags the implementation result as the v9 arm', async () => {
+  it('tags the implementation result as the v9 variant', async () => {
     const balanced = stubFinalized();
     const provider = createWalletProvider(buildImpl(balanced));
 

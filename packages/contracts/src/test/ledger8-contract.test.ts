@@ -348,7 +348,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       );
     });
 
-    // The deploy arm no longer refuses by artifact. It runs, and what decides it is the ERA PAIRING:
+    // The deploy path no longer refuses by artifact. It runs, and what decides it is the ERA PAIRING:
     // the retained era has no post-fork deployment, so a retained artifact against a post-fork head
     // is refused by the same table every other retained operation is measured against. This shared
     // mock reports a post-fork head, which is the refusing cell.
@@ -363,7 +363,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       // The CLASS, not the message constant: asserting against the same string the production code
       // throws can only fail if one file disagrees with itself, which it cannot.
       expect(caught).toBeInstanceOf(Ledger8DeployOnLedger9Error);
-      // POSITIVE evidence that the arm REACHED the era gate rather than refusing in front of it:
+      // POSITIVE evidence that the path REACHED the era gate rather than refusing in front of it:
       // the head was read. A refusal raised before any provider was touched -- which is what stood
       // here -- would leave this untouched.
       expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalled();

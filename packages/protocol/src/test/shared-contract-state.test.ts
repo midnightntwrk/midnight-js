@@ -296,7 +296,7 @@ describe('decodeContractStateWith carries the contract balance', () => {
   });
 });
 
-// The RETAINED arm is the only place this code path runs in production, and
+// The RETAINED-era path is the only place this code path runs in production, and
 // every test above it reads a v9 state. `DecodableContractState.balance` is
 // structural, so a retained state whose `.balance` resolved to `undefined`
 // would decode to an empty map and reproduce #1345 with the v9 tests all green.

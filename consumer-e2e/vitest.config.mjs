@@ -22,7 +22,7 @@
 // Only the pure ones. Everything here that talks to docker, a chain or a
 // registry is covered by the Hard fork lane and belongs nowhere near a unit
 // suite; what this catches is the selection and matrix logic that decides which
-// arms that lane runs, and which used to be able to narrow a shard to nothing
+// legs that lane runs, and which used to be able to narrow a shard to nothing
 // without anyone noticing.
 
 import { dirname } from 'node:path';

@@ -84,7 +84,7 @@ interface TransactionShape {
   readonly deployedStateEntryPoints: readonly (string | Uint8Array)[];
   /**
    * The hash of the verifier key each declared entry point ended up carrying.
-   * Read back as well as the entry-point NAME, because an arm that registered a
+   * Read back as well as the entry-point NAME, because an era that registered a
    * different key — or none — would produce the right names and the wrong
    * contract, and the deploy derives its address from that state.
    */
@@ -127,7 +127,7 @@ interface SegmentedOutputs {
   readonly fallible: readonly ledgerV9.UtxoOutput[] | undefined;
 }
 
-// Declared once against ledger-v9 and used on BOTH arms: `Transcript` and
+// Declared once against ledger-v9 and used on BOTH eras: `Transcript` and
 // `Effects` are structurally identical across the two eras (the drift gate at
 // the bottom of v8-executable.test.ts pins that), and `ComposeCallOptions`
 // declares this shape in the ledger-v9 algebra for exactly that reason.
@@ -167,7 +167,7 @@ const FALLIBLE_PAYOUT = 7n;
 /**
  * A transcript claiming a user-addressed spend in a token type the compose path cannot
  * pay out. Built in the ledger's declared algebra like {@link payingTranscript},
- * so it reaches the arms as a caller's transcript does.
+ * so it reaches both eras as a caller's transcript does.
  */
 const unpayableTranscript = (
   payee: Payee,
@@ -388,10 +388,10 @@ describe('the two ledger eras run the same scenario', () => {
     expect(fromLedger8.entryPoints.every((entry) => entry.verifierKeyHash !== undefined)).toBe(true);
   });
 
-  // Both arms partition an unpartitioned transcript themselves, so both have to
+  // Both eras partition an unpartitioned transcript themselves, so both have to
   // bridge the context the call recorded onto the query context they partition
   // against. Asserted through the composed transaction, per era: the
-  // partitioner starts the transcript's effects from that context, so an arm
+  // partitioner starts the transcript's effects from that context, so an era
   // that dropped it composes a call declaring nothing was received.
   it.each(ERAS)('bridges the context an unpartitioned call recorded on %s', async (version) => {
     const era = await loadLedgerEra(version);
@@ -459,7 +459,7 @@ describe('the two ledger eras run the same scenario', () => {
   });
 
   // The refusals that guard that payout, run through `composeCallTx` on BOTH
-  // arms rather than against a hand-built literal. Both are transcript faults,
+  // eras rather than against a hand-built literal. Both are transcript faults,
   // so the transcript makes a real WASM round-trip on the way in: a vendor bump
   // that renamed a token-type discriminant would leave a unit test on a literal
   // green and drop the payout here.
@@ -506,7 +506,7 @@ describe('the two ledger eras run the same scenario', () => {
   });
 
   // A partitioned source carrying neither half type-checks, and composing it
-  // would claim a circuit ran while recording nothing. Both arms pass a
+  // would claim a circuit ran while recording nothing. Both eras pass a
   // caller-supplied pair straight through, so both must refuse this one.
   it.each(ERAS)('refuses a partitioned transcript carrying neither half on %s', async (version) => {
     const era = await loadLedgerEra(version);
@@ -537,14 +537,14 @@ describe('the two ledger eras run the same scenario', () => {
     expect(shape.calls).toEqual([]);
     expect(shape.deployAddresses).toEqual([result.contractAddress]);
     expect(shape.deployedStateEntryPoints).toEqual(['increment']);
-    // The KEY crossed, not just its name: both arms must register the very key
+    // The KEY crossed, not just its name: both eras must register the very key
     // the caller supplied, or the deployed contract cannot verify a call and
     // its address does not match the caller's artifacts.
     expect(shape.deployedVerifierKeyHashes).toEqual([hashVerifierKey(VERIFIER_KEY)]);
   });
 
   // Parity of the happy path is the easy half. A caller writing era-agnostic
-  // code also has to be able to handle a refusal the same way on both arms, so
+  // code also has to be able to handle a refusal the same way on both eras, so
   // the coded refusals for a malformed envelope are pinned per era too.
   // Both read methods have to fail the same way. They did not: extractState
   // raised DownConvertFailedError, which carries no `version` and names a
@@ -582,7 +582,7 @@ describe('the two ledger eras run the same scenario', () => {
 
   // The two eras are interchangeable for a coin-moving call: BOTH read the
   // caller's offer bytes and carry the resulting offer into the transaction.
-  // They were not — the v8 arm refused the option outright — and a caller whose
+  // They were not — the v8 path refused the option outright — and a caller whose
   // circuit moved coins could compose it on one era only.
   it.each(ERAS)('carries a supplied Zswap offer into the transaction on %s', async (version) => {
     const era = await loadLedgerEra(version);
@@ -610,7 +610,7 @@ describe('the two ledger eras run the same scenario', () => {
   // it is read after the unshielded payout is aggregated off the assembled
   // intent. Both of those steps throw, so a call carrying an unpayable payout
   // AND unreadable offer bytes is the one input that can tell the two orders
-  // apart -- each single-fault check above arms only one of them and stays
+  // apart -- each single-fault check above triggers only one of them and stays
   // green either way.
   it.each(ERAS)('names the unshielded payout ahead of unreadable offer bytes on %s', async (version) => {
     const era = await loadLedgerEra(version);
@@ -636,8 +636,8 @@ describe('the two ledger eras run the same scenario', () => {
   });
 
   // Each of the checks above passes exactly one bad option, which is why the
-  // arms could report a DIFFERENT option for the same input while both of those
-  // stayed green: the v8 arm used to reach its own era-specific refusals before
+  // eras could report a DIFFERENT option for the same input while both of those
+  // stayed green: the v8 path used to reach its own era-specific refusals before
   // the envelope was looked at, so an empty network id lost to a Zswap offer on
   // v8 and won on v9. A caller writing one error-handling path across both eras
   // has to see the same option named first for the same options object.

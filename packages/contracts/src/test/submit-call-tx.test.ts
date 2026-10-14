@@ -200,7 +200,7 @@ describe('submit-call-tx', () => {
         vi.mocked(submitTx).mockResolvedValue(createMockFinalizedTxData());
 
         // `calls` is a caller's only route to callee proof data for a cross-contract circuit, and
-        // the nested arm rebuilds `CallResult` member by member rather than spreading the
+        // the nested path rebuilds `CallResult` member by member rather than spreading the
         // executor's data. Reference identity proves the rebuild forwards the executor's own array
         // instead of a fresh or defaulted one.
         let nestedResult: Awaited<ReturnType<typeof submitCallTx>> | undefined;
@@ -589,7 +589,7 @@ describe('submit-call-tx', () => {
           callTxData: mockUnprovenCallTxData
         });
         // The other side of the published guard: a current-era result is not
-        // the retained arm. Asserted on a result this suite actually produced,
+        // the retained variant. Asserted on a result this suite actually produced,
         // so the guard is checked against the era tag the pipeline really set.
         expect(isLedger8Result(result)).toBe(false);
       });

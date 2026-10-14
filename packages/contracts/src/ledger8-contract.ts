@@ -33,7 +33,7 @@
  *
  * @see {@link OverloadTyping} for why the declarations are hand-written and
  *      runtime-pinned, how openness is expressed without `any`, and why the
- *      order of the overload arms is load-bearing.
+ *      order of the overloads is load-bearing.
  * @see {@link EraDispatch} for the runtime decision and what it may not use.
  */
 
@@ -567,13 +567,13 @@ export type Ledger8ConstructorParameters<C extends Ledger8Contract> =
   Parameters<C['initialState']> extends [unknown, ...infer A] ? A : never[];
 
 /**
- * What both retained-era deploy arms carry, and nothing either arm decides.
+ * What both retained-era deploy options variants carry, and nothing either variant decides.
  *
- * NOT published, and neither arm extends the other. An arm declaring
+ * NOT published, and neither variant extends the other. A variant declaring
  * `privateStateId: PrivateStateId` over a base declaring `privateStateId?:
  * never` is an illegal extension, and under the `args` intersection below it
  * collapses the member to `never` — so the pairing rule can only be stated by
- * making the two arms siblings over this.
+ * making the two variants siblings over this.
  */
 interface Ledger8DeployContractOptionsShared<C extends Ledger8Contract> {
   readonly compiledContract: C;
@@ -585,26 +585,26 @@ interface Ledger8DeployContractOptionsShared<C extends Ledger8Contract> {
 }
 
 /**
- * The deploy arm for a retained-era contract whose private state is stored
+ * The deploy options variant for a retained-era contract whose private state is stored
  * NOWHERE: the constructor runs against `undefined` and nothing is written.
  *
- * The other arm is {@link Ledger8DeployContractOptionsWithPrivateState}.
+ * The other variant is {@link Ledger8DeployContractOptionsWithPrivateState}.
  */
 export interface Ledger8DeployContractOptionsBase<C extends Ledger8Contract>
   extends Ledger8DeployContractOptionsShared<C> {
   /**
-   * DECLARED on this arm, and only ever `undefined`.
+   * DECLARED on this variant, and only ever `undefined`.
    *
-   * Left off the arm entirely, `{ compiledContract, privateStateId: 'x' }`
+   * Left off the variant entirely, `{ compiledContract, privateStateId: 'x' }`
    * compiled: union excess-property checking admits a member declared on the
-   * SIBLING arm as long as one arm is satisfied, and `compiledContract` alone
+   * SIBLING variant as long as one variant is satisfied, and `compiledContract` alone
    * satisfies this one. The constructor then ran against `undefined`,
    * `undefined` was stored under the caller's id, and the handle reported an
    * `initialPrivateState` typed non-optional while actually undefined.
    */
   readonly privateStateId?: never;
   /**
-   * DECLARED on this arm, and only ever `undefined` — see
+   * DECLARED on this variant, and only ever `undefined` — see
    * {@link Ledger8DeployContractOptionsBase.privateStateId} for why the member
    * is present rather than absent.
    */
@@ -640,13 +640,13 @@ export interface Ledger8DeployContractOptionsWithPrivateState<C extends Ledger8C
  * `args` is CONDITIONAL, exactly as {@link Ledger8CallTxOptionsBase}'s is: a
  * constructor that takes no arguments of its own has no `args` member at all.
  * A retained constructor CAN take arguments — `Ledger8Contract.initialState`
- * says so, and the pipeline under this arm has always passed them through — so
+ * says so, and the pipeline under this overload has always passed them through — so
  * denying them here made a zero-argument constructor the only deployable one.
  *
- * The conditional is applied to the WHOLE union, so it reaches both arms: a
+ * The conditional is applied to the WHOLE union, so it reaches both variants: a
  * constructor with parameters demands `args` whether or not private state is
  * named, and a nullary one carries the member on neither. Writing the union
- * inside one branch only would have made the private-state arm the one shape a
+ * inside one branch only would have made the private-state variant the one shape a
  * caller could not supply arguments on.
  *
  * `additionalCoinEncPublicKeyMappings`, which the current era's deploy options
@@ -710,7 +710,7 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
    * `findDeployedContract` does.
    *
    * @remarks **Privacy-sensitive.** Signing-key material.
-   * @see {@link KeepStatePipeline} for why this arm samples nothing, and why a
+   * @see {@link KeepStatePipeline} for why this path samples nothing, and why a
    * supplied key replaces a stored one rather than falling back to it.
    */
   readonly signingKey?: Ledger8SigningKey;
@@ -723,7 +723,7 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
  * ONE signature per circuit, where the current era's `CircuitCallTxInterface`
  * has two: the retained era cannot join a scoped transaction — a scope refuses
  * a retained-era call with `MixedEraScopeError` — so there is no context-taking
- * arm to declare.
+ * overload to declare.
  */
 export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
   [K in Ledger8CircuitId<C>]: (
@@ -739,7 +739,7 @@ export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
  * the contract and its address should not have to supply them again to call it.
  *
  * The maintenance interfaces the current era's `FoundContract` also carries are
- * NOT here: the retained era has no governance arm at all, so there is nothing
+ * NOT here: the retained era has no governance path at all, so there is nothing
  * for them to reach.
  */
 export interface Ledger8FoundContract<C extends Ledger8Contract> {
@@ -825,7 +825,7 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
  * and Zswap states.
  *
  * Published under the retained-era namespace so a caller that receives one by
- * inference can also NAME it. This is what `deployContract`'s retained-era arm
+ * inference can also NAME it. This is what `deployContract`'s retained-era overload
  * answers with.
  */
 export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledger8FoundContract<C> {
@@ -881,7 +881,7 @@ export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledg
  * signatures widen to.
  *
  * An implementation signature has to be compatible with every overload declared over it, so each
- * entry point's implementation carries the retained-era arm's parameter and result types alongside
+ * entry point's implementation carries the retained-era overload's parameter and result types alongside
  * the current era's. It is never the signature a caller sees — the overloads above it are.
  */
 export type AnyLedger8CallTxOptions = Ledger8CallTxOptions<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
@@ -919,7 +919,7 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  * from the package index.
  *
  * @see {@link OverloadTyping} for why the text is a runtime `const`, and why it is not wired into
- *      an overload arm.
+ *      an overload.
  */
 // WHY NO VERSION NUMBERS. Earlier wordings named the toolchains -- "neither a 0.16- nor a
 // 0.18-generated contract" -- and that text contradicted itself as soon as the current side moved:
@@ -934,7 +934,7 @@ export const NEITHER_ERA_CONTRACT_MESSAGE =
   'Object is neither a retained-era nor a current-era generated contract.';
 
 /**
- * The type the catch-all arm of every era-dispatching entry point expects, so that an object
+ * The type the catch-all overload of every era-dispatching entry point expects, so that an object
  * matching NEITHER era's shape is refused against a name whose own definition says what went
  * wrong.
  *
@@ -949,11 +949,11 @@ export type NeitherContractShape = { readonly __error: typeof NEITHER_ERA_CONTRA
  * An options object whose contract belongs to neither era, kept as the named counterpart to
  * {@link NeitherContractShape}.
  *
- * No overload arm takes this type. `src/test/typecheck/overloads.test-d.ts` pins that a
+ * No overload takes this type. `src/test/typecheck/overloads.test-d.ts` pins that a
  * neither-era object really is refused by it — the assignability fact the overloads rely on,
- * whether or not any arm spells it out.
+ * whether or not any overload spells it out.
  *
- * @see {@link OverloadTyping} for why no arm spells it out.
+ * @see {@link OverloadTyping} for why no overload spells it out.
  */
 export interface NeitherEraContractOptions {
   readonly compiledContract: NeitherContractShape;

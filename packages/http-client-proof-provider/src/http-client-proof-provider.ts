@@ -124,7 +124,7 @@ export function httpClientProofProvider<K extends string>(
 
   // Wraps the construction-time provider so every circuit-level check/prove in one `proveTx` uses
   // that call's timeout, without rebuilding the underlying provider. The timeout override is
-  // exposed by TimeoutAwareProvingProvider, so this needs no cast. Shared by both era arms because
+  // exposed by TimeoutAwareProvingProvider, so this needs no cast. Shared by both era handlers because
   // both drive the same proof server through the same per-call timeout — the proving protocol is
   // per-circuit and era-independent.
   const provingProviderFor = (proveTxConfig: ProveTxConfig | undefined): ProvingProvider => {
@@ -138,10 +138,10 @@ export function httpClientProofProvider<K extends string>(
     };
   };
 
-  // One arm per era, with the routing, the `version` tagging and the refusal of an era with no arm
-  // all left to the factory. Answering in the arm a request arrived in is the factory's guarantee,
-  // which matters here because callers narrow the response and reject the other era — replying in
-  // the wrong one would strand a submit mid-flight.
+  // One handler per era, with the routing, the `version` tagging and the refusal of an era with no
+  // handler all left to the factory. Answering in the variant a request arrived in is the factory's
+  // guarantee, which matters here because callers narrow the response and reject the other era —
+  // replying in the wrong one would strand a submit mid-flight.
   return createProofProviderFromHandlers({
     currentEra: (tx, proveTxConfig) =>
       tx.prove(provingProviderFor(proveTxConfig), CostModel.initialCostModel()),

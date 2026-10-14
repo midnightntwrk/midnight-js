@@ -493,7 +493,7 @@ for await (const event of getAllContractEvents(provider, { contractAddress })) {
 `IndexerPublicDataProvider.watchForTxData` and `watchForDeployTxData` resolve
 `Promise<VersionedFinalizedTxData>` — the closed union of `FinalizedTxData`
 (v9) and `Ledger8FinalizedTxData` — exactly as the `PublicDataProvider` interface
-they satisfy does. Narrow on `version` before reading `tx`: the two arms carry
+they satisfy does. Narrow on `version` before reading `tx`: the two variants carry
 transaction objects from different ledger runtimes, and neither runtime's
 object can be handed to the other.
 

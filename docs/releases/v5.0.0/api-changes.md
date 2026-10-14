@@ -142,7 +142,7 @@ export type VersionedUnprovenTransaction  = VersionedTx<UnprovenTransaction>;
 export type VersionedUnboundTransaction   = VersionedTx<UnboundTransaction>;
 export type VersionedFinalizedTransaction = VersionedTx<FinalizedTransaction>;
 
-// Read surface. A *different* union — its v8 arm carries `tx`, not `txBytes`.
+// Read surface. A *different* union — its v8 variant carries `tx`, not `txBytes`.
 export interface FinalizedTxRecord { /* the 13 era-independent metadata fields */ }
 export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly version: 'v8'; readonly tx: Ledger8Transaction; }
 export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
@@ -234,7 +234,7 @@ The single `events` list spans the whole call tree. Decode without a direct `com
 ```ts
 // Thrown when a provider or the read surface answers in a ledger era the flow
 // cannot accept. `expected` is the era it can accept -- for the current era's
-// flows that is 'v9'; the retained era's finalizing arm passes the network
+// flows that is 'v9'; the retained era's finalizing path passes the network
 // head, because a retained-era call is recorded by whichever ledger the head is
 // on. `received` is the era that actually came back. A payload whose tag is
 // missing or unrecognised raises UntaggedPayloadError instead.
@@ -307,7 +307,7 @@ Era resolution (#1204) — the `version` on a finalized record is derived from t
 record's own `protocolVersion`, never asserted, and that answer also selects the
 ledger runtime the record is decoded with. `watchForTxData` and
 `watchForDeployTxData` therefore resolve `VersionedFinalizedTxData` and really
-do produce both arms; the pre-fork runtime is acquired lazily, so a session that
+do produce both variants; the pre-fork runtime is acquired lazily, so a session that
 meets no v8-era record never instantiates it.
 
 ```ts
@@ -372,7 +372,7 @@ export function hasForeignErrorCode<C extends string>(
 ): error is Error & { code: C };
 
 // Exhaustiveness guard for the version-tagged unions (#1254). Closes the
-// `default` arm of a `switch` so a future era arm cannot fall through unhandled.
+// `default` case of a `switch` so a future era variant cannot fall through unhandled.
 // Never renders `value` into its message; `context` is required and locates the throw.
 export function assertNever(value: never, context: string): never;
 export class UnhandledUnionMemberError extends Error {

@@ -46,7 +46,7 @@
  * ### Both ledger eras
  * This provider serves the retained (`v8`) era as well as the current one. A retained-era
  * transaction is passed as serialized bytes in both directions, and comes back in the
- * same arm it was sent in:
+ * same variant it was sent in:
  *
  * ```typescript
  * const proven = await proofProvider.proveTx({ version: 'v8', txBytes: unprovenTxBytes });
@@ -56,13 +56,13 @@
  * ```
  *
  * The era is carried by the `version` tag, never inferred from the payload. Note that
- * `createProofProvider` in `@midnight-ntwrk/midnight-js-types` refuses the retained arm — it
+ * `createProofProvider` in `@midnight-ntwrk/midnight-js-types` refuses the retained era — it
  * adapts a current-era-only `ProvingProvider` — so reach for this provider, not that helper, when
  * you need both eras.
  *
  * #### Proving is only the first step
  * Read this before wiring a retained-era flow. `createWalletProvider` and
- * `createMidnightProvider` both refuse the retained arm. Through the framework's own
+ * `createMidnightProvider` both refuse the retained era. Through the framework's own
  * entry points (`submitCallTx` and `deployContract`), `assertProvidersSupportEra` detects this
  * upfront and raises `ProviderEraUnsupportedError` (naming `balanceTx`) before any proving work
  * is done. However, for a flow that calls the three transaction methods by hand, the transaction

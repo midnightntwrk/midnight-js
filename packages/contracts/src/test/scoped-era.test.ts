@@ -349,7 +349,7 @@ describe('per-scope era resolution', () => {
     // by nesting into it. Reading it as an options bag would open a FRESH scope
     // and submit, on its own, the transaction the caller believed was nested:
     // the same "silently ran outside the scope it was handed" failure the
-    // mixed-era refusal exists to stop, one arm over.
+    // mixed-era refusal exists to stop, one path over.
     onPostForkHead();
 
     // Exercised through the internal entry the public one forwards to, whose
@@ -400,7 +400,7 @@ describe('a retained-era call handed a scope', () => {
   // A retained-era artifact, in the shape `resolveArtifactEra` recognises: own
   // `impureCircuits`, and an `initialState` that is a SYNCHRONOUS function.
   // Asserted below rather than assumed, so this fixture cannot drift into the
-  // current-era arm and make the negative vacuous.
+  // current-era path and make the negative vacuous.
   const retainedContract = {
     impureCircuits: { retainedCircuit: (): void => undefined },
     initialState: (): Record<string, never> => ({})
@@ -462,7 +462,7 @@ describe('a retained-era call handed a scope', () => {
     try {
       await withContractScopedTransaction(providers, async (txCtx) => {
         // @ts-expect-error -- no overload admits a scope on the retained-era
-        // arm, which is what makes this reachable from JavaScript only. The
+        // overload, which is what makes this reachable from JavaScript only. The
         // directive PINS that claim: an overload that started accepting a
         // scope here would fail this line rather than silently widen the API.
         await submitCallTx(providers, retainedCallOptions(), txCtx);

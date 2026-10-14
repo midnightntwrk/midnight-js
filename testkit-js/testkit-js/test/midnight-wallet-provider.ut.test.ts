@@ -40,7 +40,7 @@ import { WalletSeeds } from '../src/wallet/wallet-seed';
 import { retainedLedger } from '../src/wallet/wallet-transaction';
 
 // Two versions, one on each side of the fork. The retained one is what the
-// refusal-is-gone tests run at; the current one is what the v9 arm needs, since
+// refusal-is-gone tests run at; the current one is what the v9 variant needs, since
 // a handle only unwraps within the epoch it was authored in.
 const RETAINED_VERSION = ProtocolVersion.ProtocolVersion(1_000_000n);
 const CURRENT_VERSION = FORK_SCHEDULE.v9;
@@ -147,13 +147,13 @@ describe('MidnightWalletProvider', () => {
     });
   });
 
-  // These two used to assert the opposite. The retained arm is now carried rather
+  // These two used to assert the opposite. The retained variant is now carried rather
   // than refused, so what they pin is that the refusal is GONE -- and that what
   // remains can only be a failure of the bytes, never of the version tag. Three
   // bytes are not a transaction, so each still rejects; the assertion is about
   // WHERE.
   describe('balanceTx with a v8 payload', () => {
-    it('carries the retained arm instead of refusing it, failing only in the retained deserializer', async () => {
+    it('carries the retained variant instead of refusing it, failing only in the retained deserializer', async () => {
       const wallet = createWalletStub();
       const provider = await createProvider(wallet);
 
@@ -171,7 +171,7 @@ describe('MidnightWalletProvider', () => {
   // `ledger-v8` is installed twice, under both npm scopes, and the two copies'
   // classes refuse each other.
   // @see docs/architecture/retained-era-coverage.md
-  describe('the ledger the retained arm deserializes with', () => {
+  describe('the ledger the retained variant deserializes with', () => {
     it('is the module the wallet SDK publishes, so a revert to another copy fails here', async () => {
       // Arrange / Act.
       const deserializer = await retainedLedger();
@@ -188,7 +188,7 @@ describe('MidnightWalletProvider', () => {
   });
 
   describe('submitTx with a v8 payload', () => {
-    it('carries the retained arm instead of refusing it, failing only in the retained deserializer', async () => {
+    it('carries the retained variant instead of refusing it, failing only in the retained deserializer', async () => {
       const wallet = createWalletStub();
       const provider = await createProvider(wallet);
 
@@ -204,7 +204,7 @@ describe('MidnightWalletProvider', () => {
   });
 
   describe('balanceTx with a v9 payload', () => {
-    it("adopts the transaction at the chain's active version and tags the finalized result as the v9 arm", async () => {
+    it("adopts the transaction at the chain's active version and tags the finalized result as the v9 variant", async () => {
       const { wallet, recipe, signedRecipe, finalized } = await createBalancingWallet();
       const provider = await createProvider(wallet);
       const unbound = { serialize: () => new Uint8Array([1]) };

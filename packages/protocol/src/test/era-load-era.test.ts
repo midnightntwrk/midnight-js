@@ -25,7 +25,7 @@ import { readHexFixture } from './fixtures';
 
 
 // The golden pair: the same contract before and after the migration. Reading
-// each through its own era is what makes the two arms comparable at all.
+// each through its own era is what makes the two eras comparable at all.
 const GOLDEN_FOR: Readonly<Record<'v8' | 'v9', string>> = {
   v8: 'state-v8.hex',
   v9: 'state-migrated-v9.hex'
@@ -33,7 +33,7 @@ const GOLDEN_FOR: Readonly<Record<'v8' | 'v9', string>> = {
 
 describe('loadLedgerEra', () => {
   // Strict equality, not a per-method `typeof` sweep: a method leaked onto one
-  // era's arm, renamed, or silently dropped has to fail here — which a
+  // era's object, renamed, or silently dropped has to fail here — which a
   // one-directional check of the names we happen to remember cannot do. Both
   // eras are held to the SAME list, which is the whole point of the facade.
   it.each(['v8', 'v9'] as const)('exposes exactly the documented %s surface, and nothing else', async (version) => {

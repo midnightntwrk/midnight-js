@@ -150,7 +150,7 @@ describe('head protocol-version freshness', () => {
     // The read path decodes each record with the runtime of the era the record
     // itself reports, so an older-era record is served rather than refused -
     // and acquiring that runtime is not an excuse to read the head. The era
-    // arrives with the bytes it dates, on this arm exactly as on the other.
+    // arrives with the bytes it dates, on this path exactly as on the other.
     const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(LEDGER8_ERA_PROTOCOL_VERSION)]]));
     const watchQuery = vi
       .fn()

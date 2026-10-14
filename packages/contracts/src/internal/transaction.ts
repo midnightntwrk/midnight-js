@@ -325,12 +325,12 @@ export const isTransactionContext = <
  * @param circuitId The circuit whose call was made.
  * @param transactionContext The scope the caller passed, if any. Typed as
  * `unknown` for the same reason `isTransactionContext` is: the era-dispatching
- * implementation signature widens both arms, and a JavaScript caller can pass
+ * implementation signature widens both overloads, and a JavaScript caller can pass
  * anything at all here.
  * @throws MixedEraScopeError if a real transaction context was passed.
  * @throws InvalidArgumentError if a third argument was passed that is not one.
  * @see {@link StaleHeadRemediation} for why a retained-era call cannot join a
- *      scope, and why the malformed-argument arm is an `InvalidArgumentError`.
+ *      scope, and why the malformed-argument case is an `InvalidArgumentError`.
  */
 export const assertScopeAdmitsRetainedEraCall = (circuitId: string, transactionContext: unknown): void => {
   if (transactionContext === undefined) {
@@ -411,7 +411,7 @@ const runScope = async <
       //disable-next-line: no-throw-literal
       throw new InvalidArgumentError('No calls were submitted.');
     }
-    // ANNOTATED, not asserted: this function answers both scope arms and so
+    // ANNOTATED, not asserted: this function answers both scope cases and so
     // returns `any`, which on its own would let a member fall off this rebuild
     // and reach a caller as `undefined` at a non-optional member.
     const nestedCallResult: CallResult<C, PCK> = {
@@ -507,7 +507,7 @@ export const scopedTransaction = async <
   // into it -- would otherwise have it read as an options bag. A fresh scope
   // would be created and the transaction the caller believed was nested would
   // be submitted on its own. That is the same "silently ran outside the scope
-  // it was handed" failure `MixedEraScopeError` exists to stop, one arm over.
+  // it was handed" failure `MixedEraScopeError` exists to stop, one case over.
   const outerTxCtx = isTransactionContext<C, PCK>(txCtxOrOptions) ? txCtxOrOptions : undefined;
   if (outerTxCtx !== undefined) {
     // Nested: no head read of its own. The scope this joins already made one,

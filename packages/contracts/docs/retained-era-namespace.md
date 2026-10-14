@@ -52,7 +52,7 @@ Two things that look like substitutes and are not:
   package publishes only a `"."` entry (`package.json` `exports`), so without a
   published name there is no subpath to reach them through either.
 - **`Awaited<ReturnType<typeof submitCallTx>>` resolves from the LAST overload
-  by design**, which is a current-era arm. It hands back the current-era shape:
+  by design**, which is a current-era overload. It hands back the current-era shape:
   the wrong type for a retained-era call.
 
 The whole family travels together rather than just the four result types: a
@@ -123,10 +123,10 @@ is a decision nobody has asked for yet. What this document must not do is claim
 the property it does not have: withdrawing the retained era is ONE step for the
 era's own family and a SECOND step for the fork-window group.
 
-## The deploy arm's own members
+## The deploy overload's own members
 
 `Ledger8DeployedContract` is published, under the rule that a caller who can
-obtain a value must be able to name its type: `deployContract`'s retained arm
+obtain a value must be able to name its type: `deployContract`'s retained overload
 composes, submits and hands one back.
 
 `Ledger8.DeployOnLedger9Error` is the era pairing table's refusal for a retained
@@ -143,8 +143,8 @@ When the fork window closes, the retained era's own family goes by deleting
 `src/ledger8.ts` and its one re-export line in `src/index.ts`, then the modules
 that serve only it (`src/ledger8-contract.ts`, `src/internal/ledger8-*.ts`) and
 the retained members of the modules it SHARES with the current era -- `errors.ts`
-and `tx-interfaces.ts` hold both eras and are not deleted. The retained overload
-arms on `submitCallTx`, `submitCallTxAsync`, `findDeployedContract` and
+and `tx-interfaces.ts` hold both eras and are not deleted. The retained overloads
+on `submitCallTx`, `submitCallTxAsync`, `findDeployedContract` and
 `deployContract` go with them, which narrows those entry points' overload sets.
 
 No current-era NAME changes, and no consumer that never touched the retained era

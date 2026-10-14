@@ -62,9 +62,9 @@ export class UnhandledUnionMemberError extends MidnightJsError {
 /**
  * Asserts that every member of a union has already been handled.
  *
- * Put it in the `default` arm of a `switch` over a discriminated union. While
+ * Put it in the `default` case of a `switch` over a discriminated union. While
  * the switch is exhaustive the compiler narrows `value` to `never` and the call
- * type-checks; add an arm to the union and the same call stops compiling,
+ * type-checks; add a member to the union and the same call stops compiling,
  * pointing at every switch that has to change.
  *
  * The thrown message never includes `value`; `context` is what locates the throw.

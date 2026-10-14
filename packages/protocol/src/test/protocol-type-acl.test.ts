@@ -100,7 +100,7 @@ describe('Protocol type ACL', () => {
       'ConstructorResultPojo',
       // The balances a contract holds, published because they are a member of
       // `ContractStatePojo` and a REQUIRED option of the engine's
-      // `executeCircuit`: a consumer driving the retained arm cannot name what
+      // `executeCircuit`: a consumer driving the retained-era path cannot name what
       // it has to carry without this.
       'ContractBalance',
       'ContractEntryPointPojo',

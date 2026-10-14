@@ -115,7 +115,7 @@ function wireMocks(): {
 }
 
 /**
- * Minimal typed transaction stub, wrapped in the v9 arm of the versioned payload
+ * Minimal typed transaction stub, wrapped in the v9 variant of the versioned payload
  * `proveTx` takes. `httpClientProofProvider` invokes `prove(provingProvider, ...)` on the carried
  * transaction, so the stub drives that provider once — exactly as the real
  * `UnprovenTransaction.prove` would — to let the per-call timeout thread through to the
@@ -146,7 +146,7 @@ describe('httpClientProofProvider', () => {
   // Set equality rather than `toContain`: this provider serves both eras, and
   // an era silently dropped from the declaration would have a retained-era
   // operation refused before it started -- which `toContain` would not catch.
-  test('declares both eras, matching the two arms it is built from', () => {
+  test('declares both eras, matching the two handlers it is built from', () => {
     wireMocks();
     const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
     expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
@@ -161,7 +161,7 @@ describe('httpClientProofProvider', () => {
   // The retained era is passed to proveTx as bytes in and bytes out. These cases
   // drive the real retained runtime rather than a stub, because the two things
   // that can go wrong here -- proving with the wrong era's cost model, and
-  // answering in the wrong arm -- are both invisible to a mocked ledger.
+  // answering in the wrong variant -- are both invisible to a mocked ledger.
   test('rejects the positional overload without a zkConfigProvider with a ConfigurationError', () => {
     // @ts-expect-error the positional overload types the provider as required; JS callers can omit it
     const act = (): unknown => httpClientProofProvider('http://localhost:8080');
@@ -195,15 +195,15 @@ describe('httpClientProofProvider', () => {
       ).serialize();
     });
 
-    test('answers the v8 arm with the PROVEN serialization of the transaction', async () => {
+    test('answers the v8 variant with the PROVEN serialization of the transaction', async () => {
       wireMocks();
       const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
 
       const result = await provider.proveTx({ version: 'v8', txBytes: retainedEraTxBytes });
 
       // `requireLedger8` in `midnight-js-contracts` reads `txBytes` off this record
-      // and rejects the v9 arm, so answering in the wrong arm fails a submit
-      // half way through. Assert the arm before the payload.
+      // and rejects the v9 variant, so answering in the wrong variant fails a submit
+      // half way through. Assert the variant before the payload.
       expect(result.version).toBe('v8');
       const returned = result.version === 'v8' ? result.txBytes : new Uint8Array();
       expect(returned).toBeInstanceOf(Uint8Array);
@@ -287,7 +287,7 @@ describe('httpClientProofProvider', () => {
       return { version: 'v9', tx: partial as UnprovenTransaction };
     };
 
-    test('is tagged as the v9 arm', async () => {
+    test('is tagged as the v9 variant', async () => {
       wireMocks();
       const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
 

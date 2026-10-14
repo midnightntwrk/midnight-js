@@ -72,7 +72,7 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
  * accept back, and so which direction the violation went. For the current
  * era's flows that is the era they submit, which is always `'v9'` — the
  * default, so call sites that predate the retained-era pipelines read exactly
- * as they did before it existed. The retained era's finalizing arm passes the
+ * as they did before it existed. The retained era's finalizing path passes the
  * network HEAD instead: it composes retained-era transactions but is recorded
  * by whichever ledger the head is on, so the head, not the pipeline, is what
  * the record has to agree with.
@@ -93,7 +93,7 @@ export class EraInvariantViolationError extends MidnightJsError {
    *                  tell which call broke.
    * @param expected The only era this flow can accept back. Defaults to
    *                 `'v9'`. See the class comment for which fact this names
-   *                 on each arm.
+   *                 on each path.
    * @param received The era the payload actually carried, when it carried a
    *                 readable one. Named in the message: a refusal that states
    *                 only what it wanted leaves the reader to find out what it
@@ -394,7 +394,7 @@ export class LedgerParametersUnservedError extends MidnightJsError {
  * output as a transient and needs no chain state. Only spends of previously
  * held coins are.
  *
- * @see {@link ErrorTaxonomy} for what the retained arm is missing and why this
+ * @see {@link ErrorTaxonomy} for what the retained-era path is missing and why this
  * refuses before the offer is built.
  */
 export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
@@ -485,8 +485,8 @@ export interface SubmittedOperation {
   /**
    * The era the network head was on when this operation started.
    *
-   * One field, two uses, and they are the same fact: it decides which arm of
-   * the provider methods the transaction crossed on, and it is the `startEra` a
+   * One field, two uses, and they are the same fact: it decides which payload
+   * variant the transaction carried across the provider methods, and it is the `startEra` a
    * fork diagnosis compares a fresh reading against.
    */
   readonly head: LedgerVersion;
@@ -519,8 +519,8 @@ export interface SubmittedOperation {
 // thing to check, because "verify it did not finalize" is not an instruction a
 // caller with several operations in flight can act on otherwise.
 //
-// Both arms are reachable in production: the `call` arm through `submitCallTx`,
-// the `deploy` arm through `deployContract`'s retained-era arm. `kind: 'deploy'`
+// Both kinds are reachable in production: `call` through `submitCallTx`, and
+// `deploy` through `deployContract`'s retained-era overload. `kind: 'deploy'`
 // is set at exactly one place, inside `runLedger8Deploy`.
 const STALE_HEAD_MESSAGES: Readonly<
   Record<StaleHeadOperationKind, (operation: SubmittedOperation, freshEra: LedgerVersion) => string>
@@ -667,7 +667,7 @@ const undiagnosedErrors = (rejection: unknown, undiagnosed: SubmitRejectionUndia
  * DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own.
  *
  * @see {@link ErrorTaxonomy} for why the two codes name different things.
- * @see {@link StaleHeadRemediation} for the two arms.
+ * @see {@link StaleHeadRemediation} for the two reasons.
  */
 export class SubmitRejectionUndiagnosedError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED;
@@ -830,7 +830,7 @@ export abstract class AnyEraTxFailedError extends MidnightJsError {
 /**
  * An error indicating that a transaction submitted to a consensus node failed.
  *
- * The current era's arm of {@link AnyEraTxFailedError}: its record is always
+ * The current era's subclass of {@link AnyEraTxFailedError}: its record is always
  * the v9 one. Catch the base to catch both eras.
  */
 export class TxFailedError extends AnyEraTxFailedError {
@@ -859,7 +859,7 @@ export class TxFailedError extends AnyEraTxFailedError {
     );
   }
 
-  /** See {@link AnyEraTxFailedError.record}. Always the v9 arm on this class. */
+  /** See {@link AnyEraTxFailedError.record}. Always the v9 variant on this class. */
   get record(): VersionedFinalizedTxData {
     return this.finalizedTxData;
   }
@@ -1054,7 +1054,7 @@ export class ScopedTxEraUnsupportedError extends MidnightJsError {
  * into at either head.
  *
  * Raised rather than ignored, and that is the change it makes: the retained-era
- * arm previously accepted a scope context and ran outside it.
+ * path previously accepted a scope context and ran outside it.
  *
  * @see {@link StaleHeadRemediation} for why the two cannot be batched.
  */
@@ -1226,7 +1226,7 @@ export class VerifierKeyMismatchError extends MidnightJsError {
  * inherited {@link AnyEraTxFailedError.code}, and read the record off
  * {@link txData} rather than out of the message.
  *
- * @see {@link ErrorTaxonomy} for why this arm registers no code, and for the
+ * @see {@link ErrorTaxonomy} for why this retained-era class registers no code, and for the
  * local-versus-chain consequence the message states per status.
  */
 export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
@@ -1246,7 +1246,7 @@ export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
     this.name = 'Ledger8CallTxFailedError';
   }
 
-  /** See {@link AnyEraTxFailedError.record}. Either arm on this class. */
+  /** See {@link AnyEraTxFailedError.record}. Either variant on this class. */
   get record(): VersionedFinalizedTxData {
     return this.txData;
   }
@@ -1300,7 +1300,7 @@ export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
     this.name = 'Ledger8DeployTxFailedError';
   }
 
-  /** See {@link AnyEraTxFailedError.record}. Either arm on this class. */
+  /** See {@link AnyEraTxFailedError.record}. Either variant on this class. */
   get record(): VersionedFinalizedTxData {
     return this.txData;
   }
@@ -1423,7 +1423,7 @@ export class Ledger8AmbiguousEntryPointError extends MidnightJsError {
  * balance and submit, and leave the recipient owning a coin it could never
  * discover.
  *
- * @see {@link KeepStatePipeline} for how the retained arm resolves each
+ * @see {@link KeepStatePipeline} for how the retained-era path resolves each
  *      recipient's encryption key.
  */
 /** The entry-point name a retained-era deploy reports its constructor under. */

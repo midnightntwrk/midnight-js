@@ -29,8 +29,8 @@
  * Several era decisions a reader might expect are REFUSALS rather than
  * choices, and a refusal already carries a registered error code and
  * remediation text, so it is not breadcrumbed a second time: the retained-era
- * deploy arm refuses, a scope on a pre-fork head refuses, and a provider that
- * answers on the wrong era's arm refuses. The fourth decision is the inverse
+ * deploy path refuses, a scope on a pre-fork head refuses, and a provider that
+ * answers on the wrong era's payload variant refuses. The fourth decision is the inverse
  * case, and the reason it needs a breadcrumb: it refuses nothing and returns
  * nothing, so an operator has no other way to see it happened.
  *
@@ -802,7 +802,7 @@ describe('the post-rejection head read leaves a breadcrumb too', () => {
   });
 
   it('reports the reading even when the head did NOT move, so the re-thrown rejection is accounted for', async () => {
-    // The same-era arm re-throws the rejection unchanged, so without the
+    // The same-era path re-throws the rejection unchanged, so without the
     // breadcrumb there is no record that the network was asked at all.
     const sink = createSink();
     const rejection = wrappedRejection();

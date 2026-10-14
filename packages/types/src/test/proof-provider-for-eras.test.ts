@@ -374,7 +374,7 @@ describe('createProofProviderForEras', () => {
       expect(consulted, `proveTx rejected with: ${String(rejection)}`).toEqual(['prove']);
     });
 
-    it('answers the v8 arm with the PROVEN serialization of the transaction', async () => {
+    it('answers the v8 variant with the PROVEN serialization of the transaction', async () => {
       const provider = createProofProviderForEras({
         currentEra: inertCurrentEraProvider,
         retainedEras: { v8: inertRetainedEraProvider }
@@ -383,10 +383,10 @@ describe('createProofProviderForEras', () => {
       const result = await provider.proveTx({ version: 'v8', txBytes: retainedEraTxBytes });
 
       // A caller narrows this record and rejects the other era, so answering in
-      // the wrong arm strands a submit mid-flight. Assert the arm first.
+      // the wrong variant strands a submit mid-flight. Assert the variant first.
       expect(result.version).toBe('v8');
       if (result.version !== 'v8') {
-        expect.fail(`expected the v8 arm, got '${result.version}'`);
+        expect.fail(`expected the v8 variant, got '${result.version}'`);
       }
 
       // Proven, not merely round-tripped: the stage marker in the tag moves

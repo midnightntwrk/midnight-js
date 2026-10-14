@@ -61,7 +61,7 @@ describe('entryPointName', () => {
   // The vendor behaviour entryPointName's existence is reasoned about:
   // `operations()` is DECLARED `Array<string | Uint8Array>`, but ledger-v8
   // decodes an entry point set from bytes back to a string. If that ever
-  // changes, the byte arm below stops being dead in practice — and this test
+  // changes, the byte branch below stops being dead in practice — and this test
   // is what says so.
   it('is only ever handed strings by ledger-v8 today: a byte-set entry point reads back as a string', () => {
     const contractState = new LedgerV8.ContractState();
@@ -164,7 +164,7 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
   // `ContractState` and `ContractDeploy`, each of which rebuilds the state from
   // bytes. A retained runtime that stopped honouring the setter, or a deploy
   // leg that rebuilt the state from anything other than these bytes, would show
-  // up here as the empty committee coming back -- and the retained-era arm of
+  // up here as the empty committee coming back -- and the retained-era path of
   // `deployContract` (`packages/contracts/src/deploy-contract.ts`) would again
   // be offering permanently unmaintainable deployments.
   it('sets the maintenance authority to the supplied signing key, and that authority survives into the composed deploy', async () => {

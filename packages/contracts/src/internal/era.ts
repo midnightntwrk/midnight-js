@@ -46,7 +46,7 @@ import type { Ledger8Contract } from '../ledger8-contract';
 import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcrumbs';
 
 /**
- * Unwraps the v9 arm of a versioned payload a provider returned. The flows in
+ * Unwraps the v9 variant of a versioned payload a provider returned. The flows in
  * this package only ever send v9 payloads, so a v8 response cannot be handled.
  *
  * @see {@link EraDispatch} for why a v8 answer here is a broken provider rather
@@ -56,7 +56,7 @@ import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcr
  * @param method The provider method that returned it.
  * @param circuitId The circuit, or circuits, this flow is running, for the error message.
  * @returns The live v9 ledger transaction.
- * @throws EraInvariantViolationError if the payload carries the v8 arm.
+ * @throws EraInvariantViolationError if the payload carries the v8 variant.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
  */
 export function requireLedger9<T>(
@@ -80,15 +80,15 @@ export function requireLedger9<T>(
 }
 
 /**
- * Unwraps the RETAINED arm of a versioned payload a provider returned, on a
- * flow that submitted the retained arm.
+ * Unwraps the RETAINED variant of a versioned payload a provider returned, on a
+ * flow that submitted the retained variant.
  *
  * The mirror of {@link requireLedger9}, and it exists for the same reason: the provider
  * method types do not tie a provider's output era to its input era, so a flow that
  * submitted retained-era bytes has to check that retained-era bytes came back.
  *
  * Note which refusal is NOT this function's. A provider that does not handle
- * the retained arm at all rejects it on the way IN, with
+ * the retained variant at all rejects it on the way IN, with
  * `Ledger8PayloadUnsupportedError` from `unwrapLedger9` in
  * `@midnight-ntwrk/midnight-js-types` — that is the inbound guard a
  * current-era-only provider implementation runs, and it is deliberately left
@@ -102,7 +102,7 @@ export function requireLedger9<T>(
  * @param method The provider method that returned it.
  * @param circuitId The circuit, or circuits, this flow is running, for the error message.
  * @returns The serialized retained-era transaction bytes.
- * @throws EraInvariantViolationError if the payload carries the current-era arm.
+ * @throws EraInvariantViolationError if the payload carries the current-era variant.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
  */
 export function requireLedger8<T>(
@@ -127,13 +127,13 @@ export function requireLedger8<T>(
 
 /**
  * Refuses a finalized-transaction record that carries no readable era tag,
- * accepting either arm.
+ * accepting either variant.
  *
  * The counterpart to {@link requireLedger9Record}, for the paths where BOTH tags
  * are legitimate answers and there is therefore no era to refuse: the retained
- * arm, and the current-era attach, which must accept a contract deployed before
+ * path, and the current-era attach, which must accept a contract deployed before
  * the fork. A contract found on chain was deployed in whichever era was current
- * then, so its deploy record is genuinely either arm. What is still refusable
+ * then, so its deploy record is genuinely either variant. What is still refusable
  * is a tag that names no era at all: `version` selects the runtime of the live
  * `tx` handle beside it, so an unreadable tag hands a caller a handle it cannot
  * attribute.
@@ -159,7 +159,7 @@ export function requireTaggedRecord(record: VersionedFinalizedTxData, method: Er
 }
 
 /**
- * Narrows a finalized-transaction record from the read surface to its v9 arm.
+ * Narrows a finalized-transaction record from the read surface to its v9 variant.
  *
  * @see {@link EraDispatch} for why the v9-only flows reject here rather than
  *      widening their own public return types.
@@ -168,7 +168,7 @@ export function requireTaggedRecord(record: VersionedFinalizedTxData, method: Er
  * @param method The read-surface method that returned it.
  * @param circuitId The circuit, or circuits, this flow is running, for the error message.
  * @returns The v9 finalized-transaction record.
- * @throws EraInvariantViolationError if the record carries the v8 arm.
+ * @throws EraInvariantViolationError if the record carries the v8 variant.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
  */
 export function requireLedger9Record(
@@ -339,7 +339,7 @@ const artifactShapeOf = (compiledContract: unknown): ArtifactShape => {
     // chosen by the caller (`CompiledContract.make(tag, ctor)`) and says nothing about an era; what
     // places this object is that only the current toolchain's container has this shape, and that
     // the property is an OWN one, so it survives both the spread its own combinators perform and
-    // any build step -- which is why this arm needs no artifact read. Requiring the `tag` as well
+    // any build step -- which is why this branch needs no artifact read. Requiring the `tag` as well
     // as the absence of `impureCircuits` is what stops an arbitrary object -- `{}` included -- from
     // being routed into the current-era pipeline by default.
     if (hasOwnProperty(compiledContract, 'tag') && typeof compiledContract.tag === 'string') {
@@ -433,11 +433,11 @@ export const resolveArtifactEra = async (
  * {@link resolveArtifactEra}'s answer, in the narrowing form each era-dispatching entry point needs.
  *
  * Not a second decision: the era is established in exactly one place, and this only gives that
- * established value a type predicate so an entry point's body can drop the retained-era arm from its
+ * established value a type predicate so an entry point's body can drop the retained-era variant from its
  * parameter union without a cast.
  *
  * Name the type parameter explicitly at each call site rather than letting it infer, so the
- * narrowing removes exactly the retained-era arm of that entry point's parameter union.
+ * narrowing removes exactly the retained-era variant of that entry point's parameter union.
  *
  * @see {@link EraDispatch} for how `era` was established.
  *
@@ -605,7 +605,7 @@ export const ERA_PAIRING: EraPairingTable = pairingTable({
  * current-era artifact on a pre-fork head.
  * @throws Ledger8DeployOnLedger9Error for a retained-era deploy on a post-fork head.
  * @throws UnknownLedgerVersionError carrying whichever argument has no cell here, if an era is
- * added without extending the table -- and also from the closing arm, carrying a verdict rather
+ * added without extending the table -- and also from the closing case, carrying a verdict rather
  * than an era, if a verdict is ever added without one. The class does not distinguish the three;
  * read `requestedVersion` for the value that was refused.
  */

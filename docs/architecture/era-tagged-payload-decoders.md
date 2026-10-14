@@ -76,9 +76,9 @@ grep -rnE '\.deserialize[<(]|deserialize(Ledger|Compact|Zswap)' --include='*.ts'
   `decodeVersionedTransaction` dispatches per record to a table with one entry per era.
 - `packages/protocol/src/lib/era/envelope.ts` — both eras are named explicitly.
 
-### Decoders that are correct because the arm owns the era
+### Decoders that are correct because the code path owns the era
 
-Each of these lives inside an era arm and reads bytes that arm's caller selected. Most classify a
+Each of these lives inside one era's code path and reads bytes that path's caller selected. Most classify a
 rejected payload rather than letting a raw decoder failure escape, but they do not all classify it
 the same way, and one does not classify it at all:
 
@@ -91,7 +91,7 @@ the same way, and one does not classify it at all:
   `ComposeOptionError`; takes the era's module slice as an argument
 - `packages/protocol/src/lib/v8/prove.ts` — **no wrapper.** `proveLedger8Transaction` runs
   `assertSerializedTransaction` on the bytes and then calls `v8.Transaction.deserialize` with
-  nothing around it, so a raw decoder failure escapes unclassified. The era is still the arm's own,
+  nothing around it, so a raw decoder failure escapes unclassified. The era is still the path's own,
   so this is a diagnosis gap rather than a wrong-era decode — but it is the one site here whose
   failure does not name the provider method.
 
@@ -106,7 +106,7 @@ inferred (ADR 0006).
 ### Decoders that never see chain bytes
 
 - `packages/contracts/src/internal/ledger8-entry.ts` — reads back bytes the current era has just
-  composed, inside the current-era arm
+  composed, inside the current-era path
 - `packages/contracts/src/internal/utils/ledger-utils.ts` — round-trips a live in-memory object through its
   own `serialize()`, via the `utils` wrappers below
 

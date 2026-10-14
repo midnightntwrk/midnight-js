@@ -172,20 +172,20 @@ const parseLedger8HexTransaction = async (s: string, details?: ReadDetails): Pro
  * it — the two fields {@link VersionedFinalizedTxData} discriminates on.
  *
  * `DistributivePick` rather than a bare `Pick`: distributed over the union it
- * yields one arm per era, so a v8 tag can never be paired with a v9 object.
+ * yields one variant per era, so a v8 tag can never be paired with a v9 object.
  */
 type DistributivePick<T, K extends keyof T> = T extends unknown ? Pick<T, K> : never;
 
 export type DecodedVersionedTransaction = DistributivePick<VersionedFinalizedTxData, 'version' | 'tx'>;
 
 /**
- * One decoder per {@link LedgerVersion}, each returning only its own arm of
+ * One decoder per {@link LedgerVersion}, each returning only its own variant of
  * {@link DecodedVersionedTransaction}.
  *
  * A total `Record` on a null prototype, frozen — see
  * `packages/protocol/docs/shared-table-discipline.md`. The era set is gated by
  * `LedgerVersion`: an era added there stops this table type-checking. That an
- * era also has a *read arm* is asserted separately, by `_EveryEraHasAReadArm`
+ * era also has a *read variant* is asserted separately, by `_EveryEraHasAReadVariant`
  * in `@midnight-ntwrk/midnight-js-types`.
  */
 type TransactionDecoders = {
@@ -200,7 +200,7 @@ const transactionDecoders = {
     version: 'v8' as const,
     tx: await parseLedger8HexTransaction(hexTransaction, details)
   }),
-  // Wrapped in a resolved promise rather than decoded eagerly: both arms have
+  // Wrapped in a resolved promise rather than decoded eagerly: both decoders have
   // to be awaited the same way, and the v9 read stays the same synchronous
   // call `parseHexTransaction` already makes.
   v9: (hexTransaction: string, details: ReadDetails) =>

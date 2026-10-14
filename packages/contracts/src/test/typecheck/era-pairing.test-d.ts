@@ -81,7 +81,7 @@ describe('one row must rule every head era', () => {
 
   it('refuses a ruling outside the closed verdict set', () => {
     // Without this the table would type-check with a verdict `assertEraCompatible` never reads,
-    // which is a cell that silently falls through to its unreachable closing arm.
+    // which is a cell that silently falls through to its unreachable closing case.
     // @ts-expect-error - `'maybe'` is not an era pairing verdict
     const unknownVerdict: EraRulings = { v8: 'run', v9: 'maybe' };
     void unknownVerdict;

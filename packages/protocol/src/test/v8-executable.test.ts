@@ -436,7 +436,7 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
       verifierKeys: () => Promise.resolve(new Uint8Array([0x00, 0x01, 0x02]))
     }).catch((error: unknown) => error);
 
-    // Assert. The same stage the v9 arm raises for the same fault, so a
+    // Assert. The same stage the v9 path raises for the same fault, so a
     // consumer switching on `stage` is not told a different story per era.
     expect(rejection).toBeInstanceOf(ComposeFailedError);
     expect((rejection as ComposeFailedError).stage).toBe('deploy-verifier-key-blob');

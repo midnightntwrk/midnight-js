@@ -264,8 +264,8 @@ import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
 const provenTx = unwrapLedger9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
 ```
 
-The read surface is a *different* union — its v8 arm carries `tx`, not
-`txBytes` — so `unwrapLedger9` does not accept it. Both arms are records you will
+The read surface is a *different* union — its v8 variant carries `tx`, not
+`txBytes` — so `unwrapLedger9` does not accept it. Both variants are records you will
 receive, so handle both:
 
 ```ts
@@ -287,12 +287,12 @@ const summarize = (record: types.VersionedFinalizedTxData): string => {
 ```
 
 `describeNative` and `describeRetained` stand in for your own code. They are two
-separate functions on purpose: `record.tx` is a different ledger type on each arm,
+separate functions on purpose: `record.tx` is a different ledger type on each variant,
 which is the whole reason this union has to be narrowed rather than unwrapped. Swap
 the two calls over and the recipe stops compiling.
 
 Close the switch with `assertNever`. While your switch covers the union it
-compiles; the moment the union carries an arm your switch does not handle,
+compiles; the moment the union carries a variant your switch does not handle,
 **that line stops compiling and points at the switch that has to change**.
 
 Be clear about which direction that buys you, because it is not the one you
@@ -302,7 +302,7 @@ era, the now-stale `case 'v8':` label is already a compile error on its own —
 removal visible. What it uniquely catches is the other direction: a union that
 *grows* a further era. For a switch that returns a value, the compiler can
 sometimes catch that at the function signature instead; for a `void`,
-side-effecting switch it catches nothing at all, and the unhandled arm falls
+side-effecting switch it catches nothing at all, and the unhandled variant falls
 through in silence. That is the case `assertNever` closes.
 
 The second argument is required. `assertNever` never puts the unhandled value into
@@ -316,8 +316,8 @@ and a dApp that reads its own pre-fork history will meet one.
 
 `findDeployedContract` reports the deploy record the same way. A contract deployed
 before the ledger fork keeps a ledger-8 deploy record forever, so
-`found.deployTxData.public` is tagged too. `contractAddress` is on both arms; narrow
-on `version` before reading `tx` or `initialContractState`. The `v8` arm has no
+`found.deployTxData.public` is tagged too. `contractAddress` is on both variants; narrow
+on `version` before reading `tx` or `initialContractState`. The `v8` variant has no
 `initialContractState`, because the current runtime cannot decode a ledger-8
 deploy-time state — read the current state with `queryContractState` instead.
 
@@ -399,7 +399,7 @@ applies before it lands, the framework raises `StaleHeadError`
 two remediations below — along with `startEra`, `freshEra`, `circuitId` and
 `contractAddress`. Its message carries the matching remediation in full.
 
-Both arms are reachable. `kind: 'deploy'` comes from a retained-era deploy that
+Both kinds are reachable. `kind: 'deploy'` comes from a retained-era deploy that
 was built on a pre-fork head and overtaken by the fork before it landed.
 
 For a **call**, the remediation is two steps, in order:
@@ -481,7 +481,7 @@ rest of that group) are published flat and go in a separate one.
 A call against a contract you compiled with the previous toolchain still goes
 through `submitCallTx` / `submitCallTxAsync` / `findDeployedContract`
 unchanged — you pass the raw contract instance instead of a `CompiledContract`
-container, and an additive overload picks the retained arm. What comes BACK is
+container, and an additive overload picks the retained-era path. What comes BACK is
 the same two-level shape (`public` / `private`), built from the same shared
 bases, so `private.result`, `public.txId` and `public.status` read identically
 in both eras.
@@ -500,7 +500,7 @@ either era.
   with `version: 'v9'` is a keep-state transaction, and that is correct. Branch
   on `era` to decide which module an object came from, on `version` before
   touching `public.tx`.
-- **`public.version` is a union on the retained arm.** A retained-era call is
+- **`public.version` is a union on the retained-era path.** A retained-era call is
   recorded by whichever era the head is on, so narrow it. The current era's is
   pinned `'v9'`.
 - **`public.nextContractState` is a different KIND of object per era.** The
@@ -510,7 +510,7 @@ either era.
   ledger runtimes. That is the member to read, persist, `structuredClone` or
   post to a worker; the handles are valid only inside the process that built
   them.
-- **No `logEvents` on the retained arm.** The previous toolchain has no
+- **No `logEvents` on the retained-era path.** The previous toolchain has no
   log-event concept at any layer, so there is no value to read rather than an
   empty list to read.
 - **`private.txBytes` instead of `private.unprovenTx`.** The retained composer
@@ -520,12 +520,12 @@ either era.
 Two limits to plan around. Both eras now name the circuit on the result, and
 both handles carry `compiledContract` and `contractAddress`, so the contract
 HANDLES differ in only four places: the retained handle has no maintenance
-interfaces (the retained era has no governance arm), its `deployTxData` is
+interfaces (the retained era has no governance path), its `deployTxData` is
 the flat record where the current era's is `{ era, public, private }`, its
 `callTx.<circuit>(...)` takes no `TransactionContext`, so it cannot carry
 recipient key mappings (see below), and a deployed handle keeps the deployer's
-data at a different path (table below). And `getStates` / `getPublicStates` have no retained
-arm: they decode with the current-era deserializer and refuse anything else, so
+data at a different path (table below). And `getStates` / `getPublicStates` have no retained-era
+path: they decode with the current-era deserializer and refuse anything else, so
 for a contract whose state envelope is still pre-fork, read the state through
 `queryRawContractState` and narrow on its `version`, or read
 `public.nextContractStateEncoded` off a call result.
@@ -763,7 +763,7 @@ See [breaking-changes.md](./breaking-changes.md#11-midnightconfig-on-midnightpro
 - [ ] Every `proveTx` / `balanceTx` / `submitTx` call site sends a version-tagged payload and narrows the result.
 - [ ] Every `watchForTxData` / `watchForDeployTxData` call site narrows on `record.version`.
 - [ ] Any in-house `WalletProvider` / `MidnightProvider` implementation compiles against the tagged interfaces (or is wrapped with the `create*Provider` adapters).
-- [ ] Every `switch` on `record.version` is closed with `assertNever`, so a future era arm cannot fall through unhandled.
+- [ ] Every `switch` on `record.version` is closed with `assertNever`, so a future era variant cannot fall through unhandled.
 - [ ] Released to users before the fork, not merely merged before it.
 - [ ] Completion is measured by finalization, not by submit success.
 - [ ] `StaleHeadError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then re-run.

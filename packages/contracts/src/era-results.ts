@@ -28,7 +28,7 @@
  * These are the WIDEST instantiations. A generic union over both eras would
  * need four type parameters -- a contract and a circuit id per era -- which is
  * a signature nobody writes; a caller that does hold concrete contract types
- * can union the two arms itself and narrow it with the same guard, which is
+ * can union the two variants itself and narrow it with the same guard, which is
  * asserted in the typecheck suite.
  */
 
@@ -91,7 +91,7 @@ export type AnyEraSubmittedCallTx =
  * `LedgerVersion` union. DO NOT REMOVE THE TUPLE WRAPPER: it is what stops the
  * conditional distributing.
  *
- * @see {@link OverloadTyping} for why the fallback arm has to be there.
+ * @see {@link OverloadTyping} for why the fallback branch has to be there.
  */
 type NarrowedToRetained<T> = [Extract<T, { readonly era: 'v8' }>] extends [never]
   ? T & { readonly era: 'v8' }
@@ -99,9 +99,9 @@ type NarrowedToRetained<T> = [Extract<T, { readonly era: 'v8' }>] extends [never
 
 /**
  * Whether a result came from the RETAINED pipeline, narrowing it to that era's
- * arm.
+ * variant.
  *
- * Reads `era`, which every result carries and which each arm declares as its
+ * Reads `era`, which every result carries and which each variant declares as its
  * own literal -- so this narrows a union of any two result shapes that carry
  * the tag, not only the published unions above.
  *

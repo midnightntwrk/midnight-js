@@ -543,7 +543,7 @@ export const zswapCallsToSegmentedOffer = (
     [FALLIBLE_SEGMENT_NUMBER]: emptyBucket()
   };
   const segmentOfOutput = new Map<string, 0 | 1>();
-  // Read only by the unattributed arm of pass 2, which has no address to derive a commitment from.
+  // Read only by the unattributed branch of pass 2, which has no address to derive a commitment from.
   const commitmentsByCoinInfo = new Map<string, CoinCommitment[]>();
 
   // Pass 1 — every output. Keyed by commitment, so one coin sent by a contract and received by

@@ -32,7 +32,7 @@ const describeEra = (era: Era): string => {
 };
 
 describe('assertNever', () => {
-  test('lets an exhaustive switch return normally on every arm', () => {
+  test('lets an exhaustive switch return normally on every case', () => {
     // Arrange.
     const retained: Era = { version: 'v8', bytes: 'abcd' };
     const native: Era = { version: 'v9', value: 7 };

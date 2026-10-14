@@ -37,7 +37,7 @@ chain unable to verify any call against it. Nothing fails until the first call,
 which reports `'call-verifier-key'` a long way from the cause. That is why the
 v9 leg's `assertStateCarriesKeys` (`packages/protocol/src/lib/v9/compose.ts`)
 refuses a state still declaring a blank key when no map was supplied — it makes
-the two arms agree without taking away the one case the optionality exists for.
+the two eras agree without taking away the one case the optionality exists for.
 
 Two details of that v9 check are deliberate. It uses `?.`, which collapses "no
 operation resolves" into "operation has a blank key" — something
@@ -47,7 +47,7 @@ this check exists to demand, supply the map, whereas a decoded state hands its
 caller a `verifierKey` field whose absence means "never deployed". And it is
 raised as the OPTION error, not as `ComposeFailedError`'s
 `'deploy-verifier-key'` stage, even though that stage means exactly this
-condition and would name the offending entry point: the v8 arm refuses the same
+condition and would name the offending entry point: the v8 path refuses the same
 omission as `ComposeOptionError('v8', 'verifierKeys')`, and a caller writing one
 handler across both eras matters more than naming which of a contract's slots
 was blank. Naming it as well needs a `circuitId` on `ComposeOptionError`, which
@@ -119,5 +119,5 @@ real vendor), but the declared union has to be resolved somewhere, and decoding
 is the only resolution that keeps an error message naming the entry point rather
 than dumping its bytes — which is what `ComposeFailedError` promises.
 
-It lives in a leaf module both eras can reach, so neither arm has to import the
+It lives in a leaf module both eras can reach, so neither era has to import the
 other's era-named module for a `TextDecoder` call.
