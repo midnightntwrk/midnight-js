@@ -14,6 +14,9 @@ The counterpart to `createProofProviderFromHandlers`, with the same guarantees:
 `supportedEras` is computed from the handlers supplied, and the tag never appears
 in implementation code.
 
+`currentEra` is called with `handlers` as `this`; a retained-era handler is
+called with no `this`.
+
 ## Parameters
 
 ### handlers
@@ -27,3 +30,13 @@ The current-era handler, and one for each retained era served.
 [`MidnightProvider`](../interfaces/MidnightProvider.md)
 
 A [MidnightProvider](../interfaces/MidnightProvider.md) routing each submission to its era's arm.
+
+## Throws
+
+UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
+        than `undefined`, is not a function. Raised at construction.
+
+## Throws
+
+InvalidArgumentError if `handlers` is not an object, or `retainedEras`
+        is not a plain object keyed only by retained eras. Raised at construction.

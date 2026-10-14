@@ -14,7 +14,10 @@ The returned provider proves transactions using the initial cost model.
 The returned provider serves the v9 arm only — `supportedEras` says so — and
 that is permanent rather than a gap: it lifts a single current-era
 `ProvingProvider`. It rejects a v8 payload with `V8PayloadUnsupportedError`,
-and an untagged one with `UntaggedPayloadError`. To serve a retained era as
+and an untagged one with `UntaggedPayloadError`. It also rejects any
+`proveTxConfig.timeout`, including `0`, with `InvalidArgumentError` before
+proving starts: a `ProvingProvider` takes no per-request configuration. To
+bound proving time, use `httpClientProofProvider`. To serve a retained era as
 well, pass that era's own proving provider to
 [createProofProviderForEras](createProofProviderForEras.md), or, where the proving itself is not a
 `ProvingProvider` call, write the handlers directly with

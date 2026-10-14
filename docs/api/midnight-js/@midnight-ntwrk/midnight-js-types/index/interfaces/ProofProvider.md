@@ -18,7 +18,7 @@ The type of the circuit ID used by the provider.
 
 ### supportedEras
 
-> `readonly` **supportedEras**: readonly (`"v9"` \| `"v8"`)[]
+> `readonly` **supportedEras**: readonly (`"v8"` \| `"v9"`)[]
 
 The ledger eras THIS INSTANCE serves.
 
@@ -84,3 +84,10 @@ PayloadNotATransactionError if the v8 arm's `txBytes` is not a serialized transa
 #### Throws
 
 UntaggedPayloadError if `version` is missing or unrecognised.
+
+#### Throws
+
+InvalidArgumentError if `proveTxConfig.timeout` is set and the implementation cannot
+        apply it. [createProofProvider](../functions/createProofProvider.md), [createProofProviderForEras](../functions/createProofProviderForEras.md) and
+        `dappConnectorProofProvider` refuse it before any proving starts;
+        `httpClientProofProvider` honours it.

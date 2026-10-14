@@ -15,6 +15,9 @@ The counterpart to `createProofProviderFromHandlers`, with the same guarantees:
 implementation code, and an answer is always tagged as the era the request
 carried.
 
+`currentEra` and the key readers are called with `handlers` as `this`; a
+retained-era handler is called with no `this`.
+
 ## Parameters
 
 ### handlers
@@ -28,3 +31,14 @@ The current-era handler, any retained-era handlers, and the two key readers.
 [`WalletProvider`](../interfaces/WalletProvider.md)
 
 A [WalletProvider](../interfaces/WalletProvider.md) routing each request to its era's arm.
+
+## Throws
+
+UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
+        than `undefined`, is not a function. Raised at construction.
+
+## Throws
+
+InvalidArgumentError if `handlers` is not an object, `retainedEras` is
+        not a plain object keyed only by retained eras, or a key reader is not
+        a function. Raised at construction.

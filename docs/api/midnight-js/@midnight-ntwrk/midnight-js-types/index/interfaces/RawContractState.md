@@ -66,7 +66,7 @@ these bytes to that era's deserializer.
 
 ### version
 
-> `readonly` **version**: `"v9"` \| `"v8"`
+> `readonly` **version**: `"v8"` \| `"v9"`
 
 The ledger era this record is dated to, derived from
 [protocolVersion](#protocolversion) alone.

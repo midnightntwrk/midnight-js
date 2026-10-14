@@ -84,3 +84,10 @@ PayloadNotATransactionError if the v8 arm's `txBytes` is not a serialized transa
 #### Throws
 
 UntaggedPayloadError if `version` is missing or unrecognised.
+
+#### Throws
+
+InvalidArgumentError if `proveTxConfig.timeout` is set and the implementation cannot
+        apply it. [createProofProvider](../variables/createProofProvider.md), [createProofProviderForEras](../variables/createProofProviderForEras.md) and
+        `dappConnectorProofProvider` refuse it before any proving starts;
+        `httpClientProofProvider` honours it.

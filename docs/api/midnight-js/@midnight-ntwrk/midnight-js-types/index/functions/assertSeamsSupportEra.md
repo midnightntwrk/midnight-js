@@ -24,7 +24,7 @@ Generic in the era, so a further ledger era needs no change here.
 
 ### era
 
-`"v9"` \| `"v8"`
+`"v8"` \| `"v9"`
 
 The ledger era this operation will run on.
 

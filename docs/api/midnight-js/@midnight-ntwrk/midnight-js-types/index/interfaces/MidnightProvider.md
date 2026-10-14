@@ -13,7 +13,7 @@ a third-party service, or a node itself.
 
 ### supportedEras
 
-> `readonly` **supportedEras**: readonly (`"v9"` \| `"v8"`)[]
+> `readonly` **supportedEras**: readonly (`"v8"` \| `"v9"`)[]
 
 The ledger eras THIS INSTANCE serves. See
 [ProofProvider.supportedEras](ProofProvider.md#supportederas) — the field means the same on all three
