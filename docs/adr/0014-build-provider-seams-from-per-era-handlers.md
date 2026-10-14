@@ -282,3 +282,14 @@ The public names now say what they are:
 
 The decision is unchanged. The amendments above keep the names that were current
 when they were written.
+
+## Amendment — consistent public names (2026-10-14)
+
+Issue #1489. The decision is unchanged; only names change.
+
+- `RetainedEraHandlers<T>` is `RetainedEraEntries<T>`, and `era-handlers.ts` is
+  `era-entries.ts`. In `ProvingProvidersByEra.retainedEras` the entries are
+  `ProvingProvider`s, not handlers, so the type takes the word the amendment
+  above already chose for both.
+
+The amendments above keep the names that were current when they were written.

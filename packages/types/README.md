@@ -325,7 +325,7 @@ import {
   unwrapV9,
 
   // Per-era handlers, era routing, and the declaration built from them
-  type RetainedEraHandlers,
+  type RetainedEraEntries,
   type EraRequest,
   erasServedBy,
   narrowToEra,

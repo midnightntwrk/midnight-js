@@ -19,7 +19,7 @@ import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midn
 import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import type { RetainedEraHandlers } from '../era-handlers';
+import type { RetainedEraEntries } from '../era-entries';
 import { PROVIDER_ERROR_CODES, V8PayloadUnsupportedError } from '../errors';
 import { createProofProviderForEras, type ProvingProvidersByEra, type UnboundTransaction } from '../proof-provider';
 
@@ -309,7 +309,7 @@ describe('createProofProviderForEras', () => {
       const act = () =>
         createProofProviderForEras({
           currentEra: inertCurrentEraProvider,
-          retainedEras: retainedEras as RetainedEraHandlers<RetainedEraProvingProvider>
+          retainedEras: retainedEras as RetainedEraEntries<RetainedEraProvingProvider>
         });
 
       expect(act).toThrow(

@@ -25,12 +25,14 @@ import { type ProviderSeam, UntaggedPayloadError, V8PayloadUnsupportedError } fr
 import type { VersionedTx } from './versioned';
 
 /**
- * The handlers a provider registers for the eras that cross its seam as
- * serialized bytes — one optional entry per {@link RetainedLedgerVersion}.
+ * The entries a provider registers for the eras that cross its seam as
+ * serialized bytes — one optional entry per {@link RetainedLedgerVersion}. An
+ * entry is a handler function in the `create*FromHandlers` factories and a
+ * `ProvingProvider` in `ProvingProvidersByEra`.
  *
  * The current era is EXCLUDED from the key set on purpose, and that exclusion
  * is the point of the type: the current era crosses the seam as a live ledger
- * object, never as bytes, so a handler registered against it would have the
+ * object, never as bytes, so an entry registered against it would have the
  * wrong signature and serve a request that can never arrive. Registering one is
  * a build failure rather than a comment asking implementers not to.
  *
@@ -39,25 +41,25 @@ import type { VersionedTx } from './versioned';
  * registrable here on its own — no change to this type, and no change to any
  * provider that already declines to register it.
  *
- * @typeParam H - The handler signature for one retained era at this seam.
+ * @typeParam H - The entry type for one retained era at this seam.
  */
-export type RetainedEraHandlers<H> = Partial<Readonly<Record<RetainedLedgerVersion, H>>>;
+export type RetainedEraEntries<H> = Partial<Readonly<Record<RetainedLedgerVersion, H>>>;
 
 /**
- * The era list a provider assembled from these handlers serves.
+ * The era list a provider assembled from these entries serves.
  *
- * Derived from the handlers actually supplied rather than written out beside them:
+ * Derived from the entries actually supplied rather than written out beside them:
  * a hand-written list is a second statement of the same fact, and the two drift
- * the first time a handler is added or removed. The current era is always present
- * because {@link RetainedEraHandlers} is the only optional half — a provider
- * with no current-era handler cannot be constructed.
+ * the first time an entry is added or removed. The current era is always present
+ * because {@link RetainedEraEntries} is the only optional half — a provider
+ * with no current-era entry cannot be constructed.
  *
- * @param retainedEras The retained handlers supplied to the factory, if any.
+ * @param retainedEras The retained entries supplied to the factory, if any.
  * @returns The eras this provider declares, frozen so a consumer cannot widen
  *          the declaration after construction and make
- *          `assertSeamsSupportEra` pass for an era the handlers do not serve.
+ *          `assertSeamsSupportEra` pass for an era the entries do not serve.
  */
-export const erasServedBy = (retainedEras?: RetainedEraHandlers<unknown>): readonly LedgerVersion[] =>
+export const erasServedBy = (retainedEras?: RetainedEraEntries<unknown>): readonly LedgerVersion[] =>
   Object.freeze<LedgerVersion[]>([
     CURRENT_LEDGER_VERSION,
     ...RETAINED_LEDGER_VERSIONS.filter((era) => retainedEras?.[era] !== undefined)
@@ -98,7 +100,7 @@ export type EraRequest<T, H> =
 export const narrowToEra = <T, H>(
   payload: VersionedTx<T>,
   seam: ProviderSeam,
-  retainedEras: RetainedEraHandlers<H> | undefined
+  retainedEras: RetainedEraEntries<H> | undefined
 ): EraRequest<T, H> => {
   // Guards the JavaScript-caller case before the switch, so a null or primitive
   // payload reports the same coded error as a bad tag rather than throwing a

@@ -21,7 +21,7 @@ import {
   type RetainedLedgerVersion
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import type { RetainedEraHandlers } from '../era-handlers';
+import type { RetainedEraEntries } from '../era-entries';
 import { type EraEntryShape, type ProviderSeam, UnusableEraEntryError } from '../errors';
 
 const PROVING_PROVIDER_METHODS = ['check', 'prove'] as const;
@@ -156,7 +156,7 @@ export const assertFunction = (seam: ProviderSeam, name: string, value: unknown)
 /** The era entries a provider factory serves from, read once at construction. */
 export interface EraEntries<C, H> {
   readonly currentEra: C;
-  readonly retainedEras: RetainedEraHandlers<H>;
+  readonly retainedEras: RetainedEraEntries<H>;
 }
 
 /**
@@ -178,7 +178,7 @@ export interface EraEntries<C, H> {
  */
 export const readEraEntries = <C, H>(
   seam: ProviderSeam,
-  entries: { readonly currentEra: C; readonly retainedEras?: RetainedEraHandlers<H> },
+  entries: { readonly currentEra: C; readonly retainedEras?: RetainedEraEntries<H> },
   shape: EraEntryShape
 ): EraEntries<C, H> => {
   if (!isObject(entries)) {

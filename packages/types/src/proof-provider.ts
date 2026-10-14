@@ -32,7 +32,7 @@ import {
   type RetainedLedgerVersion
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { erasServedBy, narrowToEra, type RetainedEraHandlers } from './era-handlers';
+import { erasServedBy, narrowToEra, type RetainedEraEntries } from './era-entries';
 import { describeArgument, isObject, readEraEntries } from './internal/read-era-entries';
 import type { VersionedTx } from './versioned';
 
@@ -147,7 +147,7 @@ export interface ProofProviderHandlers {
   /** Required: every provider serves the current era. */
   readonly currentEra: CurrentEraProver;
   /** Optional, one entry per retained era this provider serves. */
-  readonly retainedEras?: RetainedEraHandlers<RetainedEraProver>;
+  readonly retainedEras?: RetainedEraEntries<RetainedEraProver>;
 }
 
 /**
@@ -215,7 +215,7 @@ export interface ProvingProvidersByEra {
    *
    * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/seam-era-declarations.md | Seam era declarations}
    */
-  readonly retainedEras?: RetainedEraHandlers<RetainedEraProvingProvider>;
+  readonly retainedEras?: RetainedEraEntries<RetainedEraProvingProvider>;
   /**
    * Cost model for the CURRENT era, defaulting to the initial cost model. A
    * retained era always proves with its own era's initial cost model, which
@@ -253,8 +253,8 @@ const refuseTimeout = (config: ProveTxConfig | undefined): void => {
 };
 
 const toRetainedEraHandlers = (
-  provingProviders: RetainedEraHandlers<RetainedEraProvingProvider>
-): RetainedEraHandlers<RetainedEraProver> => {
+  provingProviders: RetainedEraEntries<RetainedEraProvingProvider>
+): RetainedEraEntries<RetainedEraProver> => {
   const handlers: Partial<Record<RetainedLedgerVersion, RetainedEraProver>> = {};
   for (const era of RETAINED_LEDGER_VERSIONS) {
     const provingProvider = provingProviders[era];

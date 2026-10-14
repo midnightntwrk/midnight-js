@@ -20,7 +20,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { erasServedBy, narrowToEra, type RetainedEraHandlers } from './era-handlers';
+import { erasServedBy, narrowToEra, type RetainedEraEntries } from './era-entries';
 import { assertFunction, readEraEntries } from './internal/read-era-entries';
 import { type UnboundTransaction,type VersionedUnboundTransaction } from './proof-provider';
 import { type VersionedTx } from './versioned';
@@ -90,7 +90,7 @@ export interface WalletProviderHandlers {
   /** Required: every wallet balances the current era. */
   readonly currentEra: CurrentEraBalancer;
   /** Optional, one entry per retained era this wallet balances. */
-  readonly retainedEras?: RetainedEraHandlers<RetainedEraBalancer>;
+  readonly retainedEras?: RetainedEraEntries<RetainedEraBalancer>;
   readonly getCoinPublicKey: () => CoinPublicKey;
   readonly getEncryptionPublicKey: () => EncPublicKey;
 }

@@ -400,7 +400,7 @@ See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-handlers.md).
 `unwrapV9`, `V8PayloadUnsupportedError`, `UntaggedPayloadError`,
 `V9WalletProvider`, `createWalletProvider`, `createMidnightProvider`,
 `SeamEraUnsupportedError`, `assertSeamsSupportEra`, `TransactionSeams`,
-`EraDeclaringProvider`, `RetainedEraHandlers`, `EraRequest`, `erasServedBy`,
+`EraDeclaringProvider`, `RetainedEraEntries`, `EraRequest`, `erasServedBy`,
 `narrowToEra`, `createProofProviderFromHandlers`, `createWalletProviderFromHandlers`,
 `createMidnightProviderFromHandlers`, `ProofProviderHandlers`, `WalletProviderHandlers`,
 `MidnightProviderHandlers`, `CurrentEraProver`, `RetainedEraProver`,
@@ -543,6 +543,18 @@ interface MidnightProviders {
   argument and rejects an empty one. `initializeMidnightProviders` sets
   `config.networkId` from the environment configuration and `config.ttlSeconds`
   to 3600. The test environments no longer call `setNetworkId`.
+
+---
+
+## 12. Names changed during the 5.0.0 pre-releases (#1489)
+
+This section affects you only if you built against a `5.0.0` pre-release. The
+names below were never in a 4.x release. The sections above already use the new
+names.
+
+| Package | Before | After |
+|---|---|---|
+| `types` | `RetainedEraHandlers<T>` | `RetainedEraEntries<T>` |
 
 ---
 

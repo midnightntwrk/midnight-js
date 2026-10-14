@@ -16,7 +16,7 @@
 import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { erasServedBy, narrowToEra, type RetainedEraHandlers } from './era-handlers';
+import { erasServedBy, narrowToEra, type RetainedEraEntries } from './era-entries';
 import { readEraEntries } from './internal/read-era-entries';
 import type { VersionedFinalizedTransaction } from './wallet-provider';
 
@@ -69,7 +69,7 @@ export interface MidnightProviderHandlers {
   /** Required: every submitter serves the current era. */
   readonly currentEra: CurrentEraSubmitter;
   /** Optional, one entry per retained era this submitter serves. */
-  readonly retainedEras?: RetainedEraHandlers<RetainedEraSubmitter>;
+  readonly retainedEras?: RetainedEraEntries<RetainedEraSubmitter>;
 }
 
 /**
