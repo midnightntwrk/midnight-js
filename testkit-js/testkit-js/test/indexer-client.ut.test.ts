@@ -35,7 +35,7 @@ describe('[Unit tests] IndexerClient', () => {
     await client.health();
 
     expect(mockedAxios.get).toHaveBeenCalledWith('https://midnight-preview.blockfrost.io/ready?project_id=secret', {
-      timeout: 1000
+      timeout: 10_000
     });
     expect(info.mock.calls.flat().join(' ')).not.toContain('secret');
   });
