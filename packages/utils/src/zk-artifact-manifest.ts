@@ -95,11 +95,98 @@ const asOptionalString = (value: unknown): string | undefined =>
 export const computeSha256Hex = (bytes: Uint8Array): string => bytesToHex(sha256(bytes));
 
 /**
+ * Scans raw JSON text for a duplicate object key, returning the first duplicated key it finds.
+ *
+ * `JSON.parse` silently collapses duplicate keys and keeps the last one, so a duplicate is
+ * invisible in the parsed value: the only layer where the ambiguity is still visible is the raw
+ * text. Keys are compared after JSON string decoding, so a key spelled with an escape (for
+ * example `"cle\u0061r.verifier"`) still counts as a duplicate of its plain spelling. Strings
+ * inside arrays and string values are never mistaken for keys, and braces inside a string value
+ * are never mistaken for structure.
+ *
+ * Ported from compact-js's `ZKManifest` duplicate-key scan (midnightntwrk/midnight-sdk#277),
+ * which fixed the same bug there; the two parsers must agree on the same manifest input.
+ */
+const findDuplicateKey = (json: string): string | undefined => {
+  const stack: (Set<string> | null)[] = []; // Set → keys seen in an object frame; null → array frame
+  let awaitingKey = false;
+  const n = json.length;
+  let i = 0;
+  while (i < n) {
+    const ch = json[i];
+    switch (ch) {
+      case '{':
+        stack.push(new Set());
+        awaitingKey = true;
+        i++;
+        break;
+      case '[':
+        stack.push(null);
+        awaitingKey = false;
+        i++;
+        break;
+      case '}':
+      case ']':
+        stack.pop();
+        awaitingKey = false;
+        i++;
+        break;
+      case ',':
+        awaitingKey = stack[stack.length - 1] instanceof Set;
+        i++;
+        break;
+      case ':':
+        awaitingKey = false;
+        i++;
+        break;
+      case '"': {
+        // Find the closing quote, honouring backslash escapes so a `\"` (or a `{`/`}`) inside a string
+        // value is never mistaken for structure.
+        const start = i++;
+        while (i < n && json[i] !== '"') {
+          if (json[i] === '\\') i++; // skip the escaped character
+          i++;
+        }
+        if (i >= n) return undefined; // unterminated string → let JSON.parse report it
+        i++; // consume the closing quote
+        const top = stack[stack.length - 1];
+        if (awaitingKey && top instanceof Set) {
+          let key: string;
+          try {
+            key = JSON.parse(json.slice(start, i)) as string; // decode escapes for a faithful compare
+          } catch {
+            return undefined;
+          }
+          if (top.has(key)) return key;
+          top.add(key);
+        }
+        awaitingKey = false;
+        break;
+      }
+      default:
+        i++;
+        break;
+    }
+  }
+  return undefined;
+};
+
+/**
  * Parses a `compactc` `contract-manifest.json`. Asserts `manifest-version === '1'`, flattens exactly
  * one directory level into `"<dir>/<fileName>"` keys (nested sub-directories are ignored), validates
- * each file entry, and throws {@link ZkArtifactIntegrityError} on any structural violation.
+ * each file entry, and throws {@link ZkArtifactIntegrityError} on any structural violation. A
+ * duplicate object key at any level also throws: `JSON.parse` would keep only the last occurrence,
+ * so an ambiguous manifest could certify an artifact its reviewer never saw.
  */
 export function parseZkArtifactManifest(rawJson: string): ZkArtifactManifest {
+  // Reject duplicate keys before decoding: by the time `JSON.parse` returns, the duplicates have
+  // already been merged and the honest entry a reviewer pinned has been silently replaced.
+  const duplicateKey = findDuplicateKey(rawJson);
+  if (duplicateKey !== undefined) {
+    throw new ZkArtifactIntegrityError(
+      `ZK artifact manifest contains a duplicate key "${duplicateKey}"; an ambiguous manifest cannot be trusted as an integrity check`
+    );
+  }
   let root: unknown;
   try {
     root = JSON.parse(rawJson);
@@ -125,6 +212,9 @@ export function parseZkArtifactManifest(rawJson: string): ZkArtifactManifest {
         continue; // ignore the `type` discriminator and nested sub-directories (depth > 1)
       }
       const key = `${dirName}/${childName}`;
+      // Unreachable while duplicate raw keys are rejected above (each directory name and each
+      // child name within it is unique in the parsed object); kept as a defensive check in case
+      // the flattening ever changes.
       if (files.has(key)) {
         throw new ZkArtifactIntegrityError(`Duplicate entry "${key}" in ZK artifact manifest`);
       }
