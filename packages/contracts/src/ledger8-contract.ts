@@ -739,7 +739,7 @@ export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
  * the contract and its address should not have to supply them again to call it.
  *
  * The maintenance interfaces the current era's `FoundContract` also carries are
- * NOT here: the retained era has no governance path at all, so there is nothing
+ * NOT here: the retained era has no governance API at all, so there is nothing
  * for them to reach.
  */
 export interface Ledger8FoundContract<C extends Ledger8Contract> {

@@ -518,7 +518,7 @@ It diverges from the current era in THREE cases, each deliberate.
 **1. Nothing is sampled.** Where `setOrGetInitialSigningKey` samples a fresh key
 when the store holds none, the retained-era path reports `undefined`. A key sampled at
 attach time bears no relation to the authority the chain already holds for a
-contract this caller did not deploy, and the retained era has no governance path
+contract this caller did not deploy, and the retained era has no governance API
 at all, so there is no maintenance interface on `Ledger8FoundContract` for such a
 key to be used through. Storing one would put a key on record that can maintain
 nothing and report it as though it could.

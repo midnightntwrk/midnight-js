@@ -334,9 +334,9 @@ describe('the era dispatch table: artifact era x network head era x operation ki
     //
     // The three enumerations are `Record<K, K>` maps, not `readonly K[]` arrays. An array only
     // asserts that each element IS a member and never that all members are listed, so a third
-    // ledger version compiled and left this gate claiming completeness
-    // over a cross product two thirds the real size. `breadcrumbs.test.ts` had the same weakness
-    // and records the same reason.
+    // ledger version would have compiled and left this gate claiming completeness over a cross
+    // product two thirds the real size. `breadcrumbs.test.ts` had the same weakness and records the
+    // same reason.
     const covered = [...ACCEPTED_CELLS.map(cellKey), ...REFUSED_CELLS.map(cellKey)];
     const pipelines = Object.values(ALL_PIPELINES);
     const heads = Object.values(ALL_HEADS);

@@ -101,7 +101,7 @@ reader to this ADR to learn why. `result.era` is now a `LedgerVersion`,
   two fields name different facts; they do not need different alphabets.
 - What the shared alphabet gives up: a value in the wrong field still type-checks.
   A caller comparing `result.era` where it meant `public.version` is no longer
-  stopped by the compiler, and inside the package `assertEraCompatible(artifact,
+  stopped by the compiler, and inside the package `assertEraCompatible(pipeline,
   head, kind)` no longer refuses its two era arguments passed the other way round.
   Both call sites pass the literal `'v8'` first, and tests of their behaviour on
   a post-fork head pin the order.

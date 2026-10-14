@@ -295,7 +295,8 @@ Issue #1489. The decision is unchanged; only names change.
   [ADR-0006](./0006-version-tagged-payloads-at-provider-seams.md):
   `assertSeamsSupportEra` is `assertProvidersSupportEra`, `TransactionSeams` is
   `TransactionProviders`, `SeamEraUnsupportedError` is
-  `ProviderEraUnsupportedError`, and `seam-era-declarations.md` is
+  `ProviderEraUnsupportedError` (code `MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED` is
+  `MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`), and `seam-era-declarations.md` is
   `provider-era-declarations.md`.
 
 The amendments above keep the names that were current when they were written.

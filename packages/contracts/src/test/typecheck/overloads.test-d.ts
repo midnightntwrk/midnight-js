@@ -888,7 +888,7 @@ describe('both eras answer with the SAME contract-handle structure', () => {
 
   /**
    * Members the current era's found contract carries and the retained era does
-   * NOT. The retained era has no governance path for a maintenance interface to
+   * NOT. The retained era has no governance API for a maintenance interface to
    * reach, so there is no value to carry rather than a value being dropped.
    */
   type CurrentEraOnlyFoundMembers = 'circuitMaintenanceTx' | 'contractMaintenanceTx';

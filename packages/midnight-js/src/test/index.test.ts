@@ -40,7 +40,7 @@ import * as utils from '../utils';
 // unintended re-export, off the barrel.
 //
 // Runtime names only -- a type-only export never appears in `Object.keys`, so
-// this list cannot gate one. The nine type-only exports are gated instead by
+// this list cannot gate one. The ten type-only exports are gated instead by
 // the `import type` above: dropping any of them from the barrel makes that
 // statement unresolvable, and `typecheck:tests:core` fails. The annotations
 // further down assert assignability on top of that.
