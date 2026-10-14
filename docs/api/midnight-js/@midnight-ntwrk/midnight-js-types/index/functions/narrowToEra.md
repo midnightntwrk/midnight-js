@@ -2,13 +2,13 @@
 
 ***
 
-[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [types](../README.md) / narrowToEraArm
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-types](../../README.md) / [index](../README.md) / narrowToEra
 
-# Variable: narrowToEraArm
+# Function: narrowToEra()
 
-> `const` **narrowToEraArm**: \<`T`, `H`\>(`payload`, `seam`, `retainedEras`) => [`EraArmRequest`](../type-aliases/EraArmRequest.md)\<`T`, `H`\>
+> **narrowToEra**\<`T`, `H`\>(`payload`, `seam`, `retainedEras`): [`EraRequest`](../type-aliases/EraRequest.md)\<`T`, `H`\>
 
-Narrows a version-tagged payload onto the arm that serves it, refusing an arm
+Narrows a version-tagged payload onto the era that serves it, refusing an era
 no handler was registered for.
 
 This is `unwrapV9` generalised to a provider that serves more than one era,
@@ -42,15 +42,15 @@ The provider method being implemented, used in error messages.
 
 ### retainedEras
 
-[`RetainedEraHandlers`](../type-aliases/RetainedEraHandlers.md)\<`H`\> \| `undefined`
+`Partial`\<`Readonly`\<`Record`\<`"v8"`, `H`\>\>\> \| `undefined`
 
-The retained arms this provider was built with.
+The retained handlers this provider was built with.
 
 ## Returns
 
-[`EraArmRequest`](../type-aliases/EraArmRequest.md)\<`T`, `H`\>
+[`EraRequest`](../type-aliases/EraRequest.md)\<`T`, `H`\>
 
-The arm to run, and the payload it takes.
+The era to run, the payload it takes, and for a retained era its handler.
 
 ## Throws
 

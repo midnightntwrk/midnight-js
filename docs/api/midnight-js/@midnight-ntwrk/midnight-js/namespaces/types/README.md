@@ -242,21 +242,21 @@ Re-exports [CurrentEraSubmitter](../../types/type-aliases/CurrentEraSubmitter.md
 
 ***
 
-### EraArmRequest
-
-Re-exports [EraArmRequest](../../types/type-aliases/EraArmRequest.md)
-
-***
-
-### EraArmShape
-
-Re-exports [EraArmShape](../../types/type-aliases/EraArmShape.md)
-
-***
-
 ### EraDeclaringProvider
 
 Re-exports [EraDeclaringProvider](../../types/interfaces/EraDeclaringProvider.md)
+
+***
+
+### EraEntryShape
+
+Re-exports [EraEntryShape](../../types/type-aliases/EraEntryShape.md)
+
+***
+
+### EraRequest
+
+Re-exports [EraRequest](../../types/type-aliases/EraRequest.md)
 
 ***
 
@@ -434,9 +434,9 @@ Re-exports [MidnightProviders](../../types/interfaces/MidnightProviders.md)
 
 ***
 
-### narrowToEraArm
+### narrowToEra
 
-Re-exports [narrowToEraArm](../../types/variables/narrowToEraArm.md)
+Re-exports [narrowToEra](../../types/variables/narrowToEra.md)
 
 ***
 
@@ -746,9 +746,9 @@ Re-exports [UntaggedPayloadError](../../types/classes/UntaggedPayloadError.md)
 
 ***
 
-### UnusableEraArmError
+### UnusableEraEntryError
 
-Re-exports [UnusableEraArmError](../../types/classes/UnusableEraArmError.md)
+Re-exports [UnusableEraEntryError](../../types/classes/UnusableEraEntryError.md)
 
 ***
 

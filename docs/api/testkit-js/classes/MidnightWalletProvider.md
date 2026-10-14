@@ -110,7 +110,7 @@ The balanced, signed transaction, version-tagged. Narrow on `version` — or cal
 
 #### Throws
 
-V8PayloadUnsupportedError if the implementation does not handle the v8 arm.
+V8PayloadUnsupportedError if the implementation does not handle v8 payloads.
 
 #### Throws
 
@@ -200,7 +200,7 @@ The transaction identifier of the submitted transaction. Not version-tagged — 
 
 #### Throws
 
-V8PayloadUnsupportedError if the implementation does not handle the v8 arm.
+V8PayloadUnsupportedError if the implementation does not handle v8 payloads.
 
 #### Throws
 

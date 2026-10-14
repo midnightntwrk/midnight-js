@@ -11,7 +11,7 @@
 Creates a [ProofProvider](../interfaces/ProofProvider.md) from a [ProvingProvider](https://github.com/midnightntwrk/midnight-ledger).
 The returned provider proves transactions using the initial cost model.
 
-The returned provider serves the v9 arm only — `supportedEras` says so — and
+The returned provider serves v9 payloads only — `supportedEras` says so — and
 that is permanent rather than a gap: it lifts a single current-era
 `ProvingProvider`. It rejects a v8 payload with `V8PayloadUnsupportedError`,
 and an untagged one with `UntaggedPayloadError`. It also rejects any

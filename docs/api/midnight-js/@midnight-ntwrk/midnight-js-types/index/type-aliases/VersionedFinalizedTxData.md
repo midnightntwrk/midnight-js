@@ -9,7 +9,7 @@
 > **VersionedFinalizedTxData** = [`FinalizedTxDataV8`](../interfaces/FinalizedTxDataV8.md) \| [`FinalizedTxData`](../interfaces/FinalizedTxData.md)
 
 A finalized transaction record, discriminated by which ledger runtime
-produced it. Both arms carry identical metadata; only `tx`'s type and the
+produced it. Both variants carry identical metadata; only `tx`'s type and the
 `version` discriminant differ.
 
 The providers in this framework resolve `version` from the record's own

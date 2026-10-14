@@ -33,7 +33,7 @@ A [ProofProvider](../interfaces/ProofProvider.md) routing each request to its er
 
 ## Throws
 
-UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
+UnusableEraEntryError if `currentEra`, or a `retainedEras` entry other
         than `undefined`, is not an object with callable `check` and `prove`.
         Raised at construction.
 
@@ -53,7 +53,7 @@ InvalidArgumentError raised by `proveTx`, before any proving starts,
 ## Throws
 
 V8PayloadUnsupportedError raised by `proveTx` if a payload arrives on
-        a retained arm no provider was registered for.
+        a retained era no provider was registered for.
 
 ## Throws
 
@@ -62,12 +62,12 @@ UntaggedPayloadError raised by `proveTx` if `version` is missing or
 
 ## Throws
 
-PayloadNotATransactionError raised by `proveTx` if a retained arm's
+PayloadNotATransactionError raised by `proveTx` if a retained payload's
         `txBytes` is not a serialized transaction.
 
 ## Throws
 
-Ledger8RuntimeMissingError raised by `proveTx` if a retained arm is
+Ledger8RuntimeMissingError raised by `proveTx` if a retained era is
         reached and that era's runtime cannot be loaded.
 
 `InvalidArgumentError`, `PayloadNotATransactionError` and

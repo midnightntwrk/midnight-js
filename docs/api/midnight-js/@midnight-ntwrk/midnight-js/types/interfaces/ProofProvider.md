@@ -62,21 +62,21 @@ The configuration for the proof request to the proof provider. Empty in case
 
 `Promise`\<[`VersionedUnboundTransaction`](../type-aliases/VersionedUnboundTransaction.md)\>
 
-The proven transaction, version-tagged, and always in the SAME arm the request
+The proven transaction, version-tagged, and always in the SAME era the request
          carried. Narrow on `version` — or call `unwrapV9` — before reading the payload.
 
 #### Throws
 
-V8PayloadUnsupportedError if the implementation does not handle the v8 arm. Which
+V8PayloadUnsupportedError if the implementation does not handle v8 payloads. Which
         implementations do is worth knowing before you send one: `httpClientProofProvider`
         and `dappConnectorProofProvider` both serve it, taking and returning serialized
         bytes. [createProofProvider](../variables/createProofProvider.md) does NOT — it adapts a v9-only `ProvingProvider`,
-        so it refuses the v8 arm on the way in, which is the honest answer for what it wraps.
+        so it refuses a v8 payload on the way in, which is the honest answer for what it wraps.
 
 #### Throws
 
-PayloadNotATransactionError if the v8 arm's `txBytes` is not a serialized transaction.
-        Raised by the providers that serve that arm and defined in
+PayloadNotATransactionError if a v8 payload's `txBytes` is not a serialized transaction.
+        Raised by the providers that serve v8 and defined in
         `@midnight-ntwrk/midnight-js-protocol/errors` (not a runtime dependency of this
         package, so it is named here rather than imported); match it with `hasErrorCode`
         against `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`.

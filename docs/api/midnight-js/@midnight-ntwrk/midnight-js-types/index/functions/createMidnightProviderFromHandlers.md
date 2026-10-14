@@ -8,7 +8,7 @@
 
 > **createMidnightProviderFromHandlers**(`handlers`): [`MidnightProvider`](../interfaces/MidnightProvider.md)
 
-Assembles a [MidnightProvider](../interfaces/MidnightProvider.md) from one arm per ledger era it serves.
+Assembles a [MidnightProvider](../interfaces/MidnightProvider.md) from one handler per ledger era it serves.
 
 The counterpart to `createProofProviderFromHandlers`, with the same guarantees:
 `supportedEras` is computed from the handlers supplied, and the tag never appears
@@ -29,11 +29,11 @@ The current-era handler, and one for each retained era served.
 
 [`MidnightProvider`](../interfaces/MidnightProvider.md)
 
-A [MidnightProvider](../interfaces/MidnightProvider.md) routing each submission to its era's arm.
+A [MidnightProvider](../interfaces/MidnightProvider.md) routing each submission to its era's handler.
 
 ## Throws
 
-UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
+UnusableEraEntryError if `currentEra`, or a `retainedEras` entry other
         than `undefined`, is not a function. Raised at construction.
 
 ## Throws

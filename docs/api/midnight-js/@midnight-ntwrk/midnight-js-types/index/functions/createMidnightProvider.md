@@ -14,7 +14,7 @@ Lifts a v9-only submission function into the version-tagged
 The counterpart to `createWalletProvider`, and worth using for the same
 reason: it keeps the `version` tag out of implementation code.
 
-The returned provider serves the v9 arm only — `supportedEras` says so — and
+The returned provider serves v9 payloads only — `supportedEras` says so — and
 that is permanent rather than a gap: it lifts a v9-only implementation. It
 rejects a v8 payload with `V8PayloadUnsupportedError` and an untagged one with
 `UntaggedPayloadError`. To serve a retained era as well, use

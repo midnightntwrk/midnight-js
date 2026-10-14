@@ -6,8 +6,8 @@
 
 # Interface: FinalizedTxDataV8
 
-The v8 arm of [VersionedFinalizedTxData](../type-aliases/VersionedFinalizedTxData.md). Carries the same
-finalized-transaction metadata as [FinalizedTxData](FinalizedTxData.md) — both arms extend
+The v8 variant of [VersionedFinalizedTxData](../type-aliases/VersionedFinalizedTxData.md). Carries the same
+finalized-transaction metadata as [FinalizedTxData](FinalizedTxData.md) — both variants extend
 [FinalizedTxRecord](FinalizedTxRecord.md) — with a v8 ledger transaction object in place of
 the v9 one.
 
@@ -15,7 +15,7 @@ the v9 one.
 that builds it, so this shape is only produced for a record that resolves to
 the v8 ledger runtime.
 
-A provider that decodes per era produces this arm for any record whose
+A provider that decodes per era produces this variant for any record whose
 `protocolVersion` places it in the v8 era. A consumer that narrows on
 `version` therefore has to handle it: it is a value the read surface really
 returns, not a placeholder. Contract-STATE reads are a separate question and

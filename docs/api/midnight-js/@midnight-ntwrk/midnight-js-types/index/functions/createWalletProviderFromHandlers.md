@@ -8,7 +8,7 @@
 
 > **createWalletProviderFromHandlers**(`handlers`): [`WalletProvider`](../interfaces/WalletProvider.md)
 
-Assembles a [WalletProvider](../interfaces/WalletProvider.md) from one arm per ledger era it serves.
+Assembles a [WalletProvider](../interfaces/WalletProvider.md) from one handler per ledger era it serves.
 
 The counterpart to `createProofProviderFromHandlers`, with the same guarantees:
 `supportedEras` is computed from the handlers supplied, the tag never appears in
@@ -30,11 +30,11 @@ The current-era handler, any retained-era handlers, and the two key readers.
 
 [`WalletProvider`](../interfaces/WalletProvider.md)
 
-A [WalletProvider](../interfaces/WalletProvider.md) routing each request to its era's arm.
+A [WalletProvider](../interfaces/WalletProvider.md) routing each request to its era's handler.
 
 ## Throws
 
-UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
+UnusableEraEntryError if `currentEra`, or a `retainedEras` entry other
         than `undefined`, is not a function. Raised at construction.
 
 ## Throws
