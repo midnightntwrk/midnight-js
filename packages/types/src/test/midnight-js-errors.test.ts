@@ -34,6 +34,7 @@ import {
   SeamEraUnsupportedError,
   SigningKeyExportError,
   UntaggedPayloadError,
+  UnusableEraArmError,
   V8PayloadUnsupportedError,
   ZkArtifactFetchError
 } from '../errors';
@@ -50,6 +51,7 @@ describe('types error classes', () => {
     ['V8PayloadUnsupportedError', new V8PayloadUnsupportedError('proveTx', 3)],
     ['UntaggedPayloadError', new UntaggedPayloadError('proveTx', undefined)],
     ['SeamEraUnsupportedError', new SeamEraUnsupportedError('proveTx', 'v8', ['v9'])],
+    ['UnusableEraArmError', new UnusableEraArmError('proveTx', 'v8', 'handler', 'null')],
     ['InvalidProtocolSchemeError', new InvalidProtocolSchemeError('ftp', ['http', 'https'])],
     ['ArtifactRuntimeVersionUnavailableError', new ArtifactRuntimeVersionUnavailableError('provider')],
     ['PrivateStateExportError', new PrivateStateExportError('msg')],
@@ -80,6 +82,29 @@ describe('types error classes', () => {
     const category = Object.entries(PROVIDER_ERROR_CATEGORIES).find(([code]) => code === error.code)?.[1];
 
     expect(error.category).toBe(category);
+  });
+
+  it.each([
+    [
+      'a retained era arm',
+      new UnusableEraArmError('balanceTx', 'v8', 'handler', 'null'),
+      "Cannot use the v8 arm registered for balanceTx: expected a function, got null. " +
+        'Pass a function for v8, or leave the entry out (or set it to undefined) if this era is not served.'
+    ],
+    [
+      'a retained era proving provider',
+      new UnusableEraArmError('proveTx', 'v8', 'proving-provider', 'a function'),
+      "Cannot use the v8 arm registered for proveTx: expected a ProvingProvider with callable 'check' and 'prove', got a function. " +
+        "Pass a ProvingProvider with callable 'check' and 'prove' for v8, or leave the entry out (or set it to undefined) if this era is not served."
+    ],
+    [
+      'the current era arm',
+      new UnusableEraArmError('submitTx', 'v9', 'handler', 'undefined'),
+      'Cannot use the v9 arm registered for submitTx: expected a function, got undefined. ' +
+        'Pass a function for v9: every provider serves the current era.'
+    ]
+  ] as const)('UnusableEraArmError names its class and the remedy for %s', (_case, error, message) => {
+    expect([error.name, error.message]).toEqual(['UnusableEraArmError', message]);
   });
 
   it('category table covers every provider code exactly', () => {

@@ -18,6 +18,7 @@ import {
   MidnightJsError,
   type MidnightJsErrorCategory
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**
  * The provider methods that carry a version-tagged transaction payload.
@@ -94,7 +95,8 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   INDEXER_SUBSCRIPTION_DATA_INVALID: 'MIDNIGHT_JS_PR_INDEXER_SUBSCRIPTION_DATA_INVALID',
   INDEXER_CONFIG_INVALID: 'MIDNIGHT_JS_PR_INDEXER_CONFIG_INVALID',
   INDEXER_INVARIANT_VIOLATED: 'MIDNIGHT_JS_PR_INDEXER_INVARIANT_VIOLATED',
-  INDEXER_PAYLOAD_TOO_LARGE: 'MIDNIGHT_JS_PR_INDEXER_PAYLOAD_TOO_LARGE'
+  INDEXER_PAYLOAD_TOO_LARGE: 'MIDNIGHT_JS_PR_INDEXER_PAYLOAD_TOO_LARGE',
+  UNUSABLE_ERA_ARM: 'MIDNIGHT_JS_PR_UNUSABLE_ERA_ARM'
 } as const);
 /** The union of every value in {@link PROVIDER_ERROR_CODES}. */
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
@@ -131,7 +133,8 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
   [PROVIDER_ERROR_CODES.INDEXER_SUBSCRIPTION_DATA_INVALID]: INTEGRITY,
   [PROVIDER_ERROR_CODES.INDEXER_CONFIG_INVALID]: USAGE,
   [PROVIDER_ERROR_CODES.INDEXER_INVARIANT_VIOLATED]: INTERNAL,
-  [PROVIDER_ERROR_CODES.INDEXER_PAYLOAD_TOO_LARGE]: INTEGRITY
+  [PROVIDER_ERROR_CODES.INDEXER_PAYLOAD_TOO_LARGE]: INTEGRITY,
+  [PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM]: USAGE
 });
 
 const {
@@ -153,7 +156,8 @@ const {
   ZK_ARTIFACT_FETCH_FAILED,
   ZK_ARTIFACT_NOT_SERVED,
   PROOF_SERVER_UNAVAILABLE,
-  PROOF_SERVER_REFUSED
+  PROOF_SERVER_REFUSED,
+  UNUSABLE_ERA_ARM
 } = PROVIDER_ERROR_CODES;
 
 /**
@@ -323,6 +327,61 @@ export class SeamEraUnsupportedError extends MidnightJsError {
         `whole set serves.`
     );
     this.name = 'SeamEraUnsupportedError';
+  }
+}
+
+/**
+ * The shape a provider factory needs for each era arm: a `handler` function
+ * for the `…FromHandlers` factories, a `proving-provider` with callable
+ * `check` and `prove` for `createProofProviderForEras`.
+ */
+export type EraArmShape = 'handler' | 'proving-provider';
+
+const ERA_ARM_SHAPE_DESCRIPTIONS: Readonly<Record<EraArmShape, string>> = {
+  handler: 'a function',
+  'proving-provider': "a ProvingProvider with callable 'check' and 'prove'"
+};
+
+/**
+ * Thrown by a provider factory given an era arm it cannot use: a current-era
+ * arm that is not the {@link EraArmShape} the factory needs, or a retained-era
+ * entry that is neither `undefined` nor that shape. Raised at construction, so
+ * `supportedEras` never claims an era no arm can serve.
+ *
+ * The types rule these arms out, so it is reachable only from JavaScript or
+ * across an untyped boundary. The factory checks shape only: an arm built for
+ * the wrong era, such as a `ProvingProvider` with the other era's key
+ * material, still passes.
+ *
+ * Catch it via its stable `code`, using `hasErrorCode` from
+ * `@midnight-ntwrk/midnight-js-utils`.
+ */
+export class UnusableEraArmError extends MidnightJsError {
+  readonly code = UNUSABLE_ERA_ARM;
+  readonly category = PROVIDER_ERROR_CATEGORIES[UNUSABLE_ERA_ARM];
+
+  /**
+   * @param seam The provider method the rejected arm would have served.
+   * @param era The ledger era whose arm was rejected.
+   * @param expected The shape the factory needs for that arm.
+   * @param received What was passed instead, for the message only: for example
+   *                 `'null'`, `'a class'`, `'an instance of Map'`, or
+   *                 `"an object without callable 'prove'"`.
+   */
+  constructor(
+    readonly seam: ProviderSeam,
+    readonly era: LedgerVersion,
+    readonly expected: EraArmShape,
+    readonly received: string
+  ) {
+    const shape = ERA_ARM_SHAPE_DESCRIPTIONS[expected];
+    super(
+      `Cannot use the ${era} arm registered for ${seam}: expected ${shape}, got ${received}. ` +
+        (era === CURRENT_LEDGER_VERSION
+          ? `Pass ${shape} for ${era}: every provider serves the current era.`
+          : `Pass ${shape} for ${era}, or leave the entry out (or set it to undefined) if this era is not served.`)
+    );
+    this.name = 'UnusableEraArmError';
   }
 }
 
