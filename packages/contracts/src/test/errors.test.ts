@@ -42,7 +42,7 @@ import {
 } from '../errors';
 import { createMockFinalizedTxData } from './test-mocks';
 
-// The v8 variant of the record union. Its `tx` is a live `Ledger8Transaction` handle
+// The v8 variant of the record union. Its `tx` is a live `Ledger8FinalizedTransaction` handle
 // from the retained ledger module, which no unit test can construct and none
 // of these read -- every assertion here is about the tag and the members
 // around it. One cast, in one place, rather than one per call site.

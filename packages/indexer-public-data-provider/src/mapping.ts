@@ -19,7 +19,7 @@ import type { FinalizedTxRecord, ReadMethod, VersionedFinalizedTxData } from '@m
 
 import {
   correlateDeployTxId,
-  decodeVersionedTransaction,
+  decodeRecordTransaction,
   toSegmentStatusMap,
   toTxStatus,
   toUnshieldedUtxos
@@ -117,7 +117,7 @@ const toVersionedFinalizedTxData = async (
   method: ReadMethod,
   recordRef: string
 ): Promise<VersionedFinalizedTxData> => {
-  const decoded = await decodeVersionedTransaction(transaction.raw, era, {
+  const decoded = await decodeRecordTransaction(transaction.raw, era, {
     method,
     protocolVersion: transaction.protocolVersion,
     recordRef

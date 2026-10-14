@@ -114,7 +114,7 @@ export type IndexerDataErrorContext =
   | { kind: 'unsupported-decode-era'; version: LedgerVersion }
   | { kind: 'malformed-parameters-encoding' }
   | { kind: 'unsupported-parameters-era'; version: LedgerVersion }
-  | { kind: 'unresolvable-era'; protocolVersion: number };
+  | { kind: 'unknown-record-era'; protocolVersion: number };
 
 /**
  * An error raised when indexer-returned data is structurally inconsistent
@@ -216,7 +216,7 @@ export class IndexerDataError extends IndexerError {
    *              that refused the integer is still readable.
    */
   static unresolvableEra(protocolVersion: number, cause: unknown): IndexerDataError {
-    return new IndexerDataError({ kind: 'unresolvable-era', protocolVersion }, { cause });
+    return new IndexerDataError({ kind: 'unknown-record-era', protocolVersion }, { cause });
   }
 
   private static formatMessage(context: IndexerDataErrorContext): string {
@@ -257,7 +257,7 @@ export class IndexerDataError extends IndexerError {
         return `Contract event ${context.typename} is missing required field '${context.field}'`;
       case 'unknown-address-kind':
         return `Contract event ${context.typename} field '${context.field}' has unknown address kind '${context.value}'`;
-      case 'unresolvable-era':
+      case 'unknown-record-era':
         return (
           `The indexer reported protocolVersion ${context.protocolVersion} for a contract state, and this build ` +
           'cannot place that value on the ledger-era timeline. The raw contract-state reads tag every record with ' +

@@ -70,7 +70,7 @@ const cases: readonly Case[] = [
   ['IncompleteCallTxPrivateStateConfig', new errors.IncompleteCallTxPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG, 'USAGE'],
   ['IncompleteDeployContractPrivateStateConfig', new errors.IncompleteDeployContractPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG, 'USAGE'],
   ['IncompleteFindContractPrivateStateConfig', new errors.IncompleteFindContractPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_FIND_PRIVATE_STATE_CONFIG, 'USAGE'],
-  ['ScopedTransactionIdentityMismatchError', new errors.ScopedTransactionIdentityMismatchError({ contractAddress: ADDRESS }, { contractAddress: ADDRESS }), CONTRACTS_ERROR_CODES.SCOPED_TX_IDENTITY_MISMATCH, 'USAGE'],
+  ['ScopedTransactionIdentityMismatchError', new errors.ScopedTransactionIdentityMismatchError({ contractAddress: ADDRESS }, { contractAddress: ADDRESS }), CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_IDENTITY_MISMATCH, 'USAGE'],
   ['BlankVerifierKeySlotError', new errors.BlankVerifierKeySlotError('increment'), CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT, 'INTEGRITY'],
   ['VerifierKeyMismatchError', new errors.VerifierKeyMismatchError('increment'), CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH, 'INTEGRITY'],
   ['Ledger8DeployUnconfirmedError', new errors.Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_UNCONFIRMED, 'UNCERTAIN'],
@@ -136,6 +136,11 @@ describe('contracts error classes', () => {
       'ScopedTransactionEraUnsupportedError',
       new errors.ScopedTransactionEraUnsupportedError('v8'),
       'MIDNIGHT_JS_C_SCOPED_TRANSACTION_ERA_UNSUPPORTED'
+    ],
+    [
+      'ScopedTransactionIdentityMismatchError',
+      new errors.ScopedTransactionIdentityMismatchError({ contractAddress: ADDRESS }, { contractAddress: ADDRESS }),
+      'MIDNIGHT_JS_C_SCOPED_TRANSACTION_IDENTITY_MISMATCH'
     ]
   ] as const)('%s carries its name and code', (name, error, code) => {
     expect([error.name, error.code]).toEqual([name, code]);

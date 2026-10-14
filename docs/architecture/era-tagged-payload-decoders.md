@@ -73,7 +73,7 @@ grep -rnE '\.deserialize[<(]|deserialize(Ledger|Compact|Zswap)' --include='*.ts'
 
 - `packages/indexer-public-data-provider/src/codec.ts` — `parseHexContractState` dates the envelope
   before decoding and refuses an era it cannot read; `parseHexLedgerParameters` now does the same;
-  `decodeVersionedTransaction` dispatches per record to a table with one entry per era.
+  `decodeRecordTransaction` dispatches per record to a table with one entry per era.
 - `packages/protocol/src/lib/era/envelope.ts` — both eras are named explicitly.
 
 ### Decoders that are correct because the code path owns the era

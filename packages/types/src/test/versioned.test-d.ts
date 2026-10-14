@@ -21,7 +21,7 @@ import type {
   TransactionHash,
   TransactionId
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { FinalizedTransaction as Ledger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { FinalizedTransaction as Ledger8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { BlockHash, Fees, FinalizedTxData, SegmentStatus, TxStatus, UnshieldedUtxos } from '../midnight-types';
@@ -63,7 +63,7 @@ type Ledger9FinalizedTxDataFixture = {
 // the discriminant check.
 type Ledger8FinalizedTxDataFixture = {
   readonly version: 'v8';
-  readonly tx: Ledger8Transaction;
+  readonly tx: Ledger8FinalizedTransaction;
   readonly status: TxStatus;
   readonly txId: TransactionId;
   readonly identifiers: readonly TransactionId[];

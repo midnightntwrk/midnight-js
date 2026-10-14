@@ -65,7 +65,8 @@ describe('isLedger8Result', () => {
       'A result carried an era tag naming neither pipeline (got: "v7"). ' +
         "Results are tagged 'v9' or 'v8' by the pipeline that built them. A tag lost in transit -- through a queue, " +
         'a JSON boundary, a structured clone -- cannot be recovered here: narrow the result before it crosses that ' +
-        'boundary, or carry the era beside it.'
+        "boundary, or carry the era beside it. A result stored under a 5.0.0 pre-release carries 'ledger9' or " +
+        "'ledger8': map those to 'v9' and 'v8'."
     );
   });
 

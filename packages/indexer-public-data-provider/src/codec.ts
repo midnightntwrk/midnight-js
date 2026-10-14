@@ -88,7 +88,7 @@ type ReadDetails = Readonly<Record<string, string | number>>;
 /**
  * The only ledger era {@link parseHexContractState} and {@link parseHexLedgerParameters} can read.
  *
- * Deliberately narrower than {@link decodeVersionedTransaction}, which dispatches per record across
+ * Deliberately narrower than {@link decodeRecordTransaction}, which dispatches per record across
  * both eras. `queryRawContractState` serves both era-tagged payloads undecoded for a caller that
  * needs the other runtime: the contract state, dated by the block that only upper-bounds its
  * envelope (see {@link parseHexContractState}), and the block's own ledger parameters, whose era the
@@ -176,11 +176,11 @@ const parseLedger8HexTransaction = async (s: string, details?: ReadDetails): Pro
  */
 type DistributivePick<T, K extends keyof T> = T extends unknown ? Pick<T, K> : never;
 
-export type DecodedVersionedTransaction = DistributivePick<VersionedFinalizedTxData, 'version' | 'tx'>;
+export type DecodedRecordTransaction = DistributivePick<VersionedFinalizedTxData, 'version' | 'tx'>;
 
 /**
  * One decoder per {@link LedgerVersion}, each returning only its own variant of
- * {@link DecodedVersionedTransaction}.
+ * {@link DecodedRecordTransaction}.
  *
  * A total `Record` on a null prototype, frozen — see
  * `packages/protocol/docs/shared-table-discipline.md`. The era set is gated by
@@ -192,7 +192,7 @@ type TransactionDecoders = {
   readonly [V in LedgerVersion]: (
     hexTransaction: string,
     details: ReadDetails
-  ) => Promise<Extract<DecodedVersionedTransaction, { version: V }>>;
+  ) => Promise<Extract<DecodedRecordTransaction, { version: V }>>;
 };
 
 const transactionDecoders = {
@@ -249,11 +249,11 @@ export interface TransactionDecodeContext {
  *   `IndexerError` — see {@link IndexerError}.
  * @throws DeserializationError for every decode failure.
  */
-export const decodeVersionedTransaction = async (
+export const decodeRecordTransaction = async (
   hexTransaction: string,
   era: LedgerVersion,
   context: TransactionDecodeContext
-): Promise<DecodedVersionedTransaction> => {
+): Promise<DecodedRecordTransaction> => {
   if (!isHex(hexTransaction)) {
     throw IndexerDataError.malformedTransactionEncoding();
   }

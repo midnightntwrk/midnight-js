@@ -61,7 +61,16 @@ describe('MIDNIGHT_JS_ERROR_CODES', () => {
   });
 
   it('names eras LEDGER8 / LEDGER9 and never says SEAM or ARM', () => {
-    expect(MIDNIGHT_JS_ERROR_CODES.filter((code) => /SEAM|(^|_)ARMS?(_|$)|(^|_)V[89](_|$)/.test(code))).toEqual([]);
+    expect(MIDNIGHT_JS_ERROR_CODES.filter((code) => /SEAM|(^|_)ARMS?(_|$)|V[89]/.test(code))).toEqual([]);
+  });
+
+  it('keys every code by its own name, so the key a consumer types says what the code says', () => {
+    const groups = [COMMON_ERROR_CODES, PROTOCOL_ERROR_CODES, PROVIDER_ERROR_CODES, CONTRACTS_ERROR_CODES, UTILS_ERROR_CODES];
+    const mismatched = groups.flatMap((group) =>
+      Object.entries(group).filter(([key, code]) => !code.endsWith(`_${key}`))
+    );
+
+    expect(mismatched).toEqual([]);
   });
 });
 

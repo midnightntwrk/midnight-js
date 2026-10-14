@@ -147,6 +147,18 @@ describe('types error classes', () => {
     expect(error.message).toEqual(message);
   });
 
+  it.each(['watchForTxData', 'watchForDeployTxData'] as const)(
+    'reports an untagged value from %s as a record, whose v8 variant carries tx',
+    (method) => {
+      const { message } = new UntaggedPayloadError(method, {});
+
+      expect([message.startsWith(`${method}: a finalized transaction record`), message.includes('txBytes')]).toEqual([
+        true,
+        false
+      ]);
+    }
+  );
+
   it.each([
     ['Ledger8PayloadUnsupportedError', new Ledger8PayloadUnsupportedError('balanceTx', 3), 'balanceTx'],
     ['UntaggedPayloadError', new UntaggedPayloadError('watchForTxData', undefined), 'watchForTxData'],

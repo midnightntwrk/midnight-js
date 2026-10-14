@@ -144,7 +144,7 @@ export type VersionedFinalizedTransaction = VersionedTransaction<FinalizedTransa
 
 // Read surface. A *different* union — its v8 variant carries `tx`, not `txBytes`.
 export interface FinalizedTxRecord { /* the 13 era-independent metadata fields */ }
-export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly version: 'v8'; readonly tx: Ledger8Transaction; }
+export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly version: 'v8'; readonly tx: Ledger8FinalizedTransaction; }
 export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
 
 // Narrowing. Accepts the three transaction methods only — not the read surface.

@@ -214,7 +214,7 @@ describe('rawContractStateObservable — latest', () => {
     expect(rejection).toBeInstanceOf(IndexerError);
     expect(rejection).toBeInstanceOf(IndexerDataError);
     expect((rejection as IndexerDataError).context).toEqual({
-      kind: 'unresolvable-era',
+      kind: 'unknown-record-era',
       protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION
     });
     // The protocol-level failure is preserved rather than discarded.

@@ -26,7 +26,7 @@ import { DeserializationError, hasErrorCode, PROVIDER_ERROR_CODES, toHex } from 
 import * as Rx from 'rxjs';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { decodeVersionedTransaction } from '../codec';
+import { decodeRecordTransaction } from '../codec';
 import { DecoderEraUnsupportedError, IndexerDataError, IndexerError,UnknownRecordEraError } from '../errors';
 import type { RegularTransaction } from '../gen/schema-types';
 import { toFinalizedDeployTxData, toFinalizedTxData } from '../mapping';
@@ -562,7 +562,7 @@ describe('an era that resolves to no decoder at all', () => {
   // Without the guard the era-keyed lookup on a null prototype would answer
   // `undefined` and the read would fail somewhere further down instead of here.
   const decodeWithEra = (era: string, method: ReadMethod = 'watchForTxData', recordRef = `txId ${TX_ID}`): Promise<unknown> =>
-    decodeVersionedTransaction(ledger9TransactionHex, era as LedgerVersion, {
+    decodeRecordTransaction(ledger9TransactionHex, era as LedgerVersion, {
       method,
       protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION,
       recordRef

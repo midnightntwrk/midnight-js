@@ -237,10 +237,16 @@ const describeVersion = (payload: unknown): string => {
     : `'${version}'`;
 };
 
-const READ_METHODS: ReadonlySet<ProviderMethod> = new Set<ReadMethod>(['watchForTxData', 'watchForDeployTxData']);
+const UNTAGGED_SUBJECT = {
+  proveTx: 'payload',
+  balanceTx: 'payload',
+  submitTx: 'payload',
+  watchForTxData: 'record',
+  watchForDeployTxData: 'record'
+} as const satisfies Record<ProviderMethod, 'payload' | 'record'>;
 
 const describeUntagged = (method: ProviderMethod, received: string): string =>
-  READ_METHODS.has(method)
+  UNTAGGED_SUBJECT[method] === 'record'
     ? `${method}: a finalized transaction record has no recognised 'version' discriminant (got: ${received}). ` +
       `Records returned from read methods are version-tagged: { version: 'v9', tx } carries a v9 ledger ` +
       `transaction, and { version: 'v8', tx } a v8 one.`

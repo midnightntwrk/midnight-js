@@ -29,13 +29,13 @@ import { toFinalizedDeployTxData, toFinalizedTxData } from '../mapping';
 // Declared via `vi.hoisted` because `vi.mock`'s factory is hoisted above the
 // imports, so a plain `const` here would be in the temporal dead zone when the
 // factory runs.
-const { decodeVersionedTransaction } = vi.hoisted(() => ({
-  decodeVersionedTransaction: vi.fn(() => Promise.resolve({ version: 'v9', tx: 'decoded-tx' }))
+const { decodeRecordTransaction } = vi.hoisted(() => ({
+  decodeRecordTransaction: vi.fn(() => Promise.resolve({ version: 'v9', tx: 'decoded-tx' }))
 }));
 
 vi.mock('../codec', async (importOriginal) => ({
   ...(await importOriginal<typeof codec>()),
-  decodeVersionedTransaction
+  decodeRecordTransaction
 }));
 
 // Node major 2 -> the v9 ledger era; node major 1 -> v8; 22_xxx is a 0.x
@@ -67,7 +67,7 @@ const transactionAt = (protocolVersion: number): RegularTransaction & { hash: st
   }) as unknown as RegularTransaction & { hash: string; identifiers: string[] };
 
 beforeEach(() => {
-  decodeVersionedTransaction.mockClear();
+  decodeRecordTransaction.mockClear();
 });
 
 // `resolveReadEra` is tested in isolation in era.test.ts, and the decoders in
@@ -83,8 +83,8 @@ describe('finalized-record era wiring', () => {
   ])('dispatches the decode on the %s era the record itself reports', async (era, protocolVersion) => {
     await toFinalizedTxData(TX_ID, transactionAt(protocolVersion));
 
-    expect(decodeVersionedTransaction).toHaveBeenCalledTimes(1);
-    expect(decodeVersionedTransaction).toHaveBeenCalledWith(RAW, era, {
+    expect(decodeRecordTransaction).toHaveBeenCalledTimes(1);
+    expect(decodeRecordTransaction).toHaveBeenCalledWith(RAW, era, {
       method: 'watchForTxData',
       protocolVersion,
       recordRef: `txId ${TX_ID}`
@@ -94,7 +94,7 @@ describe('finalized-record era wiring', () => {
   it('names the deploy method and the contract address on the deploy path', async () => {
     await toFinalizedDeployTxData(CONTRACT_ADDRESS, transactionAt(LEDGER8_PROTOCOL_VERSION));
 
-    expect(decodeVersionedTransaction).toHaveBeenCalledWith(RAW, 'v8', {
+    expect(decodeRecordTransaction).toHaveBeenCalledWith(RAW, 'v8', {
       method: 'watchForDeployTxData',
       protocolVersion: LEDGER8_PROTOCOL_VERSION,
       recordRef: `contractAddress ${CONTRACT_ADDRESS}`
@@ -121,6 +121,6 @@ describe('finalized-record era wiring', () => {
   ])('refuses an unmapped protocolVersion on %s before any decoder runs', async (_method, read) => {
     await expect(read()).rejects.toThrow(UnknownRecordEraError);
 
-    expect(decodeVersionedTransaction).not.toHaveBeenCalled();
+    expect(decodeRecordTransaction).not.toHaveBeenCalled();
   });
 });

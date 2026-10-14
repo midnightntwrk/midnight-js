@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { FinalizedTransaction as Ledger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { FinalizedTransaction as Ledger8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import type { FinalizedTxData, FinalizedTxRecord } from './midnight-types';
@@ -97,7 +97,7 @@ export type VersionedTransaction<T> = Ledger8TransactionBytes | Ledger9Transacti
  */
 export interface Ledger8FinalizedTxData extends FinalizedTxRecord {
   readonly version: 'v8';
-  readonly tx: Ledger8Transaction;
+  readonly tx: Ledger8FinalizedTransaction;
 }
 
 /**

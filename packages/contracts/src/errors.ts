@@ -763,7 +763,9 @@ export const isEffectContractError = (error: unknown): error is EffectContractEr
  * tag is a guess, and the caller would then read the result through the wrong
  * era's shape. Every result this framework builds carries one of the two
  * literals; a value that does not has been round-tripped through something
- * that dropped it -- a queue, a JSON boundary, a structured clone.
+ * that dropped it -- a queue, a JSON boundary, a structured clone -- or was
+ * stored under a 5.0.0 pre-release, which tagged results `'ledger9'` /
+ * `'ledger8'`.
  */
 export class UnknownResultEraError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA;
@@ -777,7 +779,8 @@ export class UnknownResultEraError extends MidnightJsError {
       `A result carried an era tag naming neither pipeline (got: ${JSON.stringify(received) ?? 'undefined'}). ` +
         `Results are tagged '${CURRENT_LEDGER_VERSION}' or 'v8' by the pipeline that built ` +
         `them. A tag lost in transit -- through a queue, a JSON boundary, a structured clone -- cannot be ` +
-        `recovered here: narrow the result before it crosses that boundary, or carry the era beside it.`
+        `recovered here: narrow the result before it crosses that boundary, or carry the era beside it. ` +
+        `A result stored under a 5.0.0 pre-release carries 'ledger9' or 'ledger8': map those to 'v9' and 'v8'.`
     );
     this.name = 'UnknownResultEraError';
   }
@@ -1129,8 +1132,8 @@ export class IncompleteFindContractPrivateStateConfig extends MidnightJsError {
  * This prevents silent state mismatches when batching calls to different contracts.
  */
 export class ScopedTransactionIdentityMismatchError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TX_IDENTITY_MISMATCH;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TX_IDENTITY_MISMATCH];
+  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_IDENTITY_MISMATCH;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_IDENTITY_MISMATCH];
 
   constructor(
     readonly cached: { contractAddress: string; privateStateId?: PrivateStateId },

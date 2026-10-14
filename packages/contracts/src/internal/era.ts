@@ -24,9 +24,10 @@ import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/ver
 import {
   ArtifactRuntimeVersionUnavailableError,
   type FinalizedTxData,
-  type ProviderMethod,
   type PublicDataProvider,
   type RawContractState,
+  type ReadMethod,
+  type TransactionMethod,
   UntaggedPayloadError,
   type VersionedFinalizedTxData,
   type VersionedTransaction,
@@ -61,7 +62,7 @@ import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcr
  */
 export function requireLedger9<T>(
   payload: VersionedTransaction<T>,
-  method: ProviderMethod,
+  method: TransactionMethod,
   circuitId?: string | readonly string[]
 ): T {
   if (typeof payload !== 'object' || payload === null) {
@@ -107,7 +108,7 @@ export function requireLedger9<T>(
  */
 export function requireLedger8<T>(
   payload: VersionedTransaction<T>,
-  method: ProviderMethod,
+  method: TransactionMethod,
   circuitId?: string | readonly string[]
 ): Uint8Array {
   if (typeof payload !== 'object' || payload === null) {
@@ -143,7 +144,7 @@ export function requireLedger8<T>(
  * @returns The record, tagged with a recognised era.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
  */
-export function requireTaggedRecord(record: VersionedFinalizedTxData, method: ProviderMethod): VersionedFinalizedTxData {
+export function requireTaggedRecord(record: VersionedFinalizedTxData, method: ReadMethod): VersionedFinalizedTxData {
   if (typeof record !== 'object' || record === null) {
     throw new UntaggedPayloadError(method, record);
   }
@@ -173,7 +174,7 @@ export function requireTaggedRecord(record: VersionedFinalizedTxData, method: Pr
  */
 export function requireLedger9Record(
   record: VersionedFinalizedTxData,
-  method: ProviderMethod,
+  method: ReadMethod,
   circuitId?: string | readonly string[]
 ): FinalizedTxData {
   if (typeof record !== 'object' || record === null) {
