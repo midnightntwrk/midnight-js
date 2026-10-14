@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   CostModel,
   type PreBinding,
@@ -32,6 +33,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
+import { describeArgument, isObject, readEraArms } from './internal/read-era-arms';
 import type { VersionedTx } from './versioned';
 
 export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
@@ -146,9 +148,16 @@ export interface ProofProviderHandlers {
  * The `supportedEras` declaration is computed from the handlers supplied, so it
  * cannot disagree with what the provider actually does.
  *
+ * `currentEra` is called with `handlers` as `this`; a retained-era handler is
+ * called with no `this`.
+ *
  * @param handlers The current-era handler, and one for each retained era served.
  * @returns A {@link ProofProvider} routing each request to its era's arm and
  *          answering in the era the request arrived in.
+ * @throws UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
+ *         than `undefined`, is not a function. Raised at construction.
+ * @throws InvalidArgumentError if `handlers` is not an object, or `retainedEras`
+ *         is not a plain object keyed only by retained eras. Raised at construction.
  *
  * @example
  * ```typescript
@@ -159,23 +168,26 @@ export interface ProofProviderHandlers {
  * // proofProvider.supportedEras === ['v9', 'v8']
  * ```
  */
-export const createProofProviderFromHandlers = (handlers: ProofProviderHandlers): ProofProvider => ({
-  supportedEras: erasServedBy(handlers.retainedEras),
+export const createProofProviderFromHandlers = (handlers: ProofProviderHandlers): ProofProvider => {
+  const { currentEra, retainedEras } = readEraArms('proveTx', handlers, 'handler');
+  return {
+    supportedEras: erasServedBy(retainedEras),
 
-  async proveTx(
-    unprovenTx: VersionedUnprovenTransaction,
-    proveTxConfig?: ProveTxConfig
-  ): Promise<VersionedUnboundTransaction> {
-    const request = narrowToEraArm(unprovenTx, 'proveTx', handlers.retainedEras);
-    if (request.era === CURRENT_LEDGER_VERSION) {
-      return { version: CURRENT_LEDGER_VERSION, tx: await handlers.currentEra(request.tx, proveTxConfig) };
+    async proveTx(
+      unprovenTx: VersionedUnprovenTransaction,
+      proveTxConfig?: ProveTxConfig
+    ): Promise<VersionedUnboundTransaction> {
+      const request = narrowToEraArm(unprovenTx, 'proveTx', retainedEras);
+      if (request.era === CURRENT_LEDGER_VERSION) {
+        return { version: CURRENT_LEDGER_VERSION, tx: await Reflect.apply(currentEra, handlers, [request.tx, proveTxConfig]) };
+      }
+      // Answered in the arm it arrived in: a caller narrows the response and
+      // rejects the other era, so replying in the wrong one strands a submit
+      // mid-flight.
+      return { version: request.era, txBytes: await Reflect.apply(request.handler, undefined, [request.txBytes, proveTxConfig]) };
     }
-    // Answered in the arm it arrived in: a caller narrows the response and
-    // rejects the other era, so replying in the wrong one strands a submit
-    // mid-flight.
-    return { version: request.era, txBytes: await request.handler(request.txBytes, proveTxConfig) };
-  }
-});
+  };
+};
 
 /**
  * One {@link ProvingProvider} per ledger era, for
@@ -252,14 +264,24 @@ const toRetainedEraHandlers = (
  *                         current-era cost model.
  * @returns A {@link ProofProvider} routing each request to its era's proving
  *          provider and answering in the era the request arrived in.
- * @throws V8PayloadUnsupportedError if a payload arrives on a retained arm no
- *         provider was registered for.
- * @throws UntaggedPayloadError if `version` is missing or unrecognised.
- * @throws PayloadNotATransactionError if a retained arm's `txBytes` is not a
- *         serialized transaction.
- * @throws Ledger8RuntimeMissingError if a retained arm is reached and that
- *         era's runtime cannot be loaded. Both are defined in
- *         `@midnight-ntwrk/midnight-js-protocol/errors`.
+ * @throws UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
+ *         than `undefined`, is not an object with callable `check` and `prove`.
+ *         Raised at construction.
+ * @throws InvalidArgumentError if `provingProviders` is not an object,
+ *         `retainedEras` is not a plain object keyed only by retained eras, or
+ *         `costModel` is given but is not an object. Raised at construction.
+ * @throws V8PayloadUnsupportedError raised by `proveTx` if a payload arrives on
+ *         a retained arm no provider was registered for.
+ * @throws UntaggedPayloadError raised by `proveTx` if `version` is missing or
+ *         unrecognised.
+ * @throws PayloadNotATransactionError raised by `proveTx` if a retained arm's
+ *         `txBytes` is not a serialized transaction.
+ * @throws Ledger8RuntimeMissingError raised by `proveTx` if a retained arm is
+ *         reached and that era's runtime cannot be loaded.
+ *
+ * `InvalidArgumentError`, `PayloadNotATransactionError` and
+ * `Ledger8RuntimeMissingError` are defined in
+ * `@midnight-ntwrk/midnight-js-protocol/errors`.
  *
  * @example
  * ```typescript
@@ -272,15 +294,17 @@ const toRetainedEraHandlers = (
  *
  * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/seam-era-declarations.md | Seam era declarations}
  */
-export const createProofProviderForEras = ({
-  currentEra,
-  retainedEras,
-  costModel = CostModel.initialCostModel()
-}: ProvingProvidersByEra): ProofProvider =>
-  createProofProviderFromHandlers({
+export const createProofProviderForEras = (provingProviders: ProvingProvidersByEra): ProofProvider => {
+  const { currentEra, retainedEras } = readEraArms('proveTx', provingProviders, 'proving-provider');
+  const { costModel = CostModel.initialCostModel() } = provingProviders;
+  if (!isObject(costModel)) {
+    throw new InvalidArgumentError(`proveTx: costModel must be a CostModel object, got ${describeArgument(costModel)}.`);
+  }
+  return createProofProviderFromHandlers({
     currentEra: (tx) => tx.prove(currentEra, costModel),
-    retainedEras: retainedEras && toRetainedEraHandlers(retainedEras)
+    retainedEras: toRetainedEraHandlers(retainedEras)
   });
+};
 
 /**
  * Creates a {@link ProofProvider} from a {@link ProvingProvider}.

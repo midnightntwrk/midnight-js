@@ -17,6 +17,7 @@ import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/midnig
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
+import { readEraArms } from './internal/read-era-arms';
 import type { VersionedFinalizedTransaction } from './wallet-provider';
 
 /**
@@ -78,19 +79,29 @@ export interface MidnightProviderHandlers {
  * `supportedEras` is computed from the handlers supplied, and the tag never appears
  * in implementation code.
  *
+ * `currentEra` is called with `handlers` as `this`; a retained-era handler is
+ * called with no `this`.
+ *
  * @param handlers The current-era handler, and one for each retained era served.
  * @returns A {@link MidnightProvider} routing each submission to its era's arm.
+ * @throws UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
+ *         than `undefined`, is not a function. Raised at construction.
+ * @throws InvalidArgumentError if `handlers` is not an object, or `retainedEras`
+ *         is not a plain object keyed only by retained eras. Raised at construction.
  */
-export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHandlers): MidnightProvider => ({
-  supportedEras: erasServedBy(handlers.retainedEras),
+export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHandlers): MidnightProvider => {
+  const { currentEra, retainedEras } = readEraArms('submitTx', handlers, 'handler');
+  return {
+    supportedEras: erasServedBy(retainedEras),
 
-  async submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId> {
-    const request = narrowToEraArm(tx, 'submitTx', handlers.retainedEras);
-    return request.era === CURRENT_LEDGER_VERSION
-      ? handlers.currentEra(request.tx)
-      : request.handler(request.txBytes);
-  }
-});
+    async submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId> {
+      const request = narrowToEraArm(tx, 'submitTx', retainedEras);
+      return request.era === CURRENT_LEDGER_VERSION
+        ? Reflect.apply(currentEra, handlers, [request.tx])
+        : Reflect.apply(request.handler, undefined, [request.txBytes]);
+    }
+  };
+};
 
 /**
  * Lifts a v9-only submission function into the version-tagged
