@@ -234,6 +234,14 @@ const PROVE_BY_RETAINED_ERA: Readonly<
   v8: proveV8Transaction
 };
 
+const refuseTimeout = (config: ProveTxConfig | undefined): void => {
+  if (config?.timeout !== undefined) {
+    throw new InvalidArgumentError(
+      'proveTxConfig.timeout is not supported: the in-process proving provider takes no timeout.'
+    );
+  }
+};
+
 const toRetainedEraHandlers = (
   provingProviders: RetainedEraHandlers<RetainedEraProvingProvider>
 ): RetainedEraHandlers<RetainedEraProver> => {
@@ -241,7 +249,10 @@ const toRetainedEraHandlers = (
   for (const era of RETAINED_LEDGER_VERSIONS) {
     const provingProvider = provingProviders[era];
     if (provingProvider !== undefined) {
-      handlers[era] = (txBytes) => PROVE_BY_RETAINED_ERA[era](txBytes, provingProvider);
+      handlers[era] = (txBytes, config) => {
+        refuseTimeout(config);
+        return PROVE_BY_RETAINED_ERA[era](txBytes, provingProvider);
+      };
     }
   }
   return handlers;
@@ -255,15 +266,13 @@ const toRetainedEraHandlers = (
  * This is the route for an in-process prover that crosses the fork, which needs
  * one instance per era; the package document explains why.
  *
- * {@link ProveTxConfig} is not forwarded on either arm: a `ProvingProvider`
- * takes no per-request configuration, so a `timeout` passed to `proveTx` does
- * not reach the proving call. A provider that honours it is
- * `httpClientProofProvider`.
- *
  * @param provingProviders One proving provider per era served, and an optional
  *                         current-era cost model.
  * @returns A {@link ProofProvider} routing each request to its era's proving
- *          provider and answering in the era the request arrived in.
+ *          provider and answering in the era the request arrived in. Its `proveTx`
+ *          rejects with `InvalidArgumentError` when `proveTxConfig.timeout` is set,
+ *          before any proving starts, because the in-process proving provider takes
+ *          no timeout.
  * @throws UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
  *         than `undefined`, is not an object with callable `check` and `prove`.
  *         Raised at construction.
@@ -301,7 +310,10 @@ export const createProofProviderForEras = (provingProviders: ProvingProvidersByE
     throw new InvalidArgumentError(`proveTx: costModel must be a CostModel object, got ${describeArgument(costModel)}.`);
   }
   return createProofProviderFromHandlers({
-    currentEra: (tx) => tx.prove(currentEra, costModel),
+    currentEra: (tx, config) => {
+      refuseTimeout(config);
+      return tx.prove(currentEra, costModel);
+    },
     retainedEras: toRetainedEraHandlers(retainedEras)
   });
 };
@@ -322,6 +334,8 @@ export const createProofProviderForEras = (provingProviders: ProvingProvidersByE
  * @param provingProvider - The underlying proving provider used to generate proofs.
  * @param costModel - Optional cost model to use for proof generation. Defaults to the initial cost model if not provided.
  * @returns A {@link ProofProvider} that delegates proof generation to the given proving provider.
+ *          Its `proveTx` rejects with `InvalidArgumentError` when `proveTxConfig.timeout` is set,
+ *          before any proving starts, because the in-process proving provider takes no timeout.
  */
 export const createProofProvider = (
   provingProvider: ProvingProvider,
