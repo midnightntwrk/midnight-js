@@ -17,7 +17,6 @@ import axios from 'axios';
 import pino from 'pino';
 
 import { IndexerClient } from '../src/client/indexer-client';
-import { HEALTH_CHECK_TIMEOUT_MS } from '../src/configuration';
 
 vi.mock('axios');
 const mockedAxios = vi.mocked(axios);
@@ -36,7 +35,7 @@ describe('[Unit tests] IndexerClient', () => {
     await client.health();
 
     expect(mockedAxios.get).toHaveBeenCalledWith('https://midnight-preview.blockfrost.io/ready?project_id=secret', {
-      timeout: HEALTH_CHECK_TIMEOUT_MS
+      timeout: 10_000
     });
     expect(info.mock.calls.flat().join(' ')).not.toContain('secret');
   });

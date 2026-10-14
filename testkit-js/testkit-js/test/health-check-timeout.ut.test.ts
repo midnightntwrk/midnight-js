@@ -20,7 +20,6 @@ import { FaucetClient } from '../src/client/faucet-client';
 import { IndexerClient } from '../src/client/indexer-client';
 import { NodeClient } from '../src/client/node-client';
 import { ProofServerClient } from '../src/client/proof-server-client';
-import { HEALTH_CHECK_TIMEOUT_MS } from '../src/configuration';
 
 vi.mock('axios');
 const mockedAxios = vi.mocked(axios);
@@ -38,9 +37,9 @@ describe('[Unit tests] Health check timeout', () => {
     ['indexer', () => new IndexerClient('http://localhost:8088/api/v3/graphql', logger)],
     ['proof server', () => new ProofServerClient('http://localhost:6300', logger)],
     ['faucet', () => new FaucetClient('http://localhost:3000/api/faucet', logger)]
-  ])('%s health check waits for the shared health check timeout', async (_service, createClient) => {
+  ])('%s health check waits up to 10 seconds', async (_service, createClient) => {
     await createClient().health();
 
-    expect(mockedAxios.get).toHaveBeenCalledWith(expect.any(String), { timeout: HEALTH_CHECK_TIMEOUT_MS });
+    expect(mockedAxios.get).toHaveBeenCalledWith(expect.any(String), { timeout: 10_000 });
   });
 });
