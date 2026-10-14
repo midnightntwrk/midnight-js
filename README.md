@@ -15,6 +15,15 @@ TypeScript application development framework for the Midnight blockchain. Simila
 yarn add @midnight-ntwrk/midnight-js
 ```
 
+The barrel package covers contracts, types and utilities. Add the provider packages you use, for example those in the Quick Start below:
+
+```bash
+yarn add @midnight-ntwrk/midnight-js-level-private-state-provider \
+  @midnight-ntwrk/midnight-js-indexer-public-data-provider \
+  @midnight-ntwrk/midnight-js-http-client-proof-provider \
+  @midnight-ntwrk/midnight-js-fetch-zk-config-provider
+```
+
 ## Quick Start
 
 ```typescript
@@ -23,25 +32,34 @@ import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-pri
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
+import { createMidnightProvider, createWalletProvider } from '@midnight-ntwrk/midnight-js-types';
 import { createMidnightProviders } from '@midnight-ntwrk/midnight-js-utils';
 
-// Configure providers; createMidnightProviders checks the set at start-up
 const zkConfigProvider = new FetchZkConfigProvider('https://artifacts.example.com');
 
+// `wallet` is your wallet integration, for example one built on @midnight-ntwrk/wallet-sdk
+const walletProvider = createWalletProvider({
+  balanceTx: (tx, ttl) => wallet.balanceAndProveTransaction(tx, ttl),
+  getCoinPublicKey: () => wallet.coinPublicKey,
+  getEncryptionPublicKey: () => wallet.encryptionPublicKey
+});
+const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx));
+
+// createMidnightProviders checks the provider set at start-up
 const providers = createMidnightProviders({
   privateStateProvider: levelPrivateStateProvider({
     privateStoragePasswordProvider: () => 'your-secure-password',
     accountId: 'user-wallet-address'
   }),
-  publicDataProvider: indexerPublicDataProvider(
-    'https://indexer.example.com/graphql',
-    'wss://indexer.example.com/graphql'
-  ),
+  publicDataProvider: indexerPublicDataProvider({
+    queryURL: 'https://indexer.example.com/graphql',
+    subscriptionURL: 'wss://indexer.example.com/graphql'
+  }),
   zkConfigProvider,
-  proofProvider: httpClientProofProvider('https://proof-server.example.com', zkConfigProvider),
-  walletProvider,    // from @midnight-ntwrk/wallet-sdk
-  midnightProvider,  // from @midnight-ntwrk/wallet-sdk
-  config: { networkId: 'preview', ttlSeconds: 3600 }, // network and transaction TTL
+  proofProvider: httpClientProofProvider({ url: 'https://proof-server.example.com', zkConfigProvider }),
+  walletProvider,
+  midnightProvider,
+  config: { networkId: 'preview', ttlSeconds: 3600 } // network and transaction TTL
 });
 
 // Deploy a contract
@@ -54,6 +72,16 @@ const deployed = await deployContract(providers, {
 // Call a circuit
 const result = await deployed.callTx.increment();
 ```
+
+`createWalletProvider` and `createMidnightProvider` serve the current ledger era only. A dApp that must also handle the retained era builds its providers with `createProofProviderFromHandlers`, `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers`. See [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-arms.md).
+
+## Examples
+
+Complete, runnable dApps live in separate repositories:
+
+- [create-mn-app](https://github.com/midnightntwrk/create-mn-app): scaffolds a new Midnight project
+- [midnight-examples](https://github.com/midnightntwrk/midnight-examples)
+- [example-hello-world](https://github.com/midnightntwrk/example-hello-world), [example-bboard](https://github.com/midnightntwrk/example-bboard), [example-battleship](https://github.com/midnightntwrk/example-battleship), [example-dex](https://github.com/midnightntwrk/example-dex) and the other `example-*` repositories in the [midnightntwrk](https://github.com/midnightntwrk) organization
 
 ## Features
 
