@@ -237,10 +237,22 @@ const describeVersion = (payload: unknown): string => {
     : `'${version}'`;
 };
 
+const READ_METHODS: ReadonlySet<ProviderMethod> = new Set<ReadMethod>(['watchForTxData', 'watchForDeployTxData']);
+
+const describeUntagged = (method: ProviderMethod, received: string): string =>
+  READ_METHODS.has(method)
+    ? `${method}: a finalized transaction record has no recognised 'version' discriminant (got: ${received}). ` +
+      `Records returned from read methods are version-tagged: { version: 'v9', tx } carries a v9 ledger ` +
+      `transaction, and { version: 'v8', tx } a v8 one.`
+    : `${method}: a transaction payload has no recognised 'version' discriminant (got: ${received}). ` +
+      `Payloads passed to and returned from transaction methods are version-tagged: a live v9 ledger ` +
+      `transaction is { version: 'v9', tx }, and v8-era serialized bytes are { version: 'v8', txBytes }.`;
+
 /**
  * Thrown when a payload passed to, or returned from, a provider method carries
  * no recognised `version` discriminant — most often a transaction passed
- * untagged, the shape these methods took before 5.0.0.
+ * untagged, the shape these methods took before 5.0.0. A read method's record
+ * is reported as a record, because its v8 variant carries `tx`, not `txBytes`.
  *
  * The method signatures make this unrepresentable in TypeScript, so it is reachable
  * only from JavaScript, from a consumer compiled against a pre-5.0.0
@@ -266,11 +278,7 @@ export class UntaggedPayloadError extends MidnightJsError {
     payload: unknown
   ) {
     const received = describeVersion(payload);
-    super(
-      `${method}: a transaction payload has no recognised 'version' discriminant (got: ${received}). ` +
-        `Payloads passed to and returned from provider methods are version-tagged: a live v9 ledger transaction ` +
-        `is { version: 'v9', tx }, and v8-era serialized bytes are { version: 'v8', txBytes }.`
-    );
+    super(describeUntagged(method, received));
     this.name = 'UntaggedPayloadError';
     this.received = received;
   }

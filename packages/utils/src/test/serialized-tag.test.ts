@@ -17,7 +17,7 @@ import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runt
 import { describe, expect, it } from 'vitest';
 
 import { UTILS_ERROR_CODES } from '../error-codes';
-import { parseSerializedTag } from '../serialized-tag';
+import { parseSerializedTag, TagParseError } from '../serialized-tag';
 
 const utf8 = (s: string) => new TextEncoder().encode(s);
 const COLON_BYTE = 0x3a;
@@ -71,6 +71,18 @@ describe('parseSerializedTag', () => {
     ['invalid UTF-8 in the prefix', new Uint8Array([0xff, 0xfe, COLON_BYTE, 0x76, COLON_BYTE])]
   ])('states a concrete remediation next step on %s', (_name, bytes) => {
     expect(() => parseSerializedTag(bytes)).toThrow(/verify the payload came from a sanctioned serialization source/);
+  });
+
+  it('pins the whole refusal for a payload with no tag prefix', () => {
+    expect(() => parseSerializedTag(utf8('justbytes'))).toThrow(
+      new TagParseError(
+        "Unable to locate a well-formed 'namespace:version:' tag prefix within the first 64 bytes. " +
+          'The tag is a defence-in-depth discriminant only — it is attacker-controlled input and is never the ' +
+          'authority on the body; the node remains the sole authority on the decoded body. ' +
+          "Expected a '<namespace>:<version>:' prefix — verify the payload came from a sanctioned serialization " +
+          'source (wallet balance response, proof request, or raw contract-state query).'
+      )
+    );
   });
 
   it('surfaces the original TextDecoder failure as the typed error cause on invalid UTF-8', () => {

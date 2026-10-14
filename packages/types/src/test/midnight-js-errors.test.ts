@@ -123,11 +123,18 @@ describe('types error classes', () => {
         'need a WalletProvider or MidnightProvider written against the version-tagged interface directly.'
     ],
     [
-      'an untagged payload, in either direction',
+      'an untagged payload passed to or returned from a transaction method',
+      new UntaggedPayloadError('proveTx', {}),
+      "proveTx: a transaction payload has no recognised 'version' discriminant (got: no version field). " +
+        'Payloads passed to and returned from transaction methods are version-tagged: a live v9 ledger ' +
+        "transaction is { version: 'v9', tx }, and v8-era serialized bytes are { version: 'v8', txBytes }."
+    ],
+    [
+      'an untagged record returned from a read method',
       new UntaggedPayloadError('watchForTxData', {}),
-      "watchForTxData: a transaction payload has no recognised 'version' discriminant (got: no version field). " +
-        'Payloads passed to and returned from provider methods are version-tagged: a live v9 ledger transaction ' +
-        "is { version: 'v9', tx }, and v8-era serialized bytes are { version: 'v8', txBytes }."
+      "watchForTxData: a finalized transaction record has no recognised 'version' discriminant (got: no version " +
+        "field). Records returned from read methods are version-tagged: { version: 'v9', tx } carries a v9 ledger " +
+        "transaction, and { version: 'v8', tx } a v8 one."
     ],
     [
       'a provider that does not declare the era',

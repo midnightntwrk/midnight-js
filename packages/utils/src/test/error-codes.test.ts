@@ -59,6 +59,10 @@ describe('MIDNIGHT_JS_ERROR_CODES', () => {
   it('gives every registered code the framework prefix the foreign guard screens on', () => {
     expect(MIDNIGHT_JS_ERROR_CODES.filter((code) => !code.startsWith('MIDNIGHT_JS_'))).toEqual([]);
   });
+
+  it('names eras LEDGER8 / LEDGER9 and never says SEAM or ARM', () => {
+    expect(MIDNIGHT_JS_ERROR_CODES.filter((code) => /SEAM|(^|_)ARMS?(_|$)|(^|_)V[89](_|$)/.test(code))).toEqual([]);
+  });
 });
 
 describe('every error-code group', () => {

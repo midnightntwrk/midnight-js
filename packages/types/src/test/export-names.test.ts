@@ -57,4 +57,18 @@ describe('types export names', () => {
   it('spells the era prefix Ledger8 / Ledger9, never V8 / V9', () => {
     expect(names.filter((name) => /V[89]|v[89][A-Z]/.test(name))).toEqual([]);
   });
+
+  it('never ends a type or class name with the era', () => {
+    expect(names.filter((name) => /^[A-Z].*[a-z]Ledger[89]$/.test(name))).toEqual([]);
+  });
+
+  it('never names anything an arm', () => {
+    const words = (name: string): string[] =>
+      name
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .split(/[\s_]+/)
+        .map((word) => word.toLowerCase());
+
+    expect(names.filter((name) => words(name).some((word) => word === 'arm' || word === 'arms'))).toEqual([]);
+  });
 });
