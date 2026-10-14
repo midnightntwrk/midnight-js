@@ -8,7 +8,7 @@
 
 > `const` **createProofProviderFromHandlers**: (`handlers`) => [`ProofProvider`](../interfaces/ProofProvider.md)
 
-Assembles a [ProofProvider](../interfaces/ProofProvider.md) from one arm per ledger era it serves.
+Assembles a [ProofProvider](../interfaces/ProofProvider.md) from one handler per ledger era it serves.
 
 The `supportedEras` declaration is computed from the handlers supplied, so it
 cannot disagree with what the provider actually does.
@@ -28,12 +28,12 @@ The current-era handler, and one for each retained era served.
 
 [`ProofProvider`](../interfaces/ProofProvider.md)
 
-A [ProofProvider](../interfaces/ProofProvider.md) routing each request to its era's arm and
+A [ProofProvider](../interfaces/ProofProvider.md) routing each request to its era's handler and
          answering in the era the request arrived in.
 
 ## Throws
 
-UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
+UnusableEraEntryError if `currentEra`, or a `retainedEras` entry other
         than `undefined`, is not a function. Raised at construction.
 
 ## Throws

@@ -46,7 +46,7 @@ The transaction identifier of the submitted transaction. Not version-tagged — 
 
 #### Throws
 
-V8PayloadUnsupportedError if the implementation does not handle the v8 arm.
+V8PayloadUnsupportedError if the implementation does not handle v8 payloads.
 
 #### Throws
 

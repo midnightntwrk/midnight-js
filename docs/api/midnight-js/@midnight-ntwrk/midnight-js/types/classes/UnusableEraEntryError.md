@@ -2,17 +2,17 @@
 
 ***
 
-[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [types](../README.md) / UnusableEraArmError
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [types](../README.md) / UnusableEraEntryError
 
-# Class: UnusableEraArmError
+# Class: UnusableEraEntryError
 
-Thrown by a provider factory given an era arm it cannot use: a current-era
-arm that is not the [EraArmShape](../type-aliases/EraArmShape.md) the factory needs, or a retained-era
+Thrown by a provider factory given an era entry it cannot use: a `currentEra`
+that is not the [EraEntryShape](../type-aliases/EraEntryShape.md) the factory needs, or a retained-era
 entry that is neither `undefined` nor that shape. Raised at construction, so
-`supportedEras` never claims an era no arm can serve.
+`supportedEras` never claims an era no entry can serve.
 
-The types rule these arms out, so it is reachable only from JavaScript or
-across an untyped boundary. The factory checks shape only: an arm built for
+The types rule these entries out, so it is reachable only from JavaScript or
+across an untyped boundary. The factory checks shape only: an entry built for
 the wrong era, such as a `ProvingProvider` with the other era's key
 material, still passes.
 
@@ -27,7 +27,7 @@ Catch it via its stable `code`, using `hasErrorCode` from
 
 ### Constructor
 
-> **new UnusableEraArmError**(`seam`, `era`, `expected`, `received`): `UnusableEraArmError`
+> **new UnusableEraEntryError**(`seam`, `era`, `expected`, `received`): `UnusableEraEntryError`
 
 #### Parameters
 
@@ -35,19 +35,19 @@ Catch it via its stable `code`, using `hasErrorCode` from
 
 [`ProviderSeam`](../type-aliases/ProviderSeam.md)
 
-The provider method the rejected arm would have served.
+The provider method the rejected entry would have served.
 
 ##### era
 
 `"v8"` \| `"v9"`
 
-The ledger era whose arm was rejected.
+The ledger era whose entry was rejected.
 
 ##### expected
 
-[`EraArmShape`](../type-aliases/EraArmShape.md)
+[`EraEntryShape`](../type-aliases/EraEntryShape.md)
 
-The shape the factory needs for that arm.
+The shape the factory needs for that entry.
 
 ##### received
 
@@ -59,7 +59,7 @@ What was passed instead, for the message only: for example
 
 #### Returns
 
-`UnusableEraArmError`
+`UnusableEraEntryError`
 
 #### Overrides
 
@@ -79,7 +79,7 @@ What was passed instead, for the message only: for example
 
 ### code
 
-> `readonly` **code**: `"MIDNIGHT_JS_PR_UNUSABLE_ERA_ARM"`
+> `readonly` **code**: `"MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY"`
 
 #### Overrides
 
@@ -95,7 +95,7 @@ What was passed instead, for the message only: for example
 
 ### expected
 
-> `readonly` **expected**: [`EraArmShape`](../type-aliases/EraArmShape.md)
+> `readonly` **expected**: [`EraEntryShape`](../type-aliases/EraEntryShape.md)
 
 ***
 

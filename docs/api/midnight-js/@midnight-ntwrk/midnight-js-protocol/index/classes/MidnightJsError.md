@@ -47,7 +47,7 @@ dependency, the platform or user code, and midnight-js passed it through unchang
 - [`SeamEraUnsupportedError`](../../../midnight-js-types/index/classes/SeamEraUnsupportedError.md)
 - [`SigningKeyExportError`](../../../midnight-js-types/index/classes/SigningKeyExportError.md)
 - [`UntaggedPayloadError`](../../../midnight-js-types/index/classes/UntaggedPayloadError.md)
-- [`UnusableEraArmError`](../../../midnight-js-types/index/classes/UnusableEraArmError.md)
+- [`UnusableEraEntryError`](../../../midnight-js-types/index/classes/UnusableEraEntryError.md)
 - [`V8PayloadUnsupportedError`](../../../midnight-js-types/index/classes/V8PayloadUnsupportedError.md)
 - [`ZkArtifactFetchError`](../../../midnight-js-types/index/classes/ZkArtifactFetchError.md)
 - [`ZKArtifactNotFoundError`](../../../midnight-js-types/index/classes/ZKArtifactNotFoundError.md)

@@ -26,7 +26,7 @@ expected to check that at its own boundary.
 
 `T`
 
-The v9 ledger transaction type carried by the `'v9'` arm.
+The v9 ledger transaction type carried by the `'v9'` variant.
 
 ## Example
 

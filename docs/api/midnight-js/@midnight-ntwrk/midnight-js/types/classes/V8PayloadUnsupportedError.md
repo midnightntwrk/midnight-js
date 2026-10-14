@@ -7,11 +7,11 @@
 # Class: V8PayloadUnsupportedError
 
 Thrown by a provider that only speaks the v9 ledger runtime when it is
-handed the v8 arm of a versioned transaction payload — serialized,
-tag-prefixed bytes instead of a live v9 transaction object.
+handed a v8 payload — serialized, tag-prefixed bytes instead of a live v9
+transaction object.
 
 Catching this does NOT mean "the framework cannot do it yet". It means the
-specific implementation on that seam does not serve the v8 arm — permanently
+specific implementation on that seam does not serve v8 payloads — permanently
 for the lifting adapters, contingently for a concrete provider.
 
 Catch it via its stable `code`, using `hasErrorCode` from

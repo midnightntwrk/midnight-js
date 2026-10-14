@@ -46,7 +46,7 @@ The live v9 ledger transaction.
 
 ## Throws
 
-V8PayloadUnsupportedError if the payload carries the v8 arm.
+V8PayloadUnsupportedError if the payload is a v8 payload.
 
 ## Throws
 

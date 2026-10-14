@@ -13,7 +13,7 @@ that result are two rather than one.
 
 The payloads these seams carry are
 [VersionTaggedPayloads](VersionTaggedPayloads.md). The multi-era construction
-is `docs/adr/0014-build-provider-seams-from-per-era-arms.md`.
+is `docs/adr/0014-build-provider-seams-from-per-era-handlers.md`.
 
 ## The pre-flight check is about WHERE it runs
 
@@ -43,31 +43,32 @@ They mean different things to whoever is reading them:
 | Error | What it means | What to do |
 |---|---|---|
 | `SeamEraUnsupportedError` | A seam declared it does not serve this era, and the operation stopped before doing any work | Wire a different provider |
-| `V8PayloadUnsupportedError` | A seam was handed the retained arm and could not take it | The implementation on that seam does not serve it — its declaration was wrong, or there is no declaration to be had |
+| `V8PayloadUnsupportedError` | A seam was handed a retained-era payload and could not take it | The implementation on that seam does not serve it — its declaration was wrong, or there is no declaration to be had |
 
 Collapsing them would lose the distinction between "configured wrong, nothing
 spent" and "failed at the seam, possibly after paying to prove".
 
-## An unusable arm is refused before the provider exists
+## An unusable handler is refused before the provider exists
 
-The factories check each arm when the provider is built. An arm that is not a
-function — or, for `createProofProviderForEras`, not an object with callable
-`check` and `prove` — is refused with `UnusableEraArmError`; a `retainedEras`
+The factories check each handler when the provider is built. A handler that is
+not a function — or, for `createProofProviderForEras`, not an object with callable
+`check` and `prove` — is refused with `UnusableEraEntryError`; a `retainedEras`
 that is not a plain object keyed only by retained eras is refused with
 `InvalidArgumentError`. This checks shape only: `supportedEras` never names an
-era with no arm, but a well-formed arm paired with the wrong era still passes
+era with no handler, but a well-formed handler paired with the wrong era still
+passes
 (see
 [Why an in-process prover needs one proving provider per era](#why-an-in-process-prover-needs-one-proving-provider-per-era)).
 
-## Which providers refuse the retained arm, and why
+## Which providers refuse the retained era, and why
 
 `V8PayloadUnsupportedError` does not mean "the framework cannot do this yet". It
-means the specific implementation on that seam does not serve the retained arm.
+means the specific implementation on that seam does not serve the retained era.
 Two quite different cases produce it:
 
 **Permanently, from the lifting adapters.** `createProofProvider`,
 `createWalletProvider` and `createMidnightProvider` each lift a v9-ONLY
-implementation into the version-tagged interface. Refusing the retained arm is
+implementation into the version-tagged interface. Refusing the retained era is
 the adapter accurately reporting what it wraps, not a gap to be filled. To serve
 both eras, use the `…FromHandlers` constructors, or implement the interface
 directly. On the proof seam there is a shorter route for the common case:
@@ -77,7 +78,7 @@ handlers and the declaration from them. The section below says when you want it.
 ## Why an in-process prover needs one proving provider per era
 
 A server-backed proving client — the proof server, the DApp Connector — can
-serve both arms from one `ProvingProvider`. It frames each request with the
+serve both eras from one `ProvingProvider`. It frames each request with the
 ledger version that produced the transaction, and resolves key material per
 request, so the era is a property of the call rather than of the client.
 
@@ -106,7 +107,7 @@ What the factory gives is one place where the pairing is written down, instead
 of every consumer assembling the handlers by hand.
 
 **Contingently, from a concrete provider.** `httpClientProofProvider` and
-`dappConnectorProofProvider` both DO serve the retained arm, taking and returning
+`dappConnectorProofProvider` both DO serve the retained era, taking and returning
 serialized bytes. Other implementations that have not been widened still raise
 it.
 
