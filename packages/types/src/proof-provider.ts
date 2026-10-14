@@ -60,6 +60,10 @@ export interface ProveTxConfig {
    * proof server call, not a hard wall-clock ceiling for the whole `proveTx` call — the proof
    * provider's internal retry/backoff means a `proveTx` call may take longer than this value when
    * retries occur. See https://github.com/midnightntwrk/midnight-js/issues/974.
+   *
+   * Honoured by `httpClientProofProvider`. Providers that cannot apply it reject `proveTx` with
+   * `InvalidArgumentError` instead of ignoring it: {@link createProofProvider},
+   * {@link createProofProviderForEras} and `dappConnectorProofProvider`.
    */
   readonly timeout?: number;
 }
@@ -106,6 +110,10 @@ export interface ProofProvider {
    *         package, so it is named here rather than imported); match it with `hasErrorCode`
    *         against `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`.
    * @throws UntaggedPayloadError if `version` is missing or unrecognised.
+   * @throws InvalidArgumentError if `proveTxConfig.timeout` is set and the implementation cannot
+   *         apply it. {@link createProofProvider}, {@link createProofProviderForEras} and
+   *         `dappConnectorProofProvider` refuse it before any proving starts;
+   *         `httpClientProofProvider` honours it.
    */
   proveTx(
     unprovenTx: VersionedUnprovenTransaction,
@@ -234,6 +242,16 @@ const PROVE_BY_RETAINED_ERA: Readonly<
   v8: proveV8Transaction
 };
 
+const refuseTimeout = (config: ProveTxConfig | undefined): void => {
+  if (config?.timeout !== undefined) {
+    throw new InvalidArgumentError(
+      'proveTxConfig.timeout is not supported by createProofProvider or createProofProviderForEras: ' +
+        'a ProvingProvider takes no per-request configuration, so the timeout could not reach the proving call. ' +
+        'Omit it, or use httpClientProofProvider, which honours it.'
+    );
+  }
+};
+
 const toRetainedEraHandlers = (
   provingProviders: RetainedEraHandlers<RetainedEraProvingProvider>
 ): RetainedEraHandlers<RetainedEraProver> => {
@@ -241,7 +259,10 @@ const toRetainedEraHandlers = (
   for (const era of RETAINED_LEDGER_VERSIONS) {
     const provingProvider = provingProviders[era];
     if (provingProvider !== undefined) {
-      handlers[era] = (txBytes) => PROVE_BY_RETAINED_ERA[era](txBytes, provingProvider);
+      handlers[era] = (txBytes, config) => {
+        refuseTimeout(config);
+        return PROVE_BY_RETAINED_ERA[era](txBytes, provingProvider);
+      };
     }
   }
   return handlers;
@@ -255,11 +276,6 @@ const toRetainedEraHandlers = (
  * This is the route for an in-process prover that crosses the fork, which needs
  * one instance per era; the package document explains why.
  *
- * {@link ProveTxConfig} is not forwarded on either arm: a `ProvingProvider`
- * takes no per-request configuration, so a `timeout` passed to `proveTx` does
- * not reach the proving call. A provider that honours it is
- * `httpClientProofProvider`.
- *
  * @param provingProviders One proving provider per era served, and an optional
  *                         current-era cost model.
  * @returns A {@link ProofProvider} routing each request to its era's proving
@@ -270,6 +286,10 @@ const toRetainedEraHandlers = (
  * @throws InvalidArgumentError if `provingProviders` is not an object,
  *         `retainedEras` is not a plain object keyed only by retained eras, or
  *         `costModel` is given but is not an object. Raised at construction.
+ * @throws InvalidArgumentError raised by `proveTx`, before any proving starts,
+ *         if `proveTxConfig.timeout` is set (including `0`): a `ProvingProvider`
+ *         takes no per-request configuration. To bound proving time, use
+ *         `httpClientProofProvider`, which honours it.
  * @throws V8PayloadUnsupportedError raised by `proveTx` if a payload arrives on
  *         a retained arm no provider was registered for.
  * @throws UntaggedPayloadError raised by `proveTx` if `version` is missing or
@@ -301,7 +321,10 @@ export const createProofProviderForEras = (provingProviders: ProvingProvidersByE
     throw new InvalidArgumentError(`proveTx: costModel must be a CostModel object, got ${describeArgument(costModel)}.`);
   }
   return createProofProviderFromHandlers({
-    currentEra: (tx) => tx.prove(currentEra, costModel),
+    currentEra: (tx, config) => {
+      refuseTimeout(config);
+      return tx.prove(currentEra, costModel);
+    },
     retainedEras: toRetainedEraHandlers(retainedEras)
   });
 };
@@ -313,7 +336,10 @@ export const createProofProviderForEras = (provingProviders: ProvingProvidersByE
  * The returned provider serves the v9 arm only — `supportedEras` says so — and
  * that is permanent rather than a gap: it lifts a single current-era
  * `ProvingProvider`. It rejects a v8 payload with `V8PayloadUnsupportedError`,
- * and an untagged one with `UntaggedPayloadError`. To serve a retained era as
+ * and an untagged one with `UntaggedPayloadError`. It also rejects any
+ * `proveTxConfig.timeout`, including `0`, with `InvalidArgumentError` before
+ * proving starts: a `ProvingProvider` takes no per-request configuration. To
+ * bound proving time, use `httpClientProofProvider`. To serve a retained era as
  * well, pass that era's own proving provider to
  * {@link createProofProviderForEras}, or, where the proving itself is not a
  * `ProvingProvider` call, write the handlers directly with
