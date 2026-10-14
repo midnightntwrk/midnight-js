@@ -19,14 +19,14 @@ import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version
 import type { FinalizedTxData, FinalizedTxRecord } from './midnight-types';
 
 /**
- * The v8 arm of every transaction payload crossing a provider seam
+ * The v8 variant of every transaction payload crossing a provider seam
  * (`proveTx`, `balanceTx`, `submitTx`), in both directions.
  *
  * A v8-era transaction crosses as serialized, tag-prefixed bytes rather than as
  * a live ledger object, and `version` says which runtime produced them.
  *
  * NOT VALIDATED: any `Uint8Array` satisfies `txBytes`, and nothing here checks
- * the tag prefix. The arm is identical for all three seams, so it says nothing
+ * the tag prefix. The variant is identical for all three seams, so it says nothing
  * about which pipeline stage the transaction has reached — on this path, stage
  * is the caller's responsibility.
  *
@@ -39,7 +39,7 @@ export interface V8TxBytes {
 }
 
 /**
- * The v9 arm of every transaction payload crossing a provider seam: the live
+ * The v9 variant of every transaction payload crossing a provider seam: the live
  * ledger object, carried directly because both sides of the seam share the v9
  * WASM instance.
  *
@@ -64,7 +64,7 @@ export interface V9Tx<T> {
  * stops a provider returning a v9 result for a v8 input. A v9-only flow is
  * expected to check that at its own boundary.
  *
- * @typeParam T - The v9 ledger transaction type carried by the `'v9'` arm.
+ * @typeParam T - The v9 ledger transaction type carried by the `'v9'` variant.
  *
  * @example
  * ```typescript
@@ -80,8 +80,8 @@ export interface V9Tx<T> {
 export type VersionedTx<T> = V8TxBytes | V9Tx<T>;
 
 /**
- * The v8 arm of {@link VersionedFinalizedTxData}. Carries the same
- * finalized-transaction metadata as {@link FinalizedTxData} — both arms extend
+ * The v8 variant of {@link VersionedFinalizedTxData}. Carries the same
+ * finalized-transaction metadata as {@link FinalizedTxData} — both variants extend
  * {@link FinalizedTxRecord} — with a v8 ledger transaction object in place of
  * the v9 one.
  *
@@ -89,7 +89,7 @@ export type VersionedTx<T> = V8TxBytes | V9Tx<T>;
  * that builds it, so this shape is only produced for a record that resolves to
  * the v8 ledger runtime.
  *
- * A provider that decodes per era produces this arm for any record whose
+ * A provider that decodes per era produces this variant for any record whose
  * `protocolVersion` places it in the v8 era. A consumer that narrows on
  * `version` therefore has to handle it: it is a value the read surface really
  * returns, not a placeholder. Contract-STATE reads are a separate question and
@@ -102,7 +102,7 @@ export interface FinalizedTxDataV8 extends FinalizedTxRecord {
 
 /**
  * A finalized transaction record, discriminated by which ledger runtime
- * produced it. Both arms carry identical metadata; only `tx`'s type and the
+ * produced it. Both variants carry identical metadata; only `tx`'s type and the
  * `version` discriminant differ.
  *
  * The providers in this framework resolve `version` from the record's own

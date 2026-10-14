@@ -17,9 +17,9 @@ The seams themselves are [SeamEraDeclarations](./seam-era-declarations.md). The
 decision this implements is
 `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`.
 
-## The retained arm crosses as bytes, the current arm as an object
+## The retained variant crosses as bytes, the current variant as an object
 
-`V8TxBytes` is the retained arm of every transaction payload crossing a provider
+`V8TxBytes` is the retained variant of every transaction payload crossing a provider
 seam — `proveTx`, `balanceTx`, `submitTx` — in both directions. It carries
 serialized, tag-prefixed bytes rather than a live ledger object, because a live
 object cannot survive the crossing.
@@ -39,7 +39,7 @@ deserializes anything, instead of guessing and failing deep inside a decoder.
 nothing in this package checks for the tag prefix.
 
 **It does not say which pipeline stage a transaction has reached.** The retained
-arm is identical for all three seams. On that path, stage is the caller's
+variant is identical for all three seams. On that path, stage is the caller's
 responsibility — the type carries no statement about it.
 
 **On a read, it does not promise the bytes agree with it.** Nothing here compares
@@ -66,7 +66,7 @@ treat the tag as a claim.
 
 ## Narrowing is not optional
 
-A provider that decodes per era returns the retained arm as an ordinary value for
+A provider that decodes per era returns the retained variant as an ordinary value for
 any record whose `protocolVersion` places it in that era. It is not an error
 path, and it is not rare.
 

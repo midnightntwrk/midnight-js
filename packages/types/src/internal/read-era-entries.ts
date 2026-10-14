@@ -21,8 +21,8 @@ import {
   type RetainedLedgerVersion
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import type { RetainedEraHandlers } from '../era-arms';
-import { type EraArmShape, type ProviderSeam, UnusableEraArmError } from '../errors';
+import type { RetainedEraHandlers } from '../era-handlers';
+import { type EraEntryShape, type ProviderSeam, UnusableEraEntryError } from '../errors';
 
 const PROVING_PROVIDER_METHODS = ['check', 'prove'] as const;
 
@@ -39,17 +39,17 @@ const functionKind = (value: CallableFunction): 'function' | 'class' | 'revoked'
 
 const isCallable = (value: unknown): boolean => typeof value === 'function' && functionKind(value) === 'function';
 
-const missingProvingProviderMethods = (arm: object): readonly string[] =>
-  PROVING_PROVIDER_METHODS.filter((method) => !isCallable(Reflect.get(arm, method)));
+const missingProvingProviderMethods = (entry: object): readonly string[] =>
+  PROVING_PROVIDER_METHODS.filter((method) => !isCallable(Reflect.get(entry, method)));
 
-const IS_USABLE: Readonly<Record<EraArmShape, (arm: unknown) => boolean>> = {
+const IS_USABLE: Readonly<Record<EraEntryShape, (entry: unknown) => boolean>> = {
   handler: isCallable,
-  'proving-provider': (arm) => {
-    if (typeof arm !== 'object' || arm === null) {
+  'proving-provider': (entry) => {
+    if (typeof entry !== 'object' || entry === null) {
       return false;
     }
     try {
-      return missingProvingProviderMethods(arm).length === 0;
+      return missingProvingProviderMethods(entry).length === 0;
     } catch {
       return false;
     }
@@ -120,13 +120,13 @@ export const describeArgument = (value: unknown): string => {
   }
 };
 
-const describeArm = (arm: unknown, shape: EraArmShape): string => {
-  const described = describeArgument(arm);
-  if (shape !== 'proving-provider' || typeof arm !== 'object' || arm === null || described === 'an array') {
+const describeEntry = (entry: unknown, shape: EraEntryShape): string => {
+  const described = describeArgument(entry);
+  if (shape !== 'proving-provider' || typeof entry !== 'object' || entry === null || described === 'an array') {
     return described;
   }
   try {
-    const missing = missingProvingProviderMethods(arm);
+    const missing = missingProvingProviderMethods(entry);
     return `${described} without callable ${missing.map((method) => `'${method}'`).join(' and ')}`;
   } catch {
     return described;
@@ -138,9 +138,9 @@ export const isObject = (value: unknown): boolean => typeof value === 'object' &
 
 const isRetainedEra = (key: string | symbol): boolean => RETAINED_LEDGER_VERSIONS.some((era) => era === key);
 
-const assertUsable = (seam: ProviderSeam, era: LedgerVersion, arm: unknown, shape: EraArmShape): void => {
-  if (!IS_USABLE[shape](arm)) {
-    throw new UnusableEraArmError(seam, era, shape, describeArm(arm, shape));
+const assertUsable = (seam: ProviderSeam, era: LedgerVersion, entry: unknown, shape: EraEntryShape): void => {
+  if (!IS_USABLE[shape](entry)) {
+    throw new UnusableEraEntryError(seam, era, shape, describeEntry(entry, shape));
   }
 };
 
@@ -153,38 +153,38 @@ export const assertFunction = (seam: ProviderSeam, name: string, value: unknown)
   }
 };
 
-/** The era arms a provider factory serves from, read once at construction. */
-export interface EraArms<C, H> {
+/** The era entries a provider factory serves from, read once at construction. */
+export interface EraEntries<C, H> {
   readonly currentEra: C;
   readonly retainedEras: RetainedEraHandlers<H>;
 }
 
 /**
- * Reads and checks the arms handed to a provider factory, once.
+ * Reads and checks the entries handed to a provider factory, once.
  *
  * The provider serves from the returned copy, never from the caller's object,
- * so `supportedEras` and routing always see the same arms. Only own properties
+ * so `supportedEras` and routing always see the same entries. Only own properties
  * of `retainedEras` are read, and the copy has no prototype, so an era
  * inherited from `Object.prototype` is never served.
  *
- * @param seam The provider method the arms serve, used in errors.
- * @param arms The current-era arm and the optional retained-era map.
- * @param shape What every arm must be.
- * @returns The current-era arm and a frozen copy of the retained arms supplied.
- * @throws InvalidArgumentError if `arms` is not an object, or `retainedEras` is
+ * @param seam The provider method the entries serve, used in errors.
+ * @param entries The current-era entry and the optional retained-era map.
+ * @param shape What every entry must be.
+ * @returns The current-era entry and a frozen copy of the retained entries supplied.
+ * @throws InvalidArgumentError if `entries` is not an object, or `retainedEras` is
  *         given but is not a plain object whose own keys are all retained eras.
- * @throws UnusableEraArmError if the current-era arm, or a retained-era entry
+ * @throws UnusableEraEntryError if the current-era entry, or a retained-era entry
  *         other than `undefined`, is not `shape`.
  */
-export const readEraArms = <C, H>(
+export const readEraEntries = <C, H>(
   seam: ProviderSeam,
-  arms: { readonly currentEra: C; readonly retainedEras?: RetainedEraHandlers<H> },
-  shape: EraArmShape
-): EraArms<C, H> => {
-  if (!isObject(arms)) {
-    throw new InvalidArgumentError(`${seam}: the era arms must be an object, got ${describeArgument(arms)}.`);
+  entries: { readonly currentEra: C; readonly retainedEras?: RetainedEraHandlers<H> },
+  shape: EraEntryShape
+): EraEntries<C, H> => {
+  if (!isObject(entries)) {
+    throw new InvalidArgumentError(`${seam}: expected an object with currentEra and an optional retainedEras, got ${describeArgument(entries)}.`);
   }
-  const { currentEra, retainedEras } = arms;
+  const { currentEra, retainedEras } = entries;
   assertUsable(seam, CURRENT_LEDGER_VERSION, currentEra, shape);
   if (retainedEras !== undefined && !isPlainObject(retainedEras)) {
     throw new InvalidArgumentError(
@@ -200,10 +200,10 @@ export const readEraArms = <C, H>(
   }
   const copy = Object.create(null) as Partial<Record<RetainedLedgerVersion, H>>;
   for (const era of RETAINED_LEDGER_VERSIONS) {
-    const arm = retainedEras !== undefined && Object.hasOwn(retainedEras, era) ? retainedEras[era] : undefined;
-    if (arm !== undefined) {
-      assertUsable(seam, era, arm, shape);
-      copy[era] = arm;
+    const entry = retainedEras !== undefined && Object.hasOwn(retainedEras, era) ? retainedEras[era] : undefined;
+    if (entry !== undefined) {
+      assertUsable(seam, era, entry, shape);
+      copy[era] = entry;
     }
   }
   return { currentEra, retainedEras: Object.freeze(copy) };

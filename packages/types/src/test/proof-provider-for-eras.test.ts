@@ -19,7 +19,7 @@ import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midn
 import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import type { RetainedEraHandlers } from '../era-arms';
+import type { RetainedEraHandlers } from '../era-handlers';
 import { PROVIDER_ERROR_CODES, V8PayloadUnsupportedError } from '../errors';
 import { createProofProviderForEras, type ProvingProvidersByEra, type UnboundTransaction } from '../proof-provider';
 
@@ -228,11 +228,11 @@ describe('createProofProviderForEras', () => {
       expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
     });
 
-    // A consumer wiring the retained arm behind a condition writes
+    // A consumer wiring the retained era behind a condition writes
     // `{ v8: crossesFork ? retainedEraProvider : undefined }`. An absent
-    // provider must leave the era unserved, rather than build an arm that
+    // provider must leave the era unserved, rather than build a handler that
     // reaches the retained runtime with nothing to prove with.
-    it('leaves an era unserved when its provider is absent, refusing that arm', async () => {
+    it('leaves an era unserved when its provider is absent, refusing that era', async () => {
       const provider = createProofProviderForEras({
         currentEra: inertCurrentEraProvider,
         retainedEras: { v8: undefined }
@@ -261,7 +261,7 @@ describe('createProofProviderForEras', () => {
       ['a string', 'not-a-provider', 'a string'],
       ['a number', 42, 'a number'],
       ['an array', [inertRetainedEraProvider], 'an array']
-    ])('refuses %s registered as a retained era arm at construction', (_desc, value: unknown, received) => {
+    ])('refuses %s registered as a retained era entry at construction', (_desc, value: unknown, received) => {
       const act = () =>
         createProofProviderForEras({
           currentEra: inertCurrentEraProvider,
@@ -270,8 +270,8 @@ describe('createProofProviderForEras', () => {
 
       expect(act).toThrow(
         expect.objectContaining({
-          name: 'UnusableEraArmError',
-          code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM,
+          name: 'UnusableEraEntryError',
+          code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY,
           seam: 'proveTx',
           era: 'v8',
           expected: 'proving-provider',
@@ -284,13 +284,13 @@ describe('createProofProviderForEras', () => {
       ['undefined', undefined, 'undefined'],
       ['null', null, 'null'],
       ['a function', () => inertCurrentEraProvider, 'a function']
-    ])('refuses %s registered as the current era arm at construction', (_desc, value: unknown, received) => {
+    ])('refuses %s registered as the current era entry at construction', (_desc, value: unknown, received) => {
       const act = () => createProofProviderForEras({ currentEra: value as ProvingProvider });
 
       expect(act).toThrow(
         expect.objectContaining({
-          name: 'UnusableEraArmError',
-          code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM,
+          name: 'UnusableEraEntryError',
+          code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY,
           seam: 'proveTx',
           era: 'v9',
           expected: 'proving-provider',
@@ -437,7 +437,7 @@ describe('createProofProviderForEras', () => {
       expect(consulted).toEqual([]);
     });
 
-    // Without these, both cases above would still pass if the arm swallowed the
+    // Without these, both cases above would still pass if the handler swallowed the
     // rejection and answered with the unproven bytes -- the consulted log is
     // written before the proving provider refuses.
     it('propagates a retained-era proving failure to the caller', async () => {

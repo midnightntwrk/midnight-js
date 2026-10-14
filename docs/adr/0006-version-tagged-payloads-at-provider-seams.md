@@ -374,7 +374,7 @@ proof server, which remains untested.
 
 The decision above stands unchanged. This note records that one consequence its
 first amendment described has been addressed, by
-[ADR-0014](./0014-build-provider-seams-from-per-era-arms.md).
+[ADR-0014](./0014-build-provider-seams-from-per-era-handlers.md).
 
 That amendment closed with:
 

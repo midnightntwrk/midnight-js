@@ -261,20 +261,20 @@ it, the `circuitId`.
 `findDeployedContract` accepts a deploy record from either era, because a
 contract deployed before the fork keeps a ledger-8 deploy record.
 `FoundContract.deployTxData.public` is therefore `FoundDeployTxPublicData`, a
-union tagged by `version`. `contractAddress` is on both arms. Narrow on
-`version` before reading `tx` or `initialContractState`; the `v8` arm has no
+union tagged by `version`. `contractAddress` is on both variants. Narrow on
+`version` before reading `tx` or `initialContractState`; the `v8` variant has no
 `initialContractState`. Code that does any of the following without narrowing no
 longer compiles: reads `found.deployTxData.public.initialContractState`, uses
 `found.deployTxData.public.tx` as a v9 `Transaction`, or passes
 `found.deployTxData` where a `FinalizedDeployTxDataBase<C>` is expected.
 `DeployedContract` is unchanged.
 
-`indexerPublicDataProvider` produces both arms. It decodes each record with the
+`indexerPublicDataProvider` produces both variants. It decodes each record with the
 ledger runtime of the era that record's own `protocolVersion` reports, so a
-v8-era record arrives as a **value** on the `'v8'` arm, not as a thrown error.
+v8-era record arrives as a **value** on the `'v8'` variant, not as a thrown error.
 The pre-fork runtime is acquired lazily on first use, so a session that never
 meets a v8-era record never instantiates that WASM. Narrowing on `version` is
-therefore not a formality: the two arms carry transaction objects built by
+therefore not a formality: the two variants carry transaction objects built by
 different runtimes, and neither runtime's object can be handed to the other.
 
 ### 8d. `version` is derived, not asserted
@@ -285,7 +285,7 @@ and that same answer decides which ledger runtime decodes the record — so the
 discriminant, the decoder that ran and the `protocolVersion` beside it are one
 fact and cannot disagree.
 
-Consequence: a v8-era network is now **served**, on the `'v8'` arm. What throws
+Consequence: a v8-era network is now **served**, on the `'v8'` variant. What throws
 at the read boundary is a network this client cannot place on the era timeline
 at all — `EraUnresolvableError`, for a node 0.x or otherwise unmapped
 `protocolVersion` — where before it returned a record that failed later inside
@@ -389,7 +389,7 @@ Nothing verifies the declaration. Listing an era you do not serve makes the
 failure later, not absent: the seam still narrows its own payload and still
 raises `V8PayloadUnsupportedError`.
 
-See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-arms.md).
+See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-handlers.md).
 
 ### 8g. New and changed exports
 
@@ -400,8 +400,8 @@ See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-arms.md).
 `unwrapV9`, `V8PayloadUnsupportedError`, `UntaggedPayloadError`,
 `V9WalletProvider`, `createWalletProvider`, `createMidnightProvider`,
 `SeamEraUnsupportedError`, `assertSeamsSupportEra`, `TransactionSeams`,
-`EraDeclaringProvider`, `RetainedEraHandlers`, `EraArmRequest`, `erasServedBy`,
-`narrowToEraArm`, `createProofProviderFromHandlers`, `createWalletProviderFromHandlers`,
+`EraDeclaringProvider`, `RetainedEraHandlers`, `EraRequest`, `erasServedBy`,
+`narrowToEra`, `createProofProviderFromHandlers`, `createWalletProviderFromHandlers`,
 `createMidnightProviderFromHandlers`, `ProofProviderHandlers`, `WalletProviderHandlers`,
 `MidnightProviderHandlers`, `CurrentEraProver`, `RetainedEraProver`,
 `CurrentEraBalancer`, `RetainedEraBalancer`, `CurrentEraSubmitter`,

@@ -34,7 +34,7 @@ import {
   SeamEraUnsupportedError,
   SigningKeyExportError,
   UntaggedPayloadError,
-  UnusableEraArmError,
+  UnusableEraEntryError,
   V8PayloadUnsupportedError,
   ZkArtifactFetchError
 } from '../errors';
@@ -51,7 +51,7 @@ describe('types error classes', () => {
     ['V8PayloadUnsupportedError', new V8PayloadUnsupportedError('proveTx', 3)],
     ['UntaggedPayloadError', new UntaggedPayloadError('proveTx', undefined)],
     ['SeamEraUnsupportedError', new SeamEraUnsupportedError('proveTx', 'v8', ['v9'])],
-    ['UnusableEraArmError', new UnusableEraArmError('proveTx', 'v8', 'handler', 'null')],
+    ['UnusableEraEntryError', new UnusableEraEntryError('proveTx', 'v8', 'handler', 'null')],
     ['InvalidProtocolSchemeError', new InvalidProtocolSchemeError('ftp', ['http', 'https'])],
     ['ArtifactRuntimeVersionUnavailableError', new ArtifactRuntimeVersionUnavailableError('provider')],
     ['PrivateStateExportError', new PrivateStateExportError('msg')],
@@ -86,25 +86,25 @@ describe('types error classes', () => {
 
   it.each([
     [
-      'a retained era arm',
-      new UnusableEraArmError('balanceTx', 'v8', 'handler', 'null'),
-      "Cannot use the v8 arm registered for balanceTx: expected a function, got null. " +
-        'Pass a function for v8, or leave the entry out (or set it to undefined) if this era is not served.'
+      'a retained era handler',
+      new UnusableEraEntryError('balanceTx', 'v8', 'handler', 'null'),
+      "Cannot use retainedEras.v8 passed for balanceTx: expected a function, got null. " +
+        'Pass a function as retainedEras.v8, or leave the entry out (or set it to undefined) if this era is not served.'
     ],
     [
       'a retained era proving provider',
-      new UnusableEraArmError('proveTx', 'v8', 'proving-provider', 'a function'),
-      "Cannot use the v8 arm registered for proveTx: expected a ProvingProvider with callable 'check' and 'prove', got a function. " +
-        "Pass a ProvingProvider with callable 'check' and 'prove' for v8, or leave the entry out (or set it to undefined) if this era is not served."
+      new UnusableEraEntryError('proveTx', 'v8', 'proving-provider', 'a function'),
+      "Cannot use retainedEras.v8 passed for proveTx: expected a ProvingProvider with callable 'check' and 'prove', got a function. " +
+        "Pass a ProvingProvider with callable 'check' and 'prove' as retainedEras.v8, or leave the entry out (or set it to undefined) if this era is not served."
     ],
     [
-      'the current era arm',
-      new UnusableEraArmError('submitTx', 'v9', 'handler', 'undefined'),
-      'Cannot use the v9 arm registered for submitTx: expected a function, got undefined. ' +
-        'Pass a function for v9: every provider serves the current era.'
+      'the current era handler',
+      new UnusableEraEntryError('submitTx', 'v9', 'handler', 'undefined'),
+      'Cannot use currentEra passed for submitTx: expected a function, got undefined. ' +
+        'Pass a function as currentEra: every provider serves the current era.'
     ]
-  ] as const)('UnusableEraArmError names its class and the remedy for %s', (_case, error, message) => {
-    expect([error.name, error.message]).toEqual(['UnusableEraArmError', message]);
+  ] as const)('UnusableEraEntryError names its class and the remedy for %s', (_case, error, message) => {
+    expect([error.name, error.message]).toEqual(['UnusableEraEntryError', message]);
   });
 
   it('category table covers every provider code exactly', () => {
@@ -133,6 +133,7 @@ describe('types error classes', () => {
     ['PrivateStateExportError', new PrivateStateExportError('msg'), 'MIDNIGHT_JS_PR_PRIVATE_STATE_EXPORT_FAILED', 'USAGE'],
     ['SigningKeyExportError', new SigningKeyExportError('msg'), 'MIDNIGHT_JS_PR_SIGNING_KEY_EXPORT_FAILED', 'USAGE'],
     ['InvalidProtocolSchemeError', new InvalidProtocolSchemeError('ftp', ['http', 'https']), 'MIDNIGHT_JS_PR_INVALID_PROTOCOL_SCHEME', 'USAGE'],
+    ['UnusableEraEntryError', new UnusableEraEntryError('proveTx', 'v8', 'handler', 'null'), 'MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY', 'USAGE'],
     [
       'ArtifactRuntimeVersionUnavailableError',
       new ArtifactRuntimeVersionUnavailableError('provider'),

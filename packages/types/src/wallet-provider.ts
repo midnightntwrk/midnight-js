@@ -20,8 +20,8 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
-import { assertFunction, readEraArms } from './internal/read-era-arms';
+import { erasServedBy, narrowToEra, type RetainedEraHandlers } from './era-handlers';
+import { assertFunction, readEraEntries } from './internal/read-era-entries';
 import { type UnboundTransaction,type VersionedUnboundTransaction } from './proof-provider';
 import { type VersionedTx } from './versioned';
 
@@ -55,7 +55,7 @@ export interface WalletProvider {
    *            `MidnightWalletProvider` defaults to one hour.
    * @returns The balanced, signed transaction, version-tagged. Narrow on `version` — or call
    *          `unwrapV9` — before reading the payload.
-   * @throws V8PayloadUnsupportedError if the implementation does not handle the v8 arm.
+   * @throws V8PayloadUnsupportedError if the implementation does not handle v8 payloads.
    * @throws UntaggedPayloadError if `version` is missing or unrecognised.
    */
   balanceTx(tx: VersionedUnboundTransaction, ttl?: Date): Promise<VersionedFinalizedTransaction>;
@@ -96,7 +96,7 @@ export interface WalletProviderHandlers {
 }
 
 /**
- * Assembles a {@link WalletProvider} from one arm per ledger era it serves.
+ * Assembles a {@link WalletProvider} from one handler per ledger era it serves.
  *
  * The counterpart to `createProofProviderFromHandlers`, with the same guarantees:
  * `supportedEras` is computed from the handlers supplied, the tag never appears in
@@ -107,15 +107,15 @@ export interface WalletProviderHandlers {
  * retained-era handler is called with no `this`.
  *
  * @param handlers The current-era handler, any retained-era handlers, and the two key readers.
- * @returns A {@link WalletProvider} routing each request to its era's arm.
- * @throws UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
+ * @returns A {@link WalletProvider} routing each request to its era's handler.
+ * @throws UnusableEraEntryError if `currentEra`, or a `retainedEras` entry other
  *         than `undefined`, is not a function. Raised at construction.
  * @throws InvalidArgumentError if `handlers` is not an object, `retainedEras` is
  *         not a plain object keyed only by retained eras, or a key reader is not
  *         a function. Raised at construction.
  */
 export const createWalletProviderFromHandlers = (handlers: WalletProviderHandlers): WalletProvider => {
-  const { currentEra, retainedEras } = readEraArms('balanceTx', handlers, 'handler');
+  const { currentEra, retainedEras } = readEraEntries('balanceTx', handlers, 'handler');
   const { getCoinPublicKey, getEncryptionPublicKey } = handlers;
   assertFunction('balanceTx', 'getCoinPublicKey', getCoinPublicKey);
   assertFunction('balanceTx', 'getEncryptionPublicKey', getEncryptionPublicKey);
@@ -123,7 +123,7 @@ export const createWalletProviderFromHandlers = (handlers: WalletProviderHandler
     supportedEras: erasServedBy(retainedEras),
 
     async balanceTx(tx: VersionedUnboundTransaction, ttl?: Date): Promise<VersionedFinalizedTransaction> {
-      const request = narrowToEraArm(tx, 'balanceTx', retainedEras);
+      const request = narrowToEra(tx, 'balanceTx', retainedEras);
       if (request.era === CURRENT_LEDGER_VERSION) {
         return { version: CURRENT_LEDGER_VERSION, tx: await Reflect.apply(currentEra, handlers, [request.tx, ttl]) };
       }
@@ -153,7 +153,7 @@ export interface V9WalletProvider {
  * implementation code, where a hand-tagged implementation meets a compiler error
  * that does not name the real problem.
  *
- * The returned provider serves the v9 arm only — `supportedEras` says so — and
+ * The returned provider serves v9 payloads only — `supportedEras` says so — and
  * that is permanent rather than a gap: it lifts a v9-only implementation. It
  * rejects a v8 payload with `V8PayloadUnsupportedError` and an untagged one with
  * `UntaggedPayloadError`. To serve a retained era as well, use
@@ -163,7 +163,7 @@ export interface V9WalletProvider {
  * @returns A {@link WalletProvider} that narrows inbound payloads and tags
  *          outbound ones.
  * @see {@link SeamEraDeclarations} for the compiler error this avoids, and for
- * why serving the v9 arm only is permanent rather than a gap.
+ * why serving v9 payloads only is permanent rather than a gap.
  *
  * @example
  * ```typescript

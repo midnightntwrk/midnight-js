@@ -96,7 +96,7 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   INDEXER_CONFIG_INVALID: 'MIDNIGHT_JS_PR_INDEXER_CONFIG_INVALID',
   INDEXER_INVARIANT_VIOLATED: 'MIDNIGHT_JS_PR_INDEXER_INVARIANT_VIOLATED',
   INDEXER_PAYLOAD_TOO_LARGE: 'MIDNIGHT_JS_PR_INDEXER_PAYLOAD_TOO_LARGE',
-  UNUSABLE_ERA_ARM: 'MIDNIGHT_JS_PR_UNUSABLE_ERA_ARM'
+  UNUSABLE_ERA_ENTRY: 'MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY'
 } as const);
 /** The union of every value in {@link PROVIDER_ERROR_CODES}. */
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
@@ -134,7 +134,7 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
   [PROVIDER_ERROR_CODES.INDEXER_CONFIG_INVALID]: USAGE,
   [PROVIDER_ERROR_CODES.INDEXER_INVARIANT_VIOLATED]: INTERNAL,
   [PROVIDER_ERROR_CODES.INDEXER_PAYLOAD_TOO_LARGE]: INTEGRITY,
-  [PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM]: USAGE
+  [PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY]: USAGE
 });
 
 const {
@@ -157,16 +157,16 @@ const {
   ZK_ARTIFACT_NOT_SERVED,
   PROOF_SERVER_UNAVAILABLE,
   PROOF_SERVER_REFUSED,
-  UNUSABLE_ERA_ARM
+  UNUSABLE_ERA_ENTRY
 } = PROVIDER_ERROR_CODES;
 
 /**
  * Thrown by a provider that only speaks the v9 ledger runtime when it is
- * handed the v8 arm of a versioned transaction payload — serialized,
- * tag-prefixed bytes instead of a live v9 transaction object.
+ * handed a v8 payload — serialized, tag-prefixed bytes instead of a live v9
+ * transaction object.
  *
  * Catching this does NOT mean "the framework cannot do it yet". It means the
- * specific implementation on that seam does not serve the v8 arm — permanently
+ * specific implementation on that seam does not serve v8 payloads — permanently
  * for the lifting adapters, contingently for a concrete provider.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from
@@ -195,9 +195,9 @@ export class V8PayloadUnsupportedError extends MidnightJsError {
       `${seam} received a v8-era transaction payload (serialized bytes${
         byteLength === undefined ? ', size unknown: txBytes was missing or not a Uint8Array' : `, ${byteLength} bytes`
       }), which this provider does not serve. ` +
-        `The createProofProvider, createWalletProvider and createMidnightProvider adapters never serve the v8 arm: ` +
+        `The createProofProvider, createWalletProvider and createMidnightProvider adapters never serve a v8 payload: ` +
         `each lifts a v9-only implementation, so this is by design rather than a gap. ` +
-        `Send the v9 arm of the payload ({ version: 'v9', tx }) on this seam, or use an implementation that serves ` +
+        `Send a v9 payload ({ version: 'v9', tx }) on this seam, or use an implementation that serves ` +
         `v8 — httpClientProofProvider and dappConnectorProofProvider do so for proveTx, while balanceTx and submitTx ` +
         `need a WalletProvider or MidnightProvider written against the version-tagged interface directly.`
     );
@@ -331,39 +331,40 @@ export class SeamEraUnsupportedError extends MidnightJsError {
 }
 
 /**
- * The shape a provider factory needs for each era arm: a `handler` function
+ * The shape a provider factory needs for each era entry — the value passed as
+ * `currentEra` or under `retainedEras`: a `handler` function
  * for the `…FromHandlers` factories, a `proving-provider` with callable
  * `check` and `prove` for `createProofProviderForEras`.
  */
-export type EraArmShape = 'handler' | 'proving-provider';
+export type EraEntryShape = 'handler' | 'proving-provider';
 
-const ERA_ARM_SHAPE_DESCRIPTIONS: Readonly<Record<EraArmShape, string>> = {
+const ERA_ENTRY_SHAPE_DESCRIPTIONS: Readonly<Record<EraEntryShape, string>> = {
   handler: 'a function',
   'proving-provider': "a ProvingProvider with callable 'check' and 'prove'"
 };
 
 /**
- * Thrown by a provider factory given an era arm it cannot use: a current-era
- * arm that is not the {@link EraArmShape} the factory needs, or a retained-era
+ * Thrown by a provider factory given an era entry it cannot use: a `currentEra`
+ * that is not the {@link EraEntryShape} the factory needs, or a retained-era
  * entry that is neither `undefined` nor that shape. Raised at construction, so
- * `supportedEras` never claims an era no arm can serve.
+ * `supportedEras` never claims an era no entry can serve.
  *
- * The types rule these arms out, so it is reachable only from JavaScript or
- * across an untyped boundary. The factory checks shape only: an arm built for
+ * The types rule these entries out, so it is reachable only from JavaScript or
+ * across an untyped boundary. The factory checks shape only: an entry built for
  * the wrong era, such as a `ProvingProvider` with the other era's key
  * material, still passes.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from
  * `@midnight-ntwrk/midnight-js-utils`.
  */
-export class UnusableEraArmError extends MidnightJsError {
-  readonly code = UNUSABLE_ERA_ARM;
-  readonly category = PROVIDER_ERROR_CATEGORIES[UNUSABLE_ERA_ARM];
+export class UnusableEraEntryError extends MidnightJsError {
+  readonly code = UNUSABLE_ERA_ENTRY;
+  readonly category = PROVIDER_ERROR_CATEGORIES[UNUSABLE_ERA_ENTRY];
 
   /**
-   * @param seam The provider method the rejected arm would have served.
-   * @param era The ledger era whose arm was rejected.
-   * @param expected The shape the factory needs for that arm.
+   * @param seam The provider method the rejected entry would have served.
+   * @param era The ledger era whose entry was rejected.
+   * @param expected The shape the factory needs for that entry.
    * @param received What was passed instead, for the message only: for example
    *                 `'null'`, `'a class'`, `'an instance of Map'`, or
    *                 `"an object without callable 'prove'"`.
@@ -371,17 +372,18 @@ export class UnusableEraArmError extends MidnightJsError {
   constructor(
     readonly seam: ProviderSeam,
     readonly era: LedgerVersion,
-    readonly expected: EraArmShape,
+    readonly expected: EraEntryShape,
     readonly received: string
   ) {
-    const shape = ERA_ARM_SHAPE_DESCRIPTIONS[expected];
+    const shape = ERA_ENTRY_SHAPE_DESCRIPTIONS[expected];
+    const field = era === CURRENT_LEDGER_VERSION ? 'currentEra' : `retainedEras.${era}`;
     super(
-      `Cannot use the ${era} arm registered for ${seam}: expected ${shape}, got ${received}. ` +
+      `Cannot use ${field} passed for ${seam}: expected ${shape}, got ${received}. ` +
         (era === CURRENT_LEDGER_VERSION
-          ? `Pass ${shape} for ${era}: every provider serves the current era.`
-          : `Pass ${shape} for ${era}, or leave the entry out (or set it to undefined) if this era is not served.`)
+          ? `Pass ${shape} as ${field}: every provider serves the current era.`
+          : `Pass ${shape} as ${field}, or leave the entry out (or set it to undefined) if this era is not served.`)
     );
-    this.name = 'UnusableEraArmError';
+    this.name = 'UnusableEraEntryError';
   }
 }
 

@@ -17,7 +17,7 @@ import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/midnig
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { RetainedEraHandlers } from '../era-arms';
+import type { RetainedEraHandlers } from '../era-handlers';
 import { createMidnightProviderFromHandlers, type MidnightProvider } from '../midnight-provider';
 import { createProofProviderFromHandlers, type ProofProvider, type UnboundTransaction } from '../proof-provider';
 import { createWalletProviderFromHandlers, type WalletProvider } from '../wallet-provider';
@@ -46,7 +46,7 @@ describe('RetainedEraHandlers', () => {
 });
 
 describe('createProofProviderFromHandlers', () => {
-  it('accepts a retained arm for a retained era', () => {
+  it('accepts a retained handler for a retained era', () => {
     expectTypeOf(
       createProofProviderFromHandlers({
         currentEra: async () => stubUnbound(),
@@ -55,7 +55,7 @@ describe('createProofProviderFromHandlers', () => {
     ).toExtend<ProofProvider>();
   });
 
-  it('refuses a retained arm registered for the current era', () => {
+  it('refuses a retained handler registered for the current era', () => {
     createProofProviderFromHandlers({
       currentEra: async () => stubUnbound(),
       // @ts-expect-error the current era is not a retained era: it crosses the
@@ -79,7 +79,7 @@ describe('createProofProviderFromHandlers', () => {
 });
 
 describe('createWalletProviderFromHandlers', () => {
-  it('refuses a retained arm registered for the current era', () => {
+  it('refuses a retained handler registered for the current era', () => {
     createWalletProviderFromHandlers({
       currentEra: async () => stubFinalized(),
       // @ts-expect-error see the proof-provider case above.
@@ -94,7 +94,7 @@ describe('createWalletProviderFromHandlers', () => {
 });
 
 describe('createMidnightProviderFromHandlers', () => {
-  it('refuses a retained arm registered for the current era', () => {
+  it('refuses a retained handler registered for the current era', () => {
     createMidnightProviderFromHandlers({
       currentEra: async () => 'tx-id' as TransactionId,
       // @ts-expect-error see the proof-provider case above.

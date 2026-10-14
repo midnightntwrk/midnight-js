@@ -44,18 +44,18 @@ import type { VersionedTx } from './versioned';
 export type RetainedEraHandlers<H> = Partial<Readonly<Record<RetainedLedgerVersion, H>>>;
 
 /**
- * The era list a provider assembled from these arms serves.
+ * The era list a provider assembled from these handlers serves.
  *
- * Derived from the arms actually supplied rather than written out beside them:
+ * Derived from the handlers actually supplied rather than written out beside them:
  * a hand-written list is a second statement of the same fact, and the two drift
- * the first time an arm is added or removed. The current era is always present
+ * the first time a handler is added or removed. The current era is always present
  * because {@link RetainedEraHandlers} is the only optional half — a provider
- * with no current-era arm cannot be constructed.
+ * with no current-era handler cannot be constructed.
  *
- * @param retainedEras The retained arms supplied to the factory, if any.
+ * @param retainedEras The retained handlers supplied to the factory, if any.
  * @returns The eras this provider declares, frozen so a consumer cannot widen
  *          the declaration after construction and make
- *          `assertSeamsSupportEra` pass for an era the arms do not serve.
+ *          `assertSeamsSupportEra` pass for an era the handlers do not serve.
  */
 export const erasServedBy = (retainedEras?: RetainedEraHandlers<unknown>): readonly LedgerVersion[] =>
   Object.freeze<LedgerVersion[]>([
@@ -64,19 +64,19 @@ export const erasServedBy = (retainedEras?: RetainedEraHandlers<unknown>): reado
   ]);
 
 /**
- * A tagged payload narrowed to the arm that will serve it: either the live
+ * A tagged payload narrowed to the era that will serve it: either the live
  * current-era object, or a retained era's bytes together with the handler
  * registered for that era.
  *
  * @typeParam T - The current era's ledger transaction type at this seam.
  * @typeParam H - The retained-era handler signature at this seam.
  */
-export type EraArmRequest<T, H> =
+export type EraRequest<T, H> =
   | { readonly era: CurrentLedgerVersion; readonly tx: T }
   | { readonly era: RetainedLedgerVersion; readonly handler: H; readonly txBytes: Uint8Array };
 
 /**
- * Narrows a version-tagged payload onto the arm that serves it, refusing an arm
+ * Narrows a version-tagged payload onto the era that serves it, refusing an era
  * no handler was registered for.
  *
  * This is `unwrapV9` generalised to a provider that serves more than one era,
@@ -86,8 +86,8 @@ export type EraArmRequest<T, H> =
  *
  * @param payload The version-tagged payload that arrived at the seam.
  * @param seam The provider method being implemented, used in error messages.
- * @param retainedEras The retained arms this provider was built with.
- * @returns The arm to run, and the payload it takes.
+ * @param retainedEras The retained handlers this provider was built with.
+ * @returns The era to run, the payload it takes, and for a retained era its handler.
  * @throws V8PayloadUnsupportedError if the payload carries a retained era for
  *         which no handler was registered.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised. The
@@ -95,11 +95,11 @@ export type EraArmRequest<T, H> =
  *         JavaScript, from a consumer built against a pre-5.0.0
  *         `midnight-js-types`, or across an untyped boundary.
  */
-export const narrowToEraArm = <T, H>(
+export const narrowToEra = <T, H>(
   payload: VersionedTx<T>,
   seam: ProviderSeam,
   retainedEras: RetainedEraHandlers<H> | undefined
-): EraArmRequest<T, H> => {
+): EraRequest<T, H> => {
   // Guards the JavaScript-caller case before the switch, so a null or primitive
   // payload reports the same coded error as a bad tag rather than throwing a
   // bare TypeError on property access.
@@ -111,7 +111,7 @@ export const narrowToEraArm = <T, H>(
       return { era: CURRENT_LEDGER_VERSION, tx: payload.tx };
     case 'v8': {
       // Looked up through the payload's own tag rather than a second `'v8'`
-      // literal, so the arm that ran and the arm that was requested cannot
+      // literal, so the era that ran and the era that was requested cannot
       // disagree.
       const handler = retainedEras?.[payload.version];
       if (handler === undefined) {
@@ -128,7 +128,7 @@ export const narrowToEraArm = <T, H>(
     }
     default: {
       // Keeps the switch exhaustive: if an era is added to `VersionedTx`
-      // without an arm here, `payload` stops being `never` and this assignment
+      // without a case here, `payload` stops being `never` and this assignment
       // fails to compile.
       const unhandled: never = payload;
       throw new UntaggedPayloadError(seam, unhandled);

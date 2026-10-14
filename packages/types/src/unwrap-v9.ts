@@ -30,7 +30,7 @@ import type { VersionedTx } from './versioned';
  * @param payload The version-tagged payload to narrow.
  * @param seam The provider method being implemented, used in error messages.
  * @returns The live v9 ledger transaction.
- * @throws V8PayloadUnsupportedError if the payload carries the v8 arm.
+ * @throws V8PayloadUnsupportedError if the payload is a v8 payload.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised. The
  *         types make that unrepresentable, so it is reachable only from
  *         JavaScript, from a consumer built against a pre-5.0.0
@@ -66,7 +66,7 @@ export const unwrapV9 = <T>(payload: VersionedTx<T>, seam: ProviderSeam): T => {
       );
     default: {
       // Keeps the switch exhaustive: if an era is added to `VersionedTx`
-      // without an arm here, `payload` stops being `never` and this
+      // without a case here, `payload` stops being `never` and this
       // assignment fails to compile.
       const unhandled: never = payload;
       throw new UntaggedPayloadError(seam, unhandled);
