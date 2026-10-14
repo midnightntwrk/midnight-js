@@ -40,8 +40,8 @@ vi.mock('../codec', async (importOriginal) => ({
 
 // Node major 2 -> the v9 ledger era; node major 1 -> v8; 22_xxx is a 0.x
 // network, which this framework deliberately does not map.
-const V9_PROTOCOL_VERSION = 2_000_000;
-const V8_PROTOCOL_VERSION = 1_000_000;
+const LEDGER9_PROTOCOL_VERSION = 2_000_000;
+const LEDGER8_PROTOCOL_VERSION = 1_000_000;
 const UNMAPPED_PROTOCOL_VERSION = 22_001;
 
 const CONTRACT_ADDRESS = '0200deadbeef' as ContractAddress;
@@ -78,8 +78,8 @@ beforeEach(() => {
 // derived discriminant exists to prevent.
 describe('finalized-record era wiring', () => {
   it.each([
-    ['v9', V9_PROTOCOL_VERSION],
-    ['v8', V8_PROTOCOL_VERSION]
+    ['v9', LEDGER9_PROTOCOL_VERSION],
+    ['v8', LEDGER8_PROTOCOL_VERSION]
   ])('dispatches the decode on the %s era the record itself reports', async (era, protocolVersion) => {
     await toFinalizedTxData(TX_ID, transactionAt(protocolVersion));
 
@@ -92,24 +92,24 @@ describe('finalized-record era wiring', () => {
   });
 
   it('names the deploy method and the contract address on the deploy path', async () => {
-    await toFinalizedDeployTxData(CONTRACT_ADDRESS, transactionAt(V8_PROTOCOL_VERSION));
+    await toFinalizedDeployTxData(CONTRACT_ADDRESS, transactionAt(LEDGER8_PROTOCOL_VERSION));
 
     expect(decodeVersionedTransaction).toHaveBeenCalledWith(RAW, 'v8', {
       method: 'watchForDeployTxData',
-      protocolVersion: V8_PROTOCOL_VERSION,
+      protocolVersion: LEDGER8_PROTOCOL_VERSION,
       recordRef: `contractAddress ${CONTRACT_ADDRESS}`
     });
   });
 
   it('carries the decoded transaction and its era straight onto the record', async () => {
-    const record = await toFinalizedTxData(TX_ID, transactionAt(V9_PROTOCOL_VERSION));
+    const record = await toFinalizedTxData(TX_ID, transactionAt(LEDGER9_PROTOCOL_VERSION));
 
     // `tx` is what the decoder returned, unwrapped and untouched — the stub's
     // sentinel is how that shows. Without this the test name promised more
     // than it checked, and a record-builder that dropped `tx` would pass.
     expect(record.tx).toBe('decoded-tx');
     expect(record.version).toBe('v9');
-    expect(record.protocolVersion).toBe(V9_PROTOCOL_VERSION);
+    expect(record.protocolVersion).toBe(LEDGER9_PROTOCOL_VERSION);
   });
 
   // The guarantee the whole design rests on: which runtime reads the bytes is

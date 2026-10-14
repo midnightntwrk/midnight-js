@@ -106,7 +106,7 @@ which this repo does not accept. Publishing each class next to its code is what
 closes that.
 
 `PayloadNotATransactionError` is the one that does not come from the era
-pipeline: a proof provider raises it from `proveV8Transaction`, and it reaches
+pipeline: a proof provider raises it from `proveLedger8Transaction`, and it reaches
 application code as a `proveTx` rejection out of `contracts.deployContract` or
 `submitCallTx`. Its constructor is private and its only public member is
 `code`, so it is published purely so a consumer can `instanceof` it.

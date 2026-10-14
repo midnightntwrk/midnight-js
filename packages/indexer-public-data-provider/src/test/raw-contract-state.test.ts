@@ -31,11 +31,10 @@ import { IndexerPublicDataProvider } from '../provider';
 import { HEAD_PROTOCOL_VERSION_QUERY, RAW_CONTRACT_STATE_QUERY } from '../query-definitions';
 import { type ApolloRequest, stubApolloHandle } from './apollo-stub';
 import {
-  mintV8ContractStateHex,
-  mintV9ContractStateHex,
-  V8_ERA_PROTOCOL_VERSION,
-  V9_ERA_PROTOCOL_VERSION
-} from './state-fixtures';
+  LEDGER8_ERA_PROTOCOL_VERSION,
+  LEDGER9_ERA_PROTOCOL_VERSION,
+  mintLedger8ContractStateHex,
+  mintLedger9ContractStateHex} from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
 
@@ -107,11 +106,11 @@ describe('contract-state envelope tags', () => {
   // through `midnight-js-protocol` -- and they exercise the shared implementation through the
   // import above.
   test('maps the tag the v9 runtime writes onto the v9 ledger era', () => {
-    expect(contractStateEnvelopeVersion(new Uint8Array(fromHex(mintV9ContractStateHex())))).toBe('v9');
+    expect(contractStateEnvelopeVersion(new Uint8Array(fromHex(mintLedger9ContractStateHex())))).toBe('v9');
   });
 
   test('maps the tag the v8 runtime writes onto the v8 ledger era', async () => {
-    expect(contractStateEnvelopeVersion(new Uint8Array(fromHex(await mintV8ContractStateHex())))).toBe('v8');
+    expect(contractStateEnvelopeVersion(new Uint8Array(fromHex(await mintLedger8ContractStateHex())))).toBe('v8');
   });
 });
 
@@ -120,7 +119,7 @@ describe('queryRawContractState', () => {
     test('asks for the block protocol version and the contract state in one request', async () => {
       const query = vi
         .fn<(request: ApolloRequest) => Promise<unknown>>()
-        .mockResolvedValue(composedResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION));
+        .mockResolvedValue(composedResponse(mintLedger9ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION));
 
       await buildProvider(query).queryRawContractState(ADDRESS);
 
@@ -137,7 +136,7 @@ describe('queryRawContractState', () => {
     test('anchors both fields to the same requested offset', async () => {
       const query = vi
         .fn<(request: ApolloRequest) => Promise<unknown>>()
-        .mockResolvedValue(composedResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION));
+        .mockResolvedValue(composedResponse(mintLedger9ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION));
 
       await buildProvider(query).queryRawContractState(ADDRESS, { type: 'blockHash', blockHash: '0xfeed' });
 
@@ -149,25 +148,25 @@ describe('queryRawContractState', () => {
     test('answers the era from the read itself, and leaves a head read to cost its own request', async () => {
       const query = vi
         .fn<(request: ApolloRequest) => Promise<unknown>>()
-        .mockResolvedValue(composedResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION));
+        .mockResolvedValue(composedResponse(mintLedger9ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION));
       const provider = buildProvider(query);
 
       const record = await provider.queryRawContractState(ADDRESS);
       await provider.queryLatestProtocolVersion();
 
-      expect(record?.protocolVersion).toBe(V9_ERA_PROTOCOL_VERSION);
+      expect(record?.protocolVersion).toBe(LEDGER9_ERA_PROTOCOL_VERSION);
       expect(query.mock.calls.filter(([request]) => request.query === HEAD_PROTOCOL_VERSION_QUERY)).toHaveLength(1);
     });
 
     test('returns null when the contract has no state at the offset', async () => {
-      expect(await providerServing(null, V9_ERA_PROTOCOL_VERSION).queryRawContractState(ADDRESS)).toBeNull();
+      expect(await providerServing(null, LEDGER9_ERA_PROTOCOL_VERSION).queryRawContractState(ADDRESS)).toBeNull();
     });
 
     test('fails fast when a state is served but the block that dates it is missing', async () => {
       // Returning null here would report "no contract at this address" for
       // what is really an inconsistent indexer — two very different things for
       // a caller to act on.
-      const rejection = await providerServing(mintV9ContractStateHex(), null)
+      const rejection = await providerServing(mintLedger9ContractStateHex(), null)
         .queryRawContractState(ADDRESS)
         .then(
           () => undefined,
@@ -185,25 +184,25 @@ describe('queryRawContractState', () => {
 
   describe('both envelopes round-trip', () => {
     test('serves v9 state bytes that deserialize again with the v9 runtime', async () => {
-      const stateHex = mintV9ContractStateHex();
+      const stateHex = mintLedger9ContractStateHex();
 
-      const record = await providerServing(stateHex, V9_ERA_PROTOCOL_VERSION).queryRawContractState(ADDRESS);
+      const record = await providerServing(stateHex, LEDGER9_ERA_PROTOCOL_VERSION).queryRawContractState(ADDRESS);
 
       expect(record?.version).toBe('v9');
-      expect(record?.protocolVersion).toBe(V9_ERA_PROTOCOL_VERSION);
+      expect(record?.protocolVersion).toBe(LEDGER9_ERA_PROTOCOL_VERSION);
       expect(ledger.ContractState.deserialize(record?.raw ?? new Uint8Array()).serialize()).toEqual(
         new Uint8Array(fromHex(stateHex))
       );
     });
 
     test('serves v8 state bytes that deserialize again with the v8 runtime', async () => {
-      const stateHex = await mintV8ContractStateHex();
+      const stateHex = await mintLedger8ContractStateHex();
       const v8 = await loadLedger8();
 
-      const record = await providerServing(stateHex, V8_ERA_PROTOCOL_VERSION).queryRawContractState(ADDRESS);
+      const record = await providerServing(stateHex, LEDGER8_ERA_PROTOCOL_VERSION).queryRawContractState(ADDRESS);
 
       expect(record?.version).toBe('v8');
-      expect(record?.protocolVersion).toBe(V8_ERA_PROTOCOL_VERSION);
+      expect(record?.protocolVersion).toBe(LEDGER8_ERA_PROTOCOL_VERSION);
       expect(v8.ContractState.deserialize(record?.raw ?? new Uint8Array()).serialize()).toEqual(
         new Uint8Array(fromHex(stateHex))
       );
@@ -214,7 +213,7 @@ describe('queryRawContractState', () => {
       // follows the protocol version, because that is the single construction
       // point. Catching the disagreement is the era cross-check's job, not
       // this record's.
-      const record = await providerServing(mintV9ContractStateHex(), V8_ERA_PROTOCOL_VERSION).queryRawContractState(
+      const record = await providerServing(mintLedger9ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION).queryRawContractState(
         ADDRESS
       );
 
@@ -224,17 +223,17 @@ describe('queryRawContractState', () => {
 
   describe('adversarial envelopes', () => {
     const rejections: readonly (readonly [string, () => Promise<string>])[] = [
-      ['a payload with no second tag separator', async () => withoutSecondColon(mintV9ContractStateHex())],
-      ['an unknown namespace and version', async () => retagged(mintV9ContractStateHex(), 'attacker:v1')],
+      ['a payload with no second tag separator', async () => withoutSecondColon(mintLedger9ContractStateHex())],
+      ['an unknown namespace and version', async () => retagged(mintLedger9ContractStateHex(), 'attacker:v1')],
       [
         'a real tag naming a different serialized type',
-        async () => retagged(mintV9ContractStateHex(), 'midnight:zswap-ledger-state[v5]')
+        async () => retagged(mintLedger9ContractStateHex(), 'midnight:zswap-ledger-state[v5]')
       ],
-      ['a tag prefix longer than the scan window', async () => retagged(mintV9ContractStateHex(), `${'x'.repeat(70)}:v8`)]
+      ['a tag prefix longer than the scan window', async () => retagged(mintLedger9ContractStateHex(), `${'x'.repeat(70)}:v8`)]
     ];
 
     test.each(rejections)('rejects %s', async (_name, buildStateHex) => {
-      const provider = providerServing(await buildStateHex(), V9_ERA_PROTOCOL_VERSION);
+      const provider = providerServing(await buildStateHex(), LEDGER9_ERA_PROTOCOL_VERSION);
 
       const rejection = await provider.queryRawContractState(ADDRESS).then(
         () => undefined,
@@ -248,7 +247,7 @@ describe('queryRawContractState', () => {
     });
 
     test.each(rejections)('reports %s with the shared tag-parse code', async (_name, buildStateHex) => {
-      const provider = providerServing(await buildStateHex(), V9_ERA_PROTOCOL_VERSION);
+      const provider = providerServing(await buildStateHex(), LEDGER9_ERA_PROTOCOL_VERSION);
 
       const rejection = await provider.queryRawContractState(ADDRESS).then(
         () => undefined,
@@ -262,7 +261,7 @@ describe('queryRawContractState', () => {
       // `Buffer.from(s, 'hex')` stops at the first unreadable character, so
       // without an up-front check a partly-hex payload would become a shorter
       // byte string that could still carry a valid-looking envelope.
-      const provider = providerServing('not-hex-at-all', V9_ERA_PROTOCOL_VERSION);
+      const provider = providerServing('not-hex-at-all', LEDGER9_ERA_PROTOCOL_VERSION);
 
       const rejection = await provider.queryRawContractState(ADDRESS).then(
         () => undefined,
@@ -274,8 +273,8 @@ describe('queryRawContractState', () => {
     });
 
     test('never echoes the served payload back in the error message', async () => {
-      const stateHex = retagged(mintV9ContractStateHex(), 'attacker:v1');
-      const provider = providerServing(stateHex, V9_ERA_PROTOCOL_VERSION);
+      const stateHex = retagged(mintLedger9ContractStateHex(), 'attacker:v1');
+      const provider = providerServing(stateHex, LEDGER9_ERA_PROTOCOL_VERSION);
 
       const rejection = await provider.queryRawContractState(ADDRESS).then(
         () => undefined,

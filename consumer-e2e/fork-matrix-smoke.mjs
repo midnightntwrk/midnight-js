@@ -95,8 +95,8 @@ const runScenario = (cwd, linker, environment, contractDir, enactFork) =>
   new Promise((resolve, reject) => {
     const config = {
       environment,
-      proofServerV8: environment.preForkProofServer,
-      proofServerV9: environment.postForkProofServer,
+      ledger8ProofServer: environment.preForkProofServer,
+      ledger9ProofServer: environment.postForkProofServer,
       walletSeed: WALLET_SEED,
       retainedZkConfigPath: contractDir,
       // The ZK artifacts each matrix contract proves against. Handed over as

@@ -249,8 +249,8 @@ two heads hand the providers genuinely different things:
 
 | head | composed by | crosses as | narrowed with |
 | ---- | ----------- | ---------- | ------------- |
-| `v8` | the retained ledger | `{ version: 'v8', txBytes }` | `requireV8` |
-| `v9` | the current ledger | `{ version: 'v9', tx }` | `requireV9` |
+| `v8` | the retained ledger | `{ version: 'v8', txBytes }` | `requireLedger8` |
+| `v9` | the current ledger | `{ version: 'v9', tx }` | `requireLedger9` |
 
 On a post-fork head the transaction is an ORDINARY current-era transaction that
 happens to carry a retained-era call, so it is passed to the providers exactly as every
@@ -266,7 +266,7 @@ reads them. The three deserialization markers — signature-enabled, unproven,
 unbound — are exactly what `composeCallTx` documents its output as.
 
 A provider that does not serve the pre-fork arm refuses it on the way IN, at the
-first provider method, with `V8PayloadUnsupportedError` — before anything is proven, which
+first provider method, with `Ledger8PayloadUnsupportedError` — before anything is proven, which
 is the point of leaving that guard in `types` rather than lifting it here.
 
 ### Sanitizing a provider's own failure
@@ -276,7 +276,7 @@ is the point of leaving that guard in `types` rather than lifting it here.
 
 This framework's OWN coded errors pass through UNCHANGED when they carry no
 `cause`. They then hold no external payload, and a caller narrowing on
-`V8PayloadUnsupportedError` — the refusal a current-era-only provider raises on
+`Ledger8PayloadUnsupportedError` — the refusal a current-era-only provider raises on
 the way in — or on `EraInvariantViolationError` has to keep seeing them. A coded
 error that carries a `cause` — `ProofServerError` wrapping a transport failure,
 say — holds external material on that cause, so it is sanitized like any other
@@ -363,7 +363,7 @@ rather than silently skipped.
 `deployContract`'s retained-era arm composes, submits and waits, and hands back a
 `Ledger8DeployedContract`. It is reachable only on a PRE-FORK head: the retained
 era has no post-fork deployment, so the era pairing table refuses a retained
-artifact against a post-fork head with `Ledger8DeployOnV9Error`, raised before
+artifact against a post-fork head with `Ledger8DeployOnLedger9Error`, raised before
 the constructor runs.
 
 ### The maintenance authority

@@ -62,7 +62,7 @@ export type ProviderMethod = TransactionMethod | ReadMethod;
  * folds it into the registry `hasErrorCode` consults.
  */
 export const PROVIDER_ERROR_CODES = Object.freeze({
-  V8_PAYLOAD_UNSUPPORTED: 'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED',
+  LEDGER8_PAYLOAD_UNSUPPORTED: 'MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTED',
   UNTAGGED_PAYLOAD: 'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD',
   ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_ERA_UNSUPPORTED',
   ERA_UNRESOLVABLE: 'MIDNIGHT_JS_PR_ERA_UNRESOLVABLE',
@@ -104,7 +104,7 @@ export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVI
 const { USAGE, ENVIRONMENT, TRANSIENT, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
 
 export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, MidnightJsErrorCategory>> = Object.freeze({
-  [PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED]: USAGE,
+  [PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED]: USAGE,
   [PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD]: USAGE,
   [PROVIDER_ERROR_CODES.ERA_UNSUPPORTED]: ENVIRONMENT,
   [PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE]: ENVIRONMENT,
@@ -138,7 +138,7 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
 });
 
 const {
-  V8_PAYLOAD_UNSUPPORTED,
+  LEDGER8_PAYLOAD_UNSUPPORTED,
   UNTAGGED_PAYLOAD,
   PROVIDER_ERA_UNSUPPORTED,
   PRIVATE_STATE_NOT_SERIALIZABLE,
@@ -175,9 +175,9 @@ const {
  * @see {@link ProviderEraDeclarations} for which providers raise it and why, and for
  * how it differs from {@link ProviderEraUnsupportedError}.
  */
-export class V8PayloadUnsupportedError extends MidnightJsError {
-  readonly code = V8_PAYLOAD_UNSUPPORTED;
-  readonly category = PROVIDER_ERROR_CATEGORIES[V8_PAYLOAD_UNSUPPORTED];
+export class Ledger8PayloadUnsupportedError extends MidnightJsError {
+  readonly code = LEDGER8_PAYLOAD_UNSUPPORTED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[LEDGER8_PAYLOAD_UNSUPPORTED];
 
   /**
    * @param method The provider method that received the payload.
@@ -201,7 +201,7 @@ export class V8PayloadUnsupportedError extends MidnightJsError {
         `v8 — httpClientProofProvider and dappConnectorProofProvider do so for proveTx, while balanceTx and submitTx ` +
         `need a WalletProvider or MidnightProvider written against the version-tagged interface directly.`
     );
-    this.name = 'V8PayloadUnsupportedError';
+    this.name = 'Ledger8PayloadUnsupportedError';
   }
 }
 
@@ -286,12 +286,12 @@ export class UntaggedPayloadError extends MidnightJsError {
  * wallet cannot balance the result is refused before its proof is paid for,
  * rather than after.
  *
- * Distinct from {@link V8PayloadUnsupportedError} on purpose, and the two are
+ * Distinct from {@link Ledger8PayloadUnsupportedError} on purpose, and the two are
  * not interchangeable:
  *
  * - This error means the provider SAID SO, in `supportedEras`, before it was
  *   asked to do anything. The remedy is to wire a different provider.
- * - `V8PayloadUnsupportedError` means a payload reached a method that will not
+ * - `Ledger8PayloadUnsupportedError` means a payload reached a method that will not
  *   take it. That remains the defence in depth: a declaration is a claim by the
  *   implementation, and nothing verifies it, so the narrowing in each method still
  *   runs and still reports its own error when a declaration turns out to be

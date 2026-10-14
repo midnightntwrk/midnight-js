@@ -28,7 +28,7 @@ const currentEraProvingProvider: ProvingProvider = {
   lookupKey: async () => undefined
 };
 
-// What an in-process prover's `asV8ProvingProvider()` is declared to return.
+// What an in-process prover's `asLedger8ProvingProvider()` is declared to return.
 const retainedEraProvingProvider: RetainedEraProvingProvider = {
   check: async () => [],
   prove: async () => new Uint8Array()

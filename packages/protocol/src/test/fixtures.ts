@@ -39,7 +39,7 @@ const FIXTURES_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/f
  * The `[v9]` is the wire-schema version of the serialized OBJECT, not a ledger
  * era. Never read an era off it.
  */
-export const V8_UNPROVEN_TX_TAG = 'midnight:transaction[v9](signature[v1],proof-preimage,embedded-fr[v1]):';
+export const LEDGER8_UNPROVEN_TX_TAG = 'midnight:transaction[v9](signature[v1],proof-preimage,embedded-fr[v1]):';
 
 /**
  * Reads a hex-encoded fixture into the bytes it encodes.
@@ -68,7 +68,7 @@ export const fixturePath = (...segments: string[]): string => resolve(FIXTURES_D
  * Written down once because `TranscriptPojo` requires the member: a hand-built
  * transcript fixture that omits it is not one `executeCircuit` could produce,
  * and every leg that consumes a transcript without reading its coin movements
- * (`wrapKeepStateCall`, `composeV8CallTx`) needs the same filler. Those legs
+ * (`wrapKeepStateCall`, `composeLedger8CallTx`) needs the same filler. Those legs
  * never read the key either, so it is a well-formed 32-byte placeholder rather
  * than a parameter each fixture has to invent a value for.
  */

@@ -208,16 +208,16 @@ which is era-independent.
 const proven = await proofProvider.proveTx(unprovenTx);
 
 // after
-const provenTx = unwrapV9(
+const provenTx = unwrapLedger9(
   await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
   'proveTx'
 );
 ```
 
-`unwrapV9` is exported from `@midnight-ntwrk/midnight-js-types`. Narrowing by
+`unwrapLedger9` is exported from `@midnight-ntwrk/midnight-js-types`. Narrowing by
 hand works too, but do not write `if (p.version !== 'v9') throw new Error(...)`:
 that produces an error with no `code`, and misreports a future era as
-"expected v9". `unwrapV9` throws `V8PayloadUnsupportedError` for a v8 payload
+"expected v9". `unwrapLedger9` throws `Ledger8PayloadUnsupportedError` for a v8 payload
 and `UntaggedPayloadError` when `version` is missing, both carrying a stable
 `code` you can match with `hasErrorCode`.
 
@@ -225,7 +225,7 @@ and `UntaggedPayloadError` when `version` is missing, both carrying a stable
 type-checking will not let you defer: return types are covariant, so an
 implementation still returning `Promise<FinalizedTransaction>` does not satisfy
 the new `Promise<VersionedFinalizedTransaction>`. Narrow the incoming payload
-with `unwrapV9(tx, 'balanceTx')` and tag what you return as
+with `unwrapLedger9(tx, 'balanceTx')` and tag what you return as
 `{ version: 'v9', tx }`. Third-party providers must be on a matching version.
 
 ### 8b. `FinalizedTxData` gained a required `version` field
@@ -239,7 +239,7 @@ implementations — must set it.
 
 `PublicDataProvider.watchForTxData` and `watchForDeployTxData` now return
 `VersionedFinalizedTxData`, the closed union of `FinalizedTxData`
-(`version: 'v9'`) and the new `FinalizedTxDataV8`. Narrow on `version` before
+(`version: 'v9'`) and the new `Ledger8FinalizedTxData`. Narrow on `version` before
 reading `tx`:
 
 ```typescript
@@ -319,7 +319,7 @@ branch, or match on `code` with `hasErrorCode`.
 Return types are covariant, so an implementation still resolving a bare
 `FinalizedTransaction` no longer satisfies `WalletProvider`. TypeScript reports
 the *parameter* mismatch first, so the error you see names the ledger methods
-`V8TxBytes` lacks rather than the missing tag — it is still this change.
+`Ledger8TxBytes` lacks rather than the missing tag — it is still this change.
 
 Rather than tagging by hand, wrap a v9-only implementation:
 
@@ -363,7 +363,7 @@ serve:
 ```typescript
 const midnightProvider: MidnightProvider = {
   supportedEras: ['v9'],
-  submitTx: (tx) => wallet.submitTransaction(unwrapV9(tx, 'submitTx'))
+  submitTx: (tx) => wallet.submitTransaction(unwrapLedger9(tx, 'submitTx'))
 };
 ```
 
@@ -375,30 +375,30 @@ import { createProofProviderFromHandlers } from '@midnight-ntwrk/midnight-js-typ
 
 const proofProvider = createProofProviderFromHandlers({
   currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
-  retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
+  retainedEras: { v8: (txBytes) => proveLedger8Transaction(txBytes, provingProvider) }
 });
 ```
 
 The factory routes each request to its era's handler, tags the answer as the era
-the request carried, and raises `V8PayloadUnsupportedError` for an era you did
+the request carried, and raises `Ledger8PayloadUnsupportedError` for an era you did
 not supply a handler for — the same error the un-widened provider raised before.
 `retainedEras` cannot name the current era: that era is passed to the provider as a live
 ledger object, not as bytes, so registering a handler for it is a compile error.
 
 Nothing verifies the declaration. Listing an era you do not serve makes the
 failure later, not absent: the provider still narrows its own payload and still
-raises `V8PayloadUnsupportedError`.
+raises `Ledger8PayloadUnsupportedError`.
 
 See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-handlers.md).
 
 ### 8g. New and changed exports
 
 **`@midnight-ntwrk/midnight-js-types`** — added: `FinalizedTxRecord`,
-`FinalizedTxDataV8`, `VersionedFinalizedTxData`, `V8TxBytes`, `V9Tx`,
+`Ledger8FinalizedTxData`, `VersionedFinalizedTxData`, `Ledger8TxBytes`, `Ledger9Tx`,
 `VersionedTx`, `VersionedUnprovenTransaction`, `VersionedUnboundTransaction`,
 `VersionedFinalizedTransaction`, `TransactionMethod`, `ReadMethod`, `ProviderMethod`,
-`unwrapV9`, `V8PayloadUnsupportedError`, `UntaggedPayloadError`,
-`V9WalletProvider`, `createWalletProvider`, `createMidnightProvider`,
+`unwrapLedger9`, `Ledger8PayloadUnsupportedError`, `UntaggedPayloadError`,
+`Ledger9WalletProvider`, `createWalletProvider`, `createMidnightProvider`,
 `ProviderEraUnsupportedError`, `assertProvidersSupportEra`, `TransactionProviders`,
 `EraDeclaringProvider`, `RetainedEraEntries`, `EraRequest`, `erasServedBy`,
 `narrowToEra`, `createProofProviderFromHandlers`, `createWalletProviderFromHandlers`,
@@ -562,7 +562,7 @@ names.
 | `types` | `assertSeamsSupportEra` | `assertProvidersSupportEra` |
 | `types` | `SeamEraUnsupportedError` | `ProviderEraUnsupportedError` |
 | `types` | `PROVIDER_ERROR_CODES.SEAM_ERA_UNSUPPORTED` (`MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED`) | `PROVIDER_ERA_UNSUPPORTED` (`MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`) |
-| `types` | the `seam` field on `V8PayloadUnsupportedError`, `UntaggedPayloadError`, `ProviderEraUnsupportedError`, `UnusableEraEntryError` | `method` |
+| `types` | the `seam` field on `Ledger8PayloadUnsupportedError`, `UntaggedPayloadError`, `ProviderEraUnsupportedError`, `UnusableEraEntryError` | `method` |
 | `contracts` | `EraSeam` | `EraMethod` |
 | `contracts` | `Ledger8.SeamFailedError` | `Ledger8.ProviderFailedError` |
 | `contracts` | `CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED` (`MIDNIGHT_JS_C_LEDGER8_SEAM_FAILED`) | `LEDGER8_PROVIDER_FAILED` (`MIDNIGHT_JS_C_LEDGER8_PROVIDER_FAILED`) |
@@ -571,6 +571,19 @@ names.
 | `contracts` | `result.era` values `'ledger8'` / `'ledger9'` (also the `path` field of the pipeline-selection breadcrumb) | `'v8'` / `'v9'` |
 | `contracts` | `PipelineEra`, `CurrentPipelineEra`, `CURRENT_PIPELINE_ERA` | `LedgerVersion`, `CurrentLedgerVersion`, `CURRENT_LEDGER_VERSION` from `@midnight-ntwrk/midnight-js-protocol` |
 | `contracts` | `RetainedPipelineEra`, `RETAINED_PIPELINE_ERA` | the literal `'v8'` (see ADR 0011) |
+| `types` | `V8PayloadUnsupportedError` | `Ledger8PayloadUnsupportedError` |
+| `types` | `PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED` (`MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED`) | `LEDGER8_PAYLOAD_UNSUPPORTED` (`MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTED`) |
+| `types` | `V8TxBytes`, `V9Tx`, `V9WalletProvider` | `Ledger8TxBytes`, `Ledger9Tx`, `Ledger9WalletProvider` |
+| `types` | `unwrapV9` | `unwrapLedger9` |
+| `types` | `FinalizedTxDataV8` | `Ledger8FinalizedTxData` |
+| `contracts` | `FoundDeployTxPublicDataV8` | `Ledger8FoundDeployTxPublicData` (flat, not in the `Ledger8` namespace: it is part of the current era's `FoundDeployTxData`) |
+| `contracts` | `Ledger8.DeployOnV9Error` | `Ledger8.DeployOnLedger9Error` |
+| `contracts` | `CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9` (`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9`) | `LEDGER8_DEPLOY_ON_LEDGER9` (`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_LEDGER9`) |
+| `protocol` | `ProtocolV8` | `Ledger8Protocol` |
+| `protocol` | `proveV8Transaction` (`./prove`) | `proveLedger8Transaction` |
+
+The payload tag values `version: 'v8' | 'v9'` do not change: they mirror the
+`ledger-v8` / `ledger-v9` package names.
 
 ---
 

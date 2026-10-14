@@ -21,16 +21,16 @@ import type {
   ComposeDeployOptions,
   DeployResultPojo
 } from '../shared/compose-types';
-import { composeV8CallTx, readZswapOffer } from './compose';
-import { composeV8DeployTx } from './deploy';
-import type { ProtocolV8 } from './load';
+import { composeLedger8CallTx, readZswapOffer } from './compose';
+import { composeLedger8DeployTx } from './deploy';
+import type { Ledger8Protocol } from './load';
 
 /**
  * Bridges a raw, serialized contract state into the v8 era, reporting a
  * rejected envelope as {@link ComposeOptionError} rather than letting a raw
  * decoder failure escape.
  */
-const readContractState = (raw: Uint8Array, v8: ProtocolV8): InstanceType<ProtocolV8['ContractState']> => {
+const readContractState = (raw: Uint8Array, v8: Ledger8Protocol): InstanceType<Ledger8Protocol['ContractState']> => {
   try {
     return v8.ContractState.deserialize(raw);
   } catch (cause) {
@@ -57,7 +57,7 @@ const readContractState = (raw: Uint8Array, v8: ProtocolV8): InstanceType<Protoc
  * @see {@link ComposeRefusalOrder}
  * @see {@link EraBoundary}
  */
-export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8): ComposeCallResultPojo => {
+export const composeEraLedger8CallTx = (options: ComposeCallOptions, v8: Ledger8Protocol): ComposeCallResultPojo => {
   const { calls, networkId, ttl, zswapOffer } = options;
   // Checked here, not left to the inner leg, so both arms refuse in the same
   // order; the re-check in the leg is idempotent -- see ComposeRefusalOrder.
@@ -70,7 +70,7 @@ export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8):
   }
   const [call] = calls;
 
-  return composeV8CallTx(
+  return composeLedger8CallTx(
     {
       circuitId: call.circuitId,
       contractAddress: call.contractAddress,
@@ -116,16 +116,16 @@ export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8):
  * @see {@link ComposeRefusalOrder}
  * @see {@link EraBoundary}
  */
-export const composeEraV8DeployTx = (options: ComposeDeployOptions, v8: ProtocolV8): DeployResultPojo => {
+export const composeEraLedger8DeployTx = (options: ComposeDeployOptions, v8: Ledger8Protocol): DeployResultPojo => {
   const { contractStateBytes, verifierKeys, networkId, ttl, guaranteedZswapOfferBytes } = options;
-  // See `composeEraV8CallTx` — hoisted so both arms refuse the envelope first.
+  // See `composeEraLedger8CallTx` — hoisted so both arms refuse the envelope first.
   assertComposeEnvelope(options, 'v8');
   const guaranteedOffer = readZswapOffer(guaranteedZswapOfferBytes, v8, 'guaranteedZswapOfferBytes');
   if (verifierKeys === undefined) {
     throw new ComposeOptionError('v8', 'verifierKeys');
   }
 
-  return composeV8DeployTx(
+  return composeLedger8DeployTx(
     { contractStateBytes, verifierKeys, networkId, ttl, guaranteedZswapOffer: guaranteedOffer },
     v8
   );

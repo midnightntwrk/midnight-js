@@ -138,7 +138,7 @@ two it called. The extractor's own diagnosis stays on `cause`.
 
 ## Wrapped exactly once, and the stage is checked
 
-`extractV9EncodedStateValue` owns the same wrapping the dispatching entry
+`extractLedger9EncodedStateValue` owns the same wrapping the dispatching entry
 applies: a rejected envelope (malformed, truncated, over-long, or tagged for
 the other era) leaves as a `DownConvertFailedError` at stage
 `'v9 envelope extraction'`, carrying the runtime's own diagnosis on `cause`.
@@ -159,7 +159,7 @@ no gain.
 
 `extractEncodedStateValue` takes `ledger8ContractState` for every `version`,
 not just `'v8'`. Requiring it unconditionally costs nobody a runtime they would
-not otherwise hold. This decoder is reached only from `createV8Era`
+not otherwise hold. This decoder is reached only from `createLedger8Era`
 (`lib/era/load-era.ts`), which has already awaited `loadLedger8()` and hands
 that module's `ContractState` in; the `'v9'` decoder is here so that the
 *bridge* can read a post-fork envelope before down-converting it, not to serve
@@ -181,7 +181,7 @@ stops being free the moment this function is surfaced beyond the v8 era facade â
 if a v9-only path ever calls it, move the check into the `'v8'` decoder and make
 the parameter optional there.
 
-The standalone `extractV9EncodedStateValue` is the release valve that keeps
+The standalone `extractLedger9EncodedStateValue` is the release valve that keeps
 that requirement from spreading. It was split out of
 `extractEncodedStateValue`'s decoder table so the v9 read is reachable without
 a pre-fork runtime. The dispatching entry requires that runtime for every

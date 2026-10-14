@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { FinalizedTransaction as V8Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { FinalizedTransaction as Ledger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import type { FinalizedTxData, FinalizedTxRecord } from './midnight-types';
@@ -32,7 +32,7 @@ import type { FinalizedTxData, FinalizedTxRecord } from './midnight-types';
  *
  * @see {@link VersionTaggedPayloads} for why a live object cannot cross.
  */
-export interface V8TxBytes {
+export interface Ledger8TxBytes {
   readonly version: 'v8';
   /** Serialized, tag-prefixed byte form. Unvalidated — see the note above. */
   readonly txBytes: Uint8Array;
@@ -46,15 +46,15 @@ export interface V8TxBytes {
  * @typeParam T - The v9 ledger transaction type for the pipeline stage in
  *                question — unproven, unbound, or finalized.
  */
-export interface V9Tx<T> {
+export interface Ledger9Tx<T> {
   readonly version: 'v9';
   readonly tx: T;
 }
 
 /**
  * A transaction payload passed to a provider method, discriminated by the ledger
- * runtime it belongs to: serialized bytes for the v8 era ({@link V8TxBytes}),
- * or the live ledger object for v9 ({@link V9Tx}).
+ * runtime it belongs to: serialized bytes for the v8 era ({@link Ledger8TxBytes}),
+ * or the live ledger object for v9 ({@link Ledger9Tx}).
  *
  * Consumers must narrow on `version` before touching the payload — there is
  * deliberately no untagged form, so a bare `Uint8Array` (bytes whose era
@@ -73,11 +73,11 @@ export interface V9Tx<T> {
  *   case 'v9':
  *     return proven.tx; // live v9 ledger object
  *   case 'v8':
- *     return decodeV8(proven.txBytes); // serialized, tag-prefixed bytes
+ *     return decodeLedger8(proven.txBytes); // serialized, tag-prefixed bytes
  * }
  * ```
  */
-export type VersionedTx<T> = V8TxBytes | V9Tx<T>;
+export type VersionedTx<T> = Ledger8TxBytes | Ledger9Tx<T>;
 
 /**
  * The v8 variant of {@link VersionedFinalizedTxData}. Carries the same
@@ -95,9 +95,9 @@ export type VersionedTx<T> = V8TxBytes | V9Tx<T>;
  * returns, not a placeholder. Contract-STATE reads are a separate question and
  * remain v9-only — see the provider's own documentation.
  */
-export interface FinalizedTxDataV8 extends FinalizedTxRecord {
+export interface Ledger8FinalizedTxData extends FinalizedTxRecord {
   readonly version: 'v8';
-  readonly tx: V8Transaction;
+  readonly tx: Ledger8Transaction;
 }
 
 /**
@@ -111,7 +111,7 @@ export interface FinalizedTxDataV8 extends FinalizedTxRecord {
  * type system obliges a third-party `PublicDataProvider` to do the same, so the
  * discriminant is exactly as trustworthy as the provider that produced it.
  */
-export type VersionedFinalizedTxData = FinalizedTxDataV8 | FinalizedTxData;
+export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
 
 // Compile-time-only bridge to the era vocabulary in
 // `@midnight-ntwrk/midnight-js-protocol`, which owns the mapping from a raw

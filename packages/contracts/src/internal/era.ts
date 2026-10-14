@@ -40,7 +40,7 @@ import {
   HeadReadFailedError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
-  Ledger8DeployOnV9Error,
+  Ledger8DeployOnLedger9Error,
   type StaleHeadOperationKind} from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
 import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcrumbs';
@@ -59,7 +59,7 @@ import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcr
  * @throws EraInvariantViolationError if the payload carries the v8 arm.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
  */
-export function requireV9<T>(
+export function requireLedger9<T>(
   payload: VersionedTx<T>,
   method: EraMethod,
   circuitId?: string | readonly string[]
@@ -83,13 +83,13 @@ export function requireV9<T>(
  * Unwraps the RETAINED arm of a versioned payload a provider returned, on a
  * flow that submitted the retained arm.
  *
- * The mirror of {@link requireV9}, and it exists for the same reason: the provider
+ * The mirror of {@link requireLedger9}, and it exists for the same reason: the provider
  * method types do not tie a provider's output era to its input era, so a flow that
  * submitted retained-era bytes has to check that retained-era bytes came back.
  *
  * Note which refusal is NOT this function's. A provider that does not handle
  * the retained arm at all rejects it on the way IN, with
- * `V8PayloadUnsupportedError` from `unwrapV9` in
+ * `Ledger8PayloadUnsupportedError` from `unwrapLedger9` in
  * `@midnight-ntwrk/midnight-js-types` — that is the inbound guard a
  * current-era-only provider implementation runs, and it is deliberately left
  * where it is so a retained-era submit against a provider that has not been
@@ -105,7 +105,7 @@ export function requireV9<T>(
  * @throws EraInvariantViolationError if the payload carries the current-era arm.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
  */
-export function requireV8<T>(
+export function requireLedger8<T>(
   payload: VersionedTx<T>,
   method: EraMethod,
   circuitId?: string | readonly string[]
@@ -129,7 +129,7 @@ export function requireV8<T>(
  * Refuses a finalized-transaction record that carries no readable era tag,
  * accepting either arm.
  *
- * The counterpart to {@link requireV9Record}, for the paths where BOTH tags
+ * The counterpart to {@link requireLedger9Record}, for the paths where BOTH tags
  * are legitimate answers and there is therefore no era to refuse: the retained
  * arm, and the current-era attach, which must accept a contract deployed before
  * the fork. A contract found on chain was deployed in whichever era was current
@@ -171,7 +171,7 @@ export function requireTaggedRecord(record: VersionedFinalizedTxData, method: Er
  * @throws EraInvariantViolationError if the record carries the v8 arm.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
  */
-export function requireV9Record(
+export function requireLedger9Record(
   record: VersionedFinalizedTxData,
   method: EraMethod,
   circuitId?: string | readonly string[]
@@ -603,7 +603,7 @@ export const ERA_PAIRING: EraPairingTable = pairingTable({
  * that is not a call is treated as a deploy, which is the refusing side.
  * @throws EraArtifactMismatchError with reason `'current-era-artifact-on-pre-fork-head'` for a
  * current-era artifact on a pre-fork head.
- * @throws Ledger8DeployOnV9Error for a retained-era deploy on a post-fork head.
+ * @throws Ledger8DeployOnLedger9Error for a retained-era deploy on a post-fork head.
  * @throws UnknownLedgerVersionError carrying whichever argument has no cell here, if an era is
  * added without extending the table -- and also from the closing arm, carrying a verdict rather
  * than an era, if a verdict is ever added without one. The class does not distinguish the three;
@@ -648,7 +648,7 @@ export const assertEraCompatible = (
       // asymmetric cell in the fork window -- so the value nobody anticipated must land on the
       // refusing side.
       if (kind !== 'call') {
-        throw new Ledger8DeployOnV9Error();
+        throw new Ledger8DeployOnLedger9Error();
       }
       return;
     case 'artifact-newer-than-head':

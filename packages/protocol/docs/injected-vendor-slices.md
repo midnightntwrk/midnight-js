@@ -123,7 +123,7 @@ declared once against ledger-v9 and identical on all three axes.
 
 That identity is pinned. The compile-time drift gate that asserts it across
 the three axes — `_CallContextUnchanged`, `_EffectsUnchanged`,
-`_V8CallContextUnchanged`, `_V8EffectsUnchanged` and the payload-type
+`_Ledger8CallContextUnchanged`, `_Ledger8EffectsUnchanged` and the payload-type
 assertions beside them — lived at the bottom of `v8-down-convert.test.ts` and
 went with that file when the hand-maintained execution layer was retired. It
 was restored at the bottom of `v8-executable.test.ts`, which is where it now

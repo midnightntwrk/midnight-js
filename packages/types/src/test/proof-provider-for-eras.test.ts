@@ -20,7 +20,7 @@ import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-nt
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { RetainedEraEntries } from '../era-entries';
-import { PROVIDER_ERROR_CODES, V8PayloadUnsupportedError } from '../errors';
+import { Ledger8PayloadUnsupportedError,PROVIDER_ERROR_CODES } from '../errors';
 import { createProofProviderForEras, type ProvingProvidersByEra, type UnboundTransaction } from '../proof-provider';
 
 const PROVING_REFUSED = 'proving refused';
@@ -170,9 +170,9 @@ describe('createProofProviderForEras', () => {
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-      expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
-      expect((rejection as V8PayloadUnsupportedError).method).toBe('proveTx');
+      expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
+      expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
+      expect((rejection as Ledger8PayloadUnsupportedError).method).toBe('proveTx');
     });
 
     it('refuses a v8 payload carrying a timeout as unsupported, not as a bad timeout', async () => {
@@ -185,8 +185,8 @@ describe('createProofProviderForEras', () => {
           (error: unknown) => error
         );
 
-      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-      expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
+      expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
+      expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
     });
 
     describe('proveTxConfig.timeout', () => {
@@ -245,7 +245,7 @@ describe('createProofProviderForEras', () => {
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
+      expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
     });
 
     it.each([

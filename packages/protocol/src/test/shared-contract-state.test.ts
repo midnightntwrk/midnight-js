@@ -21,7 +21,7 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { PROTOCOL_ERROR_CODES, StateDecodeFailedError, StateInconsistentError } from '../errors';
-import { extractV9EncodedStateValue } from '../lib/era/envelope';
+import { extractLedger9EncodedStateValue } from '../lib/era/envelope';
 import {
   type ContractBalance,
   type ContractStateDecoder,
@@ -70,7 +70,7 @@ describe('decodeContractStateWith', () => {
   it('carries exactly the encoded state the envelope reader produces', () => {
     const raw = readHexFixture('state-migrated-v9.hex');
 
-    expect(decodeContractStateWith(raw, 'v9', ledgerV9).state).toEqual(extractV9EncodedStateValue(raw));
+    expect(decodeContractStateWith(raw, 'v9', ledgerV9).state).toEqual(extractLedger9EncodedStateValue(raw));
   });
 
   // A blank slot is not a key of zero bytes: hashing nothing would produce a

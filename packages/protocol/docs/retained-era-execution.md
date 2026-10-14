@@ -285,7 +285,7 @@ at position 0` — and the refusal never renders the key itself, which on the
 sampled path is the only copy in existence.
 
 `contractState` on the result is a retained-era HANDLE, so it does not go
-straight into a deploy: both `composeV8DeployTx` and the era facade's
+straight into a deploy: both `composeLedger8DeployTx` and the era facade's
 `composeDeployTx` take the state as bytes, which is what `.serialize()` on that
 handle produces. The deploy-side consequences — and why the address cannot be
 recomputed — are in [VerifierKeys](./verifier-keys.md) and [ComposeRefusalOrder](./compose-refusal-order.md).

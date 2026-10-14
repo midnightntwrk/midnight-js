@@ -167,7 +167,7 @@ export {
   FinalizedDeployTxPublicData,
   FoundDeployTxData,
   FoundDeployTxPublicData,
-  FoundDeployTxPublicDataV8,
+  type Ledger8FoundDeployTxPublicData,
   SubmittedCallTx,
   UnsubmittedCallTxData,
   UnsubmittedCallTxPrivateData,

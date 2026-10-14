@@ -27,7 +27,7 @@ import type {
 } from '../shared/compose-types';
 import { aggregateUnshieldedOffers } from '../shared/unshielded';
 import { entryPointName } from '../shared/verifier-keys';
-import type { ProtocolV8 } from './load';
+import type { Ledger8Protocol } from './load';
 
 /**
  * Reads a serialized Zswap offer into the v8 era, reporting bytes this era
@@ -38,7 +38,7 @@ import type { ProtocolV8 } from './load';
  */
 export const readZswapOffer = (
   raw: Uint8Array | undefined,
-  v8: ProtocolV8,
+  v8: Ledger8Protocol,
   option: 'zswapOffer' | 'guaranteedZswapOfferBytes'
 ): UnprovenOffer | undefined => {
   if (raw === undefined) {
@@ -52,7 +52,7 @@ export const readZswapOffer = (
 };
 
 /**
- * Everything {@link composeV8CallTx} needs to assemble one v8-native call
+ * Everything {@link composeLedger8CallTx} needs to assemble one v8-native call
  * transaction. `contractState` is the v8-native `ContractState` the call is
  * dispatched against, as read from chain — it is used only to look up the
  * `ContractOperation` for `circuitId`, so it must carry the operation a real
@@ -73,10 +73,10 @@ export const readZswapOffer = (
  * @see {@link EraBoundary}
  * @see {@link ComposeRefusalOrder}
  */
-export interface ComposeV8CallOptions {
+export interface ComposeLedger8CallOptions {
   readonly circuitId: string;
   readonly contractAddress: string;
-  readonly contractState: InstanceType<ProtocolV8['ContractState']>;
+  readonly contractState: InstanceType<Ledger8Protocol['ContractState']>;
   readonly transcript: CallTranscriptSource;
   readonly privateTranscriptOutputs: AlignedValue[];
   readonly input: AlignedValue;
@@ -116,7 +116,7 @@ export interface ComposeV8CallOptions {
  *   {@link assembleCallPrototype} and {@link aggregateUnshieldedOffers} raise.
  * @see {@link ComposeRefusalOrder}
  */
-export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): ComposeCallResultPojo => {
+export const composeLedger8CallTx = (options: ComposeLedger8CallOptions, v8: Ledger8Protocol): ComposeCallResultPojo => {
   const { contractAddress, contractState, networkId, ttl, zswapOffer } = options;
   assertComposeEnvelope(options, 'v8');
 

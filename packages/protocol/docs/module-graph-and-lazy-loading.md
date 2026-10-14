@@ -132,7 +132,7 @@ Each property above is pinned by a named suite rather than by convention:
 
 Where a module names a vendor's types but must not link the vendor's module,
 the import is type-only. `import type * as` is erased with the rest of the
-type layer and links nothing; that is the same idiom `ProtocolV8` uses in
+type layer and links nothing; that is the same idiom `Ledger8Protocol` uses in
 `lib/v8/load.ts`.
 
 The rule is about values, not names. A value import of either era's module

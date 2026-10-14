@@ -20,17 +20,17 @@ import { Ledger8RuntimeMissingError, PROTOCOL_ERROR_CODES } from '../errors';
 // Built from parts so the runtime-reference scan in v8-surface.test.ts keeps
 // matching only lib/v8/load.ts. Resolved from this file, it names the same
 // module lib/v8/load.ts imports.
-const V8_MODULE_SPECIFIER = ['..', 'v8.js'].join('/');
+const LEDGER8_MODULE_SPECIFIER = ['..', 'v8.js'].join('/');
 
 // Lives in its own file so the mocked, poisoned module registry cannot leak
 // into the happy-path suites (vitest isolates module state per test file).
 describe('loadLedger8 failure path', () => {
   afterEach(() => {
-    vi.doUnmock(V8_MODULE_SPECIFIER);
+    vi.doUnmock(LEDGER8_MODULE_SPECIFIER);
   });
 
   it('wraps a failed import in Ledger8RuntimeMissingError and retries on the next call', async () => {
-    vi.doMock(V8_MODULE_SPECIFIER, () => {
+    vi.doMock(LEDGER8_MODULE_SPECIFIER, () => {
       throw new Error('simulated v8 load failure');
     });
     const { loadLedger8 } = await import('../lib/v8/load');

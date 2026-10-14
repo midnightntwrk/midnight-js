@@ -26,12 +26,12 @@ import { describe, expect, test } from 'vitest';
 import { parseHexLedgerParameters, parseHexZswapState } from '../codec';
 import { IndexerDataError } from '../errors';
 import {
-  mintV8LedgerParametersBytes,
-  mintV8LedgerParametersHex,
-  mintV8ZswapChainStateBytes,
-  mintV9LedgerParametersBytes,
-  mintV9LedgerParametersHex,
-  mintV9ZswapChainStateBytes
+  mintLedger8LedgerParametersBytes,
+  mintLedger8LedgerParametersHex,
+  mintLedger8ZswapChainStateBytes,
+  mintLedger9LedgerParametersBytes,
+  mintLedger9LedgerParametersHex,
+  mintLedger9ZswapChainStateBytes
 } from './state-fixtures';
 
 const tagOf = (bytes: Uint8Array): string => parseSerializedTag(bytes).tag;
@@ -44,14 +44,14 @@ const tagOf = (bytes: Uint8Array): string => parseSerializedTag(bytes).tag;
 
 describe('the ledger parameters each runtime writes', () => {
   test('the retained era writes the envelope this client maps onto v8', async () => {
-    const bytes = await mintV8LedgerParametersBytes();
+    const bytes = await mintLedger8LedgerParametersBytes();
 
     expect(tagOf(bytes)).toBe('midnight:ledger-parameters[v5]');
     expect(ledgerParametersEnvelopeVersion(bytes)).toBe('v8');
   });
 
   test('the current era writes the envelope this client maps onto v9', () => {
-    const bytes = mintV9LedgerParametersBytes();
+    const bytes = mintLedger9LedgerParametersBytes();
 
     expect(tagOf(bytes)).toBe('midnight:ledger-parameters[v8]');
     expect(ledgerParametersEnvelopeVersion(bytes)).toBe('v9');
@@ -59,16 +59,16 @@ describe('the ledger parameters each runtime writes', () => {
 
   test('neither era can read the other era’s parameters', async () => {
     const v8 = await loadLedger8();
-    const v8Bytes = await mintV8LedgerParametersBytes();
-    const v9Bytes = mintV9LedgerParametersBytes();
+    const ledger8Bytes = await mintLedger8LedgerParametersBytes();
+    const ledger9Bytes = mintLedger9LedgerParametersBytes();
 
     // Both directions, and matched on the message rather than a class: the runtimes throw a plain
     // `Error`, so `.toThrow(Error)` would also pass for a fixture mistake that never reached a
     // deserializer at all. The message is the only evidence that the refusal is on the HEADER TAG,
     // before any body is read -- which is why dating the bytes first turns an unclassified decoder
     // failure into a decision.
-    expect(() => ledger.LedgerParameters.deserialize(v8Bytes)).toThrow(/expected header tag/);
-    expect(() => v8.LedgerParameters.deserialize(v9Bytes)).toThrow(/expected header tag/);
+    expect(() => ledger.LedgerParameters.deserialize(ledger8Bytes)).toThrow(/expected header tag/);
+    expect(() => v8.LedgerParameters.deserialize(ledger9Bytes)).toThrow(/expected header tag/);
   });
 });
 
@@ -84,23 +84,23 @@ describe('the zswap chain state each runtime writes', () => {
     ['empty', false],
     ['carrying retained past roots', true]
   ])('is byte-identical across the eras when %s', async (_label, populated) => {
-    const v8Bytes = await mintV8ZswapChainStateBytes(populated);
-    const v9Bytes = mintV9ZswapChainStateBytes(populated);
+    const ledger8Bytes = await mintLedger8ZswapChainStateBytes(populated);
+    const ledger9Bytes = mintLedger9ZswapChainStateBytes(populated);
 
-    expect(tagOf(v8Bytes)).toBe('midnight:zswap-ledger-state[v5]');
-    expect(tagOf(v9Bytes)).toBe('midnight:zswap-ledger-state[v5]');
-    expect(toHex(v8Bytes)).toBe(toHex(v9Bytes));
+    expect(tagOf(ledger8Bytes)).toBe('midnight:zswap-ledger-state[v5]');
+    expect(tagOf(ledger9Bytes)).toBe('midnight:zswap-ledger-state[v5]');
+    expect(toHex(ledger8Bytes)).toBe(toHex(ledger9Bytes));
   });
 
   test('each era reads the other era’s bytes, so the payload carries no era to date', async () => {
     const v8 = await loadLedger8();
-    const v8Bytes = await mintV8ZswapChainStateBytes(true);
-    const v9Bytes = mintV9ZswapChainStateBytes(true);
+    const ledger8Bytes = await mintLedger8ZswapChainStateBytes(true);
+    const ledger9Bytes = mintLedger9ZswapChainStateBytes(true);
 
     // Re-serialized rather than merely constructed: proves the bytes went through the other era's
     // runtime and came back unchanged, not that a constructor tolerated them.
-    expect(toHex(ledger.ZswapChainState.deserialize(v8Bytes).serialize())).toBe(toHex(v9Bytes));
-    expect(toHex(v8.ZswapChainState.deserialize(v9Bytes).serialize())).toBe(toHex(v8Bytes));
+    expect(toHex(ledger.ZswapChainState.deserialize(ledger8Bytes).serialize())).toBe(toHex(ledger9Bytes));
+    expect(toHex(v8.ZswapChainState.deserialize(ledger9Bytes).serialize())).toBe(toHex(ledger8Bytes));
   });
 });
 
@@ -110,7 +110,7 @@ describe('the zswap chain state each runtime writes', () => {
 
 describe('parseHexLedgerParameters', () => {
   test('decodes the parameters of a block from the era it can read', () => {
-    const hex = mintV9LedgerParametersHex();
+    const hex = mintLedger9LedgerParametersHex();
 
     // Round-tripped rather than merely non-null: proves the bytes really went through the v9
     // runtime instead of being handed back untouched.
@@ -118,7 +118,7 @@ describe('parseHexLedgerParameters', () => {
   });
 
   test('refuses the parameters of a pre-fork block by era, not by decoder failure', async () => {
-    const hex = await mintV8LedgerParametersHex();
+    const hex = await mintLedger8LedgerParametersHex();
 
     let rejection: unknown;
     try {
@@ -157,7 +157,7 @@ describe('parseHexLedgerParameters', () => {
   test('refuses a payload that is not whole hex, rather than decoding a truncated prefix', () => {
     // `toByteArray` keeps only the leading run of whole hex bytes and discards the rest without
     // complaining, so the guard has to run before the bytes are taken.
-    const truncated = `${mintV9LedgerParametersHex().slice(0, 20)}zz`;
+    const truncated = `${mintLedger9LedgerParametersHex().slice(0, 20)}zz`;
 
     let rejection: unknown;
     try {
@@ -175,8 +175,8 @@ describe('parseHexLedgerParameters', () => {
 
 describe('parseHexZswapState', () => {
   test('reads a zswap state either era wrote, because neither tags it with one', async () => {
-    const v8Hex = toHex(await mintV8ZswapChainStateBytes(true));
+    const ledger8Hex = toHex(await mintLedger8ZswapChainStateBytes(true));
 
-    expect(toHex(parseHexZswapState(v8Hex).serialize())).toBe(v8Hex);
+    expect(toHex(parseHexZswapState(ledger8Hex).serialize())).toBe(ledger8Hex);
   });
 });

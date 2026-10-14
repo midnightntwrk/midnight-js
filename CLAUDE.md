@@ -58,12 +58,12 @@ VersionedUnprovenTransaction → ProofProvider.proveTx() → VersionedUnboundTra
 
 Every transaction passed to those three methods is version-tagged
 (`{ version: 'v9', tx }` / `{ version: 'v8', txBytes }`). Narrow one with
-`unwrapV9(payload, method)` from `types`; `method` is a `TransactionMethod`, so the
+`unwrapLedger9(payload, method)` from `types`; `method` is a `TransactionMethod`, so the
 helper covers those three methods only.
 
 The read surface (`watchForTxData`, `watchForDeployTxData`) reports a
 version-tagged *record*, `VersionedFinalizedTxData`. That is a different union —
-its v8 variant carries `tx`, not `txBytes` — so `unwrapV9` does not apply. Narrow it
+its v8 variant carries `tx`, not `txBytes` — so `unwrapLedger9` does not apply. Narrow it
 with a `switch (record.version)` closed by `assertNever(record, '<call site>')`
 from `utils`.
 

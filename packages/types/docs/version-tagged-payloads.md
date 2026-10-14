@@ -19,7 +19,7 @@ decision this implements is
 
 ## The retained variant crosses as bytes, the current variant as an object
 
-`V8TxBytes` is the retained variant of every transaction payload passed to a provider
+`Ledger8TxBytes` is the retained variant of every transaction payload passed to a provider
 method — `proveTx`, `balanceTx`, `submitTx` — in both directions. It carries
 serialized, tag-prefixed bytes rather than a live ledger object, because a live
 object cannot survive the crossing.

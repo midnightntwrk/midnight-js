@@ -16,9 +16,9 @@
 import { Ledger8RuntimeMissingError } from '../../errors';
 import type * as V8 from '../../v8.js';
 
-export type ProtocolV8 = typeof V8;
+export type Ledger8Protocol = typeof V8;
 
-let v8ModulePromise: Promise<ProtocolV8> | undefined;
+let ledger8ModulePromise: Promise<Ledger8Protocol> | undefined;
 
 /**
  * The only sanctioned runtime path to the v8 ledger era.
@@ -35,8 +35,8 @@ let v8ModulePromise: Promise<ProtocolV8> | undefined;
  * @see {@link ModuleGraphAndLazyLoading}
  * @see {@link EraBoundary}
  */
-export const loadLedger8 = (): Promise<ProtocolV8> =>
-  (v8ModulePromise ??= import('../../v8.js').catch((error: unknown) => {
-    v8ModulePromise = undefined;
+export const loadLedger8 = (): Promise<Ledger8Protocol> =>
+  (ledger8ModulePromise ??= import('../../v8.js').catch((error: unknown) => {
+    ledger8ModulePromise = undefined;
     throw new Ledger8RuntimeMissingError('/v8', error);
   }));

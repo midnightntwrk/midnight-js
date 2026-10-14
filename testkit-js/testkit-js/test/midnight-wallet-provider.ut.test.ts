@@ -15,8 +15,8 @@
 
 import { DustSecretKey, type TransactionId, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  Ledger8PayloadUnsupportedError,
   UntaggedPayloadError,
-  V8PayloadUnsupportedError,
   type VersionedFinalizedTransaction,
   type VersionedUnboundTransaction
 } from '@midnight-ntwrk/midnight-js-types';
@@ -163,8 +163,8 @@ describe('MidnightWalletProvider', () => {
       );
 
       expect(rejection).toBeDefined();
-      expect(rejection).not.toBeInstanceOf(V8PayloadUnsupportedError);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(false);
+      expect(rejection).not.toBeInstanceOf(Ledger8PayloadUnsupportedError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED)).toBe(false);
     });
   });
 
@@ -198,8 +198,8 @@ describe('MidnightWalletProvider', () => {
       );
 
       expect(rejection).toBeDefined();
-      expect(rejection).not.toBeInstanceOf(V8PayloadUnsupportedError);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(false);
+      expect(rejection).not.toBeInstanceOf(Ledger8PayloadUnsupportedError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED)).toBe(false);
     });
   });
 

@@ -17,7 +17,7 @@ and `watchForTxData` / `watchForDeployTxData` report a `version`-discriminated
 record. There is deliberately no untagged form, so a bare ledger object or a
 naked `Uint8Array` no longer type-checks at these methods.
 
-`unwrapV9(payload, method)` in `midnight-js-types` is the one narrowing helper for
+`unwrapLedger9(payload, method)` in `midnight-js-types` is the one narrowing helper for
 the three transaction methods. The read surface is a separate union and is
 narrowed with a plain `switch (record.version)`.
 

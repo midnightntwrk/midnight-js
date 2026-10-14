@@ -135,26 +135,26 @@ export type ReadMethod = 'watchForTxData' | 'watchForDeployTxData';
 export type ProviderMethod = TransactionMethod | ReadMethod;
 
 // Transaction payloads. No untagged form: a bare Uint8Array is never assignable.
-export interface V8TxBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
-export interface V9Tx<T>   { readonly version: 'v9'; readonly tx: T; }
-export type VersionedTx<T> = V8TxBytes | V9Tx<T>;
+export interface Ledger8TxBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
+export interface Ledger9Tx<T>   { readonly version: 'v9'; readonly tx: T; }
+export type VersionedTx<T> = Ledger8TxBytes | Ledger9Tx<T>;
 export type VersionedUnprovenTransaction  = VersionedTx<UnprovenTransaction>;
 export type VersionedUnboundTransaction   = VersionedTx<UnboundTransaction>;
 export type VersionedFinalizedTransaction = VersionedTx<FinalizedTransaction>;
 
 // Read surface. A *different* union — its v8 arm carries `tx`, not `txBytes`.
 export interface FinalizedTxRecord { /* the 13 era-independent metadata fields */ }
-export interface FinalizedTxDataV8 extends FinalizedTxRecord { readonly version: 'v8'; readonly tx: V8Transaction; }
-export type VersionedFinalizedTxData = FinalizedTxDataV8 | FinalizedTxData;
+export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly version: 'v8'; readonly tx: Ledger8Transaction; }
+export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
 
 // Narrowing. Accepts the three transaction methods only — not the read surface.
-export const unwrapV9: <T>(payload: VersionedTx<T>, method: TransactionMethod) => T;
-export class V8PayloadUnsupportedError extends Error { readonly code; readonly method: TransactionMethod; readonly byteLength?: number; }
+export const unwrapLedger9: <T>(payload: VersionedTx<T>, method: TransactionMethod) => T;
+export class Ledger8PayloadUnsupportedError extends Error { readonly code; readonly method: TransactionMethod; readonly byteLength?: number; }
 export class UntaggedPayloadError extends Error { readonly code; readonly method: ProviderMethod; readonly received: string; }
 
 // Adapters: lift a v9-only implementation into the tagged interfaces.
-export interface V9WalletProvider { /* balanceTx / getCoinPublicKey / getEncryptionPublicKey, untagged */ }
-export const createWalletProvider: (impl: V9WalletProvider) => WalletProvider;
+export interface Ledger9WalletProvider { /* balanceTx / getCoinPublicKey / getEncryptionPublicKey, untagged */ }
+export const createWalletProvider: (impl: Ledger9WalletProvider) => WalletProvider;
 export const createMidnightProvider: (submitTx: (tx: FinalizedTransaction) => Promise<TransactionId>) => MidnightProvider;
 ```
 
@@ -253,10 +253,10 @@ export class EraInvariantViolationError extends Error {
 ### Found deploy record tagged by ledger era (#1408)
 
 ```ts
-export interface FoundDeployTxPublicDataV8 extends FinalizedTxDataV8 {
+export interface Ledger8FoundDeployTxPublicData extends Ledger8FinalizedTxData {
   readonly contractAddress: ContractAddress; // no initialContractState
 }
-export type FoundDeployTxPublicData = FoundDeployTxPublicDataV8 | FinalizedDeployTxPublicData;
+export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | FinalizedDeployTxPublicData;
 export interface FoundDeployTxData<C extends Contract.Any> {
   readonly era: CurrentLedgerVersion;
   readonly public: FoundDeployTxPublicData;
@@ -347,7 +347,7 @@ export const CONTRACTS_ERROR_CODES: Readonly<{ ERA_INVARIANT_VIOLATION: string }
 // Declared in `@midnight-ntwrk/midnight-js-types` and also readable from its
 // `./errors` leaf subpath; re-exported here, so either import works.
 export const PROVIDER_ERROR_CODES: Readonly<{
-  V8_PAYLOAD_UNSUPPORTED: string; UNTAGGED_PAYLOAD: string;
+  LEDGER8_PAYLOAD_UNSUPPORTED: string; UNTAGGED_PAYLOAD: string;
   ERA_UNSUPPORTED: string; ERA_UNRESOLVABLE: string;
   PROVIDER_ERA_UNSUPPORTED: string;
 }>;

@@ -18,7 +18,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
-import type { ProtocolV8 } from '@midnight-ntwrk/midnight-js-protocol';
+import type { Ledger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type LedgerVersion, protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { type ReadMethod, SucceedEntirely, type VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
@@ -33,14 +33,13 @@ import { toFinalizedDeployTxData, toFinalizedTxData } from '../mapping';
 import { IndexerPublicDataProvider } from '../provider';
 import { type ApolloRequest, stubApolloHandle, type WatchQueryStub } from './apollo-stub';
 import {
-  mintV8TransactionHex,
-  mintV9TransactionHex,
+  LEDGER8_ERA_PROTOCOL_VERSION,
+  LEDGER9_ERA_PROTOCOL_VERSION,
+  mintLedger8TransactionHex,
+  mintLedger9TransactionHex,
   type RegularTransactionRow,
   regularTransactionRow,
-  UNRESOLVABLE_PROTOCOL_VERSION,
-  V8_ERA_PROTOCOL_VERSION,
-  V9_ERA_PROTOCOL_VERSION
-} from './state-fixtures';
+  UNRESOLVABLE_PROTOCOL_VERSION} from './state-fixtures';
 
 // The v8 runtime is reached through `loadLedger8()` and nowhere else, so
 // spying on that one accessor is what makes "a v9-only session never touches
@@ -48,7 +47,7 @@ import {
 // tests decode with the genuine runtimes, never with a stand-in — and its
 // memo is the single load authority, so a stable module identity across N
 // records is what "loaded once" means here.
-const { loadLedger8Spy } = vi.hoisted(() => ({ loadLedger8Spy: vi.fn<() => Promise<ProtocolV8>>() }));
+const { loadLedger8Spy } = vi.hoisted(() => ({ loadLedger8Spy: vi.fn<() => Promise<Ledger8Protocol>>() }));
 
 vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
   const original = await importOriginal<typeof protocol>();
@@ -59,12 +58,12 @@ vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
 const CONTRACT_ADDRESS = '12'.repeat(32) as ContractAddress;
 const TX_ID = 'test-tx-id';
 
-let v9TransactionHex: string;
-let v8TransactionHex: string;
+let ledger9TransactionHex: string;
+let ledger8TransactionHex: string;
 
 beforeAll(async () => {
-  v9TransactionHex = mintV9TransactionHex();
-  v8TransactionHex = await mintV8TransactionHex();
+  ledger9TransactionHex = mintLedger9TransactionHex();
+  ledger8TransactionHex = await mintLedger8TransactionHex();
 });
 
 beforeEach(() => {
@@ -142,25 +141,25 @@ const rejectionOf = async (work: Promise<unknown>): Promise<unknown> =>
 
 describe('per-record dual decode on the finalized-transaction read path', () => {
   it('decodes a v9 record through the statically bound runtime, byte-unchanged', async () => {
-    const record = await toFinalizedTxData(TX_ID, transactionAt(V9_ERA_PROTOCOL_VERSION, v9TransactionHex));
+    const record = await toFinalizedTxData(TX_ID, transactionAt(LEDGER9_ERA_PROTOCOL_VERSION, ledger9TransactionHex));
 
     expect(record.version).toBe('v9');
     // Re-serialized rather than merely non-null: proves the bytes went through
     // the v9 runtime instead of being handed back untouched.
-    expect(toHex(record.tx.serialize())).toBe(v9TransactionHex);
+    expect(toHex(record.tx.serialize())).toBe(ledger9TransactionHex);
   });
 
   it('decodes a v8 record through the lazily loaded runtime, byte-unchanged', async () => {
-    const record = await toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v8TransactionHex));
+    const record = await toFinalizedTxData(TX_ID, transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger8TransactionHex));
 
     expect(record.version).toBe('v8');
-    expect(toHex(record.tx.serialize())).toBe(v8TransactionHex);
+    expect(toHex(record.tx.serialize())).toBe(ledger8TransactionHex);
   });
 
   it('decodes a v8 deploy record on watchForDeployTxData too', async () => {
     const record = await toFinalizedDeployTxData(
       CONTRACT_ADDRESS,
-      transactionAt(V8_ERA_PROTOCOL_VERSION, v8TransactionHex)
+      transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger8TransactionHex)
     );
 
     expect(record.version).toBe('v8');
@@ -172,8 +171,8 @@ describe('per-record dual decode on the finalized-transaction read path', () => 
   // `protocolVersion` sitting on the same record. A stamped literal would pass
   // on one arm and fail on the other.
   it.each([
-    ['v9', V9_ERA_PROTOCOL_VERSION, (): string => v9TransactionHex],
-    ['v8', V8_ERA_PROTOCOL_VERSION, (): string => v8TransactionHex]
+    ['v9', LEDGER9_ERA_PROTOCOL_VERSION, (): string => ledger9TransactionHex],
+    ['v8', LEDGER8_ERA_PROTOCOL_VERSION, (): string => ledger8TransactionHex]
   ])('carries a %s discriminant that agrees with the record own protocolVersion', async (era, protocolVersion, raw) => {
     const record = await toFinalizedTxData(TX_ID, transactionAt(protocolVersion, raw()));
 
@@ -184,8 +183,8 @@ describe('per-record dual decode on the finalized-transaction read path', () => 
 
 describe('the read surface returns the decoded record, on both read methods and both eras', () => {
   it.each([
-    ['v9', V9_ERA_PROTOCOL_VERSION, (): string => v9TransactionHex],
-    ['v8', V8_ERA_PROTOCOL_VERSION, (): string => v8TransactionHex]
+    ['v9', LEDGER9_ERA_PROTOCOL_VERSION, (): string => ledger9TransactionHex],
+    ['v8', LEDGER8_ERA_PROTOCOL_VERSION, (): string => ledger8TransactionHex]
   ])('watchForDeployTxData serves a %s record end to end', async (era, protocolVersion, raw) => {
     // The only end-to-end coverage of watchForDeployTxData. `watchForDeployTxData`
     // builds its record in a trailing `.then` after the poll, so a dropped or
@@ -230,13 +229,13 @@ describe('the read surface returns the decoded record, on both read methods and 
     });
 
   it.each([
-    ['watchForTxData', (raw: string) => toFinalizedTxData(TX_ID, distinctRecord(V9_ERA_PROTOCOL_VERSION, raw))],
+    ['watchForTxData', (raw: string) => toFinalizedTxData(TX_ID, distinctRecord(LEDGER9_ERA_PROTOCOL_VERSION, raw))],
     [
       'watchForDeployTxData',
-      (raw: string) => toFinalizedDeployTxData(CONTRACT_ADDRESS, distinctRecord(V9_ERA_PROTOCOL_VERSION, raw))
+      (raw: string) => toFinalizedDeployTxData(CONTRACT_ADDRESS, distinctRecord(LEDGER9_ERA_PROTOCOL_VERSION, raw))
     ]
   ])('%s carries every metadata field through, and none of them transposed', async (_method, build) => {
-    const record = await build(v9TransactionHex);
+    const record = await build(ledger9TransactionHex);
 
     expect({ ...record, tx: 'omitted' }).toEqual({
       version: 'v9',
@@ -252,7 +251,7 @@ describe('the read surface returns the decoded record, on both read methods and 
       segmentStatusMap: undefined,
       unshielded: { created: [], spent: [] },
       indexerId: DISTINCT.id,
-      protocolVersion: V9_ERA_PROTOCOL_VERSION,
+      protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION,
       fees: { estimatedFees: DISTINCT.estimatedFees, paidFees: DISTINCT.paidFees }
     });
   });
@@ -261,7 +260,7 @@ describe('the read surface returns the decoded record, on both read methods and 
 describe('the v8 runtime is reached lazily, and only when a v8 record needs it', () => {
   it('never acquires the v8 runtime while decoding v9 records', async () => {
     const records = await Promise.all(
-      [0, 1, 2].map(() => toFinalizedTxData(TX_ID, transactionAt(V9_ERA_PROTOCOL_VERSION, v9TransactionHex)))
+      [0, 1, 2].map(() => toFinalizedTxData(TX_ID, transactionAt(LEDGER9_ERA_PROTOCOL_VERSION, ledger9TransactionHex)))
     );
 
     expect(records.map((record) => record.version)).toEqual(['v9', 'v9', 'v9']);
@@ -273,7 +272,7 @@ describe('the v8 runtime is reached lazily, and only when a v8 record needs it',
 
     const records = await Promise.all(
       Array.from({ length: RECORD_COUNT }, () =>
-        toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v8TransactionHex))
+        toFinalizedTxData(TX_ID, transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger8TransactionHex))
       )
     );
     const modules = await Promise.all(loadLedger8Spy.mock.results.map((result) => result.value));
@@ -287,7 +286,7 @@ describe('the v8 runtime is reached lazily, and only when a v8 record needs it',
   });
 
   it('awaits the acquisition inside the query method, so the caller sees a resolved record', async () => {
-    const provider = providerReturning(transactionAt(V8_ERA_PROTOCOL_VERSION, v8TransactionHex));
+    const provider = providerReturning(transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger8TransactionHex));
 
     const record: VersionedFinalizedTxData = await provider.watchForTxData(TX_ID);
 
@@ -296,7 +295,7 @@ describe('the v8 runtime is reached lazily, and only when a v8 record needs it',
   });
 
   it('resolves a v9 record through the query method without touching the v8 runtime', async () => {
-    const provider = providerReturning(transactionAt(V9_ERA_PROTOCOL_VERSION, v9TransactionHex));
+    const provider = providerReturning(transactionAt(LEDGER9_ERA_PROTOCOL_VERSION, ledger9TransactionHex));
 
     const record: VersionedFinalizedTxData = await provider.watchForTxData(TX_ID);
 
@@ -384,8 +383,8 @@ describe('a decode that fails is reported by the layer that diagnosed it', () =>
   // it dispatched to are both facts it knows; which SIDE is at fault is not,
   // and the deserialization layer's own mitigation is the one that helps.
   it.each([
-    ['v8-era bytes dated to a v9 block', V9_ERA_PROTOCOL_VERSION, (): string => v8TransactionHex],
-    ['v9-era bytes dated to a v8 block', V8_ERA_PROTOCOL_VERSION, (): string => v9TransactionHex]
+    ['v8-era bytes dated to a v9 block', LEDGER9_ERA_PROTOCOL_VERSION, (): string => ledger8TransactionHex],
+    ['v9-era bytes dated to a v8 block', LEDGER8_ERA_PROTOCOL_VERSION, (): string => ledger9TransactionHex]
   ])('leaves %s as the DeserializationError the runtime produced', async (_label, protocolVersion, raw) => {
     const error = await rejectionOf(toFinalizedTxData(TX_ID, transactionAt(protocolVersion, raw())));
 
@@ -398,7 +397,7 @@ describe('a decode that fails is reported by the layer that diagnosed it', () =>
     // error demoted this mitigation to `cause` and replaced it with a claim
     // ("inconsistent indexer") that a plain ledger-package skew contradicts.
     const error = await rejectionOf(
-      toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
+      toFinalizedTxData(TX_ID, transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger9TransactionHex))
     );
 
     const mitigation = (error as DeserializationError).context.mitigation.join('\n');
@@ -407,12 +406,12 @@ describe('a decode that fails is reported by the layer that diagnosed it', () =>
 
   it.each([
     ['the era it dispatched to', 'era', 'v8'],
-    ['the raw protocolVersion', 'protocolVersion', V8_ERA_PROTOCOL_VERSION],
+    ['the raw protocolVersion', 'protocolVersion', LEDGER8_ERA_PROTOCOL_VERSION],
     ['the read method', 'method', 'watchForTxData'],
     ['the record', 'recordRef', `txId ${TX_ID}`]
   ])('names %s on the failure, so one of several concurrent watches is identifiable', async (_label, key, value) => {
     const error = await rejectionOf(
-      toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
+      toFinalizedTxData(TX_ID, transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger9TransactionHex))
     );
 
     expect((error as DeserializationError).context.details?.[key]).toBe(value);
@@ -420,7 +419,7 @@ describe('a decode that fails is reported by the layer that diagnosed it', () =>
 
   it('names the contract address on watchForDeployTxData, not just the transaction id', async () => {
     const error = await rejectionOf(
-      toFinalizedDeployTxData(CONTRACT_ADDRESS, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
+      toFinalizedDeployTxData(CONTRACT_ADDRESS, transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger9TransactionHex))
     );
 
     const details = (error as DeserializationError).context.details;
@@ -430,25 +429,25 @@ describe('a decode that fails is reported by the layer that diagnosed it', () =>
 
   it('renders the era and the protocolVersion in the message, not only on the context', async () => {
     const error = await rejectionOf(
-      toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
+      toFinalizedTxData(TX_ID, transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger9TransactionHex))
     );
 
     expect((error as Error).message).toContain('era=v8');
-    expect((error as Error).message).toContain(`protocolVersion=${V8_ERA_PROTOCOL_VERSION}`);
+    expect((error as Error).message).toContain(`protocolVersion=${LEDGER8_ERA_PROTOCOL_VERSION}`);
   });
 
   it('renders no payload of its own: not the hex, not a prefix of it', async () => {
     const error = await rejectionOf(
-      toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
+      toFinalizedTxData(TX_ID, transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger9TransactionHex))
     );
 
     // The era and the raw protocolVersion ARE the diagnosis and belong in the
     // text; asserting them is also what shows the refusals below are reading
     // populated text rather than an empty string.
     const own = `${(error as Error).message}\n${JSON.stringify((error as DeserializationError).context)}`;
-    expect(own).toContain(String(V8_ERA_PROTOCOL_VERSION));
+    expect(own).toContain(String(LEDGER8_ERA_PROTOCOL_VERSION));
     expect(own).toContain('v8');
-    for (const payload of [v9TransactionHex, v8TransactionHex]) {
+    for (const payload of [ledger9TransactionHex, ledger8TransactionHex]) {
       expect(own).not.toContain(payload);
       // A truncated dump would slip past a whole-payload check. Sixteen bytes
       // is already more than enough to identify a transaction.
@@ -468,14 +467,14 @@ describe('a decode that fails is reported by the layer that diagnosed it', () =>
     // encoding it arrived in, which is the form that would be copied into a bug
     // report or a log aggregator verbatim.
     const error = await rejectionOf(
-      toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, v9TransactionHex))
+      toFinalizedTxData(TX_ID, transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger9TransactionHex))
     );
 
     const chain = [error, (error as Error).cause, ((error as Error).cause as Error | undefined)?.cause]
       .map((link) => (link instanceof Error ? `${link.message}\n${JSON.stringify(link)}` : String(link)))
       .join('\n');
-    expect(chain).toContain(String(V8_ERA_PROTOCOL_VERSION));
-    for (const payload of [v9TransactionHex, v8TransactionHex]) {
+    expect(chain).toContain(String(LEDGER8_ERA_PROTOCOL_VERSION));
+    for (const payload of [ledger9TransactionHex, ledger8TransactionHex]) {
       expect(chain).not.toContain(payload);
       expect(chain).not.toContain(payload.slice(0, 32));
     }
@@ -490,17 +489,17 @@ describe('a decode that fails is reported by the layer that diagnosed it', () =>
   // one direction or the other, so it writes none and reports what the
   // deserializer concluded.
   it.each([
-    ['a payload truncated inside its header tag', (): string => v9TransactionHex.slice(0, 6)],
-    ['a payload truncated mid-body, its header tag intact', (): string => v9TransactionHex.slice(0, 90)],
+    ['a payload truncated inside its header tag', (): string => ledger9TransactionHex.slice(0, 6)],
+    ['a payload truncated mid-body, its header tag intact', (): string => ledger9TransactionHex.slice(0, 90)],
     ['bytes that are not a serialized anything', (): string => 'ab'.repeat(64)],
-    ['a payload whose first byte is flipped', (): string => flipByte(v9TransactionHex, 0)],
-    ['a payload with a byte flipped inside its header tag', (): string => flipByte(v9TransactionHex, 5)],
+    ['a payload whose first byte is flipped', (): string => flipByte(ledger9TransactionHex, 0)],
+    ['a payload with a byte flipped inside its header tag', (): string => flipByte(ledger9TransactionHex, 5)],
     [
       'a payload with a byte flipped after its header tag',
-      (): string => flipByte(v9TransactionHex, Buffer.from(v9TransactionHex, 'hex').length - 1)
+      (): string => flipByte(ledger9TransactionHex, Buffer.from(ledger9TransactionHex, 'hex').length - 1)
     ]
   ])('reports %s as a deserialization failure naming the read', async (_label, raw) => {
-    const error = await rejectionOf(toFinalizedTxData(TX_ID, transactionAt(V9_ERA_PROTOCOL_VERSION, raw())));
+    const error = await rejectionOf(toFinalizedTxData(TX_ID, transactionAt(LEDGER9_ERA_PROTOCOL_VERSION, raw())));
 
     expect(error).toBeInstanceOf(DeserializationError);
     expect((error as DeserializationError).context.details?.era).toBe('v9');
@@ -508,9 +507,9 @@ describe('a decode that fails is reported by the layer that diagnosed it', () =>
 
   it.each([
     ['garbage dispatched to the v8 runtime', (): string => 'ab'.repeat(64)],
-    ['a v8 payload truncated mid-body', (): string => v8TransactionHex.slice(0, 90)]
+    ['a v8 payload truncated mid-body', (): string => ledger8TransactionHex.slice(0, 90)]
   ])('classifies %s rather than letting the v8 binding throw escape raw', async (_label, raw) => {
-    const error = await rejectionOf(toFinalizedTxData(TX_ID, transactionAt(V8_ERA_PROTOCOL_VERSION, raw())));
+    const error = await rejectionOf(toFinalizedTxData(TX_ID, transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, raw())));
 
     expect(error).toBeInstanceOf(DeserializationError);
     expect((error as DeserializationError).context.details?.era).toBe('v8');
@@ -525,15 +524,15 @@ describe('a decode that fails is reported by the layer that diagnosed it', () =>
     // returns a SHORTER buffer without complaining, so without the hex guard
     // each of these reached a decoder as a silently truncated payload and was
     // diagnosed as a bad transaction rather than a bad encoding.
-    const error = await rejectionOf(toFinalizedTxData(TX_ID, transactionAt(V9_ERA_PROTOCOL_VERSION, raw)));
+    const error = await rejectionOf(toFinalizedTxData(TX_ID, transactionAt(LEDGER9_ERA_PROTOCOL_VERSION, raw)));
 
     expect(error).toBeInstanceOf(IndexerDataError);
     expect((error as IndexerDataError).context.kind).toBe('malformed-transaction-encoding');
   });
 
   it.each([
-    ['v9', V9_ERA_PROTOCOL_VERSION, (): string => v9TransactionHex],
-    ['v8', V8_ERA_PROTOCOL_VERSION, (): string => v8TransactionHex]
+    ['v9', LEDGER9_ERA_PROTOCOL_VERSION, (): string => ledger9TransactionHex],
+    ['v8', LEDGER8_ERA_PROTOCOL_VERSION, (): string => ledger8TransactionHex]
   ])('decodes a 0x-prefixed %s payload rather than handing the decoder zero bytes', async (era, protocolVersion, raw) => {
     // `isHex` accepts an optional `0x` prefix; `Buffer.from(s, 'hex')` does
     // not, and returns an EMPTY buffer for one. A guard and a decoder reading
@@ -549,7 +548,7 @@ describe('a decode that fails is reported by the layer that diagnosed it', () =>
 describe('an era that resolves to no decoder at all', () => {
   it('refuses an unresolvable protocolVersion before any runtime is acquired', async () => {
     const error = await rejectionOf(
-      toFinalizedTxData(TX_ID, transactionAt(UNRESOLVABLE_PROTOCOL_VERSION, v8TransactionHex))
+      toFinalizedTxData(TX_ID, transactionAt(UNRESOLVABLE_PROTOCOL_VERSION, ledger8TransactionHex))
     );
 
     expect(error).toBeInstanceOf(EraUnresolvableError);
@@ -563,9 +562,9 @@ describe('an era that resolves to no decoder at all', () => {
   // Without the guard the era-keyed lookup on a null prototype would answer
   // `undefined` and the read would fail somewhere further down instead of here.
   const decodeWithEra = (era: string, method: ReadMethod = 'watchForTxData', recordRef = `txId ${TX_ID}`): Promise<unknown> =>
-    decodeVersionedTransaction(v9TransactionHex, era as LedgerVersion, {
+    decodeVersionedTransaction(ledger9TransactionHex, era as LedgerVersion, {
       method,
-      protocolVersion: V9_ERA_PROTOCOL_VERSION,
+      protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION,
       recordRef
     });
 
@@ -584,7 +583,7 @@ describe('an era that resolves to no decoder at all', () => {
 
     const unsupported = error as EraUnsupportedError;
     expect(unsupported.era).toBe('v7');
-    expect(unsupported.protocolVersion).toBe(V9_ERA_PROTOCOL_VERSION);
+    expect(unsupported.protocolVersion).toBe(LEDGER9_ERA_PROTOCOL_VERSION);
     expect(unsupported.method).toBe('watchForDeployTxData');
     expect(unsupported.recordRef).toBe(`contractAddress ${CONTRACT_ADDRESS}`);
   });
@@ -593,7 +592,7 @@ describe('an era that resolves to no decoder at all', () => {
     const error = await rejectionOf(decodeWithEra('v7'));
 
     expect((error as Error).message).toContain(TX_ID);
-    expect((error as Error).message).toContain(String(V9_ERA_PROTOCOL_VERSION));
+    expect((error as Error).message).toContain(String(LEDGER9_ERA_PROTOCOL_VERSION));
   });
 
   it('tells the reader this build has no decoder for the era, not that the era cannot be decoded at all', async () => {
@@ -615,13 +614,13 @@ describe('an era that resolves to no decoder at all', () => {
     const message = (error as Error).message;
     expect(message).not.toContain('read a record from the v7 ledger era');
     expect(message).toContain('was asked to decode with');
-    expect(message).toContain(`indexer-reported protocolVersion ${V9_ERA_PROTOCOL_VERSION}`);
+    expect(message).toContain(`indexer-reported protocolVersion ${LEDGER9_ERA_PROTOCOL_VERSION}`);
   });
 
   it('reaches consumers through the IndexerError hierarchy, like every other failure here', async () => {
     const unsupported = await rejectionOf(decodeWithEra('v7'));
     const unresolvable = await rejectionOf(
-      toFinalizedTxData(TX_ID, transactionAt(UNRESOLVABLE_PROTOCOL_VERSION, v8TransactionHex))
+      toFinalizedTxData(TX_ID, transactionAt(UNRESOLVABLE_PROTOCOL_VERSION, ledger8TransactionHex))
     );
 
     expect(unsupported).toBeInstanceOf(IndexerError);

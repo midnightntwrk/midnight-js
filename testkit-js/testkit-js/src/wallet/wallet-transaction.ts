@@ -85,7 +85,7 @@ const unwrapWithinActive = <T>(handle: WalletTransaction, accepted: ProtocolVers
 /**
  * Establishes that a payload carries a version discriminant at all.
  *
- * `unwrapV9` used to do this on the way past, and removing it to serve both eras
+ * `unwrapLedger9` used to do this on the way past, and removing it to serve both eras
  * would otherwise turn the likeliest migration mistake -- a consumer built
  * against the pre-5.0.0 API handing over a bare transaction -- from a coded,
  * actionable error into a `TypeError` raised somewhere inside the wallet SDK.

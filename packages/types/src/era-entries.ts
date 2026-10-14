@@ -21,7 +21,7 @@ import {
   type RetainedLedgerVersion
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { type TransactionMethod, UntaggedPayloadError, V8PayloadUnsupportedError } from './errors';
+import { Ledger8PayloadUnsupportedError,type TransactionMethod, UntaggedPayloadError } from './errors';
 import type { VersionedTx } from './versioned';
 
 /**
@@ -81,7 +81,7 @@ export type EraRequest<T, H> =
  * Narrows a version-tagged payload onto the era that serves it, refusing an era
  * no handler was registered for.
  *
- * This is `unwrapV9` generalised to a provider that serves more than one era,
+ * This is `unwrapLedger9` generalised to a provider that serves more than one era,
  * and it reports the same two errors for the same two reasons — so widening a
  * provider to a second era does not change what a caller catches when it sends
  * an era that provider still does not serve.
@@ -90,7 +90,7 @@ export type EraRequest<T, H> =
  * @param method The provider method being implemented, used in error messages.
  * @param retainedEras The retained handlers this provider was built with.
  * @returns The era to run, the payload it takes, and for a retained era its handler.
- * @throws V8PayloadUnsupportedError if the payload carries a retained era for
+ * @throws Ledger8PayloadUnsupportedError if the payload carries a retained era for
  *         which no handler was registered.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised. The
  *         types make that unrepresentable, so it is reachable only from
@@ -121,7 +121,7 @@ export const narrowToEra = <T, H>(
         // method does not serve the era that arrived. `txBytes` is required by
         // the type, so the instance check is for the JavaScript caller the
         // object guard above exists for.
-        throw new V8PayloadUnsupportedError(
+        throw new Ledger8PayloadUnsupportedError(
           method,
           payload.txBytes instanceof Uint8Array ? payload.txBytes.byteLength : undefined
         );

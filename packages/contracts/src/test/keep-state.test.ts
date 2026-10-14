@@ -157,12 +157,12 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
   let contract: CoinReceiver016Contract;
   let currentEra: LedgerEra;
   let retainedEra: LedgerEra;
-  let v9Envelope: Uint8Array;
+  let ledger9Envelope: Uint8Array;
   let v6Envelope: Uint8Array;
 
   beforeAll(async () => {
     recording = loadCoinReceiverRecording();
-    v9Envelope = readHfHexFixture('coin-receiver-016', 'state-v9.hex');
+    ledger9Envelope = readHfHexFixture('coin-receiver-016', 'state-v9.hex');
     v6Envelope = readHfHexFixture('coin-receiver-016', 'state-v6-envelope.hex');
     const module: CoinReceiver016Module = await import(
       /* @vite-ignore */ hfFixturePath('coin-receiver-016', 'compiled', 'contract', 'index.js')
@@ -485,7 +485,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
   });
 
   it('refuses when the head reading has fallen behind the state it fetched, and says re-running fixes it', async () => {
-    const providers = postForkProviders(v9Envelope);
+    const providers = postForkProviders(ledger9Envelope);
     // The fork-window case: the operation started from a pre-fork head reading
     // and then fetched a post-fork state. A FRESH head read agrees with the
     // state, so the first reading was merely stale.
@@ -510,7 +510,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
   });
 
   it('refuses, differently, when the disagreement survives a fresh head read', async () => {
-    const providers = postForkProviders(v9Envelope);
+    const providers = postForkProviders(ledger9Envelope);
     // The head is confirmed, so the served state and the served head cannot
     // both describe one chain. A fault in what was served, not a stale reading
     // this client can correct -- and deliberately not reported as a fork in
@@ -601,7 +601,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     const providers = postForkProviders(v6Envelope);
     providers.publicDataProvider.queryRawContractState = vi
       .fn()
-      .mockResolvedValue({ ...rawState(v9Envelope, POST_FORK_PROTOCOL_VERSION), version: 'v8' });
+      .mockResolvedValue({ ...rawState(ledger9Envelope, POST_FORK_PROTOCOL_VERSION), version: 'v8' });
 
     await expect(submitCallTx(providers, callOptions())).resolves.toBeDefined();
   });
@@ -614,7 +614,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // for this contract. Measured on the committed goldens: a real migrated
     // 8-to-9 state carries the SAME `midnight:verifier-key[v6]:` bytes its
     // pre-migration form did, and the current-era decoder reads them.
-    const providers = postForkProviders(v9Envelope);
+    const providers = postForkProviders(ledger9Envelope);
 
     const finalized = await submitCallTx(providers, callOptions());
 
@@ -634,7 +634,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // artifacts holds a key these retained artifacts cannot match, and the
     // refusal has to name that rather than the envelope -- which, after a
     // migration, says nothing about which artifacts the contract was built from.
-    const providers = postForkProviders(v9Envelope);
+    const providers = postForkProviders(ledger9Envelope);
     providers.zkConfigProvider.getVerifierKey = vi.fn().mockResolvedValue(Uint8Array.from([0x01, 0x02, 0x03]));
 
     let caught: unknown;

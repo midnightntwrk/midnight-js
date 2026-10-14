@@ -24,7 +24,7 @@ import type { TranscriptPojo } from '../v8/executable';
  * `contractState` is the migrated, post-fork v9 `ContractState` — read from
  * chain, or otherwise carrying the contract's real registered operations —
  * used only to look up the `ContractOperation` for `transcript.circuitId`
- * (mirrors `ComposeV8CallOptions`'s `contractState` parameter in
+ * (mirrors `ComposeLedger8CallOptions`'s `contractState` parameter in
  * `../v8/compose.ts`).
  */
 export interface WrapKeepStateCallOptions {

@@ -89,7 +89,7 @@ the same way, and one does not classify it at all:
 - `packages/protocol/src/lib/shared/contract-state.ts` — wraps a `deserialize` failure in
   `StateDecodeFailedError` and any later failure in `StateInconsistentError`, not
   `ComposeOptionError`; takes the era's module slice as an argument
-- `packages/protocol/src/lib/v8/prove.ts` — **no wrapper.** `proveV8Transaction` runs
+- `packages/protocol/src/lib/v8/prove.ts` — **no wrapper.** `proveLedger8Transaction` runs
   `assertSerializedTransaction` on the bytes and then calls `v8.Transaction.deserialize` with
   nothing around it, so a raw decoder failure escapes unclassified. The era is still the arm's own,
   so this is a diagnosis gap rather than a wrong-era decode — but it is the one site here whose
@@ -100,7 +100,7 @@ the same way, and one does not classify it at all:
 The provider methods carry `{ version, tx | txBytes }`, so the era is on the payload rather than
 inferred (ADR 0006).
 
-- `packages/indexer-public-data-provider/src/codec.ts` — `parseHexTransactionV8`
+- `packages/indexer-public-data-provider/src/codec.ts` — `parseLedger8HexTransaction`
 - `testkit-js/testkit-js/src/wallet/wallet-transaction.ts` — both adopt functions
 
 ### Decoders that never see chain bytes

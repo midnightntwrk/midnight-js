@@ -42,8 +42,8 @@ import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import { type LedgerVersion, loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
 import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  Ledger8PayloadUnsupportedError,
   type RawContractState,
-  V8PayloadUnsupportedError,
   type VersionedFinalizedTransaction,
   type VersionedTx,
   type ZKConfigProvider
@@ -342,7 +342,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     // That is not fork evidence, a caller narrowing on it must keep seeing it,
     // and asking the network about it would be a round trip for nothing.
     const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
-    const refusal = new V8PayloadUnsupportedError('submitTx', PRE_FORK_PROTOCOL_VERSION);
+    const refusal = new Ledger8PayloadUnsupportedError('submitTx', PRE_FORK_PROTOCOL_VERSION);
 
     await expect(handleSubmitRejection(pdp, callOperation(), refusal)).rejects.toBe(refusal);
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();

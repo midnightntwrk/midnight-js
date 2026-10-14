@@ -15,7 +15,7 @@
 
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
+import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 import {
   createProofProviderFromHandlers,
   type ProofProvider,
@@ -99,7 +99,7 @@ export const dappConnectorProofProvider = async <K extends string>(
     retainedEras: {
       v8: (txBytes, config) => {
         refuseTimeout(config);
-        return proveV8Transaction(txBytes, provingProvider);
+        return proveLedger8Transaction(txBytes, provingProvider);
       }
     }
   });

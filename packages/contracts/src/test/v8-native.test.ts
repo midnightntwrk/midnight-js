@@ -54,12 +54,12 @@ import {
   createWalletProvider,
   FailEntirely,
   FailFallible,
+  Ledger8PayloadUnsupportedError,
   ProofServerError,
   ProviderEraUnsupportedError,
   type RawContractState,
   type TxStatus,
   UntaggedPayloadError,
-  V8PayloadUnsupportedError,
   type VersionedFinalizedTransaction,
   type VersionedFinalizedTxData,
   type VersionedTx,
@@ -80,7 +80,7 @@ import {
   Ledger8AmbiguousEntryPointError,
   Ledger8CallTxFailedError,
   Ledger8DeployNotStoredError,
-  Ledger8DeployOnV9Error,
+  Ledger8DeployOnLedger9Error,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
   Ledger8ProviderFailedError,
@@ -1429,7 +1429,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
         privateState: {},
         resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
       })
-    ).rejects.toBeInstanceOf(Ledger8DeployOnV9Error);
+    ).rejects.toBeInstanceOf(Ledger8DeployOnLedger9Error);
     // Refused before ANY work: no constructor executed, nothing composed.
     expect(log).toEqual([]);
   });
@@ -1632,7 +1632,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // this operation cannot have produced.
     //
     // The current era already refuses the mirror of this in the same read method, via
-    // `requireV9Record`. This is the retained arm's half, and it compares the
+    // `requireLedger9Record`. This is the retained arm's half, and it compares the
     // record against the HEAD rather than against a fixed era, because a
     // retained-era call is legitimately recorded by EITHER era.
     providers.publicDataProvider.watchForTxData = vi
@@ -1648,7 +1648,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
     expect((rejection as EraInvariantViolationError).method).toBe('watchForTxData');
     // The era this operation could accept is the HEAD's own, NOT the class's
-    // `'v9'` default -- which is the whole difference from `requireV9Record`.
+    // `'v9'` default -- which is the whole difference from `requireLedger9Record`.
     expect((rejection as EraInvariantViolationError).expected).toBe('v8');
     expect((rejection as EraInvariantViolationError).circuitId).toBe(CIRCUIT_ID);
   });
@@ -1779,9 +1779,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // The sanitizing wrapper must not swallow the refusal a current-era-only
     // provider raises: a caller narrowing on it would otherwise see a generic
     // provider failure and lose the one diagnosis that says "widen your provider".
-    providers.proofProvider.proveTx = vi.fn().mockRejectedValue(new V8PayloadUnsupportedError('proveTx', 42));
+    providers.proofProvider.proveTx = vi.fn().mockRejectedValue(new Ledger8PayloadUnsupportedError('proveTx', 42));
 
-    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(V8PayloadUnsupportedError);
+    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(Ledger8PayloadUnsupportedError);
   });
 
   it('sanitizes a coded provider error that carries an external failure on cause', async () => {
@@ -2835,7 +2835,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     // Reachable through this entry point at last: the unconditional refusal
     // that stood in front of it is gone, so the era pairing table decides.
     await expect(deployContract(providers, { compiledContract: contract })).rejects.toBeInstanceOf(
-      Ledger8DeployOnV9Error
+      Ledger8DeployOnLedger9Error
     );
     expect(log).toEqual([]);
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
@@ -2982,7 +2982,7 @@ describe('deploying a retained-era contract through deployContract', () => {
       .mockRejectedValue(new Error('retained-era ZK config is no longer served'));
 
     await expect(deployContract(providers, { compiledContract: contract })).rejects.toBeInstanceOf(
-      Ledger8DeployOnV9Error
+      Ledger8DeployOnLedger9Error
     );
     expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
   });
@@ -3548,7 +3548,7 @@ describe('attaching to a retained-era contract already on chain', () => {
   // record carrying no usable tag at all. `version` selects the runtime of the
   // live `tx` handle beside it, so an unreadable tag hands a caller a handle it
   // cannot attribute, which is the failure the current era's arm refuses
-  // through `requireV9Record`'s own default branch.
+  // through `requireLedger9Record`'s own default branch.
   it.each([
     ['absent', undefined],
     ['unrecognised', 'v10'],

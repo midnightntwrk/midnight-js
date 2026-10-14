@@ -62,7 +62,7 @@ const assertSerializedTransaction = (txBytes: Uint8Array): void => {
  * @param provingProvider The circuit-level proving provider to drive, typed as
  *   the RETAINED era's `ProvingProvider`: `check` and `prove`, and no
  *   `lookupKey`. That is the declared return type of an in-process prover's
- *   `asV8ProvingProvider()`, so registering one here needs no cast. The current
+ *   `asLedger8ProvingProvider()`, so registering one here needs no cast. The current
  *   era's shape is a superset, so a provider serving both eras also satisfies
  *   this parameter and needs no adapter.
  * @returns The serialized, proven transaction.
@@ -78,7 +78,7 @@ const assertSerializedTransaction = (txBytes: Uint8Array): void => {
  * @see docs/adr/0006-version-tagged-payloads-at-provider-seams.md
  * @see docs/adr/0010-publish-era-handles-alongside-their-plain-data.md
  */
-export const proveV8Transaction = async (
+export const proveLedger8Transaction = async (
   txBytes: Uint8Array,
   provingProvider: ProvingProvider
 ): Promise<Uint8Array> => {

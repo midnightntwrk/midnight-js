@@ -96,6 +96,17 @@ RECEIVES results never imports the transitional half:
 - `UnrecognisedResultEraError` -- raised for a result tagged with neither era,
   which is not a retained-era condition.
 
+## A `Ledger8` name that is NOT in here
+
+`Ledger8FoundDeployTxPublicData` carries the era prefix and still stays flat,
+because it fails both clauses. It is the v8 half of the CURRENT era's
+`FoundDeployTxData.public`: the current pipeline returns it for a contract that
+was deployed before the fork. Chain history does not go away, so the type
+outlives the retained pipeline, and moving it into the namespace would break the
+current era's `FoundDeployTxPublicData` the day the namespace is withdrawn. Its
+prefix names the era that RECORDED the deployment, like `Ledger8FinalizedTxData`
+in `@midnight-ntwrk/midnight-js-types`.
+
 ## The fork-window group, which is NOT in here
 
 A second group passes clause 1 and fails clause 2, and it is published flat:
@@ -118,7 +129,7 @@ era's own family and a SECOND step for the fork-window group.
 obtain a value must be able to name its type: `deployContract`'s retained arm
 composes, submits and hands one back.
 
-`Ledger8.DeployOnV9Error` is the era pairing table's refusal for a retained
+`Ledger8.DeployOnLedger9Error` is the era pairing table's refusal for a retained
 artifact against a post-fork head, and it is reachable: it is what a caller
 receives once the network has crossed the fork. `Ledger8.DeployTxFailedError` is
 the refusal for a deployment the node recorded with a non-success status.

@@ -59,7 +59,7 @@ Nothing under `src/lib/` is a build entry, so this layout is internal and no con
 
 The directory names say what a module is **about**, not what it links. Three consequences a reader should not have to derive:
 
-- **`lib/v8/compose.ts`, `deploy.ts` and `adapt.ts` link no v8 at all.** They take the acquired module as a `ProtocolV8` parameter, which is a type. That injection is what keeps the v8 WASM out of the eager graph, and the guarantee is enforced by `dist-laziness.test.ts` and `v8-surface.test.ts` — not by this layout. Read the tests, not the directory, for the bundle boundary.
+- **`lib/v8/compose.ts`, `deploy.ts` and `adapt.ts` link no v8 at all.** They take the acquired module as a `Ledger8Protocol` parameter, which is a type. That injection is what keeps the v8 WASM out of the eager graph, and the guarantee is enforced by `dist-laziness.test.ts` and `v8-surface.test.ts` — not by this layout. Read the tests, not the directory, for the bundle boundary.
 - **`lib/shared/` is not free of vendors.** `assemble-call.ts` links `@midnight-ntwrk/compact-js`, a post-fork package, for `hashVerifierKey` and `encodeContractKeyLocation`; `contract-state.ts` links it for `hashVerifierKey`. Both are called by both arms, so their subject is shared even though their linkage is not. This is safe in one direction only: v9 is the eagerly-linked baseline, so a shared module reaching for it never wakes v8, while the reverse would.
 - **`lib/v9/wrap.ts` type-imports `lib/v8/executable.ts`.** `TranscriptPojo` is the v8 engine's output and `wrapKeepStateCall` binds it onto v9. The cross-era edge is the operation's whole purpose, and it is type-only.
 
@@ -132,7 +132,7 @@ const transcript = await engine.executeCircuit({
   coinPk: coinPublicKey,
   privateState
 });
-const prototype = engine.wrapKeepStateCall({ transcript, contractAddress, contractState: migratedV9ContractState });
+const prototype = engine.wrapKeepStateCall({ transcript, contractAddress, contractState: migratedLedger9ContractState });
 ```
 
 `executeCircuit` and `executeConstructor` are **asynchronous** — `await` them. There is no separate down-convert step: pass the decoded contract state straight in, and the engine builds the state the retained runtime executes against.
@@ -143,7 +143,7 @@ Read it with the era the state's own envelope names, not with a fixed one. A con
 
 The engine exposes `executeCircuit`, `executeConstructor` and `wrapKeepStateCall`, and they form a pipeline, each result being the next call's input. Reading a contract state and composing a call or a deploy are **not** here: both eras do those, so they live on the [ledger-era facade](#ledger-era-facade) instead.
 
-`migratedV9ContractState` passed to `wrapKeepStateCall` must be the migrated v9 state **as read from chain**, which is not `rawContractState` above: it is where the deployed operation and its verifier key come from, and the key location the prototype carries is derived from that key. A blank or constructor-built state throws `ComposeFailedError` (code `MIDNIGHT_JS_P_COMPOSE_FAILED`) with `stage` naming which lookup failed and `version` naming the ledger era it was composing for.
+`migratedLedger9ContractState` passed to `wrapKeepStateCall` must be the migrated v9 state **as read from chain**, which is not `rawContractState` above: it is where the deployed operation and its verifier key come from, and the key location the prototype carries is derived from that key. A blank or constructor-built state throws `ComposeFailedError` (code `MIDNIGHT_JS_P_COMPOSE_FAILED`) with `stage` naming which lookup failed and `version` naming the ledger era it was composing for.
 
 Circuits with Zswap coin effects run on this leg like any other. The transcript carries `zswapLocalState` — the post-call Zswap local state, decoded into the runtime's public shape — which is what you turn into the transaction's segmented Zswap offer (`zswapStateToSegmentedOffer` in `@midnight-ntwrk/midnight-js-contracts`). You do not hand that offer to `composeCallTx` as ready-made bytes: you hand it a `zswapOffer` factory, which the composer calls back with each call's guaranteed/fallible split once it has drawn it. That split is the fourth argument `zswapStateToSegmentedOffer` routes by — without it every movement lands in the guaranteed segment, and a circuit whose transcript is wholly fallible produces an offer the wallet cannot balance. Omitting the factory altogether leaves you composing a transaction missing the coin movements the circuit recorded.
 
@@ -223,7 +223,7 @@ Each names the era it was raised for — `version` on the first four, `requested
 
 Recorded here so the reasoning is not lost, and deliberately NOT done in the change that introduced this facade:
 
-- **Collapse the version dispatch in `lib/era/envelope.ts`.** `extractEncodedStateValue` has one production caller, which passes the literal `'v8'`; the v9 arm calls `extractV9EncodedStateValue` directly. The decoder table, the unknown-version guard and the null-prototype defence are therefore only reachable from tests, and the per-file 100% floor keeps the tests that reach them alive. Collapsing it to a `extractV8EncodedStateValue` beside the v9 one deletes real tests, which belongs in its own change.
+- **Collapse the version dispatch in `lib/era/envelope.ts`.** `extractEncodedStateValue` has one production caller, which passes the literal `'v8'`; the v9 arm calls `extractLedger9EncodedStateValue` directly. The decoder table, the unknown-version guard and the null-prototype defence are therefore only reachable from tests, and the per-file 100% floor keeps the tests that reach them alive. Collapsing it to a `extractLedger8EncodedStateValue` beside the v9 one deletes real tests, which belongs in its own change.
 - **Give `ComposeOptionError` a `circuitId`.** The v9 blank-key refusal knows which entry point was blank and cannot say so, because the field does not exist. Adding it would let that refusal name the slot without breaking the class parity the two arms currently have.
 
 ## Version Module

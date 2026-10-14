@@ -201,7 +201,7 @@ describe('httpClientProofProvider', () => {
 
       const result = await provider.proveTx({ version: 'v8', txBytes: retainedEraTxBytes });
 
-      // `requireV8` in `midnight-js-contracts` reads `txBytes` off this record
+      // `requireLedger8` in `midnight-js-contracts` reads `txBytes` off this record
       // and rejects the v9 arm, so answering in the wrong arm fails a submit
       // half way through. Assert the arm before the payload.
       expect(result.version).toBe('v8');

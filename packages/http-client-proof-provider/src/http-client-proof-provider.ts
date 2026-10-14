@@ -15,7 +15,7 @@
 
 import { ConfigurationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { CostModel, type ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
+import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 import {
   createProofProviderFromHandlers,
   type ProofProvider,
@@ -146,7 +146,7 @@ export function httpClientProofProvider<K extends string>(
     currentEra: (tx, proveTxConfig) =>
       tx.prove(provingProviderFor(proveTxConfig), CostModel.initialCostModel()),
     retainedEras: {
-      v8: (txBytes, proveTxConfig) => proveV8Transaction(txBytes, provingProviderFor(proveTxConfig))
+      v8: (txBytes, proveTxConfig) => proveLedger8Transaction(txBytes, provingProviderFor(proveTxConfig))
     }
   });
 };

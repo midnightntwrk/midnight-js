@@ -54,8 +54,8 @@ export interface WalletProvider {
    *            TTL of your own. Implementation-defined when omitted; the testkit's
    *            `MidnightWalletProvider` defaults to one hour.
    * @returns The balanced, signed transaction, version-tagged. Narrow on `version` — or call
-   *          `unwrapV9` — before reading the payload.
-   * @throws V8PayloadUnsupportedError if the implementation does not handle v8 payloads.
+   *          `unwrapLedger9` — before reading the payload.
+   * @throws Ledger8PayloadUnsupportedError if the implementation does not handle v8 payloads.
    * @throws UntaggedPayloadError if `version` is missing or unrecognised.
    */
   balanceTx(tx: VersionedUnboundTransaction, ttl?: Date): Promise<VersionedFinalizedTransaction>;
@@ -139,7 +139,7 @@ export const createWalletProviderFromHandlers = (handlers: WalletProviderHandler
  * A {@link WalletProvider} written against the v9 ledger runtime only — the
  * shape an implementation had before the transaction methods became version-tagged.
  */
-export interface V9WalletProvider {
+export interface Ledger9WalletProvider {
   balanceTx(tx: UnboundTransaction, ttl?: Date): Promise<FinalizedTransaction>;
   getCoinPublicKey(): CoinPublicKey;
   getEncryptionPublicKey(): EncPublicKey;
@@ -155,7 +155,7 @@ export interface V9WalletProvider {
  *
  * The returned provider serves v9 payloads only — `supportedEras` says so — and
  * that is permanent rather than a gap: it lifts a v9-only implementation. It
- * rejects a v8 payload with `V8PayloadUnsupportedError` and an untagged one with
+ * rejects a v8 payload with `Ledger8PayloadUnsupportedError` and an untagged one with
  * `UntaggedPayloadError`. To serve a retained era as well, use
  * {@link createWalletProviderFromHandlers}.
  *
@@ -174,7 +174,7 @@ export interface V9WalletProvider {
  * });
  * ```
  */
-export const createWalletProvider = (impl: V9WalletProvider): WalletProvider =>
+export const createWalletProvider = (impl: Ledger9WalletProvider): WalletProvider =>
   createWalletProviderFromHandlers({
     currentEra: (tx, ttl) => impl.balanceTx(tx, ttl),
     getCoinPublicKey: () => impl.getCoinPublicKey(),

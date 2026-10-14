@@ -193,7 +193,7 @@ const createDeployTxOptions = <C extends Contract.Any>(
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
  * Reachable only on a PRE-FORK head: the retained era has no post-fork deployment, so a retained
- * artifact against a post-fork head is refused with `Ledger8DeployOnV9Error`. Recompile with the
+ * artifact against a post-fork head is refused with `Ledger8DeployOnLedger9Error`. Recompile with the
  * current toolchain and deploy that artifact instead; the retained artifact keeps working for calls
  * against contracts deployed before the fork.
  *
@@ -250,7 +250,7 @@ export async function deployContract<C extends Contract.Any>(
  *                                  built or submitted; the ZK config provider is asked for the
  *                                  artifacts' declared runtime version, and no other provider is
  *                                  consulted.
- * @throws Ledger8DeployOnV9Error If a retained-era artifact is deployed against a post-fork head.
+ * @throws Ledger8DeployOnLedger9Error If a retained-era artifact is deployed against a post-fork head.
  *                                Raised before the constructor runs and before any verifier key is
  *                                fetched.
  * @throws Ledger8DeployTxFailedError If the retained-era deployment was recorded with a non-success

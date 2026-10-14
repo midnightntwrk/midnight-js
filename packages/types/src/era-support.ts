@@ -65,7 +65,7 @@ const declarationOf = (provider: EraDeclaringProvider): readonly string[] => {
  *
  * It does not make the providers safe by itself. A declaration is a claim, so each
  * provider still narrows its own payload and still reports
- * `V8PayloadUnsupportedError` when a declaration turns out to be wrong.
+ * `Ledger8PayloadUnsupportedError` when a declaration turns out to be wrong.
  *
  * Generic in the era, so a further ledger era needs no change here.
  *
@@ -74,7 +74,7 @@ const declarationOf = (provider: EraDeclaringProvider): readonly string[] => {
  * @throws ProviderEraUnsupportedError naming the first method, in pipeline order,
  *         that does not declare `era`.
  * @see {@link ProviderEraDeclarations} for why the declaration is not trusted, and
- * why this refusal stays distinct from `V8PayloadUnsupportedError`.
+ * why this refusal stays distinct from `Ledger8PayloadUnsupportedError`.
  */
 export const assertProvidersSupportEra = (era: LedgerVersion, providers: TransactionProviders): void => {
   for (const [key, methodName] of PROVIDERS_IN_PIPELINE_ORDER) {

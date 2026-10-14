@@ -98,9 +98,9 @@ const STAND_IN_VERIFIER_KEY = readFileSync(fixturePath('twin-contract', 'compile
 
 const RECORDING_PATH = fixturePath('coin-receiver-016', 'receive-coin-transcript.recording.json');
 const STATE_V6_NAME = 'coin-receiver-016/state-v6-envelope.hex';
-const STATE_V9_NAME = 'coin-receiver-016/state-v9.hex';
+const STATE_LEDGER9_NAME = 'coin-receiver-016/state-v9.hex';
 const STATE_V6_PATH = fixturePath(STATE_V6_NAME);
-const STATE_V9_PATH = fixturePath(STATE_V9_NAME);
+const STATE_LEDGER9_PATH = fixturePath(STATE_LEDGER9_NAME);
 
 /** The slice of the compiled fixture module this suite drives. */
 interface CompiledReceiverContract extends CompactContract.Contract<Record<string, never>> {
@@ -282,7 +282,7 @@ const mintV6Envelope = (execution: RealExecution): Uint8Array => {
 };
 
 /** The current-era (`contract-state[v8]`) envelope the keep-state arm dispatches against. */
-const mintV9Envelope = (execution: RealExecution): Uint8Array => {
+const mintLedger9Envelope = (execution: RealExecution): Uint8Array => {
   const contractState = new ledgerV9.ContractState();
   contractState.data = new ledgerV9.ChargedState(ledgerV9.StateValue.decode(execution.preState));
   const operation = new ledgerV9.ContractOperation();
@@ -316,7 +316,7 @@ const ARMS: Readonly<
     });
   },
   v9: (transcript, partitionContext, preState) => {
-    const contractState = ledgerV9.ContractState.deserialize(readHexFixture(STATE_V9_NAME));
+    const contractState = ledgerV9.ContractState.deserialize(readHexFixture(STATE_LEDGER9_NAME));
     return assembleCallPrototype(ledgerV9, {
       circuitId: CIRCUIT_ID,
       contractAddress: ocrt3.dummyContractAddress(),
@@ -342,7 +342,7 @@ describe('coin-receiver-016 fixtures: minted by real retained-era execution, the
     if (process.env.MINT_HF_FIXTURES === '1') {
       writeFileSync(RECORDING_PATH, `${JSON.stringify(buildRecording(execution), null, 2)}\n`, 'utf8');
       writeFileSync(STATE_V6_PATH, `${Buffer.from(mintV6Envelope(execution)).toString('hex')}\n`, 'utf8');
-      writeFileSync(STATE_V9_PATH, `${Buffer.from(mintV9Envelope(execution)).toString('hex')}\n`, 'utf8');
+      writeFileSync(STATE_LEDGER9_PATH, `${Buffer.from(mintLedger9Envelope(execution)).toString('hex')}\n`, 'utf8');
     }
   });
 
@@ -356,8 +356,8 @@ describe('coin-receiver-016 fixtures: minted by real retained-era execution, the
     expect(Buffer.from(readHexFixture(STATE_V6_NAME)).toString('hex')).toBe(
       Buffer.from(mintV6Envelope(execution)).toString('hex')
     );
-    expect(Buffer.from(readHexFixture(STATE_V9_NAME)).toString('hex')).toBe(
-      Buffer.from(mintV9Envelope(execution)).toString('hex')
+    expect(Buffer.from(readHexFixture(STATE_LEDGER9_NAME)).toString('hex')).toBe(
+      Buffer.from(mintLedger9Envelope(execution)).toString('hex')
     );
   });
 

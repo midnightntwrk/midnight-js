@@ -15,7 +15,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type * as LoadV8Module from '../lib/v8/load';
+import type * as LoadLedger8Module from '../lib/v8/load';
 
 // Lives in its own file — a single doMock'd `'../lib/v8/load'`, reached only
 // through a dynamic re-import of `../lib/era/load-era` — so this poisoned
@@ -54,7 +54,7 @@ describe('loadLedgerEra — v8 ledger module acquisition', () => {
   // Once, not once per method: the era object binds the acquired module in
   // closure, which is what lets every method on it stay synchronous.
   it('acquires the v8 ledger module exactly once for the v8 era', async () => {
-    const actual = await vi.importActual<typeof LoadV8Module>('../lib/v8/load');
+    const actual = await vi.importActual<typeof LoadLedger8Module>('../lib/v8/load');
     const loadLedger8 = vi.fn(actual.loadLedger8);
     vi.doMock('../lib/v8/load', () => ({ loadLedger8 }));
     const { loadLedgerEra } = await import('../lib/era/load-era');

@@ -109,7 +109,7 @@ convert a repairable environment problem into a process-lifetime one.
 
 ## Acquisition is hoisted, so the era methods stay synchronous
 
-`createV8Era` acquires the retained pre-fork ledger through `loadLedger8` — the
+`createLedger8Era` acquires the retained pre-fork ledger through `loadLedger8` — the
 only sanctioned runtime path to it — and binds it into closure, so the era's
 own methods stay synchronous.
 
@@ -124,7 +124,7 @@ acquired, so there is nothing left to await — the acquisition happens once, in
 `createLedger8Engine`, and the runtime instance it obtained is captured in
 closure.
 
-The v9 arm needs no hoisting to reach the same shape. `createV9Era` is wholly
+The v9 arm needs no hoisting to reach the same shape. `createLedger9Era` is wholly
 synchronous: `@midnightntwrk/ledger-v9` is this package's current era and is
 already linked by the package root, so there is nothing to acquire and nothing
 that can fail there.

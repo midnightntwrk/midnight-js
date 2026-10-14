@@ -294,7 +294,7 @@ export interface FinalizedTxRecord {
  * Data for any finalized transaction produced by the v9 ledger runtime.
  *
  * This is the v9 variant of {@link VersionedFinalizedTxData} — see
- * {@link FinalizedTxDataV8} for the v8 variant.
+ * {@link Ledger8FinalizedTxData} for the v8 variant.
  *
  * NARROWING IS REQUIRED. A provider that decodes per era returns the v8 variant as
  * an ordinary value for any record whose `protocolVersion` places it in that

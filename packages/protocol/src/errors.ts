@@ -355,7 +355,7 @@ export type DownConvertStage = 'v8 envelope extraction' | 'v9 envelope extractio
 /**
  * Thrown when a raw contract-state envelope, or an already-extracted
  * `EncodedStateValue`, cannot be turned into an executable pre-fork state.
- * Raised by `extractV9EncodedStateValue` (`lib/era/envelope.ts`) and by
+ * Raised by `extractLedger9EncodedStateValue` (`lib/era/envelope.ts`) and by
  * `decodeExecutableStateValue` (`lib/v8/executable.ts`), which refuses a state
  * that decodes but does not re-encode to the bytes it came from.
  *
@@ -1005,7 +1005,7 @@ const describeType = (value: unknown): string => {
  * can happen — a `txBytes` field that is not a byte string, a byte string
  * shorter than the tag prefix, and one that does not open with the prefix.
  *
- * @remarks Raised by `proveV8Transaction`, so it reaches application code as a
+ * @remarks Raised by `proveLedger8Transaction`, so it reaches application code as a
  * `proveTx` rejection. Match it with `hasErrorCode` against
  * `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION` rather than constructing it.
  */

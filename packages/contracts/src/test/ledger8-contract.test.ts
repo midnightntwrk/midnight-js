@@ -21,7 +21,7 @@ import type { ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { deployContract } from '../deploy-contract';
-import { EraArtifactMismatchError, Ledger8DeployOnV9Error } from '../errors';
+import { EraArtifactMismatchError, Ledger8DeployOnLedger9Error } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
 import type { Ledger8ContractProviders } from '../ledger8-contract';
 import type {
@@ -362,7 +362,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
 
       // The CLASS, not the message constant: asserting against the same string the production code
       // throws can only fail if one file disagrees with itself, which it cannot.
-      expect(caught).toBeInstanceOf(Ledger8DeployOnV9Error);
+      expect(caught).toBeInstanceOf(Ledger8DeployOnLedger9Error);
       // POSITIVE evidence that the arm REACHED the era gate rather than refusing in front of it:
       // the head was read. A refusal raised before any provider was touched -- which is what stood
       // here -- would leave this untouched.
@@ -390,7 +390,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       expect((caught as Error).message).toMatch(/sampleSigningKey/);
       // And it is not an era refusal of any kind.
       expect(caught).not.toBeInstanceOf(EraArtifactMismatchError);
-      expect(caught).not.toBeInstanceOf(Ledger8DeployOnV9Error);
+      expect(caught).not.toBeInstanceOf(Ledger8DeployOnLedger9Error);
     });
 
   });

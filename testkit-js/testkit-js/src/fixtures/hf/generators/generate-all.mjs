@@ -25,12 +25,12 @@
 //   - twin-contract/compiled/** is compiled by running compactc directly
 //     (see ../README.md "twin-contract"), not by a mint script.
 
-import { run as mintStateV8 } from './mint-state-v8.mjs';
-import { run as mintMigratedV9Merkle } from './mint-migrated-v9-merkle.mjs';
+import { run as mintLedger8State } from './mint-state-v8.mjs';
+import { run as mintMigratedLedger9Merkle } from './mint-migrated-v9-merkle.mjs';
 import { run as mintTamperedAndDerived } from './mint-tampered-and-derived.mjs';
 import { run as mintCoV2Foreign } from './mint-co-v2-foreign.mjs';
 
-mintStateV8();
-mintMigratedV9Merkle();
+mintLedger8State();
+mintMigratedLedger9Merkle();
 mintTamperedAndDerived();
 mintCoV2Foreign();

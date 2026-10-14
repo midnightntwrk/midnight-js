@@ -254,25 +254,25 @@ input the next one expects, so a straight pipeline changes in one place:
   const txId = await midnightProvider.submitTx(balanced);
 ```
 
-You only narrow where you need the ledger object itself. `unwrapV9` throws a
+You only narrow where you need the ledger object itself. `unwrapLedger9` throws a
 coded error rather than letting a bare `TypeError` surface from inside a WASM
 call:
 
 ```typescript
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
 
-const provenTx = unwrapV9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
+const provenTx = unwrapLedger9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
 ```
 
 The read surface is a *different* union — its v8 arm carries `tx`, not
-`txBytes` — so `unwrapV9` does not accept it. Both arms are records you will
+`txBytes` — so `unwrapLedger9` does not accept it. Both arms are records you will
 receive, so handle both:
 
 ```ts
 import { types, utils } from '@midnight-ntwrk/midnight-js';
 
 declare const describeNative: (tx: types.FinalizedTxData['tx']) => string;
-declare const describeRetained: (tx: types.FinalizedTxDataV8['tx']) => string;
+declare const describeRetained: (tx: types.Ledger8FinalizedTxData['tx']) => string;
 
 const summarize = (record: types.VersionedFinalizedTxData): string => {
   switch (record.version) {
@@ -433,8 +433,8 @@ For a **deploy** the remediation is different, and it is also two steps:
 
 ### Runtime-deploy chapter: factory patterns
 
-This section is linked from `Ledger8.DeployOnV9Error`
-(`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9`).
+This section is linked from `Ledger8.DeployOnLedger9Error`
+(`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_LEDGER9`).
 
 If your dApp deploys contract instances **at runtime** — a factory that stands
 up a new contract per user, per market, per game — read this before the fork.
@@ -442,7 +442,7 @@ up a new contract per user, per market, per game — read this before the fork.
 The retained era stays supported for **calls against contracts deployed before
 the fork**. New deployments of a retained-toolchain artifact work **only on a
 pre-fork head**. On a post-fork head `deployContract` refuses one with
-`Ledger8.DeployOnV9Error`, before the constructor runs and before any verifier
+`Ledger8.DeployOnLedger9Error`, before the constructor runs and before any verifier
 key is fetched.
 
 A retained deploy registers a maintenance authority of one key, either

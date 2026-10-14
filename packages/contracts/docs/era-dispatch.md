@@ -366,14 +366,14 @@ window. So it is rethrown wrapped, naming both eras that disagreed.
 
 ## Refusing a v8 answer on a v9-only flow
 
-`requireV9` and `requireV9Record` narrow a provider's versioned payload to its
+`requireLedger9` and `requireLedger9Record` narrow a provider's versioned payload to its
 v9 arm. The flows in this package only ever send v9 payloads, so a v8 response
 cannot be handled.
 
-Both are distinct from `unwrapV9` in `@midnight-ntwrk/midnight-js-types`, which
+Both are distinct from `unwrapLedger9` in `@midnight-ntwrk/midnight-js-types`, which
 guards the INBOUND direction of a v9-only provider. These guard the outbound
 direction: a v8 answer here is a broken provider, not an unsupported request, so
-it reports `EraInvariantViolationError` rather than `V8PayloadUnsupportedError`.
+it reports `EraInvariantViolationError` rather than `Ledger8PayloadUnsupportedError`.
 
 The provider method types do not tie a provider's output era to its input era, so this
 runtime check is what upholds that invariant for these flows. `PublicDataProvider`
@@ -425,10 +425,10 @@ no more than it says.
 
 `supportedEras` is a CLAIM by an implementation, and nothing verifies it. A
 provider that lists an era it cannot serve still fails in the method, with
-`V8PayloadUnsupportedError` — the narrowing in each method is unchanged and is what
+`Ledger8PayloadUnsupportedError` — the narrowing in each method is unchanged and is what
 actually upholds the arm. The two errors stay distinct because their remedies
 differ: `ProviderEraUnsupportedError` means wire a different provider,
-`V8PayloadUnsupportedError` means the provider you wired does not do what it
+`Ledger8PayloadUnsupportedError` means the provider you wired does not do what it
 said.
 
 What the check buys is WHERE the refusal lands. Proving is the expensive step
@@ -446,7 +446,7 @@ narrows on it reaches into the other ledger module and is handed a plausible
 wrong value.
 
 The current era refuses the mirror of this on its call paths, through
-`requireV9Record`. Its attach accepts either tag, because a contract it finds may
+`requireLedger9Record`. Its attach accepts either tag, because a contract it finds may
 have been deployed before the fork. `assertLedger8RecordEra` is the retained arm's half, and it
 compares the record against the HEAD rather than against a fixed era, because a
 retained-era call is legitimately recorded by EITHER era — which is why the

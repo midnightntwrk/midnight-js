@@ -67,7 +67,7 @@ const plainThrowSelectors = [
 // The `./v8` subpath carries the previous-era ledger and its own WASM. Only
 // `loadLedger8()` may reach it at runtime, so no consumer can grow a direct v8
 // dependency that pulls that WASM into an eagerly-loaded module graph.
-const V8_RUNTIME_MESSAGE =
+const LEDGER8_RUNTIME_MESSAGE =
   'Runtime v8 access only via loadLedger8() from @midnight-ntwrk/midnight-js-protocol.';
 
 // Blocks dynamic `import(...)` of protocol/v8 (and any subpath under it) in
@@ -75,15 +75,15 @@ const V8_RUNTIME_MESSAGE =
 // template literal with no interpolation (`` `...protocol/v8` ``) that would
 // otherwise slip past a Literal-only selector. A template literal WITH
 // interpolation cannot be matched statically and is not covered here.
-const v8DynamicImportSelectors = [
+const ledger8DynamicImportSelectors = [
   {
     selector: "ImportExpression > Literal[value=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(\\/|$)/]",
-    message: `${V8_RUNTIME_MESSAGE} Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.`
+    message: `${LEDGER8_RUNTIME_MESSAGE} Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.`
   },
   {
     selector:
       "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(\\/|$)/]",
-    message: `${V8_RUNTIME_MESSAGE} Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.`
+    message: `${LEDGER8_RUNTIME_MESSAGE} Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.`
   }
 ];
 
@@ -369,7 +369,7 @@ export default tseslint.config(
             {
               group: ['@midnight-ntwrk/midnight-js-protocol/v8', '@midnight-ntwrk/midnight-js-protocol/v8/*'],
               allowTypeImports: true,
-              message: `${V8_RUNTIME_MESSAGE} Type-only imports are allowed.`
+              message: `${LEDGER8_RUNTIME_MESSAGE} Type-only imports are allowed.`
             },
             {
               group: [
@@ -401,7 +401,7 @@ export default tseslint.config(
         'error',
         ...unsafeCastSelectors,
         ...plainThrowSelectors,
-        ...v8DynamicImportSelectors,
+        ...ledger8DynamicImportSelectors,
         ...engineDynamicImportSelectors
       ]
     }
@@ -411,7 +411,7 @@ export default tseslint.config(
     files: PLAIN_THROW_EXEMPT_DIRS,
     ignores: [PACKAGE_TEST_DIRS],
     rules: {
-      'no-restricted-syntax': ['error', ...unsafeCastSelectors, ...v8DynamicImportSelectors, ...engineDynamicImportSelectors]
+      'no-restricted-syntax': ['error', ...unsafeCastSelectors, ...ledger8DynamicImportSelectors, ...engineDynamicImportSelectors]
     }
   },
   {
@@ -428,14 +428,14 @@ export default tseslint.config(
     files: PACKAGE_TEST_GLOBS,
     ignores: [PROTOCOL_SOURCE_DIRS],
     rules: {
-      'no-restricted-syntax': ['error', ...v8DynamicImportSelectors, ...engineDynamicImportSelectors]
+      'no-restricted-syntax': ['error', ...ledger8DynamicImportSelectors, ...engineDynamicImportSelectors]
     }
   },
   {
     // testkit-js is fixture code: casts allowed, v8 still gated.
     files: ['testkit-js/**/*.ts'],
     rules: {
-      'no-restricted-syntax': ['error', ...v8DynamicImportSelectors, ...engineDynamicImportSelectors]
+      'no-restricted-syntax': ['error', ...ledger8DynamicImportSelectors, ...engineDynamicImportSelectors]
     }
   },
   {

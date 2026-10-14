@@ -143,7 +143,7 @@ describe('Contracts type ACL', () => {
       'FoundContract',
       'FoundDeployTxData',
       'FoundDeployTxPublicData',
-      'FoundDeployTxPublicDataV8',
+      'Ledger8FoundDeployTxPublicData',
       'LogEvent',
       'PublicContractStates',
       'ScopedTransactionOptions',

@@ -193,7 +193,7 @@ const payingTranscriptSource = (payee: Payee): CallTranscriptSource => ({
   fallible: payingTranscript(payee, FALLIBLE_PAYOUT)
 });
 
-const v8Fixture: EraFixture = {
+const ledger8Fixture: EraFixture = {
   golden: 'state-v8.hex',
   keyedContractState: () => {
     const contractState = new LedgerV8.ContractState();
@@ -253,7 +253,7 @@ const v8Fixture: EraFixture = {
   }
 };
 
-const v9Fixture: EraFixture = {
+const ledger9Fixture: EraFixture = {
   golden: 'state-migrated-v9.hex',
   keyedContractState: () => {
     const contractState = new ledgerV9.ContractState();
@@ -313,7 +313,7 @@ const v9Fixture: EraFixture = {
   }
 };
 
-const FIXTURES: Readonly<Record<LedgerVersion, EraFixture>> = { v8: v8Fixture, v9: v9Fixture };
+const FIXTURES: Readonly<Record<LedgerVersion, EraFixture>> = { v8: ledger8Fixture, v9: ledger9Fixture };
 
 const callOptionsFor = (version: LedgerVersion): ComposeCallOptions => ({
   calls: [
@@ -365,27 +365,27 @@ describe('the two ledger eras run the same scenario', () => {
   it('reads the golden pair to identical state', async () => {
     const [v8, v9] = await Promise.all([loadLedgerEra('v8'), loadLedgerEra('v9')]);
 
-    expect(v8.extractState(readHexFixture(v8Fixture.golden))).toEqual(
-      v9.extractState(readHexFixture(v9Fixture.golden))
+    expect(v8.extractState(readHexFixture(ledger8Fixture.golden))).toEqual(
+      v9.extractState(readHexFixture(ledger9Fixture.golden))
     );
   });
 
   it('decodes the golden pair to the same entry points and the same verifier-key hashes', async () => {
     const [v8, v9] = await Promise.all([loadLedgerEra('v8'), loadLedgerEra('v9')]);
 
-    const fromV8 = v8.decodeContractState(readHexFixture(v8Fixture.golden));
-    const fromV9 = v9.decodeContractState(readHexFixture(v9Fixture.golden));
+    const fromLedger8 = v8.decodeContractState(readHexFixture(ledger8Fixture.golden));
+    const fromLedger9 = v9.decodeContractState(readHexFixture(ledger9Fixture.golden));
 
-    expect(Object.keys(fromV8).sort()).toEqual(Object.keys(fromV9).sort());
-    expect(fromV8.entryPoints.map((entry) => entry.circuitId).sort()).toEqual(
-      fromV9.entryPoints.map((entry) => entry.circuitId).sort()
+    expect(Object.keys(fromLedger8).sort()).toEqual(Object.keys(fromLedger9).sort());
+    expect(fromLedger8.entryPoints.map((entry) => entry.circuitId).sort()).toEqual(
+      fromLedger9.entryPoints.map((entry) => entry.circuitId).sort()
     );
     // The hash is what a prover resolves an artifact by, so the two eras
     // disagreeing here would send the same contract to two different keys.
-    const hashesByCircuit = (pojo: typeof fromV8): [string, string | undefined][] =>
+    const hashesByCircuit = (pojo: typeof fromLedger8): [string, string | undefined][] =>
       pojo.entryPoints.map((entry) => [entry.circuitId, entry.verifierKeyHash]);
-    expect(hashesByCircuit(fromV8).sort()).toEqual(hashesByCircuit(fromV9).sort());
-    expect(fromV8.entryPoints.every((entry) => entry.verifierKeyHash !== undefined)).toBe(true);
+    expect(hashesByCircuit(fromLedger8).sort()).toEqual(hashesByCircuit(fromLedger9).sort());
+    expect(fromLedger8.entryPoints.every((entry) => entry.verifierKeyHash !== undefined)).toBe(true);
   });
 
   // Both arms partition an unpartitioned transcript themselves, so both have to

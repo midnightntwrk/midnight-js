@@ -30,20 +30,20 @@ import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/C
 import type { ZswapLocalState as CurrentZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import type * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import type {
-  AlignedValue as LedgerV8AlignedValue,
-  CallContext as LedgerV8CallContext,
-  Effects as LedgerV8Effects,
-  EncodedStateValue as LedgerV8EncodedStateValue,
-  Op as LedgerV8Op,
-  Transcript as LedgerV8Transcript
+  AlignedValue as Ledger8AlignedValue,
+  CallContext as Ledger8CallContext,
+  Effects as Ledger8Effects,
+  EncodedStateValue as Ledger8EncodedStateValue,
+  Op as Ledger8Op,
+  Transcript as Ledger8Transcript
 } from '@midnightntwrk/ledger-v8';
 import type {
-  AlignedValue as LedgerV9AlignedValue,
-  CallContext as LedgerV9CallContext,
-  Effects as LedgerV9Effects,
-  EncodedStateValue as LedgerV9EncodedStateValue,
-  Op as LedgerV9Op,
-  Transcript as LedgerV9Transcript
+  AlignedValue as Ledger9AlignedValue,
+  CallContext as Ledger9CallContext,
+  Effects as Ledger9Effects,
+  EncodedStateValue as Ledger9EncodedStateValue,
+  Op as Ledger9Op,
+  Transcript as Ledger9Transcript
 } from '@midnightntwrk/ledger-v9';
 import type { TokenType } from '@midnightntwrk/ledger-v9';
 import * as glue from 'compact-runtime-ledger8';
@@ -1260,22 +1260,22 @@ describe('structurallyEqual', () => {
 type AssertEqual<A, B> = (<T>() => T extends A ? 1 : 0) extends <T>() => T extends B ? 1 : 0 ? true : false;
 type Expect<T extends true> = T;
 
-type _EncodedStateValueUnchanged = Expect<AssertEqual<ocrt3.EncodedStateValue, LedgerV9EncodedStateValue>>;
-type _OpUnchanged = Expect<AssertEqual<ocrt3.Op<null>, LedgerV9Op<null>>>;
-type _AlignedValueUnchanged = Expect<AssertEqual<ocrt3.AlignedValue, LedgerV9AlignedValue>>;
+type _EncodedStateValueUnchanged = Expect<AssertEqual<ocrt3.EncodedStateValue, Ledger9EncodedStateValue>>;
+type _OpUnchanged = Expect<AssertEqual<ocrt3.Op<null>, Ledger9Op<null>>>;
+type _AlignedValueUnchanged = Expect<AssertEqual<ocrt3.AlignedValue, Ledger9AlignedValue>>;
 type _TranscriptUnchanged = Expect<
-  AssertEqual<ocrt3.Transcript<ocrt3.AlignedValue>, LedgerV9Transcript<LedgerV9AlignedValue>>
+  AssertEqual<ocrt3.Transcript<ocrt3.AlignedValue>, Ledger9Transcript<Ledger9AlignedValue>>
 >;
 
 // The ledger-v8 axis, pinned for the same reason: `assemble-call.ts` crosses the
 // envelope into whichever ledger module it is handed, and its safety argument --
 // a safe envelope crossing, not a lossy re-encode -- covers ledger-v8 as soon as
 // the retained leg binds to it.
-type _V8EncodedStateValueUnchanged = Expect<AssertEqual<LedgerV8EncodedStateValue, LedgerV9EncodedStateValue>>;
-type _V8OpUnchanged = Expect<AssertEqual<LedgerV8Op<null>, LedgerV9Op<null>>>;
-type _V8AlignedValueUnchanged = Expect<AssertEqual<LedgerV8AlignedValue, LedgerV9AlignedValue>>;
-type _V8TranscriptUnchanged = Expect<
-  AssertEqual<LedgerV8Transcript<LedgerV8AlignedValue>, LedgerV9Transcript<LedgerV9AlignedValue>>
+type _Ledger8EncodedStateValueUnchanged = Expect<AssertEqual<Ledger8EncodedStateValue, Ledger9EncodedStateValue>>;
+type _Ledger8OpUnchanged = Expect<AssertEqual<Ledger8Op<null>, Ledger9Op<null>>>;
+type _Ledger8AlignedValueUnchanged = Expect<AssertEqual<Ledger8AlignedValue, Ledger9AlignedValue>>;
+type _Ledger8TranscriptUnchanged = Expect<
+  AssertEqual<Ledger8Transcript<Ledger8AlignedValue>, Ledger9Transcript<Ledger9AlignedValue>>
 >;
 
 // `CallContext` and `Effects` join them one step further out, and this is the row
@@ -1286,10 +1286,10 @@ type _V8TranscriptUnchanged = Expect<
 // axes have to agree for that to be a move rather than a re-encode, and the WASM
 // setters reject a mismatched record at runtime, from inside wasm, with no
 // compile error to warn first.
-type _CallContextUnchanged = Expect<AssertEqual<ocrt3.CallContext, LedgerV9CallContext>>;
-type _EffectsUnchanged = Expect<AssertEqual<ocrt3.Effects, LedgerV9Effects>>;
-type _V8CallContextUnchanged = Expect<AssertEqual<LedgerV8CallContext, LedgerV9CallContext>>;
-type _V8EffectsUnchanged = Expect<AssertEqual<LedgerV8Effects, LedgerV9Effects>>;
+type _CallContextUnchanged = Expect<AssertEqual<ocrt3.CallContext, Ledger9CallContext>>;
+type _EffectsUnchanged = Expect<AssertEqual<ocrt3.Effects, Ledger9Effects>>;
+type _Ledger8CallContextUnchanged = Expect<AssertEqual<Ledger8CallContext, Ledger9CallContext>>;
+type _Ledger8EffectsUnchanged = Expect<AssertEqual<Ledger8Effects, Ledger9Effects>>;
 
 // ADR-0009 declares `nextZswapLocalState` once, as the CURRENT era's
 // `ZswapLocalState`, rather than behind a third type parameter -- and rests that

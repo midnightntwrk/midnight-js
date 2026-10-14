@@ -31,8 +31,8 @@ const DIST_INDEX_PATH = 'dist/index.js';
 // src/lib/v8/load.ts comes out as an output-relative specifier, at whatever
 // depth that chunk sits. Built from parts so the runtime-reference scan in
 // v8-surface.test.ts keeps matching only lib/v8/load.ts.
-const V8_CHUNK_PATTERN = `(?:\\.{1,2}/)+${['v8', 'js'].join('\\.')}`;
-const V8_DIST_ARTIFACTS = ['dist/v8.js', 'dist/v8.d.ts'];
+const LEDGER8_CHUNK_PATTERN = `(?:\\.{1,2}/)+${['v8', 'js'].join('\\.')}`;
+const LEDGER8_DIST_ARTIFACTS = ['dist/v8.js', 'dist/v8.d.ts'];
 // The `./engine` entry chunk, named the same way and for the same reason: the
 // dynamic import of `../../engine.js` in src/lib/v8/load-engine.ts comes
 // out as an output-relative specifier too, at whatever depth the chunk that
@@ -119,10 +119,10 @@ describe('dist laziness gate', () => {
   it('what the index bundle loads eagerly keeps the lazy dynamic import of the v8 chunk', () => {
     const content = eagerContents(DIST_INDEX_PATH);
 
-    expect(content).toMatch(new RegExp(`import\\(\\s*['"]${V8_CHUNK_PATTERN}['"]\\s*\\)`));
+    expect(content).toMatch(new RegExp(`import\\(\\s*['"]${LEDGER8_CHUNK_PATTERN}['"]\\s*\\)`));
   });
 
-  it.each(V8_DIST_ARTIFACTS)('%s referenced by the ./v8 exports map entry exists', (path) => {
+  it.each(LEDGER8_DIST_ARTIFACTS)('%s referenced by the ./v8 exports map entry exists', (path) => {
     expect(existsSync(resolve(PKG_ROOT, path))).toBe(true);
   });
 
@@ -151,7 +151,7 @@ describe('dist laziness gate', () => {
   // `from './v8.js'` anywhere in the closure would defeat both of the others
   // while still leaving the dynamic import in place.
   it.each([
-    ['v8', V8_CHUNK_PATTERN],
+    ['v8', LEDGER8_CHUNK_PATTERN],
     ['engine', ENGINE_CHUNK_PATTERN]
   ])('the %s chunk is reached from the eager closure only by dynamic import', (_name, pattern) => {
     const content = eagerContents(DIST_INDEX_PATH);

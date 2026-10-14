@@ -29,7 +29,7 @@ import {
   Ledger8AmbiguousEntryPointError,
   Ledger8CallTxFailedError,
   Ledger8DeployNotStoredError,
-  Ledger8DeployOnV9Error,
+  Ledger8DeployOnLedger9Error,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
   Ledger8ProviderFailedError,
@@ -53,7 +53,7 @@ const RETAINED_ERA_MEMBERS = [
   'AmbiguousEntryPointError',
   'CallTxFailedError',
   'DeployNotStoredError',
-  'DeployOnV9Error',
+  'DeployOnLedger9Error',
   'DeployTxFailedError',
   'DeployUnconfirmedError',
   'RecipientUnmappableError',
@@ -127,7 +127,7 @@ describe('the retained era is published as one namespace', () => {
     expect(Ledger8.AmbiguousEntryPointError).toBe(Ledger8AmbiguousEntryPointError);
     expect(Ledger8.CallTxFailedError).toBe(Ledger8CallTxFailedError);
     expect(Ledger8.DeployNotStoredError).toBe(Ledger8DeployNotStoredError);
-    expect(Ledger8.DeployOnV9Error).toBe(Ledger8DeployOnV9Error);
+    expect(Ledger8.DeployOnLedger9Error).toBe(Ledger8DeployOnLedger9Error);
     expect(Ledger8.DeployTxFailedError).toBe(Ledger8DeployTxFailedError);
     expect(Ledger8.DeployUnconfirmedError).toBe(Ledger8DeployUnconfirmedError);
     expect(Ledger8.RecipientUnmappableError).toBe(Ledger8RecipientUnmappableError);
@@ -152,9 +152,9 @@ describe('the retained era is published as one namespace', () => {
   it('carries the registered error code on a class reached through the namespace', () => {
     // The namespace is a RENAME of the existing classes, not a second set of them. A same-named
     // stub would satisfy the key list above and fail here.
-    const error = new Ledger8.DeployOnV9Error();
+    const error = new Ledger8.DeployOnLedger9Error();
 
-    expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9)).toBe(true);
+    expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9)).toBe(true);
   });
 
   it('keeps the retained failure class under the era-neutral base a consumer catches', () => {

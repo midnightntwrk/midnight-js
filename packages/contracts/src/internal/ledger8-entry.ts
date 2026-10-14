@@ -94,9 +94,9 @@ import { type BreadcrumbSink, emitPipelineSelection } from './breadcrumbs';
 import {
   assertEraCompatible,
   type HeadVersionSource,
+  requireLedger8,
+  requireLedger9,
   requireTaggedRecord,
-  requireV8,
-  requireV9,
   type ResolvedOperationEra,
   resolveOperationEra
 } from './era';
@@ -202,7 +202,7 @@ export interface Ledger8Runtime {
  * pipeline-selection breadcrumbs are written to, and the contract this
  * operation names — omitted by a deploy, which has no address yet.
  * @returns The resolved era facts and the acquired engine.
- * @throws Ledger8DeployOnV9Error for a retained-era deploy on a post-fork head.
+ * @throws Ledger8DeployOnLedger9Error for a retained-era deploy on a post-fork head.
  * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
  * @throws Ledger8RuntimeMissingError if the retained runtime cannot be acquired.
  * @throws ProviderEraUnsupportedError if a transaction provider does not serve the era this
@@ -380,7 +380,7 @@ const sanitizeProviderCause = (cause: unknown, depth = 0): Error => {
  * {@link Ledger8ProviderFailedError} with the failure sanitized onto `cause`.
  *
  * This framework's OWN coded errors pass through UNCHANGED when they carry no
- * `cause`: a caller narrowing on `V8PayloadUnsupportedError` or
+ * `cause`: a caller narrowing on `Ledger8PayloadUnsupportedError` or
  * {@link EraInvariantViolationError} has to keep seeing them. One that carries a
  * `cause` -- a transport failure under `ProofServerError`, say -- holds external
  * material and is sanitized like any other rejection. `hasErrorCode` is the
@@ -430,13 +430,13 @@ const submitLedger8TxOnCurrentEra = async (
   submit: SubmitRunner
 ): Promise<string> => {
   const unproven = readCurrentEraTransaction(txBytes);
-  const proven = requireV9(
+  const proven = requireLedger9(
     await atProviderMethod('proveTx', circuitId, () => providers.proofProvider.proveTx({ version: 'v9', tx: unproven })),
     'proveTx',
     circuitId
   );
   const balanceTtl = intentTtl(providers.config);
-  const balanced = requireV9(
+  const balanced = requireLedger9(
     await atProviderMethod('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v9', tx: proven }, balanceTtl)),
     'balanceTx',
     circuitId
@@ -459,13 +459,13 @@ const submitLedger8TxOnRetainedEra = async (
   circuitId: string,
   submit: SubmitRunner
 ): Promise<string> => {
-  const proven = requireV8(
+  const proven = requireLedger8(
     await atProviderMethod('proveTx', circuitId, () => providers.proofProvider.proveTx({ version: 'v8', txBytes })),
     'proveTx',
     circuitId
   );
   const balanceTtl = intentTtl(providers.config);
-  const balanced = requireV8(
+  const balanced = requireLedger8(
     await atProviderMethod('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v8', txBytes: proven }, balanceTtl)),
     'balanceTx',
     circuitId
@@ -498,7 +498,7 @@ const submitLedger8TxOnRetainedEra = async (
  * also decides the payload arm — whether it is a call or a deploy, and the
  * identifiers a fork-crossing refusal has to name.
  * @returns The transaction id the network assigned.
- * @throws V8PayloadUnsupportedError if a provider does not serve the pre-fork arm.
+ * @throws Ledger8PayloadUnsupportedError if a provider does not serve the pre-fork arm.
  * @throws EraInvariantViolationError if a provider answers in the other era.
  * @throws Ledger8ProviderFailedError if a provider rejects, with its own failure
  * sanitized onto `cause` — see {@link atProviderMethod}.
@@ -599,7 +599,7 @@ export interface Ledger8SubmittedCall {
  * @throws Ledger8RecipientUnmappableError if a shielded output pays a recipient
  * that is not the calling wallet, the burn address, or a key in
  * `additionalCoinEncPublicKeyMappings`.
- * @throws V8PayloadUnsupportedError if a provider does not serve the pre-fork arm.
+ * @throws Ledger8PayloadUnsupportedError if a provider does not serve the pre-fork arm.
  * @throws EraInvariantViolationError if a provider answers in the other era.
  * @throws Ledger8ProviderFailedError if a provider rejects.
  * @see {@link KeepStatePipeline} for the per-recipient encryption rule and what
@@ -679,7 +679,7 @@ export interface Ledger8DeployRequest {
    * before the call it is an argument to: a map built inline was fetched ahead
    * of the era and provider gates below, so a retained artifact on a post-fork head
    * - whose ZK config an ordinary browser no longer serves after the fork - got
-   * the provider's fetch rejection in place of `Ledger8DeployOnV9Error`, which
+   * the provider's fetch rejection in place of `Ledger8DeployOnLedger9Error`, which
    * is the reason a caller can act on.
    */
   readonly resolveVerifierKeys: () => Promise<ReadonlyMap<string, Uint8Array>>;
@@ -714,7 +714,7 @@ export interface Ledger8SubmittedDeploy {
  * @param request The contract, its constructor arguments, the private state,
  * the verifier keys to register and the optional signing key.
  * @returns The transaction id, the composed deploy record and the head era.
- * @throws Ledger8DeployOnV9Error on a post-fork head.
+ * @throws Ledger8DeployOnLedger9Error on a post-fork head.
  */
 export const runLedger8Deploy = async (
   providers: Ledger8EntryProviders,
@@ -958,7 +958,7 @@ const assertLedger8RecordEra = (
   // naming the wrong era, and it wants a different remediation. Telling a
   // caller whose provider emitted no tag to check that nothing "re-tags" the
   // payload points them away from the fault. This is the same split the
-  // current era's `requireV9Record` makes in its own default branch.
+  // current era's `requireLedger9Record` makes in its own default branch.
   const tagged = requireTaggedRecord(record, method);
   if (tagged.version === head) {
     return;

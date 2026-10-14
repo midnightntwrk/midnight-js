@@ -22,6 +22,7 @@ import {
   ImportConflictError,
   InvalidExportFormatError,
   InvalidProtocolSchemeError,
+  Ledger8PayloadUnsupportedError,
   PrivateStateDecryptionError,
   PrivateStateExportError,
   PrivateStateImportError,
@@ -35,7 +36,6 @@ import {
   SigningKeyExportError,
   UntaggedPayloadError,
   UnusableEraEntryError,
-  V8PayloadUnsupportedError,
   ZkArtifactFetchError
 } from '../errors';
 import * as errors from '../errors';
@@ -48,7 +48,7 @@ describe('types error classes', () => {
   );
   const keyLocation = { contractAddress: 'aa'.repeat(32), circuitId: 'increment', verifierKeyHash: 'bb'.repeat(32) };
   const instances: readonly [string, MidnightJsError][] = [
-    ['V8PayloadUnsupportedError', new V8PayloadUnsupportedError('proveTx', 3)],
+    ['Ledger8PayloadUnsupportedError', new Ledger8PayloadUnsupportedError('proveTx', 3)],
     ['UntaggedPayloadError', new UntaggedPayloadError('proveTx', undefined)],
     ['ProviderEraUnsupportedError', new ProviderEraUnsupportedError('proveTx', 'v8', ['v9'])],
     ['UnusableEraEntryError', new UnusableEraEntryError('proveTx', 'v8', 'handler', 'null')],
@@ -112,7 +112,7 @@ describe('types error classes', () => {
   });
 
   it.each([
-    ['V8PayloadUnsupportedError', new V8PayloadUnsupportedError('balanceTx', 3), 'balanceTx'],
+    ['Ledger8PayloadUnsupportedError', new Ledger8PayloadUnsupportedError('balanceTx', 3), 'balanceTx'],
     ['UntaggedPayloadError', new UntaggedPayloadError('watchForTxData', undefined), 'watchForTxData'],
     ['ProviderEraUnsupportedError', new ProviderEraUnsupportedError('submitTx', 'v8', ['v9']), 'submitTx'],
     ['UnusableEraEntryError', new UnusableEraEntryError('proveTx', 'v8', 'handler', 'null'), 'proveTx']
@@ -128,6 +128,12 @@ describe('types error classes', () => {
       'MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED',
       'USAGE'
     ]);
+  });
+
+  it('the v8 payload refusal carries the Ledger8 name and code', () => {
+    const error = new Ledger8PayloadUnsupportedError('proveTx', 3);
+
+    expect([error.name, error.code]).toEqual(['Ledger8PayloadUnsupportedError', 'MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTED']);
   });
 
   it('category table covers every provider code exactly', () => {

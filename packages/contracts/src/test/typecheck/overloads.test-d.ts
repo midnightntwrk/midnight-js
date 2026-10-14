@@ -87,7 +87,7 @@ import type {
   FinalizedCallTxData,
   FinalizedDeployTxPublicData,
   FoundDeployTxPublicData,
-  FoundDeployTxPublicDataV8,
+  Ledger8FoundDeployTxPublicData,
   SubmittedCallTx
 } from '../../tx-model';
 import type { CallTxOptions, CallTxOptionsBase, CallTxOptionsWithPrivateStateId } from '../../unproven-call-tx';
@@ -1264,8 +1264,8 @@ describe('a found contract may have been deployed in either ledger era', () => {
     expectTypeOf<FoundPublic>().not.toHaveProperty('initialContractState');
     expectTypeOf<Extract<FoundPublic, { version: 'v9' }>>().toEqualTypeOf<FinalizedDeployTxPublicData>();
     expectTypeOf<Extract<FoundPublic, { version: 'v9' }>['initialContractState']>().toEqualTypeOf<ContractState>();
-    expectTypeOf<Extract<FoundPublic, { version: 'v8' }>>().toEqualTypeOf<FoundDeployTxPublicDataV8>();
-    expectTypeOf<FoundDeployTxPublicDataV8>().not.toHaveProperty('initialContractState');
+    expectTypeOf<Extract<FoundPublic, { version: 'v8' }>>().toEqualTypeOf<Ledger8FoundDeployTxPublicData>();
+    expectTypeOf<Ledger8FoundDeployTxPublicData>().not.toHaveProperty('initialContractState');
   });
 
   it('keeps a deployed contract usable wherever a found contract is expected', () => {

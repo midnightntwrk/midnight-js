@@ -21,11 +21,11 @@ import type {
   TransactionHash,
   TransactionId
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { FinalizedTransaction as V8Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { FinalizedTransaction as Ledger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { BlockHash, Fees, FinalizedTxData, SegmentStatus, TxStatus, UnshieldedUtxos } from '../midnight-types';
-import type { FinalizedTxDataV8, VersionedFinalizedTxData } from '../versioned';
+import type { Ledger8FinalizedTxData, VersionedFinalizedTxData } from '../versioned';
 
 // These are compile-level tests: the property under test is that the file
 // type-checks (or, for the `@ts-expect-error` case, that it does NOT
@@ -39,7 +39,7 @@ import type { FinalizedTxDataV8, VersionedFinalizedTxData } from '../versioned';
 // from it) so the equality check below actually pins the v9 arm's shape
 // instead of reflexively restating it. Keep in step with `FinalizedTxData`
 // and `FinalizedTxRecord` by hand — that is what makes the check meaningful.
-type FinalizedTxDataV9Fixture = {
+type Ledger9FinalizedTxDataFixture = {
   readonly version: 'v9';
   readonly tx: Transaction<SignatureEnabled, Proof, Binding>;
   readonly status: TxStatus;
@@ -61,9 +61,9 @@ type FinalizedTxDataV9Fixture = {
 // gets the least review pressure of anything in this union — which is exactly
 // why it needs its own field-for-field pin rather than being covered only by
 // the discriminant check.
-type FinalizedTxDataV8Fixture = {
+type Ledger8FinalizedTxDataFixture = {
   readonly version: 'v8';
-  readonly tx: V8Transaction;
+  readonly tx: Ledger8Transaction;
   readonly status: TxStatus;
   readonly txId: TransactionId;
   readonly identifiers: readonly TransactionId[];
@@ -106,12 +106,12 @@ describe('VersionedFinalizedTxData', () => {
     const data = {} as VersionedFinalizedTxData;
 
     // @ts-expect-error `data.tx` on the unnarrowed union is
-    // `FinalizedTxDataV8['tx'] | FinalizedTxData['tx']` (a v8 transaction object
+    // `Ledger8FinalizedTxData['tx'] | FinalizedTxData['tx']` (a v8 transaction object
     // or a v9 one) — not assignable to the v9-only `FinalizedTxData['tx']` type
     // required here without first narrowing on `data.version`.
-    const v9Tx: FinalizedTxData['tx'] = data.tx;
+    const ledger9Tx: FinalizedTxData['tx'] = data.tx;
 
-    expectTypeOf(v9Tx).not.toBeAny();
+    expectTypeOf(ledger9Tx).not.toBeAny();
   });
 
   it('pins the v9 arm field-for-field — fails if any field is dropped, added, or retyped', () => {
@@ -119,7 +119,7 @@ describe('VersionedFinalizedTxData', () => {
     // a field FinalizedTxData no longer has), added (FinalizedTxData would
     // demand a field the fixture doesn't have), or retyped (mismatched field
     // type breaks assignability in at least one direction).
-    expectTypeOf<FinalizedTxDataV9Fixture>().toEqualTypeOf<FinalizedTxData>();
+    expectTypeOf<Ledger9FinalizedTxDataFixture>().toEqualTypeOf<FinalizedTxData>();
   });
 
   it('has exactly the v8 and v9 arms — fails if an arm is silently removed, a third arm added, or a discriminant widened', () => {
@@ -132,11 +132,11 @@ describe('VersionedFinalizedTxData', () => {
   });
 
   it('pins the v8 arm field-for-field, so the producerless arm cannot drift', () => {
-    // `FinalizedTxDataV8` inherits from `FinalizedTxRecord`, which stops the
+    // `Ledger8FinalizedTxData` inherits from `FinalizedTxRecord`, which stops the
     // two arms diverging as fields are added to the *base*. It does not stop a
     // field being added to this arm alone, nor an inherited field being
     // narrowed here. That is what this pins.
-    expectTypeOf<FinalizedTxDataV8Fixture>().toEqualTypeOf<FinalizedTxDataV8>();
+    expectTypeOf<Ledger8FinalizedTxDataFixture>().toEqualTypeOf<Ledger8FinalizedTxData>();
   });
 });
 

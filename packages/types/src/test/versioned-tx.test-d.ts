@@ -36,7 +36,7 @@ import type {
   VersionedUnprovenTransaction
 } from '../proof-provider';
 import type { PublicDataProvider } from '../public-data-provider';
-import type { V8TxBytes, VersionedFinalizedTxData } from '../versioned';
+import type { Ledger8TxBytes, VersionedFinalizedTxData } from '../versioned';
 import type { VersionedFinalizedTransaction, WalletProvider } from '../wallet-provider';
 
 // These are compile-level tests: the property under test is that the file
@@ -50,17 +50,17 @@ import type { VersionedFinalizedTransaction, WalletProvider } from '../wallet-pr
 // Every fixture below is spelled out by hand rather than derived from the
 // type under test (no `Omit`/`keyof`/`Parameters` off the real type), so the
 // equality checks pin the real shape instead of reflexively restating it.
-type V8TxBytesFixture = {
+type Ledger8TxBytesFixture = {
   readonly version: 'v8';
   readonly txBytes: Uint8Array;
 };
 
-type UnprovenFixture = V8TxBytesFixture | { readonly version: 'v9'; readonly tx: UnprovenTransaction };
+type UnprovenFixture = Ledger8TxBytesFixture | { readonly version: 'v9'; readonly tx: UnprovenTransaction };
 type UnboundFixture =
-  | V8TxBytesFixture
+  | Ledger8TxBytesFixture
   | { readonly version: 'v9'; readonly tx: Transaction<SignatureEnabled, Proof, PreBinding> };
 type FinalizedFixture =
-  | V8TxBytesFixture
+  | Ledger8TxBytesFixture
   | { readonly version: 'v9'; readonly tx: Transaction<SignatureEnabled, Proof, Binding> };
 
 type ProveTxFixture = (
@@ -70,9 +70,9 @@ type ProveTxFixture = (
 type BalanceTxFixture = (tx: UnboundFixture, ttl?: Date) => Promise<FinalizedFixture>;
 type SubmitTxFixture = (tx: FinalizedFixture) => Promise<TransactionId>;
 
-describe('V8TxBytes', () => {
+describe('Ledger8TxBytes', () => {
   it('carries exactly the version discriminant and the serialized bytes — fails if a field is dropped, added, or retyped', () => {
-    expectTypeOf<V8TxBytesFixture>().toEqualTypeOf<V8TxBytes>();
+    expectTypeOf<Ledger8TxBytesFixture>().toEqualTypeOf<Ledger8TxBytes>();
   });
 });
 
@@ -118,11 +118,11 @@ describe('VersionedUnprovenTransaction', () => {
     // arm that stopped being part of the union would not compile here. The
     // assertions then pin what each annotation narrowed down to, so an arm
     // silently absorbing the other one's shape also fails.
-    const v8Arm: VersionedUnprovenTransaction = { version: 'v8', txBytes: new Uint8Array([1, 2, 3]) };
-    const v9Arm: VersionedUnprovenTransaction = { version: 'v9', tx: {} as UnprovenTransaction };
+    const ledger8Arm: VersionedUnprovenTransaction = { version: 'v8', txBytes: new Uint8Array([1, 2, 3]) };
+    const ledger9Arm: VersionedUnprovenTransaction = { version: 'v9', tx: {} as UnprovenTransaction };
 
-    expectTypeOf(v8Arm).toEqualTypeOf<V8TxBytesFixture>();
-    expectTypeOf(v9Arm).toEqualTypeOf<{ readonly version: 'v9'; readonly tx: UnprovenTransaction }>();
+    expectTypeOf(ledger8Arm).toEqualTypeOf<Ledger8TxBytesFixture>();
+    expectTypeOf(ledger9Arm).toEqualTypeOf<{ readonly version: 'v9'; readonly tx: UnprovenTransaction }>();
   });
 
   it('has exactly the v8 and v9 arms — fails if an arm is removed, a third arm added, or a discriminant widened', () => {
@@ -210,11 +210,11 @@ describe('VersionedFinalizedTransaction', () => {
   });
 
   it('accepts both the v8 bytes arm and the v9 live-object arm — fails if either arm stops being assignable', () => {
-    const v8Arm: VersionedFinalizedTransaction = { version: 'v8', txBytes: new Uint8Array([1, 2, 3]) };
-    const v9Arm: VersionedFinalizedTransaction = { version: 'v9', tx: {} as FinalizedTransaction };
+    const ledger8Arm: VersionedFinalizedTransaction = { version: 'v8', txBytes: new Uint8Array([1, 2, 3]) };
+    const ledger9Arm: VersionedFinalizedTransaction = { version: 'v9', tx: {} as FinalizedTransaction };
 
-    expectTypeOf(v8Arm).toEqualTypeOf<V8TxBytesFixture>();
-    expectTypeOf(v9Arm).toEqualTypeOf<{ readonly version: 'v9'; readonly tx: FinalizedTransaction }>();
+    expectTypeOf(ledger8Arm).toEqualTypeOf<Ledger8TxBytesFixture>();
+    expectTypeOf(ledger9Arm).toEqualTypeOf<{ readonly version: 'v9'; readonly tx: FinalizedTransaction }>();
   });
 
   it('has exactly the v8 and v9 arms — fails if an arm is removed, a third arm added, or a discriminant widened', () => {

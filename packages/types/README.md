@@ -93,22 +93,22 @@ not cross the boundary and duck-typing cannot tell them apart. An explicit tag i
 the only mechanism available.
 
 ```typescript
-interface V8TxBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
-interface V9Tx<T>   { readonly version: 'v9'; readonly tx: T; }
-type VersionedTx<T> = V8TxBytes | V9Tx<T>;
+interface Ledger8TxBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
+interface Ledger9Tx<T>   { readonly version: 'v9'; readonly tx: T; }
+type VersionedTx<T> = Ledger8TxBytes | Ledger9Tx<T>;
 ```
 
 There is deliberately no untagged variant, so a bare `Uint8Array` — bytes whose era
 nobody can tell — is never assignable. `proveTx`, `balanceTx` and `submitTx`
 carry these in both directions.
 
-Narrow with `unwrapV9`, which reports a coded error instead of letting a bare
+Narrow with `unwrapLedger9`, which reports a coded error instead of letting a bare
 `TypeError` surface from inside a WASM call:
 
 ```typescript
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
 
-const provenTx = unwrapV9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
+const provenTx = unwrapLedger9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
 ```
 
 Its `method` parameter is a `TransactionMethod`, so it covers those three methods only.
@@ -158,7 +158,7 @@ import { createProofProviderFromHandlers } from '@midnight-ntwrk/midnight-js-typ
 
 const proofProvider = createProofProviderFromHandlers({
   currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
-  retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
+  retainedEras: { v8: (txBytes) => proveLedger8Transaction(txBytes, provingProvider) }
 });
 // proofProvider.supportedEras === ['v9', 'v8']
 ```
@@ -183,7 +183,7 @@ fine — a class, or a provider that routes internally — in which case you wri
 `supportedEras` yourself.
 
 Nothing verifies the declaration. A provider still narrows its own payload and still
-reports `V8PayloadUnsupportedError` for an era it cannot serve, so declaring an
+reports `Ledger8PayloadUnsupportedError` for an era it cannot serve, so declaring an
 era you do not serve makes a failure later, not absent.
 
 ### TxStatus
@@ -254,7 +254,7 @@ type UnshieldedBalances = UnshieldedBalance[];
 
 ```typescript
 import {
-  V8PayloadUnsupportedError,
+  Ledger8PayloadUnsupportedError,
   UntaggedPayloadError,
   InvalidProtocolSchemeError,
   PrivateStateExportError,
@@ -310,19 +310,19 @@ import {
   type BlockHash,
 
   // Version-tagged payloads for the ledger-fork window
-  type V8TxBytes,
-  type V9Tx,
+  type Ledger8TxBytes,
+  type Ledger9Tx,
   type VersionedTx,
   type VersionedUnprovenTransaction,
   type VersionedUnboundTransaction,
   type VersionedFinalizedTransaction,
   type FinalizedTxRecord,
-  type FinalizedTxDataV8,
+  type Ledger8FinalizedTxData,
   type VersionedFinalizedTxData,
   type TransactionMethod,
   type ReadMethod,
   type ProviderMethod,
-  unwrapV9,
+  unwrapLedger9,
 
   // Per-era handlers, era routing, and the declaration built from them
   type RetainedEraEntries,
@@ -340,7 +340,7 @@ import {
   LogLevel,
 
   // Errors
-  V8PayloadUnsupportedError,
+  Ledger8PayloadUnsupportedError,
   UntaggedPayloadError,
   ProviderEraUnsupportedError,
   InvalidProtocolSchemeError,
@@ -352,7 +352,7 @@ import {
   ImportConflictError,
 
   // Factory functions
-  type V9WalletProvider,
+  type Ledger9WalletProvider,
   createWalletProvider,
   createMidnightProvider,
   createProofProvider,

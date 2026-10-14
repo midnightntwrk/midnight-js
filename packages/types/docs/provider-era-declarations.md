@@ -31,7 +31,7 @@ The pre-flight check does not make the providers safe by itself, and is not mean
 `supportedEras` is what an implementation SAYS about itself.
 
 So each provider still narrows its own payload, and still reports
-`V8PayloadUnsupportedError` when a declaration turns out to have been wrong. The
+`Ledger8PayloadUnsupportedError` when a declaration turns out to have been wrong. The
 narrowing is unchanged and is what actually holds.
 
 ## Why the two errors stay distinct
@@ -41,7 +41,7 @@ They mean different things to whoever is reading them:
 | Error | What it means | What to do |
 |---|---|---|
 | `ProviderEraUnsupportedError` | A provider declared it does not serve this era, and the operation stopped before doing any work | Wire a different provider |
-| `V8PayloadUnsupportedError` | A provider was handed a retained-era payload and could not take it | That provider's implementation does not serve it — its declaration was wrong, or there is no declaration to be had |
+| `Ledger8PayloadUnsupportedError` | A provider was handed a retained-era payload and could not take it | That provider's implementation does not serve it — its declaration was wrong, or there is no declaration to be had |
 
 Collapsing them would lose the distinction between "configured wrong, nothing
 spent" and "failed in the provider, possibly after paying to prove".
@@ -60,7 +60,7 @@ passes
 
 ## Which providers refuse the retained era, and why
 
-`V8PayloadUnsupportedError` does not mean "the framework cannot do this yet". It
+`Ledger8PayloadUnsupportedError` does not mean "the framework cannot do this yet". It
 means the specific implementation of that provider does not serve the retained era.
 Two quite different cases produce it:
 
@@ -85,7 +85,7 @@ zkir runtime over bytes and never reads a ledger version. What it proves for is
 fixed when it is built, by the key material it was given.
 
 From `@midnightntwrk/wallet-sdk-prover-client` 2.0.0-rc.0 that key material is
-per era — `makeV8KeyMaterialProvider` and `makeV9KeyMaterialProvider`, where
+per era — `makeLedger8KeyMaterialProvider` and `makeLedger9KeyMaterialProvider`, where
 earlier versions had one line accepted by both. The eras' circuits were
 generated as separate generations, and a node rejects a proof made with the
 other era's, so one prover instance cannot serve both. The refusal lands at
@@ -96,7 +96,7 @@ serves. It does not verify the pairing, and cannot:
 
 - the current era's `ProvingProvider` shape is a structural superset of the
   retained era's, so registering the wrong one type-checks;
-- one prover's `asProvingProvider()` and `asV8ProvingProvider()` return
+- one prover's `asProvingProvider()` and `asLedger8ProvingProvider()` return
   behaviourally identical objects — the era lives in the prover's key material,
   not in the object handed over — so no runtime check can tell them apart
   either.
@@ -109,7 +109,7 @@ of every consumer assembling the handlers by hand.
 serialized bytes. Other implementations that have not been widened still raise
 it.
 
-`V8PayloadUnsupportedError` lives in this package rather than in each provider
+`Ledger8PayloadUnsupportedError` lives in this package rather than in each provider
 package because the payload union it rejects is defined here, on the provider
 interfaces every implementation shares. Catch it via its stable `code`, using
 `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
@@ -122,7 +122,7 @@ is a compiler diagnostic.
 `balanceTx`'s return type is covariant, so an implementation still resolving a
 bare `FinalizedTransaction` no longer satisfies `WalletProvider`. TypeScript
 reports the PARAMETER mismatch first, so the error names the twenty-odd ledger
-methods `V8TxBytes` lacks — rather than the missing `version` tag, which is the
+methods `Ledger8TxBytes` lacks — rather than the missing `version` tag, which is the
 actual problem. An implementer meeting that error has no path from it to the fix.
 
 Tagging through `createWalletProvider` or `createMidnightProvider` means the

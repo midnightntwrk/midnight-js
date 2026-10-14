@@ -59,7 +59,7 @@ import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
   type FinalizedTxData,
-  type FinalizedTxDataV8,
+  type Ledger8FinalizedTxData,
   type MidnightConfig,
   type PrivateStateId,
   type ProverKey,
@@ -367,10 +367,10 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
   }
 });
 
-export const createMockFinalizedTxDataV8 = (status: TxStatus = SucceedEntirely): FinalizedTxDataV8 => ({
+export const createMockLedger8FinalizedTxData = (status: TxStatus = SucceedEntirely): Ledger8FinalizedTxData => ({
   ...createMockFinalizedTxData(status),
   version: 'v8',
-  tx: {} as FinalizedTxDataV8['tx'],
+  tx: {} as Ledger8FinalizedTxData['tx'],
   // A node 1.x protocolVersion, which the resolver in `midnight-js-protocol` maps to ledger v8.
   protocolVersion: 1_000_000
 });

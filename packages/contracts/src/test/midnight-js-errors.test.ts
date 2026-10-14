@@ -26,7 +26,7 @@ import { describe, expect, it } from 'vitest';
 
 import * as errors from '../errors';
 import * as governance from '../governance/errors';
-import { createMockFinalizedTxData, createMockFinalizedTxDataV8 } from './test-mocks';
+import { createMockFinalizedTxData, createMockLedger8FinalizedTxData } from './test-mocks';
 
 const exported: unknown[] = [...Object.values(errors), ...Object.values(governance)];
 const errorClasses = exported.filter(
@@ -38,7 +38,7 @@ const ADDRESS = '0200'.repeat(8);
 const SIGNING_KEY = 'a1'.repeat(32);
 const CAUSE = new Error('root cause');
 const finalizedTxData = createMockFinalizedTxData(FailFallible);
-const v8Record = createMockFinalizedTxDataV8(FailFallible);
+const ledger8Record = createMockLedger8FinalizedTxData(FailFallible);
 const noMismatch = { missing: [], keyless: [], mismatched: [] };
 
 type Case = readonly [string, Error, ContractsErrorCode, MidnightJsErrorCategory];
@@ -47,7 +47,7 @@ const cases: readonly Case[] = [
   ['EraInvariantViolationError', new errors.EraInvariantViolationError('submitTx'), CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION, 'INTERNAL'],
   ['EraArtifactMismatchError', new errors.EraArtifactMismatchError('unrecognised-contract-shape'), CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH, 'USAGE'],
   ['RetainedArtifactOnCurrentEraStateError', new errors.RetainedArtifactOnCurrentEraStateError(ADDRESS), CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE, 'USAGE'],
-  ['Ledger8DeployOnV9Error', new errors.Ledger8DeployOnV9Error(), CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9, 'USAGE'],
+  ['Ledger8DeployOnLedger9Error', new errors.Ledger8DeployOnLedger9Error(), CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9, 'USAGE'],
   ['HeadStateEraMismatchError', new errors.HeadStateEraMismatchError('v9', 'v8'), CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH, 'TRANSIENT'],
   ['IndexerInconsistencyError', new errors.IndexerInconsistencyError('v9', 'v8'), CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY, 'INTEGRITY'],
   ['LedgerParametersUnservedError', new errors.LedgerParametersUnservedError(ADDRESS), CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED, 'ENVIRONMENT'],
@@ -59,8 +59,8 @@ const cases: readonly Case[] = [
   ['TxFailedError', new errors.TxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['DeployTxFailedError', new errors.DeployTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['CallTxFailedError', new errors.CallTxFailedError(finalizedTxData, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['Ledger8CallTxFailedError', new errors.Ledger8CallTxFailedError(v8Record, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['Ledger8DeployTxFailedError', new errors.Ledger8DeployTxFailedError(v8Record, ADDRESS, SIGNING_KEY), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
+  ['Ledger8CallTxFailedError', new errors.Ledger8CallTxFailedError(ledger8Record, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
+  ['Ledger8DeployTxFailedError', new errors.Ledger8DeployTxFailedError(ledger8Record, ADDRESS, SIGNING_KEY), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['ReplaceMaintenanceAuthorityTxFailedError', new governance.ReplaceMaintenanceAuthorityTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['RemoveVerifierKeyTxFailedError', new governance.RemoveVerifierKeyTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['InsertVerifierKeyTxFailedError', new governance.InsertVerifierKeyTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
@@ -122,6 +122,12 @@ describe('contracts error classes', () => {
     const error = new errors.Ledger8ProviderFailedError('proveTx', 'increment', CAUSE);
 
     expect([error.name, error.code]).toEqual(['Ledger8ProviderFailedError', 'MIDNIGHT_JS_C_LEDGER8_PROVIDER_FAILED']);
+  });
+
+  it('the retained-deploy refusal carries the Ledger9 name and code', () => {
+    const error = new errors.Ledger8DeployOnLedger9Error();
+
+    expect([error.name, error.code]).toEqual(['Ledger8DeployOnLedger9Error', 'MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_LEDGER9']);
   });
 
   it('ContractTypeError is no longer a TypeError (accepted break)', () => {

@@ -34,8 +34,8 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 // Type-only, so nothing here links the v8 chunk: the runtime is acquired
 // through `loadLedger8()` and only when a v8-era record asks for it. Same
-// precedent as `FinalizedTxDataV8` in `@midnight-ntwrk/midnight-js-types`.
-import type { FinalizedTransaction as V8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
+// precedent as `Ledger8FinalizedTxData` in `@midnight-ntwrk/midnight-js-types`.
+import type { FinalizedTransaction as Ledger8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import type { RawContractState, ReadMethod, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import {
   FailEntirely,
@@ -159,10 +159,10 @@ export const parseHexLedgerParameters = (s: string): LedgerParameters => {
  * classified exactly as a v9 failure does, including a binding that throws a
  * bare string rather than an `Error`.
  */
-const parseHexTransactionV8 = async (s: string, details?: ReadDetails): Promise<V8FinalizedTransaction> => {
+const parseLedger8HexTransaction = async (s: string, details?: ReadDetails): Promise<Ledger8FinalizedTransaction> => {
   const v8 = await loadLedger8();
   return withDeserializationContext(
-    { dataType: 'LedgerTransaction', source: 'ledger', caller: `${PKG}:parseHexTransactionV8`, details },
+    { dataType: 'LedgerTransaction', source: 'ledger', caller: `${PKG}:parseLedger8HexTransaction`, details },
     () => v8.Transaction.deserialize('signature', 'proof', 'binding', toByteArray(s))
   );
 };
@@ -198,7 +198,7 @@ type TransactionDecoders = {
 const transactionDecoders = {
   v8: async (hexTransaction: string, details: ReadDetails) => ({
     version: 'v8' as const,
-    tx: await parseHexTransactionV8(hexTransaction, details)
+    tx: await parseLedger8HexTransaction(hexTransaction, details)
   }),
   // Wrapped in a resolved promise rather than decoded eagerly: both arms have
   // to be awaited the same way, and the v9 read stays the same synchronous

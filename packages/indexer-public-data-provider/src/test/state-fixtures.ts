@@ -28,19 +28,19 @@ import type { RegularTransaction } from '../gen/schema-types';
 // it; nothing here depends on the v8 ledger package directly.
 
 /** A newly constructed, empty contract state serialized by the v9 runtime. */
-export const mintV9ContractStateBytes = (): Uint8Array => new ledger.ContractState().serialize();
+export const mintLedger9ContractStateBytes = (): Uint8Array => new ledger.ContractState().serialize();
 
 /** A newly constructed, empty contract state serialized by the v8 runtime. */
-export const mintV8ContractStateBytes = async (): Promise<Uint8Array> => {
+export const mintLedger8ContractStateBytes = async (): Promise<Uint8Array> => {
   const v8 = await loadLedger8();
   return new v8.ContractState().serialize();
 };
 
 /** The v9 fixture in the indexer's wire encoding: lowercase hex, no prefix. */
-export const mintV9ContractStateHex = (): string => toHex(mintV9ContractStateBytes());
+export const mintLedger9ContractStateHex = (): string => toHex(mintLedger9ContractStateBytes());
 
 /** The v8 fixture in the indexer's wire encoding: lowercase hex, no prefix. */
-export const mintV8ContractStateHex = async (): Promise<string> => toHex(await mintV8ContractStateBytes());
+export const mintLedger8ContractStateHex = async (): Promise<string> => toHex(await mintLedger8ContractStateBytes());
 
 /**
  * Ledger parameters as each runtime writes them.
@@ -49,19 +49,19 @@ export const mintV8ContractStateHex = async (): Promise<string> => toHex(await m
  * for what these fixtures are for: the ENVELOPE. A running chain serves different CONTENT -- prices
  * adjust per block -- but the same envelope tag, which is the thing the era dating reads.
  */
-export const mintV9LedgerParametersBytes = (): Uint8Array => ledger.LedgerParameters.initialParameters().serialize();
+export const mintLedger9LedgerParametersBytes = (): Uint8Array => ledger.LedgerParameters.initialParameters().serialize();
 
-/** The v8-era twin of {@link mintV9LedgerParametersBytes}, reached through `loadLedger8()`. */
-export const mintV8LedgerParametersBytes = async (): Promise<Uint8Array> => {
+/** The v8-era twin of {@link mintLedger9LedgerParametersBytes}, reached through `loadLedger8()`. */
+export const mintLedger8LedgerParametersBytes = async (): Promise<Uint8Array> => {
   const v8 = await loadLedger8();
   return v8.LedgerParameters.initialParameters().serialize();
 };
 
 /** The v9 parameter fixture in the indexer's wire encoding: lowercase hex, no prefix. */
-export const mintV9LedgerParametersHex = (): string => toHex(mintV9LedgerParametersBytes());
+export const mintLedger9LedgerParametersHex = (): string => toHex(mintLedger9LedgerParametersBytes());
 
 /** The v8 parameter fixture in the indexer's wire encoding: lowercase hex, no prefix. */
-export const mintV8LedgerParametersHex = async (): Promise<string> => toHex(await mintV8LedgerParametersBytes());
+export const mintLedger8LedgerParametersHex = async (): Promise<string> => toHex(await mintLedger8LedgerParametersBytes());
 
 // A fixed timestamp, so the bytes a block update produces are the same on every run. The value is
 // arbitrary; what matters is that both eras are handed the identical one.
@@ -74,14 +74,14 @@ const ZSWAP_ROOT_RETENTION_SECONDS = 3_600n;
  * The populated variant exists because an EMPTY state is weak evidence for a claim about a wire
  * format: two eras could agree on nothing and still emit identical bytes for it.
  */
-export const mintV9ZswapChainStateBytes = (populated = false): Uint8Array =>
+export const mintLedger9ZswapChainStateBytes = (populated = false): Uint8Array =>
   (populated
     ? new ledger.ZswapChainState().postBlockUpdate(ZSWAP_BLOCK_TIME, ZSWAP_ROOT_RETENTION_SECONDS)
     : new ledger.ZswapChainState()
   ).serialize();
 
-/** The v8-era twin of {@link mintV9ZswapChainStateBytes}, reached through `loadLedger8()`. */
-export const mintV8ZswapChainStateBytes = async (populated = false): Promise<Uint8Array> => {
+/** The v8-era twin of {@link mintLedger9ZswapChainStateBytes}, reached through `loadLedger8()`. */
+export const mintLedger8ZswapChainStateBytes = async (populated = false): Promise<Uint8Array> => {
   const v8 = await loadLedger8();
   return (
     populated
@@ -91,17 +91,17 @@ export const mintV8ZswapChainStateBytes = async (populated = false): Promise<Uin
 };
 
 /** The v9 zswap fixture in the indexer's wire encoding: lowercase hex, no prefix. */
-export const mintV9ZswapChainStateHex = (populated = false): string => toHex(mintV9ZswapChainStateBytes(populated));
+export const mintLedger9ZswapChainStateHex = (populated = false): string => toHex(mintLedger9ZswapChainStateBytes(populated));
 
 /**
  * A minimal, real v9 transaction in the indexer's wire encoding. Built from
  * the v9 runtime itself so it deserializes for real — no stubbing of the
  * transaction decoder is needed anywhere.
  */
-export const mintV9TransactionHex = (): string => toHex(ledger.Transaction.fromParts('local-test').mockProve().bind().serialize());
+export const mintLedger9TransactionHex = (): string => toHex(ledger.Transaction.fromParts('local-test').mockProve().bind().serialize());
 
 /**
- * The v8-era twin of {@link mintV9TransactionHex}: a minimal, real finalized
+ * The v8-era twin of {@link mintLedger9TransactionHex}: a minimal, real finalized
  * transaction in the indexer's wire encoding, produced by the v8 runtime
  * itself and reached through `loadLedger8()`, the only sanctioned path to it.
  *
@@ -111,22 +111,22 @@ export const mintV9TransactionHex = (): string => toHex(ledger.Transaction.fromP
  * does, and round-trip through `Transaction.deserialize('signature', 'proof',
  * 'binding', ...)`.
  */
-export const mintV8TransactionHex = async (): Promise<string> => {
+export const mintLedger8TransactionHex = async (): Promise<string> => {
   const v8 = await loadLedger8();
   return toHex(v8.Transaction.fromParts('local-test').mockProve().serialize());
 };
 
 /** Protocol-version integer for a node release whose ledger runtime is v8. */
-export const V8_ERA_PROTOCOL_VERSION = 1_000_000;
+export const LEDGER8_ERA_PROTOCOL_VERSION = 1_000_000;
 
 /** Protocol-version integer for a node release whose ledger runtime is v9. */
-export const V9_ERA_PROTOCOL_VERSION = 2_000_000;
+export const LEDGER9_ERA_PROTOCOL_VERSION = 2_000_000;
 
 /**
- * A later v9-era protocol version. Paired with {@link V9_ERA_PROTOCOL_VERSION}
+ * A later v9-era protocol version. Paired with {@link LEDGER9_ERA_PROTOCOL_VERSION}
  * it lets a test tell which of two v9 readings a value came from.
  */
-export const V9_ERA_LATER_PROTOCOL_VERSION = 2_003_000;
+export const LEDGER9_ERA_LATER_PROTOCOL_VERSION = 2_003_000;
 
 /** A protocol-version integer no release of this client can resolve. */
 export const UNRESOLVABLE_PROTOCOL_VERSION = 0;

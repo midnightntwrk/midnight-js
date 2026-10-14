@@ -117,6 +117,7 @@ describe('Protocol type ACL', () => {
       // types are published beside it for the same reason.
       'Ledger8Engine',
       'Ledger8InstanceAxis',
+      'Ledger8Protocol',
       // Named by `RunRetainedConstructorOptions.signingKey` and reported back
       // on `ConstructorResultPojo`. The retained era's signing key is a
       // different shape from the current era's, so a consumer cannot name it by
@@ -130,7 +131,6 @@ describe('Protocol type ACL', () => {
       'PartitionContext',
       'PartitionedCallTranscript',
       'ProtocolErrorCode',
-      'ProtocolV8',
       'ProtocolVersionSource',
       'ProtocolVersionUnknownReason',
       'RetainedContract',

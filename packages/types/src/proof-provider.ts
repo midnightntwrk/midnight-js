@@ -23,7 +23,7 @@ import {
   type Transaction,
   type UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
+import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import {
   CURRENT_LEDGER_VERSION,
@@ -98,8 +98,8 @@ export interface ProofProvider {
    * @param proveTxConfig The configuration for the proof request to the proof provider. Empty in case
    *                      a deploy transaction is being proved with no user-defined timeout.
    * @returns The proven transaction, version-tagged, and always in the SAME era the request
-   *          carried. Narrow on `version` — or call `unwrapV9` — before reading the payload.
-   * @throws V8PayloadUnsupportedError if the implementation does not handle v8 payloads. Which
+   *          carried. Narrow on `version` — or call `unwrapLedger9` — before reading the payload.
+   * @throws Ledger8PayloadUnsupportedError if the implementation does not handle v8 payloads. Which
    *         implementations do is worth knowing before you send one: `httpClientProofProvider`
    *         and `dappConnectorProofProvider` both serve it, taking and returning serialized
    *         bytes. {@link createProofProvider} does NOT — it adapts a v9-only `ProvingProvider`,
@@ -171,7 +171,7 @@ export interface ProofProviderHandlers {
  * ```typescript
  * const proofProvider = createProofProviderFromHandlers({
  *   currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
- *   retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
+ *   retainedEras: { v8: (txBytes) => proveLedger8Transaction(txBytes, provingProvider) }
  * });
  * // proofProvider.supportedEras === ['v9', 'v8']
  * ```
@@ -207,7 +207,7 @@ export interface ProvingProvidersByEra {
    * One entry per retained era served, in that era's own `ProvingProvider`
    * shape. An entry present but `undefined` leaves the era unserved, exactly as
    * omitting it does: `supportedEras` excludes it, and a payload arriving on
-   * that era is refused with `V8PayloadUnsupportedError`.
+   * that era is refused with `Ledger8PayloadUnsupportedError`.
    *
    * Register the provider built for the era the entry names. Nothing verifies
    * that — the current era's shape is a structural superset of the retained
@@ -239,7 +239,7 @@ const PROVE_BY_RETAINED_ERA: Readonly<
     (txBytes: Uint8Array, provingProvider: RetainedEraProvingProvider) => Promise<Uint8Array>
   >
 > = {
-  v8: proveV8Transaction
+  v8: proveLedger8Transaction
 };
 
 const refuseTimeout = (config: ProveTxConfig | undefined): void => {
@@ -290,7 +290,7 @@ const toRetainedEraHandlers = (
  *         if `proveTxConfig.timeout` is set (including `0`): a `ProvingProvider`
  *         takes no per-request configuration. To bound proving time, use
  *         `httpClientProofProvider`, which honours it.
- * @throws V8PayloadUnsupportedError raised by `proveTx` if a payload arrives on
+ * @throws Ledger8PayloadUnsupportedError raised by `proveTx` if a payload arrives on
  *         a retained era no provider was registered for.
  * @throws UntaggedPayloadError raised by `proveTx` if `version` is missing or
  *         unrecognised.
@@ -307,7 +307,7 @@ const toRetainedEraHandlers = (
  * ```typescript
  * const proofProvider = createProofProviderForEras({
  *   currentEra: currentEraProver.asProvingProvider(),
- *   retainedEras: { v8: retainedEraProver.asV8ProvingProvider() }
+ *   retainedEras: { v8: retainedEraProver.asLedger8ProvingProvider() }
  * });
  * // supportedEras is ['v9', 'v8']
  * ```
@@ -335,7 +335,7 @@ export const createProofProviderForEras = (provingProviders: ProvingProvidersByE
  *
  * The returned provider serves v9 payloads only — `supportedEras` says so — and
  * that is permanent rather than a gap: it lifts a single current-era
- * `ProvingProvider`. It rejects a v8 payload with `V8PayloadUnsupportedError`,
+ * `ProvingProvider`. It rejects a v8 payload with `Ledger8PayloadUnsupportedError`,
  * and an untagged one with `UntaggedPayloadError`. It also rejects any
  * `proveTxConfig.timeout`, including `0`, with `InvalidArgumentError` before
  * proving starts: a `ProvingProvider` takes no per-request configuration. To

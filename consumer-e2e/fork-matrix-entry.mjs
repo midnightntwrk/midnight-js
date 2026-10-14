@@ -454,7 +454,7 @@ const waitForHead = async (publicDataProvider, era, timeoutMs) => {
  */
 const environmentFor = (era) => ({
   ...config.environment,
-  proofServer: era === 'v8' ? config.proofServerV8 : config.proofServerV9
+  proofServer: era === 'v8' ? config.ledger8ProofServer : config.ledger9ProofServer
 });
 
 /**
@@ -1458,7 +1458,7 @@ await leg('pre-fork head era', () => networkHeadVersion(session.providers.public
 // pre-fork dApp that would already have deployed on the previous framework
 // major, and it is now also the run's only coverage of that arm: the arm is
 // reachable ONLY against a pre-fork head, and refuses a post-fork one with
-// `Ledger8DeployOnV9Error`, so nothing after the boundary can exercise it.
+// `Ledger8DeployOnLedger9Error`, so nothing after the boundary can exercise it.
 //
 // This leg used to compose the deploy by hand against protocol's era facade,
 // because the arm refused before reading any head. That made the deploy a

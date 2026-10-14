@@ -19,7 +19,7 @@ import type { UnprovenOffer } from '../../v8.js';
 import { assertComposeEnvelope } from '../shared/compose-options';
 import type { DeployResultPojo } from '../shared/compose-types';
 import { resolveVerifierKeyRegistrations } from '../shared/verifier-keys';
-import type { ProtocolV8 } from './load';
+import type { Ledger8Protocol } from './load';
 
 /**
  * The minimal shape a pre-fork (`compact-runtime@0.16`) `ContractState` is used
@@ -34,11 +34,11 @@ import type { ProtocolV8 } from './load';
  * @see {@link EraBoundary}
  */
 /**
- * Everything {@link composeV8DeployTx} needs to assemble one v8-native
+ * Everything {@link composeLedger8DeployTx} needs to assemble one v8-native
  * deploy transaction. `verifierKeys` maps entry-point name -> raw, tagged
  * verifier key bytes (`keys/<id>.verifier`), and must name exactly the entry
  * points the contract state declares — no more, no fewer; see
- * {@link composeV8DeployTx}.
+ * {@link composeLedger8DeployTx}.
  *
  * `networkId` and `ttl` carry the caller's policy decisions (which network,
  * how long the transaction lives); their well-formedness is checked here — see
@@ -47,12 +47,12 @@ import type { ProtocolV8 } from './load';
  * @see {@link VerifierKeys}
  * @see {@link ComposeRefusalOrder}
  */
-export interface ComposeV8DeployOptions {
+export interface ComposeLedger8DeployOptions {
   readonly contractStateBytes: Uint8Array;
   readonly verifierKeys: ReadonlyMap<string, Uint8Array>;
   readonly networkId: string;
   readonly ttl: Date;
-  /** A v8-native offer HANDLE, not bytes, as `ComposeV8CallOptions` also takes. */
+  /** A v8-native offer HANDLE, not bytes, as `ComposeLedger8CallOptions` also takes. */
   readonly guaranteedZswapOffer?: UnprovenOffer;
 }
 
@@ -63,8 +63,8 @@ export interface ComposeV8DeployOptions {
  */
 const bridgeContractState = (
   contractState: Uint8Array,
-  v8: ProtocolV8
-): InstanceType<ProtocolV8['ContractState']> => {
+  v8: Ledger8Protocol
+): InstanceType<Ledger8Protocol['ContractState']> => {
   try {
     return v8.ContractState.deserialize(contractState);
   } catch (error) {
@@ -78,11 +78,11 @@ const bridgeContractState = (
  * failure names the entry point it belongs to.
  */
 const registerVerifierKey = (
-  ledgerContractState: InstanceType<ProtocolV8['ContractState']>,
+  ledgerContractState: InstanceType<Ledger8Protocol['ContractState']>,
   entryPoint: string | Uint8Array,
   circuitId: string,
   verifierKey: Uint8Array,
-  v8: ProtocolV8
+  v8: Ledger8Protocol
 ): void => {
   const operation = new v8.ContractOperation();
   try {
@@ -127,7 +127,7 @@ const registerVerifierKey = (
  * @see {@link VerifierKeys}
  * @see {@link ComposeRefusalOrder}
  */
-export const composeV8DeployTx = (options: ComposeV8DeployOptions, v8: ProtocolV8): DeployResultPojo => {
+export const composeLedger8DeployTx = (options: ComposeLedger8DeployOptions, v8: Ledger8Protocol): DeployResultPojo => {
   const { contractStateBytes, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;
   assertComposeEnvelope(options, 'v8');
 

@@ -79,7 +79,7 @@ Two things to know about what ships:
 
 | File | protocolVersion | Mint path | What it is |
 |---|---|---|---|
-| `state-v8.hex` | 1000000 | mint (npm, cheap) | `state-v8-v6-envelope.hex` bridged through `ledger-v8`'s `ContractState` (`LedgerContractStateV8.deserialize(bytes).serialize()`), the same bridge `assemble.ts:59-60` uses. **Finding:** byte-identical to its input — ledger-v8's codec accepts the v6-tagged envelope unchanged. |
+| `state-v8.hex` | 1000000 | mint (npm, cheap) | `state-v8-v6-envelope.hex` bridged through `ledger-v8`'s `ContractState` (`Ledger8ContractState.deserialize(bytes).serialize()`), the same bridge `assemble.ts:59-60` uses. **Finding:** byte-identical to its input — ledger-v8's codec accepts the v6-tagged envelope unchanged. |
 | `state-v8-v6-envelope.hex` | 1000000 | golden (ported) | Raw `compact-runtime-0.16` `ContractState.serialize()` output. Tag `contract-state[v6]`. Ported verbatim from `spike-dapp-hf/island-3/driver/tests/builder/fixtures/downcast-v8.hex` (byte-identical across islands 1/2/3 and `ts-downcast/`). |
 | `state-migrated-v9.hex` | 2000000 | golden (ported) | A real ledger-8→9 migrated contract state. Tag `contract-state[v8]`. Ported verbatim from `spike-dapp-hf/island-3/driver/tests/builder/fixtures/migrated-v9.hex`. Produced upstream by the prototype's Rust simulator's `migrate-8-to-9` state translation. |
 | `state-migrated-v9-merkle.hex` | 2000000 | mint (npm, cheap) | Synthetic (not a real migration): a hand-built, rehashed `StateBoundedMerkleTree` wrapped in a `ContractState`, built only from `@midnightntwrk/ledger-v9`'s public API. Deserializes cleanly with `ledger-v9`. |
@@ -146,7 +146,7 @@ the smoke test): the result deserializes cleanly with `ledger-v9`
 confirmed to differ from `twin-contract/compiled/keys/increment.verifier` —
 genuinely foreign, not just relabeled.
 
-This is deliberate: `downcastV9StateForExecution` (`downcast.ts`) reads
+This is deliberate: `downcastLedger9StateForExecution` (`downcast.ts`) reads
 *only* `.data` (the `StateValue`), never `.operations()` — so this fixture
 cannot and does not fail at down-convert. Nor does the mere presence check
 `assemble.ts` uses (`state.operation(circuitId) === undefined ? throw :

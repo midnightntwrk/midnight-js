@@ -269,9 +269,9 @@ export class RetainedArtifactOnCurrentEraStateError extends MidnightJsError {
  * pre-fork deployments callable. A new deployment has no such history to preserve, so it is refused
  * rather than written to the chain in an era the network has left.
  */
-export class Ledger8DeployOnV9Error extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9];
+export class Ledger8DeployOnLedger9Error extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9];
 
   constructor() {
     super(
@@ -280,7 +280,7 @@ export class Ledger8DeployOnV9Error extends MidnightJsError {
         'fork, but a new deployment has no pre-fork history to preserve. Recompile the contract with the ' +
         'current toolchain and deploy that artifact — see the runtime-deploy chapter of the migration guide.'
     );
-    this.name = 'Ledger8DeployOnV9Error';
+    this.name = 'Ledger8DeployOnLedger9Error';
   }
 }
 
@@ -432,7 +432,7 @@ export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
  * no own properties, and no further `cause` chain.
  *
  * This package's own coded errors are NOT wrapped: they carry no external
- * payload, and a caller narrowing on `V8PayloadUnsupportedError` or
+ * payload, and a caller narrowing on `Ledger8PayloadUnsupportedError` or
  * {@link EraInvariantViolationError} must keep seeing them.
  *
  * @see {@link KeepStatePipeline} for what redaction removes and what is dropped.

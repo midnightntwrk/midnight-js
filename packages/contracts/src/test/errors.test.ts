@@ -18,7 +18,7 @@ import {
   FailEntirely,
   FailFallible,
   type FinalizedTxData,
-  type FinalizedTxDataV8,
+  type Ledger8FinalizedTxData,
   SegmentFail,
   SegmentSuccess,
   type TxStatus
@@ -42,14 +42,14 @@ import {
 } from '../errors';
 import { createMockFinalizedTxData } from './test-mocks';
 
-// The v8 arm of the record union. Its `tx` is a live `V8Transaction` handle
+// The v8 arm of the record union. Its `tx` is a live `Ledger8Transaction` handle
 // from the retained ledger module, which no unit test can construct and none
 // of these read -- every assertion here is about the tag and the members
 // around it. One cast, in one place, rather than one per call site.
-const v8FailedRecord = (status: TxStatus = FailFallible): FinalizedTxDataV8 => ({
+const ledger8FailedRecord = (status: TxStatus = FailFallible): Ledger8FinalizedTxData => ({
   ...createMockFinalizedTxData(status),
   version: 'v8',
-  tx: undefined as unknown as FinalizedTxDataV8['tx']
+  tx: undefined as unknown as Ledger8FinalizedTxData['tx']
 });
 
 describe('TxFailedError', () => {
@@ -131,7 +131,7 @@ describe('the era-agnostic failure base', () => {
     // The reason the two cannot share a record TYPE: a retained-era call is
     // recorded by whichever era the head is on, so its record is the tagged
     // union. Reading it through `record` requires narrowing on `version`.
-    const retainedEra = new Ledger8CallTxFailedError(v8FailedRecord(), 'increment');
+    const retainedEra = new Ledger8CallTxFailedError(ledger8FailedRecord(), 'increment');
 
     expect(retainedEra.record.version).toBe('v8');
   });
@@ -219,7 +219,7 @@ describe('Ledger8DeployTxFailedError', () => {
   const ADDRESS = '0200'.repeat(8);
 
   it('reads the record through the era-agnostic member and names the address it composed', () => {
-    const record = v8FailedRecord();
+    const record = ledger8FailedRecord();
 
     const error = new Ledger8DeployTxFailedError(record, ADDRESS, SIGNING_KEY);
 
@@ -235,8 +235,8 @@ describe('Ledger8DeployTxFailedError', () => {
     // contract DID land, under the authority this key built. One message for both statuses told
     // that caller nothing local refers to the address, and it never went looking for the
     // deployment it now owns and cannot maintain.
-    const fallible = new Ledger8DeployTxFailedError(v8FailedRecord(FailFallible), ADDRESS, SIGNING_KEY);
-    const entirely = new Ledger8DeployTxFailedError(v8FailedRecord(FailEntirely), ADDRESS, SIGNING_KEY);
+    const fallible = new Ledger8DeployTxFailedError(ledger8FailedRecord(FailFallible), ADDRESS, SIGNING_KEY);
+    const entirely = new Ledger8DeployTxFailedError(ledger8FailedRecord(FailEntirely), ADDRESS, SIGNING_KEY);
 
     expect(fallible.message).toContain('LANDED');
     expect(entirely.message).toContain('Nothing was deployed');
@@ -244,7 +244,7 @@ describe('Ledger8DeployTxFailedError', () => {
   });
 
   it('carries the signing key, and says where to read it, without printing the key itself', () => {
-    const error = new Ledger8DeployTxFailedError(v8FailedRecord(), ADDRESS, SIGNING_KEY);
+    const error = new Ledger8DeployTxFailedError(ledger8FailedRecord(), ADDRESS, SIGNING_KEY);
 
     expect(error.signingKey).toBe(SIGNING_KEY);
     expect(error.message).toContain('signingKey');
@@ -324,7 +324,7 @@ describe('the recorded-failure code', () => {
     const errors: AnyEraTxFailedError[] = [
       new TxFailedError(record),
       new CallTxFailedError(record, 'increment'),
-      new Ledger8CallTxFailedError(v8FailedRecord(), 'increment')
+      new Ledger8CallTxFailedError(ledger8FailedRecord(), 'increment')
     ];
 
     expect(errors.map((error) => error.code)).toEqual([

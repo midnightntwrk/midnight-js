@@ -22,13 +22,12 @@ import { IndexerPublicDataProvider } from '../provider';
 import { HEAD_PROTOCOL_VERSION_QUERY, RAW_CONTRACT_STATE_QUERY } from '../query-definitions';
 import { type ApolloRequest, stubApolloHandle, type WatchQueryStub } from './apollo-stub';
 import {
-  mintV8TransactionHex,
-  mintV9ContractStateHex,
-  mintV9TransactionHex,
-  V8_ERA_PROTOCOL_VERSION,
-  V9_ERA_LATER_PROTOCOL_VERSION,
-  V9_ERA_PROTOCOL_VERSION
-} from './state-fixtures';
+  LEDGER8_ERA_PROTOCOL_VERSION,
+  LEDGER9_ERA_LATER_PROTOCOL_VERSION,
+  LEDGER9_ERA_PROTOCOL_VERSION,
+  mintLedger8TransactionHex,
+  mintLedger9ContractStateHex,
+  mintLedger9TransactionHex} from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
 const TX_ID = 'test-tx-id';
@@ -89,7 +88,7 @@ const finalizedTransactionEmission = (protocolVersion: number, raw: string): unk
 
 describe('head protocol-version freshness', () => {
   test('reads the network on every call, so a later era change cannot be missed', async () => {
-    const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]]));
+    const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(LEDGER9_ERA_PROTOCOL_VERSION)]]));
     const provider = buildProvider(query);
 
     await provider.queryLatestProtocolVersion();
@@ -105,16 +104,16 @@ describe('head protocol-version freshness', () => {
     // forward, so a stale answer cannot be corrected by another reading of
     // its own kind - it has to be recognised as stale first, which is what
     // reading every time avoids having to do.
-    const responses = new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]]);
+    const responses = new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(LEDGER9_ERA_PROTOCOL_VERSION)]]);
     const query = dispatchingQuery(responses);
     const provider = buildProvider(query);
 
     const before = await provider.queryLatestProtocolVersion();
-    responses.set(HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_LATER_PROTOCOL_VERSION));
+    responses.set(HEAD_PROTOCOL_VERSION_QUERY, headResponse(LEDGER9_ERA_LATER_PROTOCOL_VERSION));
     const after = await provider.queryLatestProtocolVersion();
 
-    expect(before).toBe(V9_ERA_PROTOCOL_VERSION);
-    expect(after).toBe(V9_ERA_LATER_PROTOCOL_VERSION);
+    expect(before).toBe(LEDGER9_ERA_PROTOCOL_VERSION);
+    expect(after).toBe(LEDGER9_ERA_LATER_PROTOCOL_VERSION);
   });
 
   test('a state read answers the era of its own bytes and costs no head request', async () => {
@@ -122,7 +121,7 @@ describe('head protocol-version freshness', () => {
     // the read path: the era arrives with the bytes it dates.
     const query = dispatchingQuery(
       new Map<DocumentNode, unknown>([
-        [RAW_CONTRACT_STATE_QUERY, composedResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION)]
+        [RAW_CONTRACT_STATE_QUERY, composedResponse(mintLedger9ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION)]
       ])
     );
     const provider = buildProvider(query);
@@ -130,15 +129,15 @@ describe('head protocol-version freshness', () => {
     const record = await provider.queryRawContractState(ADDRESS);
 
     expect(record?.version).toBe('v9');
-    expect(record?.protocolVersion).toBe(V9_ERA_PROTOCOL_VERSION);
+    expect(record?.protocolVersion).toBe(LEDGER9_ERA_PROTOCOL_VERSION);
     expect(headRequestCount(query)).toBe(0);
   });
 
   test('a finalized read issues no head request of its own', async () => {
     // A finalization read must cost exactly the requests the caller asked
     // for. Nothing may ride along on it to warm a cache that no longer exists.
-    const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]]));
-    const watchQuery = vi.fn().mockReturnValue(finalizedTransactionEmission(V9_ERA_PROTOCOL_VERSION, mintV9TransactionHex()));
+    const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(LEDGER9_ERA_PROTOCOL_VERSION)]]));
+    const watchQuery = vi.fn().mockReturnValue(finalizedTransactionEmission(LEDGER9_ERA_PROTOCOL_VERSION, mintLedger9TransactionHex()));
     const provider = buildProvider(query, watchQuery);
 
     const finalized = await provider.watchForTxData(TX_ID);
@@ -152,10 +151,10 @@ describe('head protocol-version freshness', () => {
     // itself reports, so an older-era record is served rather than refused -
     // and acquiring that runtime is not an excuse to read the head. The era
     // arrives with the bytes it dates, on this arm exactly as on the other.
-    const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V8_ERA_PROTOCOL_VERSION)]]));
+    const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(LEDGER8_ERA_PROTOCOL_VERSION)]]));
     const watchQuery = vi
       .fn()
-      .mockReturnValue(finalizedTransactionEmission(V8_ERA_PROTOCOL_VERSION, await mintV8TransactionHex()));
+      .mockReturnValue(finalizedTransactionEmission(LEDGER8_ERA_PROTOCOL_VERSION, await mintLedger8TransactionHex()));
     const provider = buildProvider(query, watchQuery);
 
     const finalized = await provider.watchForTxData(TX_ID);

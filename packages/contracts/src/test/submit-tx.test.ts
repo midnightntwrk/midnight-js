@@ -337,8 +337,8 @@ describe('submit-tx', () => {
     });
 
     // The pre-5.0.0 shapes a JavaScript caller, or a consumer built against an
-    // older `midnight-js-types`, actually produces. `requireV9` is a second,
-    // independent copy of the narrowing in `unwrapV9`, deliberately throwing a
+    // older `midnight-js-types`, actually produces. `requireLedger9` is a second,
+    // independent copy of the narrowing in `unwrapLedger9`, deliberately throwing a
     // different error for the v8 arm — so the types-package tests cover none of
     // this, and a copy-paste slip here would be invisible.
     describe('untagged payloads from a provider', () => {

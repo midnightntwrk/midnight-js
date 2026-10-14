@@ -13,14 +13,14 @@ failure leaves as a coded error rather than as a raw WASM failure. The
 verifier-key rules a deploy is validated against are a separate thread — see
 [VerifierKeys](./verifier-keys.md).
 
-The legs described here are `composeEraV8CallTx` / `composeEraV8DeployTx`
-(`packages/protocol/src/lib/v8/adapt.ts`), `composeV8CallTx`
-(`packages/protocol/src/lib/v8/compose.ts`), `composeV8DeployTx`
-(`packages/protocol/src/lib/v8/deploy.ts`), `composeV9CallTx` /
-`composeV9DeployTx` (`packages/protocol/src/lib/v9/compose.ts`), and the shared
+The legs described here are `composeEraLedger8CallTx` / `composeEraLedger8DeployTx`
+(`packages/protocol/src/lib/v8/adapt.ts`), `composeLedger8CallTx`
+(`packages/protocol/src/lib/v8/compose.ts`), `composeLedger8DeployTx`
+(`packages/protocol/src/lib/v8/deploy.ts`), `composeLedger9CallTx` /
+`composeLedger9DeployTx` (`packages/protocol/src/lib/v9/compose.ts`), and the shared
 pieces under `packages/protocol/src/lib/shared/`.
 
-`composeV8CallTx` is the "same-era" leg: both the circuit's execution and the
+`composeLedger8CallTx` is the "same-era" leg: both the circuit's execution and the
 call it produces are bound entirely on the ledger-v8 axis, as opposed to
 `wrapKeepStateCall` (`packages/protocol/src/lib/v9/wrap.ts`), which binds a
 retained-execution transcript natively onto the current ledger-v9 axis instead.
@@ -35,7 +35,7 @@ defect to fix per era, not a different one per era.
 Holding that order is why the v8 era arm checks the envelope and the call list
 itself rather than leaving either to the inner v8 leg it delegates to. The inner
 leg checks the envelope again; the check is idempotent, and leaving it there is
-what keeps `composeV8CallTx` and `composeV8DeployTx` safe to call directly.
+what keeps `composeLedger8CallTx` and `composeLedger8DeployTx` safe to call directly.
 
 The call legs read their offers LAST, and cannot do otherwise: an offer arrives
 as a factory (`ComposeCallOptions.zswapOffer`) that is handed every call's

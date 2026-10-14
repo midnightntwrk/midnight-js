@@ -32,7 +32,7 @@ import { PROTOCOL_ERROR_CODES, type types, utils } from '../index';
 
 // #region guide:narrowing-recipe
 declare const describeNative: (tx: types.FinalizedTxData['tx']) => string;
-declare const describeRetained: (tx: types.FinalizedTxDataV8['tx']) => string;
+declare const describeRetained: (tx: types.Ledger8FinalizedTxData['tx']) => string;
 
 const summarize = (record: types.VersionedFinalizedTxData): string => {
   switch (record.version) {

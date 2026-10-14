@@ -510,5 +510,12 @@ never writes anything called a seam, so the public names and messages now say
   `MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`; `assertSeamsSupportEra` is
   `assertProvidersSupportEra`, and `TransactionSeams` is `TransactionProviders`.
 
+The era prefix is now `Ledger8` / `Ledger9` everywhere, never `V8` / `V9`:
+`V8TxBytes`, `V9Tx`, `unwrapV9` and `V8PayloadUnsupportedError` are
+`Ledger8TxBytes`, `Ledger9Tx`, `unwrapLedger9` and
+`Ledger8PayloadUnsupportedError` (code
+`MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTED`). The tag values `'v8'` / `'v9'`
+stay, because they mirror the `ledger-v8` / `ledger-v9` package names.
+
 The title and file name of this ADR keep the old word, and so do the
 amendments above.

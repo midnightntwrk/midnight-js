@@ -82,7 +82,7 @@ const readFixtureVerifierKey = (circuitId: string): Promise<Uint8Array | undefin
 
 const VERIFIER_KEY = new Uint8Array(readFileSync(VERIFIER_KEY_PATH));
 
-const serializedV8StateWithOperation = (): Uint8Array => {
+const serializedLedger8StateWithOperation = (): Uint8Array => {
   const contractState = new LedgerV8.ContractState();
   const operation = new LedgerV8.ContractOperation();
   operation.verifierKey = VERIFIER_KEY;
@@ -108,7 +108,7 @@ const callEntryFromTranscript = (
 ): ComposeCallEntry => ({
   contractAddress,
   circuitId: transcript.circuitId,
-  contractStateBytes: serializedV8StateWithOperation(),
+  contractStateBytes: serializedLedger8StateWithOperation(),
   // Named explicitly: these entries exercise the v8 arm's assembly, not the cost model.
   ledgerParametersBytes: 'initial',
   transcript: {
@@ -181,7 +181,7 @@ const payingTranscript = (
 const payingCallEntry = (owner: string, token: string): ComposeCallEntry => ({
   contractAddress: ocrt3.dummyContractAddress(),
   circuitId: 'increment',
-  contractStateBytes: serializedV8StateWithOperation(),
+  contractStateBytes: serializedLedger8StateWithOperation(),
   // Named explicitly: these entries exercise the v8 arm's assembly, not the cost model.
   ledgerParametersBytes: 'initial',
   transcript: {

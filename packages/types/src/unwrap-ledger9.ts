@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type TransactionMethod, UntaggedPayloadError, V8PayloadUnsupportedError } from './errors';
+import { Ledger8PayloadUnsupportedError,type TransactionMethod, UntaggedPayloadError } from './errors';
 import type { VersionedTx } from './versioned';
 
 /**
@@ -30,7 +30,7 @@ import type { VersionedTx } from './versioned';
  * @param payload The version-tagged payload to narrow.
  * @param method The provider method being implemented, used in error messages.
  * @returns The live v9 ledger transaction.
- * @throws V8PayloadUnsupportedError if the payload is a v8 payload.
+ * @throws Ledger8PayloadUnsupportedError if the payload is a v8 payload.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised. The
  *         types make that unrepresentable, so it is reachable only from
  *         JavaScript, from a consumer built against a pre-5.0.0
@@ -38,13 +38,13 @@ import type { VersionedTx } from './versioned';
  *
  * @example
  * ```typescript
- * const proven = unwrapV9(
+ * const proven = unwrapLedger9(
  *   await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
  *   'proveTx'
  * );
  * ```
  */
-export const unwrapV9 = <T>(payload: VersionedTx<T>, method: TransactionMethod): T => {
+export const unwrapLedger9 = <T>(payload: VersionedTx<T>, method: TransactionMethod): T => {
   // Guards the JavaScript-caller case before the switch, so a null or
   // primitive payload reports the same coded error as a bad tag rather than
   // throwing a bare TypeError on property access.
@@ -60,7 +60,7 @@ export const unwrapV9 = <T>(payload: VersionedTx<T>, method: TransactionMethod):
       // `undefined` rather than reading `.byteLength` off whatever arrived
       // makes the message say the field was malformed instead of quietly
       // omitting the size.
-      throw new V8PayloadUnsupportedError(
+      throw new Ledger8PayloadUnsupportedError(
         method,
         payload.txBytes instanceof Uint8Array ? payload.txBytes.byteLength : undefined
       );

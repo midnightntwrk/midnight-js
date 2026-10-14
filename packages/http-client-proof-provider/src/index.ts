@@ -24,7 +24,7 @@
  *
  * ```typescript
  * import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
- * import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+ * import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
  *
  * const proofProvider = httpClientProofProvider(
  *   'http://localhost:6300',
@@ -32,12 +32,12 @@
  * );
  * // Transaction payloads are passed to a provider version-tagged: tag on the way
  * // in, narrow on `version` on the way out. There is no untagged form.
- * // `unwrapV9` throws V8PayloadUnsupportedError or UntaggedPayloadError, both
+ * // `unwrapLedger9` throws Ledger8PayloadUnsupportedError or UntaggedPayloadError, both
  * // carrying a stable `code` you can match with `hasErrorCode`. That applies to
  * // the provider's own refusals — the ones raised before proving starts. A failure
  * // from inside proof generation is whatever the ledger runtime raises, on
  * // either era, and carries no midnight-js code.
- * const provenTx = unwrapV9(
+ * const provenTx = unwrapLedger9(
  *   await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
  *   'proveTx'
  * );
@@ -66,7 +66,7 @@
  * entry points (`submitCallTx` and `deployContract`), `assertProvidersSupportEra` detects this
  * upfront and raises `ProviderEraUnsupportedError` (naming `balanceTx`) before any proving work
  * is done. However, for a flow that calls the three transaction methods by hand, the transaction
- * **proves successfully and is then refused at `balanceTx` with `V8PayloadUnsupportedError`** —
+ * **proves successfully and is then refused at `balanceTx` with `Ledger8PayloadUnsupportedError`** —
  * after a full proving cycle, not at the first step. To run one end to end, implement
  * `WalletProvider` and `MidnightProvider` against the version-tagged interfaces directly.
  * Why the adapters refuse permanently is recorded in

@@ -19,7 +19,7 @@ import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/l
 import type { CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type {
   FinalizedTxData,
-  FinalizedTxDataV8,
+  Ledger8FinalizedTxData,
   SubmittedCallTxBase,
   UnsubmittedTxDataBase
 } from '@midnight-ntwrk/midnight-js-types';
@@ -184,7 +184,7 @@ export interface FinalizedDeployTxDataBase<C extends Contract.Any> extends Unsub
  * cannot be decoded by the current runtime. Read the current state with
  * `PublicDataProvider.queryContractState`.
  */
-export interface FoundDeployTxPublicDataV8 extends FinalizedTxDataV8 {
+export interface Ledger8FoundDeployTxPublicData extends Ledger8FinalizedTxData {
   /**
    * The ledger address of the contract that was deployed.
    */
@@ -196,7 +196,7 @@ export interface FoundDeployTxPublicDataV8 extends FinalizedTxDataV8 {
  * era that recorded the deploy transaction. Narrow on `version` before reading
  * `tx` or `initialContractState`; `contractAddress` is present on both arms.
  */
-export type FoundDeployTxPublicData = FoundDeployTxPublicDataV8 | FinalizedDeployTxPublicData;
+export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | FinalizedDeployTxPublicData;
 
 /**
  * Data for a deployment found on chain by `findDeployedContract`.

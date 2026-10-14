@@ -40,7 +40,7 @@ export interface MidnightProvider {
    *           live v9 ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes.
    * @returns The transaction identifier of the submitted transaction. Not version-tagged — a
    *          transaction identifier is era-independent.
-   * @throws V8PayloadUnsupportedError if the implementation does not handle v8 payloads.
+   * @throws Ledger8PayloadUnsupportedError if the implementation does not handle v8 payloads.
    * @throws UntaggedPayloadError if `version` is missing or unrecognised.
    */
   submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId>;
@@ -112,7 +112,7 @@ export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHan
  *
  * The returned provider serves v9 payloads only — `supportedEras` says so — and
  * that is permanent rather than a gap: it lifts a v9-only implementation. It
- * rejects a v8 payload with `V8PayloadUnsupportedError` and an untagged one with
+ * rejects a v8 payload with `Ledger8PayloadUnsupportedError` and an untagged one with
  * `UntaggedPayloadError`. To serve a retained era as well, use
  * {@link createMidnightProviderFromHandlers}.
  *

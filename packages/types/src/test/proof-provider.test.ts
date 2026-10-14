@@ -17,7 +17,7 @@ import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors'
 import type { CostModel, ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { describe, expect, it, vi } from 'vitest';
 
-import { PROVIDER_ERROR_CODES, UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
+import { Ledger8PayloadUnsupportedError,PROVIDER_ERROR_CODES, UntaggedPayloadError } from '../errors';
 import {
   createProofProvider,
   type UnboundTransaction,
@@ -124,8 +124,8 @@ describe('createProofProvider', () => {
           (error: unknown) => error
         );
 
-      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-      expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
+      expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
+      expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
     });
 
     it('names the method that received the payload so the caller can tell which call failed', async () => {
@@ -136,8 +136,8 @@ describe('createProofProvider', () => {
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-      expect((rejection as V8PayloadUnsupportedError).method).toBe('proveTx');
+      expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
+      expect((rejection as Ledger8PayloadUnsupportedError).method).toBe('proveTx');
     });
 
     it('says the refusal is by design and names what does serve a v8 payload', async () => {
@@ -169,7 +169,7 @@ describe('createProofProvider', () => {
         (error: unknown) => error
       );
 
-      expect((rejection as V8PayloadUnsupportedError).byteLength).toBe(4);
+      expect((rejection as Ledger8PayloadUnsupportedError).byteLength).toBe(4);
     });
 
     // Set equality rather than `toContain`: this adapter lifts a v9-only
@@ -221,7 +221,7 @@ describe('createProofProvider', () => {
       // The spy goes on the payload, not on `stubProvingProvider`.
       // `createProofProvider` calls `tx.prove(provingProvider, costModel)` on
       // the *narrowed* payload and never calls `provingProvider.prove` itself,
-      // so asserting on the latter would hold even with the `unwrapV9` call
+      // so asserting on the latter would hold even with the `unwrapLedger9` call
       // deleted. This spy is what actually runs if the narrowing is skipped.
       await proveUntagged({ prove });
 
