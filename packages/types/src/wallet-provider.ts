@@ -21,6 +21,7 @@ import {
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
+import { assertFunction, readEraArms } from './internal/read-era-arms';
 import { type UnboundTransaction,type VersionedUnboundTransaction } from './proof-provider';
 import { type VersionedTx } from './versioned';
 
@@ -102,23 +103,37 @@ export interface WalletProviderHandlers {
  * implementation code, and an answer is always tagged as the era the request
  * carried.
  *
+ * `currentEra` and the key readers are called with `handlers` as `this`; a
+ * retained-era handler is called with no `this`.
+ *
  * @param handlers The current-era handler, any retained-era handlers, and the two key readers.
  * @returns A {@link WalletProvider} routing each request to its era's arm.
+ * @throws UnusableEraArmError if `currentEra`, or a `retainedEras` entry other
+ *         than `undefined`, is not a function. Raised at construction.
+ * @throws InvalidArgumentError if `handlers` is not an object, `retainedEras` is
+ *         not a plain object keyed only by retained eras, or a key reader is not
+ *         a function. Raised at construction.
  */
-export const createWalletProviderFromHandlers = (handlers: WalletProviderHandlers): WalletProvider => ({
-  supportedEras: erasServedBy(handlers.retainedEras),
+export const createWalletProviderFromHandlers = (handlers: WalletProviderHandlers): WalletProvider => {
+  const { currentEra, retainedEras } = readEraArms('balanceTx', handlers, 'handler');
+  const { getCoinPublicKey, getEncryptionPublicKey } = handlers;
+  assertFunction('balanceTx', 'getCoinPublicKey', getCoinPublicKey);
+  assertFunction('balanceTx', 'getEncryptionPublicKey', getEncryptionPublicKey);
+  return {
+    supportedEras: erasServedBy(retainedEras),
 
-  async balanceTx(tx: VersionedUnboundTransaction, ttl?: Date): Promise<VersionedFinalizedTransaction> {
-    const request = narrowToEraArm(tx, 'balanceTx', handlers.retainedEras);
-    if (request.era === CURRENT_LEDGER_VERSION) {
-      return { version: CURRENT_LEDGER_VERSION, tx: await handlers.currentEra(request.tx, ttl) };
-    }
-    return { version: request.era, txBytes: await request.handler(request.txBytes, ttl) };
-  },
+    async balanceTx(tx: VersionedUnboundTransaction, ttl?: Date): Promise<VersionedFinalizedTransaction> {
+      const request = narrowToEraArm(tx, 'balanceTx', retainedEras);
+      if (request.era === CURRENT_LEDGER_VERSION) {
+        return { version: CURRENT_LEDGER_VERSION, tx: await Reflect.apply(currentEra, handlers, [request.tx, ttl]) };
+      }
+      return { version: request.era, txBytes: await Reflect.apply(request.handler, undefined, [request.txBytes, ttl]) };
+    },
 
-  getCoinPublicKey: () => handlers.getCoinPublicKey(),
-  getEncryptionPublicKey: () => handlers.getEncryptionPublicKey()
-});
+    getCoinPublicKey: () => Reflect.apply(getCoinPublicKey, handlers, []),
+    getEncryptionPublicKey: () => Reflect.apply(getEncryptionPublicKey, handlers, [])
+  };
+};
 
 /**
  * A {@link WalletProvider} written against the v9 ledger runtime only — the

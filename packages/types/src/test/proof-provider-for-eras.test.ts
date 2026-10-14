@@ -14,12 +14,14 @@
  */
 
 import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import type { RetainedEraHandlers } from '../era-arms';
 import { PROVIDER_ERROR_CODES, V8PayloadUnsupportedError } from '../errors';
-import { createProofProviderForEras, type UnboundTransaction } from '../proof-provider';
+import { createProofProviderForEras, type ProvingProvidersByEra, type UnboundTransaction } from '../proof-provider';
 
 const PROVING_REFUSED = 'proving refused';
 
@@ -50,6 +52,12 @@ const recordingCurrentEraProvider = (consulted: string[], label: string): Provin
  * returns bytes that are NOT a proof, so a case that unexpectedly reached it
  * fails rather than passes quietly.
  */
+const revokedProxy = (): object => {
+  const { proxy, revoke } = Proxy.revocable({}, {});
+  revoke();
+  return proxy;
+};
+
 const inertRetainedEraProvider: RetainedEraProvingProvider = {
   check: () => Promise.resolve([]),
   prove: () => Promise.resolve(new Uint8Array())
@@ -190,6 +198,132 @@ describe('createProofProviderForEras', () => {
       );
 
       expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
+    });
+
+    it.each([
+      ['null', null, 'null'],
+      ['an empty object', {}, "an object without callable 'check' and 'prove'"],
+      ['an object missing prove', { check: () => Promise.resolve([]) }, "an object without callable 'prove'"],
+      ['an object missing check', { prove: () => Promise.resolve(new Uint8Array()) }, "an object without callable 'check'"],
+      ['an object with non-callable prove', { check: () => Promise.resolve([]), prove: 'not-a-function' }, "an object without callable 'prove'"],
+      ['an object with non-callable check', { check: 'not-a-function', prove: () => Promise.resolve(new Uint8Array()) }, "an object without callable 'check'"],
+      ['a class instance missing prove', new (class Prover { check(): Promise<never[]> { return Promise.resolve([]); } })(), "an instance of Prover without callable 'prove'"],
+      ['a revoked proxy', revokedProxy(), 'an object'],
+      ['a function', () => inertRetainedEraProvider, 'a function'],
+      ['a string', 'not-a-provider', 'a string'],
+      ['a number', 42, 'a number'],
+      ['an array', [inertRetainedEraProvider], 'an array']
+    ])('refuses %s registered as a retained era arm at construction', (_desc, value: unknown, received) => {
+      const act = () =>
+        createProofProviderForEras({
+          currentEra: inertCurrentEraProvider,
+          retainedEras: { v8: value as RetainedEraProvingProvider }
+        });
+
+      expect(act).toThrow(
+        expect.objectContaining({
+          name: 'UnusableEraArmError',
+          code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM,
+          seam: 'proveTx',
+          era: 'v8',
+          expected: 'proving-provider',
+          received
+        })
+      );
+    });
+
+    it.each([
+      ['undefined', undefined, 'undefined'],
+      ['null', null, 'null'],
+      ['a function', () => inertCurrentEraProvider, 'a function']
+    ])('refuses %s registered as the current era arm at construction', (_desc, value: unknown, received) => {
+      const act = () => createProofProviderForEras({ currentEra: value as ProvingProvider });
+
+      expect(act).toThrow(
+        expect.objectContaining({
+          name: 'UnusableEraArmError',
+          code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ARM,
+          seam: 'proveTx',
+          era: 'v9',
+          expected: 'proving-provider',
+          received
+        })
+      );
+    });
+
+    it.each([
+      ['a misspelled era key', { V8: inertRetainedEraProvider }, 'not retained eras: V8'],
+      ['null', null, 'got null'],
+      ['an array', [inertRetainedEraProvider], 'got an array'],
+      ['a bare proving provider', inertRetainedEraProvider, 'not retained eras: check, prove'],
+      ['a Map', new Map([['v8', inertRetainedEraProvider]]), 'got an instance of Map']
+    ])('refuses %s as the retained era map at construction', (_desc, retainedEras: unknown, detail) => {
+      const act = () =>
+        createProofProviderForEras({
+          currentEra: inertCurrentEraProvider,
+          retainedEras: retainedEras as RetainedEraHandlers<RetainedEraProvingProvider>
+        });
+
+      expect(act).toThrow(
+        expect.objectContaining({
+          name: 'InvalidArgumentError',
+          code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+          message: expect.stringContaining(detail)
+        })
+      );
+    });
+
+    it.each([
+      ['undefined', undefined],
+      ['null', null]
+    ])('refuses %s as the proving providers at construction', (_desc, provingProviders: unknown) => {
+      const act = () => createProofProviderForEras(provingProviders as ProvingProvidersByEra);
+
+      expect(act).toThrow(
+        expect.objectContaining({ name: 'InvalidArgumentError', code: COMMON_ERROR_CODES.INVALID_ARGUMENT })
+      );
+    });
+
+    it.each([
+      ['null', null, 'got null'],
+      ['a string', 'initial', 'got a string']
+    ])('refuses %s as the cost model at construction', (_desc, costModel: unknown, detail) => {
+      const act = () =>
+        createProofProviderForEras({ currentEra: inertCurrentEraProvider, costModel: costModel as CostModel });
+
+      expect(act).toThrow(
+        expect.objectContaining({
+          name: 'InvalidArgumentError',
+          code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+          message: expect.stringContaining(`costModel must be a CostModel object, ${detail}`)
+        })
+      );
+    });
+
+    it('accepts a retained proving provider whose methods live on its prototype, and drives it', async () => {
+      const consulted: string[] = [];
+      class PrototypeProvingProvider implements RetainedEraProvingProvider {
+        check(): Promise<(bigint | undefined)[]> {
+          consulted.push('check');
+          return Promise.reject(new Error(PROVING_REFUSED));
+        }
+        prove(): Promise<Uint8Array> {
+          consulted.push('prove');
+          return Promise.reject(new Error(PROVING_REFUSED));
+        }
+      }
+      const provider = createProofProviderForEras({
+        currentEra: inertCurrentEraProvider,
+        retainedEras: { v8: new PrototypeProvingProvider() }
+      });
+
+      const rejection = await provider.proveTx({ version: 'v8', txBytes: circuitDrivingTxBytes }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
+      expect(consulted, `proveTx rejected with: ${String(rejection)}`).toEqual(['prove']);
     });
 
     it('answers the v8 arm with the PROVEN serialization of the transaction', async () => {
