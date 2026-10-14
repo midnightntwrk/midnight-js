@@ -2106,7 +2106,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@noble/ciphers": "npm:^2.4.0"
-    "@noble/hashes": "npm:^2.2.0"
+    "@noble/hashes": "npm:^2.4.0"
     abstract-level: "npm:^3.1.1"
     buffer: "npm:^6.0.3"
     level: "npm:^10.0.0"
@@ -2241,7 +2241,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnightntwrk/wallet-sdk-address-format": "npm:4.0.0-rc.0"
-    "@noble/hashes": "npm:^2.2.0"
+    "@noble/hashes": "npm:^2.4.0"
     "@types/node": "npm:^24.0.0"
     rollup: "npm:^4.60.4"
     vite: "npm:^8.3.4"
@@ -2718,7 +2718,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/hashes@npm:2.2.0, @noble/hashes@npm:^2.0.1, @noble/hashes@npm:^2.2.0":
+"@noble/hashes@npm:2.2.0, @noble/hashes@npm:^2.0.1":
   version: 2.2.0
   resolution: "@noble/hashes@npm:2.2.0"
   checksum: 10/b1b78bedc2a01394be047429f3d888905015fe8a09f1b7e43e0b5736b54133df62f73dcc73ede43af38e96e86156afb45b86973fdeaa95d9f0880333c3fc0907
