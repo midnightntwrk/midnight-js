@@ -130,7 +130,6 @@ describe('Contracts type ACL', () => {
       'DeployTxOptionsWithPrivateStateId',
       'EraArtifactMismatchOptions',
       'EraArtifactMismatchReason',
-      'EraMethod',
       'FinalizedCallTxData',
       'FinalizedCallTxPublicData',
       'FinalizedDeployTxData',

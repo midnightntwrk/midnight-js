@@ -53,7 +53,10 @@ travels with `ComposeFailedError`: it is the value that error's `circuitId`
 carries when the refusal names no circuit. That rule is why
 `VersionResolutionPath` is present (the error's `path`) and why
 `RetainedEraSubpath`, `ComposeStage` and `ComposeOption` came in with the
-classes whose payloads name them.
+classes whose payloads name them. `CURRENT_LEDGER_VERSION` and
+`CurrentLedgerVersion` qualify the same way: a current-era result's `era` (on
+the `contracts` results) is compared against them, and without them a barrel
+consumer would have to write `'v9'` by hand and update it at the next fork.
 
 Two deliberate exclusions:
 

@@ -238,10 +238,9 @@ The single `events` list spans the whole call tree. Decode without a direct `com
 // head, because a retained-era call is recorded by whichever ledger the head is
 // on. `received` is the era that actually came back. A payload whose tag is
 // missing or unrecognised raises UntaggedPayloadError instead.
-export type EraMethod = ProviderMethod; // re-exported vocabulary from midnight-js-types
 export class EraInvariantViolationError extends Error {
   readonly code: 'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION';
-  readonly method: EraMethod;
+  readonly method: ProviderMethod; // from midnight-js-types
   readonly circuitId?: string | readonly string[];
   readonly expected: LedgerVersion;
   readonly received?: LedgerVersion;

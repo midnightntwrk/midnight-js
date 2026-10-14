@@ -434,7 +434,8 @@ put the silent guard back.
 
 **`@midnight-ntwrk/midnight-js-contracts`** — added:
 `EraInvariantViolationError` (code `MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION`,
-carries `method` and optional `circuitId`), `EraMethod`.
+carries `method`, typed `ProviderMethod` from `midnight-js-types`, and optional
+`circuitId`).
 
 **`@midnight-ntwrk/midnight-js-indexer-public-data-provider`** — added:
 `EraUnresolvableError` (`MIDNIGHT_JS_PR_ERA_UNRESOLVABLE`) and
@@ -563,13 +564,13 @@ names.
 | `types` | `SeamEraUnsupportedError` | `ProviderEraUnsupportedError` |
 | `types` | `PROVIDER_ERROR_CODES.SEAM_ERA_UNSUPPORTED` (`MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED`) | `PROVIDER_ERA_UNSUPPORTED` (`MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`) |
 | `types` | the `seam` field on `Ledger8PayloadUnsupportedError`, `UntaggedPayloadError`, `ProviderEraUnsupportedError`, `UnusableEraEntryError` | `method` |
-| `contracts` | `EraSeam` | `EraMethod` |
+| `contracts` | `EraSeam` | `ProviderMethod` from `@midnight-ntwrk/midnight-js-types` (the alias is removed) |
 | `contracts` | `Ledger8.SeamFailedError` | `Ledger8.ProviderFailedError` |
 | `contracts` | `CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED` (`MIDNIGHT_JS_C_LEDGER8_SEAM_FAILED`) | `LEDGER8_PROVIDER_FAILED` (`MIDNIGHT_JS_C_LEDGER8_PROVIDER_FAILED`) |
 | `contracts` | the `seam` field on `EraInvariantViolationError` and `Ledger8.ProviderFailedError` | `method` |
 | `indexer-public-data-provider` | the `seam` field on `EraUnsupportedError` and `EraUnresolvableError`, and the `seam` key in a decode failure's `context.details` | `method` |
 | `contracts` | `result.era` values `'ledger8'` / `'ledger9'` (also the `path` field of the pipeline-selection breadcrumb) | `'v8'` / `'v9'` |
-| `contracts` | `PipelineEra`, `CurrentPipelineEra`, `CURRENT_PIPELINE_ERA` | `LedgerVersion`, `CurrentLedgerVersion`, `CURRENT_LEDGER_VERSION` from `@midnight-ntwrk/midnight-js-protocol` |
+| `contracts` | `PipelineEra`, `CurrentPipelineEra`, `CURRENT_PIPELINE_ERA` | `LedgerVersion`, `CurrentLedgerVersion`, `CURRENT_LEDGER_VERSION` from `@midnight-ntwrk/midnight-js-protocol` (all three are also on the `@midnight-ntwrk/midnight-js` barrel) |
 | `contracts` | `RetainedPipelineEra`, `RETAINED_PIPELINE_ERA` | the literal `'v8'` (see ADR 0011) |
 | `types` | `V8PayloadUnsupportedError` | `Ledger8PayloadUnsupportedError` |
 | `types` | `PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED` (`MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED`) | `LEDGER8_PAYLOAD_UNSUPPORTED` (`MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTED`) |

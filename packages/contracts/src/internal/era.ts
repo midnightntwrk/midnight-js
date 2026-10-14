@@ -24,6 +24,7 @@ import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/ver
 import {
   ArtifactRuntimeVersionUnavailableError,
   type FinalizedTxData,
+  type ProviderMethod,
   type PublicDataProvider,
   type RawContractState,
   UntaggedPayloadError,
@@ -36,7 +37,6 @@ import { contractStateEnvelopeVersion, ZkArtifactContractInfoError } from '@midn
 import {
   EraArtifactMismatchError,
   EraInvariantViolationError,
-  type EraMethod,
   HeadReadFailedError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
@@ -61,7 +61,7 @@ import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcr
  */
 export function requireLedger9<T>(
   payload: VersionedTx<T>,
-  method: EraMethod,
+  method: ProviderMethod,
   circuitId?: string | readonly string[]
 ): T {
   if (typeof payload !== 'object' || payload === null) {
@@ -107,7 +107,7 @@ export function requireLedger9<T>(
  */
 export function requireLedger8<T>(
   payload: VersionedTx<T>,
-  method: EraMethod,
+  method: ProviderMethod,
   circuitId?: string | readonly string[]
 ): Uint8Array {
   if (typeof payload !== 'object' || payload === null) {
@@ -143,7 +143,7 @@ export function requireLedger8<T>(
  * @returns The record, tagged with a recognised era.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
  */
-export function requireTaggedRecord(record: VersionedFinalizedTxData, method: EraMethod): VersionedFinalizedTxData {
+export function requireTaggedRecord(record: VersionedFinalizedTxData, method: ProviderMethod): VersionedFinalizedTxData {
   if (typeof record !== 'object' || record === null) {
     throw new UntaggedPayloadError(method, record);
   }
@@ -173,7 +173,7 @@ export function requireTaggedRecord(record: VersionedFinalizedTxData, method: Er
  */
 export function requireLedger9Record(
   record: VersionedFinalizedTxData,
-  method: EraMethod,
+  method: ProviderMethod,
   circuitId?: string | readonly string[]
 ): FinalizedTxData {
   if (typeof record !== 'object' || record === null) {
@@ -260,7 +260,7 @@ const ASYNC_FUNCTION = 'AsyncFunction';
  */
 const RUNTIME_VERSION_TO_ERA = Object.freeze({
   '0.16': 'v8',
-  '0.20': CURRENT_LEDGER_VERSION
+  '0.20': 'v9'
 } as const);
 
 // Compile-time gate: every pipeline era must be reachable from some declared runtime version.

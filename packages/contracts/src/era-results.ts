@@ -123,7 +123,9 @@ export const isLedger8Result = <T extends { readonly era: LedgerVersion }>(
       return true;
     case CURRENT_LEDGER_VERSION:
       return false;
-    default:
-      throw new UnrecognisedResultEraError(result?.era);
+    default: {
+      const unhandled: never = result?.era;
+      throw new UnrecognisedResultEraError(unhandled);
+    }
   }
 };

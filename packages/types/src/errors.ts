@@ -238,9 +238,9 @@ const describeVersion = (payload: unknown): string => {
 };
 
 /**
- * Thrown when a payload passed to a provider method carries no recognised
- * `version` discriminant — most often a transaction passed untagged, the shape
- * these methods took before 5.0.0.
+ * Thrown when a payload passed to, or returned from, a provider method carries
+ * no recognised `version` discriminant — most often a transaction passed
+ * untagged, the shape these methods took before 5.0.0.
  *
  * The method signatures make this unrepresentable in TypeScript, so it is reachable
  * only from JavaScript, from a consumer compiled against a pre-5.0.0
@@ -255,7 +255,7 @@ export class UntaggedPayloadError extends MidnightJsError {
   readonly received: string;
 
   /**
-   * @param method The method that received the payload. Typed as the full
+   * @param method The method the payload was passed to or returned from. Typed as the full
    *               {@link ProviderMethod} vocabulary because this error is thrown
    *               from both the transaction methods and the read methods.
    * @param payload The offending payload. Only its `version` field is read;
@@ -267,9 +267,9 @@ export class UntaggedPayloadError extends MidnightJsError {
   ) {
     const received = describeVersion(payload);
     super(
-      `${method} received a transaction payload with no recognised 'version' discriminant (got: ${received}). ` +
-        `This method takes version-tagged payloads: wrap a live v9 ledger transaction as ` +
-        `{ version: 'v9', tx }, or v8-era serialized bytes as { version: 'v8', txBytes }.`
+      `${method}: a transaction payload has no recognised 'version' discriminant (got: ${received}). ` +
+        `Payloads passed to and returned from provider methods are version-tagged: a live v9 ledger transaction ` +
+        `is { version: 'v9', tx }, and v8-era serialized bytes are { version: 'v8', txBytes }.`
     );
     this.name = 'UntaggedPayloadError';
     this.received = received;

@@ -19,6 +19,7 @@ import * as contracts from '../contracts';
 import type {
   ComposeOption,
   ComposeStage,
+  CurrentLedgerVersion,
   LedgerVersion,
   MidnightJsErrorCategory,
   ProtocolVersionSource,
@@ -49,6 +50,7 @@ const EXPECTED_BARREL_EXPORTS = [
   'ComposeOptionError',
   'ConfigurationError',
   'ContractExecutionError',
+  'CURRENT_LEDGER_VERSION',
   'EnvironmentUnsupportedError',
   'InvalidArgumentError',
   'InvariantViolationError',
@@ -129,6 +131,11 @@ describe('ledger version vocabulary', () => {
   it('should export the closed set of ledger versions', () => {
     const eras: readonly LedgerVersion[] = midnightJs.LEDGER_VERSIONS;
     expect(eras).toEqual(['v8', 'v9']);
+  });
+
+  it('should export the current era, the value a current-era result carries in `era`', () => {
+    const current: CurrentLedgerVersion = midnightJs.CURRENT_LEDGER_VERSION;
+    expect(current).toBe('v9');
   });
 
   it('should resolve the era a record was written under', () => {

@@ -55,6 +55,7 @@ import {
   type PrivateStateId,
   type PrivateStateProvider,
   type ProofProvider,
+  type ProviderMethod,
   type PublicDataProvider,
   type ReadMethod,
   SucceedEntirely,
@@ -73,7 +74,6 @@ import {
 
 import {
   EraInvariantViolationError,
-  type EraMethod,
   IncompleteCallTxPrivateStateConfig,
   Ledger8CallTxFailedError,
   Ledger8DeployNotStoredError,
@@ -392,7 +392,7 @@ const sanitizeProviderCause = (cause: unknown, depth = 0): Error => {
  * @returns Whatever the provider returned.
  * @throws Ledger8ProviderFailedError for any external rejection.
  */
-const atProviderMethod = async <T>(method: EraMethod, circuitId: string, call: () => Promise<T>): Promise<T> => {
+const atProviderMethod = async <T>(method: ProviderMethod, circuitId: string, call: () => Promise<T>): Promise<T> => {
   try {
     return await call();
   } catch (cause) {

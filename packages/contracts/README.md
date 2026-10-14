@@ -235,7 +235,6 @@ import {
   DeployTxFailedError,
   ContractTypeError,
   EraInvariantViolationError,
-  type EraMethod,
   TxFailedError
 } from '@midnight-ntwrk/midnight-js-contracts';
 ```

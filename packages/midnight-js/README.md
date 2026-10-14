@@ -39,6 +39,7 @@ directly, alongside the namespaces above:
 ```typescript
 import {
   LEDGER_VERSIONS,    // the closed, frozen set: ['v8', 'v9']
+  CURRENT_LEDGER_VERSION, // the era this build runs live: 'v9'; a current-era result's `era`
   type LedgerVersion, // 'v8' | 'v9'
   versionOfRecord,    // a record carrying protocolVersion -> LedgerVersion
   networkHeadVersion  // asks a source for the network head -> LedgerVersion

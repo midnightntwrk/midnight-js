@@ -108,7 +108,7 @@ describe('contracts error classes', () => {
   });
 
   it.each(cases)('%s message speaks of provider methods, never of seams', (_name, error) => {
-    expect(error.message).not.toMatch(/\bseams?\b/i);
+    expect(error.message).not.toMatch(/seam/i);
   });
 
   it.each([

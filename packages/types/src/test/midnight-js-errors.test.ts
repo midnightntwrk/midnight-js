@@ -108,7 +108,36 @@ describe('types error classes', () => {
   });
 
   it.each(instances)('%s message speaks of provider methods only', (_name, error) => {
-    expect(error.message).not.toMatch(/\bseams?\b/i);
+    expect(error.message).not.toMatch(/seam/i);
+  });
+
+  it.each([
+    [
+      'a v8 payload sent to a v9-only provider',
+      new Ledger8PayloadUnsupportedError('balanceTx', 3),
+      'balanceTx received a v8-era transaction payload (serialized bytes, 3 bytes), which this provider does not serve. ' +
+        'The createProofProvider, createWalletProvider and createMidnightProvider adapters never serve a v8 payload: ' +
+        'each lifts a v9-only implementation, so this is by design rather than a gap. ' +
+        "Send a v9 payload ({ version: 'v9', tx }) to this method, or use an implementation that serves " +
+        'v8 — httpClientProofProvider and dappConnectorProofProvider do so for proveTx, while balanceTx and submitTx ' +
+        'need a WalletProvider or MidnightProvider written against the version-tagged interface directly.'
+    ],
+    [
+      'an untagged payload, in either direction',
+      new UntaggedPayloadError('watchForTxData', {}),
+      "watchForTxData: a transaction payload has no recognised 'version' discriminant (got: no version field). " +
+        'Payloads passed to and returned from provider methods are version-tagged: a live v9 ledger transaction ' +
+        "is { version: 'v9', tx }, and v8-era serialized bytes are { version: 'v8', txBytes }."
+    ],
+    [
+      'a provider that does not declare the era',
+      new ProviderEraUnsupportedError('submitTx', 'v8', ['v9']),
+      'This operation runs on the v8 ledger era, but the provider wired to submitTx declares that it serves v9. ' +
+        'Refused before any proof was requested, because a transaction this set cannot carry end to end is not ' +
+        'worth proving. Wire a provider that serves v8 for submitTx, or run this operation on an era the whole set serves.'
+    ]
+  ] as const)('pins the message for %s', (_case, error, message) => {
+    expect(error.message).toEqual(message);
   });
 
   it.each([

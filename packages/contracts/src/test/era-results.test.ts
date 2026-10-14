@@ -37,6 +37,8 @@ describe('isLedger8Result', () => {
   // rewrote the tag.
   it.each([
     ['a tag naming no known pipeline', { era: 'v7', txId: 'tx-1' }],
+    ['a retained-era tag from a 5.0.0 pre-release', { era: 'ledger8', txId: 'tx-1' }],
+    ['a current-era tag from a 5.0.0 pre-release', { era: 'ledger9', txId: 'tx-1' }],
     ['a tag lost in transit', { txId: 'tx-1' }],
     ['a tag explicitly undefined', { era: undefined, txId: 'tx-1' }],
     ['a tag of the wrong primitive type', { era: 9, txId: 'tx-1' }]
@@ -59,7 +61,12 @@ describe('isLedger8Result', () => {
     expect(caught).toBeInstanceOf(UnrecognisedResultEraError);
     expect((caught as UnrecognisedResultEraError).received).toBe('v7');
     expect((caught as UnrecognisedResultEraError).code).toBe(CONTRACTS_ERROR_CODES.UNRECOGNISED_RESULT_ERA);
-    expect((caught as UnrecognisedResultEraError).message).toContain('v7');
+    expect((caught as UnrecognisedResultEraError).message).toEqual(
+      'A result carried an era tag naming neither pipeline (got: "v7"). ' +
+        "Results are tagged 'v9' or 'v8' by the pipeline that built them. A tag lost in transit -- through a queue, " +
+        'a JSON boundary, a structured clone -- cannot be recovered here: narrow the result before it crosses that ' +
+        'boundary, or carry the era beside it.'
+    );
   });
 
   it('refuses a null or undefined result rather than reading a member off it', () => {

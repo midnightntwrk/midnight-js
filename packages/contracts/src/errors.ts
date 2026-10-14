@@ -28,17 +28,6 @@ import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnight-ntw
 
 import { NEITHER_ERA_CONTRACT_MESSAGE } from './ledger8-contract';
 
-/**
- * The provider methods this flow narrows an era at: the three transaction
- * methods, plus the two read methods that report a finalized record.
- *
- * An alias for {@link ProviderMethod} in `@midnight-ntwrk/midnight-js-types`,
- * which owns the vocabulary because it declares both the transaction methods
- * and the read methods. Kept under this name so the error below reads in the era vocabulary
- * of this package.
- */
-export type EraMethod = ProviderMethod;
-
 // `SubmitTxOptions.circuitId` is a single id or a list — a merged transaction
 // carries several. Each id is quoted individually so a two-circuit list cannot
 // read as one circuit whose name happens to contain the separator. Returns
@@ -100,7 +89,7 @@ export class EraInvariantViolationError extends MidnightJsError {
    *                 got.
    */
   constructor(
-    readonly method: EraMethod,
+    readonly method: ProviderMethod,
     readonly circuitId?: string | readonly string[],
     readonly expected: LedgerVersion = 'v9',
     readonly received?: LedgerVersion
@@ -447,7 +436,7 @@ export class Ledger8ProviderFailedError extends MidnightJsError {
    * @param cause The provider's failure, already sanitized by the caller.
    */
   constructor(
-    readonly method: EraMethod,
+    readonly method: ProviderMethod,
     readonly circuitId: string,
     cause: Error
   ) {
